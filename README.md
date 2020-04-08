@@ -20,16 +20,20 @@ Other things to include:
 ## Configuration and Dependencies
 
 This program uses the following system packages:
+```
 python3
 python3-devel
 gcc-gfortran
+```
 
 ... and the following python modules:
+```
 geopandas 
 numpy 
 pandas 
 xarray 
 netcdf4 
+```
 
 ## Installation
 
