@@ -2,11 +2,11 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## x.y.z - YYYY-MM-DD
+## 0.4.0 - 2020-04-08 
 
 ### Added
 
-- Lorem ipsum dolor sit amet
+Added initial files and code developed at NWC
 
 ### Deprecated
 

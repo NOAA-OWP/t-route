@@ -11,9 +11,3 @@ this deed makes no warranties about the work, and disclaims liability for
 all uses of the work, to the fullest extent permitted by applicable law.
 When using or citing the work, you should not imply endorsement by the
 author or the affirmer.
-
-## Exceptions
-
-_Source code or other assets that are excluded from the TERMS should be listed
-here. These may include dependencies that may be licensed differently or are
-not in the public domain._

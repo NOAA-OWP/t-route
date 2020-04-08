@@ -1,92 +1,73 @@
-#### OWP Open Source Project Template Instructions
+# NWM Tree-based Inland Hydraulic Routing Project 
 
-1. Create a new project.
-2. [Copy these files into the new project](#installation)
-3. Update the README, replacing the contents below as prescribed.
-4. Add any libraries, assets, or hard dependencies whose source code will be included
-   in the project's repository to the _Exceptions_ section in the [TERMS](TERMS.md).
-  - If no exceptions are needed, remove that section from TERMS.
-5. If working with an existing code base, answer the questions on the [open source checklist](opensource-checklist.md)
-6. Delete these instructions and everything up to the _Project Title_ from the README.
-7. Write some great software and tell people about it.
+**Fast, flexible, modular channel routing for the National water model**:  
 
-> Keep the README fresh! It's the first thing people see and will make the initial impression.
 
-## Installation
-
-To install all of the template files, run the following script from the root of your project's directory:
-
-```
-bash -c "$(curl -s https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/open_source_template.sh)"
-```
-
-----
-
-# Project Title
-
-**Description**:  Put a meaningful, short, plain-language description of what
-this project is trying to accomplish and why it matters.
 Describe the problem(s) this project solves.
 Describe how this software can improve the lives of its audience.
 
 Other things to include:
 
-  - **Technology stack**: Indicate the technological nature of the software, including primary programming language(s) and whether the software is intended as standalone or as a module in a framework or other ecosystem.
-  - **Status**:  Alpha, Beta, 1.1, etc. It's OK to write a sentence, too. The goal is to let interested people know where this project is at. This is also a good place to link to the [CHANGELOG](CHANGELOG.md).
-  - **Links to production or demo instances**
-  - Describe what sets this apart from related-projects. Linking to another doc or page is OK if this can't be expressed in a sentence or two.
+  - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
+  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
+  - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
+  - The execution of a routing computation requires knowledge of the topological relationship of segments, reaches, and junctions within a river network. The routing of independent river networks may be completely decoupled
 
 
-**Screenshot**: If the software has visual components, place a screenshot after the description; e.g.,
-
-![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/Screenshot.png)
+![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/bluecyan.gif)
 
 
-## Dependencies
+## Configuration and Dependencies
 
-Describe any dependencies that must be installed for this software to work.
-This includes programming languages, databases or other storage mechanisms, build tools, frameworks, and so forth.
-If specific versions of other software are required, or known not to work, call that out.
+This program uses the following system packages:
+python3
+python3-devel
+gcc-gfortran
+
+... and the following python modules:
+geopandas 
+numpy 
+pandas 
+xarray 
+netcdf4 
 
 ## Installation
 
-Detailed instructions on how to install, configure, and get the project running.
-This should be frequently tested to ensure reliability. Alternatively, link to
-a separate [INSTALL](INSTALL.md) document.
+please see usage and testing below. standby for docker container instructions here.
 
 ## Configuration
 
-If the software is configurable, describe it in detail, either here or in other documentation to which you link.
+Presently, there are no specific configuration details. Stand by.
 
-## Usage
+## Usage and Testing
+The following should provide a sense of the operation of the routing scheme:
 
-Show users how to use the software.
-Be specific.
-Use appropriate formatting when showing code snippets.
-
-## How to test the software
-
-If the software includes automated tests, detail how to run those tests.
+```
+pip3 install geopandas numpy pandas xarray netcdf4 
+git clone --progress --single-branch --branch fortran http://github.com/jameshalgren/wrf_hydro_nwm_public.git
+cd wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
+f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
+cd -
+cd wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/src/python_routing_v02/
+# Execute a serial (~2.5 minutes) and a parallel test (~0.5 minutes)
+# times from 6 cores (x2 threads per core), 3.7GHz
+python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py.
+```
 
 ## Known issues
 
-Document any known significant shortcomings with the software.
+We are constantly looking to improve. Please see the Git Issues for additional information.
 
 ## Getting help
 
-Instruct users how to get help with this software; this might include links to an issue tracker, wiki, mailing list, etc.
-
-**Example**
-
-If you have questions, concerns, bug reports, etc, please file an issue in this repository's Issue Tracker.
+If you have any questions, please contact james.halgren@noaa.gov or dongha.kim@noaa.gov, the technical maintainers of the repository. 
 
 ## Getting involved
 
-This section should detail why people should get involved and describe key areas you are
-currently focusing on; e.g., trying to get feedback on features, fixing certain bugs, building
-important pieces, etc.
+Our current focus is improving the speed of the parallel tree traversal
 
-General instructions on _how_ to contribute should be stated with a link to [CONTRIBUTING](CONTRIBUTING.md).
+Please feel free to fork the repository and let us know if you will be issuing a pull request. 
+More instructions will eventually be documented in [CONTRIBUTING](CONTRIBUTING.md).
 
 
 ----
@@ -100,6 +81,6 @@ General instructions on _how_ to contribute should be stated with a link to [CON
 
 ## Credits and references
 
-1. Projects that inspired you
-2. Related projects
-3. Books, papers, talks, or other sources that have meaningful impact or influence on this project
+A great deal of credit is owed to Drs. Ehab Meslehe and Fred Ogden, and as well to the entire NCAR WRF-Hydro development team.
+
+----
