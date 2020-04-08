@@ -3,19 +3,16 @@
 **Fast, flexible, modular channel routing for the National water model**:  
 
 
-Describe the problem(s) this project solves.
-Describe how this software can improve the lives of its audience.
+Scaling the hydraulic routing problem to the size of the U.S. National Water Model required a new approach. The existing routing algorithm does not allow for incorporation of downstream conditions in the calculation of stream flow and depth. A hydraulic model which explicitly considers these influences is required for simulation of regional flooding where waterways begin to influence one another as well as when a major flood causes backwater flooding into a tributary. The program under development here seeks to effectively manage the traversal of a network of streams with defined hydraulic properties specifically for the purpose of hydraulic routing in an operational flood and water resources forecasting system. The principles of graph development and traversal as they are applied (imperfectly) here are possibly applicable to problems in other areas. 
 
-Other things to include:
-
-  - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
-  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
-  - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
-  - The execution of a routing computation requires knowledge of the topological relationship of segments, reaches, and junctions within a river network. The routing of independent river networks may be completely decoupled
-
+In particular, given the observation that the routing of independent river networks may be completely decoupled, we have worked to create a framework for the routing computation which uses a knowledge of the topological relationship of segments, reaches, and junctions within a river network to separate the computation into parallelizable portions, as shown in the following image. 
 
 ![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/bluecyan.gif)
 
+The project and program contain the following elements. 
+  - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
+  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
+  - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
 
 ## Configuration and Dependencies
 
