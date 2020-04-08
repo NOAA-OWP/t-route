@@ -37,7 +37,7 @@ netcdf4
 
 ## Installation
 
-please see usage and testing below. standby for docker container instructions here.
+please see usage and testing below. Standby for docker container instructions in the near future.
 
 ## Configuration
 
@@ -68,7 +68,7 @@ If you have any questions, please contact james.halgren@noaa.gov or dongha.kim@n
 
 ## Getting involved
 
-Our current focus is improving the speed of the parallel tree traversal
+Our current focus is improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
 
 Please feel free to fork the repository and let us know if you will be issuing a pull request. 
 More instructions will eventually be documented in [CONTRIBUTING](CONTRIBUTING.md).
