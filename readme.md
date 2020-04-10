@@ -55,7 +55,7 @@ The following sequence of commands should provide a sense of the operation of th
 
 ```
 pip3 install geopandas numpy pandas xarray netcdf4 
-git clone --progress --single-branch --branch master http://github.com/jameshalgren/t-route.git
+git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
 cd src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
 f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
 cd -
