@@ -14,6 +14,16 @@ The project and program contain the following elements.
   - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
   - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
 
+In general, as with all things related to the National Water Center, our goal is to save
+more lives and prevent more property damage by more accurately forecasting the state of the nations
+rivers and other water resources, especially with respect to floods and by getting that
+information more quickly and understandably to people who can and will do something 
+useful with it to those ends.
+
+The purpose in sharing this via GitHub is to efficiently make possible collaborative 
+editing -- because there are certainly those who have more experience and expertise who
+might comment on how this has been done or how it might be better done here. 
+
 ## Configuration and Dependencies
 
 This program uses the following system packages:
@@ -41,7 +51,7 @@ please see usage and testing below. Standby for docker container instructions in
 Presently, there are no specific configuration details. Stand by.
 
 ## Usage and Testing
-The following should provide a sense of the operation of the routing scheme:
+The following sequence of commands should provide a sense of the operation of the routing scheme:
 
 ```
 pip3 install geopandas numpy pandas xarray netcdf4 
@@ -54,6 +64,10 @@ cd src/python_routing_v02/
 # times from 6 cores (x2 threads per core), 3.7GHz
 python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py.
 ```
+ 
+In addition, the notebooks in the `notebooks` folder represent experiments to demonstrate the base classes and basic functionality of libraries contained in rest of the repoository. Collectively they are intended to support incorporation of evaluation of the dynamic routing codes and related utilities being considered and prepared as potential candidates for use as the base dynamic hydraulic engine for the NWM. 
+
+Most of the notebooks may be opened in either Jupyter or with Google Colaboratory.
 
 ## Known issues
 
