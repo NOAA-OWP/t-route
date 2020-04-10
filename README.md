@@ -45,7 +45,7 @@ The following should provide a sense of the operation of the routing scheme:
 
 ```
 pip3 install geopandas numpy pandas xarray netcdf4 
-git clone --progress --single-branch --branch fortran http://github.com/jameshalgren/wrf_hydro_nwm_public.git
+git clone --progress --single-branch --branch master http://github.com/jameshalgren/t-route.git
 cd wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
 f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
 cd -
