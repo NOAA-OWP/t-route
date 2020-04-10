@@ -46,10 +46,10 @@ The following should provide a sense of the operation of the routing scheme:
 ```
 pip3 install geopandas numpy pandas xarray netcdf4 
 git clone --progress --single-branch --branch master http://github.com/jameshalgren/t-route.git
-cd wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
+cd src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
 f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
 cd -
-cd wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/src/python_routing_v02/
+cd src/python_routing_v02/
 # Execute a serial (~2.5 minutes) and a parallel test (~0.5 minutes)
 # times from 6 cores (x2 threads per core), 3.7GHz
 python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py.
