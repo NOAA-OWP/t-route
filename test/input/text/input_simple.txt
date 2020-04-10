@@ -1,0 +1,30 @@
+60.0 =: dtini         Time step dt
+20.0 =: dxini         Spatial step dx
+30006.0 =: tfin          Final time
+51 =: ncomp         number of nodes
+501 =: ntim          number of timesteps
+0.0 =: phi           source term treatment (0:explicit, 1:implicit)
+1.0 =: theta         ?
+1.0 =: thetas        ?
+1.0 =: thesinv       ?
+0.5 =: alfa2         emp parameter for artificial diffusion (lit)
+0.1 =: alfa4         maximum value for artificial diffusion
+1.0 =: f             SI Units = 1
+33 =: skk           1/Manning's n roughness
+2.4232242322423225 =: yy            water surface elevation (m)
+100.0 =: qq            uniform flow condition (m3s-1)
+1.0 =: cfl           courant number for optimal optimization of dt
+0 =: ots           optimize dt (1:apply opt, !=1:user specify)
+0.0 =: yw            weir height
+20.0 =: bw            weir width
+1.1 =: w             weir coefficient (unused)
+1 =: option        DS imposed condition (1:y, 2:q, 3:rating curve)
+0.1 =: yn            water level of DS end
+0.0085 =: qn            water discharge of DS end
+700 =: igate         spatial index of gate location (unused)
+bed_elevation.txt =: bed_elevation_path
+upstream_hydrograph.txt =: upstream_path
+downstream_hydrograph.txt =: downstream_path
+channel_width.txt =: channel_width_path
+output/ =: output_path
+0 =: option_dsbc         2 is drawdown to critical, 1 is normal, and 0 is constant water level downstream

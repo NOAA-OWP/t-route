@@ -1,0 +1,9 @@
+# Ignore everything in this directory
+text/*
+map/*
+plot/*
+# Except for these folders
+!text/.gitkeep
+!map/.gitkeep
+!plot/.gitkeep
+#
