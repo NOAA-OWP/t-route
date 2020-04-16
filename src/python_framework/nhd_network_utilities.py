@@ -29,6 +29,14 @@ def get_geo_file_table_rows(
         # GIS source files. It's possible (probable?) that we are doing something 
         # inefficient by converting away from the Pandas dataframe.
         # TODO: Check the optimal use of the Pandas dataframe
+    elif driver_string == 'csv': # Use Pandas to read zipped csv/txt
+        if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
+        try:
+            geo_file = pd.read_csv(geo_file_path)
+        except Exception as e:
+            print (e)
+            if debuglevel <= -1: traceback.print_exc()
+        geo_file_rows = geo_file.to_numpy()
     elif driver_string == 'zip': # Use Pandas to read zipped csv/txt
         if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
         try:
@@ -246,9 +254,9 @@ def set_supernetwork_data(
               , 'mask_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
                     , r'masks'
-                    , r'LowerColorado_Conchos_FULL_RES.zip')
-              , 'mask_driver_string' : r'zip'
-              , 'mask_layer_string' : r'LowerColorado_Conchos_FULL_RES.txt'
+                    , r'LowerColorado_Conchos_FULL_RES.txt')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
               , 'mask_key_col' : 0
               , 'mask_name_col' : 1 #TODO: Not used yet.
             })
@@ -284,9 +292,9 @@ def set_supernetwork_data(
               , 'mask_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
                     , r'masks'
-                    , r'Brazos_LowerColorado_FULL_RES.zip')
-              , 'mask_driver_string' : r'zip'
-              , 'mask_layer_string' : r'Brazos_LowerColorado_FULL_RES.txt'
+                    , r'Brazos_LowerColorado_FULL_RES.txt')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
               , 'mask_key_col' : 0
               , 'mask_name_col' : 1 #TODO: Not used yet.
             })
@@ -302,9 +310,9 @@ def set_supernetwork_data(
               , 'mask_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
                     , r'masks'
-                    , r'Brazos_LowerColorado_Named_Streams.zip')
-              , 'mask_driver_string' : r'zip'
-              , 'mask_layer_string' : r'Brazos_LowerColorado_Named_Streams.csv'
+                    , r'Brazos_LowerColorado_Named_Streams.csv')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
               , 'mask_key_col' : 0
               , 'mask_name_col' : 1 #TODO: Not used yet.
             })
@@ -320,9 +328,9 @@ def set_supernetwork_data(
               , 'mask_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
                     , r'masks'
-                    , r'CONUS_ge5.zip')
-              , 'mask_driver_string' : r'zip'
-              , 'mask_layer_string' : r'CONUS_ge5.txt'
+                    , r'CONUS_ge5.txt')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
               , 'mask_key_col' : 0
               , 'mask_name_col' : 1 #TODO: Not used yet.
             })
@@ -361,9 +369,9 @@ def set_supernetwork_data(
               , 'mask_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
                     , r'masks'
-                    , r'nwm_reaches_conus_v21_wgnis_name.zip')
-              , 'mask_driver_string' : r'zip'
-              , 'mask_layer_string' : r'nwm_reaches_conus_v21_wgnis_name.csv'
+                    , r'nwm_reaches_conus_v21_wgnis_name.csv')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
               , 'mask_key_col' : 0
               , 'mask_name_col' : 1 #TODO: Not used yet.
             })
