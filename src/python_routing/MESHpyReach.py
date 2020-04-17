@@ -200,7 +200,7 @@ class MESHpyReach(Reach):
                         , downstream_stage_current = downstream_stage_current
                         , downstream_stage_next = downstream_stage_next)
         self.thetas = self.thetasinv
-        output_path = r'c:\users\james.halgren\Downloads\git\mesh\trunk\NDHMS\dynamic_channel_routing\test\output\out.txt'
+        output_path = r'../test/output/MESHpyReach_out.txt'
         if self.debug:
             self.write_state_timestep_mesh(self.sections, j_current, 'mesh_predictor', output_path)
         self.compute_sections(section_arr = self.sections
@@ -1212,13 +1212,7 @@ def main():
     input_type = 'file'
     input_vars = {}
     input_vars['filetype'] = 'mesh.py'
-    # root = os.path.abspath(r'c:/Users/james.halgren/Downloads/MESH_test/')
-    # Main_Example_Path = os.path.join(root , 'US')
-    # Sub_Example_Path = os.path.join(Main_Example_Path , 'BW')
-    # This_Example_Path = os.path.join(Sub_Example_Path, 'Q')
 
-    #C:\Users\james.halgren\Downloads\MESH_test\US\BW\Q\Qvar_us_2YNorm\Qvar_us_0033_5.0-10000.0_0100_0000-0004-0200_2NormalDepth
-    # input_path = os.path.join(This_Example_Path,'Qvar_us_2YNorm','Qvar_us_0033_5.0-10000.0_0100_0000-0004-0200_2NormalDepth',"input.txt")
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     test_folder = os.path.join(root, r'test')
     output_folder = os.path.join(test_folder, r'output', r'text')

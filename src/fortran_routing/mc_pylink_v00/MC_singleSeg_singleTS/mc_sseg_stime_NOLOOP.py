@@ -1,3 +1,4 @@
+from sys import traceback
 debuglevel = 0
 COMPILE = True
 if COMPILE:
@@ -16,6 +17,7 @@ if COMPILE:
         import mc_sseg_stime_NOLOOP as mc
     except Exception as e:
         print (e)
+        if debuglevel <= -1: traceback.print_exc()
 else:
     import mc_sseg_stime_NOLOOP as mc
 
