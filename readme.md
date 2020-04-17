@@ -7,7 +7,7 @@ Scaling the hydraulic routing problem to the size of the U.S. National Water Mod
 
 In particular, given the observation that the routing of independent river networks may be completely decoupled, we have worked to create a framework for the routing computation which uses a knowledge of the topological relationship of segments, reaches, and junctions within a river network to separate the computation into parallelizable portions, as shown in the following image. 
 
-![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/bluecyan.gif)
+![](./doc/bluecyan.gif)
 
 The project and program contain the following elements. 
   - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
