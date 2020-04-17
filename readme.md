@@ -7,7 +7,7 @@ Scaling the hydraulic routing problem to the size of the U.S. National Water Mod
 
 In particular, given the observation that the routing of independent river networks may be completely decoupled, we have worked to create a framework for the routing computation which uses a knowledge of the topological relationship of segments, reaches, and junctions within a river network to separate the computation into parallelizable portions, as shown in the following image. 
 
-![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/bluecyan.gif)
+![](./doc/bluecyan.gif)
 
 The project and program contain the following elements. 
   - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
@@ -55,7 +55,7 @@ The following sequence of commands should provide a sense of the operation of th
 
 ```
 pip3 install geopandas numpy pandas xarray netcdf4 
-git clone --progress --single-branch --branch master http://github.com/jameshalgren/t-route.git
+git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
 cd src/fortran_routing/mc_pylink_v00/MC_singleCH_singleTS/
 f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
 cd -
