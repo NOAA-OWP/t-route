@@ -11,7 +11,7 @@ In particular, given the observation that the routing of independent river netwo
 
 The project and program contain the following elements. 
   - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
-  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
+  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. For additional detail on versions, please see the [CHANGELOG](changelog.md).
   - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
 
 In general, as with all things related to the National Water Center, our goal is to save
@@ -82,7 +82,7 @@ If you have any questions, please contact james.halgren@noaa.gov or dongha.kim@n
 Our current focus is improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
 
 Please feel free to fork the repository and let us know if you will be issuing a pull request. 
-More instructions will eventually be documented in [CONTRIBUTING](CONTRIBUTING.md).
+More instructions will eventually be documented in [CONTRIBUTING](contributing.md).
 
 
 ----
