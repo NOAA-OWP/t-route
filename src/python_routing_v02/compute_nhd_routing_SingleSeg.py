@@ -14,10 +14,12 @@ import multiprocessing
 import os
 import sys
 import time
+import csv
 import numpy as np
 
 ENV_IS_CL = False
-if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
+if ENV_IS_CL:
+    root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
 elif not ENV_IS_CL:
     root = os.path.dirname(os.path.dirname(os.path.abspath('')))
     sys.path.append(r'../python_framework')
@@ -36,7 +38,8 @@ if COMPILE:
         fortran_compile_call.append(r'MCsingleSegStime_f2py_NOLOOP.f90')
         fortran_compile_call.append(r'-m')
         fortran_compile_call.append(r'mc_sseg_stime_NOLOOP')
-        subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS',
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         import mc_sseg_stime_NOLOOP as mc
     except Exception as e:
         print(e)
@@ -46,18 +49,18 @@ else:
 connections = None
 networks = None
 flowdepthvel = None
-
+WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
 import nhd_network_utilities as nnu
 import nhd_reach_utilities as nru
 
-
-# write to file 
-def writetoFile(file, writeString):
-    file.write(writeString + '\n')
-    file.flush()
-    os.fsync(file.fileno())
+if WRITE_OUTPUT:
+    # write to file 
+    def writetoFile(file, writeString):
+        file.write(writeString + '\n')
+        file.flush()
+        os.fsync(file.fileno())
 
 
 def compute_network(
@@ -70,6 +73,7 @@ def compute_network(
 ):
     global connections
     global flowdepthvel
+    # global flowarray
 
     # = {connection:{'flow':{'prev':-999, 'curr':-999}
     #                            , 'depth':{'prev':-999, 'curr':-999}
@@ -109,10 +113,21 @@ def compute_network(
                 )
                 # print(f'{head_segment} {flowdepthvel[head_segment]}')          
 
+    for x in range(network['maximum_reach_seqorder'], -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            # print(f'{{{head_segment}}}:{reach}')
+
+            printarray(
+                head_segment=head_segment
+                , reach=reach
+                , supernetwork_data=supernetwork_data
+                , verbose=verbose
+                , debuglevel=debuglevel
+            )
+
 
 # ### Psuedocode
 # 
-
 
 
 # TODO: generalize with a direction flag
@@ -134,9 +149,10 @@ def compute_mc_reach_up2down(
     # if verbose: print(f"(n_segs: {len(reach['segments'])})")
     if verbose: print(f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})")
 
-    filename = f'../../test/output/text/{head_segment}_{ts}.log'
-    file = open(filename, 'w+')
-    writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}"
+    if WRITE_OUTPUT:
+        filename = f'../../test/output/text/{head_segment}_{ts}.csv'
+        file = open(filename, 'w+')
+        writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}  upstream seg : "
 
     # upstream flow per reach
     qup_tmp = 0
@@ -146,23 +162,22 @@ def compute_mc_reach_up2down(
     else:  # Loop over upstream reaches
         # for us in reach['upstream_reaches']:
         for us in connections[reach['reach_head']]['upstreams']:
-            # if us == 5507050 :
-            #    import pdb; pdb.set_trace()
-            # qup_tmp += flowdepthvel[network['reaches'][us]['reach_tail']]['flow']['curr']
-            writeString = writeString + f"\n upstream seg : {us}"
+            if WRITE_OUTPUT: writeString = writeString + f" {us} "
             qup_tmp += flowdepthvel[us]['flow']['curr']
     # flowdepthvel[reach['reach_head']]['flow']['curr'] = qup_tmp
     # print(qup_tmp)
-    writetoFile(file, writeString)
-
+    # writetoFile(file, writeString)
 
     qup = qup_tmp
     quc = qup
 
     current_segment = reach['reach_head']
 
-    writeString = f'timestep: {ts} cur : {current_segment}  upstream flow: {qup_tmp}'
-    writetoFile(file, writeString)
+    if WRITE_OUTPUT:
+        writeString = writeString + f' timestep: {ts} cur : {current_segment}  upstream flow: {qup_tmp}'
+        writetoFile(file, writeString)
+        writeString = f"  , , , , , , "
+        writetoFile(file, writeString)
 
     next_segment = connections[current_segment]['downstream']
     # print(f'{current_segment}==>{next_segment} conections:{ncomp} timestep:{ts}')
@@ -183,7 +198,11 @@ def compute_mc_reach_up2down(
         s0 = connections[current_segment]['data'][supernetwork_data['slope_col']]
 
         # add some flow
-        flowdepthvel[current_segment]['qlat']['curr'] = 10.0 # (ts + 1) * 10.0  # lateral flow per segment
+        multiplier = 1
+        if ts > 25:
+            multiplier = 0
+        qlat = 10.0 * (multiplier) # (ts + 1) * 10.0  # lateral flow per segment
+        flowdepthvel[current_segment]['qlat']['curr'] = qlat
 
         flowdepthvel[current_segment]['flow']['prev'] = flowdepthvel[current_segment]['flow']['curr']
         flowdepthvel[current_segment]['depth']['prev'] = flowdepthvel[current_segment]['depth']['curr']
@@ -194,20 +213,21 @@ def compute_mc_reach_up2down(
         # if current_segment == 5559368 or i == 100:
         #    import pdb; pdb.set_trace()
 
-        qlat = flowdepthvel[current_segment]['qlat']['curr']  # temporary assigned qlat
+        #qlat = flowdepthvel[current_segment]['qlat']['curr']  # temporary assigned qlat
         qdp = flowdepthvel[current_segment]['flow']['prev']  # temporary assigned qd
         velp = flowdepthvel[current_segment]['vel']['prev']
         depthp = flowdepthvel[current_segment]['depth']['prev']
 
-        #writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
-        #writetoFile(file, writeString)
-        writeString = f"timestep: {ts} pre : {current_segment}: {flowdepthvel[current_segment]['flow']['prev']} "
-        writeString = writeString + f"{flowdepthvel[current_segment]['depth']['prev']} "
-        writeString = writeString + f"{flowdepthvel[current_segment]['vel']['prev']} "
-        writeString = writeString + f"{flowdepthvel[current_segment]['qlat']['curr']} "
-        writeString = writeString + f"{qup} "
-        writeString = writeString + f"{quc}"
-        writetoFile(file, writeString)
+        if WRITE_OUTPUT:
+            # writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
+            # writetoFile(file, writeString)
+            writeString = f"{current_segment} , {flowdepthvel[current_segment]['flow']['prev']} "
+            writeString = writeString + f", {flowdepthvel[current_segment]['depth']['prev']} "
+            writeString = writeString + f", {flowdepthvel[current_segment]['vel']['prev']} "
+            writeString = writeString + f", {flowdepthvel[current_segment]['qlat']['curr']} "
+            writeString = writeString + f", {qup} "
+            writeString = writeString + f", {quc}"
+            # writetoFile(file, writeString)
 
         # run M-C model
         qdc, velc, depthc = singlesegment(
@@ -227,18 +247,22 @@ def compute_mc_reach_up2down(
             , velp=flowdepthvel[current_segment]['vel']['prev']
             , depthp=flowdepthvel[current_segment]['depth']['prev']
         )
-        #print(qdc, velc, depthc)
-        #print(qdc_expected, velc_expected, depthc_expected)
+        # print(qdc, velc, depthc)
+        # print(qdc_expected, velc_expected, depthc_expected)
 
-        writeString = f'timestep: {ts} cur : {current_segment}  {qdc} {depthc} {velc} '
-        writetoFile(file, writeString)
+        if WRITE_OUTPUT:
+            writeString = writeString + f',  {qdc},  {depthc},  {velc} '
+            writetoFile(file, writeString)
         flowdepthvel[current_segment]['flow']['curr'] = qdc
+        flowdepthvel[current_segment]['flowval'].append(qdc)
         flowdepthvel[current_segment]['depth']['curr'] = depthc
+        flowdepthvel[current_segment]['depthval'].append(depthc)
         flowdepthvel[current_segment]['vel']['curr'] = velc
-        # for next
-        qup = qdc
-        quc = qdc
-
+        flowdepthvel[current_segment]['velval'].append(velc)
+        flowdepthvel[current_segment]['time'].append(ts)
+        # for next segment qup / quc use the previous flow values
+        qup = flowdepthvel[current_segment]['flow']['prev']  # input for next segment
+        quc = qup  # input for next segment
         if current_segment == reach['reach_tail']:
             if verbose: print(f'{current_segment} (tail)')
             break
@@ -246,37 +270,70 @@ def compute_mc_reach_up2down(
         current_segment = next_segment
         next_segment = connections[current_segment]['downstream']
         # end loop initialized the MC vars 
+        # print (flowdepthvel[current_segment]['flowval'])
 
 
-# %%pixie_debugger
+def printarray(head_segment=None
+               , reach=None
+               , supernetwork_data=None
+               , verbose=False
+               , debuglevel=0
+               ):
+    global connections
+    global flowdepthvel
+
+    WRITE_OUTPUT = True
+    header = [['time', 'q', 'd', 'v']]
+    current_segment = reach['reach_head']
+    next_segment = connections[current_segment]['downstream']
+    # print(f'{current_segment}==>{next_segment} conections:{ncomp} timestep:{ts}')
+    # input flow to upstream reach of current reach
+    while True:
+
+        if WRITE_OUTPUT:
+            filename = f'../../test/output/text/{current_segment}.csv'
+            with open(filename, 'w+') as csvfile:
+                csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_ALL)
+                csvwriter.writerows(header)
+                csvwriter.writerows(zip(flowdepthvel[current_segment]['time'],
+                                        flowdepthvel[current_segment]['flowval'],
+                                        flowdepthvel[current_segment]['depthval'],
+                                        flowdepthvel[current_segment]['velval']))
+
+        if current_segment == reach['reach_tail']:
+            if verbose: print(f'{current_segment} (tail)')
+            break
+        if verbose: print(f'{current_segment} --> {next_segment}\n')
+        current_segment = next_segment
+        next_segment = connections[current_segment]['downstream']
+
+
 def singlesegment(
-        dt # dt
-        , qup = None # qup
-        , quc = None # quc
-        , qdp = None # qdp
-        , qlat = None # ql
-        , dx = None # dx
-        , bw = None # bw
-        , tw = None # tw
-        , twcc = None # twcc
-        , n_manning = None #
-        , n_manning_cc = None # ncc
-        , cs = None # cs
-        , s0 = None # s0
-        , velp = None # velocity at previous time step
-        , depthp = None # depth at previous time step
-    ):
-
+        dt  # dt
+        , qup=None  # qup
+        , quc=None  # quc
+        , qdp=None  # qdp
+        , qlat=None  # ql
+        , dx=None  # dx
+        , bw=None  # bw
+        , tw=None  # tw
+        , twcc=None  # twcc
+        , n_manning=None  #
+        , n_manning_cc=None  # ncc
+        , cs=None  # cs
+        , s0=None  # s0
+        , velp=None  # velocity at previous time step
+        , depthp=None  # depth at previous time step
+):
     # call Fortran routine
     return mc.muskingcungenwm(
         dt, qup, quc, qdp, qlat, dx, bw, tw, twcc
-        ,n_manning, n_manning_cc, cs, s0, velp, depthp
+        , n_manning, n_manning_cc, cs, s0, velp, depthp
     )
-    #return qdc, vel, depth
+    # return qdc, vel, depth
+
 
 def main():
-
-
     global connections
     global networks
     global flowdepthvel
@@ -286,11 +343,11 @@ def main():
     showtiming = True
 
     test_folder = os.path.join(root, r'test')
-    geo_input_folder = os.path.join(test_folder, r'input', r'geo', r'Channels')
+    geo_input_folder = os.path.join(test_folder, r'input', r'geo')
 
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
-    #supernetwork = 'Brazos_LowerColorado_ge5'
+    # supernetwork = 'Brazos_LowerColorado_ge5'
     supernetwork = 'Pocono_TEST1'
     """##NHD CONUS order 5 and greater"""
     # supernetwork = 'CONUS_ge5'
@@ -332,7 +389,11 @@ def main():
     flowdepthvel = {connection: {'flow': {'prev': 0, 'curr': 0}
         , 'depth': {'prev': 0, 'curr': 0}
         , 'vel': {'prev': 0, 'curr': 0}
-        , 'qlat': {'prev': 0, 'curr': 0}} for connection in connections}
+        , 'qlat': {'prev': 0, 'curr': 0}
+        , 'time': []
+        , 'flowval': []
+        , 'depthval': []
+        , 'velval': []} for connection in connections}
 
     parallelcompute = True
     if not parallelcompute:
@@ -368,6 +429,6 @@ def main():
     if verbose: print('ordered reach computation complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
 
+
 if __name__ == '__main__':
     main()
-
