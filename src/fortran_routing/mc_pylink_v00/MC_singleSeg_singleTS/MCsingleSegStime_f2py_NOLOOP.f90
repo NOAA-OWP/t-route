@@ -182,7 +182,7 @@ subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     else
         AREA = (bw + h_0 * z ) * h_0
         WP = (bw + 2.0 * h_0 * sqrt(1.0 + z*z))
-        WPC = 0.0
+        !WPC = 0.0
         if(WP .gt. 0.0) then
             R = AREA/ WP
         else
@@ -274,7 +274,7 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     else
         AREA = (bw + h * z ) * h
         WP = (bw + 2.0 * h * sqrt(1.000000 + z*z))
-        WPC = 0.0
+        !WPC = 0.0
         if(WP .gt. 0.0) then
             R = AREA/WP
         else

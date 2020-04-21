@@ -1,4 +1,4 @@
-from sys import traceback
+import traceback
 debuglevel = 0
 COMPILE = True
 if COMPILE:
@@ -9,17 +9,17 @@ if COMPILE:
         fortran_compile_call.append(r'-c')
         fortran_compile_call.append(r'MCsingleSegStime_f2py_NOLOOP.f90')
         fortran_compile_call.append(r'-m')
-        fortran_compile_call.append(r'mc_sseg_stime_NOLOOP')
+        fortran_compile_call.append(r'mc_sseg_stime')
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
             subprocess.run(fortran_compile_call, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        import mc_sseg_stime_NOLOOP as mc
+        import mc_sseg_stime as mc
     except Exception as e:
         print (e)
         if debuglevel <= -1: traceback.print_exc()
 else:
-    import mc_sseg_stime_NOLOOP as mc
+    import mc_sseg_stime as mc
 
 # # Method 1
 # Python: time loop; segment loop; constant channel variables are passed to Fortran
