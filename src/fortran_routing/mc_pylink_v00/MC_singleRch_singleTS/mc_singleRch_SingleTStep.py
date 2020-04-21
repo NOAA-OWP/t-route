@@ -1,5 +1,7 @@
 import sys
 import numpy as np
+import traceback
+import os
 
 debuglevel = 0
 COMPILE = True
@@ -23,6 +25,11 @@ if COMPILE:
         import mc_sc_stime as mc
     except Exception as e:
         print (e)
+        if debuglevel <= -2: traceback.print_exc()
+        print(r'Error importing mc routing module.')
+        print(r'Please review the compiling instructions')
+        print(f'in {os.path.dirname(os.path.abspath(__file__))}')
+        exit()
 
 #TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
