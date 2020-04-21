@@ -1,12 +1,14 @@
 import sys
 import numpy as np
+import traceback
+import os
 
-if 1 == 1:
+debuglevel = 0
+COMPILE = True
+if COMPILE:
     try:
         #Assume fortran module is compiled in same folder as calling python script
         #If not, a sys.path.append() call is needed to add the module path
-        import mc_sc_stime as mc
-    except:
         import subprocess
         fortran_compile_call = []
         fortran_compile_call.append(r'f2py3')
@@ -15,11 +17,19 @@ if 1 == 1:
         fortran_compile_call.append(r'MCsingleChStime_f2py_clean.f90')
         fortran_compile_call.append(r'-m')
         fortran_compile_call.append(r'mc_sc_stime')
-        subprocess.run(fortran_compile_call, cwd=fortran_source_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        try:
-            import mc_sc_stime as mc
-        except Exception as e:
-            print (e)
+        #subprocess.run(fortran_compile_call, cwd=fortran_source_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if debuglevel <= -2: 
+            subprocess.run(fortran_compile_call)
+        else:
+            subprocess.run(fortran_compile_call, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        import mc_sc_stime as mc
+    except Exception as e:
+        print (e)
+        if debuglevel <= -2: traceback.print_exc()
+        print(r'Error importing mc routing module.')
+        print(r'Please review the compiling instructions')
+        print(f'in {os.path.dirname(os.path.abspath(__file__))}')
+        exit()
 
 #TODO: generalize with a direction flag
 def compute_mc_reach_up2down(

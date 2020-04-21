@@ -1,4 +1,5 @@
-from sys import traceback
+import traceback
+
 debuglevel = 0
 COMPILE = True
 if COMPILE:
@@ -9,17 +10,17 @@ if COMPILE:
         fortran_compile_call.append(r'-c')
         fortran_compile_call.append(r'MCsingleSegStime_f2py_NOLOOP.f90')
         fortran_compile_call.append(r'-m')
-        fortran_compile_call.append(r'mc_sseg_stime_NOLOOP')
+        fortran_compile_call.append(r'mc_sseg_stime')
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
             subprocess.run(fortran_compile_call, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        import mc_sseg_stime_NOLOOP as mc
+        import mc_sseg_stime as mc
     except Exception as e:
         print (e)
         if debuglevel <= -1: traceback.print_exc()
 else:
-    import mc_sseg_stime_NOLOOP as mc
+    import mc_sseg_stime as mc
 
 # # Method 1
 # Python: time loop; segment loop; constant channel variables are passed to Fortran
@@ -70,8 +71,8 @@ def main ():
     qup = 0.04598825052380562 # Flow from the upstream neighbor in the previous timestep
     quc = 0.04598825052380562 # Flow from the upstream neighbor in the current timestep 
     qdp = 0.21487340331077576 # Flow at the current segment in the previous timestep
+    depthp = 0.010033470578491688 # Depth at the current segment in the previous timestep')
     velp = 0.070480190217494964 # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
-    depthp = 0.010033470578491688 # Depth at the current segment in the previous timestep
 
     qdc_expected = 0.7570106983184814
     velc_expected = 0.12373604625463486
@@ -97,6 +98,6 @@ def main ():
     )
     print('computed q: {} vel: {} depth: {}'.format(qdc, velc, depthc))
     print('expected q: {} vel: {} depth: {}'.format(qdc_expected, velc_expected, depthc_expected))
-            
+                
 if __name__ == '__main__':
     main()

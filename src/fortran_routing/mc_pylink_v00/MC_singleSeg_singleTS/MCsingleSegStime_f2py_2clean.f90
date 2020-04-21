@@ -206,7 +206,7 @@ contains
         else
             AREA = (Bw + h_0 * z ) * h_0
             WP = (Bw + 2.0 * h_0 * sqrt(1.0 + z*z))
-            WPC = 0.0
+            !WPC = 0.0
             if(WP .gt. 0.0) then
                 R = AREA/ WP
             else
@@ -294,7 +294,7 @@ contains
         else
             AREA = (Bw + h * z ) * h
             WP = (Bw + 2.0 * h * sqrt(1.000000 + z*z))
-            WPC = 0.0
+            !WPC = 0.0
             if(WP .gt. 0.0) then
                 R = AREA/WP
             else
