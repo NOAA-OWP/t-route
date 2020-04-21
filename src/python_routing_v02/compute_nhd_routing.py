@@ -32,9 +32,10 @@ elif not ENV_IS_CL:
     sys.setrecursionlimit(4000)
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(root, r'src', r'python_framework'))
+                                         #/src    /fortran_routing    /mc_pylink_v00    /MC_singleSeg_singleTS 
 fortran_source_dir = os.path.join(root, r'src', r'fortran_routing', r'mc_pylink_v00', r'MC_singleRch_singleTS')
 sys.path.append(fortran_source_dir)
-from mc_singleCh_SingleTStep import compute_mc_reach_up2down
+from mc_singleRch_SingleTStep import compute_mc_reach_up2down
 # import mc_sc_stime as mc
 # print(fortran_source_dir)
 
@@ -175,14 +176,14 @@ def main():
     showtiming = True
 
     test_folder = os.path.join(root, r'test')
-    geo_input_folder = os.path.join(test_folder, r'input', r'geo', r'Channels')
+    geo_input_folder = os.path.join(test_folder, r'input', r'geo')
 
     #TODO: Make these commandline args
-    # supernetwork = 'Pocono_TEST1'
+    supernetwork = 'Pocono_TEST1'
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_ge5'
     """##NWM CONUS Mainstems"""
-    supernetwork = 'Mainstems_CONUS'
+    # supernetwork = 'Mainstems_CONUS'
     """These are large -- be careful"""
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field

@@ -1,29 +1,13 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[5]:
-
-
-#!/usr/bin/env python
-
-"""Sample setup file"""
-
 from __future__ import absolute_import
 from __future__ import print_function
 import os
 import shutil
 import subprocess
 import numpy as np
-# import mesh
 import matplotlib.pyplot as plt 
 import scipy.stats as stats
 import decimal
-# import pixiedust
-#import mc_sc_stime as mc
-#import mc_sseg_stime as mc
 from time import process_time 
-#%load_ext line_profiler
-#@profile
 
 debuglevel = 0
 COMPILE = True
@@ -36,16 +20,16 @@ if COMPILE:
         fortran_compile_call.append(r'varSingleSegStime_f2py_2clean.f90')
         fortran_compile_call.append(r'MCsingleSegStime_f2py_2clean.f90')
         fortran_compile_call.append(r'-m')
-        fortran_compile_call.append(r'mc_sseg_stime')
-        if debuglevel <= -2:
+        fortran_compile_call.append(r'mc_srch_stime')
+        if debuglevel <= -2: 
             subprocess.run(fortran_compile_call)
         else:
             subprocess.run(fortran_compile_call, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        import mc_sseg_stime as mc
+        import mc_srch_stime as mc
     except Exception as e:
         print (e)
 else:
-    import mc_sseg_stime as mc
+    import mc_srch_stime as mc
 
 
 # # Method 1
