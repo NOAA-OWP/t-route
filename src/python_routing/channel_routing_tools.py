@@ -32,9 +32,9 @@ def mc_tlp_over_seg(
         mc.var.dx= connections[segID]['data'][supernetwork_data['length_col']]
         mc.var.bw= connections[segID]['data'][supernetwork_data['bottomwidth_col']] 
         mc.var.tw=  connections[segID]['data'][supernetwork_data['topwidth_col']]
-        mc.var.twcc= connections[segID]['data'][supernetwork_data['topwidthCC_col']]
+        mc.var.twcc= connections[segID]['data'][supernetwork_data['topwidthcc_col']]
         mc.var.n= connections[segID]['data'][supernetwork_data['manningn_col']]
-        mc.var.ncc= connections[segID]['data'][supernetwork_data['manningnCC_col']]
+        mc.var.ncc= connections[segID]['data'][supernetwork_data['manningncc_col']]
         mc.var.cs= connections[segID]['data'][supernetwork_data['ChSlp_col']]
         mc.var.so= connections[segID]['data'][supernetwork_data['slope_col']]
         mc.var.ncomp= ncomp
