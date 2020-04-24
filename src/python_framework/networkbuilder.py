@@ -229,13 +229,8 @@ def get_up_connections(connections
     if verbose: print('up_connections complete')
     if verbose: print('')
 
-    # import pdb; pdb.set_trace()
     if verbose: print('confluence segments ...')
     confluence_segment_set = {seg for seg, con in connections.items() if con[downstream_key] in junction_keys} 
-    # confluence_segment_set = set()
-    # for seg, con in connections.items():
-        # if con[downstream_key] in junction_keys:
-            # confluence_segment_set.add(seg)
     if debuglevel <= -1: print(f'found {len(confluence_segment_set)} confluence segments')
     if debuglevel <= -3: print(confluence_segment_set)
     if verbose: print('confluence_segment_set complete')

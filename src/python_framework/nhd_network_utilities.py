@@ -75,6 +75,8 @@ def build_connections_object(
         , downstream_col = None
         , length_col = None
         , terminal_code = None
+        , waterbody_col = None
+        , waterbody_null_code = None
         , verbose = False
         , debuglevel = 0
         ):
@@ -114,17 +116,31 @@ def build_connections_object(
     waterbody_outlet_set = None
     waterbody_upstreams_set = None
 
+    # TODO: Set/pass/identify a proper flag value
+    if waterbody_col is not None:
+        (waterbody_set
+        , waterbody_segments
+        , waterbody_outlet_set
+        , waterbody_upstreams_set) = networkbuilder.get_waterbody_segments(
+            connections = connections
+            , waterbody_col = waterbody_col
+            , waterbody_null_code = waterbody_null_code
+            , verbose = verbose
+            , debuglevel = debuglevel
+            # , debuglevel = -3
+            )
+
     #TODO: change names to reflect type set or dict
     return connections, all_keys, ref_keys, headwater_keys \
         , terminal_keys, terminal_ref_keys \
         , circular_keys, junction_keys \
         , visited_keys, visited_terminal_keys \
         , junction_count \
+        , confluence_segment_set \
         , waterbody_set \
         , waterbody_segments \
         , waterbody_outlet_set \
-        , waterbody_upstreams_set \
-        , confluence_segment_set
+        , waterbody_upstreams_set
 
 def do_connections(
         geo_file_path = None
@@ -135,6 +151,8 @@ def do_connections(
         , downstream_col = None
         , length_col = None
         , terminal_code = None
+        , waterbody_col = None
+        , waterbody_null_code = None
         , mask_file_path = None
         , mask_driver_string = None
         , mask_layer_string = None
@@ -172,6 +190,8 @@ def do_connections(
         , downstream_col = downstream_col
         , length_col = length_col
         , terminal_code = terminal_code
+        , waterbody_col = waterbody_col
+        , waterbody_null_code = waterbody_null_code
         , verbose = verbose
         , debuglevel = debuglevel
         )
@@ -187,18 +207,25 @@ def get_nhd_connections(
     , debuglevel = 0
     , verbose = False
     ):
+    if 'waterbody_col' not in supernetwork_data:
+        supernetwork_data.update({'waterbody_col':None})
+        supernetwork_data.update({'waterbody_null_code':None})
+        
     if 'mask_file_path' not in supernetwork_data:
         #TODO: doing things this way may mean we are reading the same file twice -- fix this [maybe] by implementing an overloaded return
         supernetwork_data.update({'mask_file_path':None})
         supernetwork_data.update({'mask_layer_string':None})
         supernetwork_data.update({'mask_driver_string':None})
         supernetwork_data.update({'mask_key_col':None})
+
     return do_connections(
         geo_file_path = supernetwork_data['geo_file_path']
           , key_col = supernetwork_data['key_col']
           , downstream_col = supernetwork_data['downstream_col']
           , length_col = supernetwork_data['length_col']
           , terminal_code = supernetwork_data['terminal_code']
+          , waterbody_col = supernetwork_data['waterbody_col']
+          , waterbody_null_code = supernetwork_data['waterbody_null_code']
           , title_string = supernetwork_data['title_string']
           , driver_string = supernetwork_data['driver_string']
           , layer_string = supernetwork_data['layer_string']
