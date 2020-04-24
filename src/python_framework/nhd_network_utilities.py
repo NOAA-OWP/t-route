@@ -60,7 +60,11 @@ def get_geo_file_table_rows(
                 geo_file.plot() 
             except:
                 print(r'cannot plot geofile (not necessarily a problem)')
-    if debuglevel <= -1: print(geo_file.head()) # Preview the first 5 lines of the loaded data
+    if debuglevel <= -1: 
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        pd.set_option('display.max_colwidth', -1)
+        print(geo_file.head()) # Preview the first 5 lines of the loaded data
 
     return geo_file_rows
 
@@ -88,26 +92,39 @@ def build_connections_object(
         , terminal_ref_keys
         , circular_keys) = networkbuilder.determine_keys(
                     connections = connections
-                    , key_col = key_col
-                    , downstream_col = downstream_col
+                    # , key_col = key_col
+                    # , downstream_col = downstream_col
                     , terminal_code = terminal_code
                     , verbose = verbose
                     , debuglevel = debuglevel)
     
     (junction_keys, visited_keys
      , visited_terminal_keys
-     , junction_count) = networkbuilder.get_up_connections(
+     , junction_count
+     , confluence_segment_set) = networkbuilder.get_up_connections(
                     connections = connections
                     , terminal_code = terminal_code
                     , headwater_keys = headwater_keys
                     , terminal_keys = terminal_keys
                     , verbose = verbose
                     , debuglevel = debuglevel)
+
+    waterbody_set = None
+    waterbody_segments = None
+    waterbody_outlet_set = None
+    waterbody_upstreams_set = None
+
+    #TODO: change names to reflect type set or dict
     return connections, all_keys, ref_keys, headwater_keys \
         , terminal_keys, terminal_ref_keys \
         , circular_keys, junction_keys \
         , visited_keys, visited_terminal_keys \
-        , junction_count
+        , junction_count \
+        , waterbody_set \
+        , waterbody_segments \
+        , waterbody_outlet_set \
+        , waterbody_upstreams_set \
+        , confluence_segment_set
 
 def do_connections(
         geo_file_path = None
@@ -233,6 +250,8 @@ def set_supernetwork_data(
             , 'manningncc_col' : 21
             , 'slope_col' : 10
             , 'bottomwidth_col' : 2
+            , 'waterbody_col' : 8
+            , 'waterbody_null_code' : -9999
             , 'topwidth_col' : 11
             , 'topwidthcc_col' : 12
             , 'MusK_col' : 7
@@ -350,6 +369,8 @@ def set_supernetwork_data(
             , 'bottomwidth_col' : 14
             , 'topwidth_col' : 22
             , 'topwidthcc_col' : 21
+            , 'waterbody_col' : 15
+            , 'waterbody_null_code' : -9999
             , 'MusK_col' : 8
             , 'MusX_col' : 9
             , 'ChSlp_col' : 13
@@ -391,6 +412,8 @@ def set_supernetwork_data(
             , 'bottomwidth_col' : 14
             , 'topwidth_col' : 22
             , 'topwidthcc_col' : 21
+            , 'waterbody_col' : 15
+            , 'waterbody_null_code' : -9999
             , 'MusK_col' : 8
             , 'MusX_col' : 9
             , 'ChSlp_col' : 13

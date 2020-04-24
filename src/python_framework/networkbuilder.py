@@ -5,12 +5,11 @@ def get_down_connections(
     , key_col
     , downstream_col
     , length_col
-    , manningn_col = 0
-    , slope_col = 0
-    , bottomwidth_col = 0
     , mask_set = None
+    , length_key = r'length'
     , upstreams_key = r'upstreams'
     , downstream_key = r'downstream'
+    , data_key = r'data'
     , verbose = False
     , debuglevel = 0
     ):
@@ -19,8 +18,8 @@ def get_down_connections(
     if verbose: print('down connections ...')
     
     connections = {row[key_col]: { downstream_key: row[downstream_col]
-                        , 'length': row[length_col]
-                        , 'data': list(row)
+                        , length_key: row[length_col]
+                        , data_key: list(row)
                         }
                         for row in rows 
                         if row[key_col] in mask_set}
@@ -33,9 +32,58 @@ def get_down_connections(
 
     return connections
 
+def get_waterbody_segments(
+    connections = None
+    , terminal_code = 0
+    , waterbody_col = 9
+    , waterbody_null_code = -9999
+    , data_key = r'data'
+    , downstream_key = r'downstream'
+    , upstreams_key = r'upstreams'
+    , verbose = False
+    , debuglevel = 0
+    ):
+
+    if verbose: print('waterbody_set ...')
+    waterbody_set = {con[data_key][waterbody_col] for key, con in connections.items()}
+    waterbody_set.remove(waterbody_null_code)
+    if debuglevel <= -1: print(f'found {len(waterbody_set)} waterbodies')
+    if debuglevel <= -3: print(waterbody_set)
+    if verbose: print('waterbody_set complete')
+
+    if verbose: print('waterbody segments ...')
+    waterbody_segments = {key:con[data_key][waterbody_col] for key, con in connections.items() 
+        if not (con[data_key][waterbody_col] == waterbody_null_code)}
+    #waterbody_dict = {
+    if debuglevel <= -1: print(f'found {len(waterbody_segments)} segments that are part of a waterbody')
+    if debuglevel <= -3: print(waterbody_segments)
+    if verbose: print('waterbody_segments complete')
+
+    if verbose: print('waterbody_outlet_set ...')
+    waterbody_outlet_set = set()
+    for waterbody_segment in waterbody_segments:
+        if connections[waterbody_segment][downstream_key] not in waterbody_segments:
+            waterbody_outlet_set.add(waterbody_segment)
+    if debuglevel <= -1: print(f'found {len(waterbody_outlet_set)} segments that are outlets of a waterbody')
+    if debuglevel <= -3: print(waterbody_outlet_set)
+    if verbose: print('waterbody_outlet_set complete')
+
+    if verbose: print('waterbody_upstreams_set ...')
+    waterbody_upstreams_set = set()
+    for waterbody_segment in waterbody_segments:
+        for upstream in connections[waterbody_segment][upstreams_key]:
+            if not upstream == terminal_code and not upstream in waterbody_segments:
+                waterbody_upstreams_set.add(upstream)
+    if debuglevel <= -1: print(f'found {len(waterbody_upstreams_set)} segments that are upstream of a waterbody')
+    if debuglevel <= -3: print(waterbody_upstreams_set)
+    if verbose: print('waterbody_upstreams_set complete')
+
+
+    return waterbody_set, waterbody_segments, waterbody_outlet_set, waterbody_upstreams_set
+
 def determine_keys(
     connections
-    , key_col, downstream_col
+    # , key_col, downstream_col
     , terminal_code
     , upstreams_key = r'upstreams'
     , downstream_key = r'downstream'
@@ -47,6 +95,7 @@ def determine_keys(
     if debuglevel <= -1: print(f'found {len(ref_keys)} ref_keys')
     if debuglevel <= -3: print(ref_keys)
     if verbose: print('ref_keys complete')
+
     if verbose: print('headwater_keys ...')
     headwater_keys = {x for x in connections.keys() if x not in ref_keys}
     if debuglevel <= -1: print(f'found {len(headwater_keys)} headwater segments')
@@ -180,7 +229,18 @@ def get_up_connections(connections
     if verbose: print('up_connections complete')
     if verbose: print('')
 
-    return junction_keys, visited_keys, visited_terminal_keys, junction_count
+    # import pdb; pdb.set_trace()
+    if verbose: print('confluence segments ...')
+    confluence_segment_set = {seg for seg, con in connections.items() if con[downstream_key] in junction_keys} 
+    # confluence_segment_set = set()
+    # for seg, con in connections.items():
+        # if con[downstream_key] in junction_keys:
+            # confluence_segment_set.add(seg)
+    if debuglevel <= -1: print(f'found {len(confluence_segment_set)} confluence segments')
+    if debuglevel <= -3: print(confluence_segment_set)
+    if verbose: print('confluence_segment_set complete')
+
+    return junction_keys, confluence_segment_set, visited_keys, visited_terminal_keys, junction_count
 
 def main():
     """##TEST"""
