@@ -100,10 +100,12 @@ def build_connections_object(
                     , verbose = verbose
                     , debuglevel = debuglevel)
     
-    (junction_keys, visited_keys
-     , visited_terminal_keys
-     , junction_count
-     , confluence_segment_set) = networkbuilder.get_up_connections(
+    (junction_keys
+        , confluence_segment_set
+        , visited_keys
+        , visited_terminal_keys
+        , junction_count
+        ) = networkbuilder.get_up_connections(
                     connections = connections
                     , terminal_code = terminal_code
                     , headwater_keys = headwater_keys
