@@ -221,16 +221,8 @@ for k in range (0,nts):
         
 #test output    
 #=1
+print(r'k,   i,   q,    vel,    depth')
 for k in range (0,nts):
     for i in range(0,ncomp):
-        print(k,i,wqd[k,i])
-        
-#for k in range (0,nts):
-#    for i in range(0,ncomp):
-#        print(wvela[k,i,j])
-
-#for k in range (0,nts):
-#    for i in range(0,ncomp):
-#        print(wdeptha[k,i,j])
-
+        print(k,i,wqd[k,i],wvela[k,i],wdeptha[k,i]) 
 
