@@ -113,7 +113,7 @@ def network_trace(
     #TODO: compute upstream length as a surrogate for the routing computation
     return {terminal_segment: network, 'upstream_length': us_length_total}
 
-def compose_reaches(
+def compose_networks(
         supernetwork_values = None
         , terminal_code = 0
         , debuglevel = 0

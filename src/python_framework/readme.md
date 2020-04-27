@@ -53,7 +53,7 @@ yields
 ```
 
 #####networks
-The `compose_reaches` function takes the independent network outlets identified while building the connections object, and analyses each independent network to break it into reaches. A reach is defined by any two of a headwater, a junction, or a terminal segment (the outlet into the ocean or into an interior sink). The reaches are assigned a raw sequential order as a distance from the terminal segment and the upstream reaches and downstream reach are added as keyed values.
+The `compose_networks` function takes the independent network outlets identified while building the connections object, and analyses each independent network to break it into reaches. A reach is defined by any two of a headwater, a junction, or a terminal segment (the outlet into the ocean or into an interior sink). The reaches are assigned a raw sequential order as a distance from the terminal segment and the upstream reaches and downstream reach are added as keyed values.
 <br><br>
 The example below is a one-reach, 50-segment network that appears in the CONUS_ge5 dataset. The `'junctions'` element of the dictionary is an empty `set()` becuase there are no bifurcations. The set would normally contain the reaches with more than one upstream reach -- which is any reach that is not a headwater by the definition we have used.
 ```
