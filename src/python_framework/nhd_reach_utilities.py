@@ -135,10 +135,14 @@ def compose_reaches(
     if verbose: print(f'Multi-processing will use {multiprocessing.cpu_count()} CPUs')
     if verbose: print(f'debuglevel is {debuglevel}')
 
-    results_serial = {}
     init_order = 0
     for terminal_segment, network in networks.items():
-        network.update(network_trace(terminal_segment, init_order, connections, terminal_code = terminal_code, verbose = verbose, debuglevel = debuglevel)[terminal_segment])
+        network.update(network_trace(terminal_segment = terminal_segment
+            , order_iter = init_order
+            , connections = connections
+            , terminal_code = terminal_code
+            , verbose = verbose
+            , debuglevel = debuglevel)[terminal_segment])
         up_reaches = networkbuilder.get_up_connections(
             network['reaches']
             , terminal_code
