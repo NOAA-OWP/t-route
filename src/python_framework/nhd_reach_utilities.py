@@ -1,5 +1,58 @@
 import networkbuilder
 
+def recursive_reach_read_new (
+                             segment
+                             , order_iter
+                             , connections
+                             , network
+                             , reach_breaking_segments = set()
+                             , network_breaking_segments = set()
+                             , terminal_code = 0
+                             , verbose = False
+                             , debuglevel = 0
+                            ):
+
+    csegment = segment
+    reach = {}
+    reach.update({'reach_tail':csegment})
+    reach.update({'downstream_reach':connections[csegment]['downstream']})
+    segmentset = set()
+    segmentlist = [] # Ordered Segment List bottom to top
+    while True: 
+        usegments = connections[csegment]['upstreams']
+        if len(usegments) > 1:
+            for usegment in usegments:
+                if usegment in network_breaking_segments: #NETWORK
+                    print('NEW NETWORK UPSTREAM: RECORD AND STOP')
+                    print(f'csegment {csegment} --> usegment {usegment}')
+                elif usegment in reach_breaking_segments: #JUNCTION
+                    print('JUNCTION UPSTREAM: CALL RECURSION')
+                    print(f'csegment {csegment} --> usegment {usegment}')
+                    recursive_reach_read_new (
+                            usegment
+                            , order_iter + 1
+                            , connections
+                            , network
+                            , reach_breaking_segments
+                            , terminal_code = terminal_code
+                            , verbose = verbose
+                            , debuglevel = debuglevel) 
+            break
+        else:
+            #import pdb; pdb.set_trace()
+            (usegment,) = usegments
+            if usegment in network_breaking_segments: #NETWORK
+                print('NEW NETWORK UPSTREAM: RECORD AND STOP')
+                break
+            if usegment == terminal_code: # HEADWATERS
+                print('HEADWATER UPSTREAM: RECORD AND STOP')
+                print(f'csegment {csegment} --> usegment {usegment}')
+                break
+            else:
+                print('REGULAR SEGMENT UPSTREAM: proceeding upstream')
+                print(f'csegment {csegment} --> usegment {usegment}')
+            csegment = usegment
+
 def recursive_junction_read (
                              segments
                              , order_iter
@@ -10,16 +63,7 @@ def recursive_junction_read (
                              , debuglevel = 0
                             ):
 
-    for segment in segments:
-        csegment = segment
-        if 1 == 1:
-        #try:
-            reach = {}
-            reach.update({'reach_tail':csegment})
-            reach.update({'downstream_reach':connections[csegment]['downstream']})
-            segmentset = set()
-            segmentlist = [] # Ordered Segment List bottom to top
-            usegments = connections[segment]['upstreams']
+
             while True: 
                 if usegments == {terminal_code}: # HEADWATERS
                     if debuglevel <= -3: print(f"headwater found at {csegment}")
@@ -78,9 +122,10 @@ def recursive_junction_read (
 #TODO: NOTE: this will be a little more complicated now that the global `connections` 
 #TODO: NOTE: object is not available from the calling function. Probably requires a class.
 def network_trace(
-        terminal_segment
-        , order_iter
-        , connections
+        terminal_segment = None
+        , order_iter = 0
+        , connections = None
+        , reach_breaking_segments = None
         , terminal_code = 0
         , verbose= False
         , debuglevel = 0
@@ -98,11 +143,12 @@ def network_trace(
         network.update({'junctions':set()})
         network.update({'headwater_reaches':set()})
         network.update({'reaches':{}}) 
-        recursive_junction_read(
-                  [terminal_segment]
+        recursive_reach_read_new (
+                  terminal_segment
                   , order_iter
                   , connections
                   , network
+                  , reach_breaking_segments = reach_breaking_segments
                   , verbose = verbose
                   , terminal_code = terminal_code
                   , debuglevel = debuglevel)
@@ -123,6 +169,7 @@ def compose_networks(
 
     terminal_segments = supernetwork_values[4] 
     circular_segments = supernetwork_values[6]
+    confluence_segment_set = supernetwork_values[11]
     terminal_segments_super = terminal_segments - circular_segments
     connections = supernetwork_values[0]
         
@@ -141,19 +188,20 @@ def compose_networks(
             , order_iter = init_order
             , connections = connections
             , terminal_code = terminal_code
+            , reach_breaking_segments = confluence_segment_set
             , verbose = verbose
             , debuglevel = debuglevel)[terminal_segment])
-        up_reaches = networkbuilder.get_up_connections(
-            network['reaches']
-            , terminal_code
-            , network['headwater_reaches']
-            , {network['terminal_reach']}
-            , r'upstream_reaches'
-            , r'downstream_reach'
-            , verbose = verbose
-            , debuglevel = debuglevel
-            )
-
+        # up_reaches = networkbuilder.get_up_connections(
+            # network['reaches']
+            # , terminal_code
+            # , network['headwater_reaches']
+            # , {network['terminal_reach']}
+            # , r'upstream_reaches'
+            # , r'downstream_reach'
+            # , verbose = verbose
+            # , debuglevel = debuglevel
+            # )
+# 
         if debuglevel <= -2:
             if debuglevel <=-2: print(f'terminal_segment: {terminal_segment}')
             if debuglevel <=-3: 
