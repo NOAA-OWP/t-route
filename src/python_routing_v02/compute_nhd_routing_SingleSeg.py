@@ -319,7 +319,7 @@ def main():
     # STEP 2
     if showtiming: start_time = time.time()
     if verbose: print('organizing connections into reaches ...')
-    networks = nru.compose_reaches(
+    networks = nru.compose_networks(
         supernetwork_values
         , verbose=False
         # , verbose = verbose
