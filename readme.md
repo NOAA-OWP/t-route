@@ -62,7 +62,7 @@ cd -
 cd src/python_routing_v02/
 # Execute a serial (~2.5 minutes) and a parallel test (~0.5 minutes)
 # times from 6 cores (x2 threads per core), 3.7GHz
-python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py.
+python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py
 ```
  
 In addition, the notebooks in the `notebooks` folder represent experiments to demonstrate the base classes and basic functionality of libraries contained in rest of the repoository. Collectively they are intended to support incorporation of evaluation of the dynamic routing codes and related utilities being considered and prepared as potential candidates for use as the base dynamic hydraulic engine for the NWM. 
