@@ -250,7 +250,7 @@ end subroutine secant_h0
 !*                                                     *!
 !**---------------------------------------------------**!
 subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, Qj, C1, C2, C3, C4, WPC)
+    qdp, ql, qup, quc, h, WPC, Qj, C1, C2, C3, C4)
 
     implicit none
 

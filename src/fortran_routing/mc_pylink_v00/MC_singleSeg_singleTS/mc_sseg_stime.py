@@ -132,6 +132,8 @@ nts=2  #the number of timestep in simulation
 wqd= np.zeros((nts,mxseg))   
 wvela= np.zeros((nts,mxseg)) 
 wdeptha= np.zeros((nts,mxseg))
+#TODO: Add a few more diagnostic outputs -- this array could be populated and printed, for instance.
+qla= np.zeros((nts,mxseg))
 
 bply=nts/2.0
 # uslinkflag=1/0 when upstream reach exist/not exist:
