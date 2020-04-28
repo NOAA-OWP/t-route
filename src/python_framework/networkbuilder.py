@@ -46,7 +46,7 @@ def get_waterbody_segments(
 
     if verbose: print('waterbody_set ...')
     waterbody_set = {con[data_key][waterbody_col] for key, con in connections.items()}
-    waterbody_set.remove(waterbody_null_code)
+    waterbody_set.discard(waterbody_null_code)
     if debuglevel <= -1: print(f'found {len(waterbody_set)} waterbodies')
     if debuglevel <= -3: print(waterbody_set)
     if verbose: print('waterbody_set complete')
