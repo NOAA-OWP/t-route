@@ -49,9 +49,10 @@ def compute_network_parallel_totaltreedepth(
             #print(ordered_reaches)
     
 
-    for x in range(overall_max,-1,-1):
-        nslist3 = ordered_reaches[x]
-        print(f'{x}: {len(nslist3)}')
+    if debuglevel <= -1:
+        for x in range(overall_max,-1,-1):
+            nslist3 = ordered_reaches[x]
+            print(f'{x}: {len(nslist3)}')
 
 def compute_network_parallel_totaltreedepth_wHEADS(
         large_networks = None
@@ -172,12 +173,12 @@ def compute_network_parallel_opportunistic(
         network_tail_reaches = set() # When this set contains the whole collection, we are done
         parorder = 0
         if parorder not in network_ordered_reaches: network_ordered_reaches.update({parorder:set()})
-        network_ordered_reaches[parorder].update(network['headwater_reaches'])
+        network_ordered_reaches[parorder].update(network['headwater_reaches'] | network['receiving_reaches'])
         network_tail_reaches.update(network_ordered_reaches[parorder])
         network_handled_reaches.update(network_ordered_reaches[parorder])
 
         parorder = 1
-        while not network_handled_reaches == (network['headwater_reaches'] | network['junctions']):
+        while not network_handled_reaches == (network['receiving_reaches'] | network['headwater_reaches'] | network['junctions']):
             network_handled_reaches_this_round = set()
             tail_reaches_added_this_round = set()
             if parorder not in network_ordered_reaches: network_ordered_reaches.update({parorder:set()})
@@ -211,8 +212,9 @@ def main():
     print('This script demonstrates the parallel traversal of reaches developed from NHD datasets')
 
     verbose = True
-    debuglevel = -3
+    debuglevel = -2
     showtiming = True
+    break_network_at_waterbodies = False
 
     test_folder = os.path.join(root, r'test')
     geo_input_folder = os.path.join(test_folder, r'input', r'geo')
@@ -247,9 +249,10 @@ def main():
     if verbose: print('organizing connections into networks and reaches ...')
     networks = nru.compose_networks(
         supernetwork_values
-        , verbose = False
-        # , verbose = verbose
+        , break_network_at_waterbodies = break_network_at_waterbodies
         , debuglevel = debuglevel
+        # , verbose = False
+        , verbose = verbose
         , showtiming = showtiming
         )
     if verbose: print('reach organization complete')
