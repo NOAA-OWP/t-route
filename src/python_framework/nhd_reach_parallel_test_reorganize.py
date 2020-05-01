@@ -14,7 +14,7 @@ elif not ENV_IS_CL:
 
 ## network and reach utilities
 import nhd_network_utilities as nnu
-import nhd_reach_utilities as nru
+import nhd_reach_utilities_reorganize as nru
 
 def compute_network_parallel_totaltreedepth(
         large_networks = None
