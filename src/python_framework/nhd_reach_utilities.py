@@ -59,8 +59,8 @@ def recursive_reach_read(
             (usegment,) = usegments
             # import pdb; pdb.set_trace()
             if usegment in network_breaking_segments: #NETWORK
-                if debuglevel <=-3: print('NEW NETWORK UPSTREAM: RECORD AND STOP')
-                if debuglevel <=-3: print(f'csegment {csegment} --> usegment {usegment}')
+                if debuglevel <= -3: print('NEW NETWORK UPSTREAM: RECORD AND STOP')
+                if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
                 if debuglevel <= -3: print(f"receiving segment found at {csegment}")
                 network['total_segment_count'] += 1
                 if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
@@ -76,8 +76,8 @@ def recursive_reach_read(
                 network['receiving_reaches'].add(csegment)
                 break
             if usegment == terminal_code: # HEADWATERS
-                if debuglevel <=-3: print('HEADWATER UPSTREAM: RECORD AND STOP')
-                if debuglevel <=-3: print(f'csegment {csegment} --> usegment {usegment}')
+                if debuglevel <= -3: print('HEADWATER UPSTREAM: RECORD AND STOP')
+                if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
                 if debuglevel <= -3: print(f"headwater found at {csegment}")
                 network['total_segment_count'] += 1
                 if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
