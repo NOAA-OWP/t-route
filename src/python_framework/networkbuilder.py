@@ -198,8 +198,10 @@ def get_up_connections(connections
                     # spanned the gap and the headwater is not actually not a terminating node.
                     # In that case, reset the node to be a blank list (or set, if using 
                     # that method), then proceed downstream.
-                    # TODO: THIS IS A DANGEROUS STEP AND DESERVES ADDITIONAL REVIEW
+                    # TODO: THIS IS A DANGEROUS/FRAGILE STEP AND DESERVES ADDITIONAL REVIEW
                     # TODO: TO MAKE SURE IT IS DOING WHAT WE INTEND AS DESCRIBED ABOVE
+                    # TODO: RESERVOIRS: For instance, this will probably break for subnetworks containing reservoirs
+  
                     connections[dkey].update({upstreams_key : set()})
 
                 connections[dkey][upstreams_key].add(ukey)
