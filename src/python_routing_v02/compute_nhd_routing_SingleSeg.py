@@ -239,7 +239,7 @@ def compute_mc_reach_up2down(
         flowdepthvel[current_segment]['flow']['curr'] = qdc
         flowdepthvel[current_segment]['depth']['curr'] = depthc
         flowdepthvel[current_segment]['vel']['curr'] = velc
-        # for next
+        # for next segment qup / quc use the previous flow values
         qup = qdc
         quc = qdc
 
