@@ -171,6 +171,8 @@ plt.xlabel('Epoch')
 plt.legend(['MSE', 'val_mse'], loc='upper left')
 plt.show()
 # print("--- %s seconds ---" % (time.time() - start_time))
+regr.predict(M[-1:])
+Y[-1]
 
 
 # In[ ]:
