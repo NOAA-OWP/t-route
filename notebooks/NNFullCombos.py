@@ -27,7 +27,7 @@ tw_min = 150; tw_max = 500;
 bw_min = 112; bw_max = 150;
 
 # singlesegment():
-array_length = 5   
+array_length = 6   
 
 dt = 60 # Time step
 dx = 1800 # segment length
@@ -179,6 +179,65 @@ print(Y[-1])
 print(M[-1])
 
 
+num_samp = 10000
+
+dt = 60 # Time step
+dx = 1800 # segment length
+# bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
+bw = np.random.uniform(bw_min, bw_max, num_samp) # Trapezoidal bottom width
+tw = np.random.uniform(tw_min, tw_max, num_samp) # Channel top width (at bankfull)
+# twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
+# twcc = tw*  # Flood plain width tw*3
+n_manning = .028   # manning roughness of channel
+n_manning_cc = .028 # manning roughness of floodplain
+cs = np.random.uniform(cs_min,cs_max, num_samp)# channel trapezoidal sideslope
+s0 = np.random.uniform(s0_min, s0_max, num_samp) # Lateral inflow in this time step
+qup = np.random.uniform(qup_min, qup_max, num_samp) # Flow from the upstream neighbor in the previous timestep
+# quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
+quc = np.random.uniform(quc_min, quc_max, num_samp)  # Flow from the upstream neighbor in the current timestep 
+# qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
+qdp = np.random.uniform(qdp_min, qdp_max, num_samp)  # Flow at the current segment in the previous timestep
+qlat = np.random.uniform(qlat_min, qlat_max, num_samp) # lat inflow into current segment in the current timestep
+velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+depthp = np.random.uniform(depthp_min ,depthp_max , num_samp) # D
+
+VAL_x = []
+VAL_y = []
+for i in range(num_samp):
+    VAL_x.append( [normalize(qup[i],qup_max,qup_min), 
+    normalize(quc[i],quc_max,quc_min), 
+    normalize(qlat[i],qlat_max,qlat_min),
+    normalize(qdp[i],qdp_max,qdp_min),
+    # dx,  
+    normalize(bw[i],bw_max,bw_min),
+    normalize(tw[i],tw_max,tw_min),
+    # normalize(tw[tw_o]*3,tw_max,tw_min),
+    # n_manning, 
+    # n_manning_cc, 
+    normalize(cs[i],cs_max,cs_min),
+    normalize(s0[i], s0_max, s0_min),
+    # velp, 
+    normalize(depthp[i],depthp_max,depthp_min)])
+    S = singlesegment(
+                                dt=dt,
+                                qup=qup[i],
+                                quc=quc[i],
+                                qlat=qlat[i],
+                                qdp=qdp[i],
+                                
+                                dx=dx ,
+                                bw=bw[i],
+                                tw=tw[i],
+                                twcc=tw[i]*3,
+                                n_manning=n_manning,
+                                n_manning_cc=n_manning_cc,
+                                cs=cs[i],
+                                s0=s0[i],
+                                velp=velp,
+                                depthp=depthp[i])
+    VAL_y.append(S[0])
+VAL_x = np.array(VAL_x)
+VAL_y = np.array(VAL_y)
 
 import matplotlib as plt
 from pylab import *
@@ -209,7 +268,7 @@ def baseline_model():
 #Use the model
 regr = baseline_model()
 
-history = regr.fit(M[:], Y[:], epochs=10, batch_size=10,  validation_split=0.1)
+history = regr.fit(M[:], Y[:], epochs=10, batch_size=1000,  validation_data=(VAL_x,VAL_y))
 # plt.plot(history.history['mse'])
 # plt.plot(history.history['val_mse'])
 
@@ -224,52 +283,127 @@ print(Y[-1])
 
 
 
-# import random 
-# from random import randint
+import random 
+from random import randint
 
 
 
-# Y = []
-# M = []
+Y = []
+M = []
 
-# num_samp = 10000
+num_samp = 100
 
-# dt = 60 # Time step
-# dx = 1800 # segment length
-# # bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
-# bw = np.random.uniform(bw_min, bw_max, num_samp) # Trapezoidal bottom width
-# tw = np.random.uniform(tw_min, tw_max, num_samp) # Channel top width (at bankfull)
-# # twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
-# # twcc = tw*  # Flood plain width tw*3
-# n_manning = .028   # manning roughness of channel
-# n_manning_cc = .028 # manning roughness of floodplain
-# cs = np.random.uniform(cs_min,cs_max, num_samp)# channel trapezoidal sideslope
-# s0 = np.random.uniform(s0_min, s0_max, num_samp) # Lateral inflow in this time step
-# qup = np.random.uniform(qup_min, qup_max, num_samp) # Flow from the upstream neighbor in the previous timestep
-# # quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
-# quc = np.random.uniform(quc_min, quc_max, num_samp)  # Flow from the upstream neighbor in the current timestep 
-# # qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
-# qdp = np.random.uniform(qdp_min, qdp_max, num_samp)  # Flow at the current segment in the previous timestep
-# qlat = np.random.uniform(qlat_min, qlat_max, num_samp) # lat inflow into current segment in the current timestep
-# velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
-# depthp = np.random.uniform(depthp_min ,depthp_max , num_samp) # D
-
-
-# errors = np.array([])
-#     for i in range(num_samp):
-#         temp_y = singlesegment()
-#         temp_y_interp = regr.predict()
-    
-#         error = abs(temp_y_interp - temp_y)
-#         # print(error, temp_y_interp, temp_y)
-#         errors = np.append(errors, error)
-    
-#     print(f"Average error is {np.mean(errors)}")
+dt = 60 # Time step
+dx = 1800 # segment length
+# bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
+bw = np.random.uniform(bw_min, bw_max, num_samp) # Trapezoidal bottom width
+tw = np.random.uniform(tw_min, tw_max, num_samp) # Channel top width (at bankfull)
+# twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
+# twcc = tw*  # Flood plain width tw*3
+n_manning = .028   # manning roughness of channel
+n_manning_cc = .028 # manning roughness of floodplain
+cs = np.random.uniform(cs_min,cs_max, num_samp)# channel trapezoidal sideslope
+s0 = np.random.uniform(s0_min, s0_max, num_samp) # Lateral inflow in this time step
+qup = np.random.uniform(qup_min, qup_max, num_samp) # Flow from the upstream neighbor in the previous timestep
+# quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
+quc = np.random.uniform(quc_min, quc_max, num_samp)  # Flow from the upstream neighbor in the current timestep 
+# qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
+qdp = np.random.uniform(qdp_min, qdp_max, num_samp)  # Flow at the current segment in the previous timestep
+qlat = np.random.uniform(qlat_min, qlat_max, num_samp) # lat inflow into current segment in the current timestep
+velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+depthp = np.random.uniform(depthp_min ,depthp_max , num_samp) # D
 
 
+errors = np.array([])
+for i in range(num_samp):
+    temp_y = singlesegment(
+                                dt=dt,
+                                qup=qup[i],
+                                quc=quc[i],
+                                qlat=qlat[i],
+                                qdp=qdp[i],
+                                
+                                dx=dx ,
+                                bw=bw[i],
+                                tw=tw[i],
+                                twcc=tw[i]*3,
+                                n_manning=n_manning,
+                                n_manning_cc=n_manning_cc,
+                                cs=cs[i],
+                                s0=s0[i],
+                                velp=velp,
+                                depthp=depthp[i])
 
-print(Y[-1])
-print(M[-1])
+    temp_y_interp = regr.predict(np.array( [[normalize(qup[i],qup_max,qup_min), 
+                                    normalize(quc[i],quc_max,quc_min), 
+                                    normalize(qlat[i],qlat_max,qlat_min),
+                                    normalize(qdp[i],qdp_max,qdp_min),
+                                    # dx,  
+                                    normalize(bw[i],bw_max,bw_min),
+                                    normalize(tw[i],tw_max,tw_min),
+                                    # normalize(tw[tw_o]*3,tw_max,tw_min),
+                                    # n_manning, 
+                                    # n_manning_cc, 
+                                    normalize(cs[i],cs_max,cs_min),
+                                    normalize(s0[i], s0_max, s0_min),
+                                    # velp, 
+                                    normalize(depthp[i],depthp_max,depthp_min)]]))
+    # print(temp_y,temp_y_interp)
+    error = abs(temp_y_interp - temp_y[0])
+    # print(error, temp_y_interp, temp_y)
+    errors = np.append(errors, error)
+
+print(f"Average error is {np.mean(errors)}")
+print(f"Max error is {np.max(errors)}")
+
+
+num_speed_samp = 2700000
+
+dt = 60 # Time step
+dx = 1800 # segment length
+# bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
+bw = np.random.uniform(bw_min, bw_max, num_speed_samp) # Trapezoidal bottom width
+tw = np.random.uniform(tw_min, tw_max, num_speed_samp) # Channel top width (at bankfull)
+# twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
+# twcc = tw*  # Flood plain width tw*3
+n_manning = .028   # manning roughness of channel
+n_manning_cc = .028 # manning roughness of floodplain
+cs = np.random.uniform(cs_min,cs_max, num_speed_samp)# channel trapezoidal sideslope
+s0 = np.random.uniform(s0_min, s0_max, num_speed_samp) # Lateral inflow in this time step
+qup = np.random.uniform(qup_min, qup_max, num_speed_samp) # Flow from the upstream neighbor in the previous timestep
+# quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
+quc = np.random.uniform(quc_min, quc_max, num_speed_samp)  # Flow from the upstream neighbor in the current timestep 
+# qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
+qdp = np.random.uniform(qdp_min, qdp_max, num_speed_samp)  # Flow at the current segment in the previous timestep
+qlat = np.random.uniform(qlat_min, qlat_max, num_speed_samp) # lat inflow into current segment in the current timestep
+velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+depthp = np.random.uniform(depthp_min ,depthp_max , num_speed_samp) # D
+
+speed_x = []
+
+for i in range(num_samp):
+    speed_x.append( [normalize(qup[i],qup_max,qup_min),
+    normalize(quc[i],quc_max,quc_min), 
+    normalize(qlat[i],qlat_max,qlat_min),
+    normalize(qdp[i],qdp_max,qdp_min),
+    # dx,  
+    normalize(bw[i],bw_max,bw_min),
+    normalize(tw[i],tw_max,tw_min),
+    # normalize(tw[tw_o]*3,tw_max,tw_min),
+    # n_manning, 
+    # n_manning_cc, 
+    normalize(cs[i],cs_max,cs_min),
+    normalize(s0[i], s0_max, s0_min),
+    # velp, 
+    normalize(depthp[i],depthp_max,depthp_min)])
+speed_x = np.array(speed_x)
+
+import time 
+
+starttime=time.time()
+regr.predict(speed_x)
+print(time.time()-starttime)
+
 # In[ ]:
 
 
