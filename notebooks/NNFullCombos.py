@@ -13,30 +13,46 @@ import json
 import time
 import sys;sys.path.append(r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS')
 import mc_sseg_stime_NOLOOP as mc
+import numba
+from numba import jit
+
+depthp_min = 0.010; depthp_max = .011
+qlat_min = 35; qlat_max = 45
+qdp_min = .01; qdp_max = 1
+quc_min = .01; quc_max = 1
+qup_min = .01; qup_max = 1
+s0_min = .00001; s0_max = .002; 
+cs_min = .085; cs_max = 2.254;
+tw_min = 150; tw_max = 500;
+bw_min = 112; bw_max = 150;
+
 # singlesegment():
-array_length = 11    
+array_length = 5   
 
 dt = 60 # Time step
 dx = 1800 # segment length
 # bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
-bw = np.linspace(112.000000000000000000, 150.000000000000000000, array_length, endpoint=True) # Trapezoidal bottom width
-tw = np.linspace(150.000000000000000, 500.000000000000000, array_length, endpoint=True) # Channel top width (at bankfull)
+bw = np.linspace(bw_min, bw_max, array_length, endpoint=True) # Trapezoidal bottom width
+tw = np.linspace(tw_min, tw_max, array_length, endpoint=True) # Channel top width (at bankfull)
 # twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
 # twcc = tw*  # Flood plain width tw*3
 n_manning = .028   # manning roughness of channel
 n_manning_cc = .028 # manning roughness of floodplain
-cs = np.linspace(0.085000000000000000, 2.254000000000000000, array_length, endpoint=True)# channel trapezoidal sideslope
-s0 = np.linspace(0.000010000000000, .002000000000000000, array_length, endpoint=True) # Lateral inflow in this time step
-qup = np.linspace(.010000000000000000, 1.0000000000000000, array_length, endpoint=True) # Flow from the upstream neighbor in the previous timestep
+cs = np.linspace(cs_min,cs_max, array_length, endpoint=True)# channel trapezoidal sideslope
+s0 = np.linspace(s0_min, s0_max, array_length, endpoint=True) # Lateral inflow in this time step
+qup = np.linspace(qup_min, qup_max, array_length, endpoint=True) # Flow from the upstream neighbor in the previous timestep
 # quc = np.linspace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
-quc = np.linspace(.010000000000000000, 1.0000000000000000, array_length, endpoint=True)  # Flow from the upstream neighbor in the current timestep 
+quc = np.linspace(quc_min, quc_max, array_length, endpoint=True)  # Flow from the upstream neighbor in the current timestep 
 # qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
-qdp = np.linspace(.010000000000000000, 1.000000000000000, array_length, endpoint=True)  # Flow at the current segment in the previous timestep
-qlat = np.linspace(35.0000000000000000, 45.00000000000001, array_length, endpoint=True) # lat inflow into current segment in the current timestep
-velp = np.linspace(0.050000000000000000, .10000000000000000, array_length, endpoint=True) # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
-depthp = np.linspace(0.01000000000000000 ,.0110000000000000000 , array_length, endpoint=True) # D
+qdp = np.linspace(qdp_min, qdp_max, array_length, endpoint=True)  # Flow at the current segment in the previous timestep
+qlat = np.linspace(qlat_min, qlat_max, array_length, endpoint=True) # lat inflow into current segment in the current timestep
+velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+depthp = np.linspace(depthp_min ,depthp_max , array_length, endpoint=True) # D
 
 
+# @jit
+def normalize(val,max,min,target_max=1,target_min=0):
+    return (val-min)/(max-min)*(target_max-target_min)+target_min
 
 def singlesegment(
         dt # dt
@@ -72,36 +88,53 @@ def singlesegment(
 Y = []
 M = []
 
-for i in range(0,(array_length)-1):
-    for j in range(0,(array_length)-1):
-        for k in range(0,(array_length)-1):
-            for l in range(0,(array_length)-1):
-                for n in range(0,(array_length)-1):
-                    for o in range(0,(array_length)-1):
-                        for p in range(0,(array_length)-1):
-                            for q in range(0,(array_length)-1):
-                                for r in range(0,(array_length)-1):
-                                    for s in range(0,(array_length)-1):
-                                        M.append([dt, qup[i], quc[j], qlat[k],qdp[l],dx,  bw[n], tw[o], tw[o]*3,n_manning, n_manning_cc, cs[p], s0[q], velp[r], depthp[s]])
-                S = singlesegment(
-                dt=dt,
-                qup=qup[i],
-                quc=quc[j],
-                qlat=qlat[k],
-                qdp=qdp[l],
-                
-                dx=dx ,
-                bw=bw[n],
-                tw=tw[o],
-                twcc=tw[o]*3,
-                 n_manning=n_manning,
-                n_manning_cc=n_manning_cc,
-                cs=cs[p],
-                s0=s0[q],
-                velp=velp[r],
-                depthp=depthp[s])
-                Y.append(round(S[0],4))
-                
+for qup_i in range(0,(array_length)-1):
+    for quc_j in range(0,(array_length)-1):
+        for qlat_k in range(0,(array_length)-1):
+            for qdp_l in range(0,(array_length)-1):
+                for bw_n in range(0,(array_length)-1):
+                    for tw_o in range(0,(array_length)-1):
+                        for cs_p in range(0,(array_length)-1):
+                            for s0_q in range(0,(array_length)-1):
+                                for depthp_s in range(0,(array_length)-1):
+                                    # M.append([dt, qup[qup_i], quc[quc_j], qlat[qlat_k],qdp[qdp_l],dx,  bw[bw_n], tw[tw_o], tw[tw_o]*3,n_manning, n_manning_cc, cs[cs_p], s0[s0_q], velp, depthp[depthp_s]])
+                                    M.append([
+                                        # dt, 
+                                        normalize(qup[qup_i],qup_max,qup_min), 
+                                        normalize(quc[quc_j],quc_max,quc_min), 
+                                        normalize(qlat[qlat_k],qlat_max,qlat_min),
+                                        normalize(qdp[qdp_l],qdp_max,qdp_min),
+                                        # dx,  
+                                        normalize(bw[bw_n],bw_max,bw_min),
+                                        normalize(tw[tw_o],tw_max,tw_min),
+                                        # normalize(tw[tw_o]*3,tw_max,tw_min),
+                                        # n_manning, 
+                                        # n_manning_cc, 
+                                        normalize(cs[cs_p],cs_max,cs_min),
+                                        normalize(s0[s0_q], s0_max, s0_min),
+                                        # velp, 
+                                        normalize(depthp[depthp_s],depthp_max,depthp_min)])
+
+                                    S = singlesegment(
+                                    dt=dt,
+                                    qup=qup[qup_i],
+                                    quc=quc[quc_j],
+                                    qlat=qlat[qlat_k],
+                                    qdp=qdp[qdp_l],
+                                    
+                                    dx=dx ,
+                                    bw=bw[bw_n],
+                                    tw=tw[tw_o],
+                                    twcc=tw[tw_o]*3,
+                                    n_manning=n_manning,
+                                    n_manning_cc=n_manning_cc,
+                                    cs=cs[cs_p],
+                                    s0=s0[s0_q],
+                                    velp=velp,
+                                    depthp=depthp[depthp_s])
+                                    Y.append((S[0]))
+                                    if len(Y)%100000 == 0:
+                                        print(len(Y))
 
 dt = 60.0 # diffxxxxx
 dx = 1800.0 # diffxxxxx
@@ -119,19 +152,35 @@ qdp = .21487340331077576 # same as qup qucxxxxx
 velp = .070480190217494964 # no differencedepthp = 0.010033470578491688) # large diff
 depthp = 0.010033470578491688
 
-M.append([dt, qup, quc, qlat,qdp,dx,  bw, tw, twcc,n_manning, n_manning_cc, cs, s0, velp, depthp])
+M.append([ normalize(qup,qup_max,qup_min), 
+    normalize(quc,quc_max,quc_min), 
+    normalize(qlat,qlat_max,qlat_min),
+    normalize(qdp,qdp_max,qdp_min),
+    # dx,  
+    normalize(bw,bw_max,bw_min),
+    normalize(tw,tw_max,tw_min),
+    # normalize(tw[tw_o]*3,tw_max,tw_min),
+    # n_manning, 
+    # n_manning_cc, 
+    normalize(cs,cs_max,cs_min),
+    normalize(s0, s0_max, s0_min),
+    # velp, 
+    normalize(depthp,depthp_max,depthp_min)])
+Y.append(0.7570106983184814)
 
-
-M = np.array(M)
-for i in range(0,len(M),1):
-    S = singlesegment(*M[i])
-    Y.append(S[0])
+# M = np.array(M)
+# for i in range(0,len(M),1):
+#     S = singlesegment(*M[i])
+#     Y.append(S[0])
 Y = np.array(Y)    
-
+M = np.array(M)
 
 print(Y[-1])
 print(M[-1])
 
+
+
+import matplotlib as plt
 from pylab import *
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
@@ -139,14 +188,13 @@ from tensorflow.keras.layers import Dense,Dropout,BatchNormalization
 # import time
 # start_time = time.time()
 
-
-
+print(M[:100])
 #Define the model
 def baseline_model():
     model = tf.keras.Sequential()
-    model.add(Dense(512, activation=tf.nn.relu, input_shape=[15],use_bias=False))
+    model.add(Dense(1028, activation=tf.nn.relu, input_shape=[9],use_bias=False))
 #     model.add(BatchNormalization())
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(512, activation='relu'))
 #     model.add(Dense(256, activation='relu'))
 #     model.add(Dense(128, activation='relu'))
 #     model.add(Dense(64, activation='relu'))
@@ -161,20 +209,67 @@ def baseline_model():
 #Use the model
 regr = baseline_model()
 
-history = regr.fit(M[:TOP], Y[:TOP], epochs=10, batch_size=10,  validation_split=0.1)
-plt.plot(history.history['mse'])
-plt.plot(history.history['val_mse'])
+history = regr.fit(M[:], Y[:], epochs=10, batch_size=10,  validation_split=0.1)
+# plt.plot(history.history['mse'])
+# plt.plot(history.history['val_mse'])
 
-plt.title('Model accuracy')
-plt.ylabel('MSE')
-plt.xlabel('Epoch')
-plt.legend(['MSE', 'val_mse'], loc='upper left')
-plt.show()
+# plt.title('Model accuracy')
+# plt.ylabel('MSE')
+# plt.xlabel('Epoch')
+# plt.legend(['MSE', 'val_mse'], loc='upper left')
+# plt.show()
 # print("--- %s seconds ---" % (time.time() - start_time))
-regr.predict(M[-1:])
-Y[-1]
+print(regr.predict(M[-1:]))
+print(Y[-1])
 
 
+
+# import random 
+# from random import randint
+
+
+
+# Y = []
+# M = []
+
+# num_samp = 10000
+
+# dt = 60 # Time step
+# dx = 1800 # segment length
+# # bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
+# bw = np.random.uniform(bw_min, bw_max, num_samp) # Trapezoidal bottom width
+# tw = np.random.uniform(tw_min, tw_max, num_samp) # Channel top width (at bankfull)
+# # twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
+# # twcc = tw*  # Flood plain width tw*3
+# n_manning = .028   # manning roughness of channel
+# n_manning_cc = .028 # manning roughness of floodplain
+# cs = np.random.uniform(cs_min,cs_max, num_samp)# channel trapezoidal sideslope
+# s0 = np.random.uniform(s0_min, s0_max, num_samp) # Lateral inflow in this time step
+# qup = np.random.uniform(qup_min, qup_max, num_samp) # Flow from the upstream neighbor in the previous timestep
+# # quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep 
+# quc = np.random.uniform(quc_min, quc_max, num_samp)  # Flow from the upstream neighbor in the current timestep 
+# # qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
+# qdp = np.random.uniform(qdp_min, qdp_max, num_samp)  # Flow at the current segment in the previous timestep
+# qlat = np.random.uniform(qlat_min, qlat_max, num_samp) # lat inflow into current segment in the current timestep
+# velp = .5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+# depthp = np.random.uniform(depthp_min ,depthp_max , num_samp) # D
+
+
+# errors = np.array([])
+#     for i in range(num_samp):
+#         temp_y = singlesegment()
+#         temp_y_interp = regr.predict()
+    
+#         error = abs(temp_y_interp - temp_y)
+#         # print(error, temp_y_interp, temp_y)
+#         errors = np.append(errors, error)
+    
+#     print(f"Average error is {np.mean(errors)}")
+
+
+
+print(Y[-1])
+print(M[-1])
 # In[ ]:
 
 
