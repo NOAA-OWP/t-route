@@ -61,6 +61,8 @@ def get_geo_file_table_rows(
             except:
                 print(r'cannot plot geofile (not necessarily a problem)')
     if debuglevel <= -1: 
+        # official docs here:
+        # https://pandas.pydata.org/docs/user_guide/options.html
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', None)
         pd.set_option('display.max_colwidth', -1)
