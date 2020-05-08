@@ -147,8 +147,8 @@ def network_trace(
                   , verbose = verbose
                   , terminal_code = terminal_code
                   , debuglevel = debuglevel)
-        if verbose: print(f"junctions: {network['total_junction_count']}")
-        if verbose: print(f"segments: {network['total_segment_count']}")
+        if debuglevel <=-1: print(f"junctions: {network['total_junction_count']}")
+        if debuglevel <=-1: print(f"segments: {network['total_segment_count']}")
     # except Exception as exc:
     #     print(exc)
     #TODO: compute upstream length as a surrogate for the routing computation
@@ -210,7 +210,8 @@ def compose_networks(
             , {network['terminal_reach']}
             , r'upstream_reaches'
             , r'downstream_reach'
-            , verbose = verbose
+            , verbose = False
+            # , verbose = verbose
             , debuglevel = debuglevel
             )
 

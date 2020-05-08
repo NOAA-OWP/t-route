@@ -212,7 +212,7 @@ def main():
     print('This script demonstrates the parallel traversal of reaches developed from NHD datasets')
 
     verbose = True
-    debuglevel = -3
+    debuglevel = -1
     showtiming = True
     break_network_at_waterbodies = False
 
