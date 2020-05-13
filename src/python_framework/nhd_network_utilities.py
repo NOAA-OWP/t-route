@@ -5,18 +5,51 @@ import geopandas as gpd
 import pandas as pd
 import zipfile
 import xarray as xr
-
+import network_dl
 
 def get_geo_file_table_rows(
         geo_file_path = None
+        , data_link = None
         , layer_string = None
         , driver_string = None
         , verbose = False
         , debuglevel = 0
         ):
 
+    if not os.path.exists(geo_file_path):
+        filename = os.path.basename(geo_file_path)
+        msg = ''
+        msg = msg + f'\nTarget input file not found on file system here:'
+        msg = msg + f'\n{geo_file_path}'
+        msg = msg + f'\n'
+        msg = msg + f'\nThis routine will attempt to download the file from here:'
+        msg = msg + f'\n{data_link}'
+        msg = msg + f'\nYou should not need to repeat this step once the file is downloaded.'
+        msg = msg + f'\n'
+        msg = msg + f'\nIf you wish to manually download the file (and compress it), please use the following commands:'
+        msg = msg + f'\n# export ROUTELINK="{filename}"'
+        msg = msg + f'\n# wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.2/parm/domain/$ROUTELINK'
+        msg = msg + f'\n# export $ROUTELINK_UNCOMPRESSED=${{ROUTELINK/\.nc/_uncompressed.nc}}'
+        msg = msg + f'\n# mv $ROUTELINK $ROUTELINK_UNCOMPRESSED'
+        msg = msg + f'\n# nccopy -d1 -s $ROUTELINK_UNCOMPRESSED $ROUTELINK'
+
+        '''
+        Full CONUS route-link file not found on file system.
+        This routine will attempt to download the file. 
+
+        If you wish to manually download the file, please use the following commands:
+
+        > export ROUTELINK="RouteLink_NHDPLUS.nc"
+        > wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.2/parm/domain/$ROUTELINK
+        > nccopy -d1 -s $ROUTELINK ${ROUTELINK/\.nc/_compressed.nc}
+        '''
+        print(msg)
+
+        network_dl.download(geo_file_path, data_link)
+
     # NOTE: these methods can lose the "connections" and "rows" arguments when
     # implemented as class methods where those arrays are members of the class.
+    # TODO: Improve the error handling here for a corrupt input file
     if driver_string == 'NetCDF': # Use Xarray to read a netcdf table
         if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
         try:
@@ -148,6 +181,7 @@ def build_connections_object(
 
 def do_connections(
         geo_file_path = None
+        , data_link = None
         , title_string = None
         , layer_string = None
         , driver_string = None
@@ -168,6 +202,7 @@ def do_connections(
     if verbose: print(title_string)
     geo_file_rows = get_geo_file_table_rows(
         geo_file_path = geo_file_path
+        , data_link = data_link
         , layer_string = layer_string
         , driver_string = driver_string
         , verbose = verbose
@@ -222,8 +257,12 @@ def get_nhd_connections(
         supernetwork_data.update({'mask_driver_string':None})
         supernetwork_data.update({'mask_key_col':None})
 
+    if 'data_link' not in supernetwork_data:
+        supernetwork_data.update({'data_link':None})
+
     return do_connections(
         geo_file_path = supernetwork_data['geo_file_path']
+          , data_link = supernetwork_data['data_link']
           , key_col = supernetwork_data['key_col']
           , downstream_col = supernetwork_data['downstream_col']
           , length_col = supernetwork_data['length_col']
@@ -255,7 +294,7 @@ def set_supernetwork_data(
 
     supernetwork_options = {
         'Pocono_TEST1'
-	,'Pocono_TEST2'
+        ,'Pocono_TEST2'
         , 'LowerColorado_Conchos_FULL_RES'
         , 'Brazos_LowerColorado_ge5'
         , 'Brazos_LowerColorado_FULL_RES'
@@ -453,10 +492,17 @@ def set_supernetwork_data(
         return dict
 
     elif supernetwork == 'CONUS_FULL_RES_v20':
+
+        ROUTELINK=r"RouteLink_NHDPLUS"
+        ModelVer=r'nwm.v2.0.2'
+        ext=r'nc'
+        sep=r'.'
+
         return {
             'geo_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
-                    , r'RouteLink_NWMv2.0_20190517_cheyenne_pull.nc')
+                    , sep.join([ROUTELINK, ModelVer, ext]))
+            , 'data_link' : f'https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/{ModelVer}/parm/domain/{ROUTELINK}{sep}{ext}'
             , 'key_col' : 0
             , 'downstream_col' : 2
             , 'length_col' : 10
