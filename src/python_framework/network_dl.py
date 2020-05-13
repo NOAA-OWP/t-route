@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import requests
 
+#TODO: Suppress progress bar re-print after program output
 def download(fullpath, link):
     output_to_file = "{fullpath}".format(fullpath=fullpath)
     with requests.get(link, stream=True) as req:
