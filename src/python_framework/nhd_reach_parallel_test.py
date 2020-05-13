@@ -3,6 +3,7 @@ import sys
 import os
 import time
 
+
 connections = None
 
 ENV_IS_CL = False
@@ -168,6 +169,7 @@ def compute_network_parallel_opportunistic(
     handled_reaches = set() # When this set contains the whole collection, we are done
     for terminal_segment, network in large_networks.items():
         network_ordered_reaches = {}
+
         network_handled_reaches = set() # When this set contains the whole collection, we are done
         network_tail_reaches = set() # When this set contains the whole collection, we are done
         parorder = 0
@@ -203,22 +205,48 @@ def compute_network_parallel_opportunistic(
     if debuglevel <= -1:
         for po, l in ordered_reaches.items():
             print(f'{po}: {len(l)}')
+
+#command line input order: verbose,debuglevel,showtiming,supernetwork    
+try:
+    arg1 = int(sys.argv[1])
+    arg2 = sys.argv[2]
+    arg3 = sys.argv[3]
+    arg4 = sys.argv[4]
+except:
+    arg1 = True
+    arg2 = -3
+    arg3 = True
+    arg4 = 'Pocono_TEST1'
+    supernetwork_options = {
+            'Pocono_TEST1'
+            ,'Pocono_TEST2'
+            , 'LowerColorado_Conchos_FULL_RES'
+            , 'Brazos_LowerColorado_ge5'
+            , 'Brazos_LowerColorado_FULL_RES'
+            , 'Brazos_LowerColorado_Named_Streams'
+            , 'CONUS_ge5'
+            , 'Mainstems_CONUS'
+            , 'CONUS_Named_Streams'
+            , 'CONUS_FULL_RES_v20'
+        }
+    printout1 = 'command line arguements available: Verbose = {True/False}, debuglevel = {-3,-2,-1, 0}, showtiming = {True/False}, supernetwork = ' + str(supernetwork_options)
     
+
 def main():
 
     global connections
 
     print('This script demonstrates the parallel traversal of reaches developed from NHD datasets')
 
-    verbose = True
-    debuglevel = -3
-    showtiming = True
+    verbose = arg1
+    debuglevel = arg2
+    showtiming = arg3
 
     test_folder = os.path.join(root, r'test')
     geo_input_folder = os.path.join(test_folder, r'input', r'geo')
 
     #TODO: Make these commandline args
-    supernetwork = 'Pocono_TEST1'
+    supernetwork = arg4
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_ge5'
     """##NHD CONUS order 5 and greater"""
@@ -334,6 +362,8 @@ def main():
     )
     if verbose: print(f'opportunistic reach computation complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
+
+    print(printout1)
 
 if __name__ == '__main__':
     main()
