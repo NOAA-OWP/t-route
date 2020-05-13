@@ -17,7 +17,6 @@ def get_geo_file_table_rows(
         ):
 
     if not os.path.exists(geo_file_path):
-    #TODO: Tune this message to report size of download (with bonus: report estimated download time based on a connection test) 
         filename = os.path.basename(geo_file_path)
         msg = ''
         msg = msg + f'\nTarget input file not found on file system here:'
@@ -492,13 +491,16 @@ def set_supernetwork_data(
 
     elif supernetwork == 'CONUS_FULL_RES_v20':
 
-        ROUTELINK=r"RouteLink_NHDPLUS.nc"
+        ROUTELINK=r"RouteLink_NHDPLUS"
+        ModelVer=r'nwm.v2.0.2'
+        ext=r'nc'
+        sep=r'.'
 
         return {
             'geo_file_path' : os.path.join(geo_input_folder
                     , r'Channels'
-                    , ROUTELINK)
-            , 'data_link' : f'https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.2/parm/domain/{ROUTELINK}'
+                    , sep.join([ROUTELINK, ModelVer, ext]))
+            , 'data_link' : f'https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/{ModelVer}/parm/domain/{ROUTELINK}{sep}{ext}'
             , 'key_col' : 0
             , 'downstream_col' : 2
             , 'length_col' : 10
