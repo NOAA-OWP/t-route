@@ -1,5 +1,117 @@
 import networkbuilder
 
+def recursive_reach_read_new(
+                             segment
+                             , order_iter
+                             , connections
+                             , network
+                             , reach_breaking_segments = set()
+                             , network_breaking_segments = set()
+                             , terminal_code = 0
+                             , verbose = False
+                             , debuglevel = 0
+                            ):
+    '''
+       This function improves on the `recursive_reach_read` function by removing 
+       some of the duplication in the tests. 
+    '''
+
+    csegment = segment
+    reach = {}
+    reach.update({'reach_tail':csegment})
+    reach.update({'downstream_reach':connections[csegment]['downstream']})
+    segmentset = set()
+    segmentlist = [] # Ordered Segment List bottom to top
+
+    CONTINUE = True
+    while CONTINUE: 
+        #TODO: Change the flag to use csegment with the junction list, headwaters, and network upstreams
+        #TODO: ... such a change would remove the i == 0 tests and other  
+        #TODO: ... and other complications from this loop
+        usegments = connections[csegment]['upstreams']
+        for i, usegment in enumerate(usegments):
+            
+            if usegment in network_breaking_segments: #NETWORK
+                if i == 0: 
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print('NEW NETWORK UPSTREAM: RECORD AND STOP')
+                    if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
+                    if debuglevel <= -3: print(f"receiving segment found at {csegment}")
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                segmentset.add(csegment)
+                if i == 0: segmentlist.append(csegment) # Ordered Segment List bottom to top
+                reach.update({'reach_head':csegment})
+                reach.update({'seqorder':order_iter})
+                if order_iter == 0: network.update({'terminal_reach':csegment})#; import pdb; pdb.set_trace() #TODO: FIX THIS; SEEMS FRAGILE
+                network.update({'maximum_reach_seqorder':max(network['maximum_reach_seqorder'],order_iter)})
+                reach.update({'segments':segmentset})
+                reach.update({'segments_list':segmentlist}) # Ordered Segment List bottom to top
+                network['reaches'].update({csegment:reach})
+                network['receiving_reaches'].add(csegment)
+                CONTINUE = False
+
+            elif usegment in reach_breaking_segments: #JUNCTION
+                if i == 0: 
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print(f"junction found at {csegment} with upstreams {usegments}")
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                segmentset.add(csegment)
+                if i == 0: segmentlist.append(csegment) # Ordered Segment List
+                reach.update({'reach_head':csegment})
+                reach.update({'seqorder':order_iter})
+                if order_iter == 0: network.update({'terminal_reach':csegment})#; import pdb; pdb.set_trace() #TODO: FIX THIS; SEEMS FRAGILE
+                network.update({'maximum_reach_seqorder':max(network['maximum_reach_seqorder'],order_iter)})
+                reach.update({'segments':segmentset})
+                reach.update({'segments_list':segmentlist}) # Ordered Segment List bottom to top
+                network['reaches'].update({csegment:reach})
+                if i == 0: network['total_junction_count'] += 1 #the Terminal Segment
+                network['junctions'].add(csegment)
+                if debuglevel <= -3: print('JUNCTION UPSTREAM: CALL RECURSION')
+                if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
+                recursive_reach_read_new(
+                        usegment
+                        , order_iter + 1
+                        , connections
+                        , network
+                        , reach_breaking_segments
+                        , network_breaking_segments
+                        , terminal_code = terminal_code
+                        , verbose = verbose
+                        , debuglevel = debuglevel) 
+                CONTINUE = False
+
+            elif i == 0:
+                if usegment == terminal_code: # HEADWATERS
+                    if debuglevel <= -3: print('HEADWATER UPSTREAM: RECORD AND STOP')
+                    if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
+                    if debuglevel <= -3: print(f"headwater found at {csegment}")
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                    segmentset.add(csegment)
+                    segmentlist.append(csegment) # Ordered Segment List bottom to top
+                    reach.update({'reach_head':csegment})
+                    reach.update({'seqorder':order_iter})
+                    if order_iter == 0: network.update({'terminal_reach':csegment})#; import pdb; pdb.set_trace() #TODO: FIX THIS; SEEMS FRAGILE
+                    network.update({'maximum_reach_seqorder':max(network['maximum_reach_seqorder'],order_iter)})
+                    reach.update({'segments':segmentset})
+                    reach.update({'segments_list':segmentlist}) # Ordered Segment List bottom to top
+                    network['reaches'].update({csegment:reach})
+                    network['headwater_reaches'].add(csegment)
+                    CONTINUE = False
+                    
+                else:
+                    if debuglevel <= -3: print('REGULAR SEGMENT UPSTREAM: proceeding upstream')
+                    if debuglevel <= -3: print(f'csegment {csegment} --> usegment {usegment}')
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                    # the terminal code will indicate a headwater
+                    if debuglevel <= -4: print(usegments)
+                    segmentset.add(csegment)
+                    segmentlist.append(csegment) # Ordered Segment List
+                    #(csegment,) = usegments
+                    #usegments = connections[csegment]['upstreams']
+                csegment = usegment
+
 def recursive_reach_read(
                              segment
                              , order_iter
@@ -11,6 +123,10 @@ def recursive_reach_read(
                              , verbose = False
                              , debuglevel = 0
                             ):
+    '''
+       This function now uses only single segment
+       The DEPRECATED function below used the list of upstream segments as an input.
+    '''
 
     csegment = segment
     reach = {}
@@ -105,6 +221,75 @@ def recursive_reach_read(
                 #usegments = connections[csegment]['upstreams']
             csegment = usegment
 
+def DEPRECATED_recursive_junction_read(
+                             segments
+                             , order_iter
+                             , connections
+                             , network
+                             , terminal_code = 0
+                             , verbose = False
+                             , debuglevel = 0
+                            ):
+
+    for segment in segments:
+        csegment = segment
+        if 1 == 1:
+        #try:
+            reach = {}
+            reach.update({'reach_tail':csegment})
+            reach.update({'downstream_reach':connections[csegment]['downstream']})
+            segmentset = set()
+            segmentlist = [] # Ordered Segment List bottom to top
+            usegments = connections[segment]['upstreams']
+            while True: 
+                if usegments == {terminal_code}: # HEADWATERS
+                    if debuglevel <= -3: print(f"headwater found at {csegment}")
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                    segmentset.add(csegment)
+                    segmentlist.append(csegment) # Ordered Segment List bottom to top
+                    reach.update({'reach_head':csegment})
+                    reach.update({'seqorder':order_iter})
+                    if order_iter == 0: network.update({'terminal_reach':csegment})#; import pdb; pdb.set_trace() #TODO: FIX THIS; SEEMS FRAGILE
+                    network.update({'maximum_reach_seqorder':max(network['maximum_reach_seqorder'],order_iter)})
+                    reach.update({'segments':segmentset})
+                    reach.update({'segments_list':segmentlist}) # Ordered Segment List bottom to top
+                    network['reaches'].update({csegment:reach})
+                    network['headwater_reaches'].add(csegment)
+                    break
+                elif len(usegments) >= 2: # JUNCTIONS
+                    if debuglevel <= -3: print(f"junction found at {csegment} with upstreams {usegments}")
+                    network['total_segment_count'] += 1
+                    if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                    segmentset.add(csegment)
+                    segmentlist.append(csegment) # Ordered Segment List
+                    reach.update({'reach_head':csegment})
+                    reach.update({'seqorder':order_iter})
+                    if order_iter == 0: network.update({'terminal_reach':csegment})#; import pdb; pdb.set_trace() #TODO: FIX THIS; SEEMS FRAGILE
+                    network.update({'maximum_reach_seqorder':max(network['maximum_reach_seqorder'],order_iter)})
+                    reach.update({'segments':segmentset})
+                    reach.update({'segments_list':segmentlist}) # Ordered Segment List bottom to top
+                    network['reaches'].update({csegment:reach})
+                    network['total_junction_count'] += 1 #the Terminal Segment
+                    network['junctions'].add(csegment)
+                    recursive_junction_read (
+                            usegments
+                            , order_iter + 1
+                            , connections
+                            , network
+                            , terminal_code = terminal_code
+                            , verbose = verbose
+                            , debuglevel = debuglevel) 
+                    break
+                network['total_segment_count'] += 1
+                if debuglevel <= -3: print(f"segs at csegment {csegment}: {network['total_segment_count']}")
+                # the terminal code will indicate a headwater
+                if debuglevel <= -4: print(usegments)
+                segmentset.add(csegment)
+                segmentlist.append(csegment) # Ordered Segment List
+                (csegment,) = usegments
+                usegments = connections[csegment]['upstreams']
+
 
 #TODO: re-implement as parallel process on terminal segments
 #TODO: NOTE: this will be a little more complicated now that the global `connections` 
@@ -133,7 +318,7 @@ def network_trace(
         network.update({'headwater_reaches':set()})
         network.update({'receiving_reaches':set()}) # Reaches that are downstream of another network
         network.update({'reaches':{}}) 
-        recursive_reach_read (
+        recursive_reach_read_new (
                   terminal_segment
                   , order_iter
                   , connections
