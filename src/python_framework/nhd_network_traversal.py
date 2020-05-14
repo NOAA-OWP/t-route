@@ -7,29 +7,69 @@ import nhd_network_utilities as nnu
 import recursive_print
 import time
 import os
-
+import argparse
+# from . import name as package_name
 # NOTE: these methods can lose the "connections" and "rows" arguments when
 # implemented as class methods where those arrays are members of the class.
 
+
+
+
+
+def _handle_args():
+  parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--debuglevel',
+                      help='Set the debuglevel',
+                      dest='debuglevel',
+                      default=0)
+  parser.add_argument('--verbose',
+                      help='Set tHE verbose',
+                      dest='verbose',
+                      type=bool,
+                      default=True)
+  # TODO: improve to be more intelligent about the argument to accept and making it a Path (argparse Action perhaps)
+  parser.add_argument('--showtiming',
+                      #help='Change the base directory when using SSL certificate and key files with default names',
+                      help='Set the showtiming',
+                      dest='showtiming',
+                      type=bool,
+                      default=True)
+  # parser.add_argument('--supernetwork',
+  #                     help='List of supernetworks',
+  #                     dest='supernetworks_list',
+  #                     default='Brazos_LowerColorado_ge5')
+
+  # parser.prog = package_name
+  return parser.parse_args()
+
+
+
+
+
 def main():
+    # import pdb; pdb.set_trace()
+    args = _handle_args()
+    print(args)
     # find the path of the test scripts, several levels above the script path
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     test_folder = os.path.join(root, r'test')
     
     supernetworks = {}
+    # for i in supernetworks_list:
+    #   supernetworks.update({i:{}})
     supernetworks.update({'Pocono_TEST1':{}})
-    supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
-    supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
-    supernetworks.update({'Brazos_LowerColorado_FULL_RES':{}}) 
-    supernetworks.update({'Brazos_LowerColorado_Named_Streams':{}}) 
-    supernetworks.update({'CONUS_ge5':{}}) ##NHD CONUS order 5 and greater"""
-    supernetworks.update({'Mainstems_CONUS':{}})
-    supernetworks.update({'CONUS_Named_Streams':{}})
-    supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
+    # supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
+    # supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
+    # supernetworks.update({'Brazos_LowerColorado_FULL_RES':{}}) 
+    # supernetworks.update({'Brazos_LowerColorado_Named_Streams':{}}) 
+    # supernetworks.update({'CONUS_ge5':{}}) ##NHD CONUS order 5 and greater"""
+    # supernetworks.update({'Mainstems_CONUS':{}})
+    # supernetworks.update({'CONUS_Named_Streams':{}})
+    # supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
 
-    debuglevel = 0
-    verbose = True
-    showtiming = True
+    debuglevel = int(args.debuglevel)
+    verbose = bool(args.verbose)
+    showtiming = bool(args.showtiming)
 
     for supernetwork in supernetworks:
         supernetworks[supernetwork] = nnu.set_supernetwork_data(
