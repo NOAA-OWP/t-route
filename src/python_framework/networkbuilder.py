@@ -54,7 +54,6 @@ def get_waterbody_segments(
     if verbose: print('waterbody segments ...')
     waterbody_segments = {key:con[data_key][waterbody_col] for key, con in connections.items() 
         if not (con[data_key][waterbody_col] == waterbody_null_code)}
-    #waterbody_dict = {
     if debuglevel <= -1: print(f'found {len(waterbody_segments)} segments that are part of a waterbody')
     if debuglevel <= -3: print(waterbody_segments)
     if verbose: print('waterbody_segments complete')
@@ -74,6 +73,7 @@ def get_waterbody_segments(
         for upstream in connections[waterbody_segment][upstreams_key]:
             if not upstream == terminal_code and not upstream in waterbody_segments:
                 waterbody_upstreams_set.add(upstream)
+    waterbody_upstreams_set.discard(terminal_code) #TODO: Is this the best place for this filter?
     if debuglevel <= -1: print(f'found {len(waterbody_upstreams_set)} segments that are upstream of a waterbody')
     if debuglevel <= -3: print(waterbody_upstreams_set)
     if verbose: print('waterbody_upstreams_set complete')
@@ -338,6 +338,7 @@ def main():
         , test_waterbody_outlet_set
         , test_waterbody_upstreams_set) = get_waterbody_segments(
             connections = test_connections
+            , terminal_code = test_terminal_code
             , waterbody_col = test_waterbody_col
             , waterbody_null_code = test_waterbody_null_code
             , verbose = True

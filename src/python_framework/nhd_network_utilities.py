@@ -160,6 +160,7 @@ def build_connections_object(
         , waterbody_outlet_set
         , waterbody_upstreams_set) = networkbuilder.get_waterbody_segments(
             connections = connections
+            , terminal_code = terminal_code
             , waterbody_col = waterbody_col
             , waterbody_null_code = waterbody_null_code
             , verbose = verbose
