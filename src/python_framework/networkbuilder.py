@@ -73,7 +73,7 @@ def get_waterbody_segments(
         for upstream in connections[waterbody_segment][upstreams_key]:
             if not upstream == terminal_code and not upstream in waterbody_segments:
                 waterbody_upstreams_set.add(upstream)
-    waterbody_upstreams_set.discard(terminal_code) #TODO: Is this the best place for this filter?
+    waterbody_upstreams_set.discard(terminal_code) #TODO: Is this the best place for this filter -- check if ever used.
     if debuglevel <= -1: print(f'found {len(waterbody_upstreams_set)} segments that are upstream of a waterbody')
     if debuglevel <= -3: print(waterbody_upstreams_set)
     if verbose: print('waterbody_upstreams_set complete')
