@@ -38,13 +38,14 @@ def _handle_args():
                       default=False)
   parser.add_argument('--supernetwork',
                       help='List of supernetworks (Pocono_TEST1,LowerColorado_Conchos_FULL_RES,Brazos_LowerColorado_ge5,Brazos_LowerColorado_FULL_RES,Brazos_LowerColorado_Named_Streams,CONUS_ge5,Mainstems_CONUS,CONUS_Named_Streams,CONUS_FULL_RES_v20',
-                      action='append',
-                      nargs='*',
+                      # action='append',
+                      # nargs=1,
                       dest='supernetworks_list',
-                      default=['Brazos_LowerColorado_ge5'])
+                      default='Brazos_LowerColorado_ge5')
 
   # parser.prog = package_name
   return parser.parse_args()
+
 
 
 
@@ -59,8 +60,7 @@ def main():
     test_folder = os.path.join(root, r'test')
     
     supernetworks = {}
-    for i in list(args.supernetworks_list):
-      supernetworks.update({str(i):{}})
+    supernetworks.update({args.supernetworks_list:{}})
     # supernetworks.update({'Pocono_TEST1':{}})
     # supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
     # supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
