@@ -13,7 +13,9 @@ import argparse
 # implemented as class methods where those arrays are members of the class.
 
 
-
+# parser.add_argument('--feature', dest='feature', action='store_true')
+# parser.add_argument('--no-feature', dest='feature', action='store_false')
+# parser.set_defaults(feature=True)
 
 
 def _handle_args():
@@ -23,21 +25,23 @@ def _handle_args():
                       dest='debuglevel',
                       default=0)
   parser.add_argument('--verbose',
-                      help='Set tHE verbose',
+                      help='Set tHE verbose - leave blank for False',
                       dest='verbose',
                       type=bool,
-                      default=True)
+                      default=False)
   # TODO: improve to be more intelligent about the argument to accept and making it a Path (argparse Action perhaps)
   parser.add_argument('--showtiming',
                       #help='Change the base directory when using SSL certificate and key files with default names',
-                      help='Set the showtiming',
+                      help='Set the showtiming - leave blank for False',
                       dest='showtiming',
                       type=bool,
-                      default=True)
-  # parser.add_argument('--supernetwork',
-  #                     help='List of supernetworks',
-  #                     dest='supernetworks_list',
-  #                     default='Brazos_LowerColorado_ge5')
+                      default=False)
+  parser.add_argument('--supernetwork',
+                      help='List of supernetworks (Pocono_TEST1,LowerColorado_Conchos_FULL_RES,Brazos_LowerColorado_ge5,Brazos_LowerColorado_FULL_RES,Brazos_LowerColorado_Named_Streams,CONUS_ge5,Mainstems_CONUS,CONUS_Named_Streams,CONUS_FULL_RES_v20',
+                      action='append',
+                      nargs='*',
+                      dest='supernetworks_list',
+                      default=['Brazos_LowerColorado_ge5'])
 
   # parser.prog = package_name
   return parser.parse_args()
@@ -55,9 +59,9 @@ def main():
     test_folder = os.path.join(root, r'test')
     
     supernetworks = {}
-    # for i in supernetworks_list:
-    #   supernetworks.update({i:{}})
-    supernetworks.update({'Pocono_TEST1':{}})
+    for i in list(args.supernetworks_list):
+      supernetworks.update({str(i):{}})
+    # supernetworks.update({'Pocono_TEST1':{}})
     # supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
     # supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
     # supernetworks.update({'Brazos_LowerColorado_FULL_RES':{}}) 
@@ -70,7 +74,8 @@ def main():
     debuglevel = int(args.debuglevel)
     verbose = bool(args.verbose)
     showtiming = bool(args.showtiming)
-
+    print(verbose)
+    print(showtiming)
     for supernetwork in supernetworks:
         supernetworks[supernetwork] = nnu.set_supernetwork_data(
           supernetwork = supernetwork
