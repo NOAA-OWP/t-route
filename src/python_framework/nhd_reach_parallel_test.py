@@ -154,6 +154,18 @@ def compute_network_parallel_opportunistic(
         , debuglevel = 0
         ):
 
+    #TODO: Fix over counted reaches in `break_network_at_waterbodies` mode
+    '''
+        TODO (more detail) this function overcounts the number of reaches
+        when executing on full resolution networks or sub-networks.
+        For instance, when using the CONUS_FULL_RES_v20 supernetwork, there
+        should be 2102010 reaches, but the function counts 2103018.
+        Or, when using the Brazos_LowerColorado_FULL_RES supernetwork,
+        there should be 18843 reaches, but the function counts 18845.
+        Because we do not use this function in production, it should not
+        cause a problem.
+    '''
+    if debuglevel <= -1: print(f"Warning: Function may not return correct result!")
     global connections
 
     overall_max = -1
@@ -183,8 +195,10 @@ def compute_network_parallel_opportunistic(
             tail_reaches_added_this_round = set()
             if parorder not in network_ordered_reaches: network_ordered_reaches.update({parorder:set()})
             for head_segment in network_tail_reaches:
-                down = network['reaches'][head_segment]['downstream_reach']
-                if not down == supernetwork_data['terminal_code']:
+                seq = network['reaches'][head_segment]['seqorder']
+                if not seq == 0:
+                    down = network['reaches'][head_segment]['downstream_reach']
+                    # if not down == supernetwork_data['terminal_code']:
                     downups = network['reaches'][down]['upstream_reaches']
                     if downups.issubset(network_handled_reaches):
                         network_ordered_reaches[parorder].add(down)

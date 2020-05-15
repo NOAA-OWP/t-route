@@ -272,7 +272,7 @@ def DEPRECATED_recursive_junction_read(
                     network['reaches'].update({csegment:reach})
                     network['total_junction_count'] += 1 #the Terminal Segment
                     network['junctions'].add(csegment)
-                    recursive_junction_read (
+                    DEPRECATED_recursive_junction_read (
                             usegments
                             , order_iter + 1
                             , connections
@@ -319,14 +319,14 @@ def network_trace(
         network.update({'receiving_reaches':set()}) # Reaches that are downstream of another network
         network.update({'reaches':{}}) 
         recursive_reach_read_new (
-                  terminal_segment
-                  , order_iter
-                  , connections
-                  , network
+                  segment = terminal_segment
+                  , order_iter = order_iter
+                  , connections = connections
+                  , network = network
                   , reach_breaking_segments = reach_breaking_segments
                   , network_breaking_segments = network_breaking_segments
-                  , verbose = verbose
                   , terminal_code = terminal_code
+                  , verbose = verbose
                   , debuglevel = debuglevel)
         if debuglevel <=-1: print(f"junctions: {network['total_junction_count']}")
         if debuglevel <=-1: print(f"segments: {network['total_segment_count']}")
