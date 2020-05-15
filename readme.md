@@ -33,13 +33,14 @@ python3-devel
 gcc-gfortran
 ```
 
-... and the following python modules:
+... and the following non-default python modules:
 ```
 geopandas 
 numpy 
 pandas 
 xarray 
 netcdf4 
+tqdm # for a download progress bar when pulling test datasets from the NOAA site.
 ```
 
 ## Installation

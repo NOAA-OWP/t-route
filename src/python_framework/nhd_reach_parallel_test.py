@@ -49,9 +49,10 @@ def compute_network_parallel_totaltreedepth(
             #print(ordered_reaches)
     
 
-    for x in range(overall_max,-1,-1):
-        nslist3 = ordered_reaches[x]
-        print(f'{x}: {len(nslist3)}')
+    if debuglevel <= -1:
+        for x in range(overall_max,-1,-1):
+            nslist3 = ordered_reaches[x]
+            print(f'{x}: {len(nslist3)}')
 
 def compute_network_parallel_totaltreedepth_wHEADS(
         large_networks = None
@@ -153,6 +154,18 @@ def compute_network_parallel_opportunistic(
         , debuglevel = 0
         ):
 
+    #TODO: Fix over counted reaches in `break_network_at_waterbodies` mode
+    '''
+        TODO (more detail) this function overcounts the number of reaches
+        when executing on full resolution networks or sub-networks.
+        For instance, when using the CONUS_FULL_RES_v20 supernetwork, there
+        should be 2102010 reaches, but the function counts 2103018.
+        Or, when using the Brazos_LowerColorado_FULL_RES supernetwork,
+        there should be 18843 reaches, but the function counts 18845.
+        Because we do not use this function in production, it should not
+        cause a problem.
+    '''
+    if debuglevel <= -1: print(f"Warning: Function may not return correct result!")
     global connections
 
     overall_max = -1
@@ -172,18 +185,20 @@ def compute_network_parallel_opportunistic(
         network_tail_reaches = set() # When this set contains the whole collection, we are done
         parorder = 0
         if parorder not in network_ordered_reaches: network_ordered_reaches.update({parorder:set()})
-        network_ordered_reaches[parorder].update(network['headwater_reaches'])
+        network_ordered_reaches[parorder].update(network['headwater_reaches'] | network['receiving_reaches'])
         network_tail_reaches.update(network_ordered_reaches[parorder])
         network_handled_reaches.update(network_ordered_reaches[parorder])
 
         parorder = 1
-        while not network_handled_reaches == (network['headwater_reaches'] | network['junctions']):
+        while not network_handled_reaches == (network['receiving_reaches'] | network['headwater_reaches'] | network['junctions']):
             network_handled_reaches_this_round = set()
             tail_reaches_added_this_round = set()
             if parorder not in network_ordered_reaches: network_ordered_reaches.update({parorder:set()})
             for head_segment in network_tail_reaches:
-                down = network['reaches'][head_segment]['downstream_reach']
-                if not down == supernetwork_data['terminal_code']:
+                seq = network['reaches'][head_segment]['seqorder']
+                if not seq == 0:
+                    down = network['reaches'][head_segment]['downstream_reach']
+                    # if not down == supernetwork_data['terminal_code']:
                     downups = network['reaches'][down]['upstream_reaches']
                     if downups.issubset(network_handled_reaches):
                         network_ordered_reaches[parorder].add(down)
@@ -211,8 +226,9 @@ def main():
     print('This script demonstrates the parallel traversal of reaches developed from NHD datasets')
 
     verbose = True
-    debuglevel = -3
+    debuglevel = -1
     showtiming = True
+    break_network_at_waterbodies = False
 
     test_folder = os.path.join(root, r'test')
     geo_input_folder = os.path.join(test_folder, r'input', r'geo')
@@ -247,9 +263,10 @@ def main():
     if verbose: print('organizing connections into networks and reaches ...')
     networks = nru.compose_networks(
         supernetwork_values
-        , verbose = False
-        # , verbose = verbose
+        , break_network_at_waterbodies = break_network_at_waterbodies
         , debuglevel = debuglevel
+        # , verbose = False
+        , verbose = verbose
         , showtiming = showtiming
         )
     if verbose: print('reach organization complete')

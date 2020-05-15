@@ -34,9 +34,9 @@ def get_down_connections(
 
 def get_waterbody_segments(
     connections = None
-    , terminal_code = 0
-    , waterbody_col = 9
-    , waterbody_null_code = -9999
+    , terminal_code = -999
+    , waterbody_col = 3
+    , waterbody_null_code = 0
     , data_key = r'data'
     , downstream_key = r'downstream'
     , upstreams_key = r'upstreams'
@@ -54,7 +54,6 @@ def get_waterbody_segments(
     if verbose: print('waterbody segments ...')
     waterbody_segments = {key:con[data_key][waterbody_col] for key, con in connections.items() 
         if not (con[data_key][waterbody_col] == waterbody_null_code)}
-    #waterbody_dict = {
     if debuglevel <= -1: print(f'found {len(waterbody_segments)} segments that are part of a waterbody')
     if debuglevel <= -3: print(waterbody_segments)
     if verbose: print('waterbody_segments complete')
@@ -74,6 +73,7 @@ def get_waterbody_segments(
         for upstream in connections[waterbody_segment][upstreams_key]:
             if not upstream == terminal_code and not upstream in waterbody_segments:
                 waterbody_upstreams_set.add(upstream)
+    waterbody_upstreams_set.discard(terminal_code) #TODO: Is this the best place for this filter -- check if ever used.
     if debuglevel <= -1: print(f'found {len(waterbody_upstreams_set)} segments that are upstream of a waterbody')
     if debuglevel <= -3: print(waterbody_upstreams_set)
     if verbose: print('waterbody_upstreams_set complete')
@@ -275,12 +275,12 @@ def main():
         [13,240,12,0],
         [14,548,13,0],
         [15,920,14,0],
-        [16,920,15,0],
-        [17,514,16,0],
+        [16,920,15,401],
+        [17,514,16,401],
         [18,458,17,0],
         [19,832,18,0],
         [20,543,19,0],
-        [21,240,16,0],
+        [21,240,16,401],
         [22,548,21,0],
         [23,920,22,0],
         [24,240,23,0],
@@ -294,6 +294,8 @@ def main():
     test_downstream_col = 2
     test_length_col = 1
     test_terminal_code = -999
+    test_waterbody_col = 3
+    test_waterbody_null_code = 0
 
     (test_connections) = get_down_connections(
                 rows = test_rows
@@ -310,14 +312,17 @@ def main():
      , test_terminal_ref_keys
      , test_circular_keys) = determine_keys(
                 connections = test_connections
-                , key_col = test_key_col
-                , downstream_col = test_downstream_col
                 , terminal_code = test_terminal_code
                 , verbose = True
                 , debuglevel = -2
                 )
 
-    test_junction_keys = get_up_connections(
+    (test_junction_keys 
+        , test_confluence_segment_set
+        , test_visited_keys
+        , test_visited_terminal_keys
+        , test_junction_count
+        )= get_up_connections(
                 connections = test_connections
                 , terminal_code = test_terminal_code
                 , headwater_keys = test_headwater_keys
@@ -325,6 +330,20 @@ def main():
                 , verbose = True
                 , debuglevel = -2
                 )
+
+    # TODO: Set/pass/identify a proper flag value
+    if test_waterbody_col is not None:
+        (test_waterbody_set
+        , test_waterbody_segments
+        , test_waterbody_outlet_set
+        , test_waterbody_upstreams_set) = get_waterbody_segments(
+            connections = test_connections
+            , terminal_code = test_terminal_code
+            , waterbody_col = test_waterbody_col
+            , waterbody_null_code = test_waterbody_null_code
+            , verbose = True
+            , debuglevel = -2
+            )
 
     recursive_print.print_connections(
                 headwater_keys = test_headwater_keys

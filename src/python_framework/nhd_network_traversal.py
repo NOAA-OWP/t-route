@@ -18,16 +18,16 @@ def main():
     
     supernetworks = {}
     supernetworks.update({'Pocono_TEST1':{}})
-    supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
-    supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
-    supernetworks.update({'Brazos_LowerColorado_FULL_RES':{}}) 
-    supernetworks.update({'Brazos_LowerColorado_Named_Streams':{}}) 
-    supernetworks.update({'CONUS_ge5':{}}) ##NHD CONUS order 5 and greater"""
-    supernetworks.update({'Mainstems_CONUS':{}})
-    supernetworks.update({'CONUS_Named_Streams':{}})
-    supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
+    # supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
+    # supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
+    # supernetworks.update({'Brazos_LowerColorado_FULL_RES':{}}) 
+    # supernetworks.update({'Brazos_LowerColorado_Named_Streams':{}}) 
+    # supernetworks.update({'CONUS_ge5':{}}) ##NHD CONUS order 5 and greater"""
+    # supernetworks.update({'Mainstems_CONUS':{}})
+    # supernetworks.update({'CONUS_Named_Streams':{}})
+    # supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
 
-    debuglevel = 0
+    debuglevel = -3
     verbose = True
     showtiming = True
 
