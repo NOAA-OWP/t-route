@@ -50,8 +50,8 @@ def get_geo_file_table_rows(
     # NOTE: these methods can lose the "connections" and "rows" arguments when
     # implemented as class methods where those arrays are members of the class.
     # TODO: Improve the error handling here for a corrupt input file
+    if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
     if driver_string == 'NetCDF': # Use Xarray to read a netcdf table
-        if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
         try:
             geo_file = xr.open_dataset(geo_file_path)
             geo_file_rows = (geo_file.to_dataframe()).values
@@ -63,15 +63,14 @@ def get_geo_file_table_rows(
         # inefficient by converting away from the Pandas dataframe.
         # TODO: Check the optimal use of the Pandas dataframe
     elif driver_string == 'csv': # Use Pandas to read zipped csv/txt
-        if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
         try:
-            geo_file = pd.read_csv(geo_file_path)
+            HEADER = None #TODO: standardize the mask format or add some logic to handle headers or other variations in format
+            geo_file = pd.read_csv(geo_file_path, header = HEADER)
         except Exception as e:
             print (e)
             if debuglevel <= -1: traceback.print_exc()
         geo_file_rows = geo_file.to_numpy()
     elif driver_string == 'zip': # Use Pandas to read zipped csv/txt
-        if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}')
         try:
             with zipfile.ZipFile(geo_file_path, 'r') as zcsv:
                 with zcsv.open(layer_string) as csv:
@@ -81,7 +80,6 @@ def get_geo_file_table_rows(
             if debuglevel <= -1: traceback.print_exc()
         geo_file_rows = geo_file.to_numpy()
     else: # Read Shapefiles, Geodatabases with Geopandas/fiona
-        if debuglevel <= -1: print(f'reading -- dataset: {geo_file_path}; layer: {layer_string}; fiona driver: {driver_string}')
         try:
             geo_file = gpd.read_file(geo_file_path, driver=driver_string, layer=layer_string)
             geo_file_rows = geo_file.to_numpy()
