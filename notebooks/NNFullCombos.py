@@ -13,13 +13,21 @@ import json
 import time
 import sys;sys.path.append(r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS')
 import mc_sseg_stime_NOLOOP as mc
-import numba
-from numba import jit
+import matplotlib as plt
+from pylab import *
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense,Dropout,BatchNormalization
+import itertools
+import random 
+from random import randint
+# import time
+# start_time = time.time()
 
 
 
 # can set AL to a list to run multiple tests on different sized arrays
-AL = [6]
+AL = [4,5]
 
 #output lists if multiple runs were perfermed
 mean_errors_list = []
@@ -99,58 +107,75 @@ for size in AL:
         )
         #return qdc, vel, depth
         
-        
+   
 #for loops used to find every combination of our variables possible based on our original array size between the mins and maxs of each variable.
     Y = []
     M = []
 
-    for qup_i in range(0,(array_length)-1):
-        for quc_j in range(0,(array_length)-1):
-            for qlat_k in range(0,(array_length)-1):
-                for qdp_l in range(0,(array_length)-1):
-                    for bw_n in range(0,(array_length)-1):
-                        for tw_o in range(0,(array_length)-1):
-                            for cs_p in range(0,(array_length)-1):
-                                for s0_q in range(0,(array_length)-1):
-                                    for depthp_s in range(0,(array_length)-1):
+    # for qup_i in range(0,(array_length)-1):
+    #     for quc_j in range(0,(array_length)-1):
+    #         for qlat_k in range(0,(array_length)-1):
+    #             for qdp_l in range(0,(array_length)-1):
+    #                 for bw_n in range(0,(array_length)-1):
+    #                     for tw_o in range(0,(array_length)-1):
+    #                         for cs_p in range(0,(array_length)-1):
+    #                             for s0_q in range(0,(array_length)-1):
+                                    # for depthp_s in range(0,(array_length)-1):
+    temp = list(itertools.product(qup,quc,qlat,qdp,bw,tw,cs,s0,depthp))
+    for i in temp:
+        M.append([
+            # dt, 
+            normalize(i[0],qup_max,qup_min), 
+            normalize(i[1],quc_max,quc_min), 
+            normalize(i[2],qlat_max,qlat_min),
+            normalize(i[3],qdp_max,qdp_min),
+            # dx,  
+            normalize(i[4],bw_max,bw_min),
+            normalize(i[5],tw_max,tw_min),
+            # normalize(tw[tw_o]*3,tw_max,tw_min),
+            # n_manning, 
+            # n_manning_cc, 
+            normalize(i[6],cs_max,cs_min),
+            normalize(i[7], s0_max, s0_min),
+            # velp, 
+            normalize(i[8],depthp_max,depthp_min)])
                                         # M.append([dt, qup[qup_i], quc[quc_j], qlat[qlat_k],qdp[qdp_l],dx,  bw[bw_n], tw[tw_o], tw[tw_o]*3,n_manning, n_manning_cc, cs[cs_p], s0[s0_q], velp, depthp[depthp_s]])
-                                        M.append([
-                                            # dt, 
-                                            normalize(qup[qup_i],qup_max,qup_min), 
-                                            normalize(quc[quc_j],quc_max,quc_min), 
-                                            normalize(qlat[qlat_k],qlat_max,qlat_min),
-                                            normalize(qdp[qdp_l],qdp_max,qdp_min),
-                                            # dx,  
-                                            normalize(bw[bw_n],bw_max,bw_min),
-                                            normalize(tw[tw_o],tw_max,tw_min),
-                                            # normalize(tw[tw_o]*3,tw_max,tw_min),
-                                            # n_manning, 
-                                            # n_manning_cc, 
-                                            normalize(cs[cs_p],cs_max,cs_min),
-                                            normalize(s0[s0_q], s0_max, s0_min),
-                                            # velp, 
-                                            normalize(depthp[depthp_s],depthp_max,depthp_min)])
+                                        # M.append([
+                                        #     # dt, 
+                                        #     normalize(qup[qup_i],qup_max,qup_min), 
+                                        #     normalize(quc[quc_j],quc_max,quc_min), 
+                                        #     normalize(qlat[qlat_k],qlat_max,qlat_min),
+                                        #     normalize(qdp[qdp_l],qdp_max,qdp_min),
+                                        #     # dx,  
+                                        #     normalize(bw[bw_n],bw_max,bw_min),
+                                        #     normalize(tw[tw_o],tw_max,tw_min),
+                                        #     # normalize(tw[tw_o]*3,tw_max,tw_min),
+                                        #     # n_manning, 
+                                        #     # n_manning_cc, 
+                                        #     normalize(cs[cs_p],cs_max,cs_min),
+                                        #     normalize(s0[s0_q], s0_max, s0_min),
+                                        #     # velp, 
+                                        #     normalize(depthp[depthp_s],depthp_max,depthp_min)])
 
-                                        S = singlesegment(
-                                        dt=dt,
-                                        qup=qup[qup_i],
-                                        quc=quc[quc_j],
-                                        qlat=qlat[qlat_k],
-                                        qdp=qdp[qdp_l],
-                                        
-                                        dx=dx ,
-                                        bw=bw[bw_n],
-                                        tw=tw[tw_o],
-                                        twcc=tw[tw_o]*3,
-                                        n_manning=n_manning,
-                                        n_manning_cc=n_manning_cc,
-                                        cs=cs[cs_p],
-                                        s0=s0[s0_q],
-                                        velp=velp,
-                                        depthp=depthp[depthp_s])
-                                        Y.append((S[0]))
-                                        if len(Y)%100000 == 0:
-                                            print(len(Y))
+        S = singlesegment(
+        dt=dt,
+        qup=i[0],
+        quc=i[1],
+        qlat=i[2],
+        qdp=i[3],
+        dx=dx ,
+        bw=i[4],
+        tw=i[5],
+        twcc=i[5]*3,
+        n_manning=n_manning,
+        n_manning_cc=n_manning_cc,
+        cs=i[6],
+        s0=i[7],
+        velp=velp,
+        depthp=i[8])
+        Y.append((S[0]))
+        if len(Y)%100000 == 0:
+            print(len(Y))
 #this section just adds a test sample with the expected output of .75 to the end of our data in case we would like to compare it
     dt = 60.0 # diffxxxxx
     dx = 1800.0 # diffxxxxx
@@ -197,7 +222,7 @@ for size in AL:
 #this section randomly generates validation data between the min and the max for us to train against. The model uses its training x and y data to improve itself, but will compare on unseen validation 
 #data to make sure it is not overfitting as much 
 #takes random number samples between the min/max for each variable
-    num_samp = 10000000
+    num_samp = 1000000
 
     dt = 60 # Time step
     dx = 1800 # segment length
@@ -261,13 +286,7 @@ for size in AL:
 
 #creation of the model
 
-    import matplotlib as plt
-    from pylab import *
-    import tensorflow as tf
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Dense,Dropout,BatchNormalization
-    # import time
-    # start_time = time.time()
+    
 
     # print(M[:100])
     #Define the model
@@ -299,8 +318,7 @@ for size in AL:
 
 
 
-    import random 
-    from random import randint
+    
 
 #creates random samples to be used in predictions so we can calculate the average error etc.
 
