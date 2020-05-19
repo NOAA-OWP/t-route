@@ -3,6 +3,7 @@ import sys
 import os
 import time
 
+
 connections = None
 
 ENV_IS_CL = False
@@ -15,6 +16,9 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import nhd_network_utilities as nnu
 import nhd_reach_utilities as nru
+import argparse
+
+
 
 def compute_network_parallel_totaltreedepth(
         large_networks = None
@@ -168,6 +172,7 @@ def compute_network_parallel_opportunistic(
     handled_reaches = set() # When this set contains the whole collection, we are done
     for terminal_segment, network in large_networks.items():
         network_ordered_reaches = {}
+
         network_handled_reaches = set() # When this set contains the whole collection, we are done
         network_tail_reaches = set() # When this set contains the whole collection, we are done
         parorder = 0
@@ -203,22 +208,52 @@ def compute_network_parallel_opportunistic(
     if debuglevel <= -1:
         for po, l in ordered_reaches.items():
             print(f'{po}: {len(l)}')
-    
+
+#command line input order: verbose,debuglevel,showtiming,supernetwork    
+def _handle_args():
+  parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--debuglevel',
+                      help='Set the debuglevel',
+                      dest='debuglevel',
+                      default=0)
+  parser.add_argument('--verbose',
+                      help='Set tHE verbose - leave blank for False',
+                      dest='verbose',
+                      type=bool,
+                      default=False)
+  # TODO: improve to be more intelligent about the argument to accept and making it a Path (argparse Action perhaps)
+  parser.add_argument('--showtiming',
+                      #help='Change the base directory when using SSL certificate and key files with default names',
+                      help='Set the showtiming - leave blank for False',
+                      dest='showtiming',
+                      type=bool,
+                      default=False)
+  parser.add_argument('--supernetwork',
+                      help='List of supernetworks (Pocono_TEST1,LowerColorado_Conchos_FULL_RES,Brazos_LowerColorado_ge5,Brazos_LowerColorado_FULL_RES,Brazos_LowerColorado_Named_Streams,CONUS_ge5,Mainstems_CONUS,CONUS_Named_Streams,CONUS_FULL_RES_v20',
+                      # action='append',
+                      # nargs=1,
+                      dest='supernetworks_list',
+                      default='Brazos_LowerColorado_ge5')
+
+  # parser.prog = package_name
+  return parser.parse_args()
+
 def main():
 
     global connections
-
+    args = _handle_args()
     print('This script demonstrates the parallel traversal of reaches developed from NHD datasets')
 
-    verbose = True
-    debuglevel = -3
-    showtiming = True
+    verbose = args.verbose
+    debuglevel = int(args.debuglevel)
+    showtiming = args.showtiming
+    supernetwork = args.supernetworks_list
 
     test_folder = os.path.join(root, r'test')
     geo_input_folder = os.path.join(test_folder, r'input', r'geo')
 
     #TODO: Make these commandline args
-    supernetwork = 'Pocono_TEST1'
+    
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_ge5'
     """##NHD CONUS order 5 and greater"""
@@ -334,6 +369,8 @@ def main():
     )
     if verbose: print(f'opportunistic reach computation complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
+
+   
 
 if __name__ == '__main__':
     main()
