@@ -54,7 +54,8 @@ import nhd_reach_utilities as nru
 
 
 def writetoFile(file, writeString):
-    file.write(writeString + '\n')
+    file.write(writeString)
+    file.write('\n')
 
 
 def compute_network(
