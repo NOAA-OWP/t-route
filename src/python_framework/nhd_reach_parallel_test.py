@@ -215,10 +215,12 @@ def _handle_args():
   parser.add_argument('--debuglevel',
                       help='Set the debuglevel',
                       dest='debuglevel',
+                      choices=[0, -1, -2, -3],
                       default=0)
   parser.add_argument('--verbose',
                       help='Set tHE verbose - leave blank for False',
                       dest='verbose',
+                      choices=["True","False"],
                       type=bool,
                       default=False)
   # TODO: improve to be more intelligent about the argument to accept and making it a Path (argparse Action perhaps)
@@ -226,11 +228,13 @@ def _handle_args():
                       #help='Change the base directory when using SSL certificate and key files with default names',
                       help='Set the showtiming - leave blank for False',
                       dest='showtiming',
+                      choices=["True","False"],
                       type=bool,
                       default=False)
   parser.add_argument('--supernetwork',
                       help='List of supernetworks (Pocono_TEST1,LowerColorado_Conchos_FULL_RES,Brazos_LowerColorado_ge5,Brazos_LowerColorado_FULL_RES,Brazos_LowerColorado_Named_Streams,CONUS_ge5,Mainstems_CONUS,CONUS_Named_Streams,CONUS_FULL_RES_v20',
                       # action='append',
+                      choices=['Pocono_TEST1','LowerColorado_Conchos_FULL_RES','Brazos_LowerColorado_ge5','Brazos_LowerColorado_FULL_RES','Brazos_LowerColorado_Named_Streams','CONUS_ge5','Mainstems_CONUS','CONUS_Named_Streams','CONUS_FULL_RES_v20'],
                       # nargs=1,
                       dest='supernetworks_list',
                       default='Brazos_LowerColorado_ge5')

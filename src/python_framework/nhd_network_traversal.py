@@ -9,45 +9,65 @@ import time
 import os
 import argparse
 
-def _handle_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--debuglevel',
-                        help='Set the debuglevel',
-                        dest='debuglevel',
-                        default=0)
-    parser.add_argument('-v, --verbose',
-                        help='Verbose output (leave blank for quiet output)',
-                        dest='verbose',
-                        action='store_true')
-    parser.add_argument('-t, --showtiming',
-                        help='Set the showtiming - leave blank for False',
-                        dest='showtiming',
-                        action='store_true')
-    parser.add_argument('-n, --supernetwork',
-                        help='List of supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20', 
-                        # TODO: accept multiple or a Path (argparse Action perhaps)
-                        # action='append',
-                        # nargs=1,
-                        dest='supernetwork',
-                        default='Pocono_TEST1')
+# from . import name as package_name
+# NOTE: these methods can lose the "connections" and "rows" arguments when
+# implemented as class methods where those arrays are members of the class.
 
-    return parser.parse_args()
+
+# parser.add_argument('--feature', dest='feature', action='store_true')
+# parser.add_argument('--no-feature', dest='feature', action='store_false')
+# parser.set_defaults(feature=True)
+
+
+def _handle_args():
+  parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--debuglevel',
+                      help='Set the debuglevel',
+                      dest='debuglevel',
+                      choices=[0, -1, -2, -3],
+                      default=0)
+  parser.add_argument('--verbose',
+                      help='Set tHE verbose - leave blank for False',
+                      dest='verbose',
+                      choices=["True","False"],
+                      type=bool,
+                      default=False)
+  # TODO: improve to be more intelligent about the argument to accept and making it a Path (argparse Action perhaps)
+  parser.add_argument('--showtiming',
+                      #help='Change the base directory when using SSL certificate and key files with default names',
+                      help='Set the showtiming - leave blank for False',
+                      dest='showtiming',
+                      choices=["True","False"],
+                      type=bool,
+                      default=False)                 
+  parser.add_argument('--supernetworks_list',
+                      help='List of supernetworks (Pocono_TEST1,LowerColorado_Conchos_FULL_RES,Brazos_LowerColorado_ge5,Brazos_LowerColorado_FULL_RES,Brazos_LowerColorado_Named_Streams,CONUS_ge5,Mainstems_CONUS,CONUS_Named_Streams,CONUS_FULL_RES_v20',
+                      # action='append',
+                      choices=['Pocono_TEST1','LowerColorado_Conchos_FULL_RES','Brazos_LowerColorado_ge5','Brazos_LowerColorado_FULL_RES','Brazos_LowerColorado_Named_Streams','CONUS_ge5','Mainstems_CONUS','CONUS_Named_Streams','CONUS_FULL_RES_v20'],
+                      # nargs=1,
+                      dest='supernetworks_list',
+                      default='Brazos_LowerColorado_ge5')
+
+  # parser.prog = package_name
+  return parser.parse_args()
+
+
+
+
 
 
 def main():
-
+    # import pdb; pdb.set_trace()
     args = _handle_args()
-
+    print(args)
+    rootfolder = args.rootfolder
     # find the path of the test scripts, several levels above the script path
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    test_folder = os.path.join(root, r'test')
+    test_folder = os.path.join(root, rootfolder)
     
-    debuglevel = -1 * int(args.debuglevel)
-    verbose = args.verbose
-    showtiming = args.showtiming
-    supernetworks = {str(args.supernetwork):{}}
-
-    # supernetworks = {}
+    supernetworks = {}
+    for i in args.supernetworks_list:
+      supernetworks.update({args.supernetworks_list:{}})
     # supernetworks.update({'Pocono_TEST1':{}})
     # supernetworks.update({'LowerColorado_Conchos_FULL_RES':{}}) 
     # supernetworks.update({'Brazos_LowerColorado_ge5':{}}) ##NHD Subset (Brazos/Lower Colorado)"""
@@ -58,6 +78,11 @@ def main():
     # supernetworks.update({'CONUS_Named_Streams':{}})
     # supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
 
+    debuglevel = int(args.debuglevel)
+    verbose = bool(args.verbose)
+    showtiming = bool(args.showtiming)
+    print(verbose)
+    print(showtiming)
     for supernetwork in supernetworks:
         supernetworks[supernetwork] = nnu.set_supernetwork_data(
           supernetwork = supernetwork
