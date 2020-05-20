@@ -168,43 +168,41 @@ def compute_mc_reach_up2down(
     # input flow to upstream reach of current reach     
     while True:
 
+        data = connections[current_segment]['data']
+        current_flow = flowdepthvel[current_segment]
+
         # for now treating as constant per reach 
         dt = 60.0
         # import pdb; pdb.set_trace()
-        bw = connections[current_segment]['data'][supernetwork_data['bottomwidth_col']]
-        tw = connections[current_segment]['data'][supernetwork_data['topwidth_col']]
-        twcc = connections[current_segment]['data'][supernetwork_data['topwidthcc_col']]
-        dx = connections[current_segment]['data'][supernetwork_data['length_col']]
-        bw = connections[current_segment]['data'][supernetwork_data['bottomwidth_col']]
-        n_manning = connections[current_segment]['data'][supernetwork_data['manningn_col']]
-        n_manning_cc = connections[current_segment]['data'][supernetwork_data['manningncc_col']]
-        cs = connections[current_segment]['data'][supernetwork_data['ChSlp_col']]
-        s0 = connections[current_segment]['data'][supernetwork_data['slope_col']]
+        bw = data[supernetwork_data['bottomwidth_col']]
+        tw = data[supernetwork_data['topwidth_col']]
+        twcc = data[supernetwork_data['topwidthcc_col']]
+        dx = data[supernetwork_data['length_col']]
+        bw = data[supernetwork_data['bottomwidth_col']]
+        n_manning = data[supernetwork_data['manningn_col']]
+        n_manning_cc = data[supernetwork_data['manningncc_col']]
+        cs = data[supernetwork_data['ChSlp_col']]
+        s0 = data[supernetwork_data['slope_col']]
 
         # add some flow
-        flowdepthvel[current_segment]['qlat']['curr'] = 10.0 # (ts + 1) * 10.0  # lateral flow per segment
+        current_flow['qlat']['curr'] = 10.0 # (ts + 1) * 10.0  # lateral flow per segment
 
-        flowdepthvel[current_segment]['flow']['prev'] = flowdepthvel[current_segment]['flow']['curr']
-        flowdepthvel[current_segment]['depth']['prev'] = flowdepthvel[current_segment]['depth']['curr']
-        flowdepthvel[current_segment]['vel']['prev'] = flowdepthvel[current_segment]['vel']['curr']
-        flowdepthvel[current_segment]['qlat']['prev'] = flowdepthvel[current_segment]['qlat']['curr']
+        current_flow['flow']['prev'] = qdp = current_flow['flow']['curr']
+        current_flow['depth']['prev'] = depthp = current_flow['depth']['curr']
+        current_flow['vel']['prev'] = velp = current_flow['vel']['curr']
+        current_flow['qlat']['prev'] = qlat = current_flow['qlat']['curr']
 
         # print (f'counter = {i}')
         # if current_segment == 5559368 or i == 100:
         #    import pdb; pdb.set_trace()
 
-        qlat = flowdepthvel[current_segment]['qlat']['curr']  # temporary assigned qlat
-        qdp = flowdepthvel[current_segment]['flow']['prev']  # temporary assigned qd
-        velp = flowdepthvel[current_segment]['vel']['prev']
-        depthp = flowdepthvel[current_segment]['depth']['prev']
-
         if WRITE_OUTPUT:
             #writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
             #writetoFile(file, writeString)
-            writeString = f"{current_segment} , {flowdepthvel[current_segment]['flow']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['depth']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['vel']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['qlat']['curr']} "
+            writeString = f"{current_segment} , {qdp} "
+            writeString = writeString + f", {depthp} "
+            writeString = writeString + f", {velp} "
+            writeString = writeString + f", {qlat} "
             writeString = writeString + f", {qup} "
             writeString = writeString + f", {quc}"
             #writetoFile(file, writeString)
@@ -215,17 +213,17 @@ def compute_mc_reach_up2down(
             , qup = qup
             , quc = quc
             , qdp = qdp
-            , qlat = flowdepthvel[current_segment]['qlat']['curr']
-            , dx = connections[current_segment]['data'][supernetwork_data['length_col']]
-            , bw = connections[current_segment]['data'][supernetwork_data['bottomwidth_col']]
+            , qlat = qlat
+            , dx = dx
+            , bw = bw
             , tw = tw
             , twcc = twcc
-            , n_manning = connections[current_segment]['data'][supernetwork_data['manningn_col']]
-            , n_manning_cc = connections[current_segment]['data'][supernetwork_data['manningn_col']]
-            , cs = connections[current_segment]['data'][supernetwork_data['ChSlp_col']]
-            , s0 = connections[current_segment]['data'][supernetwork_data['slope_col']]
-            , velp = flowdepthvel[current_segment]['vel']['prev']
-            , depthp = flowdepthvel[current_segment]['depth']['prev']
+            , n_manning = n_manning
+            , n_manning_cc = n_manning_cc
+            , cs = cs
+            , s0 = s0
+            , velp = velp
+            , depthp = depthp
         )
         #print(qdc, velc, depthc)
         #print(qdc_expected, velc_expected, depthc_expected)
@@ -233,9 +231,9 @@ def compute_mc_reach_up2down(
         if WRITE_OUTPUT:
             writeString = writeString + f',  {qdc},  {depthc},  {velc} '
             writetoFile(file, writeString)
-        flowdepthvel[current_segment]['flow']['curr'] = qdc
-        flowdepthvel[current_segment]['depth']['curr'] = depthc
-        flowdepthvel[current_segment]['vel']['curr'] = velc
+        current_flow['flow']['curr'] = qdc
+        current_flow['depth']['curr'] = depthc
+        current_flow['vel']['curr'] = velc
         # for next
         qup = qdc
         quc = qdc
