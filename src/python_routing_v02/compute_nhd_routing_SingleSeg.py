@@ -53,12 +53,8 @@ import nhd_network_utilities as nnu
 import nhd_reach_utilities as nru
 
 
-if WRITE_OUTPUT:
-    # write to file 
-    def writetoFile(file, writeString):
-        file.write(writeString + '\n')
-        file.flush()
-        os.fsync(file.fileno())
+def writetoFile(file, writeString):
+    file.write(writeString + '\n')
 
 
 def compute_network(
@@ -249,7 +245,9 @@ def compute_mc_reach_up2down(
         if verbose: print(f'{current_segment} --> {next_segment}\n')
         current_segment = next_segment
         next_segment = connections[current_segment]['downstream']
-        # end loop initialized the MC vars 
+        # end loop initialized the MC vars
+    if WRITE_OUTPUT:
+        file.close()
 
 
 def singlesegment(
