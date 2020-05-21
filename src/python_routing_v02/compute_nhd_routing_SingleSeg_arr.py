@@ -125,12 +125,9 @@ def compute_mc_reach_up2down(
     inds = np.searchsorted(conn_data[:,0], reach['segments_list'][::-1])
     # upstream flow per reach
     qup_tmp = 0
-    # import pdb; pdb.set_trace()
     if reach["upstream_reaches"] != {0} and len(reach['upstream_reaches']) > 1:  # Not Headwaters
         # for us in reach['upstream_reaches']:
         qup_tmp = flowdepthvel[np.searchsorted(conn_data[:,0], tuple(reach['upstream_reaches'])), 4].sum()
-    # flowdepthvel[reach['reach_head']]['flow']['curr'] = qup_tmp
-    # print(qup_tmp)
     if WRITE_OUTPUT:
         writetoFile(file, writeString)
 
@@ -147,13 +144,6 @@ def compute_mc_reach_up2down(
         writetoFile(file, writeString)
         writeString = f"  , , , , , , "
         writetoFile(file, writeString)
-
-    next_segment = connections[current_segment][0]
-    # print(f'{current_segment}==>{next_segment} conections:{ncomp} timestep:{ts}')
-    # input flow to upstream reach of current reach
-
-
-    #connection_subsets = conn_data[inds, :]
 
     dt = 60.0
 
@@ -182,97 +172,6 @@ def compute_mc_reach_up2down(
         # update flowdepthvel
         flowdepthvel[i, 4:7] = qdc, velc, depthc
         qup = quc = qdc
-    #
-    # while True:
-    #
-    #     # import pdb; pdb.set_trace()
-    #     tw = connections[current_segment]["data"][supernetwork_data["topwidth_col"]]
-    #     twcc = connections[current_segment]["data"][supernetwork_data["topwidthcc_col"]]
-    #     dx = connections[current_segment]["data"][supernetwork_data["length_col"]]
-    #     bw = connections[current_segment]["data"][supernetwork_data["bottomwidth_col"]]
-    #     n_manning = connections[current_segment]["data"][
-    #         supernetwork_data["manningn_col"]
-    #     ]
-    #     n_manning_cc = connections[current_segment]["data"][
-    #         supernetwork_data["manningncc_col"]
-    #     ]
-    #     cs = connections[current_segment]["data"][supernetwork_data["ChSlp_col"]]
-    #     s0 = connections[current_segment]["data"][supernetwork_data["slope_col"]]
-    #
-    #     # add some flow
-    #     flowdepthvel[current_segment][7] = 10
-    #     flowdepthvel[current_segment][:4] = flowdepthvel[current_segment][4:]
-    #
-    #     # print (f'counter = {i}')
-    #     # if current_segment == 5559368 or i == 100:
-    #     #    import pdb; pdb.set_trace()
-    #
-    #     qlat = flowdepthvel[current_segment][7]  # temporary assigned qlat
-    #     qdp, depthp, velp = flowdepthvel[current_segment][:3]
-    #
-    #     if WRITE_OUTPUT:
-    #         # writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
-    #         # writetoFile(file, writeString)
-    #         writeString = (
-    #             f"{current_segment} , {flowdepthvel[current_segment][0]} "
-    #         )
-    #         writeString = (
-    #             writeString + f", {flowdepthvel[current_segment][1]} "
-    #         )
-    #         writeString = (
-    #             writeString + f", {flowdepthvel[current_segment][2]} "
-    #         )
-    #         writeString = (
-    #             writeString + f", {flowdepthvel[current_segment][7]} "
-    #         )
-    #         writeString = writeString + f", {qup} "
-    #         writeString = writeString + f", {quc}"
-    #         # writetoFile(file, writeString)
-    #
-    #     # run M-C model
-    #     qdc, velc, depthc = singlesegment(
-    #         dt=dt,
-    #         qup=qup,
-    #         quc=quc,
-    #         qdp=qdp,
-    #         qlat=qlat,
-    #         dx=connections[current_segment]["data"][supernetwork_data["length_col"]],
-    #         bw=connections[current_segment]["data"][
-    #             supernetwork_data["bottomwidth_col"]
-    #         ],
-    #         tw=tw,
-    #         twcc=twcc,
-    #         n_manning=connections[current_segment]["data"][
-    #             supernetwork_data["manningn_col"]
-    #         ],
-    #         n_manning_cc=connections[current_segment]["data"][
-    #             supernetwork_data["manningn_col"]
-    #         ],
-    #         cs=connections[current_segment]["data"][supernetwork_data["ChSlp_col"]],
-    #         s0=connections[current_segment]["data"][supernetwork_data["slope_col"]],
-    #         velp=flowdepthvel[current_segment][2],
-    #         depthp=flowdepthvel[current_segment][1],
-    #     )
-    #     # print(qdc, velc, depthc)
-    #     # print(qdc_expected, velc_expected, depthc_expected)
-    #
-    #     if WRITE_OUTPUT:
-    #         writeString = writeString + f",  {qdc},  {depthc},  {velc} "
-    #         writetoFile(file, writeString)
-    #     flowdepthvel[current_segment][4:7] = qdc, depthc, velc
-    #     # for next
-    #     qup = qdc
-    #     quc = qdc
-    #
-    #     if current_segment == reach["reach_tail"]:
-    #         if verbose:
-    #             print(f"{current_segment} (tail)")
-    #         break
-    #     if verbose:
-    #         print(f"{current_segment} --> {next_segment}\n")
-    #     current_segment = next_segment
-    #     next_segment = connections[current_segment][0]
-        # end loop initialized the MC vars
 
     if WRITE_OUTPUT:
         file.close()
