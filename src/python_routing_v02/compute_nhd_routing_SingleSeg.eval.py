@@ -54,12 +54,9 @@ import nhd_network_utilities as nnu
 import nhd_reach_utilities as nru
 
 
-if WRITE_OUTPUT:
-    # write to file 
-    def writetoFile(file, writeString):
-        file.write(writeString + '\n')
-        file.flush()
-        os.fsync(file.fileno())
+def writetoFile(file, writeString):
+    file.write(writeString)
+    file.write('\n')
 
 
 def compute_network(
@@ -140,9 +137,6 @@ def compute_mc_reach_up2down(
         filename = f'../../test/output/text/{head_segment}_{ts}.csv'
         file = open(filename, 'w+')
         writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}  upstream seg : "
-    current_segment = reach['reach_head']
-    next_segment = connections[current_segment]['downstream']
-    # print(f'{current_segment}==>{next_segment} conections:{ncomp} timestep:{ts}')
     # input flow to upstream reach of current reach     
 
     # upstream flow per reach
@@ -154,12 +148,16 @@ def compute_mc_reach_up2down(
         quc_tmp = qup_tmp  # no flows in a head channel, only laterals
     else:  # Loop over upstream reaches
         for us in connections[reach['reach_head']]['upstreams']:
-            if WRITE_OUTPUT: writeString = writeString + f" {us} "
+            if WRITE_OUTPUT: writeString = writeString + f"\n upstream seg : {us}"
             qup_tmp += flowdepthvel[us]['flow']['curr']
             if ASSUME_SHORT_TS: 
                 quc_tmp = qup_tmp
             else:
                 quc_tmp += flowdepthvel[us]['flow']['curr']
+    if WRITE_OUTPUT: writetoFile(file, writeString)
+
+    current_segment = reach['reach_head']
+    next_segment = connections[current_segment]['downstream']
 
     if WRITE_OUTPUT:
         writeString = writeString + f' timestep: {ts} cur : {current_segment}  upstream flow: {qup_tmp}'
@@ -170,29 +168,32 @@ def compute_mc_reach_up2down(
     while True:
         if ASSUME_SHORT_TS: quc_tmp = qup_tmp
 
+        data = connections[current_segment]['data']
+        current_flow = flowdepthvel[current_segment]
+
         qup = qup_tmp
         quc = quc_tmp
 
         # for now treating as constant per reach 
         dt = 60.0
         # import pdb; pdb.set_trace()
-        bw = connections[current_segment]['data'][supernetwork_data['bottomwidth_col']]
-        tw = connections[current_segment]['data'][supernetwork_data['topwidth_col']]
-        twcc = connections[current_segment]['data'][supernetwork_data['topwidthcc_col']]
-        dx = connections[current_segment]['data'][supernetwork_data['length_col']]
-        bw = connections[current_segment]['data'][supernetwork_data['bottomwidth_col']]
-        n_manning = connections[current_segment]['data'][supernetwork_data['manningn_col']]
-        n_manning_cc = connections[current_segment]['data'][supernetwork_data['manningncc_col']]
-        cs = connections[current_segment]['data'][supernetwork_data['ChSlp_col']]
-        s0 = connections[current_segment]['data'][supernetwork_data['slope_col']]
+        bw = data[supernetwork_data['bottomwidth_col']]
+        tw = data[supernetwork_data['topwidth_col']]
+        twcc = data[supernetwork_data['topwidthcc_col']]
+        dx = data[supernetwork_data['length_col']]
+        bw = data[supernetwork_data['bottomwidth_col']]
+        n_manning = data[supernetwork_data['manningn_col']]
+        n_manning_cc = data[supernetwork_data['manningncc_col']]
+        cs = data[supernetwork_data['ChSlp_col']]
+        s0 = data[supernetwork_data['slope_col']]
 
         # add some flow
-        flowdepthvel[current_segment]['qlat']['curr'] = 10.0 # (ts + 1) * 10.0  # lateral flow per segment
+        current_flow['qlat']['curr'] = 10.0 # (ts + 1) * 10.0  # lateral flow per segment
 
-        flowdepthvel[current_segment]['flow']['prev'] = flowdepthvel[current_segment]['flow']['curr']
-        flowdepthvel[current_segment]['depth']['prev'] = flowdepthvel[current_segment]['depth']['curr']
-        flowdepthvel[current_segment]['vel']['prev'] = flowdepthvel[current_segment]['vel']['curr']
-        flowdepthvel[current_segment]['qlat']['prev'] = flowdepthvel[current_segment]['qlat']['curr']
+        current_flow['flow']['prev'] = qdp = current_flow['flow']['curr']
+        current_flow['depth']['prev'] = depthp = current_flow['depth']['curr']
+        current_flow['vel']['prev'] = velp = current_flow['vel']['curr']
+        current_flow['qlat']['prev'] = qlat = current_flow['qlat']['curr']
 
         # print (f'counter = {i}')
         # if current_segment == 5559368 or i == 100:
@@ -206,10 +207,10 @@ def compute_mc_reach_up2down(
         if WRITE_OUTPUT:
             #writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
             #writetoFile(file, writeString)
-            writeString = f"{current_segment} , {flowdepthvel[current_segment]['flow']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['depth']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['vel']['prev']} "
-            writeString = writeString + f", {flowdepthvel[current_segment]['qlat']['curr']} "
+            writeString = f"{current_segment} , {qdp} "
+            writeString = writeString + f", {depthp} "
+            writeString = writeString + f", {velp} "
+            writeString = writeString + f", {qlat} "
             writeString = writeString + f", {qup} "
             writeString = writeString + f", {quc}"
             #writetoFile(file, writeString)
@@ -217,20 +218,20 @@ def compute_mc_reach_up2down(
         # run M-C model
         qdc, velc, depthc = singlesegment(
             dt = dt
-            , qup=qup
-            , quc=quc
-            , qdp=qdp
-            , qlat=qlat
-            , dx=dx
-            , bw=bw
-            , tw=tw
-            , twcc=twcc
-            , n_manning=n_manning
-            , n_manning_cc=n_manning_cc
-            , cs=cs
-            , s0=s0
-            , velp=velp
-            , depthp=depthp
+            , qup = qup
+            , quc = quc
+            , qdp = qdp
+            , qlat = qlat
+            , dx = dx
+            , bw = bw
+            , tw = tw
+            , twcc = twcc
+            , n_manning = n_manning
+            , n_manning_cc = n_manning_cc
+            , cs = cs
+            , s0 = s0
+            , velp = velp
+            , depthp = depthp
         )
         #print(qdc, velc, depthc)
         #print(qdc_expected, velc_expected, depthc_expected)
@@ -238,9 +239,9 @@ def compute_mc_reach_up2down(
         if WRITE_OUTPUT:
             writeString = writeString + f',  {qdc},  {depthc},  {velc} '
             writetoFile(file, writeString)
-        flowdepthvel[current_segment]['flow']['curr'] = qdc
-        flowdepthvel[current_segment]['depth']['curr'] = depthc
-        flowdepthvel[current_segment]['vel']['curr'] = velc
+        current_flow['flow']['curr'] = qdc
+        current_flow['depth']['curr'] = depthc
+        current_flow['vel']['curr'] = velc
 
         qup_tmp = qdp
         if ASSUME_SHORT_TS:
@@ -254,7 +255,9 @@ def compute_mc_reach_up2down(
         if verbose: print(f'{current_segment} --> {next_segment}\n')
         current_segment = next_segment
         next_segment = connections[current_segment]['downstream']
-        # end loop initialized the MC vars 
+        # end loop initialized the MC vars
+    if WRITE_OUTPUT:
+        file.close()
 
 
 def singlesegment(
@@ -370,6 +373,7 @@ if __name__ == '__main__':
     verbose = True
     debuglevel = -2
     showtiming = True
+    break_network_at_waterbodies = True
 
     test_folder = os.path.join(root, r'test')
     geo_input_folder = os.path.join(test_folder, r'input', r'geo')
@@ -404,6 +408,7 @@ if __name__ == '__main__':
     if verbose: print('organizing connections into reaches ...')
     networks = nru.compose_networks(
         supernetwork_values
+        , break_network_at_waterbodies = break_network_at_waterbodies
         , verbose=False
         # , verbose = verbose
         , debuglevel=debuglevel
