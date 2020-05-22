@@ -105,18 +105,18 @@ if COMPILE:
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
-        fortran_compile_call.append(r"mc_sseg_stime_NOLOOP")
+        fortran_compile_call.append(r"mc_sseg_stime")
         subprocess.run(
             fortran_compile_call,
             cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        import mc_sseg_stime_NOLOOP as mc
+        import mc_sseg_stime as mc
     except Exception as e:
         print(e)
 else:
-    import mc_sseg_stime_NOLOOP as mc
+    import mc_sseg_stime as mc
 
 connections = None
 networks = None
