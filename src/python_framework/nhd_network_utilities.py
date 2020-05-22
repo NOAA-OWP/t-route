@@ -333,27 +333,44 @@ def set_supernetwork_data(
             , 'layer_string' : 0
           }
     elif supernetwork == 'Pocono_TEST2':
-        return {
-            'geo_file_path' : os.path.join(geo_input_folder
-		    , r'PoconoSampleData2' 
-                    , r'PoconoRouteLink_testsamp1_nwm_mc.shp')
-            , 'key_col' : 18
-            , 'downstream_col' : 23
-            , 'length_col' : 5
-            , 'manningn_col' : 20
-            , 'manningncc_col' : 21
-            , 'slope_col' : 10
-            , 'bottomwidth_col' : 2
-            , 'topwidth_col' : 11
-            , 'topwidthcc_col' : 12
-            , 'MusK_col' : 6
-            , 'MusX_col' : 7
-            , 'ChSlp_col' : 3
-            , 'terminal_code' : 0
-            , 'title_string' : 'Pocono Test 2 Example'
-            , 'driver_string' : 'ESRI Shapefile'
-            , 'layer_string' : 0
-          }
+        dict = set_supernetwork_data(
+                supernetwork = 'CONUS_FULL_RES_v20'
+                , geo_input_folder = geo_input_folder
+                )
+        dict.update({
+            'title_string' : 'Pocono Test 2 Example' #overwrites other title...
+              , 'mask_file_path' : os.path.join(geo_input_folder
+                    , r'Channels'
+                    , r'masks'
+                    , r'PoconoRouteLink_testsamp1_nwm_mc.txt')
+              , 'mask_driver_string' : r'csv'
+              , 'mask_layer_string' : r''
+              , 'mask_key_col' : 0
+              , 'mask_name_col' : 1 #TODO: Not used yet.
+            })
+        return dict
+
+        #return {
+            #'geo_file_path' : os.path.join(geo_input_folder
+		    #, r'PoconoSampleData2' 
+                    #, r'PoconoRouteLink_testsamp1_nwm_mc.shp')
+            #, 'key_col' : 18
+            #, 'downstream_col' : 23
+            #, 'length_col' : 5
+            #, 'manningn_col' : 20
+            #, 'manningncc_col' : 21
+            #, 'slope_col' : 10
+            #, 'bottomwidth_col' : 2
+            #, 'topwidth_col' : 11
+            #, 'topwidthcc_col' : 12
+            #, 'MusK_col' : 6
+            #, 'MusX_col' : 7
+            #, 'ChSlp_col' : 3
+            #, 'terminal_code' : 0
+            #, 'title_string' : 'Pocono Test 2 Example'
+            #, 'driver_string' : 'ESRI Shapefile'
+            #, 'layer_string' : 0
+          #}
 
     elif supernetwork == 'LowerColorado_Conchos_FULL_RES':
         dict = set_supernetwork_data(
