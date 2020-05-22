@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+# example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
 
 
 # -*- coding: utf-8 -*-
@@ -15,6 +16,74 @@ import os
 import sys
 import time
 import numpy as np
+import argparse
+
+
+def _handle_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--debuglevel",
+        help="Set the debuglevel",
+        dest="debuglevel",
+        choices=[0, -1, -2, -3],
+        default=0,
+    )
+    parser.add_argument(
+        "-v, --verbose",
+        help="Verbose output (leave blank for quiet output)",
+        dest="verbose",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--assume_short_ts",
+        help="Use the previous timestep value for upstream flow",
+        dest="assume_short_ts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-o, --write_output",
+        help="Write output files (leave blank for no writing)",
+        dest="write_output",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-t, --showtiming",
+        help="Set the showtiming (leave blank for no timing information)",
+        dest="showtiming",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-w, --break_at_waterbodies",
+        help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
+        dest="break_network_at_waterbodies",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-n, --supernetwork",
+        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
+        choices=[
+            "Pocono_TEST1",
+            "Pocono_TEST2",
+            "LowerColorado_Conchos_FULL_RES",
+            "Brazos_LowerColorado_ge5",
+            "Brazos_LowerColorado_FULL_RES",
+            "Brazos_LowerColorado_Named_Streams",
+            "CONUS_ge5",
+            "Mainstems_CONUS",
+            "CONUS_Named_Streams",
+            "CONUS_FULL_RES_v20",
+        ],
+        # TODO: accept multiple or a Path (argparse Action perhaps)
+        # action='append',
+        # nargs=1,
+        dest="supernetwork",
+        default="Pocono_TEST1",
+    )
+
+    return parser.parse_args()
+
 
 ENV_IS_CL = False
 if ENV_IS_CL:
@@ -52,7 +121,6 @@ else:
 connections = None
 networks = None
 flowdepthvel = None
-WRITE_OUTPUT = True
 
 ## network and reach utilities
 import nhd_network_utilities as nnu
@@ -67,11 +135,11 @@ def writetoFile(file, writeString):
 def compute_network(
     terminal_segment=None,
     network=None,
-    supernetwork_data=None
-    # , connections = None
-    ,
+    supernetwork_data=None,
     verbose=False,
     debuglevel=0,
+    write_output=False,
+    assume_short_ts=False,
 ):
     global connections
     global flowdepthvel
@@ -105,31 +173,27 @@ def compute_network(
 
                 compute_mc_reach_up2down(
                     head_segment=head_segment,
-                    reach=reach
-                    # , connections = connections
-                    ,
+                    reach=reach,
                     supernetwork_data=supernetwork_data,
                     ts=ts,
                     verbose=verbose,
                     debuglevel=debuglevel,
+                    write_output=write_output,
+                    assume_short_ts=assume_short_ts,
                 )
                 # print(f'{head_segment} {flowdepthvel[head_segment]}')
-
-
-# ### Psuedocode
-#
 
 
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
     head_segment=None,
-    reach=None
-    # , connections = None
-    ,
+    reach=None,
     supernetwork_data=None,
     ts=0,
     verbose=False,
     debuglevel=0,
+    write_output=False,
+    assume_short_ts=False,
 ):
     global connections
     global flowdepthvel
@@ -143,33 +207,34 @@ def compute_mc_reach_up2down(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
         )
 
-    if WRITE_OUTPUT:
+    if write_output:
         filename = f"../../test/output/text/{head_segment}_{ts}.csv"
         file = open(filename, "w+")
         writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}  upstream seg : "
 
     # upstream flow per reach
     qup_tmp = 0
+    quc_tmp = 0
     # import pdb; pdb.set_trace()
     if reach["upstream_reaches"] == {supernetwork_data["terminal_code"]}:  # Headwaters
-        qup_tmp = 0.0  # no flows
+        qup_tmp = 0.0  # no flows in a head channel, only laterals
+        quc_tmp = qup_tmp  # no flows in a head channel, only laterals
     else:  # Loop over upstream reaches
-        # for us in reach['upstream_reaches']:
         for us in connections[reach["reach_head"]]["upstreams"]:
-            if WRITE_OUTPUT:
+            if write_output:
                 writeString = writeString + f"\n upstream seg : {us}"
             qup_tmp += flowdepthvel[us]["flow"]["curr"]
-    # flowdepthvel[reach['reach_head']]['flow']['curr'] = qup_tmp
-    # print(qup_tmp)
-    if WRITE_OUTPUT:
+            if assume_short_ts:
+                quc_tmp = qup_tmp
+            else:
+                quc_tmp += flowdepthvel[us]["flow"]["curr"]
+    if write_output:
         writetoFile(file, writeString)
 
-    qup = qup_tmp
-    quc = qup
-
     current_segment = reach["reach_head"]
+    next_segment = connections[current_segment]["downstream"]
 
-    if WRITE_OUTPUT:
+    if write_output:
         writeString = (
             writeString
             + f" timestep: {ts} cur : {current_segment}  upstream flow: {qup_tmp}"
@@ -178,13 +243,15 @@ def compute_mc_reach_up2down(
         writeString = f"  , , , , , , "
         writetoFile(file, writeString)
 
-    next_segment = connections[current_segment]["downstream"]
-    # print(f'{current_segment}==>{next_segment} conections:{ncomp} timestep:{ts}')
-    # input flow to upstream reach of current reach
     while True:
+        if assume_short_ts:
+            quc_tmp = qup_tmp
 
         data = connections[current_segment]["data"]
         current_flow = flowdepthvel[current_segment]
+
+        qup = qup_tmp
+        quc = quc_tmp
 
         # for now treating as constant per reach
         dt = 60.0
@@ -213,7 +280,7 @@ def compute_mc_reach_up2down(
         # if current_segment == 5559368 or i == 100:
         #    import pdb; pdb.set_trace()
 
-        if WRITE_OUTPUT:
+        if write_output:
             # writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
             # writetoFile(file, writeString)
             writeString = f"{current_segment} , {qdp} "
@@ -245,15 +312,19 @@ def compute_mc_reach_up2down(
         # print(qdc, velc, depthc)
         # print(qdc_expected, velc_expected, depthc_expected)
 
-        if WRITE_OUTPUT:
+        if write_output:
             writeString = writeString + f",  {qdc},  {depthc},  {velc} "
             writetoFile(file, writeString)
         # for next segment qup / quc use the previous flow values
         current_flow["flow"]["curr"] = qdc
         current_flow["depth"]["curr"] = depthc
         current_flow["vel"]["curr"] = velc
-        qup = qdc
-        quc = qdc
+
+        qup_tmp = qdp
+        if assume_short_ts:
+            quc_tmp = qdp
+        else:
+            quc_tmp = qdc
 
         if current_segment == reach["reach_tail"]:
             if verbose:
@@ -264,7 +335,7 @@ def compute_mc_reach_up2down(
         current_segment = next_segment
         next_segment = connections[current_segment]["downstream"]
         # end loop initialized the MC vars
-    if WRITE_OUTPUT:
+    if write_output:
         file.close()
 
 
@@ -309,22 +380,28 @@ def singlesegment(
 
 def main():
 
+    args = _handle_args()
+
     global connections
     global networks
     global flowdepthvel
 
-    verbose = True
-    debuglevel = 0
-    showtiming = True
-    break_network_at_waterbodies = False
+    debuglevel = -1 * int(args.debuglevel)
+    verbose = args.verbose
+    showtiming = args.showtiming
+    supernetwork = args.supernetwork
+    break_network_at_waterbodies = args.break_network_at_waterbodies
+    write_output = args.write_output
+    assume_short_ts = args.assume_short_ts
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
+    # supernetwork = 'Brazos_LowerColorado_Named_Streams'
     # supernetwork = 'Brazos_LowerColorado_ge5'
-    supernetwork = "Pocono_TEST1"
+    # supernetwork = 'Pocono_TEST1'
     """##NHD CONUS order 5 and greater"""
     # supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
@@ -359,9 +436,7 @@ def main():
     networks = nru.compose_networks(
         supernetwork_values,
         break_network_at_waterbodies=break_network_at_waterbodies,
-        verbose=False
-        # , verbose = verbose
-        ,
+        verbose=False,
         debuglevel=debuglevel,
         showtiming=showtiming,
     )
@@ -393,13 +468,11 @@ def main():
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,
-                supernetwork_data=supernetwork_data
-                # , connections = connections
-                ,
-                verbose=False
-                # , verbose = verbose
-                ,
+                supernetwork_data=supernetwork_data,
+                verbose=False,
                 debuglevel=debuglevel,
+                write_output=write_output,
+                assume_short_ts=assume_short_ts,
             )
             print(f"{terminal_segment}")
             if showtiming:
@@ -418,6 +491,8 @@ def main():
                 supernetwork_data,  # TODO: This should probably be global...
                 False,
                 debuglevel,
+                write_output,
+                assume_short_ts,
             ]
             for terminal_segment, network in networks.items()
         )
