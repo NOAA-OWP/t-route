@@ -6,6 +6,7 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
+import json
 
 
 def get_geo_file_table_rows(
@@ -343,6 +344,7 @@ def set_supernetwork_data(
         "Mainstems_CONUS",
         "CONUS_Named_Streams",
         "CONUS_FULL_RES_v20",
+        "custom"
     }
     if supernetwork not in supernetwork_options:
         print(
@@ -596,6 +598,12 @@ def set_supernetwork_data(
             "driver_string": "NetCDF",
             "layer_string": 0,
         }
+
+    elif supernetwork == "custom":
+        custominput = os.path.join(geo_input_folder, r"CustomInput.json")
+        with open(custominput) as json_file:
+            data = json.load(json_file)
+        return data
 
 
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
