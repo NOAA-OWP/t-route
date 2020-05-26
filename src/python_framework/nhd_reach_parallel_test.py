@@ -251,8 +251,8 @@ def main():
     supernetwork_data, supernetwork_values = nnu.set_networks(
         supernetwork = supernetwork
         , geo_input_folder = geo_input_folder
-        , verbose = False
-        # , verbose = verbose
+        # , verbose = False
+        , verbose = verbose
         , debuglevel = debuglevel
         )
     if verbose: print('supernetwork connections set complete')
