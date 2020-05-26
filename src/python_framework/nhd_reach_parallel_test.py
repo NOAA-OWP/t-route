@@ -30,6 +30,12 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "-w", "--break_at_waterbodies",
+        help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
+        dest="break_network_at_waterbodies",
+        action="store_true",
+    )
+    parser.add_argument(
         "-n",
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
@@ -314,7 +320,7 @@ def main():
     verbose = args.verbose
     debuglevel = int(args.debuglevel)
     showtiming = args.showtiming
-    break_network_at_waterbodies = False
+    break_network_at_waterbodies = args.break_network_at_waterbodies
     supernetwork = args.supernetwork
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
