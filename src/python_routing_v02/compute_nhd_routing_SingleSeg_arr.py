@@ -177,7 +177,7 @@ def compute_mc_reach_up2down(
     if WRITE_OUTPUT:
         file.close()
 
-def process_edge(N, RN, flowdepthvel, conn_data, timesteps):
+def process_edge(N, RN, flowdepthvel, conn_data):
     _key = conn_data[:,0]
     i = np.searchsorted(_key, N)
 
@@ -191,38 +191,31 @@ def process_edge(N, RN, flowdepthvel, conn_data, timesteps):
     cs = conn_data[i, 6]
     s0 = conn_data[i, 7]
 
-    has_parents = False
-    parent_ids = None
+    qup = 0.0
     if N in RN and len(RN[N]) > 0:
-        parent_ids = np.searchsorted(_key, tuple(RN[N]))
-        has_parents = True
+        qup = flowdepthvel[np.searchsorted(_key, tuple(RN[N])), 4].sum()
 
-    for ts in range(timesteps):
-        qup = 0.0
-        if has_parents:
-            qup = flowdepthvel[parent_ids, 4].sum()
+    quc = qup
 
-        quc = qup
+    flowdepthvel[i, 7] = 10
+    flowdepthvel[i, :4] = flowdepthvel[i, 4:]
 
-        flowdepthvel[i, 7] = 10
-        flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+    # Current flow, depth, vel, qlat
+    qdp, depthp, velp, qlat = flowdepthvel[i, 4:]
 
-        # Current flow, depth, vel, qlat
-        qdp, depthp, velp, qlat = flowdepthvel[i, 4:]
+    qdc, velc, depthc = singlesegment(
+        dt,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx, bw, tw, twcc, n_manning, n_manning_cc, cs, s0,
+        velp,
+        depthp
+    )
 
-        qdc, velc, depthc = singlesegment(
-            dt,
-            qup,
-            quc,
-            qdp,
-            qlat,
-            dx, bw, tw, twcc, n_manning, n_manning_cc, cs, s0,
-            velp,
-            depthp
-        )
-
-        # update flowdepthvel
-        flowdepthvel[i, 4:7] = qdc, depthc, velc
+    # update flowdepthvel
+    flowdepthvel[i, 4:7] = qdc, depthc, velc
 
 def singlesegment(
     dt,  # dt
@@ -346,8 +339,9 @@ def main():
     flowdepthvel = np.zeros((len(connections), 8))
     RN = dict(nhd_network.reverse_network(connections))
 
-    for n in nhd_network.kahn_toposort(connections):
-        process_edge(n, RN, flowdepthvel, conn_data, 1440)
+    for ts in range(1440):
+        for n in nhd_network.kahn_toposort(connections):
+            process_edge(n, RN, flowdepthvel, conn_data)
 
     with np.printoptions(precision=5, suppress=True, linewidth=120):
         print(flowdepthvel)
