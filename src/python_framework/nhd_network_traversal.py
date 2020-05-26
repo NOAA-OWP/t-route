@@ -40,6 +40,7 @@ def _handle_args():
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
+            "custom",
             "Pocono_TEST1",
             "Pocono_TEST2",
             "LowerColorado_Conchos_FULL_RES",
