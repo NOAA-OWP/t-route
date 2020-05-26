@@ -18,7 +18,7 @@ def _handle_args():
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
-        choices=[0, -1, -2, -3],
+        choices=["0", "1", "2", "3"],
         default=0,
     )
     parser.add_argument(
