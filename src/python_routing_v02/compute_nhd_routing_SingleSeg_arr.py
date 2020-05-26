@@ -178,14 +178,9 @@ def compute_mc_reach_up2down(
         file.close()
 
 def process_edge(N, RN, flowdepthvel, conn_data, timesteps):
-    i = np.searchsorted(conn_data[:,0], N)
+    _key = conn_data[:,0]
+    i = np.searchsorted(_key, N)
 
-    qup_tmp = 0
-    if N in RN and len(RN[N]) > 1:
-        qup_tmp = flowdepthvel[np.searchsorted(conn_data[:,0], tuple(RN[N])), 4].sum()
-
-    qup = qup_tmp
-    quc = qup
     dt = 60.0
     dx = conn_data[i, 1]
     bw = conn_data[i, 2]
@@ -195,22 +190,39 @@ def process_edge(N, RN, flowdepthvel, conn_data, timesteps):
     n_manning_cc = conn_data[i, 8]
     cs = conn_data[i, 6]
     s0 = conn_data[i, 7]
+
+    has_parents = False
+    parent_ids = None
+    if N in RN and len(RN[N]) > 0:
+        parent_ids = np.searchsorted(_key, tuple(RN[N]))
+        has_parents = True
+
     for ts in range(timesteps):
+        qup = 0.0
+        if has_parents:
+            qup = flowdepthvel[parent_ids, 4].sum()
+
+        quc = qup
+
         flowdepthvel[i, 7] = 10
         flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+
+        # Current flow, depth, vel, qlat
+        qdp, depthp, velp, qlat = flowdepthvel[i, 4:]
+
         qdc, velc, depthc = singlesegment(
             dt,
             qup,
             quc,
-            flowdepthvel[i, 0],
-            flowdepthvel[i, 7],
+            qdp,
+            qlat,
             dx, bw, tw, twcc, n_manning, n_manning_cc, cs, s0,
-            flowdepthvel[i, 2],
-            flowdepthvel[i, 1]
+            velp,
+            depthp
         )
 
         # update flowdepthvel
-        flowdepthvel[i, 4:7] = qdc, velc, depthc
+        flowdepthvel[i, 4:7] = qdc, depthc, velc
 
 def singlesegment(
     dt,  # dt
@@ -337,7 +349,10 @@ def main():
     for n in nhd_network.kahn_toposort(connections):
         process_edge(n, RN, flowdepthvel, conn_data, 1440)
 
-    print(flowdepthvel)
+    with np.printoptions(precision=5, suppress=True, linewidth=120):
+        print(flowdepthvel)
+    sorted_conns = sorted(connections.keys())
+    print(sorted_conns, all(conn_data[:,0] == sorted_conns))
 
     # parallelcompute = False
     # if not parallelcompute:
