@@ -8,11 +8,12 @@ The public repositories MUST NOT leak any valid private credential (e.g., a work
 
 ## Supported Versions
 
-This product is being made available as a 0.4 version and is in active development at that version.
+This product is being made available as a 0.5 version and is in active development at that version.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.4   | :white_check_mark: |
+| 0.5   | :white_check_mark: |
+| 0.4   | __X__ |
 
 ## Reporting a Vulnerability
 

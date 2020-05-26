@@ -80,7 +80,7 @@ If you have any questions, please contact james.halgren@noaa.gov or dongha.kim@n
 
 ## Getting involved
 
-Our current focus is improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
+Among other things, we are working on preparing more robust I/O capability for testing and on improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
 
 Please feel free to fork the repository and let us know if you will be issuing a pull request. 
 More instructions will eventually be documented in [CONTRIBUTING](contributing.md).

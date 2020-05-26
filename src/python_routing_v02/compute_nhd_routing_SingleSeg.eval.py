@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
+# example usage: python compute_nhd_routing_SingleSeg.eval.py -v -t -w -n Mainstems_CONUS
 
 
 # -*- coding: utf-8 -*-
@@ -378,13 +378,127 @@ def singlesegment(
     # return qdc, vel, depth
 
 
-def main():
-
-    args = _handle_args()
+def main(
+    parallelcompute=True,
+    num_cores=8,
+    sort="natural",
+    showtiming=True,
+    verbose=True,
+    debuglevel=0,
+    break_network_at_waterbodies=False,
+    write_output=False,
+    assume_short_ts=False,
+):
 
     global connections
     global networks
     global flowdepthvel
+
+    if sort is "natural":
+        sorted_networks = list(networks.items())
+    elif sort is "sort_rev":
+        sorted_networks = list(networks.items())
+        sorted_networks.sort(
+            reverse=True,
+            key=lambda networks_tuple: networks_tuple[1]["total_segment_count"],
+        )
+    elif sort is "sort":
+        sorted_networks = list(networks.items())
+        sorted_networks.sort(
+            reverse=False,
+            key=lambda networks_tuple: networks_tuple[1]["total_segment_count"],
+        )
+
+    if 1 == 0:
+        # TODO: explore the relationship between algorithmic efficiency and the sorting of the results array.
+        # import pdb; pdb.set_trace()
+        flowdepthvel = {}
+        for terminal_segment, network in sorted_networks:
+            for head_segment, reach in network["reaches"].items():
+                for segment in reach["segments_list"]:
+                    flowdepthvel.update(
+                        {
+                            segment: {
+                                "flow": {"prev": 0, "curr": 0},
+                                "depth": {"prev": 0, "curr": 0},
+                                "vel": {"prev": 0, "curr": 0},
+                                "qlat": {"prev": 0, "curr": 0},
+                            }
+                        }
+                    )
+
+    if showtiming:
+        compute_start_time = time.time()
+    # parallelcompute = True
+    if not parallelcompute:
+        if verbose:
+            print("executing computation on ordered reaches ...")
+
+        for terminal_segment, network in sorted_networks:
+            # for terminal_segment, network in sorted_networks.items():
+            # for terminal_segment, network in sorted(list(networks.items())
+            # , reverse = True
+            # , key = lambda item: item[1]['total_segment_count']):
+            if showtiming:
+                n_start_time = time.time()
+            compute_network(
+                terminal_segment=terminal_segment,
+                network=network,
+                supernetwork_data=supernetwork_data,
+                verbose=False,
+                debuglevel=debuglevel,
+                write_output=write_output,
+                assume_short_ts=assume_short_ts,
+            )
+            if terminal_segment == 22811611:
+                print(f"{terminal_segment}")
+                if showtiming:
+                    print("... in %s seconds." % (time.time() - n_start_time))
+
+    else:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print(f"executing parallel computation on ordered reaches .... ")
+        # for terminal_segment, network in networks.items():
+        #    print(terminal_segment, network)
+        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
+        nslist = (
+            [
+                terminal_segment,
+                network,
+                supernetwork_data,  # TODO: This should probably be global...
+                False,
+                debuglevel,
+                write_output,
+                assume_short_ts,
+            ]
+            for terminal_segment, network in sorted_networks
+        )
+        # for terminal_segment, network in networks.items())
+        # for terminal_segment, network in sorted(list(networks.items())
+        # , reverse = False
+        # , key = lambda item: item[1]['total_segment_count']))
+        if showtiming:
+            p_start_time = time.time()
+        with multiprocessing.Pool(num_cores) as pool:
+            results = pool.starmap(compute_network, nslist)
+        if showtiming:
+            print("... in %s seconds." % (time.time() - p_start_time))
+
+    if verbose:
+        print("ordered reach computation complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - compute_start_time))
+
+
+if __name__ == "__main__":
+
+    # global connections
+    # global networks
+    # global flowdepthvel
+
+    args = _handle_args()
 
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
@@ -445,8 +559,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    if showtiming:
-        start_time = time.time()
     connections = supernetwork_values[0]
 
     flowdepthvel = {
@@ -459,51 +571,35 @@ def main():
         for connection in connections
     }
 
-    parallelcompute = True
-    if not parallelcompute:
-        if verbose:
-            print("executing computation on ordered reaches ...")
-
-        for terminal_segment, network in networks.items():
-            compute_network(
-                terminal_segment=terminal_segment,
-                network=network,
-                supernetwork_data=supernetwork_data,
-                verbose=False,
-                debuglevel=debuglevel,
-                write_output=write_output,
-                assume_short_ts=assume_short_ts,
-            )
-            print(f"{terminal_segment}")
-            if showtiming:
-                print("... in %s seconds." % (time.time() - start_time))
-
-    else:
-        if verbose:
-            print(f"executing parallel computation on ordered reaches .... ")
-        # for terminal_segment, network in networks.items():
-        #    print(terminal_segment, network)
-        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
-        nslist = (
-            [
-                terminal_segment,
-                network,
-                supernetwork_data,  # TODO: This should probably be global...
-                False,
-                debuglevel,
-                write_output,
-                assume_short_ts,
-            ]
-            for terminal_segment, network in networks.items()
-        )
-        with multiprocessing.Pool() as pool:
-            results = pool.starmap(compute_network, nslist)
-
-    if verbose:
-        print("ordered reach computation complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-
-
-if __name__ == "__main__":
-    main()
+    parallels = [False, True]
+    sorts = ["sort_rev", "sort", "natural"]
+    cores = range(1, 21)
+    for sort in sorts:
+        for parallel in parallels:
+            if parallel:
+                for core in cores:
+                    print(f"parallel: {parallel} core:{core} sort:{sort}")
+                    main(
+                        parallel,
+                        core,
+                        sort,
+                        showtiming,
+                        False,
+                        0,
+                        break_network_at_waterbodies,
+                        False,
+                        assume_short_ts,
+                    )
+            else:
+                print(f"parallel: {parallel} core:SERIAL sort:{sort}")
+                main(
+                    parallel,
+                    None,
+                    sort,
+                    showtiming,
+                    False,
+                    0,
+                    break_network_at_waterbodies,
+                    False,
+                    assume_short_ts,
+                )
