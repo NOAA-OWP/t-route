@@ -18,41 +18,69 @@ import time
 import numpy as np
 import argparse
 
+
 def _handle_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--debuglevel',
-                        help='Set the debuglevel',
-                        dest='debuglevel',
-                        choices=[0, -1, -2, -3],
-                        default=0)
-    parser.add_argument('-v, --verbose',
-                        help='Verbose output (leave blank for quiet output)',
-                        dest='verbose',
-                        action='store_true')
-    parser.add_argument('--assume_short_ts',
-                        help='Use the previous timestep value for upstream flow',
-                        dest='assume_short_ts',
-                        action='store_true')
-    parser.add_argument('-o, --write_output',
-                        help='Write output files (leave blank for no writing)',
-                        dest='write_output',
-                        action='store_true')
-    parser.add_argument('-t, --showtiming',
-                        help='Set the showtiming (leave blank for no timing information)',
-                        dest='showtiming',
-                        action='store_true')
-    parser.add_argument('-w, --break_at_waterbodies',
-                        help='Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)',
-                        dest='break_network_at_waterbodies',
-                        action='store_true')
-    parser.add_argument('-n, --supernetwork',
-                        help='Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20', 
-                        choices=['Pocono_TEST1','Pocono_TEST2','LowerColorado_Conchos_FULL_RES','Brazos_LowerColorado_ge5','Brazos_LowerColorado_FULL_RES','Brazos_LowerColorado_Named_Streams','CONUS_ge5','Mainstems_CONUS','CONUS_Named_Streams','CONUS_FULL_RES_v20'],
-                        # TODO: accept multiple or a Path (argparse Action perhaps)
-                        # action='append',
-                        # nargs=1,
-                        dest='supernetwork',
-                        default='Pocono_TEST1')
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--debuglevel",
+        help="Set the debuglevel",
+        dest="debuglevel",
+        choices=[0, -1, -2, -3],
+        default=0,
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        help="Verbose output (leave blank for quiet output)",
+        dest="verbose",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--assume_short_ts",
+        help="Use the previous timestep value for upstream flow",
+        dest="assume_short_ts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-o", "--write_output",
+        help="Write output files (leave blank for no writing)",
+        dest="write_output",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-t", "--showtiming",
+        help="Set the showtiming (leave blank for no timing information)",
+        dest="showtiming",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-w", "--break_at_waterbodies",
+        help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
+        dest="break_network_at_waterbodies",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-n", "--supernetwork",
+        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
+        choices=[
+            "Pocono_TEST1",
+            "Pocono_TEST2",
+            "LowerColorado_Conchos_FULL_RES",
+            "Brazos_LowerColorado_ge5",
+            "Brazos_LowerColorado_FULL_RES",
+            "Brazos_LowerColorado_Named_Streams",
+            "CONUS_ge5",
+            "Mainstems_CONUS",
+            "CONUS_Named_Streams",
+            "CONUS_FULL_RES_v20",
+        ],
+        # TODO: accept multiple or a Path (argparse Action perhaps)
+        # action='append',
+        # nargs=1,
+        dest="supernetwork",
+        default="Pocono_TEST1",
+    )
 
     return parser.parse_args()
 
@@ -145,7 +173,7 @@ def compute_network(
 
                 compute_mc_reach_up2down(
                     head_segment=head_segment,
-                    reach=reach ,
+                    reach=reach,
                     supernetwork_data=supernetwork_data,
                     ts=ts,
                     verbose=verbose,
@@ -350,7 +378,8 @@ def singlesegment(
     # return qdc, vel, depth
 
 
-def main(parallelcompute=True, 
+def main(
+    parallelcompute=True,
     num_cores=8,
     sort="natural",
     showtiming=True,
@@ -550,7 +579,27 @@ if __name__ == "__main__":
             if parallel:
                 for core in cores:
                     print(f"parallel: {parallel} core:{core} sort:{sort}")
-                    main(parallel, core, sort, showtiming, False, 0, break_network_at_waterbodies, False, assume_short_ts)
+                    main(
+                        parallel,
+                        core,
+                        sort,
+                        showtiming,
+                        False,
+                        0,
+                        break_network_at_waterbodies,
+                        False,
+                        assume_short_ts,
+                    )
             else:
                 print(f"parallel: {parallel} core:SERIAL sort:{sort}")
-                main(parallel, None, sort, showtiming, False, 0, break_network_at_waterbodies, False, assume_short_ts)
+                main(
+                    parallel,
+                    None,
+                    sort,
+                    showtiming,
+                    False,
+                    0,
+                    break_network_at_waterbodies,
+                    False,
+                    assume_short_ts,
+                )
