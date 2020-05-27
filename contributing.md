@@ -58,10 +58,11 @@ If you need additional lines for more detail, add them below a double space, lik
 ```
 8. In order to get any accumulated commits in GitHub on your fork, push the changes using `git push`
 9. After you git push all commits to your fork and you believe you are ready to post code to the main 
-repository (after careful testing, documentation, style checking, preparation of demonstration notebooks, 
-etc.), open GitHub and issue a pull request. (it will probably be a highlighted button at the top of the 
+repository, open GitHub and issue a pull request. (It will probably be a highlighted button at the top of the 
 page -- "New Pull Request").
-More information about pull requests can be found [here][https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests]. From that page:
+Of course, please test, document, style check (we use ['Black'][https://pypi.org/project/black/]), and prepare (as-needed) demonstration notebooks, etc. 
+More information about pull requests can be found [here][https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests]. 
+From that page:
 > "Pull requests let you tell others about changes you've pushed to a branch in a repository on GitHub. 
 Once a pull request is opened, you can discuss and review the potential changes with collaborators and 
 add follow-up commits before your
