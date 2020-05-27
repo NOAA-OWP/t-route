@@ -58,14 +58,23 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    
     parser.add_argument(
-        "-d",
-        "--customdirectory",
-        help="Set the location of custom network input file",
-        dest="customdirectory"
+        "-f",
+        "--customnetworkfile",
+        dest="customnetworkfile",
+        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example."
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.supernetwork == "custom" and not args.customnetworkfile:
+        parser.error(
+            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
+        )
+
+    return args
+    
 
 
 def main():
@@ -80,16 +89,13 @@ def main():
     verbose = args.verbose
     showtiming = args.showtiming
     supernetworks = {str(args.supernetwork): {}}
-    custom_directory = args.customdirectory
-
-    if args.supernetwork == "custom" and args.customdirectory == None:
-        print('Please include the custom file path of the input file')    
-
-    if args.supernetwork != 'custom':
-        test_folder = os.path.join(root, r"test")
-        geo_input_folder = os.path.join(test_folder, r"input", r"geo",r"PoconoSampleData1")
+    
+    if args.supernetwork == "custom":
+        geo_input_folder = args.customnetworkfile
     else:
-        geo_input_folder = args.customdirectory
+        geo_input_folder = os.path.join(
+            test_folder, r"input", r"geo"
+        )
 
     # supernetworks = {}
     # supernetworks.update({'Pocono_TEST1':{}})
