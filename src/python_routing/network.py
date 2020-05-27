@@ -16,8 +16,10 @@ Order 1 terminal segments: 5611  (total: 1,472,492)  14,713
 ##Define functions
 """
 import time
-class SuperNetwork():
-    '''
+
+
+class SuperNetwork:
+    """
     Any collection of networks, above the level of strict hydraulic connectivity,
     begins to be a human artifact and potentially arbitrary.
     Nonetheless, there may be cases where this is sensible, such as in the case
@@ -27,12 +29,14 @@ class SuperNetwork():
     etc. In any case, this designation will almost always be manually applied,
     and in the test case, the SuperNetwork is simply the collection of all networks
     in the test dataset.
-    '''
+    """
+
     def __init__(self):
         self.networkCollection = []
 
-class Network():
-    def __init__(self, networkID = None):
+
+class Network:
+    def __init__(self, networkID=None):
         self.networkID = networkID
         self.reachCollection = []
         self.nexusCollection = []
@@ -42,5 +46,3 @@ class Network():
         trunk_reach = None
         head_nexus = []
         trunk_segement = None
-
-

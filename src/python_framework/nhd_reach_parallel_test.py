@@ -12,7 +12,7 @@ def _handle_args():
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
-        type = int,
+        type=int,
         choices=["0", "1", "2", "3"],
         default=0,
     )
@@ -31,7 +31,8 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "-w", "--break_at_waterbodies",
+        "-w",
+        "--break_at_waterbodies",
         help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
         dest="break_network_at_waterbodies",
         action="store_true",
@@ -63,12 +64,10 @@ def _handle_args():
         "-d",
         "--customdirectory",
         help="Set the location of custom network input file",
-        dest="customdirectory"
+        dest="customdirectory",
     )
 
     return parser.parse_args()
-
-
 
 
 connections = None
@@ -323,7 +322,7 @@ def main():
     print(
         "This script demonstrates the parallel traversal of reaches developed from NHD datasets"
     )
-    
+
     verbose = args.verbose
     debuglevel = -1 * int(args.debuglevel)
     showtiming = args.showtiming
@@ -332,14 +331,13 @@ def main():
     custom_directory = args.customdirectory
 
     if args.supernetwork == "custom" and args.customdirectory == None:
-        print('Please include the custom file path of the input file')    
+        print("Please include the custom file path of the input file")
 
-    if args.supernetwork != 'custom':
+    if args.supernetwork != "custom":
         test_folder = os.path.join(root, r"test")
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
     else:
         geo_input_folder = args.customdirectory
-
 
     if verbose:
         print("creating supernetwork connections set")
