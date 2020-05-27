@@ -31,7 +31,8 @@ def _handle_args():
         default=0,
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         help="Verbose output (leave blank for quiet output)",
         dest="verbose",
         action="store_true",
@@ -43,25 +44,29 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "-o", "--write_output",
+        "-o",
+        "--write_output",
         help="Write output files (leave blank for no writing)",
         dest="write_output",
         action="store_true",
     )
     parser.add_argument(
-        "-t", "--showtiming",
+        "-t",
+        "--showtiming",
         help="Set the showtiming (leave blank for no timing information)",
         dest="showtiming",
         action="store_true",
     )
     parser.add_argument(
-        "-w", "--break_at_waterbodies",
+        "-w",
+        "--break_at_waterbodies",
         help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
         dest="break_network_at_waterbodies",
         action="store_true",
     )
     parser.add_argument(
-        "-n", "--supernetwork",
+        "-n",
+        "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
             "Pocono_TEST1",
