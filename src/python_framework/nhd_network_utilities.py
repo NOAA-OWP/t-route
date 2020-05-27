@@ -344,7 +344,7 @@ def set_supernetwork_data(
         "Mainstems_CONUS",
         "CONUS_Named_Streams",
         "CONUS_FULL_RES_v20",
-        "custom"
+        "custom",
     }
     if supernetwork not in supernetwork_options:
         print(
@@ -603,7 +603,7 @@ def set_supernetwork_data(
         custominput = os.path.join(geo_input_folder)
         with open(custominput) as json_file:
             data = json.load(json_file)
-            #TODO: add error trapping for potentially missing files
+            # TODO: add error trapping for potentially missing files
         return data
 
 
