@@ -58,6 +58,12 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    parser.add_argument(
+        "-d",
+        "--customdirectory",
+        help="Set the location of custom network input file",
+        dest="customdirectory"
+    )
 
     return parser.parse_args()
 
@@ -74,6 +80,16 @@ def main():
     verbose = args.verbose
     showtiming = args.showtiming
     supernetworks = {str(args.supernetwork): {}}
+    custom_directory = args.customdirectory
+
+    if args.supernetwork == "custom" and args.customdirectory == None:
+        print('Please include the custom file path of the input file')    
+
+    if args.supernetwork != 'custom':
+        test_folder = os.path.join(root, r"test")
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo",r"PoconoSampleData1")
+    else:
+        geo_input_folder = args.customdirectory
 
     # supernetworks = {}
     # supernetworks.update({'Pocono_TEST1':{}})
@@ -89,7 +105,7 @@ def main():
     for supernetwork in supernetworks:
         supernetworks[supernetwork] = nnu.set_supernetwork_data(
             supernetwork=supernetwork,
-            geo_input_folder=os.path.join(test_folder, r"input", r"geo"),
+            geo_input_folder=geo_input_folder,
             debuglevel=debuglevel,
             verbose=verbose,
         )
