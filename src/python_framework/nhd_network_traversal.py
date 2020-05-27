@@ -58,12 +58,12 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
-    
+
     parser.add_argument(
         "-f",
         "--customnetworkfile",
         dest="customnetworkfile",
-        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example."
+        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example.",
     )
 
     args = parser.parse_args()
@@ -74,7 +74,6 @@ def _handle_args():
         )
 
     return args
-    
 
 
 def main():
@@ -89,13 +88,11 @@ def main():
     verbose = args.verbose
     showtiming = args.showtiming
     supernetworks = {str(args.supernetwork): {}}
-    
+
     if args.supernetwork == "custom":
         geo_input_folder = args.customnetworkfile
     else:
-        geo_input_folder = os.path.join(
-            test_folder, r"input", r"geo"
-        )
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     # supernetworks = {}
     # supernetworks.update({'Pocono_TEST1':{}})
