@@ -600,9 +600,10 @@ def set_supernetwork_data(
         }
 
     elif supernetwork == "custom":
-        custominput = os.path.join(geo_input_folder, r"CustomInput.json")
+        custominput = os.path.join(geo_input_folder)
         with open(custominput) as json_file:
             data = json.load(json_file)
+            #TODO: add error trapping for potentially missing files
         return data
 
 
