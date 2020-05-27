@@ -1,6 +1,6 @@
 {
-    "title_string" : "Pocono Test Example",
-    #"geo_file_path" : "../../test/input/geo/CustomSampleData1/CustomSampleRouteLink1.shp",
+    "title_string" : "Custom Input Example (using Pocono Test Example datafile)",
+    "geo_file_path" : "../../test/input/geo/PoconoSampleData1/PoconoSampleRouteLink1.shp",
     "key_col" : 18,
     "downstream_col" : 23,
     "length_col" : 5,
