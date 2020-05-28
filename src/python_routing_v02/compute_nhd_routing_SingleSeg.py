@@ -288,6 +288,9 @@ def compute_mc_reach_up2down(
         current_flow["vel"]["prev"] = current_flow["vel"]["curr"]
         current_flow["qlat"]["prev"] = current_flow["qlat"]["curr"]
 
+        if assume_short_ts:
+            quc = qup
+
         # run M-C model
         qdc, velc, depthc = singlesegment(
             dt=dt,
