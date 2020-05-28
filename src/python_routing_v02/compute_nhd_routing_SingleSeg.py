@@ -237,13 +237,13 @@ def compute_mc_reach_up2down(
         writeString = f"  , , , , , , "
         writetoFile(file, writeString)
 
+    write_buffer = []
     while True:
         data = connections[current_segment]["data"]
         current_flow = flowdepthvel[current_segment]
 
         # for now treating as constant per reach
         dt = 60.0
-        # import pdb; pdb.set_trace()
         bw = data[supernetwork_data["bottomwidth_col"]]
         tw = data[supernetwork_data["topwidth_col"]]
         twcc = data[supernetwork_data["topwidthcc_col"]]
@@ -258,21 +258,6 @@ def compute_mc_reach_up2down(
         current_flow["qlat"][
             "curr"
         ] = qlat = 10.0  # (ts + 1) * 10.0  # lateral flow per segment
-
-        # print (f'counter = {i}')
-        # if current_segment == 5559368 or i == 100:
-        #    import pdb; pdb.set_trace()
-
-        if write_output:
-            # writeString = f'timestep: {ts} parameters : {current_segment}  {dx} {bw} {tw} {n_manning} {cs} {s0} {dt}'
-            # writetoFile(file, writeString)
-            writeString = f"{current_segment} , {qdp} "
-            writeString = writeString + f", {depthp} "
-            writeString = writeString + f", {velp} "
-            writeString = writeString + f", {qlat} "
-            writeString = writeString + f", {qup} "
-            writeString = writeString + f", {quc}"
-            # writetoFile(file, writeString)
 
         qdp = current_flow["flow"]["prev"]
         depthp = current_flow["flow"]["prev"]
@@ -308,8 +293,8 @@ def compute_mc_reach_up2down(
         # print(qdc_expected, velc_expected, depthc_expected)
 
         if write_output:
-            writeString = writeString + f",  {qdc},  {depthc},  {velc} "
-            writetoFile(file, writeString)
+            write_buffer.append(','.join(map(str, (current_segment, qdp, depthp, velp, qlat, qup, quc, qdc, depthc, velc))))
+
         # for next segment qup / quc use the previous flow values
         current_flow["flow"]["curr"] = qdc
         current_flow["depth"]["curr"] = depthc
@@ -328,6 +313,7 @@ def compute_mc_reach_up2down(
         next_segment = connections[current_segment]["downstream"]
         # end loop initialized the MC vars
     if write_output:
+        writetoFile(file, '\n'.join(write_buffer))
         file.close()
 
 
