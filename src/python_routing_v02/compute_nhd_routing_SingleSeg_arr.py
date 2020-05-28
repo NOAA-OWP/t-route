@@ -62,20 +62,27 @@ import nhd_network
 
 def writetoFile(file, writeString):
     file.write(writeString)
-    file.write('\n')
+    file.write("\n")
+
 
 def compute_network(
-    network, conn_data, supernetwork_data, connections, flowdepthvel, verbose=False, debuglevel=0,
+    network,
+    conn_data,
+    supernetwork_data,
+    connections,
+    flowdepthvel,
+    verbose=False,
+    debuglevel=0,
 ):
 
-    ordered_reaches = [None] * (network['maximum_reach_seqorder'] + 1)
+    ordered_reaches = [None] * (network["maximum_reach_seqorder"] + 1)
     for head_segment, reach in network["reaches"].items():
         seqorder = reach["seqorder"]
         ordered_reaches[seqorder] = reach
 
     # initialize flowdepthvel dict
     nts = 50  # one timestep
-    #nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
+    # nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
 
     for ts in range(0, nts):
         # print(f'timestep: {ts}\n')
@@ -123,12 +130,16 @@ def compute_mc_reach_up2down(
         file = open(filename, "w+")
         writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments_list'])}  isterminal: {reach['upstream_reaches'] == {0}} )  reach tail: {reach['reach_tail']}  upstream seg : "
 
-    inds = np.searchsorted(conn_data[:,0], reach['segments_list'][::-1])
+    inds = np.searchsorted(conn_data[:, 0], reach["segments_list"][::-1])
     # upstream flow per reach
     qup_tmp = 0
-    if reach["upstream_reaches"] != {0} and len(reach['upstream_reaches']) > 1:  # Not Headwaters
+    if (
+        reach["upstream_reaches"] != {0} and len(reach["upstream_reaches"]) > 1
+    ):  # Not Headwaters
         # for us in reach['upstream_reaches']:
-        qup_tmp = flowdepthvel[np.searchsorted(conn_data[:,0], tuple(reach['upstream_reaches'])), 4].sum()
+        qup_tmp = flowdepthvel[
+            np.searchsorted(conn_data[:, 0], tuple(reach["upstream_reaches"])), 4
+        ].sum()
     if WRITE_OUTPUT:
         writetoFile(file, writeString)
 
@@ -167,7 +178,7 @@ def compute_mc_reach_up2down(
             cs=conn_data[i, 6],
             s0=conn_data[i, 7],
             velp=flowdepthvel[i, 2],
-            depthp=flowdepthvel[i, 1]
+            depthp=flowdepthvel[i, 1],
         )
 
         # update flowdepthvel
@@ -321,17 +332,21 @@ def main():
         start_time = time.time()
     connections = supernetwork_values[0]
 
-    connections, conn_data = separate_data(connections,
-                                           {'key': supernetwork_data['key_col'],
-                                            'length': supernetwork_data['length_col'],
-                                            'bottomwidth': supernetwork_data['bottomwidth_col'],
-                                            'topwidth': supernetwork_data['topwidth_col'],
-                                            'manningn': supernetwork_data['manningn_col'],
-                                            'ChSlp': supernetwork_data['ChSlp_col'],
-                                            'slope': supernetwork_data['slope_col'],
-                                            'topwidthcc': supernetwork_data['topwidthcc_col'],
-                                            'manningncc': supernetwork_data['manningncc_col']})
-    conn_data = conn_data[conn_data[:,0].argsort()]
+    connections, conn_data = separate_data(
+        connections,
+        {
+            "key": supernetwork_data["key_col"],
+            "length": supernetwork_data["length_col"],
+            "bottomwidth": supernetwork_data["bottomwidth_col"],
+            "topwidth": supernetwork_data["topwidth_col"],
+            "manningn": supernetwork_data["manningn_col"],
+            "ChSlp": supernetwork_data["ChSlp_col"],
+            "slope": supernetwork_data["slope_col"],
+            "topwidthcc": supernetwork_data["topwidthcc_col"],
+            "manningncc": supernetwork_data["manningncc_col"],
+        },
+    )
+    conn_data = conn_data[conn_data[:, 0].argsort()]
 
     # Index Map:
     # flow_prev, depth_prev, vel_prev, qlat_prev
@@ -395,6 +410,7 @@ def main():
 
 def separate_data(c, col_mapping):
     from operator import itemgetter
+
     _connections = {}
     _data = []
 
@@ -402,9 +418,10 @@ def separate_data(c, col_mapping):
     col_getter = itemgetter(*col_items)
     for k, v in c.items():
         cv = v.copy()
-        _data.append(col_getter(cv.pop('data')))
-        _connections[k] = [cv.pop('downstream')]
+        _data.append(col_getter(cv.pop("data")))
+        _connections[k] = [cv.pop("downstream")]
     return _connections, np.array(_data)
+
 
 if __name__ == "__main__":
     main()
