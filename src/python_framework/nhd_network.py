@@ -28,10 +28,8 @@ def in_degrees(N):
     return degs
 
 
-def extract_network(rows, key_col, target_col):
+def extract_network(rows, key_col, target_col, terminal_code=0):
     """Extract connection network from dataframe.
-
-    This function does a minimal amount of checking for cycles.
 
     Arguments:
         rows (DataFrame):
@@ -41,14 +39,25 @@ def extract_network(rows, key_col, target_col):
     Returns:
         (dict)
     """
-    return dict(zip(rows[key_col], ([k] for k in rows[target_col])))
+    network = {}
+    for src, dst in zip(rows.iloc[:,key_col], rows.iloc[:,target_col]):
+        if src not in network:
+            network[src] = []
+
+        if dst != terminal_code:
+            network[src].append(dst)
+    return network
 
 
 def reverse_network(N):
     rg = defaultdict(list)
     for src, dst in N.items():
+        if not dst:
+            rg[src]
+
         for n in dst:
             rg[n].append(src)
+
     rg.default_factory = None
     return rg
 
@@ -63,10 +72,10 @@ def headwaters(N):
 
 
 def tailwaters(N, terminal_code=0):
-    return {k for k, v in N.items() if v == [terminal_code]}
+    return set(chain.from_iterable((N.values()))) - N.keys()
 
 
-def dfs_decomposition(N, terminal_node=0):
+def dfs_decomposition(N):
     """
     Decompose N into a list of simple segments.
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
@@ -82,10 +91,9 @@ def dfs_decomposition(N, terminal_node=0):
         [List]: List of paths to be processed in order.
     """
     RN = reverse_network(N)
-    assert terminal_node in RN
 
     paths = []
-    stack = [(terminal_node, iter(RN[terminal_node]))]
+    stack = [(h, iter(RN[h])) for h in headwaters(RN)]
     visited = set()
     while stack:
         node, children = stack[-1]
@@ -99,7 +107,7 @@ def dfs_decomposition(N, terminal_node=0):
                     # At a leaf, process the stack
                     path = [child]
                     for n, _ in reversed(stack):
-                        if len(RN[n]) == 1 and n != terminal_node:
+                        if len(RN[n]) == 1:
                             path.append(n)
                         else:
                             break
@@ -111,17 +119,20 @@ def dfs_decomposition(N, terminal_node=0):
         except StopIteration:
             node, _ = stack.pop()
 
+            path = [node]
             # process between junction nodes
-            if len(RN[node]) > 1 and node != terminal_node:
-                path = [node]
+            if len(RN[node]) == 0:
+                paths.append(path)
+            elif len(RN[node]) > 1:
                 for n, _ in reversed(stack):
-                    if len(RN[n]) == 1 and n != terminal_node:
+                    if len(RN[n]) == 1:
                         path.append(n)
                     else:
                         break
                 paths.append(path)
                 if len(path) > 1:
                     del stack[-(len(path)-1):]
+
     return paths
 
 
