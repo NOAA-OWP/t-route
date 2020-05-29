@@ -31,7 +31,8 @@ def _handle_args():
         default=0,
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         help="Verbose output (leave blank for quiet output)",
         dest="verbose",
         action="store_true",
@@ -43,25 +44,29 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "-o", "--write_output",
+        "-o",
+        "--write_output",
         help="Write output files (leave blank for no writing)",
         dest="write_output",
         action="store_true",
     )
     parser.add_argument(
-        "-t", "--showtiming",
+        "-t",
+        "--showtiming",
         help="Set the showtiming (leave blank for no timing information)",
         dest="showtiming",
         action="store_true",
     )
     parser.add_argument(
-        "-w", "--break_at_waterbodies",
+        "-w",
+        "--break_at_waterbodies",
         help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
         dest="break_network_at_waterbodies",
         action="store_true",
     )
     parser.add_argument(
-        "-n", "--supernetwork",
+        "-n",
+        "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
             "Pocono_TEST1",
@@ -216,12 +221,14 @@ def compute_mc_reach_up2down(
     qup = 0.0
     quc = 0.0
     # import pdb; pdb.set_trace()
-    if reach["upstream_reaches"] != {supernetwork_data["terminal_code"]}:  # Not Headwaters
+    if reach["upstream_reaches"] != {
+        supernetwork_data["terminal_code"]
+    }:  # Not Headwaters
         for us in connections[reach["reach_head"]]["upstreams"]:
             if write_output:
                 writeString = writeString + f"\n upstream seg : {us}"
             qup += flowdepthvel[us]["flow"]["prev"]
-            quc += flowdepthvel[us]['flow']['curr']
+            quc += flowdepthvel[us]["flow"]["curr"]
     if write_output:
         writetoFile(file, writeString)
 
@@ -231,7 +238,7 @@ def compute_mc_reach_up2down(
     if write_output:
         writeString = (
             writeString
-            + f" timestep: {ts} cur : {current_segment}  upstream flow: {qup_tmp}"
+            + f" timestep: {ts} cur : {current_segment}  upstream flow: {qup}"
         )
         writetoFile(file, writeString)
         writeString = f"  , , , , , , "
@@ -293,7 +300,25 @@ def compute_mc_reach_up2down(
         # print(qdc_expected, velc_expected, depthc_expected)
 
         if write_output:
-            write_buffer.append(','.join(map(str, (current_segment, qdp, depthp, velp, qlat, qup, quc, qdc, depthc, velc))))
+            write_buffer.append(
+                ",".join(
+                    map(
+                        str,
+                        (
+                            current_segment,
+                            qdp,
+                            depthp,
+                            velp,
+                            qlat,
+                            qup,
+                            quc,
+                            qdc,
+                            depthc,
+                            velc,
+                        ),
+                    )
+                )
+            )
 
         # for next segment qup / quc use the previous flow values
         current_flow["flow"]["curr"] = qdc
@@ -313,7 +338,7 @@ def compute_mc_reach_up2down(
         next_segment = connections[current_segment]["downstream"]
         # end loop initialized the MC vars
     if write_output:
-        writetoFile(file, '\n'.join(write_buffer))
+        writetoFile(file, "\n".join(write_buffer))
         file.close()
 
 
