@@ -3,8 +3,8 @@ import sys
 import os
 import time
 import nwm_network_commandline as cmd
+import argparse
 # command line input order: verbose,debuglevel,showtiming,supernetwork
-
 
 
 connections = None
@@ -256,15 +256,18 @@ def main():
 
     global connections
     args = cmd._handle_args()
+    print(
+        "This script demonstrates the parallel traversal of reaches developed from NHD datasets"
+    )
 
-    # find the path of the test scripts, several levels above the script path
+    verbose = args.verbose
+    debuglevel = -1 * int(args.debuglevel)
+    showtiming = args.showtiming
+    break_network_at_waterbodies = args.break_network_at_waterbodies
+    supernetwork = args.supernetwork
+    
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     test_folder = os.path.join(root, r"test")
-
-    debuglevel = -1 * int(args.debuglevel)
-    verbose = args.verbose
-    showtiming = args.showtiming
-    supernetworks = str(args.supernetwork)
 
     if args.supernetwork == "custom":
         geo_input_folder = args.customnetworkfile
@@ -275,10 +278,9 @@ def main():
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
-
     # STEP 1
     supernetwork_data, supernetwork_values = nnu.set_networks(
-        supernetwork=supernetworks,
+        supernetwork=supernetwork,
         geo_input_folder=geo_input_folder
         # , verbose = False
         ,
