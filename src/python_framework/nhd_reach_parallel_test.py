@@ -2,72 +2,9 @@
 import sys
 import os
 import time
-
+import nwm_network_commandline as cmd
 # command line input order: verbose,debuglevel,showtiming,supernetwork
-def _handle_args():
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        "--debuglevel",
-        help="Set the debuglevel",
-        dest="debuglevel",
-        type=int,
-        choices=["0", "1", "2", "3"],
-        default=0,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Verbose output (leave blank for quiet output)",
-        dest="verbose",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-t",
-        "--showtiming",
-        help="Set the showtiming (leave blank for no timing information)",
-        dest="showtiming",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-w",
-        "--break_at_waterbodies",
-        help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
-        dest="break_network_at_waterbodies",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-n",
-        "--supernetwork",
-        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
-        choices=[
-            "custom",
-            "Pocono_TEST1",
-            "Pocono_TEST2",
-            "LowerColorado_Conchos_FULL_RES",
-            "Brazos_LowerColorado_ge5",
-            "Brazos_LowerColorado_FULL_RES",
-            "Brazos_LowerColorado_Named_Streams",
-            "CONUS_ge5",
-            "Mainstems_CONUS",
-            "CONUS_Named_Streams",
-            "CONUS_FULL_RES_v20",
-        ],
-        # TODO: accept multiple or a Path (argparse Action perhaps)
-        # action='append',
-        # nargs=1,
-        dest="supernetwork",
-        default="Pocono_TEST1",
-    )
-    parser.add_argument(
-        "-d",
-        "--customdirectory",
-        help="Set the location of custom network input file",
-        dest="customdirectory",
-    )
 
-    return parser.parse_args()
 
 
 connections = None
@@ -318,34 +255,30 @@ def compute_network_parallel_opportunistic(
 def main():
 
     global connections
-    args = _handle_args()
-    print(
-        "This script demonstrates the parallel traversal of reaches developed from NHD datasets"
-    )
+    args = cmd._handle_args()
 
-    verbose = args.verbose
+    # find the path of the test scripts, several levels above the script path
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    test_folder = os.path.join(root, r"test")
+
     debuglevel = -1 * int(args.debuglevel)
+    verbose = args.verbose
     showtiming = args.showtiming
-    break_network_at_waterbodies = args.break_network_at_waterbodies
-    supernetwork = args.supernetwork
-    custom_directory = args.customdirectory
+    supernetworks = str(args.supernetwork)
 
-    if args.supernetwork == "custom" and args.customdirectory == None:
-        print("Please include the custom file path of the input file")
-
-    if args.supernetwork != "custom":
-        test_folder = os.path.join(root, r"test")
-        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    if args.supernetwork == "custom":
+        geo_input_folder = args.customnetworkfile
     else:
-        geo_input_folder = args.customdirectory
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
+
     # STEP 1
     supernetwork_data, supernetwork_values = nnu.set_networks(
-        supernetwork=supernetwork,
+        supernetwork=supernetworks,
         geo_input_folder=geo_input_folder
         # , verbose = False
         ,
