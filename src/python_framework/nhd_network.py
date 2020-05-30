@@ -4,7 +4,7 @@ import itertools
 
 
 def nodes(N):
-    return iter(N.keys() | chain.from_iterable(N.values()))
+    yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
 
 
 def edges(N):
@@ -26,6 +26,19 @@ def in_degrees(N):
     degs = Counter(chain.from_iterable(N.values()))
     degs.update(dict.fromkeys(headwaters(N), 0))
     return degs
+
+
+def out_degrees(N):
+    """
+    Compute outdegree of nodes in N
+
+    Args:
+        N (dict): Network
+
+    Returns:
+
+    """
+    return in_degrees(reverse_network(N))
 
 
 def extract_network(rows, key_col, target_col, terminal_code=0):
@@ -68,12 +81,12 @@ def junctions(N):
 
 
 def headwaters(N):
-    return N.keys() - chain.from_iterable(N.values())
+    yield from N.keys() - chain.from_iterable(N.values())
 
 
-def tailwaters(N, terminal_code=0):
-    return set(chain.from_iterable((N.values()))) - N.keys()
-
+def tailwaters(N):
+    yield from chain.from_iterable(N.values()) - N.keys()
+    yield from (m for m, n in N.items() if not n)
 
 def dfs_decomposition(N):
     """
@@ -140,7 +153,7 @@ def segment_deps(segments, connections):
     """Build a dependency graph of segments
 
     Arguments:
-        segments {[type]} -- [description]
+        segments (list): List of paths
         connections {[type]} -- [description]
 
     Returns:
@@ -148,11 +161,13 @@ def segment_deps(segments, connections):
     """
     # index segements
     index = {d[0]: i for i, d in enumerate(segments)}
-    deps = {}
+    deps = defaultdict(list)
     for i, s in enumerate(segments):
-        downstream = connections[s[-1]]
-        if downstream in index:
-            deps[i] = index[downstream]
+        cand = s[-1]
+        if cand in connections:
+            if connections[cand]:
+                # There is a node downstream
+                deps[i].append(index[connections[cand][0]])
     return deps
 
 
@@ -184,36 +199,3 @@ def kahn_toposort_edges(N):
         for m in N.get(n, ()):
             yield (n, m)
 
-
-def toposort(N):
-    L = []
-
-    pmarked = set()
-    unmarked = set(nodes(N))
-
-    stack = []
-    tmarked = set()
-
-    while unmarked:
-        n = unmarked.pop()
-        stack.append((n, iter(N.get(n, ()))))
-        while stack:
-            breakpoint()
-            node, children = stack[-1]
-            if node in pmarked:
-                stack.pop()
-                continue
-            if node in tmarked:
-                raise ValueError("DAG has a cycle")
-
-            tmarked.add(node)
-            try:
-                child = next(children)
-                stack.append((child, iter(N.get(child, ()))))
-                continue
-            except StopIteration:
-                stack.pop()
-                tmarked.remove(node)
-                pmarked.add(node)
-                L.append(node)
-    return L[::-1]
