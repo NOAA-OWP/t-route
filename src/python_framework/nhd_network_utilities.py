@@ -361,10 +361,10 @@ def set_supernetwork_data(
             "key_col": "link",
             "downstream_col": "to",
             "length_col": "Length",
-            "manningn_col": "n'",
+            "manningn_col": "n",
             "manningncc_col": "nCC",
             "slope_col": "So",
-            "bottomwidth_col": "BtmWidth",
+            "bottomwidth_col": "BtmWdth",
             "waterbody_col": "NHDWaterbo",
             "waterbody_null_code": -9999,
             "topwidth_col": "TopWdth",
@@ -374,6 +374,7 @@ def set_supernetwork_data(
             "ChSlp_col": "ChSlp",
             "title_string": "Pocono Test Example",
             "driver_string": "ESRI Shapefile",
+            "terminal_code": 0,
             "layer_string": 0,
         }
     elif supernetwork == "Pocono_TEST2":
@@ -456,6 +457,7 @@ def set_supernetwork_data(
             "ChSlp_col": "ChSlp",
             "title_string": "NHD Subset including Brazos + Lower Colorado\nNHD stream orders 5 and greater",
             "driver_string": "ESRI Shapefile",
+            "terminal_code": 0,
             "layer_string": 0,
         }
 
@@ -600,7 +602,7 @@ def set_supernetwork_data(
             "manningn_col": "n",
             "manningncc_col": "nCC",
             "slope_col": "So",
-            "bottomwidth_col": "BtmWidth",
+            "bottomwidth_col": "BtmWdth",
             "topwidth_col": "TopWdth",
             "topwidthcc_col": "TopWdthCC",
             "waterbody_col": "NHDWaterbodyComID",
@@ -610,6 +612,7 @@ def set_supernetwork_data(
             "ChSlp_col": "ChSlp",
             "title_string": "CONUS Full Resolution NWM v2.0",
             "driver_string": "NetCDF",
+            "terminal_code": 0,
             "layer_string": 0,
         }
 
