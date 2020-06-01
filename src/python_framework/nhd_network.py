@@ -107,45 +107,47 @@ def dfs_decomposition(N):
     RN = reverse_network(N)
 
     paths = []
-    stack = [(h, iter(RN[h])) for h in headwaters(RN)]
     visited = set()
-    while stack:
-        node, children = stack[-1]
-        try:
-            child = next(children)
-            if child not in visited:
-                # Check to see if we are at a leaf
-                if child in RN:
-                    stack.append((child, iter(RN[child])))
-                else:
-                    # At a leaf, process the stack
-                    path = [child]
+    for h in headwaters(RN):
+        stack = [(h, iter(RN[h]))]
+        #visited = set()
+        while stack:
+            node, children = stack[-1]
+            try:
+                child = next(children)
+                if child not in visited:
+                    # Check to see if we are at a leaf
+                    if child in RN:
+                        stack.append((child, iter(RN[child])))
+                    else:
+                        # At a leaf, process the stack
+                        path = [child]
+                        for n, _ in reversed(stack):
+                            if len(RN[n]) == 1:
+                                path.append(n)
+                            else:
+                                break
+                        paths.append(path)
+                        # optimization (clear tail of stack)
+                        if len(path) > 1:
+                            del stack[-(len(path) - 1) :]
+                    visited.add(child)
+            except StopIteration:
+                node, _ = stack.pop()
+
+                path = [node]
+                # process between junction nodes
+                if len(RN[node]) == 0:
+                    paths.append(path)
+                elif len(RN[node]) > 1:
                     for n, _ in reversed(stack):
                         if len(RN[n]) == 1:
                             path.append(n)
                         else:
                             break
                     paths.append(path)
-                    # optimization (clear tail of stack)
                     if len(path) > 1:
                         del stack[-(len(path) - 1) :]
-                visited.add(child)
-        except StopIteration:
-            node, _ = stack.pop()
-
-            path = [node]
-            # process between junction nodes
-            if len(RN[node]) == 0:
-                paths.append(path)
-            elif len(RN[node]) > 1:
-                for n, _ in reversed(stack):
-                    if len(RN[n]) == 1:
-                        path.append(n)
-                    else:
-                        break
-                paths.append(path)
-                if len(path) > 1:
-                    del stack[-(len(path) - 1) :]
 
     return paths
 
