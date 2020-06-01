@@ -41,11 +41,11 @@ def out_degrees(N):
     return in_degrees(reverse_network(N))
 
 
-def extract_network(rows, key_col, target_col, terminal_code=0):
+def extract_network(rows, target_col, terminal_code=0):
     """Extract connection network from dataframe.
 
     Arguments:
-        rows (DataFrame):
+        rows (DataFrame): Dataframe indexed by key_col.
         key_col (str): Source of each edge
         target_col (str): Target of edge
 
@@ -53,7 +53,7 @@ def extract_network(rows, key_col, target_col, terminal_code=0):
         (dict)
     """
     network = {}
-    for src, dst in zip(rows.iloc[:, key_col], rows.iloc[:, target_col]):
+    for src, dst in rows[target_col].items():
         if src not in network:
             network[src] = []
 
