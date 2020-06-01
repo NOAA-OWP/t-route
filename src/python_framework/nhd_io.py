@@ -4,7 +4,7 @@ def read_netcdf(geo_file_path):
     return xr.open_dataset(geo_file_path).to_dataframe()
 
 
-def read_csv(geo_file_path, layer_string=None):
+def read_csv(geo_file_path, header='infer', layer_string=None):
     import pandas as pd
     import zipfile
 
@@ -13,7 +13,7 @@ def read_csv(geo_file_path, layer_string=None):
             raise ValueError("layer_string is needed if reading from compressed csv")
         with zipfile.ZipFile(geo_file_path, "r") as zcsv:
             with zcsv.open(layer_string) as csv:
-                return pd.read_csv(csv)
+                return pd.read_csv(csv, header=header)
     else:
         return pd.read_csv(geo_file_path)
 
@@ -34,4 +34,4 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 
 
 def read_mask(path, layer_string=None):
-    return read_csv(path, layer_string=layer_string)
+    return read_csv(path, header=None, layer_string=layer_string)
