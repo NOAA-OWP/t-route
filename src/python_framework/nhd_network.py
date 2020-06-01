@@ -53,7 +53,7 @@ def extract_network(rows, key_col, target_col, terminal_code=0):
         (dict)
     """
     network = {}
-    for src, dst in zip(rows.iloc[:,key_col], rows.iloc[:,target_col]):
+    for src, dst in zip(rows.iloc[:, key_col], rows.iloc[:, target_col]):
         if src not in network:
             network[src] = []
 
@@ -87,6 +87,7 @@ def headwaters(N):
 def tailwaters(N):
     yield from chain.from_iterable(N.values()) - N.keys()
     yield from (m for m, n in N.items() if not n)
+
 
 def dfs_decomposition(N):
     """
@@ -127,7 +128,7 @@ def dfs_decomposition(N):
                     paths.append(path)
                     # optimization (clear tail of stack)
                     if len(path) > 1:
-                        del stack[-(len(path)-1):]
+                        del stack[-(len(path) - 1) :]
                 visited.add(child)
         except StopIteration:
             node, _ = stack.pop()
@@ -144,7 +145,7 @@ def dfs_decomposition(N):
                         break
                 paths.append(path)
                 if len(path) > 1:
-                    del stack[-(len(path)-1):]
+                    del stack[-(len(path) - 1) :]
 
     return paths
 
@@ -198,4 +199,3 @@ def kahn_toposort_edges(N):
     for n in sorted_nodes:
         for m in N.get(n, ()):
             yield (n, m)
-
