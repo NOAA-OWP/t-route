@@ -83,11 +83,10 @@ def compute_network(
     #nts = 50  # one timestep
     #nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
 
-    reversed_conns = nhd_network.reverse_network(connections)
     #for ts in range(nts):
     compute_mc_reach_up2down(
         reach=reach,
-        connections=reversed_conns,
+        connections=connections,
         supernetwork_data=supernetwork_data,
         data=data,
         #ts=ts,
@@ -307,7 +306,7 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key_col"]], axis=0)
 
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
-
+    rconn = nhd_network.reverse_network(connections)
     if verbose: print('supernetwork connections set complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
 
@@ -341,12 +340,13 @@ def main():
         compute_start = time.time()
         for ts in range(50):
             for i, reach in enumerate(reaches):
-                compute_network(
-                    reach,
-                    network_data,
-                    connections,
-                    data,
-                    flowdepthvel
+                compute_mc_reach_up2down(
+                    reach=reach,
+                    connections=connections,
+                    supernetwork_data=network_data,
+                    data=data,
+                    # ts=ts,
+                    flowdepthvel=flowdepthvel
                 )
                 print(str(i).ljust(20), end='\r')
             if showtiming: print("... in %s seconds." % (time.time() - start_time))
