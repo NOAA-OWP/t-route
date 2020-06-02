@@ -392,8 +392,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
@@ -435,8 +435,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
@@ -476,8 +476,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
@@ -497,8 +497,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
@@ -515,8 +515,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
@@ -533,8 +533,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return dict
@@ -578,8 +578,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
-                "mask_key_col": 0,
-                "mask_name_col": 1,  # TODO: Not used yet.
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
             }
         )
         return rv
