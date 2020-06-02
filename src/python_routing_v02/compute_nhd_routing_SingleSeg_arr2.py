@@ -12,9 +12,12 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 ## Parallel execution
 import multiprocessing
 import os
+import pathlib
 import sys
 import time
 import numpy as np
+from operator import itemgetter
+from cytoolz import pluck
 
 ENV_IS_CL = False
 if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
@@ -29,14 +32,11 @@ COMPILE = True
 if COMPILE:
     import subprocess
     print("Recompiling Fortran module")
-    fortran_compile_call = []
-    fortran_compile_call.append(r'f2py3')
-    fortran_compile_call.append(r'-c')
-    fortran_compile_call.append(r'MCsingleSegStime_f2py_NOLOOP.f90')
-    fortran_compile_call.append(r'-m')
-    fortran_compile_call.append(r'mc_sseg_stime_NOLOOP')
+    fortran_compile_call = ['f2py3', '-c', 'MCsingleSegStime_f2py_NOLOOP.f90', '-m', 'mc_sseg_stime_NOLOOP']
     subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-import mc_sseg_stime_NOLOOP as mc
+from mc_sseg_stime_NOLOOP import muskingcunge_module as mc
+#import single_seg as mc
+#import mc_reach
 
 connections = None
 networks = None
@@ -54,129 +54,40 @@ def writetoFile(file, writeString):
     file.write(writeString)
     file.write('\n')
 
+first = itemgetter(0)
 
-def compute_network(
+def compute_reach(
         reach,
-        supernetwork_data,
-        connections,
+        qup, quc,
         data,
-        flowdepthvel
-):
-
-    # = {connection:{'flow':{'prev':-999, 'curr':-999}
-    #                            , 'depth':{'prev':-999, 'curr':-999}
-    #                            , 'vel':{'prev':-999, 'curr':-999}} for connection in connections}
-
-    # print(tuple(([x for x in network.keys()][i], [x for x in network.values()][i]) for i in range(len(network))))
-
-    # if verbose: print(f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
-
-    #ordered_reaches = {}
-    #for head_segment, reach in network['reaches'].items():
-    #    if reach['seqorder'] not in ordered_reaches:
-    #        ordered_reaches.update({reach['seqorder']: []})  # TODO: Should this be a set/dictionary?
-    #    ordered_reaches[reach['seqorder']].append([head_segment
-    #                                                  , reach
-    #                                               ])
-
-    # initialize flowdepthvel dict
-    #nts = 50  # one timestep
-    #nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
-
-    #for ts in range(nts):
-    compute_mc_reach_up2down(
-        reach=reach,
-        connections=connections,
-        supernetwork_data=supernetwork_data,
-        data=data,
-        #ts=ts,
-        flowdepthvel=flowdepthvel
-    )
-
-# ### Psuedocode
-# 
-
-
-
-# TODO: generalize with a direction flag
-def compute_mc_reach_up2down(
-        reach=None,
-        connections=None,
-        supernetwork_data=None,
-        data=None,
-        ts=0,
-        flowdepthvel=None,
-        verbose=False,
-        debuglevel=0,
-        write_output=False,
+        flowdepthvel,
         assume_short_ts=False,
 ):
 
-    # if verbose: print(f"\nreach: {head_segment}")
-    # if verbose: print(f"(reach: {reach})")
-    # if verbose: print(f"(n_segs: {len(reach['segments'])})")
-
-    #if write_output:
-    #    filename = f"../../test/output/text/{head_segment}_{ts}.csv"
-    #    file = open(filename, "w+")
-    #    writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}  upstream seg : "
-
-        # upstream flow per reach
-    qup = 0.0
-    quc = 0.0
-    # import pdb; pdb.set_trace()
-    for us in connections.get(reach[0], ()):
-        if write_output:
-            writeString = writeString + f"\n upstream seg : {us}"
-        i = data.index.get_loc(us)
-        qup += flowdepthvel[i, 0]
-        quc += flowdepthvel[i, 4]
-    #if write_output:
-    #    writetoFile(file, writeString)
-
-    #if write_output:
-    #    writeString = (
-    #            writeString
-    #            + f" timestep: {ts} cur : {current_segment}  upstream flow: {qup}"
-    #    )
-    #    writetoFile(file, writeString)
-    #    writeString = f"  , , , , , , "
-    #    writetoFile(file, writeString)
-
-    write_buffer = []
-
-
     for current_segment in reach:
-        if current_segment not in data.index:
-            break
-        i = data.index.get_loc(current_segment)
-
-        # for now treating as constant per reach
         dt = 60.0
-        bw = data.loc[current_segment, supernetwork_data["bottomwidth_col"]]
-        tw = data.loc[current_segment, supernetwork_data["topwidth_col"]]
-        twcc = data.loc[current_segment, supernetwork_data["topwidthcc_col"]]
-        dx = data.loc[current_segment, supernetwork_data["length_col"]]
-        n_manning = data.loc[current_segment, supernetwork_data["manningn_col"]]
-        n_manning_cc = data.loc[current_segment, supernetwork_data["manningncc_col"]]
-        cs = data.loc[current_segment, supernetwork_data["ChSlp_col"]]
-        s0 = data.loc[current_segment, supernetwork_data["slope_col"]]
+        bw = data[current_segment, 0]
+        tw = data[current_segment, 1]
+        twcc = data[current_segment, 2]
+        dx = data[current_segment, 3]
+        n_manning = data[current_segment, 4]
+        n_manning_cc = data[current_segment, 5]
+        cs = data[current_segment, 6]
+        s0 = data[current_segment, 7]
 
-        # add some flow
-        flowdepthvel[i, 7] = qlat = 10.0
-        #current_flow["qlat"][
-        #    "curr"
-        #] = qlat = 10.0  # (ts + 1) * 10.0  # lateral flow per segment
+        flowdepthvel[current_segment, 7] = qlat = 10.0
+        #qdp = flowdepthvel[current_segment, 0]
+        #depthp = flowdepthvel[current_segment, 1]
+        #velp = flowdepthvel[current_segment, 2]
+        qdp, depthp, velp = flowdepthvel[current_segment, 0:3]
 
-        qdp, depthp, velp = flowdepthvel[i, 0:3]
-
-        flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+        flowdepthvel[current_segment, :4] = flowdepthvel[current_segment, 4:]
 
         if assume_short_ts:
             quc = qup
 
-        # run M-C model
-
+        # qdc, velc, depthc
+        #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
         qdc, velc, depthc = mc.muskingcungenwm(
             dt,
             qup,
@@ -192,46 +103,43 @@ def compute_mc_reach_up2down(
             cs,
             s0,
             velp,
-            depthp,
+            depthp
         )
-        #print(f"ts={ts}", qdc, velc, depthc)
-        # print(qdc_expected, velc_expected, depthc_expected)
 
-        if write_output:
-            write_buffer.append(
-                ",".join(
-                    map(
-                        str,
-                        (
-                            current_segment,
-                            qdp,
-                            depthp,
-                            velp,
-                            qlat,
-                            qup,
-                            quc,
-                            qdc,
-                            depthc,
-                            velc,
-                        ),
-                    )
-                )
-            )
-
-        # for next segment qup / quc use the previous flow values
-        flowdepthvel[i, 4:7] = qdc, depthc, velc
-
+        flowdepthvel[current_segment, 4:7] = qdc, depthc, velc
         quc = qdc
         qup = qdp
 
-        #with np.printoptions(precision=5, suppress=True, linewidth=120):
-        #    print('-'*40, f"ts={ts}", '-'*40)
-        #    print(flowdepthvel)
 
-        # end loop initialized the MC vars
-    if write_output:
-        writetoFile(file, "\n".join(write_buffer))
-        file.close()
+# ### Psuedocode
+# 
+
+
+
+# TODO: generalize with a direction flag
+def compute_mc_reach_up2down(
+        reach=None,
+        connections=None,
+        supernetwork_data=None,
+        cols=None,
+        data=None,
+        ts=0,
+        flowdepthvel=None,
+        verbose=False,
+        debuglevel=0,
+        write_output=False,
+        assume_short_ts=False,
+):
+
+
+    qup = 0.0
+    quc = 0.0
+    # import pdb; pdb.set_trace()
+    for us in map(first, connections.get(reach[0][1], {}).get('children', ())):
+        qup += flowdepthvel[us, 0]
+        quc += flowdepthvel[us, 4]
+
+    compute_reach(pluck(0, reach), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
 
 
 def singlesegment(
@@ -267,6 +175,37 @@ def flow_dict_to_arr(connections, fdv):
                                d['flow']['curr'], d['depth']['curr'], d['vel']['curr'], d['qlat']['curr'])
     return flowdepthvel_arr
 
+
+def translate_reach_to_index(reaches, index):
+    """
+    Translate the reach value to an index into data
+    Args:
+        reaches (list): list of reaches
+        data (DataFrame): data
+
+    Returns:
+
+    """
+    rv = []
+    for reach in reaches:
+        rv.append(tuple(zip(np.searchsorted(index, reach), reach)))
+    return rv
+
+def translate_network_to_index(connections, index):
+    """
+    Annotate a connections dictionary with indexes for each node into index
+    Args:
+        connections:
+        index:
+
+    Returns:
+
+    """
+    rv = {}
+    for n, children in connections.items():
+        rv[n] = {"index": index.get_loc(n), "children": tuple(zip(np.searchsorted(index, children), children))}
+    return rv
+
 def main():
 
 
@@ -298,15 +237,21 @@ def main():
     # STEP 1
     network_data = nnu.set_supernetwork_data(supernetwork=supernetwork,
                                              geo_input_folder=geo_input_folder)
+
+    cols = [v for c, v in network_data.items() if c.endswith("_col")]
     data = nhd_io.read(network_data['geo_file_path'])
+    data = data[cols]
     data = data.set_index(network_data['key_col'])
+
     if 'mask_file_path' in network_data:
         data_mask = nhd_io.read_mask(network_data['mask_file_path'],
                                      layer_string=network_data['mask_layer_string'])
-        data = data.filter(data_mask.iloc[:, network_data["mask_key_col"]], axis=0)
+        data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
+    data = data.sort_index()
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
+    rconn_annoated = translate_network_to_index(rconn, data.index)
     if verbose: print('supernetwork connections set complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
 
@@ -314,6 +259,10 @@ def main():
     if showtiming: start_time = time.time()
     if verbose: print('organizing connections into reaches ...')
     reaches = nhd_network.dfs_decomposition(connections)
+    reaches_i = translate_reach_to_index(reaches, data.index)
+    del connections
+    del rconn
+    del reaches
 
     #networks = nru.compose_networks(
     #    supernetwork_values
@@ -327,7 +276,7 @@ def main():
 
     if showtiming: start_time = time.time()
 
-    flowdepthvel = np.zeros((len(data), 8))
+    flowdepthvel = np.zeros((len(data), 8), dtype='float32')
     #flowdepthvel = {node: {'flow': {'prev': 0, 'curr': 0}
     #    , 'depth': {'prev': 0, 'curr': 0}
     #    , 'vel': {'prev': 0, 'curr': 0}
@@ -337,14 +286,16 @@ def main():
     if not parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
 
+        data_values= data.values.astype('float32')
         compute_start = time.time()
         for ts in range(50):
-            for i, reach in enumerate(reaches):
+            for i, reach in enumerate(reaches_i):
                 compute_mc_reach_up2down(
                     reach=reach,
-                    connections=connections,
+                    connections=rconn_annoated,
                     supernetwork_data=network_data,
-                    data=data,
+                    cols=cols,
+                    data=data_values,
                     # ts=ts,
                     flowdepthvel=flowdepthvel
                 )

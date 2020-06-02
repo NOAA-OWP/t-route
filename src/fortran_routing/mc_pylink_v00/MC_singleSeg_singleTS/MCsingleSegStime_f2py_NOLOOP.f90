@@ -1,3 +1,8 @@
+module muskingcunge_module
+
+implicit none
+contains
+
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc)
 
@@ -333,4 +338,6 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     endif
 
 end subroutine secant_h
+
+end module
 
