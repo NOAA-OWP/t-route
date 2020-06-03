@@ -63,7 +63,6 @@ def compute_reach(
         flowdepthvel,
         assume_short_ts=False,
 ):
-
     for current_segment in reach:
         dt = 60.0
         bw = data[current_segment, 0]
@@ -120,10 +119,7 @@ def compute_reach(
 def compute_mc_reach_up2down(
         reach=None,
         connections=None,
-        supernetwork_data=None,
-        cols=None,
         data=None,
-        ts=0,
         flowdepthvel=None,
         verbose=False,
         debuglevel=0,
@@ -138,7 +134,6 @@ def compute_mc_reach_up2down(
     for us in map(first, connections.get(reach[0][1], {}).get('children', ())):
         qup += flowdepthvel[us, 0]
         quc += flowdepthvel[us, 4]
-
     compute_reach(pluck(0, reach), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
 
 
@@ -251,18 +246,22 @@ def main():
     data = data.sort_index()
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
-    rconn_annoated = translate_network_to_index(rconn, data.index)
+    #rconn_annoated = translate_network_to_index(rconn, data.index)
     if verbose: print('supernetwork connections set complete')
     if showtiming: print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 2
     if showtiming: start_time = time.time()
     if verbose: print('organizing connections into reaches ...')
-    reaches = nhd_network.dfs_decomposition(connections)
-    reaches_i = translate_reach_to_index(reaches, data.index)
-    del connections
-    del rconn
-    del reaches
+    #reaches = nhd_network.dfs_decomposition(connections)
+    #reaches_i = translate_reach_to_index(reaches, data.index)
+
+    subnets = nhd_network.reachable_network(rconn)
+    subreaches = {}
+    for tw, net in subnets.items():
+        reach = nhd_network.dfs_decomposition(nhd_network.reverse_network(net))
+        subreaches[tw] = translate_reach_to_index(reach, data.index)
+    subnets = {k: translate_network_to_index(v, data.index) for k, v in subnets.items()}
 
     #networks = nru.compose_networks(
     #    supernetwork_values
@@ -285,22 +284,21 @@ def main():
     parallelcompute = False
     if not parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
-
         data_values= data.values.astype('float32')
         compute_start = time.time()
-        for ts in range(50):
-            for i, reach in enumerate(reaches_i):
-                compute_mc_reach_up2down(
-                    reach=reach,
-                    connections=rconn_annoated,
-                    supernetwork_data=network_data,
-                    cols=cols,
-                    data=data_values,
-                    # ts=ts,
-                    flowdepthvel=flowdepthvel
-                )
-                print(str(i).ljust(20), end='\r')
-            if showtiming: print("... in %s seconds." % (time.time() - start_time))
+
+        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            for ts in range(50):
+                for i, r in enumerate(reach, 1):
+                    compute_mc_reach_up2down(
+                        reach=r,
+                        connections=subnets[tw],
+                        data=data_values,
+                        flowdepthvel=flowdepthvel
+                    )
+                    print(f"reach={i} \t timestep={ts}".ljust(50), end='\r')
+            if showtiming:
+                print(f"... in {time.time()-start_time} seconds ({twi}/{len(subreaches)})")
         print("Computation time: ", time.time() - compute_start)
         with np.printoptions(precision=5, suppress=True, linewidth=120):
             print(flowdepthvel)
