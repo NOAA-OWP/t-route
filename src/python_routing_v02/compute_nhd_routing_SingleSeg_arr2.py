@@ -17,6 +17,8 @@ import time
 import numpy as np
 from operator import itemgetter
 from itertools import chain
+from functools import partial
+from joblib import delayed, Parallel
 
 ENV_IS_CL = False
 if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
@@ -33,13 +35,15 @@ if COMPILE:
     print("Recompiling Fortran module")
     fortran_compile_call = ['f2py3', '-c', 'MCsingleSegStime_f2py_NOLOOP.f90', '-m', 'mc_sseg_stime_NOLOOP']
     subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-#from mc_sseg_stime_NOLOOP.muskingcunge_module import muskingcungenwm
+#from mc_sseg_stime_NOLOOP import muskingcungenwm
+#import mc_sseg_stime_NOLOOP as mc
 #import single_seg as mc
-from mc_reach import muskingcunge as muskingcungenwm
+#from mc_reach import muskingcunge as muskingcungenwm
+import mc_reach
 
-connections = None
-networks = None
-flowdepthvel = None
+#muskingcungenwm = mc.muskingcunge_module.muskingcungenwm
+
+data_values = None
 WRITE_OUTPUT = False
 
 ## network and reach utilities
@@ -59,21 +63,19 @@ second = itemgetter(1)
 def compute_reach(
         reach,
         qup, quc,
-        data,
         flowdepthvel,
         assume_short_ts=False,
 ):
-
     for i, current_segment in reach:
         dt = 60.0
-        bw = data[current_segment, 0]
-        tw = data[current_segment, 1]
-        twcc = data[current_segment, 2]
-        dx = data[current_segment, 3]
-        n_manning = data[current_segment, 4]
-        n_manning_cc = data[current_segment, 5]
-        cs = data[current_segment, 6]
-        s0 = data[current_segment, 7]
+        bw = data_values[current_segment, 0]
+        tw = data_values[current_segment, 1]
+        twcc = data_values[current_segment, 2]
+        dx = data_values[current_segment, 3]
+        n_manning = data_values[current_segment, 4]
+        n_manning_cc = data_values[current_segment, 5]
+        cs = data_values[current_segment, 6]
+        s0 = data_values[current_segment, 7]
 
         flowdepthvel[i, 7] = qlat = 10.0
         #qdp = flowdepthvel[current_segment, 0]
@@ -88,7 +90,7 @@ def compute_reach(
 
         # qdc, velc, depthc
         #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
-        qdc, velc, depthc = muskingcungenwm(
+        qdc, depthc, velc = muskingcungenwm(
             dt,
             qup,
             quc,
@@ -114,11 +116,12 @@ def compute_reach(
 # ### Psuedocode
 #
 
-def compute_network(nsteps, reaches, connections, data, assume_short_ts=False):
+def compute_network(nsteps, reaches, connections, assume_short_ts=False):
     findex = np.array(sorted(chain.from_iterable(reaches), key=first))
     flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
+    qup_quc = np.zeros(2, dtype='float32')
 
-    idx_view = findex[:, 0]
+    idx_view = findex[:,0]
 
     global_idxs = []
     local_idxs = []
@@ -126,28 +129,19 @@ def compute_network(nsteps, reaches, connections, data, assume_short_ts=False):
     for reach in reaches:
         x, y = list(zip(*reach))
         global_idxs.append(x)
-        local_idxs.append(np.searchsorted(idx_view, x))
+        local_idxs.append(np.searchsorted(idx_view, x).tolist())
         us_segs = list(map(first, connections.get(y[0], {}).get('children', ())))
-        upstream_segs.append(np.searchsorted(idx_view, us_segs))
+        upstream_segs.append(np.searchsorted(idx_view, us_segs).tolist())
 
     for ts in range(nsteps):
+        #breakpoint()
         for local_idx, global_idx, us in zip(local_idxs, global_idxs, upstream_segs):
-            qup = 0.0
-            quc = 0.0
+            qup_quc[:] = 0
             for x in us:
-                qup += flowdepthvel[x, 0]
-                quc += flowdepthvel[x, 4]
-            compute_reach(zip(local_idx, global_idx), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
+                qup_quc[0] += flowdepthvel[x, 0]
+                qup_quc[1] += flowdepthvel[x, 4]
+            mc_reach.compute_reach(zip(local_idx, global_idx), qup_quc[0], qup_quc[1], flowdepthvel, data_values, assume_short_ts=assume_short_ts)
     return idx_view, flowdepthvel
-
-
-def flow_dict_to_arr(connections, fdv):
-    flowdepthvel_arr = np.zeros((len(connections), 8))
-    for i, c in enumerate(sorted(connections.keys())):
-        d = fdv[c]
-        flowdepthvel_arr[i] = (d['flow']['prev'], d['depth']['prev'], d['vel']['prev'], d['qlat']['prev'],
-                               d['flow']['curr'], d['depth']['curr'], d['vel']['curr'], d['qlat']['curr'])
-    return flowdepthvel_arr
 
 
 def translate_reach_to_index(reaches, index):
@@ -177,15 +171,18 @@ def translate_network_to_index(connections, index):
     """
     rv = {}
     for n, children in connections.items():
-        rv[n] = {"index": index.get_loc(n), "children": tuple(zip(np.searchsorted(index, children), children))}
+        r = {"children": tuple(zip(np.searchsorted(index, children), children))}
+        try:
+            r["index"] = index.get_loc(n)
+        except KeyError:
+            r["index"] = None
+        rv[n] = r
     return rv
 
 def main():
 
 
-    global connections
-    global networks
-    global flowdepthvel
+    global data_values
 
     verbose = True
     debuglevel = 0
@@ -235,12 +232,14 @@ def main():
     #reaches = nhd_network.dfs_decomposition(connections)
     #reaches_i = translate_reach_to_index(reaches, data.index)
 
-    subnets = nhd_network.reachable_network(rconn)
+    subreachable = nhd_network.reachable(rconn)
+    subnets_ = nhd_network.reachable_network(rconn)
     subreaches = {}
-    for tw, net in subnets.items():
-        reach = nhd_network.dfs_decomposition(nhd_network.reverse_network(net))
+    for tw, net in subnets_.items():
+        path_func = partial(nhd_network.split_at_junction, net)
+        reach = nhd_network.dfs_decomposition(nhd_network.reverse_network(net), path_func)
         subreaches[tw] = translate_reach_to_index(reach, data.index)
-    subnets = {k: translate_network_to_index(v, data.index) for k, v in subnets.items()}
+    subnets = {k: translate_network_to_index(v, data.index) for k, v in subnets_.items()}
 
     #networks = nru.compose_networks(
     #    supernetwork_values
@@ -266,11 +265,15 @@ def main():
         data_values = data.values.astype('float32')
         compute_start = time.time()
         ts = 50
-        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            findex, fdv = compute_network(ts, reach, subnets[tw], data_values)
-            flowdepthvel[findex] = fdv
-
-
+        with Parallel(n_jobs=8, backend='threading', verbose=11) as parallal:
+            jobs = []
+            for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+                jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
+                #findex, fdv = compute_network(ts, reach, subnets[tw], data_values)
+                #flowdepthvel[findex] = fdv
+            results = parallal(jobs)
+            for findex, fdv in results:
+                flowdepthvel[findex] = fdv
                 #for i, r in enumerate(reach, 1):
                 #    fdv.append(compute_mc_reach_up2down(
                 #        reach=r,
@@ -284,7 +287,7 @@ def main():
                 print(f"... in {time.time()-start_time} seconds ({twi}/{len(subreaches)})")
 
         print("Computation time: ", time.time() - compute_start)
-        with np.printoptions(precision=5, suppress=True, linewidth=120):
+        with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
             print(flowdepthvel)
             print(flowdepthvel.shape)
         #print(sorted(connections.keys()))
