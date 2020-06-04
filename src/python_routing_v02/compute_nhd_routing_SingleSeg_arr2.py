@@ -114,23 +114,30 @@ def compute_reach(
 # ### Psuedocode
 #
 
-def compute_network(reaches, connections, data, assume_short_ts=False):
+def compute_network(nsteps, reaches, connections, data, assume_short_ts=False):
     findex = np.array(sorted(chain.from_iterable(reaches), key=first))
     flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
 
     idx_view = findex[:, 0]
+
+    global_idxs = []
+    local_idxs = []
+    upstream_segs = []
     for reach in reaches:
-        global_idx, reach = tuple(zip(*reach))
-        local_idx = np.searchsorted(idx_view, global_idx)
+        x, y = list(zip(*reach))
+        global_idxs.append(x)
+        local_idxs.append(np.searchsorted(idx_view, x))
+        us_segs = list(map(first, connections.get(y[0], {}).get('children', ())))
+        upstream_segs.append(np.searchsorted(idx_view, us_segs))
 
-        qup = 0.0
-        quc = 0.0
-        upstream_segs = list(map(first, connections.get(reach[0], {}).get('children', ())))
-        for us in np.searchsorted(idx_view, upstream_segs):
-            qup += flowdepthvel[us, 0]
-            quc += flowdepthvel[us, 4]
-        compute_reach(tuple(zip(local_idx, global_idx)), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
-
+    for ts in range(nsteps):
+        for local_idx, global_idx, us in zip(local_idxs, global_idxs, upstream_segs):
+            qup = 0.0
+            quc = 0.0
+            for x in us:
+                qup += flowdepthvel[x, 0]
+                quc += flowdepthvel[x, 4]
+            compute_reach(zip(local_idx, global_idx), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
     return idx_view, flowdepthvel
 
 
@@ -258,11 +265,10 @@ def main():
         if verbose: print('executing computation on ordered reaches ...')
         data_values = data.values.astype('float32')
         compute_start = time.time()
-
+        ts = 50
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            for ts in range(50):
-                findex, fdv = compute_network(reach, subnets[tw], data_values)
-                flowdepthvel[findex] = fdv
+            findex, fdv = compute_network(ts, reach, subnets[tw], data_values)
+            flowdepthvel[findex] = fdv
 
 
                 #for i, r in enumerate(reach, 1):
