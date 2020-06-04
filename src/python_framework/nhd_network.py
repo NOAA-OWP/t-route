@@ -1,6 +1,6 @@
 from collections import defaultdict, Counter, deque
 from itertools import chain
-from functools import reduce
+from functools import reduce, partial
 
 
 def nodes(N):
@@ -131,7 +131,15 @@ def reachable_network(N, sources=None, check_disjoint=True):
         rv[k] = {m: N.get(m, []) for m in n}
     return rv
 
-def dfs_decomposition(N):
+
+def split_at_junction(network, node):
+    return len(network[node]) == 1
+
+
+def split_at_waterbodies_and_junctions(waterbody_nodes, network, node):
+    return node not in waterbody_nodes and len(network[node]) == 1
+
+def dfs_decomposition(N, path_func):
     """
     Decompose N into a list of simple segments.
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
@@ -164,7 +172,7 @@ def dfs_decomposition(N):
                         # At a leaf, process the stack
                         path = [child]
                         for n, _ in reversed(stack):
-                            if len(RN[n]) == 1:
+                            if path_func(n):
                                 path.append(n)
                             else:
                                 break
@@ -182,7 +190,7 @@ def dfs_decomposition(N):
                     paths.append(path)
                 elif len(RN[node]) > 1:
                     for n, _ in reversed(stack):
-                        if len(RN[n]) == 1:
+                        if path_func(n):
                             path.append(n)
                         else:
                             break
