@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import os
+import traceback
 import shutil
 import subprocess
 import numpy as np
@@ -9,7 +10,7 @@ import scipy.stats as stats
 import decimal
 from time import process_time
 
-debuglevel = 0
+debuglevel = -1
 COMPILE = True
 if COMPILE:
     try:
@@ -33,6 +34,8 @@ if COMPILE:
         import mc_srch_stime as mc
     except Exception as e:
         print(e)
+        if debuglevel <= -1:
+            traceback.print_exc()
 else:
     import mc_srch_stime as mc
 
