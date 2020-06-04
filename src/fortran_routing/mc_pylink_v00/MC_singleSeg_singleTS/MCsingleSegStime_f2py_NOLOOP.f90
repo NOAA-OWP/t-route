@@ -8,17 +8,17 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     !*    exactly the same value qdp at time t (or qdc at time t-1) for the upstream reach
 
     implicit none
-    real, intent(in) :: dt 
-    real, intent(in) :: qup, quc, qdp, ql
-    real, intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
-    real, intent(in) :: velp, depthp
-    real, intent(out) :: qdc, velc, depthc
-    real :: z
-    real :: bfd, WPC, AREAC, C1, C2, C3, C4
+    real*8, intent(in) :: dt 
+    real*8, intent(in) :: qup, quc, qdp, ql
+    real*8, intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
+    real*8, intent(in) :: velp, depthp
+    real*8, intent(out) :: qdc, velc, depthc
+    real*8 :: z
+    real*8 :: bfd, WPC, AREAC, C1, C2, C3, C4
     integer :: iter
     integer :: maxiter, tries
-    real :: mindepth, aerror, rerror
-    real :: R, twl, h_1, h, h_0, Qj, Qj_0
+    real*8 :: mindepth, aerror, rerror
+    real*8 :: R, twl, h_1, h, h_0, Qj, Qj_0
 
     ! qdc = 0.0
     ! velc = velp
@@ -161,12 +161,12 @@ subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
     implicit none
 
-    real, intent(in) :: z, bw, bfd, twcc, s0, n, ncc
-    real, intent(in) :: dt, dx
-    real, intent(in) :: qdp, ql, qup, quc
-    real, intent(in) :: h_0  !, refQj_0
-    real, intent(out) :: WPC, Qj_0, C1, C2, C3, C4
-    real :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
+    real*8, intent(in) :: z, bw, bfd, twcc, s0, n, ncc
+    real*8, intent(in) :: dt, dx
+    real*8, intent(in) :: qdp, ql, qup, quc
+    real*8, intent(in) :: h_0  !, refQj_0
+    real*8, intent(out) :: WPC, Qj_0, C1, C2, C3, C4
+    real*8 :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
 
     !**top surface water width of the channel inflow
     twl = bw + 2.0*z*h_0
@@ -254,12 +254,12 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
     implicit none
 
-    real, intent(in) :: z, bw, bfd, twcc, s0, n, ncc
-    real, intent(in) :: dt, dx
-    real, intent(in) :: qdp, ql, qup, quc
-    real, intent(in) :: h
-    real, intent(out) :: WPC, Qj, C1, C2, C3, C4
-    real :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
+    real*8, intent(in) :: z, bw, bfd, twcc, s0, n, ncc
+    real*8, intent(in) :: dt, dx
+    real*8, intent(in) :: qdp, ql, qup, quc
+    real*8, intent(in) :: h
+    real*8, intent(out) :: WPC, Qj, C1, C2, C3, C4
+    real*8 :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
 
     !--upper interval -----------
     twl = bw + 2.0*z*h  !--top width of the channel inflow
