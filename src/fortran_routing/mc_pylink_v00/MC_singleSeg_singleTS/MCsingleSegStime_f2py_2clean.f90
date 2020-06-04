@@ -59,8 +59,8 @@ contains
 
         integer :: iter
         integer :: maxiter, tries
-        real :: mindepth, aerror, rerror
-        real :: R, Twl, h_1 , h, h_0, Qj, Qj_0
+        real*8 :: mindepth, aerror, rerror
+        real*8 :: R, Twl, h_1 , h, h_0, Qj, Qj_0
 
         !* parameters of Secant method
         maxiter  = 100
@@ -188,9 +188,9 @@ contains
 
         implicit none
 
-        real, intent(in) :: h_0  !, refQj_0
-        real, intent(out) :: Qj_0
-        real :: Twl, AREA, WP, R, Ck, Km, X, D
+        real*8, intent(in) :: h_0  !, refQj_0
+        real*8, intent(out) :: Qj_0
+        real*8 :: Twl, AREA, WP, R, Ck, Km, X, D
 
         !**top surface water width of the channel inflow
         Twl = Bw + 2.0*z*h_0
@@ -277,9 +277,9 @@ contains
 
         implicit none
 
-        real,intent(in) :: h
-        real,intent(out) :: Qj
-        real :: Twl, AREA, WP, R, Ck, Km, X, D
+        real*8,intent(in) :: h
+        real*8,intent(out) :: Qj
+        real*8 :: Twl, AREA, WP, R, Ck, Km, X, D
 
         !--upper interval -----------
         Twl = Bw + 2.0*z*h  !--top width of the channel inflow
