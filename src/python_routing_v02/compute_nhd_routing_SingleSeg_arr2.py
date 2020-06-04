@@ -12,12 +12,11 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 ## Parallel execution
 import multiprocessing
 import os
-import pathlib
 import sys
 import time
 import numpy as np
 from operator import itemgetter
-from cytoolz import pluck
+from itertools import chain
 
 ENV_IS_CL = False
 if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
@@ -34,9 +33,9 @@ if COMPILE:
     print("Recompiling Fortran module")
     fortran_compile_call = ['f2py3', '-c', 'MCsingleSegStime_f2py_NOLOOP.f90', '-m', 'mc_sseg_stime_NOLOOP']
     subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-from mc_sseg_stime_NOLOOP import muskingcunge_module as mc
+#from mc_sseg_stime_NOLOOP.muskingcunge_module import muskingcungenwm
 #import single_seg as mc
-#import mc_reach
+from mc_reach import muskingcunge as muskingcungenwm
 
 connections = None
 networks = None
@@ -55,6 +54,7 @@ def writetoFile(file, writeString):
     file.write('\n')
 
 first = itemgetter(0)
+second = itemgetter(1)
 
 def compute_reach(
         reach,
@@ -63,7 +63,8 @@ def compute_reach(
         flowdepthvel,
         assume_short_ts=False,
 ):
-    for current_segment in reach:
+
+    for i, current_segment in reach:
         dt = 60.0
         bw = data[current_segment, 0]
         tw = data[current_segment, 1]
@@ -74,20 +75,20 @@ def compute_reach(
         cs = data[current_segment, 6]
         s0 = data[current_segment, 7]
 
-        flowdepthvel[current_segment, 7] = qlat = 10.0
+        flowdepthvel[i, 7] = qlat = 10.0
         #qdp = flowdepthvel[current_segment, 0]
         #depthp = flowdepthvel[current_segment, 1]
         #velp = flowdepthvel[current_segment, 2]
-        qdp, depthp, velp = flowdepthvel[current_segment, 0:3]
+        qdp, depthp, velp = flowdepthvel[i, 0:3]
 
-        flowdepthvel[current_segment, :4] = flowdepthvel[current_segment, 4:]
+        flowdepthvel[i, :4] = flowdepthvel[i, 4:]
 
         if assume_short_ts:
             quc = qup
 
         # qdc, velc, depthc
         #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
-        qdc, velc, depthc = mc.muskingcungenwm(
+        qdc, velc, depthc = muskingcungenwm(
             dt,
             qup,
             quc,
@@ -105,62 +106,33 @@ def compute_reach(
             depthp
         )
 
-        flowdepthvel[current_segment, 4:7] = qdc, depthc, velc
+        flowdepthvel[i, 4:7] = qdc, depthc, velc
         quc = qdc
         qup = qdp
 
 
 # ### Psuedocode
-# 
+#
 
+def compute_network(reaches, connections, data, assume_short_ts=False):
+    findex = np.array(sorted(chain.from_iterable(reaches), key=first))
+    flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
 
+    idx_view = findex[:, 0]
+    for reach in reaches:
+        global_idx, reach = tuple(zip(*reach))
+        local_idx = np.searchsorted(idx_view, global_idx)
 
-# TODO: generalize with a direction flag
-def compute_mc_reach_up2down(
-        reach=None,
-        connections=None,
-        data=None,
-        flowdepthvel=None,
-        verbose=False,
-        debuglevel=0,
-        write_output=False,
-        assume_short_ts=False,
-):
+        qup = 0.0
+        quc = 0.0
+        upstream_segs = list(map(first, connections.get(reach[0], {}).get('children', ())))
+        for us in np.searchsorted(idx_view, upstream_segs):
+            qup += flowdepthvel[us, 0]
+            quc += flowdepthvel[us, 4]
+        compute_reach(tuple(zip(local_idx, global_idx)), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
 
+    return idx_view, flowdepthvel
 
-    qup = 0.0
-    quc = 0.0
-    # import pdb; pdb.set_trace()
-    for us in map(first, connections.get(reach[0][1], {}).get('children', ())):
-        qup += flowdepthvel[us, 0]
-        quc += flowdepthvel[us, 4]
-    compute_reach(pluck(0, reach), qup, quc, data, flowdepthvel, assume_short_ts=assume_short_ts)
-
-
-def singlesegment(
-        dt # dt
-        , qup = None # qup
-        , quc = None # quc
-        , qdp = None # qdp
-        , qlat = None # ql
-        , dx = None # dx
-        , bw = None # bw
-        , tw = None # tw
-        , twcc = None # twcc
-        , n_manning = None #
-        , n_manning_cc = None # ncc
-        , cs = None # cs
-        , s0 = None # s0
-        , velp = None # velocity at previous time step
-        , depthp = None # depth at previous time step
-    ):
-
-    # call Fortran routine
-    return mc.muskingcungenwm(
-        dt, qup, quc, qdp, qlat, dx, bw, tw, twcc
-        ,n_manning, n_manning_cc, cs, s0, velp, depthp
-    )
-    #return qdc, vel, depth
 
 def flow_dict_to_arr(connections, fdv):
     flowdepthvel_arr = np.zeros((len(connections), 8))
@@ -284,21 +256,27 @@ def main():
     parallelcompute = False
     if not parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
-        data_values= data.values.astype('float32')
+        data_values = data.values.astype('float32')
         compute_start = time.time()
 
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
             for ts in range(50):
-                for i, r in enumerate(reach, 1):
-                    compute_mc_reach_up2down(
-                        reach=r,
-                        connections=subnets[tw],
-                        data=data_values,
-                        flowdepthvel=flowdepthvel
-                    )
-                    print(f"reach={i} \t timestep={ts}".ljust(50), end='\r')
+                findex, fdv = compute_network(reach, subnets[tw], data_values)
+                flowdepthvel[findex] = fdv
+
+
+                #for i, r in enumerate(reach, 1):
+                #    fdv.append(compute_mc_reach_up2down(
+                #        reach=r,
+                #        connections=subnets[tw],
+                #        data=data_values,
+                #        flowdepthvel=flowdepthvel
+                #    ))
+                #    print(f"reach={i} \t timestep={ts}".ljust(50), end='\r')
+
             if showtiming:
                 print(f"... in {time.time()-start_time} seconds ({twi}/{len(subreaches)})")
+
         print("Computation time: ", time.time() - compute_start)
         with np.printoptions(precision=5, suppress=True, linewidth=120):
             print(flowdepthvel)
