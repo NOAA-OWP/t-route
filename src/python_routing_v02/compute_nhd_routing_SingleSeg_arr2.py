@@ -26,10 +26,9 @@ elif not ENV_IS_CL:
     root = os.path.dirname(os.path.dirname(os.path.abspath('')))
     sys.path.append(r'../python_framework')
     sys.path.append(r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS')
-    sys.setrecursionlimit(4000)
 
 ## Muskingum Cunge
-COMPILE = True
+COMPILE = False
 if COMPILE:
     import subprocess
     print("Recompiling Fortran module")
@@ -156,7 +155,7 @@ def translate_reach_to_index(reaches, index):
     """
     rv = []
     for reach in reaches:
-        rv.append(tuple(zip(np.searchsorted(index, reach), reach)))
+        rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
     return rv
 
 def translate_network_to_index(connections, index):
@@ -171,7 +170,11 @@ def translate_network_to_index(connections, index):
     """
     rv = {}
     for n, children in connections.items():
-        r = {"children": tuple(zip(np.searchsorted(index, children), children))}
+        r = {}
+        if children:
+            r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
+        else:
+            r['children'] = None
         try:
             r["index"] = index.get_loc(n)
         except KeyError:
@@ -259,55 +262,34 @@ def main():
     #    , 'vel': {'prev': 0, 'curr': 0}
     #    , 'qlat': {'prev': 0, 'curr': 0}} for node in nhd_network.nodes(connections)}
 
-    parallelcompute = False
-    if not parallelcompute:
+    parallelcompute = True
+    data_values = data.values.astype('float32')
+    ts = 500
+    compute_start = time.time()
+    if parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
-        data_values = data.values.astype('float32')
-        compute_start = time.time()
-        ts = 50
-        with Parallel(n_jobs=8, backend='threading', verbose=11) as parallal:
+        with Parallel(n_jobs=3, backend='threading', verbose=5) as parallal:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
-                #findex, fdv = compute_network(ts, reach, subnets[tw], data_values)
-                #flowdepthvel[findex] = fdv
-            results = parallal(jobs)
-            for findex, fdv in results:
+            for findex, fdv in parallal(jobs):
                 flowdepthvel[findex] = fdv
-                #for i, r in enumerate(reach, 1):
-                #    fdv.append(compute_mc_reach_up2down(
-                #        reach=r,
-                #        connections=subnets[tw],
-                #        data=data_values,
-                #        flowdepthvel=flowdepthvel
-                #    ))
-                #    print(f"reach={i} \t timestep={ts}".ljust(50), end='\r')
+
+
+    else:
+        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_values)
+            flowdepthvel[findex] = fdv
 
             if showtiming:
-                print(f"... in {time.time()-start_time} seconds ({twi}/{len(subreaches)})")
+                print(f"... in {time.time()-compute_start} seconds ({twi}/{len(subreaches)})")
 
-        print("Computation time: ", time.time() - compute_start)
-        with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
-            print(flowdepthvel)
-            print(flowdepthvel.shape)
+    print("Computation time: ", time.time() - compute_start)
+    with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
+        print(flowdepthvel)
+        print(flowdepthvel.shape)
         #print(sorted(connections.keys()))
-    else:
-        if verbose: print(f'executing parallel computation on ordered reaches .... ')
-        # for terminal_segment, network in networks.items():
-        #    print(terminal_segment, network)
-        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
-        nslist = ([terminal_segment
-                      , network
-                      , supernetwork_data  # TODO: This should probably be global...
-                      , False
-                      , debuglevel]
-                  for terminal_segment, network in networks.items())
-        with multiprocessing.Pool() as pool:
-            results = pool.starmap(compute_network, nslist)
 
-    if verbose: print('ordered reach computation complete')
-    if showtiming: print("... in %s seconds." % (time.time() - start_time))
-
-if __name__ == '__main__':
-    main()
-
+#if __name__ == '__main__':
+#    main()
+main()
