@@ -264,11 +264,11 @@ def main():
 
     parallelcompute = True
     data_values = data.values.astype('float32')
-    ts = 500
+    ts = 1440
     compute_start = time.time()
     if parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
-        with Parallel(n_jobs=3, backend='threading', verbose=5) as parallal:
+        with Parallel(n_jobs=5, pre_dispatch='all', backend='threading', verbose=5) as parallal:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
