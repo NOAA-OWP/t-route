@@ -223,7 +223,7 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
-    data['qlat'] = 60.0
+    data['qlat'] = 10.0
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
     #rconn_annoated = translate_network_to_index(rconn, data.index)
