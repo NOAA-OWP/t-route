@@ -4,7 +4,7 @@ import numpy as np
 from itertools import chain
 from operator import itemgetter
 from numpy cimport ndarray
-cimport numpy as cnp
+cimport numpy as np
 
 
 cdef extern from "pyMCsingleSegStime_NoLoop.h":
@@ -45,6 +45,9 @@ cdef void muskingcunge(float dt,
         float depthp,
         float *out) nogil:
     cdef float qdc, velc, depthc
+    qdc = 0.0
+    velc = 0.0
+    depthc = 0.0
 
     c_muskingcungenwm(
         &dt,
@@ -71,18 +74,19 @@ cdef void muskingcunge(float dt,
     #return qdc, depthc, velc
 
 
-cdef void compute_reach(Py_ssize_t nreach, const long[:,:] reach, float qup, float quc, float[:, :] flowdepthvel, const float[:, :] data_values, bint assume_short_ts=False) nogil:
+cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc, float[:, :] flowdepthvel, const float[:, :] data_values, bint assume_short_ts=False) nogil:
     cdef:
         long i, current_segment
-        Py_ssize_t ix
+        int ix
         float dt, bw, tw, twcc, dx, n_manning, n_manning_cc
         float cs, s0
         float qlat, qdp, depthp, velp
         float qdc
 
     cdef float out[3]
-    #cdef float[:] out_view = out
-
+    out[0] = 0.0
+    out[1] = 0.0
+    out[2] = 0.0
 
     for ix in range(nreach):
         i = reach[ix, 0]
@@ -130,10 +134,10 @@ cdef void compute_reach(Py_ssize_t nreach, const long[:,:] reach, float qup, flo
         )
 
 
-        flowdepthvel[i, 4] = qdc = out[0]
-        flowdepthvel[i, 5] = out[1]
-        flowdepthvel[i, 6] = out[2]
-        #flowdepthvel[i, 4:7] = qdc, depthc, velc
+        qdc = out[0]
+        flowdepthvel[i, 4] = qdc
+        flowdepthvel[i, 5] = out[1]  # depthc
+        flowdepthvel[i, 6] = out[2]  # velc
         quc = qdc
         qup = qdp
 

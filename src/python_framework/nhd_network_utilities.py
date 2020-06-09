@@ -388,7 +388,7 @@ def set_supernetwork_data(
                     geo_input_folder,
                     "Channels",
                     "masks",
-                    "PoconoRouteLink_testsamp1_nwm_mc.txt",
+                    "PoconoRouteLink_TEST2_nwm_mc.txt",
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
