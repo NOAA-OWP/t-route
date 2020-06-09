@@ -89,6 +89,8 @@ cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc,
     out[2] = 0.0
 
     for ix in range(nreach):
+        # i: local index for the segment (used for flowdepthvel)
+        # current_segment: global index for the segment (used for looking updata_values)
         i = reach[ix, 0]
         current_segment = reach[ix, 1]
 
@@ -101,15 +103,13 @@ cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc,
         n_manning_cc = data_values[current_segment, 5]
         cs = data_values[current_segment, 6]
         s0 = data_values[current_segment, 7]
-
-        flowdepthvel[i, 7] = 10.0
+        qlat = data_values[current_segment, 8]
 
         qdp = flowdepthvel[i, 0]
         depthp = flowdepthvel[i, 1]
         velp = flowdepthvel[i, 2]
-        qlat = flowdepthvel[i, 7]
 
-        flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+        flowdepthvel[i, :3] = flowdepthvel[i, 3:]
 
         if assume_short_ts:
             quc = qup
@@ -135,9 +135,9 @@ cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc,
 
 
         qdc = out[0]
-        flowdepthvel[i, 4] = qdc
-        flowdepthvel[i, 5] = out[1]  # depthc
-        flowdepthvel[i, 6] = out[2]  # velc
+        flowdepthvel[i, 3] = qdc
+        flowdepthvel[i, 4] = out[1]  # depthc
+        flowdepthvel[i, 5] = out[2]  # velc
         quc = qdc
         qup = qdp
 
@@ -148,10 +148,10 @@ def compute_network(int nsteps, list reaches, dict connections, const float[:,:]
     cdef long[:, :] reach
 
     cdef ndarray[long, ndim=2] findex = np.vstack(reaches)
-    findex.sort(axis=0)
-    cdef long[:] idx_view = findex[:,0]
+    cdef long[:] idx_view = findex[findex[:,0].argsort()][:,0]
+    del findex
 
-    cdef float[:, :] flowdepthvel = np.zeros((len(idx_view), 8), dtype='float32')
+    cdef float[:, :] flowdepthvel = np.zeros((len(idx_view), 6), dtype='float32')
 
     cdef list idxs = []
     cdef list upstream_segs = []

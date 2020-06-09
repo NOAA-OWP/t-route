@@ -223,6 +223,7 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
+    data['qlat'] = 10.0
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
     #rconn_annoated = translate_network_to_index(rconn, data.index)
@@ -256,7 +257,7 @@ def main():
 
     if showtiming: start_time = time.time()
 
-    flowdepthvel = np.zeros((len(data), 8), dtype='float32')
+    flowdepthvel = np.zeros((len(data), 6), dtype='float32')
     #flowdepthvel = {node: {'flow': {'prev': 0, 'curr': 0}
     #    , 'depth': {'prev': 0, 'curr': 0}
     #    , 'vel': {'prev': 0, 'curr': 0}
@@ -266,8 +267,8 @@ def main():
 
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
-    # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0
-    datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So']]
+    # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0, 8: qlat
+    datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So', 'qlat']]
     data_values = datasub.values.astype('float32')
     ts = 144
     compute_start = time.time()
@@ -292,7 +293,7 @@ def main():
     print("Computation time: ", time.time() - compute_start)
     with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
         print(flowdepthvel)
-
+        #breakpoint()
         print(flowdepthvel.shape)
         #print(sorted(connections.keys()))
 
