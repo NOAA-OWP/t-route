@@ -59,88 +59,88 @@ def writetoFile(file, writeString):
 first = itemgetter(0)
 second = itemgetter(1)
 
-def compute_reach(
-        reach,
-        qup, quc,
-        flowdepthvel,
-        assume_short_ts=False,
-):
-    for i, current_segment in reach:
-        dt = 60.0
-        bw = data_values[current_segment, 0]
-        tw = data_values[current_segment, 1]
-        twcc = data_values[current_segment, 2]
-        dx = data_values[current_segment, 3]
-        n_manning = data_values[current_segment, 4]
-        n_manning_cc = data_values[current_segment, 5]
-        cs = data_values[current_segment, 6]
-        s0 = data_values[current_segment, 7]
-
-        flowdepthvel[i, 7] = qlat = 10.0
-        #qdp = flowdepthvel[current_segment, 0]
-        #depthp = flowdepthvel[current_segment, 1]
-        #velp = flowdepthvel[current_segment, 2]
-        qdp, depthp, velp = flowdepthvel[i, 0:3]
-
-        flowdepthvel[i, :4] = flowdepthvel[i, 4:]
-
-        if assume_short_ts:
-            quc = qup
-
-        # qdc, velc, depthc
-        #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
-        qdc, depthc, velc = muskingcungenwm(
-            dt,
-            qup,
-            quc,
-            qdp,
-            qlat,
-            dx,
-            bw,
-            tw,
-            twcc,
-            n_manning,
-            n_manning_cc,
-            cs,
-            s0,
-            velp,
-            depthp
-        )
-
-        flowdepthvel[i, 4:7] = qdc, depthc, velc
-        quc = qdc
-        qup = qdp
-
-
-# ### Psuedocode
+# def compute_reach(
+#         reach,
+#         qup, quc,
+#         flowdepthvel,
+#         assume_short_ts=False,
+# ):
+#     for i, current_segment in reach:
+#         dt = 60.0
+#         bw = data_values[current_segment, 0]
+#         tw = data_values[current_segment, 1]
+#         twcc = data_values[current_segment, 2]
+#         dx = data_values[current_segment, 3]
+#         n_manning = data_values[current_segment, 4]
+#         n_manning_cc = data_values[current_segment, 5]
+#         cs = data_values[current_segment, 6]
+#         s0 = data_values[current_segment, 7]
 #
-
-def compute_network(nsteps, reaches, connections, assume_short_ts=False):
-    findex = np.array(sorted(chain.from_iterable(reaches), key=first))
-    flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
-    qup_quc = np.zeros(2, dtype='float32')
-
-    idx_view = findex[:,0]
-
-    global_idxs = []
-    local_idxs = []
-    upstream_segs = []
-    for reach in reaches:
-        x, y = list(zip(*reach))
-        global_idxs.append(x)
-        local_idxs.append(np.searchsorted(idx_view, x).tolist())
-        us_segs = list(map(first, connections.get(y[0], {}).get('children', ())))
-        upstream_segs.append(np.searchsorted(idx_view, us_segs).tolist())
-
-    for ts in range(nsteps):
-        #breakpoint()
-        for local_idx, global_idx, us in zip(local_idxs, global_idxs, upstream_segs):
-            qup_quc[:] = 0
-            for x in us:
-                qup_quc[0] += flowdepthvel[x, 0]
-                qup_quc[1] += flowdepthvel[x, 4]
-            mc_reach.compute_reach(zip(local_idx, global_idx), qup_quc[0], qup_quc[1], flowdepthvel, data_values, assume_short_ts=assume_short_ts)
-    return idx_view, flowdepthvel
+#         flowdepthvel[i, 7] = qlat = 10.0
+#         #qdp = flowdepthvel[current_segment, 0]
+#         #depthp = flowdepthvel[current_segment, 1]
+#         #velp = flowdepthvel[current_segment, 2]
+#         qdp, depthp, velp = flowdepthvel[i, 0:3]
+#
+#         flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+#
+#         if assume_short_ts:
+#             quc = qup
+#
+#         # qdc, velc, depthc
+#         #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
+#         qdc, depthc, velc = muskingcungenwm(
+#             dt,
+#             qup,
+#             quc,
+#             qdp,
+#             qlat,
+#             dx,
+#             bw,
+#             tw,
+#             twcc,
+#             n_manning,
+#             n_manning_cc,
+#             cs,
+#             s0,
+#             velp,
+#             depthp
+#         )
+#
+#         flowdepthvel[i, 4:7] = qdc, depthc, velc
+#         quc = qdc
+#         qup = qdp
+#
+#
+# # ### Psuedocode
+# #
+#
+# def compute_network(nsteps, reaches, connections, assume_short_ts=False):
+#     findex = np.array(sorted(chain.from_iterable(reaches), key=first))
+#     flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
+#     qup_quc = np.zeros(2, dtype='float32')
+#
+#     idx_view = findex[:,0]
+#
+#     global_idxs = []
+#     local_idxs = []
+#     upstream_segs = []
+#     for reach in reaches:
+#         x, y = list(zip(*reach))
+#         global_idxs.append(x)
+#         local_idxs.append(np.searchsorted(idx_view, x).tolist())
+#         us_segs = list(map(first, connections.get(y[0], {}).get('children', ())))
+#         upstream_segs.append(np.searchsorted(idx_view, us_segs).tolist())
+#
+#     for ts in range(nsteps):
+#         #breakpoint()
+#         for local_idx, global_idx, us in zip(local_idxs, global_idxs, upstream_segs):
+#             qup_quc[:] = 0
+#             for x in us:
+#                 qup_quc[0] += flowdepthvel[x, 0]
+#                 qup_quc[1] += flowdepthvel[x, 4]
+#             mc_reach.compute_reach(zip(local_idx, global_idx), qup_quc[0], qup_quc[1], flowdepthvel, data_values, assume_short_ts=assume_short_ts)
+#     return idx_view, flowdepthvel
 
 
 def translate_reach_to_index(reaches, index):
@@ -197,11 +197,11 @@ def main():
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
     #supernetwork = 'Brazos_LowerColorado_ge5'
-    #supernetwork = 'Pocono_TEST1'
+    supernetwork = 'Pocono_TEST2'
     """##NHD CONUS order 5 and greater"""
     #supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
-    supernetwork = 'Mainstems_CONUS'
+    # supernetwork = 'Mainstems_CONUS'
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
@@ -262,9 +262,14 @@ def main():
     #    , 'vel': {'prev': 0, 'curr': 0}
     #    , 'qlat': {'prev': 0, 'curr': 0}} for node in nhd_network.nodes(connections)}
 
-    parallelcompute = True
-    data_values = data.values.astype('float32')
-    ts = 1440
+    parallelcompute = False
+
+    # Data column ordering is very important as we directly lookup values.
+    # The column order *must* be:
+    # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0
+    datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So']]
+    data_values = datasub.values.astype('float32')
+    ts = 144
     compute_start = time.time()
     if parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
@@ -287,6 +292,7 @@ def main():
     print("Computation time: ", time.time() - compute_start)
     with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
         print(flowdepthvel)
+
         print(flowdepthvel.shape)
         #print(sorted(connections.keys()))
 
