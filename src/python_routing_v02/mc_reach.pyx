@@ -148,7 +148,7 @@ def compute_network(int nsteps, list reaches, dict connections, const float[:,:]
     cdef long[:, :] reach
 
     cdef ndarray[long, ndim=2] findex = np.vstack(reaches)
-    findex.sort(axis=0)
+    findex = findex[findex[:,0].argsort()]
     cdef long[:] idx_view = findex[:,0]
 
     cdef float[:, :] flowdepthvel = np.zeros((len(idx_view), 8), dtype='float32')
