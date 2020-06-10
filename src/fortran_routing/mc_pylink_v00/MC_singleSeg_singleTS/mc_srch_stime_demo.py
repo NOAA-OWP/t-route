@@ -23,6 +23,7 @@ if COMPILE:
         fortran_compile_call.append(r"MCsingleSegStime_f2py_2clean.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_srch_stime")
+        #fortran_compile_call.append(r"--opt='-fdefault-real-8'")
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
