@@ -10,7 +10,7 @@ import scipy.stats as stats
 import decimal
 from time import process_time
 
-debuglevel = -1
+debuglevel = 0
 COMPILE = True
 if COMPILE:
     try:
@@ -19,11 +19,12 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"varSingleSegStime_f2py_2clean.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_2clean.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_srch_stime")
-        #fortran_compile_call.append(r"--opt='-fdefault-real-8'")
+        # fortran_compile_call.append(r"--opt='-fdefault-real-8'")
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
