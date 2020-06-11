@@ -277,12 +277,12 @@ def main():
     compute_start = time.time()
     if parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
-        with Parallel(n_jobs=5, pre_dispatch='all', backend='threading', verbose=5) as parallal:
+        with Parallel(n_jobs=5, pre_dispatch='all', backend='threading', verbose=5) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
             random.shuffle(jobs)
-            rets = parallal(jobs)
+            rets = parallel(jobs)
             for findex, fdv in rets:
                 flowdepthvel[findex] = fdv
 
