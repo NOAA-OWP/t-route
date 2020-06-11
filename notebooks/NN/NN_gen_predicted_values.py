@@ -117,7 +117,7 @@ def main(
     print("max_errors",max_errors_list)
     print("mean_rel_errors",mean_rel_errors_list)
     print("max_rel_errors",max_rel_errors_list)
-    print("Last 10 Outputs",temp_y[-10:],temp_y_interp[-10:] )
+    # print("Last 10 Outputs",temp_y[-10:],temp_y_interp[-10:] )
 
     # num_speed_samp = 2700000
 
