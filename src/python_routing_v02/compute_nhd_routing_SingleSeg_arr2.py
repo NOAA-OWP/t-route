@@ -19,6 +19,7 @@ from operator import itemgetter
 from itertools import chain
 from functools import partial
 from joblib import delayed, Parallel
+import random
 
 ENV_IS_CL = False
 if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
@@ -155,7 +156,8 @@ def translate_reach_to_index(reaches, index):
     """
     rv = []
     for reach in reaches:
-        rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
+        rv.append(np.stack([mc_reach.binary_find(index, reach), reach], axis=1))
+        #rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
     return rv
 
 def translate_network_to_index(connections, index):
@@ -172,7 +174,8 @@ def translate_network_to_index(connections, index):
     for n, children in connections.items():
         r = {}
         if children:
-            r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
+            r['children'] = np.stack([mc_reach.binary_find(index, children), children], axis=1)
+            #r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
         else:
             r['children'] = None
         try:
@@ -201,7 +204,7 @@ def main():
     """##NHD CONUS order 5 and greater"""
     #supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
+    #supernetwork = 'Mainstems_CONUS'
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
@@ -270,7 +273,7 @@ def main():
     # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0, 8: qlat
     datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So', 'qlat']]
     data_values = datasub.values.astype('float32')
-    ts = 144
+    ts = 1440
     compute_start = time.time()
     if parallelcompute:
         if verbose: print('executing computation on ordered reaches ...')
@@ -278,12 +281,15 @@ def main():
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
-            for findex, fdv in parallal(jobs):
+            random.shuffle(jobs)
+            rets = parallal(jobs)
+            for findex, fdv in rets:
                 flowdepthvel[findex] = fdv
 
 
     else:
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            #breakpoint()
             findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_values)
             flowdepthvel[findex] = fdv
 
@@ -291,11 +297,8 @@ def main():
                 print(f"... in {time.time()-compute_start} seconds ({twi}/{len(subreaches)})")
 
     print("Computation time: ", time.time() - compute_start)
-    with np.printoptions(precision=5, suppress=True, linewidth=180, edgeitems=5):
+    with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
         print(flowdepthvel)
-        #breakpoint()
-        print(flowdepthvel.shape)
-        #print(sorted(connections.keys()))
 
 #if __name__ == '__main__':
 #    main()
