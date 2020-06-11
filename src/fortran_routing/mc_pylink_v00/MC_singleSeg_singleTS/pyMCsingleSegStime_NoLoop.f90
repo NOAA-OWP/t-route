@@ -1,11 +1,10 @@
 module muskingcunge_interface
 
-use iso_c_binding, only: c_float
+use, intrinsic :: iso_c_binding, only: c_float
 use muskingcunge_module, only: muskingcungenwm
 
 implicit none
 contains
-
 subroutine c_muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc) bind(c)
 
@@ -17,6 +16,5 @@ subroutine c_muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
     call muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc)
-end subroutine
-
-end module
+end subroutine c_muskingcungenwm
+end module muskingcunge_interface
