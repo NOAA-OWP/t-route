@@ -25,17 +25,17 @@ if COMPILE:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        from mc_sseg_stime import mc
+        from mc_sseg_stime import muskingcunge_module
 
-        # import mc_sseg_stime as mc
+        # import mc_sseg_stime as muskingcunge_module
     except Exception as e:
         print(e)
         if debuglevel <= -1:
             traceback.print_exc()
 else:
-    from mc_sseg_stime import mc
+    from mc_sseg_stime import muskingcunge_module
 
-    # import mc_sseg_stime as mc
+    # import mc_sseg_stime as muskingcunge_module
 
 # # Method 1
 # Python: time loop; segment loop; constant channel variables are passed to Fortran
@@ -67,7 +67,7 @@ def singlesegment(
 ):
 
     # call Fortran routine
-    return mc.muskingcungenwm(
+    return muskingcunge_module.muskingcungenwm(
         dt,
         qup,
         quc,
@@ -202,7 +202,7 @@ def main():
     )
 
     # print(
-    # mc.muskingcungenwm(
+    # muskingcunge_module.muskingcungenwm(
     # 60.0,
     # 0.0,
     # 0.082518570125103,
