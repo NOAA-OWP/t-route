@@ -108,6 +108,7 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
@@ -117,11 +118,11 @@ if COMPILE:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        import mc_sseg_stime as mc
+        from mc_sseg_stime import muskingcunge_module as mc
     except Exception as e:
         print(e)
 else:
-    import mc_sseg_stime as mc
+    from mc_sseg_stime import muskingcunge_module as mc
 
 connections = None
 networks = None
