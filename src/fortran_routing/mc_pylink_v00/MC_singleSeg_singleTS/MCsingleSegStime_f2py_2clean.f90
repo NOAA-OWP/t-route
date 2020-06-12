@@ -1,4 +1,4 @@
-module mc
+module muskingcunge_module
     use var
     use precis
     implicit none
@@ -354,5 +354,5 @@ contains
         endif
 
     end subroutine secant_h
-end module mc
+end module muskingcunge_module
 

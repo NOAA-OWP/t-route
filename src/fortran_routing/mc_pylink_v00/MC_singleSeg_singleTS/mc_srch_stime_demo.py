@@ -193,7 +193,7 @@ for k in range(0, nts):
                 mc.var.deptha[0, ii] = -999.0
 
         # call Fortran routine
-        mc.mc.main()
+        mc.muskingcunge_module.main()
 
         # print channel data
         debuglevel = -2
