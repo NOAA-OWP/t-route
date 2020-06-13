@@ -20,6 +20,7 @@ from itertools import chain
 from functools import partial
 from joblib import delayed, Parallel
 import random
+import pandas as pd
 
 ENV_IS_CL = False
 if ENV_IS_CL:
@@ -248,7 +249,12 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
-    data["qlat"] = 10.0
+    qlats = pd.read_csv('../../test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.txt', index_col='ntt')
+    qlats = qlats.drop(columns=['nt'])
+    qlats.columns = qlats.columns.astype(int)
+    qlats = qlats.sort_index(axis='columns').sort_index(axis='index')
+    qlats = qlats.drop(columns=qlats.columns.difference(data.index))
+
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
     # rconn_annoated = translate_network_to_index(rconn, data.index)
@@ -304,11 +310,11 @@ def main():
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
     # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0, 8: qlat
-    datasub = data[
-        ["BtmWdth", "TopWdth", "TopWdthCC", "Length", "n", "nCC", "ChSlp", "So", "qlat"]
-    ]
-    data_values = datasub.values.astype("float32")
-    ts = 1440
+    datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So']]
+    data_values = datasub.values.astype('float32')
+    qlat_values = qlats.values.astype('float32')
+    print(data_values.shape, qlats.shape)
+    ts = 144
     compute_start = time.time()
     if parallelcompute:
         if verbose:
@@ -330,8 +336,8 @@ def main():
 
     else:
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            # breakpoint()
-            findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_values)
+            #breakpoint()
+            findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_values, qlat_values)
             flowdepthvel[findex] = fdv
 
             if showtiming:
