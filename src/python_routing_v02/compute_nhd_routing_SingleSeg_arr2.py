@@ -23,26 +23,39 @@ import random
 import pandas as pd
 
 ENV_IS_CL = False
-if ENV_IS_CL: root = '/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/'
+if ENV_IS_CL:
+    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
 elif not ENV_IS_CL:
-    root = os.path.dirname(os.path.dirname(os.path.abspath('')))
-    sys.path.append(r'../python_framework')
-    sys.path.append(r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS')
+    root = os.path.dirname(os.path.dirname(os.path.abspath("")))
+    sys.path.append(r"../python_framework")
+    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
 
 ## Muskingum Cunge
 COMPILE = False
 if COMPILE:
     import subprocess
+
     print("Recompiling Fortran module")
-    fortran_compile_call = ['f2py3', '-c', 'MCsingleSegStime_f2py_NOLOOP.f90', '-m', 'mc_sseg_stime_NOLOOP']
-    subprocess.run(fortran_compile_call, cwd=r'../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-#from mc_sseg_stime_NOLOOP import muskingcungenwm
-#import mc_sseg_stime_NOLOOP as mc
-#import single_seg as mc
-#from mc_reach import muskingcunge as muskingcungenwm
+    fortran_compile_call = [
+        "f2py3",
+        "-c",
+        "MCsingleSegStime_f2py_NOLOOP.f90",
+        "-m",
+        "mc_sseg_stime_NOLOOP",
+    ]
+    subprocess.run(
+        fortran_compile_call,
+        cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+# from mc_sseg_stime_NOLOOP import muskingcungenwm
+# import mc_sseg_stime_NOLOOP as mc
+# import single_seg as mc
+# from mc_reach import muskingcunge as muskingcungenwm
 import mc_reach
 
-#muskingcungenwm = mc.muskingcunge_module.muskingcungenwm
+# muskingcungenwm = mc.muskingcunge_module.muskingcungenwm
 
 data_values = None
 WRITE_OUTPUT = False
@@ -56,7 +69,8 @@ import nhd_network
 
 def writetoFile(file, writeString):
     file.write(writeString)
-    file.write('\n')
+    file.write("\n")
+
 
 first = itemgetter(0)
 second = itemgetter(1)
@@ -158,8 +172,9 @@ def translate_reach_to_index(reaches, index):
     rv = []
     for reach in reaches:
         rv.append(np.stack([mc_reach.binary_find(index, reach), reach], axis=1))
-        #rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
+        # rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
     return rv
+
 
 def translate_network_to_index(connections, index):
     """
@@ -175,10 +190,12 @@ def translate_network_to_index(connections, index):
     for n, children in connections.items():
         r = {}
         if children:
-            r['children'] = np.stack([mc_reach.binary_find(index, children), children], axis=1)
-            #r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
+            r["children"] = np.stack(
+                [mc_reach.binary_find(index, children), children], axis=1
+            )
+            # r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
         else:
-            r['children'] = None
+            r["children"] = None
         try:
             r["index"] = index.get_loc(n)
         except KeyError:
@@ -186,8 +203,8 @@ def translate_network_to_index(connections, index):
         rv[n] = r
     return rv
 
-def main():
 
+def main():
 
     global data_values
 
@@ -195,35 +212,40 @@ def main():
     debuglevel = 0
     showtiming = True
 
-    test_folder = os.path.join(root, r'test')
-    geo_input_folder = os.path.join(test_folder, r'input', r'geo')
+    test_folder = os.path.join(root, r"test")
+    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
-    #supernetwork = 'Brazos_LowerColorado_ge5'
-    supernetwork = 'Pocono_TEST2'
+    # supernetwork = 'Brazos_LowerColorado_ge5'
+    supernetwork = "Pocono_TEST2"
     """##NHD CONUS order 5 and greater"""
-    #supernetwork = 'CONUS_ge5'
+    # supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
-    #supernetwork = 'Mainstems_CONUS'
+    # supernetwork = 'Mainstems_CONUS'
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
-    if verbose: print('creating supernetwork connections set')
-    if showtiming: start_time = time.time()
+    if verbose:
+        print("creating supernetwork connections set")
+    if showtiming:
+        start_time = time.time()
     # STEP 1
-    network_data = nnu.set_supernetwork_data(supernetwork=supernetwork,
-                                             geo_input_folder=geo_input_folder)
+    network_data = nnu.set_supernetwork_data(
+        supernetwork=supernetwork, geo_input_folder=geo_input_folder
+    )
 
     cols = [v for c, v in network_data.items() if c.endswith("_col")]
-    data = nhd_io.read(network_data['geo_file_path'])
+    data = nhd_io.read(network_data["geo_file_path"])
     data = data[cols]
-    data = data.set_index(network_data['key_col'])
+    data = data.set_index(network_data["key_col"])
 
-    if 'mask_file_path' in network_data:
-        data_mask = nhd_io.read_mask(network_data['mask_file_path'],
-                                     layer_string=network_data['mask_layer_string'])
+    if "mask_file_path" in network_data:
+        data_mask = nhd_io.read_mask(
+            network_data["mask_file_path"],
+            layer_string=network_data["mask_layer_string"],
+        )
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
@@ -235,39 +257,50 @@ def main():
 
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
-    #rconn_annoated = translate_network_to_index(rconn, data.index)
-    if verbose: print('supernetwork connections set complete')
-    if showtiming: print("... in %s seconds." % (time.time() - start_time))
+    # rconn_annoated = translate_network_to_index(rconn, data.index)
+    if verbose:
+        print("supernetwork connections set complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 2
-    if showtiming: start_time = time.time()
-    if verbose: print('organizing connections into reaches ...')
-    #reaches = nhd_network.dfs_decomposition(connections)
-    #reaches_i = translate_reach_to_index(reaches, data.index)
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("organizing connections into reaches ...")
+    # reaches = nhd_network.dfs_decomposition(connections)
+    # reaches_i = translate_reach_to_index(reaches, data.index)
 
     subreachable = nhd_network.reachable(rconn)
     subnets_ = nhd_network.reachable_network(rconn)
     subreaches = {}
     for tw, net in subnets_.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        reach = nhd_network.dfs_decomposition(nhd_network.reverse_network(net), path_func)
+        reach = nhd_network.dfs_decomposition(
+            nhd_network.reverse_network(net), path_func
+        )
         subreaches[tw] = translate_reach_to_index(reach, data.index)
-    subnets = {k: translate_network_to_index(v, data.index) for k, v in subnets_.items()}
+    subnets = {
+        k: translate_network_to_index(v, data.index) for k, v in subnets_.items()
+    }
 
-    #networks = nru.compose_networks(
+    # networks = nru.compose_networks(
     #    supernetwork_values
     #    , verbose=False
     #    # , verbose = verbose
     #    , debuglevel=debuglevel
     #    , showtiming=showtiming
-    #)
-    if verbose: print('reach organization complete')
-    if showtiming: print("... in %s seconds." % (time.time() - start_time))
+    # )
+    if verbose:
+        print("reach organization complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
 
-    if showtiming: start_time = time.time()
+    if showtiming:
+        start_time = time.time()
 
-    flowdepthvel = np.zeros((len(data), 6), dtype='float32')
-    #flowdepthvel = {node: {'flow': {'prev': 0, 'curr': 0}
+    flowdepthvel = np.zeros((len(data), 6), dtype="float32")
+    # flowdepthvel = {node: {'flow': {'prev': 0, 'curr': 0}
     #    , 'depth': {'prev': 0, 'curr': 0}
     #    , 'vel': {'prev': 0, 'curr': 0}
     #    , 'qlat': {'prev': 0, 'curr': 0}} for node in nhd_network.nodes(connections)}
@@ -284,16 +317,22 @@ def main():
     ts = 144
     compute_start = time.time()
     if parallelcompute:
-        if verbose: print('executing computation on ordered reaches ...')
-        with Parallel(n_jobs=5, pre_dispatch='all', backend='threading', verbose=5) as parallal:
+        if verbose:
+            print("executing computation on ordered reaches ...")
+        with Parallel(
+            n_jobs=5, pre_dispatch="all", backend="threading", verbose=5
+        ) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-                jobs.append(delayed(mc_reach.compute_network)(ts, reach, subnets[tw], data_values))
+                jobs.append(
+                    delayed(mc_reach.compute_network)(
+                        ts, reach, subnets[tw], data_values
+                    )
+                )
             random.shuffle(jobs)
-            rets = parallal(jobs)
+            rets = parallel(jobs)
             for findex, fdv in rets:
                 flowdepthvel[findex] = fdv
-
 
     else:
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
@@ -302,12 +341,15 @@ def main():
             flowdepthvel[findex] = fdv
 
             if showtiming:
-                print(f"... in {time.time()-compute_start} seconds ({twi}/{len(subreaches)})")
+                print(
+                    f"... in {time.time()-compute_start} seconds ({twi}/{len(subreaches)})"
+                )
 
     print("Computation time: ", time.time() - compute_start)
     with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
         print(flowdepthvel)
 
-#if __name__ == '__main__':
+
+# if __name__ == '__main__':
 #    main()
 main()
