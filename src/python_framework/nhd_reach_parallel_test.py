@@ -3,7 +3,7 @@ import sys
 import os
 import time
 import nwm_network_commandline as cmd
-import argparse
+
 
 # command line input order: verbose,debuglevel,showtiming,supernetwork
 
