@@ -8,7 +8,8 @@ import time
 import sys
 
 sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
-import mc_sseg_stime_NOLOOP as mc
+#import mc_sseg_stime_NOLOOP as mc
+from mc_sseg_stime import muskingcunge_module as mc
 import matplotlib as plt
 from pylab import *
 import tensorflow as tf
@@ -132,7 +133,7 @@ def main():
     regr = baseline_model()
     # here is where we input our X/M along with out Y training data, the number of iterations to run through the NN, the number of points to pass the NN at once, and our validation data set
     history = regr.fit(
-        M[:], Y[:], epochs=300, batch_size=1000, validation_data=(VAL_x, VAL_y)
+        M[:], Y[:], epochs=3, batch_size=1000, validation_data=(VAL_x, VAL_y)
     )
 
     print(regr.predict(M[-1:]))
