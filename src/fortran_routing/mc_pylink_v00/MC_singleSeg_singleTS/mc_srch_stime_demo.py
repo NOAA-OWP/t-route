@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import os
+import traceback
 import shutil
 import subprocess
 import numpy as np
@@ -18,10 +19,12 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"varSingleSegStime_f2py_2clean.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_2clean.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_srch_stime")
+        # fortran_compile_call.append(r"--opt='-fdefault-real-8'")
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
@@ -33,6 +36,8 @@ if COMPILE:
         import mc_srch_stime as mc
     except Exception as e:
         print(e)
+        if debuglevel <= -1:
+            traceback.print_exc()
 else:
     import mc_srch_stime as mc
 
@@ -188,7 +193,7 @@ for k in range(0, nts):
                 mc.var.deptha[0, ii] = -999.0
 
         # call Fortran routine
-        mc.mc.main()
+        mc.muskingcunge_module.main()
 
         # print channel data
         debuglevel = -2

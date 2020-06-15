@@ -388,7 +388,7 @@ def set_supernetwork_data(
                     geo_input_folder,
                     r"Channels",
                     r"masks",
-                    r"PoconoRouteLink_testsamp1_nwm_mc.txt",
+                    r"PoconoRouteLink_TEST2_nwm_mc.txt",
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
@@ -522,29 +522,46 @@ def set_supernetwork_data(
         return dict
 
     elif supernetwork == "Mainstems_CONUS":
-        return {
-            "geo_file_path": os.path.join(
-                geo_input_folder, r"Channels", r"conus_routeLink_subset.nc"
-            ),
-            "key_col": 0,
-            "downstream_col": 2,
-            "length_col": 10,
-            "manningn_col": 11,
-            "manningncc_col": 20,
-            "slope_col": 12,
-            "bottomwidth_col": 14,
-            "topwidth_col": 22,
-            "topwidthcc_col": 21,
-            "waterbody_col": 15,
-            "waterbody_null_code": -9999,
-            "MusK_col": 8,
-            "MusX_col": 9,
-            "ChSlp_col": 13,
-            "terminal_code": 0,
-            "title_string": 'CONUS "Mainstem"',
-            "driver_string": "NetCDF",
-            "layer_string": 0,
-        }
+        dict = set_supernetwork_data(
+            supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
+        )
+        dict.update(
+            {
+                "title_string": "CONUS 'Mainstems' (Channels below gages and AHPS prediction points)",  # overwrites other title...
+                "mask_file_path": os.path.join(
+                    geo_input_folder, r"Channels", r"masks", r"conus_Mainstem_links.txt"
+                ),
+                "mask_driver_string": r"csv",
+                "mask_layer_string": r"",
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
+            }
+        )
+        return dict
+
+        # return {
+        #     "geo_file_path": os.path.join(
+        #         geo_input_folder, r"Channels", r"conus_routeLink_subset.nc"
+        #     ),
+        #     "key_col": 0,
+        #     "downstream_col": 2,
+        #     "length_col": 10,
+        #     "manningn_col": 11,
+        #     "manningncc_col": 20,
+        #     "slope_col": 12,
+        #     "bottomwidth_col": 14,
+        #     "topwidth_col": 22,
+        #     "topwidthcc_col": 21,
+        #     "waterbody_col": 15,
+        #     "waterbody_null_code": -9999,
+        #     "MusK_col": 8,
+        #     "MusX_col": 9,
+        #     "ChSlp_col": 13,
+        #     "terminal_code": 0,
+        #     "title_string": 'CONUS "Mainstem"',
+        #     "driver_string": "NetCDF",
+        #     "layer_string": 0,
+        # }
 
     elif supernetwork == "CONUS_Named_Streams":
         dict = set_supernetwork_data(
