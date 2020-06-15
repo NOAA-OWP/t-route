@@ -12,7 +12,7 @@ import nwm_network_commandline as cmd
 
 
 def main():
-    
+
     args = cmd._handle_args()
 
     # find the path of the test scripts, several levels above the script path
@@ -28,7 +28,6 @@ def main():
         geo_input_folder = args.customnetworkfile
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
-        
 
     # supernetworks = {}
     # supernetworks.update({'Pocono_TEST1':{}})

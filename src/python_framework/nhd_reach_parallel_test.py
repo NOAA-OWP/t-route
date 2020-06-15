@@ -4,6 +4,7 @@ import os
 import time
 import nwm_network_commandline as cmd
 import argparse
+
 # command line input order: verbose,debuglevel,showtiming,supernetwork
 
 
@@ -265,7 +266,7 @@ def main():
     showtiming = args.showtiming
     break_network_at_waterbodies = args.break_network_at_waterbodies
     supernetwork = args.supernetwork
-    
+
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     test_folder = os.path.join(root, r"test")
 

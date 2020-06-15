@@ -4,6 +4,7 @@ import time
 import os
 import argparse
 
+
 def _handle_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -75,10 +76,3 @@ def _handle_args():
         )
 
     return args
-
-
-
-       
-    
-    
-    
