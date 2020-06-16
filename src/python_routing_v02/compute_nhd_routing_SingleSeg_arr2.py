@@ -222,7 +222,7 @@ def main():
     """##NHD CONUS order 5 and greater"""
     # supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
+    #supernetwork = 'Mainstems_CONUS'
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
@@ -253,7 +253,7 @@ def main():
     qlats = qlats.drop(columns=['nt'])
     qlats.columns = qlats.columns.astype(int)
     qlats = qlats.sort_index(axis='columns').sort_index(axis='index')
-    qlats = qlats.drop(columns=qlats.columns.difference(data.index))
+    qlats = qlats.drop(columns=qlats.columns.difference(data.index)).T
 
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
@@ -279,11 +279,11 @@ def main():
         reach = nhd_network.dfs_decomposition(
             nhd_network.reverse_network(net), path_func
         )
-        subreaches[tw] = translate_reach_to_index(reach, data.index)
-    subnets = {
-        k: translate_network_to_index(v, data.index) for k, v in subnets_.items()
-    }
-
+        subreaches[tw] = reach
+    subnets = subnets_
+    #subnets = {
+    #    k: translate_network_to_index(v, data.index) for k, v in subnets_.items()
+    #}
     # networks = nru.compose_networks(
     #    supernetwork_values
     #    , verbose=False
@@ -299,7 +299,6 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    flowdepthvel = np.zeros((len(data), 6), dtype="float32")
     # flowdepthvel = {node: {'flow': {'prev': 0, 'curr': 0}
     #    , 'depth': {'prev': 0, 'curr': 0}
     #    , 'vel': {'prev': 0, 'curr': 0}
@@ -310,11 +309,24 @@ def main():
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
     # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0, 8: qlat
-    datasub = data[['BtmWdth', 'TopWdth', 'TopWdthCC', 'Length', 'n', 'nCC', 'ChSlp', 'So']]
-    data_values = datasub.values.astype('float32')
-    qlat_values = qlats.values.astype('float32')
-    print(data_values.shape, qlats.shape)
-    ts = 144
+    data['dt'] = 60.0
+
+    data = data.rename(columns={'Length': 'dx', 'TopWdth': 'tw', 'TopWdthCC': 'twcc',
+        'BtmWdth': 'bw', 'nCC': 'ncc', 'So': 's0', 'ChSlp': 'cs'})
+    data = data.astype('float32')
+
+    tailwaters = list(nhd_network.tailwaters(connections))
+    data_tails = pd.DataFrame(np.zeros((len(tailwaters), len(data.columns)), dtype='float32'),
+        index = tailwaters, columns=data.columns)
+    qlat_tails = pd.DataFrame(np.zeros((len(tailwaters), len(qlats.columns)), dtype='float32'),
+        index=tailwaters, columns=qlats.columns)
+    data = data.append(data_tails)
+    qlats = qlats.astype('float32')
+    qlats = qlats.append(qlat_tails)
+    datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    
+    ts = 2
+    qlats = qlats.loc[:, list(range(ts))]
     compute_start = time.time()
     if parallelcompute:
         if verbose:
@@ -324,21 +336,29 @@ def main():
         ) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+                data_sub = data.loc[reach, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
                 jobs.append(
                     delayed(mc_reach.compute_network)(
-                        ts, reach, subnets[tw], data_values
+                        ts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values
                     )
                 )
             random.shuffle(jobs)
             rets = parallel(jobs)
-            for findex, fdv in rets:
-                flowdepthvel[findex] = fdv
+            #for findex, fdv in rets:
+            #    flowdepthvel[findex] = fdv
 
     else:
+        rets = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            #breakpoint()
-            findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_values, qlat_values)
-            flowdepthvel[findex] = fdv
+            breakpoint()
+            r = data.index.intersection(chain.from_iterable(reach))
+            data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            qlat_sub = qlats.loc[r].sort_index()
+            rets.append(
+                mc_reach.compute_network(
+                    ts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values))
+            #findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_idx, data_values, qlat_values)
+            #flowdepthvel[findex] = fdv
 
             if showtiming:
                 print(
@@ -346,8 +366,11 @@ def main():
                 )
 
     print("Computation time: ", time.time() - compute_start)
-    with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
-        print(flowdepthvel)
+    fdv_columns = ['qp', 'dp', 'vp', 'qc', 'dc', 'vc']
+    flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
+    print(flowdepthvel)
+    #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
+    #    print(flowdepthvel)
 
 
 # if __name__ == '__main__':
