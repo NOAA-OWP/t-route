@@ -43,7 +43,7 @@ cpdef object binary_find(object arr, object els):
         if arr[m] == el:
             idxs.append(m)
         else:
-            idxs.append(-1)
+            break
     return idxs
 
 
@@ -118,6 +118,8 @@ cdef struct FDV:
     float velc
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef void muskingcunge(float dt,
         float qup,
         float quc,
@@ -168,12 +170,14 @@ cdef void muskingcunge(float dt,
 cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts=False):
     """
     Kernel to compute reach.
-    
+
     Input buffer is array matching following description:
     axis 0 is reach
     axis 1 is inputs in th following order:
-        dt, qup, quc, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        
+        qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+
+        qup and quc are initial conditions.
+
     Output buffer matches the same dimsions as input buffer in axis 0
     Input is nxm (n reaches by m variables)
     Ouput is nx3 (n reaches by 3 return values)
@@ -187,19 +191,19 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         int i
 
     for i in range(nreach):
-        dt = input_buf[i, 0] # n x 1
-        qlat = input_buf[i, 3] # n x 1
-        dx = input_buf[i, 4] # n x 1
-        bw = input_buf[i, 5]
-        tw = input_buf[i, 6]
-        twcc =input_buf[i, 7]
-        n = input_buf[i, 8]
-        ncc = input_buf[i, 9]
-        cs = input_buf[i, 10]
-        s0 = input_buf[i, 11]
-        qdp = input_buf[i, 12]
-        velp = input_buf[i, 13]
-        depthp = input_buf[i, 14]
+        qlat = input_buf[i, 0] # n x 1
+        dt = input_buf[i, 1] # n x 1
+        dx = input_buf[i, 2] # n x 1
+        bw = input_buf[i, 3]
+        tw = input_buf[i, 4]
+        twcc =input_buf[i, 5]
+        n = input_buf[i, 6]
+        ncc = input_buf[i, 7]
+        cs = input_buf[i, 8]
+        s0 = input_buf[i, 9]
+        qdp = input_buf[i, 10]
+        velp = input_buf[i, 11]
+        depthp = input_buf[i, 12]
 
         muskingcunge(
                     dt,
@@ -224,15 +228,6 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         output_buf[i, 2] = out.velc
 
         qup = qdp
-
-
-# cdef void fill_buffer(const long[:] rows, const long[:] cols, const float[:, :] src, float[:, :] out) nogil:
-#     cdef Py_ssize_t i, j
-#     cdef Py_ssize_t ncols = cols.shape[0]
-#
-#     for i in range(idxs.shape[0]):
-#         for j in range(ncols):
-#             out[i, j] = src[rows[i], cols[j]]
 
 
 cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc, float[:, :] flowdepthvel, const float[:, :] data_values, const float[:] qlats, bint assume_short_ts=False):
@@ -304,67 +299,103 @@ cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc,
         qup = qdp
 
 
-def compute_network(int nsteps, list reaches, dict connections, const float[:,:] data_values, const float[:, :] qlats, bint assume_short_ts=False):
+cdef void fill_buffer_column(const Py_ssize_t[:] srows,
+    const Py_ssize_t scol,
+    const Py_ssize_t[:] drows,
+    const Py_ssize_t dcol,
+    const float[:, :] src, float[:, ::1] out) nogil:
 
-    cdef long[:] findex = np.vstack(reaches)[:,0]
-    cdef long[:] idx_view = np.sort(findex)
+    cdef Py_ssize_t i
+    for i in range(srows.shape[0]):
+        out[drows[i], dcol] = src[srows[i], scol]
 
-    cdef float[:,:] flowdepthvel = np.zeros((idx_view.shape[0], 6), dtype='float32')
 
-    cdef list idxs = []
-    cdef list upstream_segs = []
-    cdef long[:] gi_tmp, li_tmp
-    cdef long[:,:] us_segs
-    cdef long[:,:] reach
-    cdef dict dtmp
-    for reach in reaches:
-        gi_tmp = reach[:,0]
-        li_tmp = np.array(binary_find(idx_view, gi_tmp), dtype=long)
-        idxs.append(np.stack([li_tmp, gi_tmp], axis=1))
+def column_mapper(object src_cols) -> object:
+    """Map source columns to columns expected by algorithm"""
+    cdef object index = {}
+    cdef object i_label
+    for i_label in enumerate(src_cols):
+        index[i_label[1]] = i_label[0]
 
-        # unpack segments
-        if reach[0,1] in connections:
-            dtmp = connections[reach[0,1]]
-            if dtmp['children'] is not None:
-                us_segs = dtmp['children']
-                upstream_segs.append(np.array(binary_find(idx_view, us_segs[:,0]), dtype=long))
-            else:
-                upstream_segs.append(np.array((), dtype=long))
-        else:
-            upstream_segs.append(np.array((), dtype=long))
+    cdef object rv = []
+    cdef object label
+    #qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+    for label in ['dt', 'dx', 'bw', 'tw', 'twcc', 'n', 'ncc', 'cs', 's0']:
+        rv.append(index[label])
+    return rv
 
-    #print(idxs, upstream_segs)
-    cdef long[:,:] reach_indexes
-    cdef int ts, ix, ri, us_size
+def compute_network(int nsteps, object reaches, object connections, 
+    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
+    const float[:, :] qlat_values, 
+    bint assume_short_ts=False) -> object:
+    """
+    Compute network
+
+    Args:
+        nsteps (int): number of time steps
+        reaches (list): List of reaches
+        connections (dict): Network
+        data_idx (ndarray): a 1D sorted index for data_values
+        data_values (ndarray): a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        assume_short_ts (bool): Assume short time steps (quc = qup)
+
+    Notes:
+        Array dimensions are checked as a precondition to this method.
+    """
+    # Check shapes
+    if qlat_values.shape[0] != data_idx.shape[0] or qlat_values.shape[1] != nsteps:
+        raise ValueError(f"Qlat shape is incorrect: expected ({data_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
+    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
+        raise ValueError(f"data_values shape mismatch")
+
+    cdef float[:,::1] flowdepthvel = np.zeros((data_idx.shape[0], 6), dtype='float32')
+    cdef int timestep = 0
+
+    cdef Py_ssize_t[:] srows, drows
+    cdef float[:, ::1] buf
+    cdef float[:, ::1] out_buf
+    cdef object reach  # list
+    cdef int reach_length
+
+    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
+    cdef int buf_cols = 13
+    cdef Py_ssize_t i
     cdef float qup, quc
-    cdef long[:] us
-    cdef const float[:] ql_slice
-    ts = 0
-    while ts < nsteps:
-        # breakpoint()
-        for ri in range(len(idxs)):
-            reach_indexes = idxs[ri]
-            us = upstream_segs[ri]
-            us_size = us.shape[0]
-            ql_slice = qlats[ts, :]
-            #with nogil:
+
+    while timestep < nsteps:
+        for reach in reaches:
+            srows = np.array(binary_find(data_idx, reach), dtype=np.intp)
+            drows = np.arange(srows.shape[0], dtype=np.intp)
+            reach_length = srows.shape[0]
+            buf = np.empty((srows.shape[0], buf_cols), dtype='float32')
+            out_buf = np.empty((srows.shape[0], 3), dtype='float32')
+    
+            with nogil:
+                # fill the buffer with qlat
+                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf)
+                for i in range(scols.shape[0]):
+                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf)
+                # fill buffer with qdp, depthp, velp
+                fill_buffer_column(srows, 0, drows, 10, flowdepthvel, buf)
+                fill_buffer_column(srows, 1, drows, 11, flowdepthvel, buf)
+                fill_buffer_column(srows, 2, drows, 12, flowdepthvel, buf)
+
+            # compute qup/quc
             qup = 0.0
             quc = 0.0
-            for ix in range(us_size):
-                qup += flowdepthvel[us[ix], 0]
-                quc += flowdepthvel[us[ix], 3]
+            if reach[0] in connections:
+                for i in binary_find(data_idx, connections[reach[0]]):
+                    qup += flowdepthvel[i, 0]
+                    quc += flowdepthvel[i, 3]
 
-            print(f"ts={ts}\tqup={qup}\tquc={quc}")
+            compute_reach_kernel(qup, quc, reach_length, buf, out_buf)
 
-            compute_reach(reach_indexes.shape[0], reach_indexes, qup, quc, flowdepthvel, data_values,
-                          ql_slice, assume_short_ts=assume_short_ts)
-
-        # Advance timestep
-        #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
-        #    print(f"FDV=FDV={np.asarray(flowdepthvel, dtype='float32')}")
+            with nogil:
+                # copy out_buf results back to flowdepthvel
+                for i in range(3):
+                    fill_buffer_column(drows, i, srows, i + 3, out_buf, flowdepthvel)
+            
         flowdepthvel[:, :3] = flowdepthvel[:, 3:]
-        ts += 1
-
-    # coerce back to numpy
-    return np.asarray(idx_view[:], dtype='long'), np.asarray(flowdepthvel[:], dtype='float32')
-
+        timestep += 1
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowdepthvel, dtype='float32')
