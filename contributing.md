@@ -2,19 +2,15 @@
 
 > All contributions to this project will be released to the public domain. By submitting a pull request or filing a bug, issue, or feature request, you are agreeing to comply with this waiver of copyright interest. Details can be found in our [TERMS](TERMS.md) and [LICENSE](LICENSE).
 
-
 There are two primary ways to help:
  - Using the issue tracker, and
  - Changing the code-base.
 
-
 ## Using the issue tracker
 
-Use the issue tracker to suggest feature requests, report bugs, and ask questions. This is also a great way to connect with the developers of the project as well
-as others who are interested in this solution.
+Use the issue tracker to suggest feature requests, report bugs, and ask questions. This is also a great way to connect with the developers of the project as well as others who are interested in this solution.
 
 Use the issue tracker to find ways to contribute. Find a bug or a feature, mention in the issue that you will take on that effort, then follow the _Changing the code-base_ guidance below.
-
 
 ## Changing the code-base
 
@@ -30,10 +26,10 @@ Additionally, the code should follow any stylistic and architectural guidelines 
 git clone github.com/<githubusername>/t-route.git
 ```
 
-2. Set up the Git configuration parameters to specify your user name and email address: 
+2. Set up the Git configuration parameters to specify your username and email address: 
 
 ```
-git config --global user.name "Your GitHub user name"
+git config --global user.name "Your GitHub username"
 git config --global user.email "Your email address"
 ```
 
@@ -51,7 +47,7 @@ git fetch upstream
 git merge upstream
 ```
 
-5. Create your own branch to make targeted contributions. Branches are parallel versions of the repository that allow you to make changes and tinker as much as you'd like without disrupting the master codebase. It is reccomened to create a new branch for each bite-sized contribution you make. Here is how to create a new branch:
+5. Create your own branch to make targeted contributions. Branches are parallel versions of the repository that allow you to make changes and tinker as much as you'd like without disrupting the master codebase. It is recommended to create a new branch for each bite-sized contribution you make. Here is how to create a new branch:
 
 ```
 git branch <new-branch-name>
@@ -71,7 +67,7 @@ git checkout <branch-name>
 git add <list of your changed files>
 ```
 
-7. Commit your changes to the checked out branch. Commits should be accompanied by a concise and brief comment. Like the "save" button in a wordprocessor, commits should be made early and often.  
+7. Commit your changes to the checked out branch. Commits should be accompanied by a concise and brief comment. Like the "save" button in a word processor, commits should be made early and often.  
 
 ```
 git commit -m ‘Make Brief comments to explain your Feature
@@ -87,6 +83,6 @@ git push
 From that page:
 > "Pull requests let you tell others about changes you've pushed to a branch in a repository on GitHub. Once a pull request is opened, you can discuss and review the potential changes with collaborators and add follow-up commits before your changes are merged into the base branch."
 A pull request will allow someone else to look at your code with you to make sure that it is ready to share with the world. Most of the time, someone who was involved with preparing the code can be the reviewer; for 
-major changes, it should be someone outside the core development team.
+major changes, it should be someone outside the core development team."
 
 10. If some of the terminology used above is confusing - we agree. This [GitHub glossary](https://help.github.com/en/github/getting-started-with-github/github-glossary#checkout) is a useful reference.
