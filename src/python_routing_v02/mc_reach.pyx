@@ -349,7 +349,7 @@ def compute_network(int nsteps, object reaches, object connections,
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
-    cdef float[:,::1] flowdepthvel = np.zeros((data_idx.shape[0], 6), dtype='float32')
+    cdef float[:,::1] flowdepthvel = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
     cdef int timestep = 0
 
     cdef Py_ssize_t[:] srows, drows
@@ -377,9 +377,9 @@ def compute_network(int nsteps, object reaches, object connections,
                 for i in range(scols.shape[0]):
                     fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf)
                 # fill buffer with qdp, depthp, velp
-                fill_buffer_column(srows, 0, drows, 10, flowdepthvel, buf)
-                fill_buffer_column(srows, 1, drows, 11, flowdepthvel, buf)
-                fill_buffer_column(srows, 2, drows, 12, flowdepthvel, buf)
+                fill_buffer_column(srows, timestep , drows, 10, flowdepthvel, buf)
+                fill_buffer_column(srows, timestep + 1, drows, 11, flowdepthvel, buf)
+                fill_buffer_column(srows, timestep + 2, drows, 12, flowdepthvel, buf)
 
             # compute qup/quc
             qup = 0.0
@@ -394,8 +394,8 @@ def compute_network(int nsteps, object reaches, object connections,
             with nogil:
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
-                    fill_buffer_column(drows, i, srows, i + 3, out_buf, flowdepthvel)
+                    fill_buffer_column(drows, i, srows, timestep + i, out_buf, flowdepthvel)
             
-        flowdepthvel[:, :3] = flowdepthvel[:, 3:]
+        #flowdepthvel[:, :3] = flowdepthvel[:, 3:]
         timestep += 1
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowdepthvel, dtype='float32')

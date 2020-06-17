@@ -325,7 +325,7 @@ def main():
     qlats = qlats.append(qlat_tails)
     datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     
-    ts = 2
+    ts = 10
     qlats = qlats.loc[:, list(range(ts))]
     compute_start = time.time()
     if parallelcompute:
@@ -366,7 +366,7 @@ def main():
                 )
 
     print("Computation time: ", time.time() - compute_start)
-    fdv_columns = ['qp', 'dp', 'vp', 'qc', 'dc', 'vc']
+    fdv_columns = pd.MultiIndex.from_product([range(ts), ['q', 'd', 'c']], names=['timestep', 'qdc'])
     flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
     print(flowdepthvel)
     #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
