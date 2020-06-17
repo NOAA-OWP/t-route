@@ -366,7 +366,7 @@ def main():
                 )
 
     print("Computation time: ", time.time() - compute_start)
-    fdv_columns = pd.MultiIndex.from_product([range(ts), ['q', 'd', 'c']], names=['timestep', 'qdc'])
+    fdv_columns = pd.MultiIndex.from_product([range(ts), ['q', 'd', 'v']], names=['timestep', 'qdv'])
     flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
     print(flowdepthvel)
     #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
