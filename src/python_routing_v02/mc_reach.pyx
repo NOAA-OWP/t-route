@@ -202,8 +202,11 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         cs = input_buf[i, 8]
         s0 = input_buf[i, 9]
         qdp = input_buf[i, 10]
-        velp = input_buf[i, 11]
-        depthp = input_buf[i, 12]
+        depthp = input_buf[i, 11]
+        velp = input_buf[i, 12]
+
+        if assume_short_ts:
+            quc = qup
 
         muskingcunge(
                     dt,
@@ -250,8 +253,6 @@ cdef void compute_reach(int nreach, const long[:,:] reach, float qup, float quc,
         if current_segment == -1:
             print("invalid segment index encoutered not at end of reach!")
             break
-
-        print(f"fdv_i:{i}\tglobal_i:{current_segment}")
 
         dt = 60.0
         bw = data_values[current_segment, 0]
@@ -351,6 +352,7 @@ def compute_network(int nsteps, object reaches, object connections,
 
     cdef float[:,::1] flowdepthvel = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
     cdef int timestep = 0
+    cdef int ts_offset
 
     cdef Py_ssize_t[:] srows, drows
     cdef float[:, ::1] buf
@@ -364,7 +366,12 @@ def compute_network(int nsteps, object reaches, object connections,
     cdef float qup, quc
 
     while timestep < nsteps:
+        ts_offset = timestep * 3
+
+        print(f"Timestep: {timestep}".ljust(120, '='))
+
         for reach in reaches:
+            print(f"Reach: {reach}")
             srows = np.array(binary_find(data_idx, reach), dtype=np.intp)
             drows = np.arange(srows.shape[0], dtype=np.intp)
             reach_length = srows.shape[0]
@@ -377,24 +384,32 @@ def compute_network(int nsteps, object reaches, object connections,
                 for i in range(scols.shape[0]):
                     fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf)
                 # fill buffer with qdp, depthp, velp
-                fill_buffer_column(srows, timestep , drows, 10, flowdepthvel, buf)
-                fill_buffer_column(srows, timestep + 1, drows, 11, flowdepthvel, buf)
-                fill_buffer_column(srows, timestep + 2, drows, 12, flowdepthvel, buf)
+                if timestep > 0:
+                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowdepthvel, buf)
+                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowdepthvel, buf)
+                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowdepthvel, buf)
+                else:
+                    # fill buffer with constant
+                    for i in range(drows.shape[0]):
+                        buf[drows[i], 10] = 0.0
+                        buf[drows[i], 11] = 0.0
+                        buf[drows[i], 12] = 0.0
 
             # compute qup/quc
             qup = 0.0
             quc = 0.0
             if reach[0] in connections:
                 for i in binary_find(data_idx, connections[reach[0]]):
-                    qup += flowdepthvel[i, 0]
-                    quc += flowdepthvel[i, 3]
+                    quc += flowdepthvel[i, ts_offset]
+                    if timestep > 0:
+                        qup += flowdepthvel[i, ts_offset - 3]
 
-            compute_reach_kernel(qup, quc, reach_length, buf, out_buf)
+            compute_reach_kernel(qup, quc, reach_length, buf, out_buf, assume_short_ts=True)
 
             with nogil:
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
-                    fill_buffer_column(drows, i, srows, timestep + i, out_buf, flowdepthvel)
+                    fill_buffer_column(drows, i, srows, ts_offset + i, out_buf, flowdepthvel)
             
         #flowdepthvel[:, :3] = flowdepthvel[:, 3:]
         timestep += 1
