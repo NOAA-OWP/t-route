@@ -47,13 +47,13 @@ git fetch upstream
 git merge upstream
 ```
 
-5. Create your own branch to make targeted contributions. Branches are parallel versions of the repository that allow you to make changes and tinker as much as you'd like without disrupting the master codebase. It is recommended to create a new branch for each bite-sized contribution you make. Here is how to create a new branch:
+5. Create your own branch to make targeted contributions. Branches are parallel versions of the repository that allow you to make changes and tinker as much as you'd like without disrupting the master codebase. It is recommended to create a new branch for each bite-sized contribution you make. Here is how to create a new branch and automatically switch to it:
 
 ```
-git branch <new-branch-name>
+git branch -b <new-branch-name>
 ```
 
-6. Checkout your newly created branch. The `checkout` command helps you navigate between branches. It updates files in your working directory to match the version stored in that branch. 
+6. If your haven't already switched to your new branch, checkout your newly created branch. The `checkout` command helps you navigate between branches. It updates files in your working directory to match the version stored in that branch. 
 
 ```
 git checkout <branch-name>
