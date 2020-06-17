@@ -135,13 +135,13 @@ cdef void muskingcunge(float dt,
         float s0,
         float velp,
         float depthp,
-        FDV *rv):
+        FDV *rv) nogil:
     cdef float qdc, depthc, velc
     qdc = 0.0
     depthc = 0.0
     velc = 0.0
 
-    print(f"muskingcunge({dt},{qup},{quc},{qdp},{ql},{dx},{bw},{tw},{twcc},{n},{ncc},{cs},{s0},{velp},{depthp})")
+    #print(f"muskingcunge({dt},{qup},{quc},{qdp},{ql},{dx},{bw},{tw},{twcc},{n},{ncc},{cs},{s0},{velp},{depthp})")
     c_muskingcungenwm(
         &dt,
         &qup,
@@ -161,13 +161,15 @@ cdef void muskingcunge(float dt,
         &qdc,
         &velc,
         &depthc)
-    print(f"rv=[qdc={qdc}, depthc={depthc}, velc={velc}]")
+    #print(f"rv=[qdc={qdc}, depthc={depthc}, velc={velc}]")
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
 
 
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts=False):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
     """
     Kernel to compute reach.
 
@@ -204,9 +206,6 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         qdp = input_buf[i, 10]
         depthp = input_buf[i, 11]
         velp = input_buf[i, 12]
-
-        if assume_short_ts:
-            quc = qup
 
         muskingcunge(
                     dt,
@@ -354,47 +353,37 @@ def compute_network(int nsteps, object reaches, object connections,
     cdef int timestep = 0
     cdef int ts_offset
 
-    cdef Py_ssize_t[:] srows, drows
-    cdef float[:, ::1] buf
-    cdef float[:, ::1] out_buf
+    cdef Py_ssize_t[:] srows, drows_tmp
+    cdef float[:, ::1] buf, buf_view
+    cdef float[:, ::1] out_buf, out_view
     cdef object reach  # list
     cdef int reach_length
 
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
     cdef int buf_cols = 13
-    cdef Py_ssize_t i
+    cdef Py_ssize_t i, ireach
     cdef float qup, quc
 
+    cdef int maxreachlen = 0
+    cdef object buf_cache = []
+    for reach in reaches:
+        maxreachlen = max(maxreachlen, len(reach))
+        srows = np.array(binary_find(data_idx, reach), dtype=np.intp)
+        buf_cache.append(srows)
+
+    buf = np.empty((maxreachlen, buf_cols), dtype='float32')
+    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+
+    drows_tmp = np.arange(maxreachlen, dtype=np.intp)
+    cdef Py_ssize_t[:] drows
     while timestep < nsteps:
         ts_offset = timestep * 3
 
-        print(f"Timestep: {timestep}".ljust(120, '='))
-
-        for reach in reaches:
-            print(f"Reach: {reach}")
-            srows = np.array(binary_find(data_idx, reach), dtype=np.intp)
-            drows = np.arange(srows.shape[0], dtype=np.intp)
-            reach_length = srows.shape[0]
-            buf = np.empty((srows.shape[0], buf_cols), dtype='float32')
-            out_buf = np.empty((srows.shape[0], 3), dtype='float32')
-    
-            with nogil:
-                # fill the buffer with qlat
-                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf)
-                for i in range(scols.shape[0]):
-                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf)
-                # fill buffer with qdp, depthp, velp
-                if timestep > 0:
-                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowdepthvel, buf)
-                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowdepthvel, buf)
-                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowdepthvel, buf)
-                else:
-                    # fill buffer with constant
-                    for i in range(drows.shape[0]):
-                        buf[drows[i], 10] = 0.0
-                        buf[drows[i], 11] = 0.0
-                        buf[drows[i], 12] = 0.0
-
+        #print(f"Timestep: {timestep}".ljust(120, '='))
+        for ireach in range(len(reaches)):
+            reach = reaches[ireach]
+            srows = buf_cache[ireach]
+            
             # compute qup/quc
             qup = 0.0
             quc = 0.0
@@ -404,13 +393,36 @@ def compute_network(int nsteps, object reaches, object connections,
                     if timestep > 0:
                         qup += flowdepthvel[i, ts_offset - 3]
 
-            compute_reach_kernel(qup, quc, reach_length, buf, out_buf, assume_short_ts=True)
-
             with nogil:
+                reach_length = srows.shape[0]
+                buf_view = buf[:reach_length, :]
+                out_view = out_buf[:reach_length, :]
+                drows = drows_tmp[:reach_length]
+
+                # fill the buffer with qlat
+                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
+                for i in range(scols.shape[0]):
+                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                # fill buffer with qdp, depthp, velp
+                if timestep > 0:
+                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowdepthvel, buf_view)
+                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowdepthvel, buf_view)
+                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowdepthvel, buf_view)
+                else:
+                    # fill buffer with constant
+                    for i in range(drows.shape[0]):
+                        buf_view[drows[i], 10] = 0.0
+                        buf_view[drows[i], 11] = 0.0
+                        buf_view[drows[i], 12] = 0.0
+
+                if assume_short_ts:
+                    quc = qup
+
+                compute_reach_kernel(qup, quc, reach_length, buf_view, out_view)
+
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_buf, flowdepthvel)
+                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowdepthvel)
             
-        #flowdepthvel[:, :3] = flowdepthvel[:, 3:]
         timestep += 1
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowdepthvel, dtype='float32')
