@@ -309,7 +309,7 @@ def main():
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
     # 0: bw, 1: tw, 2: twcc, 3: dx, 4: n_manning 5: n_manning_cc, 6: cs, 7: s0, 8: qlat
-    data['dt'] = 60.0
+    data['dt'] = 300.0
 
     data = data.rename(columns={'Length': 'dx', 'TopWdth': 'tw', 'TopWdthCC': 'twcc',
         'BtmWdth': 'bw', 'nCC': 'ncc', 'So': 's0', 'ChSlp': 'cs'})
@@ -325,8 +325,8 @@ def main():
     qlats = qlats.append(qlat_tails)
     datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     
-    ts = 10
-    qlats = qlats.loc[:, list(range(ts))]
+    ts = 144
+    qlats = qlats.loc[:, :ts]
     compute_start = time.time()
     if parallelcompute:
         if verbose:
@@ -350,7 +350,6 @@ def main():
     else:
         rets = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            breakpoint()
             r = data.index.intersection(chain.from_iterable(reach))
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
