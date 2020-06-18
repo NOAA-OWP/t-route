@@ -100,9 +100,9 @@ def _handle_args():
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
+    root = pathlib.Path("/", "content", "wrf_hydro_nwm_public", "trunk", "NDHMS", "dynamic_channel_routing")
 elif not ENV_IS_CL:
-    root = os.path.dirname(os.path.dirname(os.path.abspath("")))
+    root = pathlib.Path('.').resolve()
     sys.path.append(r"../python_framework")
     sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
     sys.setrecursionlimit(4000)
@@ -157,8 +157,8 @@ def main():
     write_output = args.write_output
     assume_short_ts = args.assume_short_ts
 
-    test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    test_folder = pathlib.Path(root, "test")
+    geo_input_folder = test_folder.joinpath("input", "geo")
 
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
@@ -177,7 +177,11 @@ def main():
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
+
     # STEP 1
+    network_data = nnu.set_supernetwork_data(
+        supernetwork=args.supernetwork, geo_input_folder=geo_input_folder
+    )
     supernetwork_data, supernetwork_values = nnu.set_networks(
         supernetwork=supernetwork,
         geo_input_folder=geo_input_folder,
