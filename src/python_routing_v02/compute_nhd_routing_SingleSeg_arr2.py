@@ -195,7 +195,7 @@ def main():
     #    , 'vel': {'prev': 0, 'curr': 0}
     #    , 'qlat': {'prev': 0, 'curr': 0}} for node in nhd_network.nodes(connections)}
 
-    parallelcompute = True
+    parallelcompute = False
 
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
