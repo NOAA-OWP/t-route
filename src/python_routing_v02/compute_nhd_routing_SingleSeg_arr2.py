@@ -81,6 +81,11 @@ def constant_qlats(data, nsteps, qlat):
     ql = pd.DataFrame(q, index=data.index, columns=range(nsteps))
     return ql
 
+def replace_downstreams(data, downstream_col, terminal_code):
+    ds0_mask = data[downstream_col] == terminal_code
+    new_data = data.copy()
+    new_data.loc[ds0_mask, downstream_col] = -ds0_mask.index[ds0_mask]
+    return new_data
 
 def main():
 
@@ -89,7 +94,7 @@ def main():
     verbose = True
     debuglevel = 0
     showtiming = True
-    nts = 144
+    nts = 1440
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -97,11 +102,11 @@ def main():
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_ge5'
-    supernetwork = "Pocono_TEST2"
+    #supernetwork = "Pocono_TEST2"
     """##NHD CONUS order 5 and greater"""
     # supernetwork = 'CONUS_ge5'
     """These are large -- be careful"""
-    #supernetwork = 'Mainstems_CONUS'
+    supernetwork = 'Mainstems_CONUS'
     # supernetwork = 'CONUS_FULL_RES_v20'
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
@@ -128,11 +133,17 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
-    qlats = pd.read_csv('../../test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.txt', index_col='ntt')
-    qlats = qlats.drop(columns=['nt'])
-    qlats.columns = qlats.columns.astype(int)
-    qlats = qlats.sort_index(axis='columns').sort_index(axis='index')
-    qlats = qlats.drop(columns=qlats.columns.difference(data.index)).T
+    data = replace_downstreams(data, network_data['downstream_col'], 0)
+
+    if supernetwork == "Pocono_TEST2":
+        qlats = pd.read_csv('../../test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.txt', index_col='ntt')
+        qlats = qlats.drop(columns=['nt'])
+        qlats.columns = qlats.columns.astype(int)
+        qlats = qlats.sort_index(axis='columns').sort_index(axis='index')
+        qlats = qlats.drop(columns=qlats.columns.difference(data.index)).T
+        qlats = qlats.astype('float32')
+    else:
+        qlats = constant_qlats(data, nts, 10.0)
 
 
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
@@ -184,7 +195,7 @@ def main():
     #    , 'vel': {'prev': 0, 'curr': 0}
     #    , 'qlat': {'prev': 0, 'curr': 0}} for node in nhd_network.nodes(connections)}
 
-    parallelcompute = False
+    parallelcompute = True
 
     # Data column ordering is very important as we directly lookup values.
     # The column order *must* be:
@@ -193,17 +204,7 @@ def main():
 
     data = data.rename(columns={'Length': 'dx', 'TopWdth': 'tw', 'TopWdthCC': 'twcc',
         'BtmWdth': 'bw', 'nCC': 'ncc', 'So': 's0', 'ChSlp': 'cs'})
-    data = data.astype('float32')
-
-    tailwaters = list(nhd_network.tailwaters(connections))
-    data_tails = pd.DataFrame(np.zeros((len(tailwaters), len(data.columns)), dtype='float32'),
-        index = tailwaters, columns=data.columns)
-    qlat_tails = pd.DataFrame(np.zeros((len(tailwaters), len(qlats.columns)), dtype='float32'),
-        index=tailwaters, columns=qlats.columns)
-    data = data.append(data_tails)
-    #qlats = constant_qlats(data, nts, 10.0)
-    qlats = qlats.astype('float32')
-    qlats = qlats.append(qlat_tails)
+    data = data.astype('float32')    
     datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     
     #qlats = qlats.loc[:, :nts]
@@ -216,10 +217,15 @@ def main():
         ) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-                data_sub = data.loc[reach, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+                r = list(chain.from_iterable(reach))
+                assert r[-1] == tw  # always be True
+                r = r[:-1]
+                assert len(data.index.intersection(r)) == len(r)
+                data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
                     delayed(mc_reach.compute_network)(
-                        nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values
+                        nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values
                     )
                 )
             random.shuffle(jobs)
@@ -230,7 +236,10 @@ def main():
     else:
         rets = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = data.index.intersection(chain.from_iterable(reach))
+            r = list(chain.from_iterable(reach))
+            assert r[-1] == tw  # always be True
+            r = r[:-1]
+            assert len(data.index.intersection(r)) == len(r)
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             rets.append(
@@ -245,10 +254,9 @@ def main():
                 )
 
     print("Computation time: ", time.time() - compute_start)
-    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'd', 'v']], names=['timestep', 'qdv'])
-    flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
-    print(flowdepthvel)
-    breakpoint()
+    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'v', 'd']], names=['timestep', 'qvd'])
+    flowveldepth = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
+    print(flowveldepth)
     #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
     #    print(flowdepthvel)
 
