@@ -75,133 +75,11 @@ def writetoFile(file, writeString):
 first = itemgetter(0)
 second = itemgetter(1)
 
-# def compute_reach(
-#         reach,
-#         qup, quc,
-#         flowdepthvel,
-#         assume_short_ts=False,
-# ):
-#     for i, current_segment in reach:
-#         dt = 60.0
-#         bw = data_values[current_segment, 0]
-#         tw = data_values[current_segment, 1]
-#         twcc = data_values[current_segment, 2]
-#         dx = data_values[current_segment, 3]
-#         n_manning = data_values[current_segment, 4]
-#         n_manning_cc = data_values[current_segment, 5]
-#         cs = data_values[current_segment, 6]
-#         s0 = data_values[current_segment, 7]
-#
-#         flowdepthvel[i, 7] = qlat = 10.0
-#         #qdp = flowdepthvel[current_segment, 0]
-#         #depthp = flowdepthvel[current_segment, 1]
-#         #velp = flowdepthvel[current_segment, 2]
-#         qdp, depthp, velp = flowdepthvel[i, 0:3]
-#
-#         flowdepthvel[i, :4] = flowdepthvel[i, 4:]
-#
-#         if assume_short_ts:
-#             quc = qup
-#
-#         # qdc, velc, depthc
-#         #args = tuple(map(c_float, (dt, qup, quc, qdp, qlat, dx, bw, tw, twcc, n_manning)))
-#         qdc, depthc, velc = muskingcungenwm(
-#             dt,
-#             qup,
-#             quc,
-#             qdp,
-#             qlat,
-#             dx,
-#             bw,
-#             tw,
-#             twcc,
-#             n_manning,
-#             n_manning_cc,
-#             cs,
-#             s0,
-#             velp,
-#             depthp
-#         )
-#
-#         flowdepthvel[i, 4:7] = qdc, depthc, velc
-#         quc = qdc
-#         qup = qdp
-#
-#
-# # ### Psuedocode
-# #
-#
-# def compute_network(nsteps, reaches, connections, assume_short_ts=False):
-#     findex = np.array(sorted(chain.from_iterable(reaches), key=first))
-#     flowdepthvel = np.zeros((len(findex), 8), dtype='float32')
-#     qup_quc = np.zeros(2, dtype='float32')
-#
-#     idx_view = findex[:,0]
-#
-#     global_idxs = []
-#     local_idxs = []
-#     upstream_segs = []
-#     for reach in reaches:
-#         x, y = list(zip(*reach))
-#         global_idxs.append(x)
-#         local_idxs.append(np.searchsorted(idx_view, x).tolist())
-#         us_segs = list(map(first, connections.get(y[0], {}).get('children', ())))
-#         upstream_segs.append(np.searchsorted(idx_view, us_segs).tolist())
-#
-#     for ts in range(nsteps):
-#         #breakpoint()
-#         for local_idx, global_idx, us in zip(local_idxs, global_idxs, upstream_segs):
-#             qup_quc[:] = 0
-#             for x in us:
-#                 qup_quc[0] += flowdepthvel[x, 0]
-#                 qup_quc[1] += flowdepthvel[x, 4]
-#             mc_reach.compute_reach(zip(local_idx, global_idx), qup_quc[0], qup_quc[1], flowdepthvel, data_values, assume_short_ts=assume_short_ts)
-#     return idx_view, flowdepthvel
 
-
-def translate_reach_to_index(reaches, index):
-    """
-    Translate the reach value to an index into data
-    Args:
-        reaches (list): list of reaches
-        data (DataFrame): data
-
-    Returns:
-
-    """
-    rv = []
-    for reach in reaches:
-        rv.append(np.stack([mc_reach.binary_find(index, reach), reach], axis=1))
-        # rv.append(np.stack([np.searchsorted(index, reach), reach], axis=1))
-    return rv
-
-
-def translate_network_to_index(connections, index):
-    """
-    Annotate a connections dictionary with indexes for each node into index
-    Args:
-        connections:
-        index:
-
-    Returns:
-
-    """
-    rv = {}
-    for n, children in connections.items():
-        r = {}
-        if children:
-            r["children"] = np.stack(
-                [mc_reach.binary_find(index, children), children], axis=1
-            )
-            # r['children'] = np.stack([np.searchsorted(index, children), children], axis=1)
-        else:
-            r["children"] = None
-        try:
-            r["index"] = index.get_loc(n)
-        except KeyError:
-            r["index"] = None
-        rv[n] = r
-    return rv
+def constant_qlats(data, nsteps, qlat):
+    q = np.full((len(data.index), nsteps), qlat, dtype='float32')
+    ql = pd.DataFrame(q, index=data.index, columns=range(nsteps))
+    return ql
 
 
 def main():
@@ -211,6 +89,7 @@ def main():
     verbose = True
     debuglevel = 0
     showtiming = True
+    nts = 144
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -254,6 +133,7 @@ def main():
     qlats.columns = qlats.columns.astype(int)
     qlats = qlats.sort_index(axis='columns').sort_index(axis='index')
     qlats = qlats.drop(columns=qlats.columns.difference(data.index)).T
+
 
     connections = nhd_network.extract_network(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
@@ -321,12 +201,12 @@ def main():
     qlat_tails = pd.DataFrame(np.zeros((len(tailwaters), len(qlats.columns)), dtype='float32'),
         index=tailwaters, columns=qlats.columns)
     data = data.append(data_tails)
+    #qlats = constant_qlats(data, nts, 10.0)
     qlats = qlats.astype('float32')
     qlats = qlats.append(qlat_tails)
     datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     
-    ts = 144
-    qlats = qlats.loc[:, :ts]
+    #qlats = qlats.loc[:, :nts]
     compute_start = time.time()
     if parallelcompute:
         if verbose:
@@ -339,7 +219,7 @@ def main():
                 data_sub = data.loc[reach, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
                 jobs.append(
                     delayed(mc_reach.compute_network)(
-                        ts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values
+                        nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values
                     )
                 )
             random.shuffle(jobs)
@@ -355,7 +235,7 @@ def main():
             qlat_sub = qlats.loc[r].sort_index()
             rets.append(
                 mc_reach.compute_network(
-                    ts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values))
+                    nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values))
             #findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_idx, data_values, qlat_values)
             #flowdepthvel[findex] = fdv
 
@@ -365,9 +245,10 @@ def main():
                 )
 
     print("Computation time: ", time.time() - compute_start)
-    fdv_columns = pd.MultiIndex.from_product([range(ts), ['q', 'd', 'v']], names=['timestep', 'qdv'])
+    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'd', 'v']], names=['timestep', 'qdv'])
     flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in rets])
     print(flowdepthvel)
+    breakpoint()
     #with np.printoptions(precision=6, suppress=True, linewidth=180, edgeitems=5):
     #    print(flowdepthvel)
 
