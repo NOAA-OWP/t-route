@@ -9,9 +9,14 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
+        # fortran_compile_call.append(r"--opt='-fdefault-real-8'")
+
+        if debuglevel <= -1:
+            print(fortran_compile_call)
         if debuglevel <= -2:
             subprocess.run(fortran_compile_call)
         else:
@@ -20,13 +25,17 @@ if COMPILE:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        import mc_sseg_stime as mc
+        from mc_sseg_stime import muskingcunge_module
+
+        # import mc_sseg_stime as muskingcunge_module
     except Exception as e:
         print(e)
         if debuglevel <= -1:
             traceback.print_exc()
 else:
-    import mc_sseg_stime as mc
+    from mc_sseg_stime import muskingcunge_module
+
+    # import mc_sseg_stime as muskingcunge_module
 
 # # Method 1
 # Python: time loop; segment loop; constant channel variables are passed to Fortran
@@ -58,7 +67,7 @@ def singlesegment(
 ):
 
     # call Fortran routine
-    return mc.muskingcungenwm(
+    return muskingcunge_module.muskingcungenwm(
         dt,
         qup,
         quc,
@@ -80,6 +89,9 @@ def singlesegment(
 
 def main():
 
+    # precision = "double"  # the fortran precis module must be edited
+    precision = "single"
+
     dt = 60.0  # Time step
     dx = 1800.0  # segment length
     bw = 112.0  # Trapezoidal bottom width
@@ -90,33 +102,73 @@ def main():
     cs = 1.399999976158142  # channel trapezoidal sideslope
     s0 = 0.0017999999690800905  # downstream segment bed slope
     qlat = 40.0  # Lateral inflow in this time step
-    qup = (
-        0.04598825052380562  # Flow from the upstream neighbor in the previous timestep
-    )
-    quc = 0.04598825052380562  # Flow from the upstream neighbor in the current timestep
-    qdp = 0.21487340331077576  # Flow at the current segment in the previous timestep
-    depthp = (
-        0.010033470578491688  # Depth at the current segment in the previous timestep')
-    )
-    velp = 0.070480190217494964  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
-    """
-    k,   i,   q,    vel,    depth
-    0 0 0.0891760066151619 0.06941037625074387 0.010050795041024685
-    0 1 0.06863606721162796 0.07104580104351044 0.009998836554586887
-    0 2 0.04598825052380562 0.06900732219219208 0.009981763549149036
-    0 3 0.21487340331077576 0.07048019021749496 0.010033470578491688
-    1 0 0.3173820674419403 0.15248453617095947 0.03275299444794655
-    1 1 0.2014089822769165 0.09322302788496017 0.015030190348625183
-    1 2 0.13257014751434326 0.061184611171483994 0.008333344012498856
-    1 3 0.7570106983184814 0.12373604625463486 0.02334451675415039
-    """
 
-    qdc_expected = 0.7570106983184814
-    velc_expected = 0.12373604625463486
-    depthc_expected = 0.02334451675415039
+    if precision is "single":
+
+        """
+        single precision results from standard procedure
+        ORIG..ORIG
+        k,   i,   q,    vel,    depth
+        0 0 0.0891760066151619 0.06941037625074387 0.010050795041024685
+        0 1 0.06863606721162796 0.07104580104351044 0.009998836554586887
+        0 2 0.04598825052380562 0.06900732219219208 0.009981763549149036
+        0 3 0.21487340331077576 0.07048019021749496 0.010033470578491688
+        1 0 0.3173820674419403 0.15248453617095947 0.03275299444794655
+        1 1 0.2014089822769165 0.09322302788496017 0.015030190348625183
+        1 2 0.13257014751434326 0.061184611171483994 0.008333344012498856
+        1 3 0.7570106983184814 0.12373604625463486 0.02334451675415039
+        """
+        # Providing the truncated inputs produces the exact same answer...
+        qup = 0.04598825
+        quc = 0.04598825
+        qdp = (
+            0.21487340
+            # Flow at the current segment in the previous timestep
+        )
+        depthp = 0.0100334705
+        velp = 0.0704801953
+
+        # qup = 0.04598825052380562  # Flow from the upstream neighbor in the previous timestep
+        # quc = 0.04598825052380562  # Flow from the upstream neighbor in the current timestep
+        # qdp = (
+        # 0.21487340331077576
+        # # Flow at the current segment in the previous timestep
+        # )
+        # depthp = 0.010033470578491688  # Depth at the current segment in the previous timestep')
+        # velp = 0.07048019021749496  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+
+    elif precision is "double":
+        """
+        double precision results from standard procedure
+        k,   i,   q,    vel,    depth
+        0 0 0.08917601071480002 0.06941037462636288 0.010050795648053421
+        0 1 0.06863607847374494 0.07104581370597118 0.009998837063033011
+        0 2 0.04598825885217007 0.06900733569152935 0.009981763967449955
+        0 3 0.21487345087737053 0.07048020184743511 0.010033471026476835
+        1 0 0.3173821233250696 0.15248451094165638 0.03275299244073234
+        1 1 0.20140900207783252 0.09322304279007165 0.015030191144899728
+        1 2 0.13257016086743934 0.061184627249756214 0.00833334535644666
+        1 3 0.7570107902354513 0.12373606306742324 0.02334451646521419
+        """
+        qup = 0.04598825885217007  # Flow from the upstream neighbor in the previous timestep
+        quc = 0.04598825885217007  # Flow from the upstream neighbor in the current timestep
+        qdp = (
+            0.21487345087737053  # Flow at the current segment in the previous timestep
+        )
+        depthp = 0.010033471026476835  # Depth at the current segment in the previous timestep')
+        velp = 0.07048020184743511  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
+
+    qdc_expected_sngl = 0.7570106983184814
+    velc_expected_sngl = 0.12373604625463486
+    depthc_expected_sngl = 0.02334451675415039
+
+    qdc_expected_dbl = 0.7570107902354513
+    velc_expected_dbl = 0.12373606306742324
+    depthc_expected_dbl = 0.02334451646521419
 
     # run M-C model
     qdc, velc, depthc = singlesegment(
+        # precision=precision,
         dt=dt,
         qup=qup,
         quc=quc,
@@ -133,12 +185,41 @@ def main():
         velp=velp,
         depthp=depthp,
     )
-    print("computed q: {} vel: {} depth: {}".format(qdc, velc, depthc))
     print(
-        "expected q: {} vel: {} depth: {}".format(
-            qdc_expected, velc_expected, depthc_expected
+        "real double precision computed q: {} vel: {} depth: {}".format(
+            qdc, velc, depthc
         )
     )
+    print(
+        "real double precision expected q: {} vel: {} depth: {}".format(
+            qdc_expected_dbl, velc_expected_dbl, depthc_expected_dbl
+        )
+    )
+    print(
+        "real single precision expected q: {} vel: {} depth: {}".format(
+            qdc_expected_sngl, velc_expected_sngl, depthc_expected_sngl
+        )
+    )
+
+    # print(
+    # muskingcunge_module.muskingcungenwm(
+    # 60.0,
+    # 0.0,
+    # 0.082518570125103,
+    # 0.0,
+    # 0.004000000189989805,
+    # 30.15302085876465,
+    # 0.0,
+    # 6.030604362487793,
+    # 10.051007270812988,
+    # 408.0,
+    # 0.054999999701976776,
+    # 0.10999999940395355,
+    # 0.4216165244579315,
+    # 0.0,
+    # 0.0,
+    # )
+    # )
 
 
 if __name__ == "__main__":

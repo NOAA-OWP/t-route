@@ -91,7 +91,7 @@ def mc_tlp_over_seg(
             #                   {mc.var.vel} {mc.var.depth}")
 
             ## call Fortran routines
-            mc.mc.main()
+            mc.muskingcunge_module.main()
 
             #             print(f"ts {ts} head_segment {head_segment} segINDEX {seg} segID {segID} ql {mc.var.ql} \
             #             FNL:qup quc qdp qdc vel depth {mc.var.qup} {mc.var.quc} {mc.var.qdp} {mc.var.qdc} \
