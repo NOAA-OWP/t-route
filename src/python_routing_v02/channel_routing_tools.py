@@ -92,37 +92,35 @@ def mc_tlp_over_seg(
             #                   {mc.var.vel} {mc.var.depth}")
 
             if debuglevel <= -2:
-                '''
+                """
                 rv=[qdc=0.005649629049003124, depthc=0.010014507919549942, velc=0.04874464496970177]
                 muskingcunge(60.0,0.0,0.0,0.0,1.5,282.0,1.2110410928726196,2.018401861190796,6.055205345153809,0.05999999865889549,0.11999999731779099,0.8560649752616882,0.008999999612569809,0.0,0.0)
-                '''
+                """
                 print(
-                segID,
-                mc.var.dt,
-                mc.var.qup,
-                mc.var.quc,
-                mc.var.qdp,
-                mc.var.ql,
-                mc.var.dx,
-                mc.var.bw,
-                mc.var.tw,
-                mc.var.twcc,
-                mc.var.n,
-                mc.var.ncc,
-                mc.var.cs,
-                mc.var.so,
-                mc.var.vel,
-                mc.var.depth,
-                mc.var.ncomp,
+                    segID,
+                    mc.var.dt,
+                    mc.var.qup,
+                    mc.var.quc,
+                    mc.var.qdp,
+                    mc.var.ql,
+                    mc.var.dx,
+                    mc.var.bw,
+                    mc.var.tw,
+                    mc.var.twcc,
+                    mc.var.n,
+                    mc.var.ncc,
+                    mc.var.cs,
+                    mc.var.so,
+                    mc.var.vel,
+                    mc.var.depth,
+                    mc.var.ncomp,
                 )
 
             ## call Fortran routines
             mc.muskingcunge_module.main()
             if debuglevel <= -2:
-                print (
-                mc.var.qdc,
-                mc.var.vel,
-                mc.var.depth,
+                print(
+                    mc.var.qdc, mc.var.vel, mc.var.depth,
                 )
 
             #             print(f"ts {ts} head_segment {head_segment} segINDEX {seg} segID {segID} ql {mc.var.ql} \
