@@ -35,3 +35,10 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 
 def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
+
+
+def read_qlat(path):
+    ql = read_csv(path)
+    ql.index = ql.index.astype(int)
+    ql = ql.sort_index(axis='index')
+    return ql
