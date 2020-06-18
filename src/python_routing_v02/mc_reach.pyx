@@ -286,7 +286,7 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
     cdef int timestep = 0
     cdef int ts_offset
 
-    cdef Py_ssize_t[:] srows, drows_tmp
+    cdef Py_ssize_t[:] srows, drows_tmp, usrows
     cdef float[:, ::1] buf, buf_view
     cdef float[:, ::1] out_buf, out_view
     cdef object reach  # list
@@ -302,7 +302,11 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
     for reach in reaches:
         maxreachlen = max(maxreachlen, len(reach))
         srows = np.array(binary_find(data_idx, reach), dtype=np.intp)
-        buf_cache.append(srows)
+        if reach[0] in connections:
+            usrows = np.array(binary_find(data_idx, connections[reach[0]]), dtype=np.intp)
+        else:
+            usrows = np.array()
+        buf_cache.append((srows, usrows))
 
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
     out_buf = np.empty((maxreachlen, 3), dtype='float32')
@@ -315,18 +319,19 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
         #print(f"Timestep: {timestep}".ljust(120, '='))
         for ireach in range(len(reaches)):
             reach = reaches[ireach]
-            srows = buf_cache[ireach]
+            srows = buf_cache[ireach][0]
+            usrows = buf_cache[ireach][1]
             
-            # compute qup/quc
-            qup = 0.0
-            quc = 0.0
-            if reach[0] in connections:
-                for i in binary_find(data_idx, connections[reach[0]]):
+            with nogil:
+                # compute qup/quc
+                qup = 0.0
+                quc = 0.0
+                for i in range(usrows.shape[0]):
+                    i = usrows[i]
                     quc += flowveldepth[i, ts_offset]
                     if timestep > 0:
                         qup += flowveldepth[i, ts_offset - 3]
 
-            with nogil:
                 reach_length = srows.shape[0]
                 buf_view = buf[:reach_length, :]
                 out_view = out_buf[:reach_length, :]
