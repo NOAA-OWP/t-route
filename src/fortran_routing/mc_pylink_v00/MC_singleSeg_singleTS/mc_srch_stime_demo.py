@@ -2,13 +2,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import traceback
-import shutil
 import subprocess
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy.stats as stats
-import decimal
-from time import process_time
 
 debuglevel = 0
 COMPILE = True
