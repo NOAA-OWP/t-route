@@ -243,7 +243,7 @@ cdef void fill_buffer_column(const Py_ssize_t[:] srows,
         out[drows[i], dcol] = src[srows[i], scol]
 
 
-def column_mapper(object src_cols) -> object:
+cpdef object column_mapper(object src_cols):
     """Map source columns to columns expected by algorithm"""
     cdef object index = {}
     cdef object i_label
@@ -257,10 +257,10 @@ def column_mapper(object src_cols) -> object:
         rv.append(index[label])
     return rv
 
-def compute_network(int nsteps, object reaches, object connections, 
+cpdef object compute_network(int nsteps, object reaches, object connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
     const float[:, :] qlat_values, 
-    bint assume_short_ts=False) -> object:
+    bint assume_short_ts=False):
     """
     Compute network
 
