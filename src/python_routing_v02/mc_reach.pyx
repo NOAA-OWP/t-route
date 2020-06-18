@@ -324,7 +324,7 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
                 for i in binary_find(data_idx, connections[reach[0]]):
                     quc += flowveldepth[i, ts_offset]
                     if timestep > 0:
-                        qup += flowveldpeth[i, ts_offset - 3]
+                        qup += flowveldepth[i, ts_offset - 3]
 
             with nogil:
                 reach_length = srows.shape[0]
