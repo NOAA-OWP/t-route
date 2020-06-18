@@ -136,6 +136,9 @@ else:
 ## network and reach utilities
 import nhd_network_utilities as nnu
 import nhd_reach_utilities as nru
+import mc_reach
+import nhd_network
+import nhd_io
 
 
 def writetoFile(file, writeString):
@@ -143,12 +146,17 @@ def writetoFile(file, writeString):
     file.write("\n")
 
 
+def constant_qlats(data, nsteps, qlat):
+    q = np.full((len(data.index), nsteps), qlat, dtype='float32')
+    ql = pd.DataFrame(q, index=data.index, columns=range(nsteps))
+    return ql
 
 
 def main():
 
     args = _handle_args()
 
+    nts = 144
     debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
@@ -180,16 +188,33 @@ def main():
 
     # STEP 1
     network_data = nnu.set_supernetwork_data(
-        supernetwork=args.supernetwork, geo_input_folder=geo_input_folder
-    )
-    supernetwork_data, supernetwork_values = nnu.set_networks(
-        supernetwork=supernetwork,
+        supernetwork=args.supernetwork, 
         geo_input_folder=geo_input_folder,
-        verbose=False
-        # , verbose = verbose
-        ,
-        debuglevel=debuglevel,
+        verbose=False,
+        debuglevel=debuglevel
     )
+
+    cols = [v for c, v in network_data.items() if c.endswith("_col")]
+    data = nhd_io.read(network_data["geo_file_path"])
+    data = data[cols]
+    data = data.set_index(network_data["key_col"])
+
+    if "mask_file_path" in network_data:
+        data_mask = nhd_io.read_mask(
+            network_data["mask_file_path"],
+            layer_string=network_data["mask_layer_string"]
+        )
+        data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
+
+    data = data.sort_index()
+
+    if args.ql:
+        qlats = nhd_io.read_qlat(args.ql)
+    else:
+        qlats = constant_qlats(data, nts, 10.0)
+
+    connections = nhd_network.extract_network(data, network_data["downstream_col"])
+
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
@@ -200,13 +225,18 @@ def main():
         start_time = time.time()
     if verbose:
         print("organizing connections into reaches ...")
-    networks = nru.compose_networks(
-        supernetwork_values,
-        break_network_at_waterbodies=break_network_at_waterbodies,
-        verbose=False,
-        debuglevel=debuglevel,
-        showtiming=showtiming,
-    )
+    
+    rconn = nhd_network.reverse_network(connections)
+    subreachable = nhd_network.reachable(rconn)
+    subnets = nhd_network.reachable_network(rconn)
+    subreaches = {}
+    for tw, net in subnets.items():
+        path_func = partial(nhd_network.split_at_junction, net)
+        reach = nhd_network.dfs_decomposition(
+            nhd_network.reverse_network(net), path_func
+        )
+        subreaches[tw] = reach
+
     if verbose:
         print("reach organization complete")
     if showtiming:
@@ -214,56 +244,58 @@ def main():
 
     if showtiming:
         start_time = time.time()
-    connections = supernetwork_values[0]
+    
+    data['dt'] = 300.0
 
-    flowdepthvel = {
-        connection: {
-            "flow": {"prev": 0, "curr": 0},
-            "depth": {"prev": 0, "curr": 0},
-            "vel": {"prev": 0, "curr": 0},
-            "qlat": {"prev": 0, "curr": 0},
-        }
-        for connection in connections
+    column_rename = {
+        network_data['length_col']: 'dx',
+        network_data['topwidth_col']: 'tw',
+        network_data['topwidthcc_col']: 'twcc',
+        network_data['bottomwidth_col']: 'bw',
+        network_data['manningncc_col']: 'ncc',
+        network_data['slope_col']: 's0',
+        network_data['ChSlp_col']: 'cs',
+        network_data['manningn_col']: 'n'
     }
+    data = data.rename(columns=column_rename)
+    data = data.astype('float32')
+
+    datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+
 
     parallelcompute = False
-    if not parallelcompute:
-        if verbose:
-            print("executing computation on ordered reaches ...")
-
-        for terminal_segment, network in networks.items():
-            compute_network(
-                terminal_segment=terminal_segment,
-                network=network,
-                supernetwork_data=supernetwork_data,
-                verbose=False,
-                debuglevel=debuglevel,
-                write_output=write_output,
-                assume_short_ts=assume_short_ts,
-            )
-            print(f"{terminal_segment}")
-            if showtiming:
-                print("... in %s seconds." % (time.time() - start_time))
+    if parallelcompute:
+        results = []
+        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            r = data.index.intersection(chain.from_iterable(reach))
+            data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            qlat_sub = qlats.loc[r].sort_index()
+            results.append(mc_reach.compute_network(
+                nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values, assume_short_ts=args.assume_short_ts
+            ))
     else:
-        if verbose:
-            print(f"executing parallel computation on ordered reaches .... ")
-        # for terminal_segment, network in networks.items():
-        #    print(terminal_segment, network)
-        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
-        nslist = (
-            [
-                terminal_segment,
-                network,
-                supernetwork_data,  # TODO: This should probably be global...
-                False,
-                debuglevel,
-                write_output,
-                assume_short_ts,
-            ]
-            for terminal_segment, network in networks.items()
-        )
+        nslist = []
+        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            r = data.index.intersection(chain.from_iterable(reach))
+            data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            qlat_sub = qlats.loc[r].sort_index()
+            nslist.append((
+                nts, 
+                reach, 
+                subnets[tw], 
+                data_sub.index.values, 
+                data_sub.columns.values, 
+                data_sub.values, 
+                qlat_sub.values,
+                args.assume_short_ts
+            ))
+
         with multiprocessing.Pool() as pool:
-            results = pool.starmap(compute_network, nslist)
+            results = pool.starmap(mc_reach.compute_network, nslist)
+
+    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'd', 'v']])
+    flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results])
+
 
     if verbose:
         print("ordered reach computation complete")
