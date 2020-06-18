@@ -204,8 +204,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         cs = input_buf[i, 8]
         s0 = input_buf[i, 9]
         qdp = input_buf[i, 10]
-        depthp = input_buf[i, 11]
-        velp = input_buf[i, 12]
+        velp = input_buf[i, 11]
+        depthp = input_buf[i, 12]
 
         muskingcunge(
                     dt,
@@ -226,8 +226,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     out)
 
         output_buf[i, 0] = quc = out.qdc
-        output_buf[i, 1] = out.depthc
-        output_buf[i, 2] = out.velc
+        output_buf[i, 1] = out.velc
+        output_buf[i, 2] = out.depthc
 
         qup = qdp
 
@@ -282,7 +282,7 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
-    cdef float[:,::1] flowdepthvel = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -322,9 +322,9 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
             quc = 0.0
             if reach[0] in connections:
                 for i in binary_find(data_idx, connections[reach[0]]):
-                    quc += flowdepthvel[i, ts_offset]
+                    quc += flowveldepth[i, ts_offset]
                     if timestep > 0:
-                        qup += flowdepthvel[i, ts_offset - 3]
+                        qup += flowveldpeth[i, ts_offset - 3]
 
             with nogil:
                 reach_length = srows.shape[0]
@@ -338,9 +338,9 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
                     fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
                 # fill buffer with qdp, depthp, velp
                 if timestep > 0:
-                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowdepthvel, buf_view)
-                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowdepthvel, buf_view)
-                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowdepthvel, buf_view)
+                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
+                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
+                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
                 else:
                     # fill buffer with constant
                     for i in range(drows.shape[0]):
@@ -355,7 +355,7 @@ cpdef object compute_network(int nsteps, object reaches, object connections,
 
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowdepthvel)
+                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
             
         timestep += 1
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowdepthvel, dtype='float32')
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
