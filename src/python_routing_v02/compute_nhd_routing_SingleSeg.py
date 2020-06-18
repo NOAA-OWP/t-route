@@ -17,6 +17,7 @@ import sys
 import time
 import numpy as np
 import argparse
+import pathlib
 
 
 def _handle_args():
@@ -29,6 +30,7 @@ def _handle_args():
         dest="debuglevel",
         choices=[0, -1, -2, -3],
         default=0,
+        type=int
     )
     parser.add_argument(
         "-v",
@@ -86,6 +88,12 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    parser.add_argument(
+        "--ql",
+        help="QLat input data",
+        dest="ql",
+        default=None
+    )
 
     return parser.parse_args()
 
@@ -124,9 +132,6 @@ if COMPILE:
 else:
     from mc_sseg_stime import muskingcunge_module as mc
 
-connections = None
-networks = None
-flowdepthvel = None
 
 ## network and reach utilities
 import nhd_network_utilities as nnu
@@ -138,259 +143,13 @@ def writetoFile(file, writeString):
     file.write("\n")
 
 
-def compute_network(
-    terminal_segment=None,
-    network=None,
-    supernetwork_data=None,
-    verbose=False,
-    debuglevel=0,
-    write_output=False,
-    assume_short_ts=False,
-):
-    global connections
-    global flowdepthvel
-
-    # = {connection:{'flow':{'prev':-999, 'curr':-999}
-    #                            , 'depth':{'prev':-999, 'curr':-999}
-    #                            , 'vel':{'prev':-999, 'curr':-999}} for connection in connections}
-
-    # print(tuple(([x for x in network.keys()][i], [x for x in network.values()][i]) for i in range(len(network))))
-
-    # if verbose: print(f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
-
-    ordered_reaches = {}
-    for head_segment, reach in network["reaches"].items():
-        if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches.update(
-                {reach["seqorder"]: []}
-            )  # TODO: Should this be a set/dictionary?
-        ordered_reaches[reach["seqorder"]].append([head_segment, reach])
-
-    # initialize flowdepthvel dict
-    nts = 50  # one timestep
-    # nts = 1440 # number fof timestep = 1140 * 60(model timestep) = 86400 = day
-
-    for ts in range(0, nts):
-        # print(f'timestep: {ts}\n')
-
-        for x in range(network["maximum_reach_seqorder"], -1, -1):
-            for head_segment, reach in ordered_reaches[x]:
-                # print(f'{{{head_segment}}}:{reach}')
-
-                compute_mc_reach_up2down(
-                    head_segment=head_segment,
-                    reach=reach,
-                    supernetwork_data=supernetwork_data,
-                    ts=ts,
-                    verbose=verbose,
-                    debuglevel=debuglevel,
-                    write_output=write_output,
-                    assume_short_ts=assume_short_ts,
-                )
-                # print(f'{head_segment} {flowdepthvel[head_segment]}')
-
-
-# TODO: generalize with a direction flag
-def compute_mc_reach_up2down(
-    head_segment=None,
-    reach=None,
-    supernetwork_data=None,
-    ts=0,
-    verbose=False,
-    debuglevel=0,
-    write_output=False,
-    assume_short_ts=False,
-):
-    global connections
-    global flowdepthvel
-    # global network
-
-    # if verbose: print(f"\nreach: {head_segment}")
-    # if verbose: print(f"(reach: {reach})")
-    # if verbose: print(f"(n_segs: {len(reach['segments'])})")
-    if verbose:
-        print(
-            f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
-        )
-
-    if write_output:
-        filename = f"../../test/output/text/{head_segment}_{ts}.csv"
-        file = open(filename, "w+")
-        writeString = f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])}  isterminal: {reach['upstream_reaches'] == {supernetwork_data['terminal_code']}} )  reach tail: {reach['reach_tail']}  upstream seg : "
-
-    # upstream flow per reach
-    qup = 0.0
-    quc = 0.0
-    # import pdb; pdb.set_trace()
-    if reach["upstream_reaches"] != {
-        supernetwork_data["terminal_code"]
-    }:  # Not Headwaters
-        for us in connections[reach["reach_head"]]["upstreams"]:
-            if write_output:
-                writeString = writeString + f"\n upstream seg : {us}"
-            qup += flowdepthvel[us]["flow"]["prev"]
-            quc += flowdepthvel[us]["flow"]["curr"]
-    if write_output:
-        writetoFile(file, writeString)
-
-    current_segment = reach["reach_head"]
-    next_segment = connections[current_segment]["downstream"]
-
-    if write_output:
-        writeString = (
-            writeString
-            + f" timestep: {ts} cur : {current_segment}  upstream flow: {qup}"
-        )
-        writetoFile(file, writeString)
-        writeString = f"  , , , , , , "
-        writetoFile(file, writeString)
-
-    write_buffer = []
-    while True:
-        data = connections[current_segment]["data"]
-        current_flow = flowdepthvel[current_segment]
-
-        # for now treating as constant per reach
-        dt = 60.0
-        bw = data[supernetwork_data["bottomwidth_col"]]
-        tw = data[supernetwork_data["topwidth_col"]]
-        twcc = data[supernetwork_data["topwidthcc_col"]]
-        dx = data[supernetwork_data["length_col"]]
-        bw = data[supernetwork_data["bottomwidth_col"]]
-        n_manning = data[supernetwork_data["manningn_col"]]
-        n_manning_cc = data[supernetwork_data["manningncc_col"]]
-        cs = data[supernetwork_data["ChSlp_col"]]
-        s0 = data[supernetwork_data["slope_col"]]
-
-        # add some flow
-        current_flow["qlat"][
-            "curr"
-        ] = qlat = 10.0  # (ts + 1) * 10.0  # lateral flow per segment
-
-        qdp = current_flow["flow"]["prev"]
-        depthp = current_flow["flow"]["prev"]
-        velp = current_flow["flow"]["prev"]
-
-        current_flow["flow"]["prev"] = current_flow["flow"]["curr"]
-        current_flow["depth"]["prev"] = current_flow["depth"]["curr"]
-        current_flow["vel"]["prev"] = current_flow["vel"]["curr"]
-        current_flow["qlat"]["prev"] = current_flow["qlat"]["curr"]
-
-        if assume_short_ts:
-            quc = qup
-
-        # run M-C model
-        qdc, velc, depthc = singlesegment(
-            dt=dt,
-            qup=qup,
-            quc=quc,
-            qdp=qdp,
-            qlat=qlat,
-            dx=dx,
-            bw=bw,
-            tw=tw,
-            twcc=twcc,
-            n_manning=n_manning,
-            n_manning_cc=n_manning_cc,
-            cs=cs,
-            s0=s0,
-            velp=velp,
-            depthp=depthp,
-        )
-        # print(qdc, velc, depthc)
-        # print(qdc_expected, velc_expected, depthc_expected)
-
-        if write_output:
-            write_buffer.append(
-                ",".join(
-                    map(
-                        str,
-                        (
-                            current_segment,
-                            qdp,
-                            depthp,
-                            velp,
-                            qlat,
-                            qup,
-                            quc,
-                            qdc,
-                            depthc,
-                            velc,
-                        ),
-                    )
-                )
-            )
-
-        # for next segment qup / quc use the previous flow values
-        current_flow["flow"]["curr"] = qdc
-        current_flow["depth"]["curr"] = depthc
-        current_flow["vel"]["curr"] = velc
-
-        quc = qdc
-        qup = qdp
-
-        if current_segment == reach["reach_tail"]:
-            if verbose:
-                print(f"{current_segment} (tail)")
-            break
-        if verbose:
-            print(f"{current_segment} --> {next_segment}\n")
-        current_segment = next_segment
-        next_segment = connections[current_segment]["downstream"]
-        # end loop initialized the MC vars
-    if write_output:
-        writetoFile(file, "\n".join(write_buffer))
-        file.close()
-
-
-def singlesegment(
-    dt,  # dt
-    qup=None,  # qup
-    quc=None,  # quc
-    qdp=None,  # qdp
-    qlat=None,  # ql
-    dx=None,  # dx
-    bw=None,  # bw
-    tw=None,  # tw
-    twcc=None,  # twcc
-    n_manning=None,  #
-    n_manning_cc=None,  # ncc
-    cs=None,  # cs
-    s0=None,  # s0
-    velp=None,  # velocity at previous time step
-    depthp=None,  # depth at previous time step
-):
-
-    # call Fortran routine
-    return mc.muskingcungenwm(
-        dt,
-        qup,
-        quc,
-        qdp,
-        qlat,
-        dx,
-        bw,
-        tw,
-        twcc,
-        n_manning,
-        n_manning_cc,
-        cs,
-        s0,
-        velp,
-        depthp,
-    )
-    # return qdc, vel, depth
 
 
 def main():
 
     args = _handle_args()
 
-    global connections
-    global networks
-    global flowdepthvel
-
-    debuglevel = -1 * int(args.debuglevel)
+    debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
     supernetwork = args.supernetwork
