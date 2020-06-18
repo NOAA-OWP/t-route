@@ -55,7 +55,7 @@ git remote add origin master https://github.com/<user.name>/t-route.git
 
 ### 4. Add the upstream t-route repo as a second remote
 
-To get the latest updates from the mian t-route codebase, we need to add it as a second remote. It is common to name this remote, `upstream` 
+To get the latest updates from the main t-route codebase, we need to add it as a second remote. It is common to name this remote, `upstream` 
 
 ```
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
@@ -80,7 +80,7 @@ Finally, use the `push` command to build these changes into your fork.
 git push
 ```
 
-The above fetch-and-rebase process is recommended prior to creating a new development branch. This will ensure that your new additions are relevent to the latest version of the codebase. 
+The above fetch-and-rebase process is recommended prior to creating a new development branch. This will ensure that your new additions are relevant to the latest version of the codebase. 
 
 ### 6. Create a new development branch
 
@@ -117,7 +117,7 @@ In your local development branches, explore the code, make changes, and tinker a
 git add <list of your changed files>
 ```
 
-### 10. Commit your chnages to the checked out development branch
+### 10. Commit your changes to the checked out development branch
 Commits should be accompanied by a concise and brief comment. Like the "save" button in a word processor, commits should be made early and often.  
 
 ```
@@ -135,7 +135,7 @@ git branch -v
 git checkout <branch-name>
 
 # push commits to the development branch
-git push
+git push origin <branch-name>
 ```
 
 ### 12. Submit a pull request
