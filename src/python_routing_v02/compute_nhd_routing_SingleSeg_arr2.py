@@ -146,7 +146,7 @@ def main():
         qlats = constant_qlats(data, nts, 10.0)
 
 
-    connections = nhd_network.extract_network(data, network_data["downstream_col"])
+    connections = nhd_network.extract_connections(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
     # rconn_annoated = translate_network_to_index(rconn, data.index)
     if verbose:
