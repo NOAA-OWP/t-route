@@ -1,6 +1,9 @@
 # Guidance on how to contribute
 
-> All contributions to this project will be released to the public domain. By submitting a pull request or filing a bug, issue, or feature request, you are agreeing to comply with this waiver of copyright interest. Details can be found in our [TERMS](TERMS.md) and [LICENSE](LICENSE).
+> All contributions to this project will be released to the public domain.
+> By submitting a pull request or filing a bug, issue, or
+> feature request, you are agreeing to comply with this waiver of copyright interest.
+> Details can be found in our [TERMS](TERMS.md) and [LICENSE](LICENSE).
 
 There are two primary ways to help:
  - Using the issue tracker, and
@@ -8,17 +11,60 @@ There are two primary ways to help:
 
 ## Using the issue tracker
 
-Use the issue tracker to suggest feature requests, report bugs, and ask questions. This is also a great way to connect with the developers of the project as well as others who are interested in this solution.
+Use the issue tracker to suggest feature requests, report bugs, and ask questions.
+This is also a great way to connect with the developers of the project as well
+as others who are interested in this solution.
 
-Use the issue tracker to find ways to contribute. Find a bug or a feature, mention in the issue that you will take on that effort, then follow the _Changing the code-base_ guidance below.
+Use the issue tracker to find ways to contribute. Find a bug or a feature, mention in
+the issue that you will take on that effort, then follow the _Changing the code-base_
+guidance below.
 
 ## Changing the code-base
 
-Generally speaking, you should fork this repository, make a new branch, make changes in your own fork/branch, and then submit a pull request to incorporate changes into the main codebase. All new code *should* have associated unit tests that validate implemented features and the presence or lack of defects. In almost all cases, the submitted code should have some kind of demonstration notebook to go with it so that we can help others experiment with our project.
+Generally speaking, you should fork this repository, make a new branch, make changes in your 
+own fork/branch, and then submit a pull request to incorporate changes into the main codebase. All new code *should* have associated 
+unit tests that validate implemented features and the presence or lack of defects.
+In almost all cases, the submitted code should have some kind of demonstration notebook
+to go with it so that we can help others experiment with our project.
 
-Additionally, the code should follow any stylistic and architectural guidelines prescribed by the project. In the absence of such guidelines, mimic the styles and patterns in the existing code-base.
+Additionally, the code should follow any stylistic and architectural guidelines
+prescribed by the project. In the absence of such guidelines, mimic the styles
+and patterns in the existing code-base.
 
-## A step-by-step guide to contributing via GitHub
+<!--- TODO: Consider using or merging with https://github.com/NOAA-OWP/DMOD/blob/master/doc/GIT_USAGE.md --->
+
+## The process in summary
+1. On GitHub Create a Fork and clone the new fork to your development environment
+```
+git clone github.com/<githubusername>/t-route.git
+```
+2. Make your changes to the source files -- **be creative!**
+3. Once you have made the changes you want to make, add ...
+```
+git add <list of your changed files>
+```
+7. ... and commit them. As suggested in the example, a small commit with a precise comment, is often
+more useful that a massive commit with a detailed changelist buried in bullets.
+```
+git commit -m 'Make brief comments to explain your change'
+```
+8. Push the accumulated commits to your fork in GitHub `git push` and, when you are ready to post the code to the main repository, open GitHub and issue a pull request. (It will probably be a highlighted button at the top of the page -- "New Pull Request").
+A pull request will allow someone else to look at your code with you to make sure that it is ready to share 
+with the world. Most of the time, someone who was involved with preparing the code can be the reviewer; for 
+major changes, it should be someone outside the core development team.
+9. **IMPORTANT** After you have issued a pull request the master upstream repository (NOAA-OWP) will have 
+been updated with your new code.
+It is important to make sure your fork is kept up-to-date with these new changes with the following commands. 
+The first command
+adds the OWP repository as an upstream remote that can
+be 'fetched' from to get the updates. 
+The second command fetches and merges any changes. 
+```
+git remote add upstream https://github.com/NOAA-OWP/t-route.git
+git fetch upstream && git merge --rebase upstream/master
+
+```
+## A more detailed step-by-step guide to contributing via GitHub
 
 ### 1. On GitHub Create a fork and clone it to your local directory 
 A step-by-step guide illustrating how to fork and clone a repository can be found [here](https://help.github.com/en/github/getting-started-with-github/fork-a-repo). Once a new fork is created, clone it to a local directory of your choice:
@@ -33,7 +79,7 @@ git clone github.com/<githubusername>/t-route.git
  
 ### 2. Set up the Git configuration parameters
 
-Set up your user name and email in your local repo's configs
+Set up your user name and email in your local repo config
 
 ```
 git config user.name "Your GitHub username"
@@ -101,7 +147,7 @@ git checkout <branch-name>
 Any time you update `master` with changes from the `upstream` remote (step 5), it is advised to rebase any local development branches, too. Rebasing ensures that your changes are based from what everyone else has already done. 
 
 ```
-# check out the branch you'd like to rebase
+# check out the branch you would like to rebase
 git checkout <branch-name>
 
 # rebase the branch 
