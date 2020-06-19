@@ -43,24 +43,23 @@ git clone github.com/<githubusername>/t-route.git
 ```
 git add <list of your changed files>
 ```
-7. ... and commit them. As suggested in the example, a small commit with a precise comment, is often
+4. ... and commit them. As suggested in the example, a small commit with a precise comment, is often
 more useful that a massive commit with a detailed changelist buried in bullets.
 ```
 git commit -m 'Make brief comments to explain your change'
 ```
-8. Push the accumulated commits to your fork in GitHub `git push` and, when you are ready to post the code to the main repository, open GitHub and issue a pull request. (It will probably be a highlighted button at the top of the page -- "New Pull Request").
+5. Push the accumulated commits to your fork in GitHub `git push` and, when you are ready to post the code to the main repository, open GitHub and issue a pull request.
 A pull request will allow someone else to look at your code with you to make sure that it is ready to share 
 with the world. Most of the time, someone who was involved with preparing the code can be the reviewer; for 
 major changes, it should be someone outside the core development team.
-9. **IMPORTANT** After you have issued a pull request the master upstream repository (NOAA-OWP) will have 
+6. **IMPORTANT** After you have issued a pull request the master upstream repository (NOAA-OWP) will have 
 been updated with your new code.
 It is important to make sure your fork is kept up-to-date with these new changes with the following commands. 
-The first command
-adds the OWP repository as an upstream remote that can
-be 'fetched' from to get the updates. 
-The second command fetches and merges any changes. 
 ```
+# add the OWP repository as an upstream remote that can
+# be 'fetched' from to get the updates. 
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
+# fetch and merge any changes. 
 git fetch upstream && git merge --rebase upstream/master
 
 ```
