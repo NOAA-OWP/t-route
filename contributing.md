@@ -10,7 +10,7 @@ There are two primary ways to help:
  - Changing the code-base.
 
 ## Using the issue tracker
-
+<!--- TODO: Change this to refer specifically to the GitHub issues feature, if permitted under organization policy-->
 Use the issue tracker to suggest feature requests, report bugs, and ask questions.
 This is also a great way to connect with the developers of the project as well
 as others who are interested in this solution.
@@ -57,7 +57,7 @@ git fetch upstream && git merge --rebase upstream/master
 ```
 ## A more detailed step-by-step guide to contributing via GitHub
 
-### 1. On GitHub Create a fork and clone it to your local directory 
+### 1. On GitHub, create a fork and clone it to your local directory 
 A step-by-step guide illustrating how to fork and clone 
 a repository can be found 
 [here](https://help.github.com/en/github/getting-started-with-github/fork-a-repo). 
