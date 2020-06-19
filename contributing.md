@@ -39,27 +39,23 @@ before submitting any pull requests.
 <!--- TODO: Consider using or merging this GitHub description with https://github.com/NOAA-OWP/DMOD/blob/master/doc/GIT_USAGE.md --->
 ## The process in summary
 <!--- TODO: Further summarize this summary --->
-1. On GitHub Create a Fork and clone the new fork to your development environment
+* On GitHub Create a Fork and clone the new fork to your development environment
 ```
 git clone github.com/<githubusername>/t-route.git
 ```
-2. Make your changes to the source files -- **be creative!**
-3. Once you have made the changes you want to make, add ...
+* Make your changes to the source files 
+* Add changed files to the commit ...
 ```
 git add <list of your changed files>
 ```
-4. ... and commit them. As suggested in the example, a small commit with a precise comment, is often
-more useful that a massive commit with a detailed changelist buried in bullets.
+* ... and commit them. 
 ```
-git commit -m 'Make brief comments to explain your change'
+git commit -m 'Make brief comments to label your change'
 ```
-5. Push the accumulated commits to your fork in GitHub `git push` and, when you are ready to post the code to the main repository, open GitHub and issue a pull request.
-A pull request will allow someone else to look at your code with you to make sure that it is ready to share 
-with the world. Most of the time, someone who was involved with preparing the code can be the reviewer; for 
-major changes, it should be someone outside the core development team.
-6. **IMPORTANT** After you have issued a pull request the master upstream repository (NOAA-OWP) will have 
-been updated with your new code.
-It is important to make sure your fork is kept up-to-date with these new changes with the following commands. 
+* Push the accumulated commits to your fork in GitHub `git push`,
+open GitHub and issue a pull request.
+* **IMPORTANT** Keep your code updated with the upstream.
+with the following commands. 
 ```
 # add the OWP repository as an upstream remote that can
 # be 'fetched' from to get the updates. 
