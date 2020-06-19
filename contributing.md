@@ -37,30 +37,21 @@ before submitting any pull requests.
 
 
 <!--- TODO: Consider using or merging this GitHub description with https://github.com/NOAA-OWP/DMOD/blob/master/doc/GIT_USAGE.md --->
-## The process in summary
-<!--- TODO: Further summarize this summary --->
-* On GitHub Create a Fork and clone the new fork to your development environment
+## The process in summary, i.e., TL;DR
+* Fork the t-route repo on GitHub and clone the new fork 
+to your development environment
 ```
 git clone github.com/<githubusername>/t-route.git
 ```
 * Make your changes to the source files 
-* Add changed files to the commit ...
-```
-git add <list of your changed files>
-```
-* ... and commit them. 
-```
-git commit -m 'Make brief comments to label your change'
-```
-* Push the accumulated commits to your fork in GitHub `git push`,
-open GitHub and issue a pull request.
+* Add changed files to the commit ... `git add <list of your changed files>`
+* ... and commit them: `git commit`
+* Push the accumulated commits to your fork in GitHub: `git push`
+* Open GitHub and issue a pull request.
 * **IMPORTANT** Keep your code updated with the upstream.
 with the following commands. 
 ```
-# add the OWP repository as an upstream remote that can
-# be 'fetched' from to get the updates. 
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
-# fetch and merge any changes. 
 git fetch upstream && git merge --rebase upstream/master
 
 ```
@@ -90,19 +81,23 @@ Set up your user name and email in your local repo config
 git config user.name "Your GitHub username"
 git config user.email "Your email address"
 ```
-Alternatively, you can change your machines global Git configs: 
+Alternatively, you can change your machine global git configs: 
     
 ```
 git config --global user.name "Your Github username"
 git config --global user.email "Your email address"
 ```
+____
 
+<!--- Please check if this is the default behavior. If so, 
+we can probably remove this step --->
 ### 3. Make your fork a remote 
 It is common practice to name the remote, `origin`
 
 ```
 git remote add origin master https://github.com/<user.name>/t-route.git
 ```
+____
 
 ### 4. Add the upstream t-route repo as a second remote
 
@@ -114,7 +109,7 @@ name this remote, `upstream`
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
 ```
 
-### 5. Incorporate upstream chnages into your fork
+### 5. Incorporate upstream changes into your fork
 
 To incorporate any changes from the main codebase into your
 local repo, `checkout` your `master` branch and do a 
@@ -178,7 +173,10 @@ git rebase master
 ```
 
 ### 8. Tinker in your development branches. 
-In your local development branches, explore the code, make changes, and tinker at will. Try out one of the notebooks or execute one of the `src/python_framework` or `src/python_routing` files -- most have a test script built in.  -- **be creative!**
+In your local development branches, explore the code, make changes, 
+and tinker at will. Try out one of the notebooks or execute one of 
+the `src/python_framework` or `src/python_routing` files --
+most have a test script built in. **Be creative!**
 
 ### 9. Add new and changed files to the staging area
 
@@ -188,7 +186,8 @@ git add <list of your changed files>
 
 ### 10. Commit your changes to the checked out development branch
 Commits should be accompanied by a concise and brief comment. 
-Like the "save" button in a word processor, commits should be made early and often.  
+Like the "save" button in a word processor, commits should be made 
+early and often.  
 A small commit with a precise comment, is often
 more useful that a massive commit with a detailed changelist buried in bullets.
 If additional comments are necessary, these may be included following a 
@@ -198,11 +197,10 @@ blank line as shown below.
 git commit -m 'Make Brief comments to explain your Feature
 
 Additional detail below a blank line, like this.
+-An explanation of why a change was made can help here
 -Bullets are useful for a large commit
--But usually, it’s better to just commit more often
--With a short one-line description of each little change
--An explanation of why a change was made can help here, though
-'
+-But usually, it is better to just commit more often
+-With a short one-line description of each little change'
 ```
 
 ### 11. Push commits to GitHub
@@ -237,11 +235,12 @@ to a branch in a repository on GitHub. Once a pull request is
 opened, you can discuss and review the potential changes with 
 collaborators and add follow-up commits before your changes 
 are merged into the base branch."
+
 A pull request will allow someone else to look at your code with 
 you to make sure that it is ready to share with the world. 
 Most of the time, someone who was involved with preparing 
 the code can be the reviewer; for major changes, it should 
-be someone outside the core development team."
+be someone outside the core development team.
 
 ### 13. Useful references
 - If some of the terminology used above is confusing - we agree. 
