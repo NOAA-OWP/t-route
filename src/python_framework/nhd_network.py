@@ -57,7 +57,7 @@ def extract_network(rows, target_col, terminal_code=0):
         if src not in network:
             network[src] = []
 
-        if dst != terminal_code:
+        if dst > 0:
             network[src].append(dst)
     return network
 
