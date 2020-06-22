@@ -241,10 +241,12 @@ def main():
             r = r[:-1]
             assert len(data.index.intersection(r)) == len(r)
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            #TODO: Do the data_sub = data.loc as a preprocessing step, then dump the pointer to data
             qlat_sub = qlats.loc[r].sort_index()
             rets.append(
                 mc_reach.compute_network(
                     nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values))
+            # TODO: rets could be dumped to files
             #findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_idx, data_values, qlat_values)
             #flowdepthvel[findex] = fdv
 
