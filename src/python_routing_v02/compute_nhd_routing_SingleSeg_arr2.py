@@ -16,7 +16,7 @@ import sys
 import time
 import numpy as np
 from operator import itemgetter
-from itertools import chain
+from itertools import chain, islice
 from functools import partial
 from joblib import delayed, Parallel
 import random
@@ -84,7 +84,10 @@ def constant_qlats(data, nsteps, qlat):
 def replace_downstreams(data, downstream_col, terminal_code):
     ds0_mask = data[downstream_col] == terminal_code
     new_data = data.copy()
-    new_data.loc[ds0_mask, downstream_col] = -ds0_mask.index[ds0_mask]
+    new_data.loc[ds0_mask, downstream_col] = ds0_mask.index[ds0_mask]
+
+    # Also set negative any nodes in downstream col not in data.index
+    new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
     return new_data
 
 def main():
@@ -159,29 +162,16 @@ def main():
         start_time = time.time()
     if verbose:
         print("organizing connections into reaches ...")
-    # reaches = nhd_network.dfs_decomposition(connections)
-    # reaches_i = translate_reach_to_index(reaches, data.index)
 
-    subreachable = nhd_network.reachable(rconn)
-    subnets_ = nhd_network.reachable_network(rconn)
+    subnets = nhd_network.reachable_network(rconn)
     subreaches = {}
-    for tw, net in subnets_.items():
+    for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
         reach = nhd_network.dfs_decomposition(
             nhd_network.reverse_network(net), path_func
         )
         subreaches[tw] = reach
-    subnets = subnets_
-    #subnets = {
-    #    k: translate_network_to_index(v, data.index) for k, v in subnets_.items()
-    #}
-    # networks = nru.compose_networks(
-    #    supernetwork_values
-    #    , verbose=False
-    #    # , verbose = verbose
-    #    , debuglevel=debuglevel
-    #    , showtiming=showtiming
-    # )
+
     if verbose:
         print("reach organization complete")
     if showtiming:
@@ -205,7 +195,7 @@ def main():
     data = data.rename(columns={'Length': 'dx', 'TopWdth': 'tw', 'TopWdthCC': 'twcc',
         'BtmWdth': 'bw', 'nCC': 'ncc', 'So': 's0', 'ChSlp': 'cs'})
     data = data.astype('float32')    
-    datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    #datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     
     #qlats = qlats.loc[:, :nts]
     compute_start = time.time()
@@ -218,9 +208,8 @@ def main():
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 r = list(chain.from_iterable(reach))
-                assert r[-1] == tw  # always be True
-                r = r[:-1]
-                assert len(data.index.intersection(r)) == len(r)
+                #assert r[-1] == tw  # always be True
+                #assert len(data.index.intersection(r)) == len(r)
                 data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
@@ -237,9 +226,8 @@ def main():
         rets = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
             r = list(chain.from_iterable(reach))
-            assert r[-1] == tw  # always be True
-            r = r[:-1]
-            assert len(data.index.intersection(r)) == len(r)
+            #assert r[-1] == tw  # always be True
+            #assert len(data.index.intersection(r)) == len(r)
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             rets.append(
