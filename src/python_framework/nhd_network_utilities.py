@@ -125,6 +125,7 @@ def get_geo_file_table_rows(
     return geo_file_rows
 
 
+#TODO: Give this function a more appropriate general name (it does more that build connections)
 def build_connections_object(
     geo_file_rows=None,
     mask_set=None,
@@ -627,6 +628,7 @@ def set_supernetwork_data(
         return data
 
 
+#TODO: confirm that this function is not used, and if so, consider removing it
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
 
     supernetwork_data = set_supernetwork_data(
