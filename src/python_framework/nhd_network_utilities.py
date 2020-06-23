@@ -183,6 +183,7 @@ def build_connections_object(
     waterbody_segments = None
     waterbody_outlet_set = None
     waterbody_upstreams_set = None
+    waterbody_downstream_set = None
 
     # TODO: Set/pass/identify a proper flag value
     if waterbody_col is not None:
@@ -191,6 +192,7 @@ def build_connections_object(
             waterbody_segments,
             waterbody_outlet_set,
             waterbody_upstreams_set,
+            waterbody_downstream_set,
         ) = networkbuilder.get_waterbody_segments(
             connections=connections,
             terminal_code=terminal_code,
@@ -219,6 +221,7 @@ def build_connections_object(
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
+        waterbody_downstream_set,
     )
 
 

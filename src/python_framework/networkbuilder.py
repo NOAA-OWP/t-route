@@ -95,6 +95,20 @@ def get_waterbody_segments(
         print("waterbody_outlet_set complete")
 
     if verbose:
+        print("waterbody_downstream_set ...")
+    waterbody_downstream_set = set()
+    for outlet_segment in waterbody_outlet_set:
+        waterbody_downstream_set.add(connections[outlet_segment][downstream_key])
+    if debuglevel <= -1:
+        print(
+            f"found {len(waterbody_downstream_set)} segments that are below outlets of a waterbody"
+        )
+    if debuglevel <= -3:
+        print(waterbody_downstream_set)
+    if verbose:
+        print("waterbody_downstream_set complete")
+
+    if verbose:
         print("waterbody_upstreams_set ...")
     waterbody_upstreams_set = set()
     for waterbody_segment in waterbody_segments:
@@ -118,6 +132,7 @@ def get_waterbody_segments(
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
+        waterbody_downstream_set,
     )
 
 
@@ -475,6 +490,7 @@ def main():
             test_waterbody_segments,
             test_waterbody_outlet_set,
             test_waterbody_upstreams_set,
+            test_waterbody_downstream_set,
         ) = get_waterbody_segments(
             connections=test_connections,
             terminal_code=test_terminal_code,
