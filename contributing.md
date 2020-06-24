@@ -38,23 +38,30 @@ before submitting any pull requests.
 
 <!--- TODO: Consider using or merging this GitHub description with https://github.com/NOAA-OWP/DMOD/blob/master/doc/GIT_USAGE.md --->
 ## The process in summary, i.e., TL;DR
-* Fork the t-route repo on GitHub and clone the new fork 
-to your development environment
+* Fork the t-route repo on GitHub and clone the new fork  to your development environment
+
 ```
 git clone github.com/<githubusername>/t-route.git
 ```
+
 * Make your changes to the source files 
+
 * Add changed files to the commit ... `git add <list of your changed files>`
+
 * ... and commit them: `git commit`
+
 * Push the accumulated commits to your fork in GitHub: `git push`
+
 * Open GitHub and issue a pull request.
-* **IMPORTANT** Keep your code updated with the upstream.
-with the following commands. 
+
+* **IMPORTANT** Keep your code updated with the upstream. with the following commands. 
+
 ```
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
 git fetch upstream && git merge --rebase upstream/master
 
 ```
+
 ## A more detailed step-by-step guide to contributing via GitHub
 
 ### 1. On GitHub, create a fork and clone it to your local directory 
@@ -72,7 +79,8 @@ cd <local/directory/of/your/choice>
 # clone your forked repo
 git clone github.com/<githubusername>/t-route.git
  ```  
- 
+____
+
 ### 2. Set up the Git configuration parameters
 
 Set up your user name and email in your local repo config
@@ -109,6 +117,9 @@ name this remote, `upstream`
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
 ```
 
+____
+
+
 ### 5. Incorporate upstream changes into your fork
 
 To incorporate any changes from the main codebase into your
@@ -135,6 +146,9 @@ The above fetch-and-rebase process is recommended prior to
 creating a new development branch. This will ensure that your 
 new additions are relevant to the latest version of the codebase. 
 
+____
+
+
 ### 6. Create a new development branch
 
 Branches are parallel versions of the repository that allow you 
@@ -156,6 +170,7 @@ the version stored in that branch.
 ```
 git checkout <branch-name>
 ```
+____
 
 ### 7. Incorporate upstream changes into your development branch
 
@@ -171,6 +186,7 @@ git checkout <branch-name>
 # rebase the branch 
 git rebase master
 ```
+____
 
 ### 8. Tinker in your development branches. 
 In your local development branches, explore the code, make changes, 
@@ -178,11 +194,14 @@ and tinker at will. Try out one of the notebooks or execute one of
 the `src/python_framework` or `src/python_routing` files --
 most have a test script built in. **Be creative!**
 
+____
+
 ### 9. Add new and changed files to the staging area
 
 ```
 git add <list of your changed files>
 ```
+____
 
 ### 10. Commit your changes to the checked out development branch
 Commits should be accompanied by a concise and brief comment. 
@@ -202,6 +221,7 @@ Additional detail below a blank line, like this.
 -But usually, it is better to just commit more often
 -With a short one-line description of each little change'
 ```
+____
 
 ### 11. Push commits to GitHub
 In order to get any accumulated commits in GitHub on your remote branch, 
@@ -218,6 +238,7 @@ git checkout <branch-name>
 # push commits to the development branch
 git push origin <branch-name>
 ```
+____
 
 ### 12. Submit a pull request
 After you git push all commits to your branch and you believe 
@@ -241,6 +262,7 @@ you to make sure that it is ready to share with the world.
 Most of the time, someone who was involved with preparing 
 the code can be the reviewer; for major changes, it should 
 be someone outside the core development team.
+____
 
 ### 13. Useful references
 - If some of the terminology used above is confusing - we agree. 
