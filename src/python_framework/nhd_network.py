@@ -132,14 +132,14 @@ def reachable_network(N, sources=None, check_disjoint=True):
     return rv
 
 
-def split_at_junction(network, node):
+def split_at_junction(network, path, node):
     return len(network[node]) == 1
 
 
-def split_at_waterbodies_and_junctions(waterbody_nodes, network, node):
+def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     return node not in waterbody_nodes and len(network[node]) == 1
 
-def dfs_decomposition(N, path_func):
+def dfs_decomposition(N, path_func, source_nodes=None):
     """
     Decompose N into a list of simple segments.
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
@@ -154,25 +154,26 @@ def dfs_decomposition(N, path_func):
     Returns:
         [List]: List of paths to be processed in order.
     """
-    RN = reverse_network(N)
+    if source_nodes is None:
+        source_nodes = headwaters(N)
 
     paths = []
     visited = set()
-    for h in headwaters(RN):
-        stack = [(h, iter(RN[h]))]
+    for h in source_nodes:
+        stack = [(h, iter(N[h]))]
         while stack:
             node, children = stack[-1]
             try:
                 child = next(children)
                 if child not in visited:
                     # Check to see if we are at a leaf
-                    if child in RN:
-                        stack.append((child, iter(RN[child])))
+                    if child in N:
+                        stack.append((child, iter(N[child])))
                     else:
                         # At a leaf, process the stack
                         path = [child]
                         for n, _ in reversed(stack):
-                            if path_func(n):
+                            if path_func(path, n):
                                 path.append(n)
                             else:
                                 break
@@ -186,9 +187,9 @@ def dfs_decomposition(N, path_func):
 
                 path = [node]
                 # process between junction nodes
-                if len(RN[node]) == 0:
+                if len(N[node]) == 0:
                     paths.append(path)
-                elif len(RN[node]) > 1:
+                elif len(N[node]) > 1:
                     for n, _ in reversed(stack):
                         if path_func(n):
                             path.append(n)
