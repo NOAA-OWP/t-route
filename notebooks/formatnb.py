@@ -12,7 +12,7 @@ def clean_outputs(nb):
 
 def black_code(nb):
     fm = black.FileMode()
-    for cellnum, cell in enumerate(nb.cells):
+    for cellnum, cell in enumerate(nb.cells, 1):
         if cell["cell_type"] == "code":
             try:
                 cell["source"] = black.format_str(cell["source"], mode=fm)
