@@ -12,11 +12,13 @@ def clean_outputs(nb):
 
 def black_code(nb):
     fm = black.FileMode()
-    for cell in nb.cells:
+    for cellnum, cell in enumerate(nb.cells):
         if cell["cell_type"] == "code":
             try:
                 cell["source"] = black.format_str(cell["source"], mode=fm)
             except black.InvalidInput:
+                print(f"Possible invalid python encountered in cell {cellnum}")
+                print(f"Cell source causing exception:\n{cell['source']}\n")
                 continue
     return nb
 
