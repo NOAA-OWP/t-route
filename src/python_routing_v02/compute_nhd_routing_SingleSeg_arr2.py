@@ -237,6 +237,12 @@ def main():
             # TODO: rets could be dumped to files
             #findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_idx, data_values, qlat_values)
             #flowdepthvel[findex] = fdv
+            if verbose:
+                print(
+                    f"tailwater: {tw} completed",
+                    end = "", 
+                )
+            # NOTE: Mississippi River tailwater is {22811611,}:
 
             if showtiming:
                 print(
