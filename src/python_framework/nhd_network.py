@@ -104,8 +104,6 @@ def reachable(N, sources=None, targets=None):
 
     rv = {}
     if targets is None:
-        targets = set(targets)
-
         for h in sources:
             reach = set()
             Q = deque([h])
