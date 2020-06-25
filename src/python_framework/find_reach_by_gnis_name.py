@@ -2,6 +2,7 @@ import xarray as xr
 import pandas as pd
 import json
 import os
+import argparse
 
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,6 +24,8 @@ def _handle_args():
     return parser.parse_args()
 
 def main():
+    args = _handle_args()
+
     full_nc = os.path.join(
         root,
         r"test",
@@ -46,8 +49,6 @@ def main():
 
     ids_wnames_df = pd.DataFrame.from_dict(ids_wnames, orient="index", columns=["name"])
 
-    from networkbuilder import get_down_connections
-
     key_col = "link"
     downstream_col = "to"
     length_col = "Length"
@@ -55,35 +56,40 @@ def main():
     rows = (xr.open_dataset(full_nc)).to_dataframe()
     rows = rows.set_index([key_col])
 
-    connections = get_down_connections(
-        rows=rows,
-        key_col=key_col,
-        mask_set=set(rows.index.values),
-        downstream_col=downstream_col,
-        length_col=length_col,
-        verbose=True,
-        debuglevel=-2,
-    )
+    #NOTE: This is essentially the same thing provided by `get_down_connections` in networkbuilder
+    #TODO: Update networkbuilder to use a dataframe as is done here.
 
-    print(len(names))
-    print(len(ids_wnames))
-    print(len(rows))
+    mask_set=set(rows.index.values)
+    rows_dl = rows[[downstream_col,length_col]].copy() # Reduce the dataframe to just the needed keys
+    connections = (rows_dl.loc[mask_set]).to_dict('index')
+
+    print(f"Using names table: {json_file}")
+    print(f"Number of names in names table: {len(names)}")
+    print(f"Number of unique nwm segments with names in table: {len(ids_wnames)}")
+    print(f"Total number of nwm segments: {len(rows)}")
 
     """ 
     Goal: 
-    Find named segments tributary to the Mississippi River
-    Pseudocode:
+      * Find named segments tributary to the Mississippi River
 
-    Make a set of Named Mississippi segments
-    Make a set of connections pointing to the Named Mississippi segments
-    Drop from that set connections that are in the Mississippi themselves
-    Also drop from that set connections that don't have a name themselves
+    Pseudocode:
+      * Make a set of Named Mississippi segments
+      * Make a set of connections pointing to the Named Mississippi segments
+      * Drop from that set connections that are in the Mississippi themselves
+      * Also drop from that set connections that don't have a name themselves
 
     """
 
-    named_segs = names["Mississippi River"]
+    name_to_find = args.name_to_find
+    try:
+        named_segs = names[name_to_find]
+    except:
+        print(f"{name_to_find} not found in the names table")
+    # named_segs = names["Mississippi River"]
     # named_segs = names["Missouri River"]
-    print(len(named_segs))
+    print(f"Searching for tributary connections of the {name_to_find}")
+    print(f"Number of segments in database with that name: {len(named_segs)}")
+
     to_named_segs = set()
     for k, v in connections.items():
         if v[downstream_col] in named_segs:
@@ -94,5 +100,6 @@ def main():
     print(named_tribs)
     named_tribs_wnames = {trib: ids_wnames[trib] for trib in named_tribs}
     print(named_tribs_wnames)
+
 if __name__ == "__main__":
     main()
