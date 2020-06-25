@@ -205,7 +205,7 @@ def dfs_decomposition(N, path_func, source_nodes=None):
                     paths.append(path)
                 elif len(N[node]) > 1:
                     for n, _ in reversed(stack):
-                        if path_func(n):
+                        if path_func(path, n):
                             path.append(n)
                         else:
                             break
