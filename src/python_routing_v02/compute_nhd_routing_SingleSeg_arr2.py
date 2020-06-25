@@ -203,7 +203,7 @@ def main():
         if verbose:
             print("executing computation on ordered reaches ...")
         with Parallel(
-            n_jobs=5, pre_dispatch="all", backend="threading", verbose=5
+            n_jobs=-1, pre_dispatch="all", backend="threading", verbose=5
         ) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
