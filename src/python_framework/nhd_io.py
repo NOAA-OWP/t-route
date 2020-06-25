@@ -42,3 +42,13 @@ def read_qlat(path):
     ql.index = ql.index.astype(int)
     ql = ql.sort_index(axis='index')
     return ql
+
+
+def replace_downstreams(data, downstream_col, terminal_code):
+    ds0_mask = data[downstream_col] == terminal_code
+    new_data = data.copy()
+    new_data.loc[ds0_mask, downstream_col] = ds0_mask.index[ds0_mask]
+
+    # Also set negative any nodes in downstream col not in data.index
+    new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
+    return new_data
