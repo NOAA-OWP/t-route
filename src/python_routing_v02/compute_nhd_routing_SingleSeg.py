@@ -213,7 +213,7 @@ def main():
     else:
         qlats = constant_qlats(data, nts, 10.0)
 
-    connections = nhd_network.extract_network(data, network_data["downstream_col"])
+    connections = nhd_network.extract_connections(data, network_data["downstream_col"])
 
     if verbose:
         print("supernetwork connections set complete")
