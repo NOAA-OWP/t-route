@@ -183,35 +183,20 @@ def dfs_decomposition(N, path_func, source_nodes=None):
                     # Check to see if we are at a leaf
                     if child in N:
                         stack.append((child, iter(N[child])))
-                    else:
-                        # At a leaf, process the stack
-                        path = [child]
-                        for n, _ in reversed(stack):
-                            if path_func(path, n):
-                                path.append(n)
-                            else:
-                                break
-                        paths.append(path)
-                        # optimization (clear tail of stack)
-                        if len(path) > 1:
-                            del stack[-(len(path) - 1) :]
                     visited.add(child)
             except StopIteration:
                 node, _ = stack.pop()
-
                 path = [node]
-                # process between junction nodes
-                if len(N[node]) == 0:
-                    paths.append(path)
-                elif len(N[node]) > 1:
-                    for n, _ in reversed(stack):
-                        if path_func(path, n):
-                            path.append(n)
-                        else:
-                            break
-                    paths.append(path)
-                    if len(path) > 1:
-                        del stack[-(len(path) - 1) :]
+
+                for n, _ in reversed(stack):
+                    if path_func(path, n):
+                        path.append(n)
+                    else:
+                        break
+                paths.append(path)
+                if len(path) > 1:
+                    # Only pop ancestor nodes that were added by path_func.
+                    del stack[-(len(path) - 1) :]
 
     return paths
 
