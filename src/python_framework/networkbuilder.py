@@ -95,6 +95,20 @@ def get_waterbody_segments(
         print("waterbody_outlet_set complete")
 
     if verbose:
+        print("waterbody_downstream_set ...")
+    waterbody_downstream_set = set()
+    for outlet_segment in waterbody_outlet_set:
+        waterbody_downstream_set.add(connections[outlet_segment][downstream_key])
+    if debuglevel <= -1:
+        print(
+            f"found {len(waterbody_downstream_set)} segments that are below outlets of a waterbody"
+        )
+    if debuglevel <= -3:
+        print(waterbody_downstream_set)
+    if verbose:
+        print("waterbody_downstream_set complete")
+
+    if verbose:
         print("waterbody_upstreams_set ...")
     waterbody_upstreams_set = set()
     for waterbody_segment in waterbody_segments:
@@ -118,6 +132,7 @@ def get_waterbody_segments(
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
+        waterbody_downstream_set,
     )
 
 
@@ -376,6 +391,8 @@ def main():
     print("")
     print("Executing Test")
     # Test data
+    debuglevel = -3
+    verbose = True
     test_rows = [
         [50, 178, 51, 0],
         [51, 178, 50, 0],
@@ -435,8 +452,8 @@ def main():
         mask_set={row[test_key_col] for row in test_rows},
         downstream_col=test_downstream_col,
         length_col=test_length_col,
-        verbose=True,
-        debuglevel=-2,
+        verbose=verbose,
+        debuglevel=debuglevel,
     )
 
     (
@@ -449,8 +466,8 @@ def main():
     ) = determine_keys(
         connections=test_connections,
         terminal_code=test_terminal_code,
-        verbose=True,
-        debuglevel=-2,
+        verbose=verbose,
+        debuglevel=debuglevel,
     )
 
     (
@@ -464,8 +481,8 @@ def main():
         terminal_code=test_terminal_code,
         headwater_keys=test_headwater_keys,
         terminal_keys=test_terminal_keys,
-        verbose=True,
-        debuglevel=-2,
+        verbose=verbose,
+        debuglevel=debuglevel,
     )
 
     # TODO: Set/pass/identify a proper flag value
@@ -475,13 +492,14 @@ def main():
             test_waterbody_segments,
             test_waterbody_outlet_set,
             test_waterbody_upstreams_set,
+            test_waterbody_downstream_set,
         ) = get_waterbody_segments(
             connections=test_connections,
             terminal_code=test_terminal_code,
             waterbody_col=test_waterbody_col,
             waterbody_null_code=test_waterbody_null_code,
-            verbose=True,
-            debuglevel=-2,
+            verbose=verbose,
+            debuglevel=debuglevel,
         )
 
     recursive_print.print_connections(
@@ -491,7 +509,7 @@ def main():
         terminal_code=test_terminal_code,
         terminal_keys=test_terminal_keys,
         terminal_ref_keys=test_terminal_ref_keys,
-        debuglevel=-2,
+        debuglevel=debuglevel,
     )
 
     recursive_print.print_basic_network_info(
@@ -500,8 +518,8 @@ def main():
         junction_keys=test_junction_keys,
         terminal_keys=test_terminal_keys,
         terminal_code=test_terminal_code,
-        verbose=True,
-        debuglevel=-2,
+        verbose=verbose,
+        debuglevel=debuglevel,
     )
 
 
