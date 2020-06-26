@@ -28,40 +28,42 @@ def main(
     tw_max,
     bw_min,
     bw_max,
+    num_samp_val
+
 ):
-    num_samp = 100000
+    
 
     dt = 60  # Time step
     dx = 1800  # segment length
     # bw = np.linspace(0.135, 230.035, array_length, endpoint=True) # Trapezoidal bottom width
-    bw = np.random.uniform(bw_min, bw_max, num_samp)  # Trapezoidal bottom width
-    tw = np.random.uniform(tw_min, tw_max, num_samp)  # Channel top width (at bankfull)
+    bw = np.random.uniform(bw_min, bw_max, num_samp_val)  # Trapezoidal bottom width
+    tw = np.random.uniform(tw_min, tw_max, num_samp_val)  # Channel top width (at bankfull)
     # twcc = np.linspace(0.67, 1150.17, array_length, endpoint=True) # Flood plain width
     # twcc = tw*  # Flood plain width tw*3
     n_manning = 0.028  # manning roughness of channel
     n_manning_cc = 0.028  # manning roughness of floodplain
-    cs = np.random.uniform(cs_min, cs_max, num_samp)  # channel trapezoidal sideslope
-    s0 = np.random.uniform(s0_min, s0_max, num_samp)  # Lateral inflow in this time step
+    cs = np.random.uniform(cs_min, cs_max, num_samp_val)  # channel trapezoidal sideslope
+    s0 = np.random.uniform(s0_min, s0_max, num_samp_val)  # Lateral inflow in this time step
     qup = np.random.uniform(
-        qup_min, qup_max, num_samp
+        qup_min, qup_max, num_samp_val
     )  # Flow from the upstream neighbor in the previous timestep
     # quc = np.linsprandom.uniformace(10, 1000, array_length, endpoint=True) # Flow from the upstream neighbor in the current timestep
     quc = np.random.uniform(
-        quc_min, quc_max, num_samp
+        quc_min, quc_max, num_samp_val
     )  # Flow from the upstream neighbor in the current timestep
     # qdp = np.linspace(10, 1000, array_length, endpoint=True) # Flow at the current segment in the previous timestep
     qdp = np.random.uniform(
-        qdp_min, qdp_max, num_samp
+        qdp_min, qdp_max, num_samp_val
     )  # Flow at the current segment in the previous timestep
     qlat = np.random.uniform(
-        qlat_min, qlat_max, num_samp
+        qlat_min, qlat_max, num_samp_val
     )  # lat inflow into current segment in the current timestep
     velp = 0.5  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
-    depthp = np.random.uniform(depthp_min, depthp_max, num_samp)  # D
+    depthp = np.random.uniform(depthp_min, depthp_max, num_samp_val)  # D
 
     VAL_x = []
     VAL_y = []
-    for i in range(num_samp):
+    for i in range(num_samp_val):
         VAL_x.append(
             [
                 NN_normalization.normalize(qup[i], qup_max, qup_min),
