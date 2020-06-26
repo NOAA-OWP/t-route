@@ -28,6 +28,7 @@ def main(
     tw_max,
     bw_min,
     bw_max,
+    AL
 ):
 
     AL = [5]
@@ -231,5 +232,4 @@ def main(
             max_errors_list,
             mean_rel_errors_list,
             max_rel_errors_list,
-            AL,
         )
