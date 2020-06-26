@@ -24,11 +24,12 @@ import pandas as pd
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
+    root = "/content/t-route/"
 elif not ENV_IS_CL:
     root = os.path.dirname(os.path.dirname(os.path.abspath("")))
-    sys.path.append(r"../python_framework")
-    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
+fortran_source_dir = os.path.join(root, "src", "fortran_routing", "mc_pylink_v00", "MC_singleSeg_singleTS")
+sys.path.append(fortran_source_dir)
+sys.path.append(os.path.join(root, "src", "python_framework_v02"))
 
 ## Muskingum Cunge
 COMPILE = False
@@ -45,7 +46,7 @@ if COMPILE:
     ]
     subprocess.run(
         fortran_compile_call,
-        cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
+        cwd=fortran_source_dir
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -61,7 +62,7 @@ data_values = None
 WRITE_OUTPUT = False
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v02 as nnu
 import nhd_reach_utilities as nru
 import nhd_io
 import nhd_network

@@ -12,14 +12,14 @@ connections = None
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
+    root = "/content/t-route-jsh/"
 elif not ENV_IS_CL:
     sys.setrecursionlimit(4000)
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    sys.path.append(os.path.join(root, r"src", r"python_framework"))
+    sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 import argparse
 
