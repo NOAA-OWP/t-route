@@ -23,27 +23,28 @@ sysconfig.get_config_var('SOABI')
 Compilation with gfortran and gcc
 ```
 cd src/fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS/
+gfortran varPrecision.f90 -c -o var_precision.o -O3 -fPIC
 gfortran MCsingleSegStime_f2py_NOLOOP.f90 -c -o mc_single_seg.o -O3 -fPIC
 gfortran pyMCsingleSegStime_NoLoop.f90 -c -o pymc_single_seg.o -O3 -fPIC
 cp *.o ../../../../src/python_routing_v02
 cd ../../../../src/python_routing_v02
-cython -3 -v -p --line-directives -Wextra --cleanup 3  mc_reach.pyx
+cython -3 -v -p --line-directives -Wextra --cleanup 3 mc_reach.pyx
 gcc -pthread -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -fno-strict-aliasing -Wall -Wstrict-prototypes -fPIC -I$VIRTUAL_ENV/lib/python3.6/site-packages/numpy/core/include -I$VIRTUAL_ENV/include/python3.6m -c mc_reach.c -o mc_reach.o
-gcc -pthread -shared -L$VIRTUAL_ENV/lib mc_single_seg.o pymc_single_seg.o mc_reach.o -lgfortran -o mc_reach.cpython-36m-x86_64-linux-gnu.so
+gcc -pthread -shared -L$VIRTUAL_ENV/lib var_precision.o mc_single_seg.o pymc_single_seg.o mc_reach.o -lgfortran -o mc_reach.cpython-36m-x86_64-linux-gnu.so
 python3 compute_nhd_routing_SingleSeg_arr2.py
-
 ```
 
 
 For compilation with ifort and icc (such as on the Cheyenne supercomputer)
 ```
 cd src/fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS/
+ifort varPrecision.f90 -c -o var_precision.o -O3 -fPIC
 ifort MCsingleSegStime_f2py_NOLOOP.f90 -c -o mc_single_seg.o -O3 -fPIC
 ifort pyMCsingleSegStime_NoLoop.f90 -c -o pymc_single_seg.o -O3 -fPIC
 cp *.o ~/t-route-jsh/src/python_routing_v02
 cd ../../../../src/python_routing_v02
-cython -3 -v -p --line-directives -Wextra --cleanup 3  mc_reach.pyx
+cython -3 -v -p --line-directives -Wextra --cleanup 3 mc_reach.pyx
 icc -pthread -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -fPIC -I$VIRTUAL_ENV/lib/python3.7/site-packages/numpy/core/include -I$VIRTUAL_ENV/include/python3.7m -c mc_reach.c -o mc_reach.o
-icc -pthread -shared -L$VIRTUAL_ENV/lib mc_single_seg.o pymc_single_seg.o mc_reach.o -Iifort -o mc_reach.cpython-37m-x86_64-linux-gnu.so
+icc -pthread -shared -L$VIRTUAL_ENV/lib var_precision.o mc_single_seg.o pymc_single_seg.o mc_reach.o -Iifort -o mc_reach.cpython-37m-x86_64-linux-gnu.so
 python3 compute_nhd_routing_SingleSeg_arr2.py
 ```

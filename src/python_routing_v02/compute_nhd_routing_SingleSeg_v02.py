@@ -104,42 +104,16 @@ def _handle_args():
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = pathlib.Path("/", "content", "wrf_hydro_nwm_public", "trunk", "NDHMS", "dynamic_channel_routing")
+    root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
     root = pathlib.Path('../..').resolve()
-    sys.path.append(r"../python_framework")
-    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
-    sys.setrecursionlimit(4000)
+    sys.path.append(r"../python_framework_v02")
 
-## Muskingum Cunge
-COMPILE = True
-if COMPILE:
-    try:
-        import subprocess
-
-        fortran_compile_call = []
-        fortran_compile_call.append(r"f2py3")
-        fortran_compile_call.append(r"-c")
-        fortran_compile_call.append(r"varPrecision.f90")
-        fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
-        fortran_compile_call.append(r"-m")
-        fortran_compile_call.append(r"mc_sseg_stime")
-        subprocess.run(
-            fortran_compile_call,
-            cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        from mc_sseg_stime import muskingcunge_module as mc
-    except Exception as e:
-        print(e)
-else:
-    from mc_sseg_stime import muskingcunge_module as mc
-
+    # TODO: automate compile for the package scripts
+    # sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
-import nhd_reach_utilities as nru
+import nhd_network_utilities_v02 as nnu
 import mc_reach
 import nhd_network
 import nhd_io
@@ -218,7 +192,8 @@ def main():
     else:
         qlats = constant_qlats(data, nts, 10.0)
 
-    connections = nhd_network.extract_network(data, network_data["downstream_col"])
+    connections = nhd_network.extract_connections(data, network_data["downstream_col"])
+
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:

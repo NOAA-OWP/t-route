@@ -41,7 +41,7 @@ def out_degrees(N):
     return in_degrees(reverse_network(N))
 
 
-def extract_network(rows, target_col, terminal_code=0):
+def extract_connections(rows, target_col, terminal_code=0):
     """Extract connection network from dataframe.
 
     Arguments:

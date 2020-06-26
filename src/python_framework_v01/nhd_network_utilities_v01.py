@@ -356,47 +356,47 @@ def set_supernetwork_data(
     elif supernetwork == "Pocono_TEST1":
         return {
             "geo_file_path": os.path.join(
-                geo_input_folder, "PoconoSampleData1", "PoconoSampleRouteLink1.shp"
+                geo_input_folder, r"PoconoSampleData1", r"PoconoSampleRouteLink1.shp"
             ),
-            "key_col": "link",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "manningncc_col": "nCC",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "waterbody_col": "NHDWaterbo",
+            "key_col": 18,
+            "downstream_col": 23,
+            "length_col": 5,
+            "manningn_col": 20,
+            "manningncc_col": 21,
+            "slope_col": 10,
+            "bottomwidth_col": 2,
+            "waterbody_col": 8,
             "waterbody_null_code": -9999,
-            "topwidth_col": "TopWdth",
-            "topwidthcc_col": "TopWdthCC",
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
+            "topwidth_col": 11,
+            "topwidthcc_col": 12,
+            "MusK_col": 7,
+            "MusX_col": 8,
+            "ChSlp_col": 12,
+            "terminal_code": 0,
             "title_string": "Pocono Test Example",
             "driver_string": "ESRI Shapefile",
-            "terminal_code": 0,
             "layer_string": 0,
         }
     elif supernetwork == "Pocono_TEST2":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "Pocono Test 2 Example",  # overwrites other title...
                 "mask_file_path": os.path.join(
                     geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "PoconoRouteLink_TEST2_nwm_mc.txt",
+                    r"Channels",
+                    r"masks",
+                    r"PoconoRouteLink_TEST2_nwm_mc.txt",
                 ),
-                "mask_driver_string": "csv",
-                "mask_layer_string": "",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_driver_string": r"csv",
+                "mask_layer_string": r"",
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
         # return {
         #'geo_file_path' : os.path.join(geo_input_folder
@@ -421,105 +421,105 @@ def set_supernetwork_data(
     # }
 
     elif supernetwork == "LowerColorado_Conchos_FULL_RES":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "NHD 2.0 Conchos Basin of the LowerColorado River",  # overwrites other title...
                 "mask_file_path": os.path.join(
                     geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "LowerColorado_Conchos_FULL_RES.txt",
+                    r"Channels",
+                    r"masks",
+                    r"LowerColorado_Conchos_FULL_RES.txt",
                 ),
-                "mask_driver_string": "csv",
-                "mask_layer_string": "",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_driver_string": r"csv",
+                "mask_layer_string": r"",
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
     elif supernetwork == "Brazos_LowerColorado_ge5":
         return {
             "geo_file_path": os.path.join(
-                geo_input_folder, "Channels", "NHD_BrazosLowerColorado_Channels.shp"
+                geo_input_folder, r"Channels", r"NHD_BrazosLowerColorado_Channels.shp"
             ),
-            "key_col": "featureID",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
+            "key_col": 2,
+            "downstream_col": 7,
+            "length_col": 6,
+            "manningn_col": 11,
+            "slope_col": 10,
+            "bottomwidth_col": 12,
+            "MusK_col": 7,
+            "MusX_col": 8,
+            "ChSlp_col": 13,
+            "terminal_code": 0,
             "title_string": "NHD Subset including Brazos + Lower Colorado\nNHD stream orders 5 and greater",
             "driver_string": "ESRI Shapefile",
-            "terminal_code": 0,
             "layer_string": 0,
         }
 
     elif supernetwork == "Brazos_LowerColorado_FULL_RES":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "NHD 2.0 Brazos and LowerColorado Basins",  # overwrites other title...
                 "mask_file_path": os.path.join(
                     geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "Brazos_LowerColorado_FULL_RES.txt",
+                    r"Channels",
+                    r"masks",
+                    r"Brazos_LowerColorado_FULL_RES.txt",
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
     elif supernetwork == "Brazos_LowerColorado_Named_Streams":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "NHD 2.0 GNIS labeled streams in the Brazos and LowerColorado Basins",  # overwrites other title...
                 "mask_file_path": os.path.join(
                     geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "Brazos_LowerColorado_Named_Streams.csv",
+                    r"Channels",
+                    r"masks",
+                    r"Brazos_LowerColorado_Named_Streams.csv",
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
     elif supernetwork == "CONUS_ge5":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "NHD CONUS Order 5 and Greater",  # overwrites other title...
                 "mask_file_path": os.path.join(
-                    geo_input_folder, "Channels", "masks", "CONUS_ge5.txt"
+                    geo_input_folder, r"Channels", r"masks", r"CONUS_ge5.txt"
                 ),
-                "mask_driver_string": "csv",
-                "mask_layer_string": "",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_driver_string": r"csv",
+                "mask_layer_string": r"",
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
     elif supernetwork == "Mainstems_CONUS":
         dict = set_supernetwork_data(
@@ -533,8 +533,8 @@ def set_supernetwork_data(
                 ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
         return dict
@@ -564,61 +564,61 @@ def set_supernetwork_data(
         # }
 
     elif supernetwork == "CONUS_Named_Streams":
-        rv = set_supernetwork_data(
+        dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        rv.update(
+        dict.update(
             {
                 "title_string": "CONUS NWM v2.0 only GNIS labeled streams",  # overwrites other title...
                 "mask_file_path": os.path.join(
                     geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "nwm_reaches_conus_v21_wgnis_name.csv",
+                    r"Channels",
+                    r"masks",
+                    r"nwm_reaches_conus_v21_wgnis_name.csv",
                 ),
-                "mask_driver_string": "csv",
-                "mask_layer_string": "",
-                "mask_key": 0,
-                "mask_name": 1,  # TODO: Not used yet.
+                "mask_driver_string": r"csv",
+                "mask_layer_string": r"",
+                "mask_key_col": 0,
+                "mask_name_col": 1,  # TODO: Not used yet.
             }
         )
-        return rv
+        return dict
 
     elif supernetwork == "CONUS_FULL_RES_v20":
 
-        ROUTELINK = "RouteLink_NHDPLUS"
-        ModelVer = "nwm.v2.0.2"
-        ext = "nc"
-        sep = "."
+        ROUTELINK = r"RouteLink_NHDPLUS"
+        ModelVer = r"nwm.v2.0.2"
+        ext = r"nc"
+        sep = r"."
 
         return {
             "geo_file_path": os.path.join(
-                geo_input_folder, "Channels", sep.join([ROUTELINK, ModelVer, ext])
+                geo_input_folder, r"Channels", sep.join([ROUTELINK, ModelVer, ext])
             ),
             "data_link": f"https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/{ModelVer}/parm/domain/{ROUTELINK}{sep}{ext}",
-            "key_col": "link",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "manningncc_col": "nCC",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "topwidth_col": "TopWdth",
-            "topwidthcc_col": "TopWdthCC",
-            "waterbody_col": "NHDWaterbodyComID",
+            "key_col": 0,
+            "downstream_col": 2,
+            "length_col": 10,
+            "manningn_col": 11,
+            "manningncc_col": 20,
+            "slope_col": 12,
+            "bottomwidth_col": 14,
+            "topwidth_col": 22,
+            "topwidthcc_col": 21,
+            "waterbody_col": 15,
             "waterbody_null_code": -9999,
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
+            "MusK_col": 8,
+            "MusX_col": 9,
+            "ChSlp_col": 13,
+            "terminal_code": 0,
             "title_string": "CONUS Full Resolution NWM v2.0",
             "driver_string": "NetCDF",
-            "terminal_code": 0,
             "layer_string": 0,
         }
 
     elif supernetwork == "custom":
         custominput = os.path.join(geo_input_folder)
-        with open(custominput, "r") as json_file:
+        with open(custominput) as json_file:
             data = json.load(json_file)
             # TODO: add error trapping for potentially missing files
         return data

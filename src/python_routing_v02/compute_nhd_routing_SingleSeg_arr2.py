@@ -24,11 +24,12 @@ import pandas as pd
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
+    root = "/content/t-route/"
 elif not ENV_IS_CL:
     root = os.path.dirname(os.path.dirname(os.path.abspath("")))
-    sys.path.append(r"../python_framework")
-    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
+fortran_source_dir = os.path.join(root, "src", "fortran_routing", "mc_pylink_v00", "MC_singleSeg_singleTS")
+sys.path.append(fortran_source_dir)
+sys.path.append(os.path.join(root, "src", "python_framework_v02"))
 
 ## Muskingum Cunge
 COMPILE = False
@@ -45,7 +46,7 @@ if COMPILE:
     ]
     subprocess.run(
         fortran_compile_call,
-        cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
+        cwd=fortran_source_dir
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -61,7 +62,7 @@ data_values = None
 WRITE_OUTPUT = False
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v02 as nnu
 import nhd_reach_utilities as nru
 import nhd_io
 import nhd_network
@@ -149,7 +150,7 @@ def main():
         qlats = constant_qlats(data, nts, 10.0)
 
 
-    connections = nhd_network.extract_network(data, network_data["downstream_col"])
+    connections = nhd_network.extract_connections(data, network_data["downstream_col"])
     rconn = nhd_network.reverse_network(connections)
     # rconn_annoated = translate_network_to_index(rconn, data.index)
     if verbose:
@@ -203,7 +204,7 @@ def main():
         if verbose:
             print("executing computation on ordered reaches ...")
         with Parallel(
-            n_jobs=5, pre_dispatch="all", backend="threading", verbose=5
+            n_jobs=-1, pre_dispatch="all", backend="threading", verbose=5
         ) as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
@@ -229,12 +230,20 @@ def main():
             #assert r[-1] == tw  # always be True
             #assert len(data.index.intersection(r)) == len(r)
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            #TODO: Do the data_sub = data.loc as a preprocessing step, then dump the pointer to data
             qlat_sub = qlats.loc[r].sort_index()
             rets.append(
                 mc_reach.compute_network(
                     nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values))
+            # TODO: rets could be dumped to files
             #findex, fdv = mc_reach.compute_network(ts, reach, subnets[tw], data_idx, data_values, qlat_values)
             #flowdepthvel[findex] = fdv
+            if verbose:
+                print(
+                    f"tailwater: {tw} completed",
+                    end = "", 
+                )
+            # NOTE: Mississippi River tailwater is {22811611,}:
 
             if showtiming:
                 print(
