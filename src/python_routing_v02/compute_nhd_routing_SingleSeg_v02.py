@@ -11,13 +11,17 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 
 """
 ## Parallel execution
-import multiprocessing
 import os
 import sys
 import time
 import numpy as np
 import argparse
 import pathlib
+import pandas as pd
+from functools import partial
+from joblib import delayed, Parallel
+from itertools import chain, islice
+from operator import itemgetter
 
 
 def _handle_args():
@@ -40,14 +44,14 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--assume_short_ts",
+        "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
     )
     parser.add_argument(
         "-o",
-        "--write_output",
+        "--output",
         help="Write output files (leave blank for no writing)",
         dest="write_output",
         action="store_true",
@@ -61,7 +65,7 @@ def _handle_args():
     )
     parser.add_argument(
         "-w",
-        "--break_at_waterbodies",
+        "--break-at-waterbodies",
         help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
         dest="break_network_at_waterbodies",
         action="store_true",
@@ -102,7 +106,7 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = pathlib.Path("/", "content", "wrf_hydro_nwm_public", "trunk", "NDHMS", "dynamic_channel_routing")
 elif not ENV_IS_CL:
-    root = pathlib.Path('.').resolve()
+    root = pathlib.Path('../..').resolve()
     sys.path.append(r"../python_framework")
     sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
     sys.setrecursionlimit(4000)
@@ -207,6 +211,7 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
+    data = nhd_io.replace_downstreams(data, network_data['downstream_col'], 0)
 
     if args.ql:
         qlats = nhd_io.read_qlat(args.ql)
@@ -227,15 +232,11 @@ def main():
         print("organizing connections into reaches ...")
     
     rconn = nhd_network.reverse_network(connections)
-    subreachable = nhd_network.reachable(rconn)
     subnets = nhd_network.reachable_network(rconn)
     subreaches = {}
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        reach = nhd_network.dfs_decomposition(
-            nhd_network.reverse_network(net), path_func
-        )
-        subreaches[tw] = reach
+        subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     if verbose:
         print("reach organization complete")
@@ -260,42 +261,38 @@ def main():
     data = data.rename(columns=column_rename)
     data = data.astype('float32')
 
-    datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    #datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
 
     parallelcompute = False
     if parallelcompute:
+        with Parallel(n_jobs=-1, backend="threading") as parallel:
+            jobs = [] 
+            for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+                r = list(chain.from_iterable(reach))
+                data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
+                jobs.append(delayed(mc_reach.compute_network)(
+                    nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values
+                    )
+                )
+            results = parallel(jobs)
+    else:
         results = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = data.index.intersection(chain.from_iterable(reach))
+            r = list(chain.from_iterable(reach))
             data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(mc_reach.compute_network(
-                nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values, assume_short_ts=args.assume_short_ts
-            ))
-    else:
-        nslist = []
-        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = data.index.intersection(chain.from_iterable(reach))
-            data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
-            qlat_sub = qlats.loc[r].sort_index()
-            nslist.append((
-                nts, 
-                reach, 
-                subnets[tw], 
-                data_sub.index.values, 
-                data_sub.columns.values, 
-                data_sub.values, 
-                qlat_sub.values,
-                args.assume_short_ts
-            ))
+                nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values
+                )
+            )
 
-        with multiprocessing.Pool() as pool:
-            results = pool.starmap(mc_reach.compute_network, nslist)
-
-    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'd', 'v']])
-    flowdepthvel = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results])
-
+    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'v', 'd']]).to_flat_index()
+    flowveldepth = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False)
+    flowveldepth = flowveldepth.sort_index()
+    flowveldepth.to_csv(f"{args.supernetwork}.csv")
+    print(flowveldepth)
 
     if verbose:
         print("ordered reach computation complete")
