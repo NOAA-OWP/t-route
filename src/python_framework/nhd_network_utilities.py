@@ -125,6 +125,7 @@ def get_geo_file_table_rows(
     return geo_file_rows
 
 
+#TODO: Give this function a more appropriate general name (it does more that build connections)
 def build_connections_object(
     geo_file_rows=None,
     mask_set=None,
@@ -183,6 +184,7 @@ def build_connections_object(
     waterbody_segments = None
     waterbody_outlet_set = None
     waterbody_upstreams_set = None
+    waterbody_downstream_set = None
 
     # TODO: Set/pass/identify a proper flag value
     if waterbody_col is not None:
@@ -191,6 +193,7 @@ def build_connections_object(
             waterbody_segments,
             waterbody_outlet_set,
             waterbody_upstreams_set,
+            waterbody_downstream_set,
         ) = networkbuilder.get_waterbody_segments(
             connections=connections,
             terminal_code=terminal_code,
@@ -219,6 +222,7 @@ def build_connections_object(
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
+        waterbody_downstream_set,
     )
 
 
@@ -624,6 +628,7 @@ def set_supernetwork_data(
         return data
 
 
+#TODO: confirm that this function is not used, and if so, consider removing it
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
 
     supernetwork_data = set_supernetwork_data(

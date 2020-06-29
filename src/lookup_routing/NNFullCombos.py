@@ -1,3 +1,4 @@
+#first run the demo file stored in ../src/fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS to generate the mc_sseg_stime
 from pylab import *
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
@@ -9,6 +10,7 @@ import sys
 
 sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
 # import mc_sseg_stime_NOLOOP as mc
+
 from mc_sseg_stime import muskingcunge_module as mc
 import matplotlib as plt
 from pylab import *
@@ -23,13 +25,24 @@ import NN_normalization
 import nwm_single_segment
 import NN_gen_val_data
 import NN_gen_predicted_values
+import argparse
+import NN_argparse
 
 # import time
 # start_time = time.time()
 
 
 def main():
-    # AL = [5]
+    args = NN_argparse._handle_args()
+
+    
+    
+    epochs = int(args.epochs)
+    batch_size = int(args.batch_size)
+    num_samp_val = int(args.num_samp_val)
+    num_samp_pred = int(args.num_samp_pred)
+    AL = int(args.AL)
+   
 
     # #output lists if multiple runs were perfermed
     # can set AL to a list to run multiple tests on different sized arrays
@@ -59,7 +72,7 @@ def main():
         max_errors_list,
         mean_rel_errors_list,
         max_rel_errors_list,
-        AL,
+
     ) = NN_gen_training_data.main(
         depthp_min,
         depthp_max,
@@ -79,6 +92,7 @@ def main():
         tw_max,
         bw_min,
         bw_max,
+        AL
     )
 
     (VAL_x, VAL_y) = NN_gen_val_data.main(
@@ -100,6 +114,7 @@ def main():
         tw_max,
         bw_min,
         bw_max,
+        num_samp_val
     )
     # this section randomly generates validation data between the min and the max for us to train against. The model uses its training x and y data to improve itself, but will compare on unseen validation
     # data to make sure it is not overfitting as much
@@ -133,7 +148,7 @@ def main():
     regr = baseline_model()
     # here is where we input our X/M along with out Y training data, the number of iterations to run through the NN, the number of points to pass the NN at once, and our validation data set
     history = regr.fit(
-        M[:], Y[:], epochs=3, batch_size=1000, validation_data=(VAL_x, VAL_y)
+        M[:], Y[:], epochs=epochs, batch_size=batch_size, validation_data=(VAL_x, VAL_y)
     )
 
     print(regr.predict(M[-1:]))
@@ -160,6 +175,7 @@ def main():
         bw_max,
         regr,
         AL,
+        num_samp_pred,
     )
 
 
