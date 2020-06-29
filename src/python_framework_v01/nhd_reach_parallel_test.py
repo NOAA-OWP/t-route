@@ -12,7 +12,7 @@ connections = None
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = "/content/t-route-jsh/"
+    root = "/content/t-route/"
 elif not ENV_IS_CL:
     sys.setrecursionlimit(4000)
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
