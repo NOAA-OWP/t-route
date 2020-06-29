@@ -66,7 +66,7 @@ def main():
     input_vars["hydrograph_skewness"] = 4
     input_vars["hydrograph_qpeak"] = 5000
     reach = DummyReach(input_type=input_type, input_vars=input_vars)
-    # reach = SimpleFlowTrace() #DongHa's method.
+    # reach = SimpleFlowTrace()
     # reach = SteadyReach()
     # reach = MuskCReach()
     # reach = MESHDReach()

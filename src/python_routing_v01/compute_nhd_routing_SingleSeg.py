@@ -94,10 +94,15 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
 elif not ENV_IS_CL:
-    root = os.path.dirname(os.path.dirname(os.path.abspath("")))
-    sys.path.append(r"../python_framework")
-    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
-    sys.setrecursionlimit(4000)
+    root = os.path.dirname(os.path.dirname((os.path.abspath(""))))
+
+sys.setrecursionlimit(4000)
+sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
+sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
+fortran_source_dir = os.path.join(
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
+)
+sys.path.append(fortran_source_dir)
 
 ## Muskingum Cunge
 COMPILE = True
@@ -129,7 +134,7 @@ networks = None
 flowdepthvel = None
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 
 
