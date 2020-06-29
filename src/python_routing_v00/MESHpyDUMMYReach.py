@@ -290,7 +290,7 @@ def main():
     # print(input_path)
 
     # reach = DummyReach()
-    # reach = SimpleFlowTrace() #DongHa's method.
+    # reach = SimpleFlowTrace()
     # reach = SteadyReach(input_type = input_type, input_vars = input_vars)
     reach = MESHpyDUMMYReach(input_type=input_type, input_vars=input_vars)
     # reach = MuskCReach()

@@ -3,7 +3,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
     https://colab.research.google.com/drive/1ocgg1JiOGBUl3jfSUPCEVnW5WNaqLKCD
 
 """
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v01 as nnu
 import recursive_print
 import time
 import os

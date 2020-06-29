@@ -20,10 +20,15 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
 elif not ENV_IS_CL:
-    root = os.path.dirname(os.path.dirname(os.path.abspath("")))
-    sys.path.append(r"../python_framework")
-    sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
-    sys.setrecursionlimit(4000)
+    root = os.path.dirname(os.path.dirname((os.path.abspath(""))))
+
+sys.setrecursionlimit(4000)
+sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
+sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
+fortran_source_dir = os.path.join(
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
+)
+sys.path.append(fortran_source_dir)
 
 ## Muskingum Cunge
 COMPILE = True
@@ -56,8 +61,9 @@ flowdepthvel = None
 WRITE_OUTPUT = True
 
 ## network and reach utilities
-import nhd_network_utilities as nnu
+import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
+import nhd_network
 
 
 def writetoFile(file, writeString):
@@ -188,6 +194,45 @@ def compute_mc_reach_up2down(
     if WRITE_OUTPUT:
         file.close()
 
+def process_edge(N, RN, flowdepthvel, conn_data):
+    _key = conn_data[:,0]
+    i = np.searchsorted(_key, N)
+
+    dt = 60.0
+    dx = conn_data[i, 1]
+    bw = conn_data[i, 2]
+    tw = conn_data[i, 3]
+    twcc = conn_data[i, 7]
+    n_manning = conn_data[i, 4]
+    n_manning_cc = conn_data[i, 8]
+    cs = conn_data[i, 6]
+    s0 = conn_data[i, 7]
+
+    qup = 0.0
+    if N in RN and len(RN[N]) > 0:
+        qup = flowdepthvel[np.searchsorted(_key, tuple(RN[N])), 4].sum()
+
+    quc = qup
+
+    flowdepthvel[i, 7] = 10
+    flowdepthvel[i, :4] = flowdepthvel[i, 4:]
+
+    # Current flow, depth, vel, qlat
+    qdp, depthp, velp, qlat = flowdepthvel[i, 4:]
+
+    qdc, velc, depthc = singlesegment(
+        dt,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx, bw, tw, twcc, n_manning, n_manning_cc, cs, s0,
+        velp,
+        depthp
+    )
+
+    # update flowdepthvel
+    flowdepthvel[i, 4:7] = qdc, depthc, velc
 
 def singlesegment(
     dt,  # dt
@@ -313,45 +358,55 @@ def main():
     # flow_prev, depth_prev, vel_prev, qlat_prev
     # flow_curr, depth_curr, vel_curr, qlat_curr
     flowdepthvel = np.zeros((len(connections), 8))
+    RN = dict(nhd_network.reverse_network(connections))
 
-    parallelcompute = False
-    if not parallelcompute:
-        if verbose:
-            print("executing computation on ordered reaches ...")
+    for ts in range(1440):
+        for n in nhd_network.kahn_toposort(connections):
+            process_edge(n, RN, flowdepthvel, conn_data)
 
-        for terminal_segment, network in networks.items():
-            compute_network(
-                network,
-                conn_data,
-                supernetwork_data,
-                connections,
-                flowdepthvel,
-                verbose=False,
-                debuglevel=debuglevel,
-            )
-            print(f"{terminal_segment}")
-            if showtiming:
-                print("... in %s seconds." % (time.time() - start_time))
+    with np.printoptions(precision=5, suppress=True, linewidth=120):
+        print(flowdepthvel)
+    sorted_conns = sorted(connections.keys())
+    print(sorted_conns, all(conn_data[:,0] == sorted_conns))
 
-    else:
-        if verbose:
-            print(f"executing parallel computation on ordered reaches .... ")
-        # for terminal_segment, network in networks.items():
-        #    print(terminal_segment, network)
-        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
-        nslist = (
-            [
-                network,
-                conn_data,  # TODO: This should probably be global...
-                connections,
-                flowdepthvel,
-                False,
-                debuglevel,
-            ]
-            for terminal_segment, network in networks.items()
-        )
-        with multiprocessing.Pool() as pool:
-            results = pool.starmap(compute_network, nslist)
+    # parallelcompute = False
+    # if not parallelcompute:
+    #     if verbose:
+    #         print("executing computation on ordered reaches ...")
+    #
+    #     for terminal_segment, network in networks.items():
+    #         compute_network(
+    #             network,
+    #             conn_data,
+    #             supernetwork_data,
+    #             connections,
+    #             flowdepthvel,
+    #             verbose=False,
+    #             debuglevel=debuglevel,
+    #         )
+    #         print(f"{terminal_segment}")
+    #         if showtiming:
+    #             print("... in %s seconds." % (time.time() - start_time))
+    #
+    # else:
+    #     if verbose:
+    #         print(f"executing parallel computation on ordered reaches .... ")
+    #     # for terminal_segment, network in networks.items():
+    #     #    print(terminal_segment, network)
+    #     # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
+    #     nslist = (
+    #         [
+    #             network,
+    #             conn_data,  # TODO: This should probably be global...
+    #             connections,
+    #             flowdepthvel,
+    #             False,
+    #             debuglevel,
+    #         ]
+    #         for terminal_segment, network in networks.items()
+    #     )
+    #     with multiprocessing.Pool() as pool:
+    #         results = pool.starmap(compute_network, nslist)
 
     if verbose:
         print("ordered reach computation complete")
