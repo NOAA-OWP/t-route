@@ -400,9 +400,9 @@ class MESHpyReach(Reach):
                             section_j.flow,
                             section_j.conveyance_ds,
                         )
-                    # TODO: DongHa  Determine if we need to make the 0.5 to compute fs a variable
+                    # TODO: Determine if we need to make the 0.5 to compute fs a variable
                     # TODO: Move manning_m into conveyance calculation
-                    # TODO: consider Nazmul suggestion to combine Manning N and Manning M
+                    # TODO: consider suggestion to combine Manning N and Manning M
                     section_j.friction_slope_ds = (
                         0.5
                         * self.manning_m
@@ -1657,7 +1657,7 @@ def main():
     #     #input_path = "./input.txt"
 
     # reach = DummyReach()
-    # reach = SimpleFlowTrace() #DongHa's method.
+    # reach = SimpleFlowTrace()
     # reach = SteadyReach(input_type = input_type, input_vars = input_vars)
     # input_and_initialize(sections, input_path, input_opt)
     reach = MESHpyReach(input_type=input_type, input_vars=input_vars)
