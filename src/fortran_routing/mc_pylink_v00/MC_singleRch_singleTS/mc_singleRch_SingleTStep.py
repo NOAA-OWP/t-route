@@ -109,7 +109,7 @@ def compute_mc_reach_up2down(
         dt = 300.0
         mc.var.dt = dt  # 60.0;
 
-        # TODO: James Ask Dong Ha/Juzer: Does i == 0 have any meaning for these fortran arrays?
+        # TODO: Does i == 0 have any meaning for these fortran arrays?
         mc.var.dx[i] = reach_connections[current_segment]["data"][
             supernetwork_data["length_col"]
         ]
