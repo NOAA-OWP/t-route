@@ -73,12 +73,12 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         do while (rerror .gt. 0.01 .and. aerror .ge. mindepth .and. iter .le. maxiter)
 
             call secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, Qj_0, C1, C2, C3, C4, WPC)
+                qdp, ql, qup, quc, h_0, WPC, Qj_0, C1, C2, C3, C4)
       !subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
                 !qdp, ql, qup, quc, h_0, Qj_0)
 
             call secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, Qj, C1, C2, C3, C4, WPC)
+                qdp, ql, qup, quc, h, WPC, Qj, C1, C2, C3, C4)
       !subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
                 !qdp, ql, qup, quc, h, Qj)
 
@@ -165,7 +165,7 @@ end subroutine muskingcungenwm
 !*                                                     *!
 !**---------------------------------------------------**!
 subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h_0, Qj_0, WPC, C1, C2, C3, C4)
+    qdp, ql, qup, quc, h_0, WPC, Qj_0,  C1, C2, C3, C4)
 
     implicit none
 
@@ -259,7 +259,7 @@ end subroutine secant_h0
 !*                                                     *!
 !**---------------------------------------------------**!
 subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, Qj, WPC, C1, C2, C3, C4)
+    qdp, ql, qup, quc, h, WPC, Qj, C1, C2, C3, C4)
 
     implicit none
 
