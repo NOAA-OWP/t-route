@@ -193,6 +193,7 @@ def main():
         qlats = constant_qlats(data, nts, 10.0)
 
     connections = nhd_network.extract_connections(data, network_data["downstream_col"])
+    wbodies = nhd_network.extract_waterbodies(data, network_data["waterbody_col"], network_data["waterbody_null_code"])
 
     if verbose:
         print("supernetwork connections set complete")
@@ -209,7 +210,8 @@ def main():
     subnets = nhd_network.reachable_network(rconn)
     subreaches = {}
     for tw, net in subnets.items():
-        path_func = partial(nhd_network.split_at_junction, net)
+        #path_func = partial(nhd_network.split_at_junction, net)
+        path_func = partial(nhd_network.split_at_waterbodies_and_junctions, wbodies, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     if verbose:
