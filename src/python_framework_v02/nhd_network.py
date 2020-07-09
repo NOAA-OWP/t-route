@@ -1,6 +1,7 @@
 from collections import defaultdict, Counter, deque
 from itertools import chain
 from functools import reduce, partial
+from collections.abc import Iterable
 
 
 def nodes(N):
@@ -62,12 +63,19 @@ def extract_connections(rows, target_col, terminal_code=0):
     return network
 
 
+def extract_waterbodies(rows, target_col, waterbody_null=-9999):
+    """Extract waterbody mapping from dataframe.
+    """
+    return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
+
+
 def reverse_network(N):
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
         for n in dst:
             rg[n].append(src)
+
     rg.default_factory = None
     return rg
 
@@ -149,7 +157,11 @@ def split_at_junction(network, path, node):
 
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
-    return node not in waterbody_nodes and len(network[node]) == 1
+    if path[-1] in waterbody_nodes:
+        return node in waterbody_nodes
+    else:
+        return len(network[node]) == 1
+    #return node not in waterbody_nodes and len(network[node]) == 1
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
