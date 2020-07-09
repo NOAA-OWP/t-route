@@ -162,7 +162,7 @@ def split_at_junction(network, path, node):
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     if path[-1] in waterbody_nodes:
-        return node in waterbody_nodes
+        return node in waterbody_nodes and len(network[node]) == 1
     else:
         return len(network[node]) == 1
     #return node not in waterbody_nodes and len(network[node]) == 1
