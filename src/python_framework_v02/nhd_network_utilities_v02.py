@@ -128,6 +128,8 @@ def set_supernetwork_data(
             ),
             "key_col": "featureID",
             "downstream_col": "to",
+            "waterbody_col": "NHDWaterbo",
+            "waterbody_null_code": -9999,
             "length_col": "Length",
             "manningn_col": "n",
             "slope_col": "So",
