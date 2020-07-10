@@ -12,6 +12,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 """
 ## Parallel execution
 import multiprocessing
+import pandas as pd
 import os
 import sys
 import time
@@ -175,7 +176,7 @@ def compute_network(
 
     # initialize flowdepthvel dict
     # nts = 50  # one timestep
-    nts = 143  # test with dt =10
+    nts = 144  # test with dt =10
     dt = 300  # in seconds
     # nts = 1440 # number of  timestep = 1140 * 60(model timestep) = 86400 = day
 
@@ -627,15 +628,24 @@ def main():
 
     # Lateral flow
     ## test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-    qlcol = 54
-    qlrow = 144
-    ql = np.zeros((qlrow, qlcol))
-    ql_input_folder = os.path.join(root, r'./test/input/text/Pocono_ql_testsamp1_nwm_mc.txt')
-    for j in range(0, qlcol):
-        ql[0, j] = int(np.loadtxt(ql_input_folder, max_rows=1, usecols=(j + 2)))
-        ql[1:, j] = np.loadtxt(ql_input_folder, skiprows=2, usecols=(j + 2))
-    for j in range(0, qlcol):
-        flowdepthvel[int(ql[0, j])]['qlatval'] = ql[1:, j].tolist()
+    ql_input_folder = os.path.join(
+        root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+    )
+    ql = pd.read_csv(ql_input_folder, index_col=0)
+
+    for index, row in ql.iterrows():
+        # print(index, row.to_numpy())
+        flowdepthvel[index]["qlatval"] = row.to_numpy().tolist()
+
+    # qlcol = 54
+    # qlrow = 144
+    # ql = np.zeros((qlrow, qlcol))
+    # ql_input_folder = os.path.join(root, r'./test/input/text/Pocono_ql_testsamp1_nwm_mc.txt')
+    # for j in range(0, qlcol):
+    #     ql[0, j] = int(np.loadtxt(ql_input_folder, max_rows=1, usecols=(j + 2)))
+    #     ql[1:, j] = np.loadtxt(ql_input_folder, skiprows=2, usecols=(j + 2))
+    # for j in range(0, qlcol):
+    #     flowdepthvel[int(ql[0, j])]['qlatval'] = ql[1:, j].tolist()
 
     parallelcompute = True
     if not parallelcompute:
