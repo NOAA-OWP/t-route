@@ -264,7 +264,6 @@ def compute_mc_reach_up2down(
         tw = data[supernetwork_data["topwidth_col"]]
         twcc = data[supernetwork_data["topwidthcc_col"]]
         dx = data[supernetwork_data["length_col"]]
-        bw = data[supernetwork_data["bottomwidth_col"]]
         n_manning = data[supernetwork_data["manningn_col"]]
         n_manning_cc = data[supernetwork_data["manningncc_col"]]
         cs = data[supernetwork_data["ChSlp_col"]]
