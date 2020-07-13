@@ -1,29 +1,25 @@
-#!/usr/bin/env python
-# coding: utf-8
+# example to run test: python compute_nhd_routing_SingleSeg.py -v --test
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
 
+# a notebook-based version of very similar code is found here:
+# https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
 
-# -*- coding: utf-8 -*-
-"""NHD Network traversal
-
-A demonstration version of this code is stored in this Colaboratory notebook:
-    https://colab.research.google.com/drive/1ocgg1JiOGBUl3jfSUPCEVnW5WNaqLKCD
-
-"""
 ## Parallel execution
-import multiprocessing
-import pandas as pd
 import os
 import sys
 import time
-import csv
-import netCDF4
 import numpy as np
 import argparse
+import pathlib
+import pandas as pd
+import netCDF4
+import csv
 from datetime import datetime
+import multiprocessing
 
 
 def _handle_args():
+    # TODO: Convert to global argparser
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -42,28 +38,62 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--assume_short_ts",
+        "--test" "--run-pocono-test-example",
+        help="Use the data values stored in the repository for a test of the Pocono network",
+        dest="run_pocono_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-sts" "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
     )
     parser.add_argument(
-        "-o",
-        "--write_output",
-        help="Write output files (leave blank for no writing)",
-        dest="write_output",
+        "-ocsv",
+        "--write-output-csv",
+        help="Write csv output files (omit flag for no csv writing)",
+        dest="write_csv_output",
         action="store_true",
+    )
+    parser.add_argument(
+        "-onc",
+        "--write-output-nc",
+        help="Write netcdf output files (omit flag for no netcdf writing)",
+        dest="write_nc_output",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--dt",
+        "--time-step",
+        help="Set the default timestep length",
+        dest="dt",
+        default=300,
+    )
+    parser.add_argument(
+        "--nts",
+        "--number-of-timesteps",
+        help="Set the number of timesteps to execute",
+        dest="nts",
+        default=144,
+    )
+    parser.add_argument(
+        "--ql",
+        "--constant_qlateral",
+        help="Set the number of timesteps to execute",
+        dest="qlat_const",
+        default=10,
     )
     parser.add_argument(
         "-t",
         "--showtiming",
-        help="Set the showtiming (leave blank for no timing information)",
+        help="Set the showtiming (omit flag for no timing information)",
         dest="showtiming",
         action="store_true",
     )
     parser.add_argument(
         "-w",
-        "--break_at_waterbodies",
+        "--break-at-waterbodies",
         help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
         dest="break_network_at_waterbodies",
         action="store_true",
@@ -90,15 +120,17 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    parser.add_argument(
+        "--parallel",
+        help="Use the parallel computation engine (omit flag for serial computation)",
+        dest="parallel_compute",
+        action="store_true",
+    )
 
     return parser.parse_args()
 
 
-ENV_IS_CL = False
-if ENV_IS_CL:
-    root = "/content/wrf_hydro_nwm_public/trunk/NDHMS/dynamic_channel_routing/"
-elif not ENV_IS_CL:
-    root = os.path.dirname(os.path.dirname((os.path.abspath(""))))
+root = pathlib.Path("../..").resolve()
 
 sys.setrecursionlimit(4000)
 sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
@@ -143,27 +175,24 @@ import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 
 
-def writetoFile(file, writeString):
-    file.write(writeString + "\n")
-    file.flush()
-    os.fsync(file.fileno())
-
-
 def compute_network(
-    terminal_segment=None,
-    network=None,
-    supernetwork_data=None,
-    verbose=False,
-    debuglevel=0,
-    write_output=False,
-    assume_short_ts=False,
+        terminal_segment=None,
+        network=None,
+        supernetwork_data=None,
+        nts=0,
+        dt=0,
+        verbose=False,
+        debuglevel=0,
+        write_csv_output=False,
+        write_nc_output=False,
+        assume_short_ts=False,
 ):
     global connections
     global flowveldepth
 
-    # print(tuple(([x for x in network.keys()][i], [x for x in network.values()][i]) for i in range(len(network))))
-
-    # if verbose: print(f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
+    if debuglevel <= -1:
+        print(
+            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
 
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
@@ -171,21 +200,14 @@ def compute_network(
             ordered_reaches.update({reach["seqorder"]: []})
         ordered_reaches[reach["seqorder"]].append([head_segment, reach])
 
-    # initialize flowveldepth dict
-    # nts = 50  # one timestep
-    nts = 144  # test with dt =10
-    dt = 300  # in seconds
-    # nts = 1440 # number of  timestep = 1140 * 60(model timestep) = 86400 = day
-
     # initialize write to files variable
-    writeToCSV = True
-    writeToNETCDF = True
+    writeToCSV = write_csv_output
+    writeToNETCDF = write_nc_output
     pathToOutputFile = os.path.join(root, "test", "output", "text")
 
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
             for head_segment, reach in ordered_reaches[x]:
-
                 compute_mc_reach_up2down(
                     head_segment=head_segment,
                     reach=reach,
@@ -194,7 +216,6 @@ def compute_network(
                     dt=dt,
                     verbose=verbose,
                     debuglevel=debuglevel,
-                    write_output=write_output,
                     assume_short_ts=assume_short_ts,
                 )
 
@@ -221,20 +242,19 @@ def compute_network(
 
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
-    head_segment=None,
-    reach=None,
-    supernetwork_data=None,
-    ts=0,
-    dt=60,
-    verbose=False,
-    debuglevel=0,
-    write_output=False,
-    assume_short_ts=False,
+        head_segment=None,
+        reach=None,
+        supernetwork_data=None,
+        ts=0,
+        dt=60,
+        verbose=False,
+        debuglevel=0,
+        assume_short_ts=False,
 ):
     global connections
     global flowveldepth
 
-    if verbose:
+    if debuglevel <= -2:
         print(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
         )
@@ -242,13 +262,14 @@ def compute_mc_reach_up2down(
     # upstream flow per reach
     qup = 0.0
     quc = 0.0
-    # import pdb; pdb.set_trace()
-    if reach["upstream_reaches"] != {
-        supernetwork_data["terminal_code"]
-    }:  # Not Headwaters
-        for us in connections[reach["reach_head"]]["upstreams"]:
-            qup += flowveldepth[us]["flowval"][-1]
-            quc += flowveldepth[us]["flowval"][0]
+
+    if ts > 0:
+        if reach["upstream_reaches"] != {
+            supernetwork_data["terminal_code"]
+        }:  # Not Headwaters
+            for us in connections[reach["reach_head"]]["upstreams"]:
+                qup += flowveldepth[us]["flowval"][-2]
+                quc += flowveldepth[us]["flowval"][-1]
 
     if assume_short_ts:
         quc = qup
@@ -315,15 +336,15 @@ def compute_mc_reach_up2down(
         flowveldepth[current_segment]["velval"].append(velc)
         flowveldepth[current_segment]["time"].append(ts * dt)
 
+        next_segment = connections[current_segment]["downstream"]
         if current_segment == reach["reach_tail"]:
-            if verbose:
+            if debuglevel <= -2:
                 print(f"{current_segment} (tail)")
             break
-        if verbose:
+        if debuglevel <= -3:
             print(f"{current_segment} --> {next_segment}\n")
         # current_segment = next_segment
         # next_segment = connections[current_segment]["downstream"]
-        next_segment = connections[current_segment]["downstream"]
         current_segment = next_segment
     # end loop initialized the MC vars
     # end while loop
@@ -334,13 +355,13 @@ def compute_mc_reach_up2down(
 # arguments reach , pathToOutputFile
 # using global connections and flowveldepth.
 def printarray(
-    reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
+        reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
 ):
     global connections
     global flowveldepth
 
     # define CSV file Header
-    header = [["time", "qlat", "q", "d", "v"]]
+    header = [["time", "qlat", "q", "v", "d"]]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -349,7 +370,7 @@ def printarray(
     while True:
         filename = f"{pathToOutputFile}/{current_segment}.csv"  #
         if verbose:
-            print(f"printing to --> {filename} \n")
+            print(f"writing segment output to --> {filename}")
         with open(filename, "w+") as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=",", quoting=csv.QUOTE_ALL)
             csvwriter.writerows(header)
@@ -358,16 +379,16 @@ def printarray(
                     flowveldepth[current_segment]["time"],
                     flowveldepth[current_segment]["qlatval"],
                     flowveldepth[current_segment]["flowval"],
-                    flowveldepth[current_segment]["depthval"],
                     flowveldepth[current_segment]["velval"],
+                    flowveldepth[current_segment]["depthval"],
                 )
             )
 
         if current_segment == reach["reach_tail"]:
-            if verbose:
+            if debuglevel <= -2:
                 print(f"{current_segment} (tail)")
             break
-        if verbose:
+        if debuglevel <= -3:
             print(f"{current_segment} --> {next_segment}\n")
         current_segment = next_segment
         next_segment = connections[current_segment]["downstream"]
@@ -378,12 +399,12 @@ def printarray(
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoNC(
-    network=None,
-    nts=0,
-    dt=60,
-    verbose=False,
-    debuglevel=0,
-    pathToOutputFile="../../test/output/text/",
+        network=None,
+        nts=0,
+        dt=60,
+        verbose=False,
+        debuglevel=0,
+        pathToOutputFile="../../test/output/text/",
 ):
     global connections
     global flowveldepth
@@ -437,11 +458,11 @@ def writeArraytoNC(
 
                 if current_segment == reach["reach_tail"]:
                     write_segment = current_segment
-                    if verbose:
+                    if debuglevel <= -2:
                         print(f"{current_segment} (tail)")
                     break
                 next_segment = connections[current_segment]["downstream"]
-                if verbose:
+                if debuglevel <= -3:
                     print(f"{current_segment} --> {next_segment}\n")
                 current_segment = next_segment
 
@@ -469,17 +490,19 @@ def writeArraytoNC(
 # arguments flowveldepth , segment_count, terminal_segment (for filename and as identifier of reach)
 #           number of timesteps (nts),  timestep in seconds  (dt),  verbose , debuglevel , pathToOutputFile
 def writeNC(
-    flowveldepth_data=None,
-    segment_count=0,
-    terminal_segment=None,
-    nts=0,
-    dt=60,
-    pathToOutputFile="../../test/output/text",
-    verbose=False,
-    debuglevel=0,
+        flowveldepth_data=None,
+        segment_count=0,
+        terminal_segment=None,
+        nts=0,
+        dt=60,
+        pathToOutputFile="../../test/output/text",
+        verbose=False,
+        debuglevel=0,
 ):
     # start writing data to nc file
     filename = f"{pathToOutputFile}/{terminal_segment}.nc"  # ncfile'
+    if verbose:
+        print(f"writing netcdf output to --> {filename}")
     ncfile = netCDF4.Dataset(filename, mode="w", format="NETCDF4")
     # segcount = total segments for the current reach
     segcount = ncfile.createDimension("stations", segment_count)  # segment
@@ -542,29 +565,28 @@ def writeNC(
     analysistime[:] = 0
     #
     ncfile.close()
-    if verbose:
+    if debuglevel <= -1:
         print(f"{filename} closed!")
 
 
 ## call to singlesegment MC Fortran Module
 def singlesegment(
-    dt,  # dt
-    qup=None,  # qup
-    quc=None,  # quc
-    qdp=None,  # qdp
-    qlat=None,  # ql
-    dx=None,  # dx
-    bw=None,  # bw
-    tw=None,  # tw
-    twcc=None,  # twcc
-    n_manning=None,  #
-    n_manning_cc=None,  # ncc
-    cs=None,  # cs
-    s0=None,  # s0
-    velp=None,  # velocity at previous time step
-    depthp=None,  # depth at previous time step
+        dt,  # dt
+        qup=None,  # qup
+        quc=None,  # quc
+        qdp=None,  # qdp
+        qlat=None,  # ql
+        dx=None,  # dx
+        bw=None,  # bw
+        tw=None,  # tw
+        twcc=None,  # twcc
+        n_manning=None,  #
+        n_manning_cc=None,  # ncc
+        cs=None,  # cs
+        s0=None,  # s0
+        velp=None,  # velocity at previous time step
+        depthp=None,  # depth at previous time step
 ):
-
     # call Fortran routine
     return mc.muskingcungenwm(
         dt,
@@ -588,20 +610,39 @@ def singlesegment(
 
 # Main Routine
 def main():
-
     args = _handle_args()
 
     global connections
     global networks
     global flowveldepth
 
+    supernetwork = args.supernetwork
+    break_network_at_waterbodies = args.break_network_at_waterbodies
+
+    dt = float(args.dt)
+    nts = int(args.nts)
+    qlat_const = float(args.qlat_const)
+
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
     showtiming = args.showtiming
-    supernetwork = args.supernetwork
-    break_network_at_waterbodies = args.break_network_at_waterbodies
-    write_output = args.write_output
+    write_csv_output = args.write_csv_output
+    write_nc_output = args.write_nc_output
     assume_short_ts = args.assume_short_ts
+    parallel_compute = args.parallel_compute
+
+    run_pocono_test = args.run_pocono_test
+
+    if run_pocono_test:
+        if verbose:
+            print('running test case for Pocono_TEST2 domain')
+        # Overwrite the following test defaults
+        supernetwork = 'Pocono_TEST2'
+        break_network_at_waterbodies = False
+        dt = 300
+        nts = 144
+        write_csv_output = True
+        write_nc_output = True
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -658,57 +699,54 @@ def main():
 
     connections = supernetwork_values[0]
 
+    # initialize flowveldepth dict
     flowveldepth = {
         connection: {
             "qlatval": [],
             "time": [],
             "flowval": [],
-            "depthval": [],
             "velval": [],
+            "depthval": [],
         }
         for connection in connections
     }
 
     # Lateral flow
-    ## test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-    ql_input_folder = os.path.join(
-        root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
-    )
-    ql = pd.read_csv(ql_input_folder, index_col=0)
+    if run_pocono_test:  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+        ql_input_folder = os.path.join(
+            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+        )
+        ql = pd.read_csv(ql_input_folder, index_col=0)
+
+    else:
+        q = np.full((len(connections), nts), qlat_const, dtype='float32')
+        ql = pd.DataFrame(q, index=connections.keys(), columns=range(nts))
 
     for index, row in ql.iterrows():
-        # print(index, row.to_numpy())
         flowveldepth[index]["qlatval"] = row.to_numpy().tolist()
 
-    # qlcol = 54
-    # qlrow = 144
-    # ql = np.zeros((qlrow, qlcol))
-    # ql_input_folder = os.path.join(root, r'./test/input/text/Pocono_ql_testsamp1_nwm_mc.txt')
-    # for j in range(0, qlcol):
-    #     ql[0, j] = int(np.loadtxt(ql_input_folder, max_rows=1, usecols=(j + 2)))
-    #     ql[1:, j] = np.loadtxt(ql_input_folder, skiprows=2, usecols=(j + 2))
-    # for j in range(0, qlcol):
-    #     flowveldepth[int(ql[0, j])]['qlatval'] = ql[1:, j].tolist()
-
-    parallelcompute = True
-    if not parallelcompute:
+    if not parallel_compute:
         if verbose:
             print("executing computation on ordered reaches ...")
 
         for terminal_segment, network in networks.items():
+            if verbose:
+                print(f"for network terminiating at segment {terminal_segment}")
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,
                 supernetwork_data=supernetwork_data,
-                verbose=False,
+                nts=nts,
+                dt=dt,
+                verbose=verbose,
                 debuglevel=debuglevel,
-                write_output=write_output,
+                write_csv_output=write_csv_output,
+                write_nc_output=write_nc_output,
                 assume_short_ts=assume_short_ts,
             )
-            print(f"{terminal_segment}")
             if showtiming:
                 print("... in %s seconds." % (time.time() - start_time))
-    else:
+    else:  # serial execution
         if verbose:
             print(f"executing parallel computation on ordered reaches .... ")
         # for terminal_segment, network in networks.items():
@@ -719,9 +757,12 @@ def main():
                 terminal_segment,
                 network,
                 supernetwork_data,  # TODO: This should probably be global...
-                False,
+                nts,
+                dt,
+                verbose,
                 debuglevel,
-                write_output,
+                write_csv_output,
+                write_nc_output,
                 assume_short_ts,
             ]
             for terminal_segment, network in networks.items()
