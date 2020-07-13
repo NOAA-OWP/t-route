@@ -44,7 +44,7 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "-sts" "--assume-short-ts",
+        "--sts" "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
@@ -191,7 +191,9 @@ def compute_network(
     global flowveldepth
 
     if debuglevel <= -1:
-        print(f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
+        print(
+            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}"
+        )
 
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
@@ -630,19 +632,18 @@ def main():
     assume_short_ts = args.assume_short_ts
     parallel_compute = args.parallel_compute
 
-    run_pocono_test=args.run_pocono_test
+    run_pocono_test = args.run_pocono_test
 
     if run_pocono_test:
         if verbose:
-            print('running test case for Pocono_TEST2 domain')
+            print("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
-        supernetwork = 'Pocono_TEST2'
+        supernetwork = "Pocono_TEST2"
         break_network_at_waterbodies = False
         dt = 300
         nts = 144
         write_csv_output = True
         write_nc_output = True
-
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -712,14 +713,16 @@ def main():
     }
 
     # Lateral flow
-    if run_pocono_test: # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+    if (
+        run_pocono_test
+    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
         ql = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        q = np.full((len(connections), nts), qlat_const, dtype='float32')
+        q = np.full((len(connections), nts), qlat_const, dtype="float32")
         ql = pd.DataFrame(q, index=connections.keys(), columns=range(nts))
 
     for index, row in ql.iterrows():
