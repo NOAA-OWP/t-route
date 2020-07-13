@@ -712,7 +712,7 @@ def main():
     }
 
     # Lateral flow
-    if run_pocono_test:  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+    if run_pocono_test: # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
