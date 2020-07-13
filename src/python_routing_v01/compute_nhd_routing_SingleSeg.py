@@ -135,7 +135,7 @@ else:
 
 connections = None
 networks = None
-flowdepthvel = None
+flowveldepth = None
 # WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
@@ -159,7 +159,7 @@ def compute_network(
     assume_short_ts=False,
 ):
     global connections
-    global flowdepthvel
+    global flowveldepth
 
     # print(tuple(([x for x in network.keys()][i], [x for x in network.values()][i]) for i in range(len(network))))
 
@@ -171,7 +171,7 @@ def compute_network(
             ordered_reaches.update({reach["seqorder"]: []})
         ordered_reaches[reach["seqorder"]].append([head_segment, reach])
 
-    # initialize flowdepthvel dict
+    # initialize flowveldepth dict
     # nts = 50  # one timestep
     nts = 144  # test with dt =10
     dt = 300  # in seconds
@@ -232,7 +232,7 @@ def compute_mc_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    global flowdepthvel
+    global flowveldepth
 
     if verbose:
         print(
@@ -247,8 +247,8 @@ def compute_mc_reach_up2down(
         supernetwork_data["terminal_code"]
     }:  # Not Headwaters
         for us in connections[reach["reach_head"]]["upstreams"]:
-            qup += flowdepthvel[us]["flowval"][-1]
-            quc += flowdepthvel[us]["flowval"][0]
+            qup += flowveldepth[us]["flowval"][-1]
+            quc += flowveldepth[us]["flowval"][0]
 
     if assume_short_ts:
         quc = qup
@@ -258,7 +258,7 @@ def compute_mc_reach_up2down(
 
     while True:
         data = connections[current_segment]["data"]
-        # current_flow = flowdepthvel[current_segment]
+        # current_flow = flowveldepth[current_segment]
 
         # for now treating as constant per reach
         bw = data[supernetwork_data["bottomwidth_col"]]
@@ -270,12 +270,12 @@ def compute_mc_reach_up2down(
         cs = data[supernetwork_data["ChSlp_col"]]
         s0 = data[supernetwork_data["slope_col"]]
 
-        qlat = flowdepthvel[current_segment]["qlatval"][ts]
+        qlat = flowveldepth[current_segment]["qlatval"][ts]
 
         if ts > 0:
-            qdp = flowdepthvel[current_segment]["flowval"][-1]
-            velp = flowdepthvel[current_segment]["velval"][-1]
-            depthp = flowdepthvel[current_segment]["depthval"][-1]
+            qdp = flowveldepth[current_segment]["flowval"][-1]
+            velp = flowveldepth[current_segment]["velval"][-1]
+            depthp = flowveldepth[current_segment]["depthval"][-1]
         else:
             qdp = 0
             velp = 0
@@ -302,7 +302,7 @@ def compute_mc_reach_up2down(
 
         # for next segment qup / quc use the previous flow values
         if ts > 0:
-            qup = flowdepthvel[current_segment]["flowval"][-1]  # input for next segment
+            qup = flowveldepth[current_segment]["flowval"][-1]  # input for next segment
         else:
             qup = 0
 
@@ -310,10 +310,10 @@ def compute_mc_reach_up2down(
         if assume_short_ts:
             quc = qup
 
-        flowdepthvel[current_segment]["flowval"].append(qdc)
-        flowdepthvel[current_segment]["depthval"].append(depthc)
-        flowdepthvel[current_segment]["velval"].append(velc)
-        flowdepthvel[current_segment]["time"].append(ts * dt)
+        flowveldepth[current_segment]["flowval"].append(qdc)
+        flowveldepth[current_segment]["depthval"].append(depthc)
+        flowveldepth[current_segment]["velval"].append(velc)
+        flowveldepth[current_segment]["time"].append(ts * dt)
 
         if current_segment == reach["reach_tail"]:
             if verbose:
@@ -332,12 +332,12 @@ def compute_mc_reach_up2down(
 # ### Psuedocode
 # Write Array  to CSV file
 # arguments reach , pathToOutputFile
-# using global connections and flowdepthvel.
+# using global connections and flowveldepth.
 def printarray(
     reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
 ):
     global connections
-    global flowdepthvel
+    global flowveldepth
 
     # define CSV file Header
     header = [["time", "qlat", "q", "d", "v"]]
@@ -355,11 +355,11 @@ def printarray(
             csvwriter.writerows(header)
             csvwriter.writerows(
                 zip(
-                    flowdepthvel[current_segment]["time"],
-                    flowdepthvel[current_segment]["qlatval"],
-                    flowdepthvel[current_segment]["flowval"],
-                    flowdepthvel[current_segment]["depthval"],
-                    flowdepthvel[current_segment]["velval"],
+                    flowveldepth[current_segment]["time"],
+                    flowveldepth[current_segment]["qlatval"],
+                    flowveldepth[current_segment]["flowval"],
+                    flowveldepth[current_segment]["depthval"],
+                    flowveldepth[current_segment]["velval"],
                 )
             )
 
@@ -376,7 +376,7 @@ def printarray(
 # ### Psuedocode
 # Write Array  to Arrays for Netcdf file and then call writeNC function to write output data to NC file
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
-# using global connections and flowdepthvel.
+# using global connections and flowveldepth.
 def writeArraytoNC(
     network=None,
     nts=0,
@@ -386,9 +386,9 @@ def writeArraytoNC(
     pathToOutputFile="../../test/output/text/",
 ):
     global connections
-    global flowdepthvel
-    # create  array variables to copy from python "flowdepthvel" which is global
-    flowdepthvel_data = {
+    global flowveldepth
+    # create  array variables to copy from python "flowveldepth" which is global
+    flowveldepth_data = {
         "segment": [],
         "time": [],
         "qlatval": [],
@@ -412,26 +412,26 @@ def writeArraytoNC(
         for head_segment, reach in ordered_reaches[x]:
             current_segment = reach["reach_head"]
             while True:
-                # appending data from each segments to a single list  "flowdepthvel_data"
+                # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
-                flowdepthvel_data["qlatval"].append(
-                    flowdepthvel[current_segment]["qlatval"]
+                flowveldepth_data["qlatval"].append(
+                    flowveldepth[current_segment]["qlatval"]
                 )
-                flowdepthvel_data["flowval"].append(
-                    flowdepthvel[current_segment]["flowval"]
+                flowveldepth_data["flowval"].append(
+                    flowveldepth[current_segment]["flowval"]
                 )
-                flowdepthvel_data["depthval"].append(
-                    flowdepthvel[current_segment]["depthval"]
+                flowveldepth_data["depthval"].append(
+                    flowveldepth[current_segment]["depthval"]
                 )
-                flowdepthvel_data["velval"].append(
-                    flowdepthvel[current_segment]["velval"]
+                flowveldepth_data["velval"].append(
+                    flowveldepth[current_segment]["velval"]
                 )
-                # write segment flowdepthvel_data['segment']
-                flowdepthvel_data["segment"].append(current_segment)
+                # write segment flowveldepth_data['segment']
+                flowveldepth_data["segment"].append(current_segment)
                 if not TIME_WRITTEN:
                     # write time only once - for first segment
-                    flowdepthvel_data["time"].append(
-                        flowdepthvel[current_segment]["time"]
+                    flowveldepth_data["time"].append(
+                        flowveldepth[current_segment]["time"]
                     )
                     TIME_WRITTEN = True
 
@@ -446,14 +446,14 @@ def writeArraytoNC(
                 current_segment = next_segment
 
     # check number of timesteps should match the time the data is written
-    if int(len(flowdepthvel_data["time"][0])) != int(nts):
+    if int(len(flowveldepth_data["time"][0])) != int(nts):
         print(
-            f"Number of timesteps  {nts} does not match data timesteps {len(flowdepthvel_data['time'][0])}\n"
+            f"Number of timesteps  {nts} does not match data timesteps {len(flowveldepth_data['time'][0])}\n"
         )
         return
 
     writeNC(
-        flowdepthvel_data=flowdepthvel_data,
+        flowveldepth_data=flowveldepth_data,
         segment_count=network["total_segment_count"],
         terminal_segment=write_segment,
         nts=nts,
@@ -466,10 +466,10 @@ def writeArraytoNC(
 
 # ### Psuedocode
 # Write  netcdf  file
-# arguments flowdepthvel , segment_count, terminal_segment (for filename and as identifier of reach)
+# arguments flowveldepth , segment_count, terminal_segment (for filename and as identifier of reach)
 #           number of timesteps (nts),  timestep in seconds  (dt),  verbose , debuglevel , pathToOutputFile
 def writeNC(
-    flowdepthvel_data=None,
+    flowveldepth_data=None,
     segment_count=0,
     terminal_segment=None,
     nts=0,
@@ -498,14 +498,14 @@ def writeNC(
     flow = ncfile.createVariable(
         "flow", np.float64, ("time", "stations")
     )  # note: unlimited dimension is leftmost
-    flow[:, :] = np.transpose(np.array(flowdepthvel_data["flowval"], dtype=float))
+    flow[:, :] = np.transpose(np.array(flowveldepth_data["flowval"], dtype=float))
     flow.units = "cu ft/s"
     flow.standard_name = "streamflow"  # this is a CF standard name
     # write depth
     depth = ncfile.createVariable(
         "depth", np.float64, ("time", "stations")
     )  # note: unlimited dimension is leftmost
-    depth[:, :] = np.transpose(np.array(flowdepthvel_data["depthval"], dtype=float))
+    depth[:, :] = np.transpose(np.array(flowveldepth_data["depthval"], dtype=float))
     depth.units = "ft"  #
     depth.standard_name = "depth"  # this is a CF standard name
     # write velocity
@@ -513,14 +513,14 @@ def writeNC(
         "velocity", np.float64, ("time", "stations")
     )  # note: unlimited dimension is leftmost
     velocity.units = "ft/s"  #
-    velocity[:, :] = np.transpose(np.array(flowdepthvel_data["velval"], dtype=float))
+    velocity[:, :] = np.transpose(np.array(flowveldepth_data["velval"], dtype=float))
     velocity.standard_name = "velocity"  # this is a CF standard name
     # write  lateral flow (input from NWM)
     lateralflow = ncfile.createVariable(
         "lateralflow", np.float64, ("time", "stations")
     )  # note: unlimited dimension is leftmost
     lateralflow[:, :] = np.transpose(
-        np.array(flowdepthvel_data["qlatval"], dtype=float)
+        np.array(flowveldepth_data["qlatval"], dtype=float)
     )
     lateralflow.units = "cu ft/s"  #
     lateralflow.standard_name = "lateralflow"  # this is a CF standard name
@@ -528,11 +528,11 @@ def writeNC(
     time = ncfile.createVariable("time", np.float64, "time")
     time.units = "seconds since 2011-08-27 00:00:00"  ## TODO get time fron NWM as argument to this function
     time.long_name = "time"
-    time[:] = flowdepthvel_data["time"]
+    time[:] = flowveldepth_data["time"]
     # write segment ids
     segment = ncfile.createVariable("station_id", np.int, ("stations"))
     segment.long_name = "feature id"
-    segment[:] = flowdepthvel_data["segment"]
+    segment[:] = flowveldepth_data["segment"]
     # write analysis time = current time = time MC model is run
     analysistime = ncfile.createVariable("analysis_time", np.double, "analysistime")
     analysistime.long_name = "forecast_reference_time"
@@ -593,7 +593,7 @@ def main():
 
     global connections
     global networks
-    global flowdepthvel
+    global flowveldepth
 
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
@@ -658,7 +658,7 @@ def main():
 
     connections = supernetwork_values[0]
 
-    flowdepthvel = {
+    flowveldepth = {
         connection: {
             "qlatval": [],
             "time": [],
@@ -678,7 +678,7 @@ def main():
 
     for index, row in ql.iterrows():
         # print(index, row.to_numpy())
-        flowdepthvel[index]["qlatval"] = row.to_numpy().tolist()
+        flowveldepth[index]["qlatval"] = row.to_numpy().tolist()
 
     # qlcol = 54
     # qlrow = 144
@@ -688,7 +688,7 @@ def main():
     #     ql[0, j] = int(np.loadtxt(ql_input_folder, max_rows=1, usecols=(j + 2)))
     #     ql[1:, j] = np.loadtxt(ql_input_folder, skiprows=2, usecols=(j + 2))
     # for j in range(0, qlcol):
-    #     flowdepthvel[int(ql[0, j])]['qlatval'] = ql[1:, j].tolist()
+    #     flowveldepth[int(ql[0, j])]['qlatval'] = ql[1:, j].tolist()
 
     parallelcompute = True
     if not parallelcompute:
