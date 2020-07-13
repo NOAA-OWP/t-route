@@ -176,23 +176,24 @@ import nhd_reach_utilities as nru
 
 
 def compute_network(
-        terminal_segment=None,
-        network=None,
-        supernetwork_data=None,
-        nts=0,
-        dt=0,
-        verbose=False,
-        debuglevel=0,
-        write_csv_output=False,
-        write_nc_output=False,
-        assume_short_ts=False,
+    terminal_segment=None,
+    network=None,
+    supernetwork_data=None,
+    nts=0,
+    dt=0,
+    verbose=False,
+    debuglevel=0,
+    write_csv_output=False,
+    write_nc_output=False,
+    assume_short_ts=False,
 ):
     global connections
     global flowveldepth
 
     if debuglevel <= -1:
         print(
-            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}")
+            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}"
+        )
 
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
@@ -242,14 +243,14 @@ def compute_network(
 
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
-        head_segment=None,
-        reach=None,
-        supernetwork_data=None,
-        ts=0,
-        dt=60,
-        verbose=False,
-        debuglevel=0,
-        assume_short_ts=False,
+    head_segment=None,
+    reach=None,
+    supernetwork_data=None,
+    ts=0,
+    dt=60,
+    verbose=False,
+    debuglevel=0,
+    assume_short_ts=False,
 ):
     global connections
     global flowveldepth
@@ -355,7 +356,7 @@ def compute_mc_reach_up2down(
 # arguments reach , pathToOutputFile
 # using global connections and flowveldepth.
 def printarray(
-        reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
+    reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
 ):
     global connections
     global flowveldepth
@@ -399,12 +400,12 @@ def printarray(
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoNC(
-        network=None,
-        nts=0,
-        dt=60,
-        verbose=False,
-        debuglevel=0,
-        pathToOutputFile="../../test/output/text/",
+    network=None,
+    nts=0,
+    dt=60,
+    verbose=False,
+    debuglevel=0,
+    pathToOutputFile="../../test/output/text/",
 ):
     global connections
     global flowveldepth
@@ -490,14 +491,14 @@ def writeArraytoNC(
 # arguments flowveldepth , segment_count, terminal_segment (for filename and as identifier of reach)
 #           number of timesteps (nts),  timestep in seconds  (dt),  verbose , debuglevel , pathToOutputFile
 def writeNC(
-        flowveldepth_data=None,
-        segment_count=0,
-        terminal_segment=None,
-        nts=0,
-        dt=60,
-        pathToOutputFile="../../test/output/text",
-        verbose=False,
-        debuglevel=0,
+    flowveldepth_data=None,
+    segment_count=0,
+    terminal_segment=None,
+    nts=0,
+    dt=60,
+    pathToOutputFile="../../test/output/text",
+    verbose=False,
+    debuglevel=0,
 ):
     # start writing data to nc file
     filename = f"{pathToOutputFile}/{terminal_segment}.nc"  # ncfile'
@@ -571,21 +572,21 @@ def writeNC(
 
 ## call to singlesegment MC Fortran Module
 def singlesegment(
-        dt,  # dt
-        qup=None,  # qup
-        quc=None,  # quc
-        qdp=None,  # qdp
-        qlat=None,  # ql
-        dx=None,  # dx
-        bw=None,  # bw
-        tw=None,  # tw
-        twcc=None,  # twcc
-        n_manning=None,  #
-        n_manning_cc=None,  # ncc
-        cs=None,  # cs
-        s0=None,  # s0
-        velp=None,  # velocity at previous time step
-        depthp=None,  # depth at previous time step
+    dt,  # dt
+    qup=None,  # qup
+    quc=None,  # quc
+    qdp=None,  # qdp
+    qlat=None,  # ql
+    dx=None,  # dx
+    bw=None,  # bw
+    tw=None,  # tw
+    twcc=None,  # twcc
+    n_manning=None,  #
+    n_manning_cc=None,  # ncc
+    cs=None,  # cs
+    s0=None,  # s0
+    velp=None,  # velocity at previous time step
+    depthp=None,  # depth at previous time step
 ):
     # call Fortran routine
     return mc.muskingcungenwm(
@@ -635,9 +636,9 @@ def main():
 
     if run_pocono_test:
         if verbose:
-            print('running test case for Pocono_TEST2 domain')
+            print("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
-        supernetwork = 'Pocono_TEST2'
+        supernetwork = "Pocono_TEST2"
         break_network_at_waterbodies = False
         dt = 300
         nts = 144
@@ -712,14 +713,16 @@ def main():
     }
 
     # Lateral flow
-    if run_pocono_test:  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+    if (
+        run_pocono_test
+    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
         ql = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        q = np.full((len(connections), nts), qlat_const, dtype='float32')
+        q = np.full((len(connections), nts), qlat_const, dtype="float32")
         ql = pd.DataFrame(q, index=connections.keys(), columns=range(nts))
 
     for index, row in ql.iterrows():
