@@ -69,13 +69,20 @@ def extract_waterbodies(rows, target_col, waterbody_null=-9999):
     return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
 
 
+def reverse_surjective_mapping(d):
+    rd = defaultdict(list)
+    for src, dst in d.items():
+        rd[dst].append(src)
+    rd.default_factory = None
+    return rd
+
+
 def reverse_network(N):
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
         for n in dst:
             rg[n].append(src)
-
     rg.default_factory = None
     return rg
 
@@ -162,6 +169,7 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     else:
         return len(network[node]) == 1
     #return node not in waterbody_nodes and len(network[node]) == 1
+
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
@@ -261,3 +269,57 @@ def kahn_toposort_edges(N):
     for n in sorted_nodes:
         for m in N.get(n, ()):
             yield (n, m)
+
+
+def reservoir_boundary(connections, waterbodies, n):
+    if n not in waterbodies and n in connections:
+        return any(x in waterbodies for x in connections[n])
+    return False
+
+
+def separate_waterbodies(connections, waterbodies):
+    waterbody_nodes = {}
+    for wb, nodes in reverse_surjective_mapping(waterbodies).items():
+        waterbody_nodes[wb] = net = {}
+        for n in nodes:
+            if n in connections:
+                net[n] = list(filter(waterbodies.__contains__, connections[n]))
+    return waterbody_nodes
+
+
+def replace_waterbodies_connections(connections, waterbodies):
+    """
+    Use a single node to represent waterbodies. The node id is the
+    waterbody id.
+
+    This returns a new copy of connections with transformation
+    """
+    new_conn = {}
+    waterbody_nets = separate_waterbodies(connections, waterbodies)
+    for n in connections:
+        if reservoir_boundary(connections, waterbodies, n):
+            # one of the children of n is a member of a waterbody
+            # replace that child with waterbody code.
+            new_conn[n] = []
+
+            for child in connections[n]:
+                if child in waterbodies:
+                    new_conn[n].append(waterbodies[child])
+                else:
+                    new_conn[n].append(child)
+        elif n in waterbodies:
+            wbody_code = waterbodies[n]
+
+            if wbody_code in new_conn:
+                continue
+
+            # find outflows of waterbody
+            outflows = set()
+            for tw in nhd_network.tailwaters(waterbody_nets[wbody_code]):
+                if tw in connections:
+                    outflows.update(connections[tw])
+            new_conn[wbody_code] = list(outflows)
+        else:
+            # copy to new network unchanged
+            new_conn[n] = connections[n]
+    return new_conn
