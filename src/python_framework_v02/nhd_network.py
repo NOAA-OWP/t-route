@@ -270,6 +270,16 @@ def kahn_toposort_edges(N):
             yield (n, m)
 
 
+def reservoir_shore(connections, waterbody_nodes):
+    wbody_set = set(waterbody_nodes)
+    not_in = lambda x: x not in wbody_set
+
+    shore = set()
+    for node in wbody_set:
+        shore.update(filter(not_in, connections[node]))
+    return sorted(shore)
+
+
 def reservoir_boundary(connections, waterbodies, n):
     if n not in waterbodies and n in connections:
         return any(x in waterbodies for x in connections[n])
@@ -295,8 +305,20 @@ def replace_waterbodies_connections(connections, waterbodies):
     """
     new_conn = {}
     waterbody_nets = separate_waterbodies(connections, waterbodies)
+
+    reversed_conns = reverse_network(connections)
     for n in connections:
-        if reservoir_boundary(connections, waterbodies, n):
+        if n in waterbodies:
+            wbody_code = waterbodies[n]
+            if wbody_code in new_conn:
+                continue
+
+            # get all nodes from waterbody
+            wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
+            outgoing = reservoir_shore(connections, wbody_nodes)
+            new_conn[wbody_code] = outgoing
+
+        elif reservoir_boundary(connections, waterbodies, n):
             # one of the children of n is a member of a waterbody
             # replace that child with waterbody code.
             new_conn[n] = []
@@ -306,18 +328,6 @@ def replace_waterbodies_connections(connections, waterbodies):
                     new_conn[n].append(waterbodies[child])
                 else:
                     new_conn[n].append(child)
-        elif n in waterbodies:
-            wbody_code = waterbodies[n]
-
-            if wbody_code in new_conn:
-                continue
-
-            # find outflows of waterbody
-            outflows = set()
-            for tw in nhd_network.tailwaters(waterbody_nets[wbody_code]):
-                if tw in connections:
-                    outflows.update(connections[tw])
-            new_conn[wbody_code] = list(outflows)
         else:
             # copy to new network unchanged
             new_conn[n] = connections[n]
