@@ -1,5 +1,6 @@
+# command line args and usage with: python compute_nhd_routing_SingleSeg.py --help
 # example to run test: python compute_nhd_routing_SingleSeg.py -v --test
-# example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
+# example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -onc -n Mainstems_CONUS
 
 # a notebook-based version of very similar code is found here:
 # https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
