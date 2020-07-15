@@ -215,16 +215,18 @@ def main(
             ]
         )
         Y.append(0.7570106983184814)
-
+        Y_max = max(Y)
+        Y_min = min(Y)
+        for i in range(0,len(Y)):
+            Y[i] = NN_normalization.normalize(Y[i],Y_max,Y_min)
         # M = np.array(M)
         # for i in range(0,len(M),1):
         #     S = nwm_single_segment.singlesegment(*M[i])
         #     Y.append(S[0])
         Y = np.array(Y)
         M = np.array(M)
+        
 
-        print(Y[-1])
-        print(M[-1])
         return (
             M,
             Y,
@@ -232,4 +234,6 @@ def main(
             max_errors_list,
             mean_rel_errors_list,
             max_rel_errors_list,
+            Y_max,
+            Y_min,
         )

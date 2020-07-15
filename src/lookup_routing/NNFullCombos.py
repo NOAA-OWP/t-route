@@ -65,6 +65,8 @@ def main():
     bw_min = 112
     bw_max = 150
 
+    Y_max = None
+    Y_min = None
     (
         M,
         Y,
@@ -72,6 +74,8 @@ def main():
         max_errors_list,
         mean_rel_errors_list,
         max_rel_errors_list,
+        Y_max,
+        Y_min
 
     ) = NN_gen_training_data.main(
         depthp_min,
@@ -114,7 +118,9 @@ def main():
         tw_max,
         bw_min,
         bw_max,
-        num_samp_val
+        num_samp_val,
+        Y_max,
+        Y_min
     )
     # this section randomly generates validation data between the min and the max for us to train against. The model uses its training x and y data to improve itself, but will compare on unseen validation
     # data to make sure it is not overfitting as much
@@ -129,15 +135,13 @@ def main():
         model = tf.keras.Sequential()
         # select input node size #, activation function(relu is standard), and input shape being passed from out X/M training array
         model.add(Dense(1028, activation=tf.nn.relu, input_shape=[9], use_bias=False))
-        #     model.add(BatchNormalization())
+        # model.add(Dropout(0.1))
         model.add(Dense(512, activation="relu"))
-        # model.add(Dense(128, activation='relu'))
+        # model.add(Dropout(0.1))
         model.add(Dense(256, activation="relu"))
+        # model.add(Dropout(0.1))
         model.add(Dense(128, activation="relu"))
-        #     model.add(Dense(64, activation='relu'))
-        #     model.add(Dense(32, activation='relu'))
-        #     model.add(Dense(16, activation='relu'))
-        # outputs to a single number with a linear activation function so output can be between -inf,inf
+        # model.add(Dropout(0.1))
         model.add(Dense(1, activation="linear"))
         # optimize on mean squared error. can experiment with other loss functions
         model.compile(
@@ -151,6 +155,7 @@ def main():
         M[:], Y[:], epochs=epochs, batch_size=batch_size, validation_data=(VAL_x, VAL_y)
     )
 
+    # regr.save('ML_4Test',save_format='tf')
     print(regr.predict(M[-1:]))
     print(Y[-1])
 
@@ -176,6 +181,8 @@ def main():
         regr,
         AL,
         num_samp_pred,
+        Y_max,
+        Y_min,
     )
 
 
