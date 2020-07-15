@@ -171,6 +171,7 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     return len(network[node]) == 1 and p
 
 
+
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
     Decompose N into a list of simple segments.
