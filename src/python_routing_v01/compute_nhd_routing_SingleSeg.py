@@ -726,7 +726,7 @@ def main():
         ql = pd.DataFrame(q, index=connections.keys(), columns=range(nts))
 
     for index, row in ql.iterrows():
-        flowveldepth[index]["qlatval"] = row.to_numpy().tolist()
+        flowveldepth[index]["qlatval"] = row.tolist()
 
     if not parallel_compute:
         if verbose:
