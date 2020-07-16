@@ -154,7 +154,13 @@ def main():
     history = regr.fit(
         M[:], Y[:], epochs=epochs, batch_size=batch_size, validation_data=(VAL_x, VAL_y)
     )
-
+    plt.plot(history.history['mse'])
+    plt.plot(history.history['val_mse'])
+    plt.title('model error')
+    plt.ylabel('mse')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
     # regr.save('ML_4Test',save_format='tf')
     print(regr.predict(M[-1:]))
     print(Y[-1])
