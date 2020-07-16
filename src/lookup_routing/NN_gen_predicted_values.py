@@ -94,8 +94,8 @@ def main(
         )
         temp_y_list.append(temp_y[0])
         
-        for i in range(0,len(temp_y_list)):
-            temp_y_list[i] = NN_normalization.normalize(temp_y_list[i],Y_max,Y_min)
+        # for i in range(0,len(temp_y_list)):
+        #     temp_y_list[i] = NN_normalization.normalize(temp_y_list[i],Y_max,Y_min)
         temp_y_interp = regr.predict(
             np.array(
                 [
@@ -118,6 +118,7 @@ def main(
                 ]
             )
         )
+        temp_y_interp = NN_normalization.denormalize(temp_y_interp,Y_max,Y_min)
         # calculates errors
         if i % 1000 == 0:
             print(i)
