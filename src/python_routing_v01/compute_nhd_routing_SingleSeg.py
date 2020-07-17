@@ -224,7 +224,9 @@ def compute_network(
     if writeToCSV:
         for x in range(network["maximum_reach_seqorder"], -1, -1):
             for head_segment, reach in ordered_reaches[x]:
-                printarray(
+                writeArraytoCSV(
+                    connections=connections,
+                    flowveldepth=flowveldepth,
                     reach=reach,
                     verbose=verbose,
                     debuglevel=debuglevel,
@@ -233,6 +235,8 @@ def compute_network(
 
     if writeToNETCDF:
         writeArraytoNC(
+            connections=connections,
+            flowveldepth=flowveldepth,
             network=network,
             nts=nts,
             dt=dt,
@@ -356,11 +360,14 @@ def compute_mc_reach_up2down(
 # Write Array  to CSV file
 # arguments reach , pathToOutputFile
 # using global connections and flowveldepth.
-def printarray(
-    reach=None, verbose=False, debuglevel=0, pathToOutputFile="../../test/output/text"
+def writeArraytoCSV(
+    flowveldepth=None,
+    connections=None,
+    reach=None,
+    verbose=False,
+    debuglevel=0,
+    pathToOutputFile="../../test/output/text",
 ):
-    global connections
-    global flowveldepth
 
     # define CSV file Header
     header = [["time", "qlat", "q", "v", "d"]]
@@ -401,6 +408,8 @@ def printarray(
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoNC(
+    flowveldepth=None,
+    connections=None,
     network=None,
     nts=0,
     dt=60,
@@ -408,8 +417,6 @@ def writeArraytoNC(
     debuglevel=0,
     pathToOutputFile="../../test/output/text/",
 ):
-    global connections
-    global flowveldepth
     # create  array variables to copy from python "flowveldepth" which is global
     flowveldepth_data = {
         "segment": [],
