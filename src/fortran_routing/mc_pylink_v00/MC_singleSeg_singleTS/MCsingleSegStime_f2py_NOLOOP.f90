@@ -173,7 +173,8 @@ subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: dt, dx
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h_0  !, refQj_0
-    real(prec), intent(out) :: WPC, Qj_0, C1, C2, C3, C4
+    real(prec), intent(out) :: Qj_0, C1, C2, C3, C4
+    real(prec), intent(inout) :: WPC
     real(prec) :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
 
     !**top surface water width of the channel inflow
@@ -266,7 +267,9 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: dt, dx
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h
-    real(prec), intent(out) :: WPC, Qj, C1, C2, C3, C4
+    real(prec), intent(out) :: Qj, C1, C2, C3, C4
+    real(prec), intent(inout) :: WPC
+
     real(prec) :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
 
     !--upper interval -----------
