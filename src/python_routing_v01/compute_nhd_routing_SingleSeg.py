@@ -469,7 +469,7 @@ def writeArraytoNC(
                 current_segment = next_segment
 
     # check number of timesteps should match the time the data is written
-    if int(len(flowveldepth_data["time"][0])) != int(nts):
+    if len(flowveldepth_data["time"][0]) != nts:
         print(
             f"Number of timesteps  {nts} does not match data timesteps {len(flowveldepth_data['time'][0])}\n"
         )
