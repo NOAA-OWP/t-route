@@ -1,3 +1,7 @@
+! This module derived from the NWM repo found here: 
+! https://github.com/NCAR/wrf_hydro_nwm_public/blob
+! /master/trunk/NDHMS/Routing/Reservoirs/Level_Pool/module_levelpool.F
+
 ! This module defines and instantiates objects
 ! for a level pool type reservoir. The level
 ! pool reservoir type inherits input and
