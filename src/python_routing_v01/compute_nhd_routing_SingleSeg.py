@@ -269,13 +269,13 @@ def compute_mc_reach_up2down(
     qup = 0.0
     quc = 0.0
 
-    if ts > 0:
-        if reach["upstream_reaches"] != {
-            supernetwork_data["terminal_code"]
-        }:  # Not Headwaters
-            for us in connections[reach["reach_head"]]["upstreams"]:
+    if reach["upstream_reaches"] != {
+        supernetwork_data["terminal_code"]
+    }:  # Not Headwaters
+        for us in connections[reach["reach_head"]]["upstreams"]:
+            quc += flowveldepth[us]["flowval"][-1]
+            if ts > 0:
                 qup += flowveldepth[us]["flowval"][-2]
-                quc += flowveldepth[us]["flowval"][-1]
 
     if assume_short_ts:
         quc = qup
@@ -730,7 +730,9 @@ def main():
         ql = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        ql = pd.DataFrame(qlat_const, index=connections.keys(), columns=range(nts), dtype="float32")
+        ql = pd.DataFrame(
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
+        )
 
     for index, row in ql.iterrows():
         flowveldepth[index]["qlatval"] = row.tolist()
