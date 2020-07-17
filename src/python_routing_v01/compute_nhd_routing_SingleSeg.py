@@ -370,7 +370,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-    header = [["time", "qlat", "q", "v", "d"]]
+    header = ["time", "qlat", "q", "v", "d"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -382,7 +382,7 @@ def writeArraytoCSV(
             print(f"writing segment output to --> {filename}")
         with open(filename, "w+") as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=",", quoting=csv.QUOTE_ALL)
-            csvwriter.writerows(header)
+            csvwriter.writerow(header)
             csvwriter.writerows(
                 zip(
                     flowveldepth[current_segment]["time"],
