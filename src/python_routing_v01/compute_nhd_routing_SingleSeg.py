@@ -730,8 +730,7 @@ def main():
         ql = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        q = np.full((len(connections), nts), qlat_const, dtype="float32")
-        ql = pd.DataFrame(q, index=connections.keys(), columns=range(nts))
+        ql = pd.DataFrame(qlat_const, index=connections.keys(), columns=range(nts), dtype="float32")
 
     for index, row in ql.iterrows():
         flowveldepth[index]["qlatval"] = row.tolist()
