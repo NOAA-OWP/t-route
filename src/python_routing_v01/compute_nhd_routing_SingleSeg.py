@@ -9,6 +9,7 @@
 import os
 import sys
 import time
+import traceback
 import numpy as np
 import argparse
 import pathlib
@@ -16,6 +17,7 @@ import pandas as pd
 import netCDF4
 import csv
 from datetime import datetime
+import xarray as xr
 import multiprocessing
 
 
@@ -28,7 +30,8 @@ def _handle_args():
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
-        choices=[0, -1, -2, -3],
+        type=int,
+        choices=[0, 1, 2, 3],
         default=0,
     )
     parser.add_argument(
@@ -136,10 +139,13 @@ root = pathlib.Path("../..").resolve()
 sys.setrecursionlimit(4000)
 sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
-fortran_source_dir = os.path.join(
+fortran_routing_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
 )
-sys.path.append(fortran_source_dir)
+fortran_reservoir_dir = os.path.join(
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"Reservoir_singleTS"
+)
+sys.path.append(fortran_routing_dir)
 
 ## Muskingum Cunge
 COMPILE = True
@@ -156,13 +162,14 @@ if COMPILE:
         fortran_compile_call.append(r"mc_sseg_stime")
         subprocess.run(
             fortran_compile_call,
-            cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
+            cwd=fortran_routing_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         from mc_sseg_stime import muskingcunge_module as mc
     except Exception as e:
         print(e)
+        traceback.print_exc()
 else:
     from mc_sseg_stime import muskingcunge_module as mc
 
@@ -175,11 +182,38 @@ flowveldepth = None
 import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 
+sys.path.append(fortran_reservoir_dir)
+if COMPILE:
+    try:
+        import subprocess
+
+        fortran_compile_call = []
+        fortran_compile_call.append(r"f2py3")
+        fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"module_levelpool.f90")
+        # fortran_compile_call.append(r"varPrecision.f90")
+        # fortran_compile_call.append(r"Reservoir.f90")
+        fortran_compile_call.append(r"-m")
+        fortran_compile_call.append(r"pymodule_levelpool")
+        subprocess.run(
+            fortran_compile_call,
+            cwd=fortran_reservoir_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        from pymodule_levelpool import module_levelpool as rc
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+else:
+    from pymodule_levelpool import module_levelpool as rc
+
 
 def compute_network(
     terminal_segment=None,
     network=None,
     supernetwork_data=None,
+    waterbody=None,
     nts=0,
     dt=0,
     verbose=False,
@@ -193,7 +227,7 @@ def compute_network(
 
     if debuglevel <= -1:
         print(
-            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}"
+            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
         )
 
     ordered_reaches = {}
@@ -207,19 +241,56 @@ def compute_network(
     writeToNETCDF = write_nc_output
     pathToOutputFile = os.path.join(root, "test", "output", "text")
 
+    # read reservoir data
+    ds = xr.open_dataset(
+        "/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc"
+    )
+    df1 = ds.to_dataframe().set_index("lake_id")
+
     for ts in range(0, nts):
-        for x in range(network["maximum_reach_seqorder"], -1, -1):
-            for head_segment, reach in ordered_reaches[x]:
-                compute_mc_reach_up2down(
-                    head_segment=head_segment,
-                    reach=reach,
-                    supernetwork_data=supernetwork_data,
-                    ts=ts,
-                    dt=dt,
-                    verbose=verbose,
-                    debuglevel=debuglevel,
-                    assume_short_ts=assume_short_ts,
-                )
+        # print(f'timestep: {ts}\n')
+        if waterbody:
+            if debuglevel <= -2:
+                print(f"executing reservoir computation on waterbody: {waterbody}")
+            # print(df1.loc[2260997]['WeirL'])
+            # # for index,row in df1.iterrows():
+            #     if row['lake_id']==waterbody:
+
+            ln = waterbody
+            qi0 = 0  # inflow at initial timestep
+            qi1 = 12  # inflow at current timestep
+            ql = 3
+            dt = dt  # current timestep
+            h = (
+                df1.loc[waterbody]["OrificeE"] * df1.loc[waterbody]["WeirE"]
+            ) / 2  # water elevation height (m) used dummy value
+            ar = df1.loc[waterbody]["LkArea"]  # area of reservoir
+            we = df1.loc[waterbody]["WeirE"]
+            maxh = df1.loc[waterbody]["LkMxE"]
+            wc = df1.loc[waterbody]["WeirC"]
+            wl = df1.loc[waterbody]["WeirL"]
+            dl = df1.loc[waterbody]["WeirL"] * df1.loc[waterbody]["Dam_Length"]
+            oe = df1.loc[waterbody]["OrificeE"]
+            oc = df1.loc[waterbody]["OrificeC"]
+            oa = df1.loc[waterbody]["OrificeA"]
+
+            rc.levelpool_physics(
+                ln, qi0, qi1, ql, dt, h, ar, we, maxh, wc, wl, dl, oe, oc, oa,
+            )
+
+        else:
+            for x in range(network["maximum_reach_seqorder"], -1, -1):
+                for head_segment, reach in ordered_reaches[x]:
+                    compute_mc_reach_up2down(
+                        head_segment=head_segment,
+                        reach=reach,
+                        supernetwork_data=supernetwork_data,
+                        ts=ts,
+                        dt=dt,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        assume_short_ts=assume_short_ts,
+                    )
 
     if writeToCSV:
         for x in range(network["maximum_reach_seqorder"], -1, -1):
@@ -741,13 +812,18 @@ def main():
         if verbose:
             print("executing computation on ordered reaches ...")
 
+        #########
+        waterbodies_values = supernetwork_values[12]
+        waterbodies_segments = supernetwork_values[13]
+
         for terminal_segment, network in networks.items():
-            if verbose:
-                print(f"for network terminiating at segment {terminal_segment}")
+            # is_reservoir = terminal_segment in waterbodies_segments
+            waterbody = waterbodies_segments.get(terminal_segment)
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,
                 supernetwork_data=supernetwork_data,
+                waterbody=waterbody,
                 nts=nts,
                 dt=dt,
                 verbose=verbose,
