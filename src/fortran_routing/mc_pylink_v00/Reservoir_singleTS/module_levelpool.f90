@@ -29,16 +29,15 @@ contains
     !   SUBROUTINE LEVELPOOL
     ! ------------------------------------------------
 
-    subroutine LEVELPOOL_PHYSICS(ln,qi0,qi1,qo1,ql,dt,H,ar,we,maxh,wc,wl,dl,oe,oc,oa)
+    subroutine LEVELPOOL_PHYSICS(ln,qi0,qi1,ql,dt,H0,ar,we,maxh,wc,wl,dl,oe,oc,oa,H1,qo1)
 
         !! ----------------------------  argument variables
         !! All elevations should be relative to a common base (often belev(k))
 
-        real, intent(INOUT) :: H       ! water elevation height (m)
+        integer, intent(IN) :: ln      ! lake number
         real, intent(IN)    :: dt      ! routing period [s]
         real, intent(IN)    :: qi0     ! inflow at previous timestep (cms)
         real, intent(IN)    :: qi1     ! inflow at current timestep (cms)
-        real, intent(OUT)   :: qo1     ! outflow at current timestep
         real, intent(IN)    :: ql      ! lateral inflow
         real, intent(IN)    :: ar      ! area of reservoir (km^2)
         real, intent(IN)    :: we      ! bottom of weir elevation
@@ -49,7 +48,9 @@ contains
         real, intent(IN)    :: oc      ! orifice coeff.
         real, intent(IN)    :: oa      ! orifice area (m^2)
         real, intent(IN)    :: maxh    ! max depth of reservoir before overtop (m)
-        integer, intent(IN) :: ln      ! lake number
+        real, intent(IN)    :: H0      ! water elevation height (m)
+        real, intent(OUT)   :: H1      ! water elevation height (m)
+        real, intent(OUT)   :: qo1     ! outflow at current timestep
 
         !!DJG Add lake option switch here...move up to namelist in future versions...
         integer :: LAKE_OPT            ! Lake model option (move to namelist later)
