@@ -9,10 +9,10 @@ cimport cython
 
 
 # TODO: Make this QVD
-cdef struct FDV:
+cdef struct QVD:
     float qdc
-    float depthc
     float velc
+    float depthc
 
 cdef struct QH:
     float resoutflow
@@ -169,8 +169,6 @@ def compute_reservoir_kernel(float dt,
         out)
 
     return rv
-    # return {'resoutflow': out.resoutflow, 'reslevel': out.reslevel}
-
     
 
 @cython.boundscheck(False)
@@ -189,7 +187,7 @@ cdef void muskingcunge(float dt,
         float s0,
         float velp,
         float depthp,
-        FDV *rv) nogil:
+        QVD *rv) nogil:
     cdef float qdc, depthc, velc
     qdc = 0.0
     depthc = 0.0
@@ -238,8 +236,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     Ouput is nx3 (n reaches by 3 return values)
         0: current flow, 1: current depth, 2: current velocity
     """
-    cdef FDV rv
-    cdef FDV *out = &rv
+    cdef QVD rv
+    cdef QVD *out = &rv
 
     cdef:
         float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
