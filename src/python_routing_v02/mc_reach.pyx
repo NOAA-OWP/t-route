@@ -8,10 +8,15 @@ cimport numpy as np
 cimport cython
 
 
+# TODO: Make this QVD
 cdef struct FDV:
     float qdc
     float depthc
     float velc
+
+cdef struct QH:
+    float resoutflow
+    float reslevel
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -49,6 +54,24 @@ cpdef object binary_find(object arr, object els):
     return idxs
 
 
+cdef extern from "pyResLevelPool.h":
+    void c_levelpool_physics(float *dt,
+                              float *qi0,
+                              float *qi1,
+                              float *ql,
+                              float *ar,
+                              float *we,
+                              float *maxh,
+                              float *wc,
+                              float *wl,
+                              float *dl,
+                              float *oe,
+                              float *oc,
+                              float *oa,
+                              float *H0,
+                              float *H1,
+                              float *qo1) nogil;
+
 cdef extern from "pyMCsingleSegStime_NoLoop.h":
     void c_muskingcungenwm(float *dt,
                                   float *qup,
@@ -69,6 +92,86 @@ cdef extern from "pyMCsingleSegStime_NoLoop.h":
                                   float *velc,
                                   float *depthc) nogil;
 
+
+@cython.boundscheck(False)
+cdef void levelpool_physics(float dt,
+        float qi0,
+        float qi1,
+        float ql,
+        float ar,
+        float we,
+        float maxh,
+        float wc,
+        float wl,
+        float dl,
+        float oe,
+        float oc,
+        float oa,
+        float H0,
+        QH *rv) :
+    cdef float H1, qo1  
+    H1 = 0.0
+    qo1 = 0.0
+
+    c_levelpool_physics(
+        &dt,
+        &qi0,
+        &qi1,
+        &ql,
+        &ar,
+        &we,
+        &maxh,
+        &wc,
+        &wl,
+        &dl,
+        &oe,
+        &oc,
+        &oa,
+        &H0,
+        &H1,
+        &qo1)
+    rv.reslevel = H1
+    rv.resoutflow = qo1
+
+
+def compute_reservoir_kernel(float dt,
+        float qi0,
+        float qi1,
+        float ql,
+        float ar,
+        float we,
+        float maxh,
+        float wc,
+        float wl,
+        float dl,
+        float oe,
+        float oc,
+        float oa,
+        float H0):
+
+    cdef QH rv
+    cdef QH *out = &rv
+
+    levelpool_physics(dt,
+        qi0,
+        qi1,
+        ql,
+        ar,
+        we,
+        maxh,
+        wc,
+        wl,
+        dl,
+        oe,
+        oc,
+        oa,
+        H0,
+        out)
+
+    return rv
+    # return {'resoutflow': out.resoutflow, 'reslevel': out.reslevel}
+
+    
 
 @cython.boundscheck(False)
 cdef void muskingcunge(float dt,
@@ -327,6 +430,12 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 if assume_short_ts:
                     quc = qup
 
+                # TODO: Implement Reach-based ordering
+                # for order in orders:
+                    # for reach in ordered_reaches[order]:
+                        # jobs.append(delayed(
+                # TODO: Implement reach-based if statement to segregate waterbody computations 
+                # TODO: from regular reaches
                 compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
 
                 # copy out_buf results back to flowdepthvel
