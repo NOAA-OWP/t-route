@@ -239,7 +239,7 @@ def segment_deps(segments, connections):
             if connections[cand]:
                 # There is a node downstream
                 deps[i].append(index[connections[cand][0]])
-    return deps
+    return dict(deps)
 
 
 def kahn_toposort(N):
