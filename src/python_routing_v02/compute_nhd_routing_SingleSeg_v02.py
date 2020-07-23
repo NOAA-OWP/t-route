@@ -208,10 +208,10 @@ def main():
     
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
+    _wbody_codes = set(wbodies.values())
+    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(wbodies.values()), rconn)
     subreaches = {}
     for tw, net in subnets.items():
-        #path_func = partial(nhd_network.split_at_junction, net)
-        path_func = partial(nhd_network.split_at_waterbodies_and_junctions, wbodies, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     if verbose:
