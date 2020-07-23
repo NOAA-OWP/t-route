@@ -278,7 +278,7 @@ def reservoir_shore(connections, waterbody_nodes):
     shore = set()
     for node in wbody_set:
         shore.update(filter(not_in, connections[node]))
-    return sorted(shore)
+    return list(shore)
 
 
 def reservoir_boundary(connections, waterbodies, n):
@@ -307,7 +307,6 @@ def replace_waterbodies_connections(connections, waterbodies):
     new_conn = {}
     waterbody_nets = separate_waterbodies(connections, waterbodies)
 
-    reversed_conns = reverse_network(connections)
     for n in connections:
         if n in waterbodies:
             wbody_code = waterbodies[n]
