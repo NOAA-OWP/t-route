@@ -108,10 +108,9 @@ cdef void levelpool_physics(float dt,
         float oc,
         float oa,
         float H0,
-        QH *rv) :
-    cdef float H1, qo1  
-    H1 = 0.0
-    qo1 = 0.0
+        QH *rv) nogil:
+    cdef float H1 = 0.0
+    cdef float qo1 = 0.0
 
     c_levelpool_physics(
         &dt,
@@ -193,7 +192,6 @@ cdef void muskingcunge(float dt,
     depthc = 0.0
     velc = 0.0
 
-    #print(f"muskingcunge({dt},{qup},{quc},{qdp},{ql},{dx},{bw},{tw},{twcc},{n},{ncc},{cs},{s0},{velp},{depthp})")
     c_muskingcungenwm(
         &dt,
         &qup,
@@ -213,7 +211,6 @@ cdef void muskingcunge(float dt,
         &qdc,
         &velc,
         &depthc)
-    #print(f"rv=[qdc={qdc}, depthc={depthc}, velc={velc}]")
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
