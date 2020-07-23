@@ -133,7 +133,7 @@ cdef void levelpool_physics(float dt,
     rv.resoutflow = qo1
 
 
-def compute_reservoir_kernel(float dt,
+cpdef compute_reservoir_kernel(float dt,
         float qi0,
         float qi1,
         float ql,
@@ -217,7 +217,7 @@ cdef void muskingcunge(float dt,
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
+cpdef float[:, :] compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
     """
     Kernel to compute reach.
 
@@ -232,6 +232,9 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     Input is nxm (n reaches by m variables)
     Ouput is nx3 (n reaches by 3 return values)
         0: current flow, 1: current depth, 2: current velocity
+
+    For computing schemes that require a function return value,
+    a reference to output_buf is returned from this function.
     """
     cdef QVD rv
     cdef QVD *out = &rv
@@ -278,6 +281,7 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         output_buf[i, 2] = out.depthc
 
         qup = qdp
+    return output_buf
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
