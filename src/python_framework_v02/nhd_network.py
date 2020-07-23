@@ -192,22 +192,18 @@ def dfs_decomposition(N, path_func, source_nodes=None):
 
     paths = []
     visited = set()
-
-    child_index = dict.fromkeys(N, 0)
     for h in source_nodes:
-        stack = [(h, N[h])]
+        stack = [(h, iter(N[h]))]
         while stack:
             node, children = stack[-1]
-            ci = child_index[node]
-            if ci < len(children):
-                child = children[ci]
+            try:
+                child = next(children)
                 if child not in visited:
                     # Check to see if we are at a leaf
                     if child in N:
-                        stack.append((child, N[child]))
+                        stack.append((child, iter(N[child])))
                     visited.add(child)
-                child_index[node] = ci + 1
-            else:
+            except StopIteration:
                 node, _ = stack.pop()
                 path = [node]
 
@@ -282,7 +278,7 @@ def reservoir_shore(connections, waterbody_nodes):
     shore = set()
     for node in wbody_set:
         shore.update(filter(not_in, connections[node]))
-    return list(shore)
+    return sorted(shore)
 
 
 def reservoir_boundary(connections, waterbodies, n):
@@ -311,7 +307,7 @@ def replace_waterbodies_connections(connections, waterbodies):
     new_conn = {}
     waterbody_nets = separate_waterbodies(connections, waterbodies)
 
-    #reversed_conns = reverse_network(connections)
+    reversed_conns = reverse_network(connections)
     for n in connections:
         if n in waterbodies:
             wbody_code = waterbodies[n]
@@ -319,7 +315,7 @@ def replace_waterbodies_connections(connections, waterbodies):
                 continue
 
             # get all nodes from waterbody
-            wbody_nodes = nodes(waterbody_nets[wbody_code])
+            wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
             outgoing = reservoir_shore(connections, wbody_nodes)
             new_conn[wbody_code] = outgoing
 
