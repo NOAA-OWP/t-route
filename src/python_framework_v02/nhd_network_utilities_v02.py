@@ -310,7 +310,7 @@ def get_waterbody_info(df1,waterbody,Waterbodies_info):
     df1 = df1
     waterbody = waterbody
     Waterbodies_info.update(
-        {
+        { waterbody : {
     'h' : (df1.loc[waterbody]["OrificeE"] * df1.loc[waterbody]["WeirE"]) / 2,  # water elevation height (m) used dummy value
     'LkArea' : df1.loc[waterbody]["LkArea"], # area of reservoir
     'WeirE' : df1.loc[waterbody]["WeirE"],
@@ -321,6 +321,7 @@ def get_waterbody_info(df1,waterbody,Waterbodies_info):
     'OrificeE' : df1.loc[waterbody]["OrificeE"],
     'OrificeC' : df1.loc[waterbody]["OrificeC"],
     'OrificeA' : df1.loc[waterbody]["OrificeA"],
+            }
         }
     )
 
