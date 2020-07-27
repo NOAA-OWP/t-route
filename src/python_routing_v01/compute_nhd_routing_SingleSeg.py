@@ -17,11 +17,8 @@ import pandas as pd
 import netCDF4
 import csv
 from datetime import datetime
-import xarray as xr
 import multiprocessing
 import sys
-sys.path.append('/home/jacob.hreha/github/t-route/src/python_framework_v02')
-import nhd_network_utilities_v02 as nnu2
 
 
 def _handle_args():
@@ -179,12 +176,15 @@ else:
 connections = None
 networks = None
 flowveldepth = None
+waterbodies_df = None
+
 # WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 
+import pdb; pdb.set_trace()
 sys.path.append(fortran_reservoir_dir)
 if COMPILE:
     try:
@@ -227,8 +227,6 @@ def compute_network(
 ):
     global connections
     global flowveldepth
-    global Waterbodies_info
-    Waterbodies_info = {}
     if debuglevel <= -1:
         print(
             f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
@@ -245,76 +243,49 @@ def compute_network(
     writeToNETCDF = write_nc_output
     pathToOutputFile = os.path.join(root, "test", "output", "text")
 
-    # read reservoir data
-    # ds = xr.open_dataset(
-    #     "/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc"
-    # )
-    # df1 = ds.to_dataframe().set_index("lake_id")
- 
-
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
-                for head_segment, reach in ordered_reaches[x]:
-        # print(f'timestep: {ts}\n')
-                    if waterbody:
-                        # print(df1.loc[4185089])
-                        print(connections)
-                        qup = 0.0
-                        quc = 0.0
-                    ####################
-                        if reach["upstream_reaches"] != {
-                            supernetwork_data["terminal_code"]
-                        }:  # Not Headwaters
-                            for us in connections[reach["reach_head"]]["upstreams"]:
-                                quc += flowveldepth[us]["flowval"][-1]
-                                if ts > 0:
-                                    qup += flowveldepth[us]["flowval"][-2]
+            for head_segment, reach in ordered_reaches[x]:
+                # print(f'timestep: {ts}\n')
+                # for loops should contain both waterbodies and mc_reach as it loops entire network
+                qup_reach, quc_reach = compute_reach_upstream_flows(
+                    head_segment=head_segment,
+                    reach=reach,
+                    supernetwork_data=supernetwork_data,
+                    ts=ts,
+                    dt=dt,
+                    verbose=verbose,
+                    debuglevel=debuglevel,
+                    assume_short_ts=assume_short_ts,
+                )
+                if waterbody:
+                    compute_level_pool_reach_up2down(
+                        qup_reach=qup_reach,
+                        quc_reach=quc_reach,
+                        head_segment=head_segment,
+                        reach=reach,
+                        supernetwork_data=supernetwork_data,
+                        waterbody=waterbody,
+                        ts=ts,
+                        dt=dt,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        assume_short_ts=assume_short_ts,
+                    )
 
-                        if assume_short_ts:
-                            quc = qup
-                        print(connections)
-                        qlat = flowveldepth[waterbody]["qlatval"][ts]
-                        qup = flowveldepth[waterbody]["flowval"][ts]
-                        Waterbodies_info = nnu2.get_waterbody_info(df1,waterbody,Waterbodies_info)
-                        # print(Waterbodies_info)
-                        if debuglevel <= -2:
-                            print(f"executing reservoir computation on waterbody: {waterbody}")
-                        # print(df1.loc[2260997]['WeirL'])
-                        # # for index,row in df1.iterrows():
-                        #     if row['lake_id']==waterbody:
-
-                        ln = waterbody
-                        qi0 = qup
-                        qi1 = quc
-                        ql = qlat
-                        dt = dt  # current timestep
-                        h = Waterbodies_info[waterbody]['h']  # water elevation height (m) used dummy value
-                        ar = Waterbodies_info[waterbody]['LkArea'] 
-                        we = Waterbodies_info[waterbody]['WeirE'] 
-                        maxh = Waterbodies_info[waterbody]['LkMxE'] 
-                        wc = Waterbodies_info[waterbody]['WeirC'] 
-                        wl = Waterbodies_info[waterbody]['WeirL'] 
-                        dl = Waterbodies_info[waterbody]['DamL'] 
-                        oe = Waterbodies_info[waterbody]['OrificeE'] 
-                        oc = Waterbodies_info[waterbody]['OrificeC'] 
-                        oa = Waterbodies_info[waterbody]['OrificeA'] 
-
-                        rc.levelpool_physics(
-                            ln, qi0, qi1, ql, dt, h, ar, we, maxh, wc, wl, dl, oe, oc, oa,
-                        )
-
-                    else:
-                        #for loops should contain both waterbodies and mc_reach as it loops entire network
-                        compute_mc_reach_up2down(
-                            head_segment=head_segment,
-                            reach=reach,
-                            supernetwork_data=supernetwork_data,
-                            ts=ts,
-                            dt=dt,
-                            verbose=verbose,
-                            debuglevel=debuglevel,
-                            assume_short_ts=assume_short_ts,
-                        )
+                else:
+                    compute_mc_reach_up2down(
+                        qup_reach=qup_reach,
+                        quc_reach=quc_reach,
+                        head_segment=head_segment,
+                        reach=reach,
+                        supernetwork_data=supernetwork_data,
+                        ts=ts,
+                        dt=dt,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        assume_short_ts=assume_short_ts,
+                    )
 
     if writeToCSV:
         for x in range(network["maximum_reach_seqorder"], -1, -1):
@@ -342,7 +313,7 @@ def compute_network(
 
 
 # TODO: generalize with a direction flag
-def compute_mc_reach_up2down(
+def compute_reach_upstream_flows(
     head_segment=None,
     reach=None,
     supernetwork_data=None,
@@ -363,7 +334,7 @@ def compute_mc_reach_up2down(
     # upstream flow per reach
     qup = 0.0
     quc = 0.0
-########################
+    ########################
     if reach["upstream_reaches"] != {
         supernetwork_data["terminal_code"]
     }:  # Not Headwaters
@@ -374,6 +345,33 @@ def compute_mc_reach_up2down(
 
     if assume_short_ts:
         quc = qup
+
+    return quc, qup
+
+
+# TODO: generalize with a direction flag
+def compute_mc_reach_up2down(
+    qup_reach,
+    quc_reach,
+    head_segment=None,
+    reach=None,
+    supernetwork_data=None,
+    ts=0,
+    dt=60,
+    verbose=False,
+    debuglevel=0,
+    assume_short_ts=False,
+):
+    global connections
+    global flowveldepth
+
+    if debuglevel <= -2:
+        print(
+            f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
+        )
+
+    qup = qup_reach
+    quc = quc_reach
 
     current_segment = reach["reach_head"]
     # next_segment = connections[current_segment]["downstream"]
@@ -431,7 +429,7 @@ def compute_mc_reach_up2down(
         quc = qdc  # input for next segment
         if assume_short_ts:
             quc = qup
-#need to append with waterbody calculations instead
+        # need to append with waterbody calculations instead
         flowveldepth[current_segment]["flowval"].append(qdc)
         flowveldepth[current_segment]["depthval"].append(depthc)
         flowveldepth[current_segment]["velval"].append(velc)
@@ -449,6 +447,67 @@ def compute_mc_reach_up2down(
         current_segment = next_segment
     # end loop initialized the MC vars
     # end while loop
+
+
+def compute_level_pool_reach_up2down(
+    qup_reach,
+    quc_reach,
+    head_segment=None,
+    reach=None,
+    supernetwork_data=None,
+    waterbody=None,
+    ts=0,
+    dt=60,
+    verbose=False,
+    debuglevel=0,
+    assume_short_ts=False,
+):
+    global connections
+    global flowveldepth
+    global waterbodies_df
+
+    if debuglevel <= -2:
+        print(
+            f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
+        )
+
+    qup = qup_reach
+    quc = quc_reach
+
+    current_segment = reach["reach_tail"]
+    if ts > 0:
+        depthp = flowveldepth[current_segment]["depthval"][-1]
+    else:
+        depthp = 0
+
+    qlat = flowveldepth[current_segment]["qlatval"][ts]
+    if debuglevel <= -2:
+        print(f"executing reservoir computation on waterbody: {waterbody}")
+
+    ln = waterbody
+    qi0 = qup
+    qi1 = quc
+    ql = qlat
+    dt = dt  # current timestep
+    ar = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_waterbody_area"]]
+    we = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_weir_elevation"]]
+    maxh = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_waterbody_max_elevation"]]
+    wc = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_outfall_weir_coefficient"]]
+    wl = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_outfall_weir_length"]]
+    dl = 10 * wl  # waterbodies_df.loc[waterbody][supernetwork_data["level_pool_overall_dam_length"]]
+    oe = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_orifice_elevation"]]
+    oc = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_orifice_coefficient"]]
+    oa = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_orifice_area"]]
+
+    import pdb; pdb.set_trace()
+    qdc, depthc = rc.levelpool_physics(
+        ln, qi0, qi1, ql, dt, depthp, ar, we, maxh, wc, wl, dl, oe, oc, oa,
+    )
+
+    flowveldepth[current_segment]["flowval"].append(qdc)
+    flowveldepth[current_segment]["depthval"].append(depthc)
+    flowveldepth[current_segment]["velval"].append(0)
+    flowveldepth[current_segment]["time"].append(ts * dt)
 
 
 # ### Psuedocode
@@ -719,7 +778,7 @@ def main():
     global connections
     global networks
     global flowveldepth
-    global Waterbodies_info
+    global waterbodies_df
 
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
@@ -832,24 +891,26 @@ def main():
 
     for index, row in ql.iterrows():
         flowveldepth[index]["qlatval"] = row.tolist()
-######################
+    ######################
     waterbodies_values = supernetwork_values[12]
     waterbodies_segments = supernetwork_values[13]
-    global df1
-    df1 = nnu2.read_waterbody_df("/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc") 
-    #function calls nnu
-        
+
+    waterbodies_df = nnu.read_waterbody_df(
+        supernetwork_data["level_pool_waterbody_parameter_file_path"],
+        waterbodies_values,
+    )
+
     if not parallel_compute:
         if verbose:
             print("executing computation on ordered reaches ...")
 
         #########
-        
+
         for terminal_segment, network in networks.items():
 
             # is_reservoir = terminal_segment in waterbodies_segments
             waterbody = waterbodies_segments.get(terminal_segment)
-            
+
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,

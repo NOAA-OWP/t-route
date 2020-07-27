@@ -304,30 +304,3 @@ def set_supernetwork_data(
             data = json.load(json_file)
             # TODO: add error trapping for potentially missing files
 
-
-def get_waterbody_info(df1,waterbody,Waterbodies_info): 
-    # Waterbodies_info = {}
-    df1 = df1
-    waterbody = waterbody
-    Waterbodies_info.update(
-        { waterbody : {
-    'h' : (df1.loc[waterbody]["OrificeE"] * df1.loc[waterbody]["WeirE"]) / 2,  # water elevation height (m) used dummy value
-    'LkArea' : df1.loc[waterbody]["LkArea"], # area of reservoir
-    'WeirE' : df1.loc[waterbody]["WeirE"],
-    'LkMxE' : df1.loc[waterbody]["LkMxE"],
-    'WeirC' : df1.loc[waterbody]["WeirC"],
-    'WeirL' : df1.loc[waterbody]["WeirL"],
-    'DamL' : df1.loc[waterbody]["WeirL"] * df1.loc[waterbody]["Dam_Length"],
-    'OrificeE' : df1.loc[waterbody]["OrificeE"],
-    'OrificeC' : df1.loc[waterbody]["OrificeC"],
-    'OrificeA' : df1.loc[waterbody]["OrificeA"],
-            }
-        }
-    )
-
-    return Waterbodies_info
-
-def read_waterbody_df(parm_file):
-    ds = xr.open_dataset(parm_file)
-    df1 = ds.to_dataframe().set_index("lake_id")
-    return df1
