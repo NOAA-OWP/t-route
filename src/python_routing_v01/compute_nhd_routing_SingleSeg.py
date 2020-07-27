@@ -19,6 +19,9 @@ import csv
 from datetime import datetime
 import xarray as xr
 import multiprocessing
+import sys
+sys.path.append('/home/jacob.hreha/github/t-route/src/python_framework_v02')
+import nhd_network_utilities_v02 as nnu2
 
 
 def _handle_args():
@@ -224,7 +227,8 @@ def compute_network(
 ):
     global connections
     global flowveldepth
-
+    global Waterbodies_info
+    Waterbodies_info = {}
     if debuglevel <= -1:
         print(
             f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
@@ -242,55 +246,75 @@ def compute_network(
     pathToOutputFile = os.path.join(root, "test", "output", "text")
 
     # read reservoir data
-    ds = xr.open_dataset(
-        "/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc"
-    )
-    df1 = ds.to_dataframe().set_index("lake_id")
+    # ds = xr.open_dataset(
+    #     "/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc"
+    # )
+    # df1 = ds.to_dataframe().set_index("lake_id")
+ 
 
     for ts in range(0, nts):
-        # print(f'timestep: {ts}\n')
-        if waterbody:
-            if debuglevel <= -2:
-                print(f"executing reservoir computation on waterbody: {waterbody}")
-            # print(df1.loc[2260997]['WeirL'])
-            # # for index,row in df1.iterrows():
-            #     if row['lake_id']==waterbody:
-
-            ln = waterbody
-            qi0 = 0  # inflow at initial timestep
-            qi1 = 12  # inflow at current timestep
-            ql = 3
-            dt = dt  # current timestep
-            h = (
-                df1.loc[waterbody]["OrificeE"] * df1.loc[waterbody]["WeirE"]
-            ) / 2  # water elevation height (m) used dummy value
-            ar = df1.loc[waterbody]["LkArea"]  # area of reservoir
-            we = df1.loc[waterbody]["WeirE"]
-            maxh = df1.loc[waterbody]["LkMxE"]
-            wc = df1.loc[waterbody]["WeirC"]
-            wl = df1.loc[waterbody]["WeirL"]
-            dl = df1.loc[waterbody]["WeirL"] * df1.loc[waterbody]["Dam_Length"]
-            oe = df1.loc[waterbody]["OrificeE"]
-            oc = df1.loc[waterbody]["OrificeC"]
-            oa = df1.loc[waterbody]["OrificeA"]
-
-            rc.levelpool_physics(
-                ln, qi0, qi1, ql, dt, h, ar, we, maxh, wc, wl, dl, oe, oc, oa,
-            )
-
-        else:
-            for x in range(network["maximum_reach_seqorder"], -1, -1):
+        for x in range(network["maximum_reach_seqorder"], -1, -1):
                 for head_segment, reach in ordered_reaches[x]:
-                    compute_mc_reach_up2down(
-                        head_segment=head_segment,
-                        reach=reach,
-                        supernetwork_data=supernetwork_data,
-                        ts=ts,
-                        dt=dt,
-                        verbose=verbose,
-                        debuglevel=debuglevel,
-                        assume_short_ts=assume_short_ts,
-                    )
+        # print(f'timestep: {ts}\n')
+                    if waterbody:
+                        # print(df1.loc[4185089])
+                        print(connections)
+                        qup = 0.0
+                        quc = 0.0
+                    ####################
+                        if reach["upstream_reaches"] != {
+                            supernetwork_data["terminal_code"]
+                        }:  # Not Headwaters
+                            for us in connections[reach["reach_head"]]["upstreams"]:
+                                quc += flowveldepth[us]["flowval"][-1]
+                                if ts > 0:
+                                    qup += flowveldepth[us]["flowval"][-2]
+
+                        if assume_short_ts:
+                            quc = qup
+                        print(connections)
+                        qlat = flowveldepth[waterbody]["qlatval"][ts]
+                        qup = flowveldepth[waterbody]["flowval"][ts]
+                        Waterbodies_info = nnu2.get_waterbody_info(df1,waterbody,Waterbodies_info)
+                        # print(Waterbodies_info)
+                        if debuglevel <= -2:
+                            print(f"executing reservoir computation on waterbody: {waterbody}")
+                        # print(df1.loc[2260997]['WeirL'])
+                        # # for index,row in df1.iterrows():
+                        #     if row['lake_id']==waterbody:
+
+                        ln = waterbody
+                        qi0 = qup
+                        qi1 = quc
+                        ql = qlat
+                        dt = dt  # current timestep
+                        h = Waterbodies_info[waterbody]['h']  # water elevation height (m) used dummy value
+                        ar = Waterbodies_info[waterbody]['LkArea'] 
+                        we = Waterbodies_info[waterbody]['WeirE'] 
+                        maxh = Waterbodies_info[waterbody]['LkMxE'] 
+                        wc = Waterbodies_info[waterbody]['WeirC'] 
+                        wl = Waterbodies_info[waterbody]['WeirL'] 
+                        dl = Waterbodies_info[waterbody]['DamL'] 
+                        oe = Waterbodies_info[waterbody]['OrificeE'] 
+                        oc = Waterbodies_info[waterbody]['OrificeC'] 
+                        oa = Waterbodies_info[waterbody]['OrificeA'] 
+
+                        rc.levelpool_physics(
+                            ln, qi0, qi1, ql, dt, h, ar, we, maxh, wc, wl, dl, oe, oc, oa,
+                        )
+
+                    else:
+                        #for loops should contain both waterbodies and mc_reach as it loops entire network
+                        compute_mc_reach_up2down(
+                            head_segment=head_segment,
+                            reach=reach,
+                            supernetwork_data=supernetwork_data,
+                            ts=ts,
+                            dt=dt,
+                            verbose=verbose,
+                            debuglevel=debuglevel,
+                            assume_short_ts=assume_short_ts,
+                        )
 
     if writeToCSV:
         for x in range(network["maximum_reach_seqorder"], -1, -1):
@@ -339,7 +363,7 @@ def compute_mc_reach_up2down(
     # upstream flow per reach
     qup = 0.0
     quc = 0.0
-
+########################
     if reach["upstream_reaches"] != {
         supernetwork_data["terminal_code"]
     }:  # Not Headwaters
@@ -407,7 +431,7 @@ def compute_mc_reach_up2down(
         quc = qdc  # input for next segment
         if assume_short_ts:
             quc = qup
-
+#need to append with waterbody calculations instead
         flowveldepth[current_segment]["flowval"].append(qdc)
         flowveldepth[current_segment]["depthval"].append(depthc)
         flowveldepth[current_segment]["velval"].append(velc)
@@ -695,6 +719,7 @@ def main():
     global connections
     global networks
     global flowveldepth
+    global Waterbodies_info
 
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
@@ -807,18 +832,24 @@ def main():
 
     for index, row in ql.iterrows():
         flowveldepth[index]["qlatval"] = row.tolist()
-
+######################
+    waterbodies_values = supernetwork_values[12]
+    waterbodies_segments = supernetwork_values[13]
+    global df1
+    df1 = nnu2.read_waterbody_df("/home/APD/inland_hydraulics/wrf-hydro-run/NWM_2.1_Sample_Datasets/LAKEPARM_CONUS.nc") 
+    #function calls nnu
+        
     if not parallel_compute:
         if verbose:
             print("executing computation on ordered reaches ...")
 
         #########
-        waterbodies_values = supernetwork_values[12]
-        waterbodies_segments = supernetwork_values[13]
-
+        
         for terminal_segment, network in networks.items():
+
             # is_reservoir = terminal_segment in waterbodies_segments
             waterbody = waterbodies_segments.get(terminal_segment)
+            
             compute_network(
                 terminal_segment=terminal_segment,
                 network=network,
