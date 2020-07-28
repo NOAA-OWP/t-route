@@ -111,9 +111,11 @@ def get_geo_file_table_rows(
                 traceback.print_exc()
         if debuglevel <= -2:
             try:
+                import pdb; pdb.set_trace()
                 geo_file.plot()
-            except:
+            except Exception as e:
                 print(r"cannot plot geofile (not necessarily a problem)")
+                traceback.print_exc()
     if debuglevel <= -1:
         # official docs here:
         # https://pandas.pydata.org/docs/user_guide/options.html

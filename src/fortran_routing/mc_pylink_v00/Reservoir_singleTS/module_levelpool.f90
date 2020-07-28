@@ -29,12 +29,12 @@ contains
     !   SUBROUTINE LEVELPOOL
     ! ------------------------------------------------
 
-    subroutine LEVELPOOL_PHYSICS(ln,qi0,qi1,ql,dt,H0,ar,we,maxh,wc,wl,dl,oe,oc,oa,H1,qo1)
+    subroutine levelpool_physics(dt,qi0,qi1,ql,ar,we,maxh,wc,wl,dl,oe,oc,oa,H0,H1,qo1)
 
         !! ----------------------------  argument variables
         !! All elevations should be relative to a common base (often belev(k))
 
-        integer, intent(IN) :: ln      ! lake number
+        ! integer, intent(IN) :: ln      ! lake number
         real, intent(IN)    :: dt      ! routing period [s]
         real, intent(IN)    :: qi0     ! inflow at previous timestep (cms)
         real, intent(IN)    :: qi1     ! inflow at current timestep (cms)
@@ -54,7 +54,7 @@ contains
 
         !!DJG Add lake option switch here...move up to namelist in future versions...
         integer :: LAKE_OPT            ! Lake model option (move to namelist later)
-        real    :: Htmp                ! Temporary assign of incoming lake el. (m)
+        real    :: H, Htmp             ! Temporary assign of incoming lake el. (m)
 
         !! ----------------------------  local variables
         real :: sap                    ! local surface area values
@@ -71,7 +71,7 @@ contains
         !!DJG Set hardwire for LAKE_OPT...move specification of this to namelist in
         !future versions...
         LAKE_OPT = 2
-        Htmp = H   !temporary set of incoming lake water elevation...
+        Htmp = H0  !temporary set of incoming lake water elevation...
         !hdiff_vol = 0.0
         !qdiff_vol = 0.0
 
@@ -199,6 +199,7 @@ contains
               discharge = 0.0
            endif
 
+           H1 = H
            qo1  = discharge  ! return the flow rate from reservoir
 
         !#ifdef HYDRO_D
@@ -224,7 +225,7 @@ contains
         return
 
     ! ----------------------------------------------------------------
-    end subroutine LEVELPOOL_PHYSICS
+    end subroutine levelpool_physics
     ! ----------------------------------------------------------------
 
 end module module_levelpool

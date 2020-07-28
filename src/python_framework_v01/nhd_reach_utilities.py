@@ -322,6 +322,7 @@ def recursive_reach_read(
                 reach.update(
                     {"segments_list": segmentlist}
                 )  # Ordered Segment List bottom to top
+                network["all_segments"].update(segmentset)
                 network["reaches"].update({csegment: reach})
                 network["headwater_reaches"].add(csegment)
                 break
@@ -475,12 +476,15 @@ def network_trace(
     if 1 == 1:
         network.update({"total_segment_count": 0})
         network.update({"total_junction_count": 0})
-        network.update({"maximum_reach_seqorder": 0})
+        network.update({"network_seqorder": 0})
         network.update({"junctions": set()})
         network.update({"headwater_reaches": set()})
+        network.update({"all_segments": set()})
         network.update(
             {"receiving_reaches": set()}
         )  # Reaches that are downstream of another network
+        network.update({"maximum_reach_seqorder": 0})
+        network.update({"tailwater_reach": set()})
         network.update({"reaches": {}})
         recursive_reach_read_new(
             segment=terminal_segment,
@@ -568,7 +572,7 @@ def compose_networks(
             ,
             debuglevel=debuglevel,
         )
-
+        
         if debuglevel <= -2:
             if debuglevel <= -2:
                 print(f"terminal_segment: {terminal_segment}")
@@ -584,3 +588,18 @@ def compose_networks(
         print(f"Number of networks in the Supernetwork: {len(networks.items())}")
 
     return networks
+
+def order_networks(connections, networks, tailwaters):
+    '''Assumes that every tailwater is a network -- but there may 
+        be many networks that are upstream networks and therefore 
+        not tailwaters.'''
+     
+    curr_seqorder = 0
+    recursive_order_networks(connections, networks, tailwaters, curr_seqorder)
+
+def recursive_order_networks(connections, networks, tailwaters, curr_seqorder):
+    for tailwater in tailwaters:
+        network = networks[tailwater]
+        network["network_seqorder"] = curr_seqorder
+        for rr in network["receiving_reaches"]:
+            recursive_order_networks(connections, networks, connections[rr]["upstreams"], curr_seqorder + 1)
