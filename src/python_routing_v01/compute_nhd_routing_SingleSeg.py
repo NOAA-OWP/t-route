@@ -175,7 +175,7 @@ else:
 
 connections = None
 networks = None
-flowveldepth = None
+#flowveldepth = None
 waterbodies_df = None
 
 # WRITE_OUTPUT = False  # True
@@ -250,6 +250,7 @@ def compute_network(
                 # for loops should contain both waterbodies and mc_reach as it loops entire network
                 # TODO: Prune these inputs
                 qup_reach, quc_reach = compute_reach_upstream_flows(
+                    flowveldepth=flowveldepth,
                     head_segment=head_segment,
                     reach=reach,
                     network=network,
@@ -263,6 +264,7 @@ def compute_network(
                 )
                 if waterbody:
                     compute_level_pool_reach_up2down(
+                        flowveldepth=flowveldepth,
                         qup_reach=qup_reach,
                         quc_reach=quc_reach,
                         head_segment=head_segment,
@@ -278,6 +280,7 @@ def compute_network(
 
                 else:
                     compute_mc_reach_up2down(
+                        flowveldepth=flowveldepth,
                         qup_reach=qup_reach,
                         quc_reach=quc_reach,
                         head_segment=head_segment,
@@ -314,9 +317,12 @@ def compute_network(
             pathToOutputFile=pathToOutputFile,
         )
 
+    return flowveldepth
+
 
 # TODO: generalize with a direction flag
 def compute_reach_upstream_flows(
+    flowveldepth,
     head_segment=None,
     reach=None,
     network=None,
@@ -329,7 +335,7 @@ def compute_reach_upstream_flows(
     assume_short_ts=False,
 ):
     global connections
-    global flowveldepth
+    #global flowveldepth
 
     if debuglevel <= -2:
         print(
@@ -345,12 +351,25 @@ def compute_reach_upstream_flows(
         for rr in network["receiving_reaches"]:
             for us in connections[rr]["upstreams"]:
                 upstreams_list.add(us)
+        # this step was critical -- there were receiving reaches that were junctions
+        # with only one of their upstreams out of the network. The other was inside 
+        # the network, so it caused a lookup error. 
+        upstreams_list = upstreams_list - network["all_segments"]
+
     else:
         upstreams_list = connections[reach["reach_head"]]["upstreams"]
 
     for us in upstreams_list:
         if us != supernetwork_data["terminal_code"]:  # Not Headwaters
-            quc += flowveldepth[us]["flowval"][-1]
+            # quc += flowveldepth[us]["flowval"][-1]
+            fvd_us = flowveldepth.get(us,None)
+            if fvd_us:
+                fvd_us_quc = fvd_us.get("flowval")
+                if fvd_us_quc:
+                    quc += fvd_us_quc[-1]
+                else:
+                    import pdb; pdb.set_trace()
+
             if ts > 0:
                 qup += flowveldepth[us]["flowval"][-2]
 
@@ -362,6 +381,7 @@ def compute_reach_upstream_flows(
 
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
+    flowveldepth,
     qup_reach,
     quc_reach,
     head_segment=None,
@@ -374,7 +394,7 @@ def compute_mc_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    global flowveldepth
+    #global flowveldepth
 
     if debuglevel <= -2:
         print(
@@ -461,6 +481,7 @@ def compute_mc_reach_up2down(
 
 
 def compute_level_pool_reach_up2down(
+    flowveldepth,
     qup_reach,
     quc_reach,
     head_segment=None,
@@ -474,7 +495,7 @@ def compute_level_pool_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    global flowveldepth
+    #global flowveldepth
     global waterbodies_df
 
     if debuglevel <= -2:
@@ -800,7 +821,7 @@ def main():
 
     global connections
     global networks
-    global flowveldepth
+    #global flowveldepth
     global waterbodies_df
 
     supernetwork = args.supernetwork
@@ -958,28 +979,32 @@ def main():
             else:
                 waterbody = None
 
-            subnet_flowveldepth = {seg:fvd for seg,fvd in flowveldepth.items() if seg in network["all_segments"]}
+            if parallel_compute:
+                subnet_flowveldepth = {seg:fvd for seg,fvd in flowveldepth.items() if seg in network["all_segments"]}
+                for rr in network["receiving_reaches"]:
+                    for us in connections[rr]["upstreams"]:
+                        subnet_flowveldepth[us] = flowveldepth[us]
 
             if not parallel_compute:  # serial execution
                 if verbose:
                     print("executing computation on ordered reaches ...")
 
-                    compute_network(
-                        flowveldepth=subnet_flowveldepth,
-                        terminal_segment=terminal_segment,
-                        network=network,
-                        supernetwork_data=supernetwork_data,
-                        waterbody=waterbody,
-                        nts=nts,
-                        dt=dt,
-                        verbose=verbose,
-                        debuglevel=debuglevel,
-                        write_csv_output=write_csv_output,
-                        write_nc_output=write_nc_output,
-                        assume_short_ts=assume_short_ts,
-                    )
-                    if showtiming:
-                        print("... in %s seconds." % (time.time() - start_time))
+                compute_network(
+                    flowveldepth=flowveldepth,
+                    terminal_segment=terminal_segment,
+                    network=network,
+                    supernetwork_data=supernetwork_data,
+                    waterbody=waterbody,
+                    nts=nts,
+                    dt=dt,
+                    verbose=verbose,
+                    debuglevel=debuglevel,
+                    write_csv_output=write_csv_output,
+                    write_nc_output=write_nc_output,
+                    assume_short_ts=assume_short_ts,
+                )
+                if showtiming:
+                    print("... in %s seconds." % (time.time() - start_time))
 
             else:  # parallel execution
                 # for terminal_segment, network in networks.items():
@@ -1007,6 +1032,9 @@ def main():
                 print(f"executing parallel computation on networks of order {nsq} ... ")
             with multiprocessing.Pool() as pool:
                 results = pool.starmap(compute_network, nslist)
+            for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
+                for seg in network["all_segments"]:
+                    flowveldepth[seg] = results[i][seg]
 
     if verbose:
         print("ordered reach computation complete")

@@ -172,7 +172,6 @@ def determine_keys(
         print("terminal_keys ...")
     # Find the pointing-to keys not found in the key dataset.
     terminal_ref_keys = {x for x in ref_keys if x not in connections.keys()}
-    # import pdb; pdb.set_trace()
 
     # Then collect the keys associated with those 'pointing-tos'
     terminal_keys = set()
@@ -427,6 +426,8 @@ def main():
         [16, 920, 15, 401],
         [17, 514, 16, 401],
         [18, 458, 17, 0],
+        [180, 458, 17, 0],
+        [181, 458, 180, 0],
         [19, 832, 18, 0],
         [20, 543, 19, 0],
         [21, 240, 16, 401],
