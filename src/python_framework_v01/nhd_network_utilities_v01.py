@@ -111,7 +111,6 @@ def get_geo_file_table_rows(
                 traceback.print_exc()
         if debuglevel <= -2:
             try:
-                import pdb; pdb.set_trace()
                 geo_file.plot()
             except Exception as e:
                 print(r"cannot plot geofile (not necessarily a problem)")
@@ -371,10 +370,10 @@ def set_supernetwork_data(
             "manningncc_col": 21,
             "slope_col": 10,
             "bottomwidth_col": 2,
-            "waterbody_col": 8,
-            "waterbody_null_code": -9999,
             "topwidth_col": 11,
             "topwidthcc_col": 12,
+            "waterbody_col": 8,
+            "waterbody_null_code": -9999,
             "MusK_col": 7,
             "MusX_col": 8,
             "ChSlp_col": 12,
@@ -382,20 +381,23 @@ def set_supernetwork_data(
             "title_string": "Pocono Test Example",
             "driver_string": "ESRI Shapefile",
             "layer_string": 0,
-            "water_body_parameter_file_type": "Level_Pool",
-            "level_pool_waterbody_parameter_file_path": os.path.join(
-                geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-            ),
-            "level_pool_waterbody_area": "LkArea",  # area of reservoir
-            "level_pool_weir_elevation": "WeirE",
-            "level_pool_waterbody_max_elevation": "LkMxE",
-            "level_pool_outfall_weir_coefficient": "WeirC",
-            "level_pool_outfall_weir_length": "WeirL",
-            "level_pool_overall_dam_length": "DamL",
-            "level_pool_orifice_elevation": "OrificeE",
-            "level_pool_orifice_coefficient": "OrificeC",
-            "level_pool_orifice_area": "OrificeA",
+            "waterbody_parameter_file_type": "Level_Pool",
+            "waterbody_parameters": {
+                "level_pool_waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                ),
+                "level_pool_waterbody_area": "LkArea",  # area of reservoir
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA",
+            },
         }
+
     elif supernetwork == "Pocono_TEST2":
         dict = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
@@ -633,19 +635,21 @@ def set_supernetwork_data(
             "title_string": "CONUS Full Resolution NWM v2.0",
             "driver_string": "NetCDF",
             "layer_string": 0,
-            "water_body_parameter_file_type": "Level_Pool",
-            "level_pool_waterbody_parameter_file_path": os.path.join(
-                geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-            ),
-            "level_pool_waterbody_area": "LkArea",  # area of reservoir
-            "level_pool_weir_elevation": "WeirE",
-            "level_pool_waterbody_max_elevation": "LkMxE",
-            "level_pool_outfall_weir_coefficient": "WeirC",
-            "level_pool_outfall_weir_length": "WeirL",
-            "level_pool_overall_dam_length": "DamL",
-            "level_pool_orifice_elevation": "OrificeE",
-            "level_pool_orifice_coefficient": "OrificeC",
-            "level_pool_orifice_area": "OrificeA",
+            "waterbody_parameter_file_type": "Level_Pool",
+            "waterbody_parameters": {
+                "level_pool_waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                ),
+                "level_pool_waterbody_area": "LkArea",  # area of reservoir
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA",
+            },
         }
 
     elif supernetwork == "custom":
@@ -672,5 +676,5 @@ def read_waterbody_df(parm_file, lake_id_mask=None):
     ds = xr.open_dataset(parm_file)
     df1 = ds.to_dataframe().set_index("lake_id")
     if lake_id_mask:
-        df1=df1.loc[lake_id_mask, :]
+        df1 = df1.loc[lake_id_mask, :]
     return df1

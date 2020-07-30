@@ -516,33 +516,34 @@ def compute_level_pool_reach_up2down(
     if debuglevel <= -2:
         print(f"executing reservoir computation on waterbody: {waterbody}")
 
+    wb_params = supernetwork_data["waterbody_parameters"]
     ln = waterbody
     qi0 = qup
     qi1 = quc
     ql = qlat
     dt = dt  # current timestep
-    ar = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_waterbody_area"]]
-    we = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_weir_elevation"]]
+    ar = waterbodies_df.loc[waterbody][wb_params["level_pool_waterbody_area"]]
+    we = waterbodies_df.loc[waterbody][wb_params["level_pool_weir_elevation"]]
     maxh = waterbodies_df.loc[waterbody][
-        supernetwork_data["level_pool_waterbody_max_elevation"]
+        wb_params["level_pool_waterbody_max_elevation"]
     ]
     wc = waterbodies_df.loc[waterbody][
-        supernetwork_data["level_pool_outfall_weir_coefficient"]
+        wb_params["level_pool_outfall_weir_coefficient"]
     ]
     wl = waterbodies_df.loc[waterbody][
-        supernetwork_data["level_pool_outfall_weir_length"]
+        wb_params["level_pool_outfall_weir_length"]
     ]
     # TODO: find the right value for this variable -- it should be in the parameter file!
     dl = (
         10 * wl
-    )  # waterbodies_df.loc[waterbody][supernetwork_data["level_pool_overall_dam_length"]]
+    )  # waterbodies_df.loc[waterbody][wb_params["level_pool_overall_dam_length"]]
     oe = waterbodies_df.loc[waterbody][
-        supernetwork_data["level_pool_orifice_elevation"]
+        wb_params["level_pool_orifice_elevation"]
     ]
     oc = waterbodies_df.loc[waterbody][
-        supernetwork_data["level_pool_orifice_coefficient"]
+        wb_params["level_pool_orifice_coefficient"]
     ]
-    oa = waterbodies_df.loc[waterbody][supernetwork_data["level_pool_orifice_area"]]
+    oa = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_area"]]
 
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
@@ -944,7 +945,7 @@ def main():
         connections_tailwaters = supernetwork_values[4]
 
         waterbodies_df = nnu.read_waterbody_df(
-            supernetwork_data["level_pool_waterbody_parameter_file_path"],
+            supernetwork_data["waterbody_parameters"]["level_pool_waterbody_parameter_file_path"],
             waterbodies_values,
         )
         nru.order_networks(connections, networks, connections_tailwaters)
