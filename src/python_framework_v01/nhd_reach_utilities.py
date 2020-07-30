@@ -579,7 +579,7 @@ def compose_networks(
             ,
             debuglevel=debuglevel,
         )
-        
+
         if debuglevel <= -2:
             if debuglevel <= -2:
                 print(f"terminal_segment: {terminal_segment}")
@@ -596,18 +596,25 @@ def compose_networks(
 
     return networks
 
+
 def order_networks(connections, networks, tailwaters):
-    '''Assumes that every tailwater is a network -- but there may 
+    """Assumes that every tailwater is a network -- but there may 
         be many networks that are upstream networks and therefore 
-        not tailwaters.'''
-     
+        not tailwaters."""
+
     curr_seqorder = 0
     recursive_order_networks(connections, networks, tailwaters, curr_seqorder)
 
+
 def recursive_order_networks(connections, networks, tailwaters, curr_seqorder):
     for tailwater in tailwaters:
-        network = networks.get(tailwater,None)
+        network = networks.get(tailwater, None)
         if network:
             network["network_seqorder"] = curr_seqorder
             for rr in network["receiving_reaches"]:
-                recursive_order_networks(connections, networks, connections[rr]["upstreams"], curr_seqorder + 1)
+                recursive_order_networks(
+                    connections,
+                    networks,
+                    connections[rr]["upstreams"],
+                    curr_seqorder + 1,
+                )
