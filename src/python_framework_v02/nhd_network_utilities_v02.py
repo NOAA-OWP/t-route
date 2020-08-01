@@ -1,6 +1,5 @@
 import json
 import os
-import xarray as xr
 
 def set_supernetwork_data(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
@@ -78,7 +77,6 @@ def set_supernetwork_data(
             }
         )
         return rv
-
     
         # return {
         #'geo_file_path' : os.path.join(geo_input_folder
@@ -303,4 +301,3 @@ def set_supernetwork_data(
         with open(custominput, "r") as json_file:
             data = json.load(json_file)
             # TODO: add error trapping for potentially missing files
-
