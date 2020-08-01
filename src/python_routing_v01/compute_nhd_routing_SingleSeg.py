@@ -226,12 +226,7 @@ def compute_network(
     global connections
 
     flowveldepth = {
-        connection: {
-            "time": [],
-            "flowval": [],
-            "velval": [],
-            "depthval": [],
-        }
+        connection: {"time": [], "flowval": [], "velval": [], "depthval": [],}
         for connection in (network["all_segments"])
     }
 
@@ -259,7 +254,7 @@ def compute_network(
                 # TODO: Prune these inputs
                 qup_reach, quc_reach = compute_reach_upstream_flows(
                     flowveldepth_connect=flowveldepth_connect,
-                    flowveldepth = flowveldepth,
+                    flowveldepth=flowveldepth,
                     head_segment=head_segment,
                     reach=reach,
                     network=network,
@@ -357,8 +352,8 @@ def compute_reach_upstream_flows(
             for us in connections[rr]["upstreams"]:
                 upstreams_list.add(us)
         # this step was critical -- there were receiving reaches that were junctions
-        # with only one of their upstreams out of the network. The other was inside 
-        # the network, so it caused a lookup error. 
+        # with only one of their upstreams out of the network. The other was inside
+        # the network, so it caused a lookup error.
         upstreams_list = upstreams_list - network["all_segments"]
         us_flowveldepth = flowveldepth_connect
 
@@ -494,7 +489,7 @@ def compute_level_pool_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    #global flowveldepth
+    # global flowveldepth
     global waterbodies_df
 
     if debuglevel <= -2:
@@ -526,22 +521,14 @@ def compute_level_pool_reach_up2down(
     maxh = waterbodies_df.loc[waterbody][
         wb_params["level_pool_waterbody_max_elevation"]
     ]
-    wc = waterbodies_df.loc[waterbody][
-        wb_params["level_pool_outfall_weir_coefficient"]
-    ]
-    wl = waterbodies_df.loc[waterbody][
-        wb_params["level_pool_outfall_weir_length"]
-    ]
+    wc = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_coefficient"]]
+    wl = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_length"]]
     # TODO: find the right value for this variable -- it should be in the parameter file!
     dl = (
         10 * wl
     )  # waterbodies_df.loc[waterbody][wb_params["level_pool_overall_dam_length"]]
-    oe = waterbodies_df.loc[waterbody][
-        wb_params["level_pool_orifice_elevation"]
-    ]
-    oc = waterbodies_df.loc[waterbody][
-        wb_params["level_pool_orifice_coefficient"]
-    ]
+    oe = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_elevation"]]
+    oc = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_coefficient"]]
     oa = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_area"]]
 
     qdc, depthc = rc.levelpool_physics(
@@ -628,7 +615,7 @@ def writeArraytoNC(
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches[reach["seqorder"]]= []
+            ordered_reaches[reach["seqorder"]] = []
         ordered_reaches[reach["seqorder"]].append([head_segment, reach])
 
     # get data into array - preparation step
@@ -907,12 +894,7 @@ def main():
     connections = supernetwork_values[0]
 
     # initialize flowveldepth dict
-    qlateral = {
-        connection: {
-            "qlatval": [],
-        }
-        for connection in connections
-    }
+    qlateral = {connection: {"qlatval": [],} for connection in connections}
 
     # Lateral flow
     if (
@@ -938,7 +920,9 @@ def main():
         connections_tailwaters = supernetwork_values[4]
 
         waterbodies_df = nnu.read_waterbody_df(
-            supernetwork_data["waterbody_parameters"]["level_pool_waterbody_parameter_file_path"],
+            supernetwork_data["waterbody_parameters"][
+                "level_pool_waterbody_parameter_file_path"
+            ],
             waterbodies_values,
         )
         nru.order_networks(connections, networks, connections_tailwaters)
@@ -970,7 +954,6 @@ def main():
         if parallel_compute:
             nslist = []
         results = []
-
 
         for terminal_segment, network in ordered_networks[nsq]:
             if break_network_at_waterbodies:
