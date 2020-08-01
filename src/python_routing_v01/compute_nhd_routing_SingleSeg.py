@@ -175,7 +175,7 @@ else:
 
 connections = None
 networks = None
-#flowveldepth = None
+qlateral = None
 waterbodies_df = None
 
 # WRITE_OUTPUT = False  # True
@@ -212,13 +212,13 @@ else:
 
 
 def compute_network(
-    flowveldepth=None,
-    terminal_segment=None,
-    network=None,
-    supernetwork_data=None,
-    waterbody=None,
-    nts=0,
-    dt=0,
+    flowveldepth_connect,
+    terminal_segment,
+    network,
+    supernetwork_data,
+    waterbody,
+    nts,
+    dt,
     verbose=False,
     debuglevel=0,
     write_csv_output=False,
@@ -226,7 +226,17 @@ def compute_network(
     assume_short_ts=False,
 ):
     global connections
-    #global flowveldepth
+
+    flowveldepth = {
+        connection: {
+            "time": [],
+            "flowval": [],
+            "velval": [],
+            "depthval": [],
+        }
+        for connection in (network["all_segments"])
+    }
+
     if debuglevel <= -1:
         print(
             f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
@@ -235,7 +245,7 @@ def compute_network(
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches.update({reach["seqorder"]: []})
+            ordered_reaches[reach["seqorder"]] = []
         ordered_reaches[reach["seqorder"]].append([head_segment, reach])
 
     # initialize write to files variable
@@ -250,7 +260,8 @@ def compute_network(
                 # for loops should contain both waterbodies and mc_reach as it loops entire network
                 # TODO: Prune these inputs
                 qup_reach, quc_reach = compute_reach_upstream_flows(
-                    flowveldepth=flowveldepth,
+                    flowveldepth_connect=flowveldepth_connect,
+                    flowveldepth = flowveldepth,
                     head_segment=head_segment,
                     reach=reach,
                     network=network,
@@ -322,6 +333,7 @@ def compute_network(
 
 # TODO: generalize with a direction flag
 def compute_reach_upstream_flows(
+    flowveldepth_connect,
     flowveldepth,
     head_segment=None,
     reach=None,
@@ -335,12 +347,7 @@ def compute_reach_upstream_flows(
     assume_short_ts=False,
 ):
     global connections
-    #global flowveldepth
-
-    if debuglevel <= -2:
-        print(
-            f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
-        )
+    global qlateral
 
     # upstream flow per reach
     qup = 0.0
@@ -355,23 +362,18 @@ def compute_reach_upstream_flows(
         # with only one of their upstreams out of the network. The other was inside 
         # the network, so it caused a lookup error. 
         upstreams_list = upstreams_list - network["all_segments"]
+        us_flowveldepth = flowveldepth_connect
 
     else:
+        us_flowveldepth = flowveldepth
         upstreams_list = connections[reach["reach_head"]]["upstreams"]
 
     for us in upstreams_list:
         if us != supernetwork_data["terminal_code"]:  # Not Headwaters
-            # quc += flowveldepth[us]["flowval"][-1]
-            fvd_us = flowveldepth.get(us,None)
-            if fvd_us:
-                fvd_us_quc = fvd_us.get("flowval")
-                if fvd_us_quc:
-                    quc += fvd_us_quc[-1]
-                else:
-                    import pdb; pdb.set_trace()
+            quc += us_flowveldepth[us]["flowval"][-1]
 
             if ts > 0:
-                qup += flowveldepth[us]["flowval"][-2]
+                qup += us_flowveldepth[us]["flowval"][-2]
 
     if assume_short_ts:
         quc = qup
@@ -394,7 +396,6 @@ def compute_mc_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    #global flowveldepth
 
     if debuglevel <= -2:
         print(
@@ -421,7 +422,7 @@ def compute_mc_reach_up2down(
         cs = data[supernetwork_data["ChSlp_col"]]
         s0 = data[supernetwork_data["slope_col"]]
 
-        qlat = flowveldepth[current_segment]["qlatval"][ts]
+        qlat = qlateral[current_segment]["qlatval"][ts]
 
         if ts > 0:
             qdp = flowveldepth[current_segment]["flowval"][-1]
@@ -512,7 +513,7 @@ def compute_level_pool_reach_up2down(
     else:
         depthp = 0
 
-    qlat = flowveldepth[current_segment]["qlatval"][ts]
+    qlat = qlateral[current_segment]["qlatval"][ts]
     if debuglevel <= -2:
         print(f"executing reservoir computation on waterbody: {waterbody}")
 
@@ -585,7 +586,7 @@ def writeArraytoCSV(
             csvwriter.writerows(
                 zip(
                     flowveldepth[current_segment]["time"],
-                    flowveldepth[current_segment]["qlatval"],
+                    qlateral[current_segment]["qlatval"],
                     flowveldepth[current_segment]["flowval"],
                     flowveldepth[current_segment]["velval"],
                     flowveldepth[current_segment]["depthval"],
@@ -629,9 +630,7 @@ def writeArraytoNC(
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches.update(
-                {reach["seqorder"]: []}
-            )  # TODO: Should this be a set/dictionary?
+            ordered_reaches[reach["seqorder"]]= []
         ordered_reaches[reach["seqorder"]].append([head_segment, reach])
 
     # get data into array - preparation step
@@ -644,7 +643,7 @@ def writeArraytoNC(
                 # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
                 flowveldepth_data["qlatval"].append(
-                    flowveldepth[current_segment]["qlatval"]
+                    qlateral[current_segment]["qlatval"]
                 )
                 flowveldepth_data["flowval"].append(
                     flowveldepth[current_segment]["flowval"]
@@ -822,7 +821,7 @@ def main():
 
     global connections
     global networks
-    #global flowveldepth
+    global qlateral
     global waterbodies_df
 
     supernetwork = args.supernetwork
@@ -910,13 +909,9 @@ def main():
     connections = supernetwork_values[0]
 
     # initialize flowveldepth dict
-    flowveldepth = {
+    qlateral = {
         connection: {
             "qlatval": [],
-            "time": [],
-            "flowval": [],
-            "velval": [],
-            "depthval": [],
         }
         for connection in connections
     }
@@ -936,7 +931,7 @@ def main():
         )
 
     for index, row in ql.iterrows():
-        flowveldepth[index]["qlatval"] = row.tolist()
+        qlateral[index]["qlatval"] = row.tolist()
     ######################
     if break_network_at_waterbodies:
 
@@ -971,38 +966,39 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
+    flowveldepth_connect = {}
     for nsq in range(max_network_seqorder, -1, -1):
+
         if parallel_compute:
             nslist = []
+        results = []
+
+
         for terminal_segment, network in ordered_networks[nsq]:
             if break_network_at_waterbodies:
                 waterbody = waterbodies_segments.get(terminal_segment)
             else:
                 waterbody = None
 
-            if parallel_compute:
-                subnet_flowveldepth = {seg:fvd for seg,fvd in flowveldepth.items() if seg in network["all_segments"]}
-                for rr in network["receiving_reaches"]:
-                    for us in connections[rr]["upstreams"]:
-                        subnet_flowveldepth[us] = flowveldepth[us]
-
             if not parallel_compute:  # serial execution
                 if verbose:
                     print("executing computation on ordered reaches ...")
 
-                compute_network(
-                    flowveldepth=flowveldepth,
-                    terminal_segment=terminal_segment,
-                    network=network,
-                    supernetwork_data=supernetwork_data,
-                    waterbody=waterbody,
-                    nts=nts,
-                    dt=dt,
-                    verbose=verbose,
-                    debuglevel=debuglevel,
-                    write_csv_output=write_csv_output,
-                    write_nc_output=write_nc_output,
-                    assume_short_ts=assume_short_ts,
+                results.append(
+                    compute_network(
+                        flowveldepth_connect=flowveldepth_connect,
+                        terminal_segment=terminal_segment,
+                        network=network,
+                        supernetwork_data=supernetwork_data,
+                        waterbody=waterbody,
+                        nts=nts,
+                        dt=dt,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        write_csv_output=write_csv_output,
+                        write_nc_output=write_nc_output,
+                        assume_short_ts=assume_short_ts,
+                    )
                 )
                 if showtiming:
                     print("... in %s seconds." % (time.time() - start_time))
@@ -1014,7 +1010,7 @@ def main():
 
                 nslist.append(
                     [
-                        subnet_flowveldepth,
+                        flowveldepth_connect,
                         terminal_segment,
                         network,
                         supernetwork_data,  # TODO: This should probably be global...
@@ -1033,9 +1029,12 @@ def main():
                 print(f"executing parallel computation on networks of order {nsq} ... ")
             with multiprocessing.Pool() as pool:
                 results = pool.starmap(compute_network, nslist)
+
+        if nsq > 0:
+            flowveldepth_connect = {}
             for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
-                for seg in network["all_segments"]:
-                    flowveldepth[seg] = results[i][seg]
+                seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                flowveldepth_connect[seg] = results[i][seg]
 
     if verbose:
         print("ordered reach computation complete")
