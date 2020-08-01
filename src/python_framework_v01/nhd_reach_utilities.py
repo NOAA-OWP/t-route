@@ -483,13 +483,13 @@ def network_trace(
         network.update({"total_segment_count": 0})
         network.update({"total_junction_count": 0})
         network.update({"network_seqorder": 0})
+        network.update({"maximum_reach_seqorder": 0})
         network.update({"junctions": set()})
         network.update({"headwater_reaches": set()})
         network.update({"all_segments": set()})
         network.update(
             {"receiving_reaches": set()}
         )  # Reaches that are downstream of another network
-        network.update({"maximum_reach_seqorder": 0})
         network.update({"tailwater_reach": set()})
         network.update({"reaches": {}})
         recursive_reach_read_new(
