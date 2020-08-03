@@ -1,10 +1,3 @@
-Author:      Jacob Hreha, Lynker Technologies/NOAA
-Created:     7/28/2020
-
-National Water Center 
-Office of Water Prediction
-205 Hackberry Ln, Tuscaloosa, AL 35401
-
 #Title
 **Neural Network Substitution-based routing for the National Water Model
 version 3.0**
@@ -123,3 +116,11 @@ Jacob E. Hreha, James S. Halgren,  Adam N. Wlostowski,  Alexander A. Maestre,  D
 **Project status**
 Looking to improve the model accuracy beyond its current threshold. Model is reaching a limit of about +-.01 and we would like to see that improved by at least one order of magnitude. 
 Not sure if the model is rounding heavily or incapable of obtaining that level of accuracy because of a backend issue. 
+
+Author:      Jacob Hreha, Lynker Technologies/NOAA
+Created:     7/28/2020
+
+National Water Center 
+Office of Water Prediction
+205 Hackberry Ln, Tuscaloosa, AL 35401
+
