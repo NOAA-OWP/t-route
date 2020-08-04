@@ -18,7 +18,8 @@ import netCDF4
 import csv
 from datetime import datetime
 import multiprocessing
-
+import glob
+import xarray as xr 
 
 def _handle_args():
     # TODO: Convert to global argparser
@@ -44,6 +45,12 @@ def _handle_args():
         "--test" "--run-pocono-test-example",
         help="Use the data values stored in the repository for a test of the Pocono network",
         dest="run_pocono_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--test2" "--run-Mainstems-test-example",
+        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
+        dest="run_route_and_replace",
         action="store_true",
     )
     parser.add_argument(
@@ -825,6 +832,7 @@ def main():
     parallel_compute = args.parallel_compute
 
     run_pocono_test = args.run_pocono_test
+    run_route_and_replace = args.run_route_and_replace
 
     if run_pocono_test:
         if verbose:
@@ -836,6 +844,17 @@ def main():
         nts = 144
         write_csv_output = True
         write_nc_output = True
+
+    if run_route_and_replace:
+        if verbose:
+            print("running test case for Mainstems_CONUS domain")
+        # Overwrite the following test defaults
+        supernetwork = "Mainstems_CONUS"
+        break_network_at_waterbodies = False
+        dt = 300
+        nts = 1440
+        write_csv_output = False
+        write_nc_output = False
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -895,6 +914,26 @@ def main():
 
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
+    
+    if (
+        run_route_and_replace
+    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+        ql_input_folder = os.path.join(
+            root, r'/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS' # use your path
+        )
+        all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
+
+        li = []
+
+        for filename in all_files:
+            ds = xr.open_dataset(filename)
+            df1 = ds.to_dataframe()
+
+            li.append(df1)
+
+        frame = pd.concat(li, axis=0, ignore_index=False)
+        mod = frame.reset_index()
+        ql = mod.pivot(index='station_id', columns='time', values='q_lateral')
 
     # Lateral flow
     if (
