@@ -1,6 +1,11 @@
 # command line args and usage with: python compute_nhd_routing_SingleSeg.py --help
 # example to run test: python compute_nhd_routing_SingleSeg.py -v --test
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -onc -n Mainstems_CONUS
+#                python compute_nhd_routing_SingleSeg.py -n Mainstems_CONUS --nts 1440 --parallel &
+#                python compute_nhd_routing_SingleSeg.py -v --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams --parallel
 
 # a notebook-based version of very similar code is found here:
 # https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
@@ -75,17 +80,24 @@ def _handle_args():
     )
     parser.add_argument(
         "--dt",
-        "--time-step",
+        "--qlateral-time-step",
         help="Set the default timestep length",
         dest="dt",
         default=300,
     )
     parser.add_argument(
         "--nts",
-        "--number-of-timesteps",
+        "--number-of-qlateral-timesteps",
         help="Set the number of timesteps to execute",
         dest="nts",
         default=144,
+    )
+    parser.add_argument(
+        "--N",
+        "--qts_subdivisions",
+        help="number of simulation timesteps per qlateral timestep",
+        dest="qts_subdivisions",
+        default=1,
     )
     parser.add_argument(
         "--ql",
@@ -155,12 +167,21 @@ sys.path.append(fortran_routing_dir)
 
 ## Muskingum Cunge
 COMPILE = True
+def in_wsl() -> bool:
+    """
+    WSL is thought to be the only common Linux kernel with Microsoft in the name.
+    """
+
+    return 'Microsoft' in os.uname().release
+
 if COMPILE:
     try:
         import subprocess
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
+        if in_wsl(): # disable optimization for compiling on WSL 
+            fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
@@ -197,6 +218,8 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
+        if in_wsl(): # disable optimization for compiling on WSL 
+            fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"module_levelpool.f90")
@@ -222,8 +245,9 @@ def compute_network(
     network,
     supernetwork_data,
     waterbody,
-    nts,
-    dt,
+    nts=1,
+    dt=60,
+    qts_subdivisions=1,
     verbose=False,
     debuglevel=0,
     write_csv_output=False,
@@ -233,7 +257,14 @@ def compute_network(
     global connections
 
     flowveldepth = {
-        connection: {"time": [], "flowval": [], "velval": [], "depthval": [],}
+        connection: {
+            "time": [],
+            "qlatCumval": [],
+            "flowval": [],
+            "velval": [],
+            "depthval": [],
+            "storageval": [],
+        }
         for connection in (network["all_segments"])
     }
 
@@ -280,10 +311,12 @@ def compute_network(
                         quc_reach=quc_reach,
                         head_segment=head_segment,
                         reach=reach,
+                        network=network,
                         supernetwork_data=supernetwork_data,
                         waterbody=waterbody,
                         ts=ts,
                         dt=dt,
+                        qts_subdivisions=qts_subdivisions,
                         verbose=verbose,
                         debuglevel=debuglevel,
                         assume_short_ts=assume_short_ts,
@@ -299,6 +332,7 @@ def compute_network(
                         supernetwork_data=supernetwork_data,
                         ts=ts,
                         dt=dt,
+                        qts_subdivisions=qts_subdivisions,
                         verbose=verbose,
                         debuglevel=debuglevel,
                         assume_short_ts=assume_short_ts,
@@ -328,7 +362,7 @@ def compute_network(
             pathToOutputFile=pathToOutputFile,
         )
 
-    return flowveldepth
+    return flowveldepth[terminal_segment]
 
 
 # TODO: generalize with a direction flag
@@ -353,7 +387,7 @@ def compute_reach_upstream_flows(
     qup = 0.0
     quc = 0.0
     ########################
-    if (waterbody) or (head_segment in network["receiving_reaches"]):
+    if waterbody:
         upstreams_list = set()
         for rr in network["receiving_reaches"]:
             for us in connections[rr]["upstreams"]:
@@ -364,16 +398,22 @@ def compute_reach_upstream_flows(
         upstreams_list = upstreams_list - network["all_segments"]
         us_flowveldepth = flowveldepth_connect
 
-    else:
-        us_flowveldepth = flowveldepth
+    elif head_segment in network["receiving_reaches"]:
+        # TODO: confirm this logic, to make sure we don't double count the head
         upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        us_flowveldepth = flowveldepth
+        us_flowveldepth.update(flowveldepth_connect)
+
+    else:
+        upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        us_flowveldepth = flowveldepth
 
     for us in upstreams_list:
         if us != supernetwork_data["terminal_code"]:  # Not Headwaters
-            quc += us_flowveldepth[us]["flowval"][-1]
+            quc += us_flowveldepth[us]["flowval"][ts]
 
             if ts > 0:
-                qup += us_flowveldepth[us]["flowval"][-2]
+                qup += us_flowveldepth[us]["flowval"][ts - 1]
 
     if assume_short_ts:
         quc = qup
@@ -391,6 +431,7 @@ def compute_mc_reach_up2down(
     supernetwork_data=None,
     ts=0,
     dt=60,
+    qts_subdivisions=1,
     verbose=False,
     debuglevel=0,
     assume_short_ts=False,
@@ -422,7 +463,10 @@ def compute_mc_reach_up2down(
         cs = data[supernetwork_data["ChSlp_col"]]
         s0 = data[supernetwork_data["slope_col"]]
 
-        qlat = qlateral[current_segment]["qlatval"][ts]
+        # TODO: update this extremely simplistic handling of timestep adjustment
+        # allow shorter timesteps
+        qts = int(ts / qts_subdivisions)
+        qlat = qlateral[current_segment]["qlatval"][qts]
 
         if ts > 0:
             qdp = flowveldepth[current_segment]["flowval"][-1]
@@ -451,6 +495,13 @@ def compute_mc_reach_up2down(
             velp=velp,
             depthp=depthp,
         )
+        # storage
+        volumec = dt * (quc - qdc + qlat)
+        # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
+        qlatCum = qlat
+        if ts > 0:
+            volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
+            qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
         # for next segment qup / quc use the previous flow values
         if ts > 0:
@@ -461,10 +512,14 @@ def compute_mc_reach_up2down(
         quc = qdc  # input for next segment
         if assume_short_ts:
             quc = qup
-        # need to append with waterbody calculations instead
+
+        # update flowveldepth values for currentsegment for current timestep
+        # flowveldepth[current_segment]["qlatval"].append(qlat)  # NEVER UPDATED
+        flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
         flowveldepth[current_segment]["flowval"].append(qdc)
         flowveldepth[current_segment]["depthval"].append(depthc)
         flowveldepth[current_segment]["velval"].append(velc)
+        flowveldepth[current_segment]["storageval"].append(volumec)
         flowveldepth[current_segment]["time"].append(ts * dt)
 
         next_segment = connections[current_segment]["downstream"]
@@ -487,16 +542,17 @@ def compute_level_pool_reach_up2down(
     quc_reach,
     head_segment=None,
     reach=None,
+    network=None,
     supernetwork_data=None,
     waterbody=None,
     ts=0,
     dt=60,
+    qts_subdivisions=1,
     verbose=False,
     debuglevel=0,
     assume_short_ts=False,
 ):
     global connections
-    # global flowveldepth
     global waterbodies_df
 
     if debuglevel <= -2:
@@ -513,7 +569,9 @@ def compute_level_pool_reach_up2down(
     else:
         depthp = 0
 
-    qlat = qlateral[current_segment]["qlatval"][ts]
+    # This Qlat gathers all segments of the waterbody
+    qts = int(ts / qts_subdivisions)
+    qlat = sum([qlateral[seg]["qlatval"][qts] for seg in network["all_segments"]])
     if debuglevel <= -2:
         print(f"executing reservoir computation on waterbody: {waterbody}")
 
@@ -522,7 +580,7 @@ def compute_level_pool_reach_up2down(
     qi0 = qup
     qi1 = quc
     ql = qlat
-    dt = dt  # current timestep
+    dt = dt  # current timestep length
     ar = waterbodies_df.loc[waterbody][wb_params["level_pool_waterbody_area"]]
     we = waterbodies_df.loc[waterbody][wb_params["level_pool_weir_elevation"]]
     maxh = waterbodies_df.loc[waterbody][
@@ -562,7 +620,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-    header = ["time", "qlat", "q", "v", "d"]
+    header = ["time", "qlat", "qlatCum", "q", "v", "d", "storage"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -579,9 +637,11 @@ def writeArraytoCSV(
                 zip(
                     flowveldepth[current_segment]["time"],
                     qlateral[current_segment]["qlatval"],
+                    flowveldepth[current_segment]["qlatCumval"],
                     flowveldepth[current_segment]["flowval"],
                     flowveldepth[current_segment]["velval"],
                     flowveldepth[current_segment]["depthval"],
+                    flowveldepth[current_segment]["storageval"],
                 )
             )
 
@@ -603,6 +663,7 @@ def writeArraytoNC(
     flowveldepth=None,
     connections=None,
     network=None,
+    qts_subdivisions=1,
     nts=0,
     dt=60,
     verbose=False,
@@ -614,9 +675,11 @@ def writeArraytoNC(
         "segment": [],
         "time": [],
         "qlatval": [],
+        "qlatCumval": [],
         "flowval": [],
         "depthval": [],
         "velval": [],
+        "storageval": [],
     }
 
     ordered_reaches = {}
@@ -637,8 +700,14 @@ def writeArraytoNC(
                 flowveldepth_data["qlatval"].append(
                     qlateral[current_segment]["qlatval"]
                 )
+                flowveldepth_data["qlatCumval"].append(
+                    flowveldepth[current_segment]["qlatCumval"]
+                )
                 flowveldepth_data["flowval"].append(
                     flowveldepth[current_segment]["flowval"]
+                )
+                flowveldepth_data["storageval"].append(
+                    flowveldepth[current_segment]["storageval"]
                 )
                 flowveldepth_data["depthval"].append(
                     flowveldepth[current_segment]["depthval"]
@@ -723,6 +792,13 @@ def writeNC(
     flow[:, :] = np.transpose(np.array(flowveldepth_data["flowval"], dtype=float))
     flow.units = "cu ft/s"
     flow.standard_name = "streamflow"  # this is a CF standard name
+    # write volume
+    storage = ncfile.createVariable(
+        "storage", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    storage[:, :] = np.transpose(np.array(flowveldepth_data["storageval"], dtype=float))
+    storage.units = "cu ft"
+    storage.standard_name = "storage"  # this is a CF standard name
     # write depth
     depth = ncfile.createVariable(
         "depth", np.float64, ("time", "stations")
@@ -746,6 +822,17 @@ def writeNC(
     )
     lateralflow.units = "cu ft/s"  #
     lateralflow.standard_name = "lateralflow"  # this is a CF standard name
+    # write  Cummulitive lateral flow (input from NWM)
+    lateralCumflow = ncfile.createVariable(
+        "Cummulativelateralflow", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    lateralCumflow[:, :] = np.transpose(
+        np.array(flowveldepth_data["qlatCumval"], dtype=float)
+    )
+    lateralCumflow.units = "cu ft/s"  #
+    lateralCumflow.standard_name = (
+        "Cummulativelateralflow"  # this is a CF standard name
+    )
     # write time in seconds since  TODO get time from lateral flow from NWM
     time = ncfile.createVariable("time", np.float64, "time")
     time.units = "seconds since 2011-08-27 00:00:00"  ## TODO get time fron NWM as argument to this function
@@ -770,7 +857,7 @@ def writeNC(
 
 ## call to singlesegment MC Fortran Module
 def singlesegment(
-    dt,  # dt
+    dt=60,  # dt
     qup=None,  # qup
     quc=None,  # quc
     qdp=None,  # qdp
@@ -830,6 +917,7 @@ def main():
     write_nc_output = args.write_nc_output
     assume_short_ts = args.assume_short_ts
     parallel_compute = args.parallel_compute
+    qts_subdivisions = args.qts_subdivisions
 
     run_pocono_test = args.run_pocono_test
     run_route_and_replace = args.run_route_and_replace
@@ -840,8 +928,9 @@ def main():
         # Overwrite the following test defaults
         supernetwork = "Pocono_TEST2"
         break_network_at_waterbodies = False
-        dt = 300
-        nts = 144
+        qts_subdivisions = 1  # change qts_subdivisions = 1 as  default
+        dt = 300 / qts_subdivisions
+        nts = 144 * qts_subdivisions
         write_csv_output = True
         write_nc_output = True
 
@@ -858,20 +947,6 @@ def main():
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
-
-    # TODO: Make these commandline args
-    """##NHD Subset (Brazos/Lower Colorado)"""
-    # supernetwork = 'Brazos_LowerColorado_Named_Streams'
-    # supernetwork = 'Brazos_LowerColorado_ge5'
-    # supernetwork = 'Pocono_TEST1'
-    # supernetwork = 'Pocono_TEST2'
-    """##NHD CONUS order 5 and greater"""
-    # supernetwork = 'CONUS_ge5'
-    """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
-    # supernetwork = 'CONUS_FULL_RES_v20'
-    # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
-    # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
     if verbose:
         print("creating supernetwork connections set")
@@ -951,6 +1026,13 @@ def main():
 
     for index, row in ql.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
+
+    # Define the pool after we create the static global objects (and collect the garbage)
+    if parallel_compute:
+        import gc
+        gc.collect()
+        pool = multiprocessing.Pool()
+
     ######################
     if break_network_at_waterbodies:
 
@@ -982,6 +1064,7 @@ def main():
     else:
         max_network_seqorder = 0
         ordered_networks = {}
+        # TODO: Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
         ordered_networks[0] = [
             [terminal_segment, network]
             for terminal_segment, network in networks.items()
@@ -1013,6 +1096,7 @@ def main():
                         waterbody=waterbody,
                         nts=nts,
                         dt=dt,
+                        qts_subdivisions=qts_subdivisions,
                         verbose=verbose,
                         debuglevel=debuglevel,
                         write_csv_output=write_csv_output,
@@ -1024,9 +1108,6 @@ def main():
                     print("... in %s seconds." % (time.time() - start_time))
 
             else:  # parallel execution
-                # for terminal_segment, network in networks.items():
-                #    print(terminal_segment, network)
-                # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
 
                 nslist.append(
                     [
@@ -1037,6 +1118,7 @@ def main():
                         waterbody,
                         nts,
                         dt,
+                        qts_subdivisions,
                         verbose,
                         debuglevel,
                         write_csv_output,
@@ -1047,14 +1129,22 @@ def main():
         if parallel_compute:
             if verbose:
                 print(f"executing parallel computation on networks of order {nsq} ... ")
-            with multiprocessing.Pool() as pool:
+            with pool:
+            # with multiprocessing.Pool() as pool:
                 results = pool.starmap(compute_network, nslist)
 
-        if nsq > 0:
-            flowveldepth_connect = {}
+        if (
+            nsq > 0
+        ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
+            flowveldepth_connect = (
+                {}
+            )  # There is no need to preserve previously passed on values -- so we clear the dictionary
             for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
                 seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
-                flowveldepth_connect[seg] = results[i][seg]
+                flowveldepth_connect[seg] = {}
+                flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
+
+    pool.close()
 
     if verbose:
         print("ordered reach computation complete")
@@ -1064,3 +1154,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
