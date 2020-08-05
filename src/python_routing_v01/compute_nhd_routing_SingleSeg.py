@@ -992,7 +992,7 @@ def main():
     qlateral = {connection: {"qlatval": [],} for connection in connections}
     
     if (
-        run_route_and_replace
+        run_route_and_replace_test
     ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
             root, "test/input/RR_OUTPUTS"
