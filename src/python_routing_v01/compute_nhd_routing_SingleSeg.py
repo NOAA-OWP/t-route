@@ -1025,6 +1025,7 @@ def main():
     else:
         max_network_seqorder = 0
         ordered_networks = {}
+        # TODO: Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
         ordered_networks[0] = [
             [terminal_segment, network]
             for terminal_segment, network in networks.items()
