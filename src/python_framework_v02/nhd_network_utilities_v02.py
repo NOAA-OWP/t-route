@@ -302,7 +302,7 @@ def set_supernetwork_data(
                 "downstream": "to",
                 "dx": "Length",
                 "n": "n",
-                "ncc", "nCC",
+                "ncc": "nCC",
                 "s0": "So",
                 "bw": "BtmWdth",
                 "tw": "TopWdth",
@@ -326,7 +326,7 @@ def set_supernetwork_data(
                 "orifice_elevation": "OrificeE",
                 "oriface_coefficient": "OrificeC",
                 "oriface_are": "OrifaceA"
-            }
+            },
             "waterbody_null_code": -9999,
             "title_string": "CONUS Full Resolution NWM v2.0",
             "driver_string": "NetCDF",
