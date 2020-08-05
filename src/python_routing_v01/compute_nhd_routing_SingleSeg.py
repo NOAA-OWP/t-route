@@ -362,7 +362,7 @@ def compute_network(
             pathToOutputFile=pathToOutputFile,
         )
 
-    return flowveldepth[terminal_segment]
+    return {terminal_segment:flowveldepth[terminal_segment]}
 
 
 # TODO: generalize with a direction flag
@@ -1028,12 +1028,6 @@ def main():
     for index, row in ql.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
 
-    # Define the pool after we create the static global objects (and collect the garbage)
-    if parallel_compute:
-        import gc
-        gc.collect()
-        pool = multiprocessing.Pool()
-
     ######################
     if break_network_at_waterbodies:
 
@@ -1070,6 +1064,12 @@ def main():
             [terminal_segment, network]
             for terminal_segment, network in networks.items()
         ]
+
+    # Define the pool after we create the static global objects (and collect the garbage)
+    if parallel_compute:
+        import gc
+        gc.collect()
+        pool = multiprocessing.Pool()
 
     flowveldepth_connect = {}
     for nsq in range(max_network_seqorder, -1, -1):
@@ -1130,9 +1130,9 @@ def main():
         if parallel_compute:
             if verbose:
                 print(f"executing parallel computation on networks of order {nsq} ... ")
-            with pool:
+            #with pool:
             # with multiprocessing.Pool() as pool:
-                results = pool.starmap(compute_network, nslist)
+            results = pool.starmap(compute_network, nslist)
 
         if (
             nsq > 0
@@ -1145,6 +1145,8 @@ def main():
                 seg = terminal_segment
                 flowveldepth_connect[seg] = {}
                 flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
+
+    pool.close()
 
     if verbose:
         print("ordered reach computation complete")
