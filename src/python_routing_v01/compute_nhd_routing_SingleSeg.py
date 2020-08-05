@@ -246,7 +246,6 @@ else:
 def compute_network(
     flowveldepth_connect,
     terminal_segment,
-    network,
     supernetwork_data,
     waterbody,
     nts=1,
@@ -259,6 +258,9 @@ def compute_network(
     assume_short_ts=False,
 ):
     global connections
+    global networks
+
+    network = networks[terminal_segment]
 
     flowveldepth = {
         connection: {
@@ -1095,7 +1097,6 @@ def main():
                     compute_network(
                         flowveldepth_connect=flowveldepth_connect,
                         terminal_segment=terminal_segment,
-                        network=network,
                         supernetwork_data=supernetwork_data,
                         waterbody=waterbody,
                         nts=nts,
@@ -1117,7 +1118,6 @@ def main():
                     [
                         flowveldepth_connect,
                         terminal_segment,
-                        network,
                         supernetwork_data,  # TODO: This should probably be global...
                         waterbody,
                         nts,
