@@ -1023,7 +1023,7 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
-    flowveldepth_connect = None
+    flowveldepth_connect = {}
     for nsq in range(max_network_seqorder, -1, -1):
 
         if parallel_compute:
@@ -1061,9 +1061,6 @@ def main():
                     print("... in %s seconds." % (time.time() - start_time))
 
             else:  # parallel execution
-                # for terminal_segment, network in networks.items():
-                #    print(terminal_segment, network)
-                # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
 
                 nslist.append(
                     [
