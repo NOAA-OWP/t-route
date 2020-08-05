@@ -24,7 +24,8 @@ import csv
 from datetime import datetime
 import multiprocessing
 import glob
-import xarray as xr 
+import xarray as xr
+
 
 def _handle_args():
     # TODO: Convert to global argparser
@@ -167,12 +168,15 @@ sys.path.append(fortran_routing_dir)
 
 ## Muskingum Cunge
 COMPILE = True
+
+
 def in_wsl() -> bool:
     """
     WSL is thought to be the only common Linux kernel with Microsoft in the name.
     """
 
-    return 'Microsoft' in os.uname().release
+    return "Microsoft" in os.uname().release
+
 
 if COMPILE:
     try:
@@ -180,7 +184,7 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-        if in_wsl(): # disable optimization for compiling on WSL 
+        if in_wsl():  # disable optimization for compiling on WSL
             fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
@@ -218,7 +222,7 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-        if in_wsl(): # disable optimization for compiling on WSL 
+        if in_wsl():  # disable optimization for compiling on WSL
             fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
@@ -362,7 +366,7 @@ def compute_network(
             pathToOutputFile=pathToOutputFile,
         )
 
-    return {terminal_segment:flowveldepth[terminal_segment]}
+    return {terminal_segment: flowveldepth[terminal_segment]}
 
 
 # TODO: generalize with a direction flag
@@ -990,13 +994,11 @@ def main():
 
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
-    
+
     if (
         run_route_and_replace_test
     ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-        ql_input_folder = os.path.join(
-            root, "test/input/RR_OUTPUTS"
-        )
+        ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
         all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
 
         li = []
@@ -1009,7 +1011,7 @@ def main():
 
         frame = pd.concat(li, axis=0, ignore_index=False)
         mod = frame.reset_index()
-        ql = mod.pivot(index='station_id', columns='time', values='q_lateral')
+        ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
 
     # Lateral flow
     elif (
@@ -1068,6 +1070,7 @@ def main():
     # Define the pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
         import gc
+
         gc.collect()
         pool = multiprocessing.Pool()
 
@@ -1130,7 +1133,7 @@ def main():
         if parallel_compute:
             if verbose:
                 print(f"executing parallel computation on networks of order {nsq} ... ")
-            #with pool:
+            # with pool:
             # with multiprocessing.Pool() as pool:
             results = pool.starmap(compute_network, nslist)
 
@@ -1141,12 +1144,13 @@ def main():
                 {}
             )  # There is no need to preserve previously passed on values -- so we clear the dictionary
             for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
-                #seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                # seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
                 seg = terminal_segment
                 flowveldepth_connect[seg] = {}
                 flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
 
-    pool.close()
+    if parallel_compute:
+        pool.close()
 
     if verbose:
         print("ordered reach computation complete")
@@ -1156,4 +1160,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
