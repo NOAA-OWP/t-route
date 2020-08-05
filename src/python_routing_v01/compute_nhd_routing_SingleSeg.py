@@ -1,6 +1,11 @@
 # command line args and usage with: python compute_nhd_routing_SingleSeg.py --help
 # example to run test: python compute_nhd_routing_SingleSeg.py -v --test
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -onc -n Mainstems_CONUS
+#                python compute_nhd_routing_SingleSeg.py -n Mainstems_CONUS --nts 1440 --parallel &
+#                python compute_nhd_routing_SingleSeg.py -v --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams --parallel
 
 # a notebook-based version of very similar code is found here:
 # https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
