@@ -917,7 +917,7 @@ def main():
             print("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
         supernetwork = "Pocono_TEST2"
-        break_network_at_waterbodies = (False,)
+        break_network_at_waterbodies = False
         qts_subdivisions = 1  # change qts_subdivisions = 1 as  default
         dt = 300 / qts_subdivisions
         nts = 144 * qts_subdivisions
