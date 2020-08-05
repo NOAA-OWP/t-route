@@ -23,7 +23,8 @@ import netCDF4
 import csv
 from datetime import datetime
 import multiprocessing
-
+import glob
+import xarray as xr 
 
 def _handle_args():
     # TODO: Convert to global argparser
@@ -49,6 +50,12 @@ def _handle_args():
         "--test" "--run-pocono-test-example",
         help="Use the data values stored in the repository for a test of the Pocono network",
         dest="run_pocono_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--test2" "--run-Mainstems-test-example",
+        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
+        dest="run_route_and_replace_test",
         action="store_true",
     )
     parser.add_argument(
@@ -86,7 +93,7 @@ def _handle_args():
         default=144,
     )
     parser.add_argument(
-        "--N",
+        "--qN",
         "--qts_subdivisions",
         help="number of simulation timesteps per qlateral timestep",
         dest="qts_subdivisions",
@@ -913,6 +920,7 @@ def main():
     qts_subdivisions = args.qts_subdivisions
 
     run_pocono_test = args.run_pocono_test
+    run_route_and_replace_test = args.run_route_and_replace_test
 
     if run_pocono_test:
         if verbose:
@@ -925,6 +933,18 @@ def main():
         nts = 144 * qts_subdivisions
         write_csv_output = True
         write_nc_output = True
+
+    if run_route_and_replace_test:
+        if verbose:
+            print("running test case for Mainstems_CONUS domain")
+        # Overwrite the following test defaults
+        supernetwork = "Mainstems_CONUS"
+        break_network_at_waterbodies = True
+        qts_subdivisions = 12
+        dt = 3600 / qts_subdivisions
+        nts = 120 * qts_subdivisions
+        write_csv_output = False
+        write_nc_output = False
 
     test_folder = os.path.join(root, r"test")
     geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -970,9 +990,29 @@ def main():
 
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
+    
+    if (
+        run_route_and_replace
+    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+        ql_input_folder = os.path.join(
+            root, "test/input/RR_OUTPUTS"
+        )
+        all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
+
+        li = []
+
+        for filename in all_files:
+            ds = xr.open_dataset(filename)
+            df1 = ds.to_dataframe()
+
+            li.append(df1)
+
+        frame = pd.concat(li, axis=0, ignore_index=False)
+        mod = frame.reset_index()
+        ql = mod.pivot(index='station_id', columns='time', values='q_lateral')
 
     # Lateral flow
-    if (
+    elif (
         run_pocono_test
     ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
@@ -1101,11 +1141,10 @@ def main():
                 {}
             )  # There is no need to preserve previously passed on values -- so we clear the dictionary
             for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
-                seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                #seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                seg = terminal_segment
                 flowveldepth_connect[seg] = {}
                 flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
-
-    pool.close()
 
     if verbose:
         print("ordered reach computation complete")
