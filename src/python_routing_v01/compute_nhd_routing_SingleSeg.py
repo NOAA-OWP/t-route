@@ -388,9 +388,6 @@ def compute_reach_upstream_flows(
 
     elif head_segment in network["receiving_reaches"]:
         # TODO: confirm this logic, to make sure we don't double count the head
-        import pdb
-
-        pdb.set_trace
         upstreams_list = connections[reach["reach_head"]]["upstreams"]
         us_flowveldepth = flowveldepth
         us_flowveldepth.update(flowveldepth_connect)
@@ -401,10 +398,10 @@ def compute_reach_upstream_flows(
 
     for us in upstreams_list:
         if us != supernetwork_data["terminal_code"]:  # Not Headwaters
-            quc += us_flowveldepth[us]["flowval"][-1]
+            quc += us_flowveldepth[us]["flowval"][ts]
 
             if ts > 0:
-                qup += us_flowveldepth[us]["flowval"][-2]
+                qup += us_flowveldepth[us]["flowval"][ts - 1]
 
     if assume_short_ts:
         quc = qup
@@ -1094,7 +1091,8 @@ def main():
             )  # There is no need to preserve previously passed on values -- so we clear the dictionary
             for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
                 seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
-                flowveldepth_connect[seg] = results[i][seg]
+                flowveldepth_connect[seg] = {}
+                flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
 
     if verbose:
         print("ordered reach computation complete")
