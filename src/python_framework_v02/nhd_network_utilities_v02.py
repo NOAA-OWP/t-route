@@ -38,24 +38,41 @@ def set_supernetwork_data(
             "geo_file_path": os.path.join(
                 geo_input_folder, "PoconoSampleData1", "PoconoSampleRouteLink1.shp"
             ),
-            "key_col": "link",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "manningncc_col": "nCC",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "waterbody_col": "NHDWaterbo",
+            "columns": {
+                "key": "link",
+                "downstream": "to",
+                "dx": "Length",
+                "n": "n",
+                "ncc": "nCC",
+                "s0": "So",
+                "bw": "BtmWdth",
+                "waterbody": "NHDWaterbo",
+                "tw": "TopWdth",
+                "twcc": "TopWdthCC",
+                "musk": "MusK",
+                "musx": "MusX",
+                "cs": "ChSlp",
+            },
             "waterbody_null_code": -9999,
-            "topwidth_col": "TopWdth",
-            "topwidthcc_col": "TopWdthCC",
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
             "title_string": "Pocono Test Example",
             "driver_string": "ESRI Shapefile",
             "terminal_code": 0,
             "layer_string": 0,
+            "waterbody_parameter_file_type": "Level_Pool",
+            "waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                ),
+            "waterbody_parameter_columns": {
+                "waterbody_area": "LkArea",  # area of reservoir
+                "weir_elevation": "WeirE",
+                "waterbody_max_elevation": "LkMxE",
+                "outfall_weir_coefficient": "WeirC",
+                "outfall_weir_length": "WeirL",
+                "overall_dam_length": "DamL",
+                "orifice_elevation": "OrificeE",
+                "orifice_coefficient": "OrificeC",
+                "orifice_area": "OrificeA",
+            }
         }
     elif supernetwork == "Pocono_TEST2":
         rv = set_supernetwork_data(
@@ -126,15 +143,19 @@ def set_supernetwork_data(
             "geo_file_path": os.path.join(
                 geo_input_folder, "Channels", "NHD_BrazosLowerColorado_Channels.shp"
             ),
-            "key_col": "featureID",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
+            "columns": {
+                "key": "featureID",
+                "downstream": "to",
+                "waterbody": "NHDWaterbo",
+                "dx": "Length",
+                "n": "n",
+                "s0": "So",
+                "bw": "BtmWdth",
+                "musk": "MusK",
+                "musx": "MusX",
+                "cs": "ChSlp"
+            },
+            "waterbody_null_code": -9999,
             "title_string": "NHD Subset including Brazos + Lower Colorado\nNHD stream orders 5 and greater",
             "driver_string": "ESRI Shapefile",
             "terminal_code": 0,
@@ -276,20 +297,37 @@ def set_supernetwork_data(
                 geo_input_folder, "Channels", sep.join([ROUTELINK, ModelVer, ext])
             ),
             "data_link": f"https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/{ModelVer}/parm/domain/{ROUTELINK}{sep}{ext}",
-            "key_col": "link",
-            "downstream_col": "to",
-            "length_col": "Length",
-            "manningn_col": "n",
-            "manningncc_col": "nCC",
-            "slope_col": "So",
-            "bottomwidth_col": "BtmWdth",
-            "topwidth_col": "TopWdth",
-            "topwidthcc_col": "TopWdthCC",
-            "waterbody_col": "NHDWaterbodyComID",
+            "columns": {
+                "key": "link",
+                "downstream": "to",
+                "dx": "Length",
+                "n": "n",
+                "ncc", "nCC",
+                "s0": "So",
+                "bw": "BtmWdth",
+                "tw": "TopWdth",
+                "twcc": "TopWdthCC",
+                "waterbody": "NHDWaterbodyComID",
+                "musk": "MusK",
+                "musx": "MusX",
+                "cs": "ChSlp"
+            },
+            "waterbody_parameter_file_type": "Level_Pool",
+            "waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                ),
+            "waterbody_parameter_columns": {
+                "waterbody_area": "LkArea",
+                "weir_elevation": "WeirE",
+                "waterbody_max_elevation": "LkMxE",
+                "outfall_weir_coefficient": "WeirC",
+                "outfall_weir_length": "WeirL",
+                "overall_dam_length": "DamL",
+                "orifice_elevation": "OrificeE",
+                "oriface_coefficient": "OrificeC",
+                "oriface_are": "OrifaceA"
+            }
             "waterbody_null_code": -9999,
-            "MusK_col": "MusK",
-            "MusX_col": "MusX",
-            "ChSlp_col": "ChSlp",
             "title_string": "CONUS Full Resolution NWM v2.0",
             "driver_string": "NetCDF",
             "terminal_code": 0,
@@ -299,5 +337,13 @@ def set_supernetwork_data(
     elif supernetwork == "custom":
         custominput = os.path.join(geo_input_folder)
         with open(custominput, "r") as json_file:
-            data = json.load(json_file)
+            return json.load(json_file)
             # TODO: add error trapping for potentially missing files
+
+
+def reverse_dict(d):
+    """
+    Reverse a 1-1 mapping
+    Values must be hashable!
+    """
+    return {v: k for k, v in d.items()}
