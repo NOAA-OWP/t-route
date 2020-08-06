@@ -283,7 +283,7 @@ def compute_network(
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
             ordered_reaches[reach["seqorder"]] = []
-        ordered_reaches[reach["seqorder"]].append([head_segment, reach])
+        ordered_reaches[reach["seqorder"]].append((head_segment, reach))
 
     # initialize write to files variable
     writeToCSV = write_csv_output
@@ -692,7 +692,7 @@ def writeArraytoNC(
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
             ordered_reaches[reach["seqorder"]] = []
-        ordered_reaches[reach["seqorder"]].append([head_segment, reach])
+        ordered_reaches[reach["seqorder"]].append((head_segment, reach))
 
     # get data into array - preparation step
     TIME_WRITTEN = False
@@ -1058,14 +1058,14 @@ def main():
             if network["network_seqorder"] not in ordered_networks:
                 ordered_networks[network["network_seqorder"]] = []
             ordered_networks[network["network_seqorder"]].append(
-                [terminal_segment, network]
+                (terminal_segment, network)
             )
     else:
         max_network_seqorder = 0
         ordered_networks = {}
         # TODO: Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
         ordered_networks[0] = [
-            [terminal_segment, network]
+            (terminal_segment, network)
             for terminal_segment, network in networks.items()
         ]
 
