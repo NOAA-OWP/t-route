@@ -899,6 +899,10 @@ def singlesegment(
     )
     # return qdc, vel, depth
 
+def sort_ordered_network(l, reverse=False):
+    key = lambda x: x[1]["maximum_reach_seqorder"]
+    l.sort(key = key, reverse = reverse)
+    return l
 
 # Main Routine
 def main():
@@ -1068,6 +1072,9 @@ def main():
             (terminal_segment, network)
             for terminal_segment, network in networks.items()
         ]
+
+    for nsq in range(max_network_seqorder, -1, -1): 
+        sort_ordered_network(ordered_networks[nsq],True)
 
     # Define the pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
