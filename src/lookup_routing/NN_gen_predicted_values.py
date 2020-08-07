@@ -31,6 +31,8 @@ def main(
     regr,
     AL,
     num_samp_pred,
+    Y_max,
+    Y_min,
 ):
     # select the number of points you'd like to sample
    
@@ -72,6 +74,7 @@ def main(
     mean_rel_errors_list = []
     max_rel_errors_list = []
     for i in range(num_samp_pred):
+        temp_y_list = []
         temp_y = nwm_single_segment.singlesegment(
             dt=dt,
             qup=qup[i],
@@ -89,7 +92,10 @@ def main(
             velp=velp,
             depthp=depthp[i],
         )
-
+        temp_y_list.append(temp_y[0])
+        
+        # for i in range(0,len(temp_y_list)):
+        #     temp_y_list[i] = NN_normalization.normalize(temp_y_list[i],Y_max,Y_min)
         temp_y_interp = regr.predict(
             np.array(
                 [
@@ -112,6 +118,7 @@ def main(
                 ]
             )
         )
+        temp_y_interp = NN_normalization.denormalize(temp_y_interp,Y_max,Y_min)
         # calculates errors
         if i % 1000 == 0:
             print(i)
