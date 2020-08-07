@@ -1,10 +1,3 @@
-Author:      Jacob Hreha, Lynker Technologies/NOAA
-Created:     7/28/2020
-
-National Water Center 
-Office of Water Prediction
-205 Hackberry Ln, Tuscaloosa, AL 35401
-
 #Title
 **Neural Network Substitution-based routing for the National Water Model
 version 3.0**
@@ -42,12 +35,12 @@ Run the file located at  https://github.com/NOAA-OWP/t-route/blob/master/src/for
 Substitute for MC single segment
 
 #Components
--=Main=- NNFullCombos.py :
+Main - NNFullCombos.py :
 Run this file to generate the model and predictions.
 
 **NN_argpase.py** :
-List of default prototyping values for command line input. Ex.1) "python3 NNFullCombos.py --epochs 5" will change the default number of epochs from 3 to 5.
-Ex.2) "python3 NNFullCombos.py --batch_size 5000" will change the batch size from a default of 1000 to 5000 for this run. 
+List of default prototyping values for command line input. Ex.1) `python3 NNFullCombos.py --epochs 5` will change the default number of epochs from 3 to 5.
+Ex.2) `python3 NNFullCombos.py --batch_size 5000` will change the batch size from a default of 1000 to 5000 for this run. 
 
 **NN_gen_training_data.py** : 
 Generates training data based on the min to max of each parameter and a specified number of slices between the two. For example, if the min=1 and max=3 for
@@ -123,3 +116,11 @@ Jacob E. Hreha, James S. Halgren,  Adam N. Wlostowski,  Alexander A. Maestre,  D
 **Project status**
 Looking to improve the model accuracy beyond its current threshold. Model is reaching a limit of about +-.01 and we would like to see that improved by at least one order of magnitude. 
 Not sure if the model is rounding heavily or incapable of obtaining that level of accuracy because of a backend issue. 
+
+Author:      Jacob Hreha, Lynker Technologies/NOAA
+Created:     7/28/2020
+
+National Water Center 
+Office of Water Prediction
+205 Hackberry Ln, Tuscaloosa, AL 35401
+
