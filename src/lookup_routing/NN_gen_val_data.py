@@ -28,7 +28,9 @@ def main(
     tw_max,
     bw_min,
     bw_max,
-    num_samp_val
+    num_samp_val,
+    Y_max,
+    Y_min
 
 ):
     
@@ -100,6 +102,9 @@ def main(
             depthp=depthp[i],
         )
         VAL_y.append(S[0])
+
+    for i in range(0,len(VAL_y)):
+        VAL_y[i] = NN_normalization.normalize(VAL_y[i],Y_max,Y_min)
     VAL_x = np.array(VAL_x)
     VAL_y = np.array(VAL_y)
     return (VAL_x, VAL_y)
