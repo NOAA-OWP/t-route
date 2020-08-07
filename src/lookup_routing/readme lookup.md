@@ -1,8 +1,7 @@
-#Title
-**Neural Network Substitution-based routing for the National Water Model
-version 3.0**
+# Neural Network Substitution-based routing for the National Water Model
+version 3.0
 
-#Description
+# Description
 The National Water Model (NWM) is a hydrologic model that simulates observed and forecast
 streamflow of approximately 2.7 million stream segments in the continental US (CONUS). The
 channel routing computation of the current operational NWM is based on the Muskingum-Cunge
@@ -25,16 +24,16 @@ We developed modifications to the model to make the prototyping of parameters mo
 Finally, we explored if the application of neural networks could be applied to other
 computationally heavy processes in the NWM.
 
-#Installation
+# Installation
 Install Python3
 Install Tensorflow
 Install Keras
 Run the file located at  https://github.com/NOAA-OWP/t-route/blob/master/src/fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS/mc_sseg_stime_NOLOOP_demo.py to generate a required file.
 
-#Usage
+# Usage
 Substitute for MC single segment
 
-#Components
+# Components
 Main - NNFullCombos.py :
 Run this file to generate the model and predictions.
 
@@ -102,18 +101,18 @@ parser.add_argument(
         default=4,
     )
 
-**Support**
+# Support
 https://github.com/NOAA-OWP/t-route/
 
-**Contributing**
+# Contributing
 https://github.com/NOAA-OWP/t-route/
 
 Open to the public 
 
-**Authors and acknowledgment**
+# Authors and acknowledgment
 Jacob E. Hreha, James S. Halgren,  Adam N. Wlostowski,  Alexander A. Maestre,  Dong Ha Kim
 
-**Project status**
+# Project status
 Looking to improve the model accuracy beyond its current threshold. Model is reaching a limit of about +-.01 and we would like to see that improved by at least one order of magnitude. 
 Not sure if the model is rounding heavily or incapable of obtaining that level of accuracy because of a backend issue. 
 
