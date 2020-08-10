@@ -384,7 +384,7 @@ def set_supernetwork_data(
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameters": {
                 "level_pool_waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_RnR.nc"
                 ),
                 "level_pool_waterbody_area": "LkArea",  # area of reservoir
                 "level_pool_weir_elevation": "WeirE",

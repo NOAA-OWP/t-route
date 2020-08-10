@@ -126,6 +126,7 @@ def _handle_args():
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
+            "custom",
             "Pocono_TEST1",
             "Pocono_TEST2",
             "LowerColorado_Conchos_FULL_RES",
@@ -149,8 +150,19 @@ def _handle_args():
         dest="parallel_compute",
         action="store_true",
     )
+    parser.add_argument(
+        "-f",
+        "--customnetworkfile",
+        dest="customnetworkfile",
+        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example.",
+    )
 
     return parser.parse_args()
+
+    if args.supernetwork == "custom" and not args.customnetworkfile:
+        parser.error(
+            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
+        )
 
 
 root = pathlib.Path("../..").resolve()
@@ -957,7 +969,11 @@ def main():
         write_nc_output = False
 
     test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    
+    if args.supernetwork == "custom":
+        geo_input_folder = args.customnetworkfile
+    else:
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     if verbose:
         print("creating supernetwork connections set")
@@ -1003,10 +1019,13 @@ def main():
 
     if (
         run_route_and_replace_test
-    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
+    ):  # test 2. Take lateral flow from wrf-hydro r&r output 
         ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
         all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
-
+        #build a time string to specify input date 
+        time_string = '2020-03-19_18:00_DOMAIN1'
+        initial_input_folder = os.path.join(root, "/restart/HYDRO_RST." + time_string)
+        #
         li = []
 
         for filename in all_files:
@@ -1018,6 +1037,34 @@ def main():
         frame = pd.concat(li, axis=0, ignore_index=False)
         mod = frame.reset_index()
         ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
+
+        mod = mod.set_index('station')
+        mod = mod[:109223]
+
+        ds2 = xr.open_dataset(initial_input_folder)
+        qdf = ds2.to_dataframe()
+        qdf = qdf.reset_index()
+        qdf = qdf.set_index(['links'])
+        qdf = qdf[:109223]
+        
+        mod = mod.join(qdf)
+        mod = mod.drop(columns=(['time','streamflow','nudge','q_lateral','velocity','qSfcLatRunoff','qBucket','lakes','resht','qlakeo']))
+        mod = mod.reset_index()
+        mod = mod.set_index(['station_id'])
+        q_initial = mod
+
+        #read initial states from r&r output
+        resdf = ds2.to_dataframe()
+        resdf = resdf.reset_index()
+        resdf = resdf.set_index(['links'])
+        resdf = resdf.drop(columns=(['qlink1','qlink2']))
+        resdf = resdf.loc[0]
+        resdf = resdf.reset_index()
+        resdf = resdf.set_index(['lakes'])
+        resdf = resdf.drop(columns=(['links']))
+        init_waterbody_states = resdf
+
+    ###
 
     # Lateral flow
     elif (
