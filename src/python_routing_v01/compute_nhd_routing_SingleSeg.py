@@ -587,20 +587,20 @@ def compute_level_pool_reach_up2down(
     qi1 = quc
     ql = qlat
     dt = dt  # current timestep length
-    ar = waterbodies_df.loc[waterbody][wb_params["level_pool_waterbody_area"]]
-    we = waterbodies_df.loc[waterbody][wb_params["level_pool_weir_elevation"]]
-    maxh = waterbodies_df.loc[waterbody][
+    ar = waterbodies_df.loc[waterbody, wb_params["level_pool_waterbody_area"]]
+    we = waterbodies_df.loc[waterbody, wb_params["level_pool_weir_elevation"]]
+    maxh = waterbodies_df.loc[waterbody, 
         wb_params["level_pool_waterbody_max_elevation"]
     ]
-    wc = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_coefficient"]]
-    wl = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_length"]]
+    wc = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_coefficient"]]
+    wl = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_length"]]
     # TODO: find the right value for this variable -- it should be in the parameter file!
     dl = (
         10 * wl
-    )  # waterbodies_df.loc[waterbody][wb_params["level_pool_overall_dam_length"]]
-    oe = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_elevation"]]
-    oc = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_coefficient"]]
-    oa = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_area"]]
+    )  # waterbodies_df.loc[waterbody, wb_params["level_pool_overall_dam_length"]]
+    oe = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_elevation"]]
+    oc = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_coefficient"]]
+    oa = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_area"]]
 
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
@@ -1049,6 +1049,7 @@ def main():
             ],
             waterbodies_values,
         )
+        waterbodies_df.sort_index(axis='index').sort_index(axis='columns')
         nru.order_networks(connections, networks, connections_tailwaters)
 
         max_network_seqorder = -1
