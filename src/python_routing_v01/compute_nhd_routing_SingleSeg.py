@@ -602,15 +602,26 @@ def compute_level_pool_reach_up2down(
     oc = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_coefficient"]]
     oa = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_area"]]
 
+
+
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
     )
 
+    volumec = dt * (quc - qdc + qlat)
+    # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
+    qlatCum = qlat
+    if ts > 0:
+        volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
+        qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
+
+        
     flowveldepth[current_segment]["flowval"].append(qdc)
     flowveldepth[current_segment]["depthval"].append(depthc)
     flowveldepth[current_segment]["velval"].append(0)
     flowveldepth[current_segment]["time"].append(ts * dt)
-
+    flowveldepth[current_segment]["storageval"].append(volumec)
+    flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
 
 # ### Psuedocode
 # Write Array  to CSV file
