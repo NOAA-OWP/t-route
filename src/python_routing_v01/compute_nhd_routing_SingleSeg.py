@@ -1051,7 +1051,7 @@ def main():
         mod = mod.drop(columns=(['time','streamflow','nudge','q_lateral','velocity','qSfcLatRunoff','qBucket','lakes','resht','qlakeo']))
         mod = mod.reset_index()
         mod = mod.set_index(['station_id'])
-        q_initial = mod
+        q_initial_states = mod
 
         #read initial states from r&r output
         resdf = ds2.to_dataframe()
@@ -1096,6 +1096,7 @@ def main():
             ],
             waterbodies_values,
         )
+        # print(waterbodies_df)
         nru.order_networks(connections, networks, connections_tailwaters)
 
         max_network_seqorder = -1
