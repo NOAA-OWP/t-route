@@ -599,30 +599,41 @@ def compute_level_pool_reach_up2down(
     qi1 = quc
     ql = qlat
     dt = dt  # current timestep length
-    ar = waterbodies_df.loc[waterbody][wb_params["level_pool_waterbody_area"]]
-    we = waterbodies_df.loc[waterbody][wb_params["level_pool_weir_elevation"]]
-    maxh = waterbodies_df.loc[waterbody][
+    ar = waterbodies_df.loc[waterbody, wb_params["level_pool_waterbody_area"]]
+    we = waterbodies_df.loc[waterbody, wb_params["level_pool_weir_elevation"]]
+    maxh = waterbodies_df.loc[waterbody, 
         wb_params["level_pool_waterbody_max_elevation"]
     ]
-    wc = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_coefficient"]]
-    wl = waterbodies_df.loc[waterbody][wb_params["level_pool_outfall_weir_length"]]
+    wc = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_coefficient"]]
+    wl = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_length"]]
     # TODO: find the right value for this variable -- it should be in the parameter file!
     dl = (
         10 * wl
-    )  # waterbodies_df.loc[waterbody][wb_params["level_pool_overall_dam_length"]]
-    oe = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_elevation"]]
-    oc = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_coefficient"]]
-    oa = waterbodies_df.loc[waterbody][wb_params["level_pool_orifice_area"]]
+    )  # waterbodies_df.loc[waterbody, wb_params["level_pool_overall_dam_length"]]
+    oe = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_elevation"]]
+    oc = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_coefficient"]]
+    oa = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_area"]]
+
+
 
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
     )
 
+    volumec = dt * (quc - qdc + qlat)
+    # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
+    qlatCum = qlat
+    if ts > 0:
+        volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
+        qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
+
+        
     flowveldepth[current_segment]["flowval"].append(qdc)
     flowveldepth[current_segment]["depthval"].append(depthc)
     flowveldepth[current_segment]["velval"].append(0)
     flowveldepth[current_segment]["time"].append(ts * dt)
-
+    flowveldepth[current_segment]["storageval"].append(volumec)
+    flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
 
 # ### Psuedocode
 # Write Array  to CSV file
@@ -1031,11 +1042,8 @@ def main():
         #
        
         ql = nnu.get_ql_from_wrf_hydro(all_files)
-        
-        # (
-        #     q_initial_states,
-        #     ds2
-         q_initial_states = nnu.get_stream_restart_from_wrf_hydro(all_files,initial_input_file)
+
+        q_initial_states = nnu.get_stream_restart_from_wrf_hydro(all_files,initial_input_file)
 
         init_waterbody_states = nnu.get_reservoir_restart_from_wrf_hydro(initial_input_file)
         
@@ -1071,7 +1079,7 @@ def main():
             ],
             waterbodies_values,
         )
-        # print(waterbodies_df)
+        waterbodies_df.sort_index(axis='index').sort_index(axis='columns')
         nru.order_networks(connections, networks, connections_tailwaters)
 
         max_network_seqorder = -1
