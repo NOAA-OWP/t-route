@@ -695,7 +695,7 @@ def get_ql_from_wrf_hydro(input_files):
 
     return ql
 
-def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initial_input_folder):
+def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initial_input_file):
     all_files = input_files
     li = []
 
@@ -711,7 +711,7 @@ def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initia
     mod = mod.set_index('station')
     mod = mod[:109223]
 
-    ds2 = xr.open_dataset(initial_input_folder)
+    ds2 = xr.open_dataset(initial_input_file)
     qdf = ds2.to_dataframe()
     qdf = qdf.reset_index()
     qdf = qdf.set_index(['links'])
@@ -725,9 +725,9 @@ def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initia
     
     return q_initial_states
 
-def get_reservoir_restart_from_wrf_hydro(initial_input_folder):
+def get_reservoir_restart_from_wrf_hydro(initial_input_file):
     #read initial states from r&r output
-    ds2 = xr.open_dataset(initial_input_folder)
+    ds2 = xr.open_dataset(initial_input_file)
     resdf = ds2.to_dataframe()
     resdf = resdf.reset_index()
     resdf = resdf.set_index(['links'])
