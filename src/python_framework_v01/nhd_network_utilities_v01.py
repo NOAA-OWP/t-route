@@ -693,13 +693,21 @@ def get_ql_from_wrf_hydro(input_files):
     mod = frame.reset_index()
     ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
 
-    return (
-        ql,
-        mod
-)
+    return ql
 
-def get_stream_restart_from_wrf_hydro(input_dataframe_from_ql,initial_input_folder):
-    mod = input_dataframe_from_ql
+def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initial_input_folder):
+    all_files = input_files
+    li = []
+
+    for filename in all_files:
+        ds = xr.open_dataset(filename)
+        df1 = ds.to_dataframe()
+
+        li.append(df1)
+
+    frame = pd.concat(li, axis=0, ignore_index=False)
+    mod = frame.reset_index()
+
     mod = mod.set_index('station')
     mod = mod[:109223]
 
@@ -715,13 +723,11 @@ def get_stream_restart_from_wrf_hydro(input_dataframe_from_ql,initial_input_fold
     mod = mod.set_index(['station_id'])
     q_initial_states = mod
     
-    return (
-        q_initial_states,
-        ds2
-    )
+    return q_initial_states
 
-def get_reservoir_restart_from_wrf_hydro(ds2):
+def get_reservoir_restart_from_wrf_hydro(initial_input_folder):
     #read initial states from r&r output
+    ds2 = xr.open_dataset(initial_input_folder)
     resdf = ds2.to_dataframe()
     resdf = resdf.reset_index()
     resdf = resdf.set_index(['links'])

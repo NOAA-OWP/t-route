@@ -1029,59 +1029,16 @@ def main():
         time_string = '2020-03-19_18:00_DOMAIN1'
         initial_input_folder = os.path.join(root, "/restart/HYDRO_RST." + time_string)
         #
-        print(ql_input_folder)
-        print(all_files)
-        (
-            ql,
-            mod
-        ) = nnu.get_ql_from_wrf_hydro(all_files)
+       
+        ql = nnu.get_ql_from_wrf_hydro(all_files)
         
-        (
-            q_initial_states,
-            ds2
-         ) = nnu.get_stream_restart_from_wrf_hydro(mod,initial_input_folder)
+        # (
+        #     q_initial_states,
+        #     ds2
+         q_initial_states = nnu.get_stream_restart_from_wrf_hydro(all_files,initial_input_folder)
 
-        init_waterbody_states = nnu.get_reservoir_restart_from_wrf_hydro(ds2)
+        init_waterbody_states = nnu.get_reservoir_restart_from_wrf_hydro(initial_input_folder)
         
-        # li = []
-
-
-        # for filename in all_files:
-        #     ds = xr.open_dataset(filename)
-        #     df1 = ds.to_dataframe()
-
-        #     li.append(df1)
-
-        # frame = pd.concat(li, axis=0, ignore_index=False)
-        # mod = frame.reset_index()
-        # ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
-
-        # mod = mod.set_index('station')
-        # mod = mod[:109223]
-
-        # ds2 = xr.open_dataset(initial_input_folder)
-        # qdf = ds2.to_dataframe()
-        # qdf = qdf.reset_index()
-        # qdf = qdf.set_index(['links'])
-        # qdf = qdf[:109223]
-        
-        # mod = mod.join(qdf)
-        # mod = mod.drop(columns=(['time','streamflow','nudge','q_lateral','velocity','qSfcLatRunoff','qBucket','lakes','resht','qlakeo']))
-        # mod = mod.reset_index()
-        # mod = mod.set_index(['station_id'])
-        # q_initial_states = mod
-
-        #read initial states from r&r output
-        # resdf = ds2.to_dataframe()
-        # resdf = resdf.reset_index()
-        # resdf = resdf.set_index(['links'])
-        # resdf = resdf.drop(columns=(['qlink1','qlink2']))
-        # resdf = resdf.loc[0]
-        # resdf = resdf.reset_index()
-        # resdf = resdf.set_index(['lakes'])
-        # resdf = resdf.drop(columns=(['links']))
-        # init_waterbody_states = resdf
-
     ###
 
     # Lateral flow
