@@ -384,7 +384,7 @@ def set_supernetwork_data(
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameters": {
                 "level_pool_waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_RnR.nc"
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
                 ),
                 "level_pool_waterbody_area": "LkArea",  # area of reservoir
                 "level_pool_weir_elevation": "WeirE",
@@ -678,3 +678,57 @@ def read_waterbody_df(parm_file, lake_id_mask=None):
     if lake_id_mask:
         df1 = df1.loc[lake_id_mask, :]
     return df1
+
+def get_ql_from_wrf_hydro(input_files):
+    all_files = input_files
+    li = []
+
+    for filename in all_files:
+        ds = xr.open_dataset(filename)
+        df1 = ds.to_dataframe()
+
+        li.append(df1)
+
+    frame = pd.concat(li, axis=0, ignore_index=False)
+    mod = frame.reset_index()
+    ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
+
+    return (
+        ql,
+        mod
+)
+
+def get_stream_restart_from_wrf_hydro(input_dataframe_from_ql,initial_input_folder):
+    mod = input_dataframe_from_ql
+    mod = mod.set_index('station')
+    mod = mod[:109223]
+
+    ds2 = xr.open_dataset(initial_input_folder)
+    qdf = ds2.to_dataframe()
+    qdf = qdf.reset_index()
+    qdf = qdf.set_index(['links'])
+    qdf = qdf[:109223]
+
+    mod = mod.join(qdf)
+    mod = mod.drop(columns=(['time','streamflow','nudge','q_lateral','velocity','qSfcLatRunoff','qBucket','lakes','resht','qlakeo']))
+    mod = mod.reset_index()
+    mod = mod.set_index(['station_id'])
+    q_initial_states = mod
+    
+    return (
+        q_initial_states,
+        ds2
+    )
+
+def get_reservoir_restart_from_wrf_hydro(ds2):
+    #read initial states from r&r output
+    resdf = ds2.to_dataframe()
+    resdf = resdf.reset_index()
+    resdf = resdf.set_index(['links'])
+    resdf = resdf.drop(columns=(['qlink1','qlink2']))
+    resdf = resdf.loc[0]
+    resdf = resdf.reset_index()
+    resdf = resdf.set_index(['lakes'])
+    resdf = resdf.drop(columns=(['links']))
+    init_waterbody_states = resdf
+    return init_waterbody_states
