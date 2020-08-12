@@ -1031,14 +1031,14 @@ def main():
     if (
         run_route_and_replace_test
     ):  # test 2. Take lateral flow from wrf-hydro r&r output 
-        
-        # ql_input_folder = r'/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS'
-        ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
+        ql_input_folder = r'/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS'
+        # ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
+        # /home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS
         # ql_input_folder = os.path.join(root, "inland_hydraulics/wrf-hydro-run/OUTPUTS")
         all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
         #build a time string to specify input date 
         time_string = '2020-03-19_18:00_DOMAIN1'
-        initial_input_file = os.path.join(root, "/restart/HYDRO_RST." + time_string)
+        initial_input_file = r'/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST.' + time_string
         #
        
         ql = nnu.get_ql_from_wrf_hydro(all_files)

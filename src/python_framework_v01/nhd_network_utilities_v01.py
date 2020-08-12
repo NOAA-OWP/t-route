@@ -695,7 +695,7 @@ def get_ql_from_wrf_hydro(input_files):
 
     return ql
 
-def get_stream_restart_from_wrf_hydro(input_files,input_dataframe_from_ql,initial_input_file):
+def get_stream_restart_from_wrf_hydro(input_files,initial_input_file):
     all_files = input_files
     li = []
 
