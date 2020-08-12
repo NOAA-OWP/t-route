@@ -679,11 +679,10 @@ def read_waterbody_df(parm_file, lake_id_mask=None):
         df1 = df1.loc[lake_id_mask, :]
     return df1
 
-def get_ql_from_wrf_hydro(input_files):
-    all_files = input_files
+def get_ql_from_wrf_hydro(ql_files):
     li = []
 
-    for filename in all_files:
+    for filename in ql_files:
         ds = xr.open_dataset(filename)
         df1 = ds.to_dataframe()
 

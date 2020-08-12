@@ -1032,21 +1032,22 @@ def main():
         run_route_and_replace_test
     ):  # test 2. Take lateral flow from wrf-hydro r&r output 
         ql_input_folder = r'/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS'
-        # ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
-        # /home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS
-        # ql_input_folder = os.path.join(root, "inland_hydraulics/wrf-hydro-run/OUTPUTS")
-        all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
+        ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
         #build a time string to specify input date 
         time_string = '2020-03-19_18:00_DOMAIN1'
-        initial_states_file = r'/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST.' + time_string
-        initial_states_stream_ID_crosswalk_file = all_files[0]
+
+        channel_initial_states_file = r'/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST.' + time_string
+        initial_states_channel_ID_crosswalk_file = all_files[0]
+       
+        waterbody_intial_states_file = channel_initial_states_file
+        initial_states_waterbody_ID_crosswalk_file = ""
         #
        
-        ql = nnu.get_ql_from_wrf_hydro(all_files)
+        ql_df = nnu.get_ql_from_wrf_hydro(ql_files)
 
-        q_initial_states = nnu.get_stream_restart_from_wrf_hydro(initial_states_file,initial_states_stream_ID_crosswalk_file)
+        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(channel_initial_states_file,initial_states_channel_ID_crosswalk_file)
 
-        init_waterbody_states = nnu.get_reservoir_restart_from_wrf_hydro(initial_input_file)
+        waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(waterbody_intial_states_file,initial_states_waterbody_ID_crosswalk_file)
         
     ###
 
@@ -1057,14 +1058,14 @@ def main():
         ql_input_folder = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
-        ql = pd.read_csv(ql_input_folder, index_col=0)
+        ql_df = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        ql = pd.DataFrame(
+        ql_df = pd.DataFrame(
             qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
-    for index, row in ql.iterrows():
+    for index, row in ql_df.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
 
     ######################
