@@ -98,6 +98,7 @@ def _handle_args():
         "--qts_subdivisions",
         help="number of simulation timesteps per qlateral timestep",
         dest="qts_subdivisions",
+        type=int,
         default=1,
     )
     parser.add_argument(
@@ -126,6 +127,7 @@ def _handle_args():
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
+            "custom",
             "Pocono_TEST1",
             "Pocono_TEST2",
             "LowerColorado_Conchos_FULL_RES",
@@ -149,8 +151,19 @@ def _handle_args():
         dest="parallel_compute",
         action="store_true",
     )
+    parser.add_argument(
+        "-f",
+        "--customnetworkfile",
+        dest="customnetworkfile",
+        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example.",
+    )
 
     return parser.parse_args()
+
+    if args.supernetwork == "custom" and not args.customnetworkfile:
+        parser.error(
+            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
+        )
 
 
 root = pathlib.Path("../..").resolve()
@@ -589,8 +602,8 @@ def compute_level_pool_reach_up2down(
     dt = dt  # current timestep length
     ar = waterbodies_df.loc[waterbody, wb_params["level_pool_waterbody_area"]]
     we = waterbodies_df.loc[waterbody, wb_params["level_pool_weir_elevation"]]
-    maxh = waterbodies_df.loc[waterbody, 
-        wb_params["level_pool_waterbody_max_elevation"]
+    maxh = waterbodies_df.loc[
+        waterbody, wb_params["level_pool_waterbody_max_elevation"]
     ]
     wc = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_coefficient"]]
     wl = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_length"]]
@@ -601,8 +614,6 @@ def compute_level_pool_reach_up2down(
     oe = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_elevation"]]
     oc = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_coefficient"]]
     oa = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_area"]]
-
-
 
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
@@ -615,13 +626,13 @@ def compute_level_pool_reach_up2down(
         volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
         qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
-        
     flowveldepth[current_segment]["flowval"].append(qdc)
     flowveldepth[current_segment]["depthval"].append(depthc)
     flowveldepth[current_segment]["velval"].append(0)
     flowveldepth[current_segment]["time"].append(ts * dt)
     flowveldepth[current_segment]["storageval"].append(volumec)
     flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
+
 
 # ### Psuedocode
 # Write Array  to CSV file
@@ -910,10 +921,12 @@ def singlesegment(
     )
     # return qdc, vel, depth
 
+
 def sort_ordered_network(l, reverse=False):
     key = lambda x: x[1]["maximum_reach_seqorder"]
-    l.sort(key = key, reverse = reverse)
+    l.sort(key=key, reverse=reverse)
     return l
+
 
 # Main Routine
 def main():
@@ -968,7 +981,11 @@ def main():
         write_nc_output = False
 
     test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+
+    if args.supernetwork == "custom":
+        geo_input_folder = args.customnetworkfile
+    else:
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     if verbose:
         print("creating supernetwork connections set")
@@ -1012,23 +1029,35 @@ def main():
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
-    if (
-        run_route_and_replace_test
-    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-        ql_input_folder = os.path.join(root, "test/input/RR_OUTPUTS")
-        all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
+    if ( 1==1
+        # run_route_and_replace_test
+    ):  # test 2. Take lateral flow from wrf-hydro r&r output
+        ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
+        ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
+        # build a time string to specify input date
+        time_string = "2020-03-19_18:00_DOMAIN1"
 
-        li = []
+        channel_initial_states_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
+            + time_string
+        )
+        initial_states_channel_ID_crosswalk_file = ql_files[0]
 
-        for filename in all_files:
-            ds = xr.open_dataset(filename)
-            df1 = ds.to_dataframe()
+        waterbody_intial_states_file = channel_initial_states_file
+        initial_states_waterbody_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/waterbody_subset_ID_crosswalk.csv"
+        #
 
-            li.append(df1)
+        ql_df = nnu.get_ql_from_wrf_hydro(ql_files)
 
-        frame = pd.concat(li, axis=0, ignore_index=False)
-        mod = frame.reset_index()
-        ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
+        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
+            channel_initial_states_file, initial_states_channel_ID_crosswalk_file
+        )
+
+        waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
+            waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
+        )
+
+    ###
 
     # Lateral flow
     elif (
@@ -1037,14 +1066,14 @@ def main():
         ql_input_folder = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
-        ql = pd.read_csv(ql_input_folder, index_col=0)
+        ql_df = pd.read_csv(ql_input_folder, index_col=0)
 
     else:
-        ql = pd.DataFrame(
+        ql_df = pd.DataFrame(
             qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
-    for index, row in ql.iterrows():
+    for index, row in ql_df.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
 
     ######################
@@ -1060,7 +1089,7 @@ def main():
             ],
             waterbodies_values,
         )
-        waterbodies_df.sort_index(axis='index').sort_index(axis='columns')
+        waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
         nru.order_networks(connections, networks, connections_tailwaters)
 
         max_network_seqorder = -1
@@ -1085,8 +1114,8 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
-    for nsq in range(max_network_seqorder, -1, -1): 
-        sort_ordered_network(ordered_networks[nsq],True)
+    for nsq in range(max_network_seqorder, -1, -1):
+        sort_ordered_network(ordered_networks[nsq], True)
 
     # Define the pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
