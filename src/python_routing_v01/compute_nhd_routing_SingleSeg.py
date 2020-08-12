@@ -1038,12 +1038,13 @@ def main():
         all_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
         #build a time string to specify input date 
         time_string = '2020-03-19_18:00_DOMAIN1'
-        initial_input_file = r'/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST.' + time_string
+        initial_states_file = r'/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST.' + time_string
+        initial_states_stream_ID_crosswalk_file = all_files[0]
         #
        
         ql = nnu.get_ql_from_wrf_hydro(all_files)
 
-        q_initial_states = nnu.get_stream_restart_from_wrf_hydro(all_files,initial_input_file)
+        q_initial_states = nnu.get_stream_restart_from_wrf_hydro(initial_states_file,initial_states_stream_ID_crosswalk_file)
 
         init_waterbody_states = nnu.get_reservoir_restart_from_wrf_hydro(initial_input_file)
         

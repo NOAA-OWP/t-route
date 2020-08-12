@@ -695,17 +695,10 @@ def get_ql_from_wrf_hydro(input_files):
 
     return ql
 
-def get_stream_restart_from_wrf_hydro(input_files,initial_input_file):
-    all_files = input_files
-    li = []
-
-    for filename in all_files:
-        ds = xr.open_dataset(filename)
-        df1 = ds.to_dataframe()
-
-        li.append(df1)
-
-    frame = pd.concat(li, axis=0, ignore_index=False)
+def get_stream_restart_from_wrf_hydro(initial_states_file,initial_states_stream_ID_crosswalk_file):
+    ds = xr.open_dataset(initial_states_stream_ID_crosswalk_file)
+    
+    frame = ds.to_dataframe()
     mod = frame.reset_index()
 
     mod = mod.set_index('station')
