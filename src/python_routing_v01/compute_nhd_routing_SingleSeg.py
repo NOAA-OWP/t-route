@@ -98,6 +98,7 @@ def _handle_args():
         "--qts_subdivisions",
         help="number of simulation timesteps per qlateral timestep",
         dest="qts_subdivisions",
+        type=int,
         default=1,
     )
     parser.add_argument(
@@ -1028,8 +1029,8 @@ def main():
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
-    if (
-        run_route_and_replace_test
+    if ( 1==1
+        # run_route_and_replace_test
     ):  # test 2. Take lateral flow from wrf-hydro r&r output
         ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
@@ -1040,10 +1041,10 @@ def main():
             r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
             + time_string
         )
-        initial_states_channel_ID_crosswalk_file = all_files[0]
+        initial_states_channel_ID_crosswalk_file = ql_files[0]
 
         waterbody_intial_states_file = channel_initial_states_file
-        initial_states_waterbody_ID_crosswalk_file = ""
+        initial_states_waterbody_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/waterbody_subset_ID_crosswalk.csv"
         #
 
         ql_df = nnu.get_ql_from_wrf_hydro(ql_files)

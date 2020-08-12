@@ -697,8 +697,9 @@ def get_ql_from_wrf_hydro(ql_files):
 
 
 def get_stream_restart_from_wrf_hydro(
-    initial_states_file, initial_states_stream_ID_crosswalk_file
+    channel_initial_states_file, initial_states_stream_ID_crosswalk_file
 ):
+
     ds = xr.open_dataset(initial_states_stream_ID_crosswalk_file)
 
     frame = ds.to_dataframe()
@@ -707,7 +708,7 @@ def get_stream_restart_from_wrf_hydro(
     mod = mod.set_index("station")
     mod = mod[:109223]
 
-    ds2 = xr.open_dataset(initial_input_file)
+    ds2 = xr.open_dataset(channel_initial_states_file)
     qdf = ds2.to_dataframe()
     qdf = qdf.reset_index()
     qdf = qdf.set_index(["links"])
@@ -737,9 +738,20 @@ def get_stream_restart_from_wrf_hydro(
     return q_initial_states
 
 
-def get_reservoir_restart_from_wrf_hydro(initial_input_file):
+def get_reservoir_restart_from_wrf_hydro(
+    waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
+):
     # read initial states from r&r output
-    ds2 = xr.open_dataset(initial_input_file)
+    # steps to recreate crosswalk csv
+    """import xarray as xr
+    import pandas as pd
+    ds = xr.open_dataset("/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc")
+    df2 = ds.to_dataframe()
+    df2 = df2.loc[df2['NHDWaterbodyComID']!=-9999]
+    unique_WB = df2.NHDWaterbodyComID.unique()
+    unique_WB_df = pd.DataFrame(unique_WB,columns=['Waterbody'])
+    unique_WB_df.to_csv("/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/Waterbody_ID_crosswalk.csv")"""
+    ds2 = xr.open_dataset(waterbody_intial_states_file)
     resdf = ds2.to_dataframe()
     resdf = resdf.reset_index()
     resdf = resdf.set_index(["links"])
@@ -748,5 +760,10 @@ def get_reservoir_restart_from_wrf_hydro(initial_input_file):
     resdf = resdf.reset_index()
     resdf = resdf.set_index(["lakes"])
     resdf = resdf.drop(columns=(["links"]))
+    ds = pd.read_csv(initial_states_waterbody_ID_crosswalk_file)
+    resdf = resdf.join(ds)
+    resdf = resdf.drop(columns=(["Unnamed: 0"]))
+    resdf = resdf.reset_index()
+    resdf = resdf.set_index(["Waterbody"])
     init_waterbody_states = resdf
     return init_waterbody_states
