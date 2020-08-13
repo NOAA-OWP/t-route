@@ -433,7 +433,10 @@ def compute_reach_upstream_flows(
         if us != supernetwork_data["terminal_code"]:  # Not Headwaters
             quc += us_flowveldepth[us]["flowval"][ts]
 
-            if ts > 0:
+            if ts == 0:
+                # Initialize qup from warm state array
+                qup = 0.0
+            else:
                 qup += us_flowveldepth[us]["flowval"][ts - 1]
 
     if assume_short_ts:
@@ -490,14 +493,15 @@ def compute_mc_reach_up2down(
         qts = int(ts / qts_subdivisions)
         qlat = qlateral[current_segment]["qlatval"][qts]
 
-        if ts > 0:
-            qdp = flowveldepth[current_segment]["flowval"][-1]
-            velp = flowveldepth[current_segment]["velval"][-1]
-            depthp = flowveldepth[current_segment]["depthval"][-1]
-        else:
+        if ts == 0:
+            # initialize from initial states
             qdp = 0
             velp = 0
             depthp = 0
+        else:
+            qdp = flowveldepth[current_segment]["flowval"][-1]
+            velp = flowveldepth[current_segment]["velval"][-1]
+            depthp = flowveldepth[current_segment]["depthval"][-1]
 
         # run M-C model
         qdc, velc, depthc = singlesegment(
@@ -626,10 +630,11 @@ def compute_level_pool_reach_up2down(
     quc = quc_reach
 
     current_segment = reach["reach_tail"]
-    if ts > 0:
-        depthp = flowveldepth[current_segment]["depthval"][-1]
-    else:
+    if ts == 0:
+        # Initialize from warm state
         depthp = 0
+    else:
+        depthp = flowveldepth[current_segment]["depthval"][-1]
 
     # This Qlat gathers all segments of the waterbody
     qts = int(ts / qts_subdivisions)
@@ -1072,6 +1077,7 @@ def main():
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
+    load_warm_state = None
     if  load_warm_state:
         ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
@@ -1102,7 +1108,7 @@ def main():
         pass
 
     # Lateral flow
-    elif (
+    if (
         run_pocono_test
     ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
         ql_input_folder = os.path.join(
