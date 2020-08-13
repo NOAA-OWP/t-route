@@ -272,6 +272,7 @@ def compute_network(
 ):
     global connections
     global networks
+    global qlateral
 
     network = networks[terminal_segment]
 
@@ -326,6 +327,7 @@ def compute_network(
                 if waterbody:
                     compute_level_pool_reach_up2down(
                         flowveldepth=flowveldepth,
+                        qlateral=qlateral,
                         qup_reach=qup_reach,
                         quc_reach=quc_reach,
                         head_segment=head_segment,
@@ -344,6 +346,7 @@ def compute_network(
                 else:
                     compute_mc_reach_up2down(
                         flowveldepth=flowveldepth,
+                        qlateral=qlateral,
                         qup_reach=qup_reach,
                         quc_reach=quc_reach,
                         head_segment=head_segment,
@@ -400,7 +403,6 @@ def compute_reach_upstream_flows(
     assume_short_ts=False,
 ):
     global connections
-    global qlateral
 
     # upstream flow per reach
     qup = 0.0
@@ -443,6 +445,7 @@ def compute_reach_upstream_flows(
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
     flowveldepth,
+    qlateral,
     qup_reach,
     quc_reach,
     head_segment=None,
@@ -522,15 +525,54 @@ def compute_mc_reach_up2down(
             volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
             qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
-        # for next segment qup / quc use the previous flow values
-        if ts > 0:
-            qup = flowveldepth[current_segment]["flowval"][-1]  # input for next segment
-        else:
-            qup = 0
-
-        quc = qdc  # input for next segment
+        # for next segment qup / quc use the just-now and previously 
+        # calculated flow values from the current segment
+        qup = qdp
+        quc = qdc 
         if assume_short_ts:
-            quc = qup
+            # if we are assuming time steps are short, we can 
+            # assume that the previous flow value sufficiently
+            # represents both the previous and current state.
+            # This approximation is entirely un-necessary in 
+            # this framework, which preserves the connectivity
+            # between reach segments in time and in space, but
+            # it allows us to approximate the behavior of the 
+            # previous version of the model, which made this 
+            # assumption out of necessity to allow out-of-order
+            # computation on segments within a given time step, 
+            # which was a peculiar requirement of the parallel-
+            # ization scheme used during execution.
+            quc = qup = qdp  
+
+
+        '''
+            Normal calculation:
+
+            current_segment
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc╮  ╰-qup      qdp
+                        ┊     │  Q-->  │
+                        ╰->╮  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
+
+
+            Short-time-step calculation:
+
+            current_segment
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc   ├-qup      qdp
+                           ┊  │  Q-->  │
+                           ┊  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
+        '''
 
         # update flowveldepth values for currentsegment for current timestep
         # flowveldepth[current_segment]["qlatval"].append(qlat)  # NEVER UPDATED
@@ -557,6 +599,7 @@ def compute_mc_reach_up2down(
 
 def compute_level_pool_reach_up2down(
     flowveldepth,
+    qlateral,
     qup_reach,
     quc_reach,
     head_segment=None,
@@ -1029,9 +1072,7 @@ def main():
     # initialize flowveldepth dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
-    if ( 1==1
-        # run_route_and_replace_test
-    ):  # test 2. Take lateral flow from wrf-hydro r&r output
+    if  load_warm_state:
         ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
         # build a time string to specify input date
@@ -1056,8 +1097,9 @@ def main():
         waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
             waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
         )
-
-    ###
+    else:
+        # Make initial states from cold-state
+        pass
 
     # Lateral flow
     elif (
