@@ -38,7 +38,7 @@ def get_geo_file_table_rows(
         msg = msg + f'\n# export ROUTELINK="{filename}"'
         msg = (
             msg
-            + f"\n# wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.2/parm/domain/$ROUTELINK"
+            + f"\n# wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.3/parm/domain/$ROUTELINK"
         )
         msg = (
             msg
@@ -54,7 +54,7 @@ def get_geo_file_table_rows(
         If you wish to manually download the file, please use the following commands:
 
         > export ROUTELINK="RouteLink_NHDPLUS.nc"
-        > wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.2/parm/domain/$ROUTELINK
+        > wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.3/parm/domain/$ROUTELINK
         > nccopy -d1 -s $ROUTELINK ${ROUTELINK/\.nc/_compressed.nc}
         """
         print(msg)
@@ -608,7 +608,7 @@ def set_supernetwork_data(
     elif supernetwork == "CONUS_FULL_RES_v20":
 
         ROUTELINK = r"RouteLink_NHDPLUS"
-        ModelVer = r"nwm.v2.0.2"
+        ModelVer = r"nwm.v2.0.3"
         ext = r"nc"
         sep = r"."
 
