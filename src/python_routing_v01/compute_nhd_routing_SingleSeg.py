@@ -48,19 +48,22 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--test" "--run-pocono-test-example",
+        "--test",
+        "--run-pocono-test-example",
         help="Use the data values stored in the repository for a test of the Pocono network",
         dest="run_pocono_test",
         action="store_true",
     )
     parser.add_argument(
-        "--test2" "--run-Mainstems-test-example",
+        "--test2",
+        "--run-Mainstems-test-example",
         help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
         dest="run_route_and_replace_test",
         action="store_true",
     )
     parser.add_argument(
-        "--sts" "--assume-short-ts",
+        "--sts",
+        "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
@@ -89,7 +92,7 @@ def _handle_args():
     parser.add_argument(
         "--nts",
         "--number-of-qlateral-timesteps",
-        help="Set the number of timesteps to execute",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
         dest="nts",
         default=144,
     )
@@ -102,11 +105,31 @@ def _handle_args():
         default=1,
     )
     parser.add_argument(
-        "--ql",
+        "--rwrf",
+        "--wrf_hydro_restart_file",
+        dest="wrf_hydro_warm_state_file",
+        help="provide a WRF-Hydro standard warm state file",
+    )
+    ql_arg_group = parser.add_mutually_exclusive_group()
+    ql_arg_group.add_argument(
+        "--qlc",
         "--constant_qlateral",
-        help="Set the number of timesteps to execute",
+        help="Constant qlateral to apply to all time steps at all segments",
         dest="qlat_const",
+        type=float,
         default=10,
+    )
+    ql_arg_group.add_argument(
+        "--qlf",
+        "--single_file_qlateral",
+        help="QLaterals arranged with segment IDs as rows and timesteps as columns in a single .csv",
+        dest="qlat_input_file",
+    )
+    ql_arg_group.add_argument(
+        "--qlw",
+        "--ql_wrf_hydro_folder",
+        help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
+        dest="qlat_input_folder",
     )
     parser.add_argument(
         "-t",
@@ -366,6 +389,7 @@ def compute_network(
                 writeArraytoCSV(
                     connections=connections,
                     flowveldepth=flowveldepth,
+                    qlateral=qlateral,
                     reach=reach,
                     verbose=verbose,
                     debuglevel=debuglevel,
@@ -376,8 +400,10 @@ def compute_network(
         writeArraytoNC(
             connections=connections,
             flowveldepth=flowveldepth,
+            qlateral=qlateral,
             network=network,
             nts=nts,
+            qts_subdivisions=qts_subdivisions,
             dt=dt,
             verbose=verbose,
             debuglevel=debuglevel,
@@ -686,9 +712,10 @@ def compute_level_pool_reach_up2down(
 # arguments reach , pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoCSV(
-    flowveldepth=None,
-    connections=None,
-    reach=None,
+    connections,
+    flowveldepth,
+    qlateral,
+    reach,
     verbose=False,
     debuglevel=0,
     pathToOutputFile="../../test/output/text",
@@ -735,11 +762,12 @@ def writeArraytoCSV(
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoNC(
-    flowveldepth=None,
-    connections=None,
-    network=None,
+    connections,
+    flowveldepth,
+    qlateral,
+    network,
+    nts,
     qts_subdivisions=1,
-    nts=0,
     dt=60,
     verbose=False,
     debuglevel=0,
@@ -989,7 +1017,12 @@ def main():
 
     dt = float(args.dt)
     nts = int(args.nts)
+    qts_subdivisions = args.qts_subdivisions
     qlat_const = float(args.qlat_const)
+    qlat_input_folder = args.qlat_input_folder
+    qlat_input_file = args.qlat_input_file
+
+    wrf_hydro_warm_state_file = args.wrf_hydro_warm_state_file
 
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
@@ -998,7 +1031,6 @@ def main():
     write_nc_output = args.write_nc_output
     assume_short_ts = args.assume_short_ts
     parallel_compute = args.parallel_compute
-    qts_subdivisions = args.qts_subdivisions
 
     run_pocono_test = args.run_pocono_test
     run_route_and_replace_test = args.run_route_and_replace_test
@@ -1014,6 +1046,10 @@ def main():
         nts = 144 * qts_subdivisions
         write_csv_output = True
         write_nc_output = True
+        # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
+        qlat_input_file = os.path.join(
+            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+        )
 
     if run_route_and_replace_test:
         if verbose:
@@ -1026,6 +1062,13 @@ def main():
         nts = 120 * qts_subdivisions
         write_csv_output = False
         write_nc_output = False
+        time_string = "2020-03-19_18:00_DOMAIN1"
+        # build a time string to specify input date
+        wrf_hydro_warm_state_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
+            + time_string
+        )
+        ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
 
     test_folder = os.path.join(root, r"test")
 
@@ -1073,57 +1116,7 @@ def main():
 
     connections = supernetwork_values[0]
 
-    # initialize flowveldepth dict
-    qlateral = {connection: {"qlatval": [],} for connection in connections}
-
-    load_warm_state = None
-    if load_warm_state:
-        ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
-        ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
-        # build a time string to specify input date
-        time_string = "2020-03-19_18:00_DOMAIN1"
-
-        channel_initial_states_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
-            + time_string
-        )
-        initial_states_channel_ID_crosswalk_file = ql_files[0]
-
-        waterbody_intial_states_file = channel_initial_states_file
-        initial_states_waterbody_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/waterbody_subset_ID_crosswalk.csv"
-        #
-
-        ql_df = nnu.get_ql_from_wrf_hydro(ql_files)
-
-        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
-            channel_initial_states_file, initial_states_channel_ID_crosswalk_file
-        )
-
-        waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
-            waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
-        )
-    else:
-        # Make initial states from cold-state
-        pass
-
-    # Lateral flow
-    if (
-        run_pocono_test
-    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-        ql_input_folder = os.path.join(
-            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
-        )
-        ql_df = pd.read_csv(ql_input_folder, index_col=0)
-
-    else:
-        ql_df = pd.DataFrame(
-            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
-        )
-
-    for index, row in ql_df.iterrows():
-        qlateral[index]["qlatval"] = row.tolist()
-
-    ######################
+    ###################### Organize Network for Waterbodies
     if break_network_at_waterbodies:
 
         waterbodies_values = supernetwork_values[12]
@@ -1161,6 +1154,47 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
+    ################## Handle States
+    if wrf_hydro_warm_state_file:
+
+        channel_initial_states_file = wrf_hydro_warm_state_file
+
+        waterbody_intial_states_file = channel_initial_states_file
+        #
+
+        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
+            channel_initial_states_file, initial_states_channel_ID_crosswalk_file
+        )
+
+        waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
+            waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
+        )
+    else:
+        # Make initial states from cold-state
+        pass
+
+    ################## Read QLateral Inputs
+    # initialize qlateral dict
+    qlateral = {connection: {"qlatval": [],} for connection in connections}
+
+    if qlat_input_folder:
+        # TODO: add pattern_filter input argument
+        pattern_filter = "/*.CHRTOUT_DOMAIN1"
+        ql_files = glob.glob(qlat_input_folder + pattern_filter)
+        ql_df = nnu.get_ql_from_wrf_hydro(ql_files)
+
+    elif qlat_input_file:
+        ql_df = pd.read_csv(qlat_input_file, index_col=0)
+
+    else:
+        ql_df = pd.DataFrame(
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
+        )
+
+    for index, row in ql_df.iterrows():
+        qlateral[index]["qlatval"] = row.tolist()
+
+    ################### Main Execution Loop across ordered networks
     for nsq in range(max_network_seqorder, -1, -1):
         sort_ordered_network(ordered_networks[nsq], True)
 
