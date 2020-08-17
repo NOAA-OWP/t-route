@@ -529,27 +529,26 @@ def compute_mc_reach_up2down(
             volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
             qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
-        # for next segment qup / quc use the just-now and previously 
+        # for next segment qup / quc use the just-now and previously
         # calculated flow values from the current segment
         qup = qdp
-        quc = qdc 
+        quc = qdc
         if assume_short_ts:
-            # if we are assuming time steps are short, we can 
+            # if we are assuming time steps are short, we can
             # assume that the previous flow value sufficiently
             # represents both the previous and current state.
-            # This approximation is entirely un-necessary in 
+            # This approximation is entirely un-necessary in
             # this framework, which preserves the connectivity
             # between reach segments in time and in space, but
-            # it allows us to approximate the behavior of the 
-            # previous version of the model, which made this 
+            # it allows us to approximate the behavior of the
+            # previous version of the model, which made this
             # assumption out of necessity to allow out-of-order
-            # computation on segments within a given time step, 
+            # computation on segments within a given time step,
             # which was a peculiar requirement of the parallel-
             # ization scheme used during execution.
-            quc = qup = qdp  
+            quc = qup = qdp
 
-
-        '''
+        """
             Normal calculation:
 
             current_segment
@@ -576,7 +575,7 @@ def compute_mc_reach_up2down(
                            ┊  │━━━━━━━━│
                            ┊  │        │  
                            ╰-quc      qdc
-        '''
+        """
 
         # update flowveldepth values for currentsegment for current timestep
         # flowveldepth[current_segment]["qlatval"].append(qlat)  # NEVER UPDATED
@@ -1078,7 +1077,7 @@ def main():
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
     load_warm_state = None
-    if  load_warm_state:
+    if load_warm_state:
         ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         ql_files = glob.glob(ql_input_folder + "/*.CHRTOUT_DOMAIN1")
         # build a time string to specify input date
