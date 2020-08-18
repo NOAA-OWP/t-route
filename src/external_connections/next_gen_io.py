@@ -35,10 +35,9 @@ def read_catchment_lateral_flows(path):
           catchment_id_list.append(catchment_id)
           catchment_qlats = pd.read_csv(file_name, names=["", catchment_id])
           catchment_qlats = catchment_qlats.iloc[:, [1]]
-          catchment_qlats_transposed = catchment_qlats.transpose()
-          ql.append(catchment_qlats_transposed)
+          ql.append(catchment_qlats)
 
-    qlats_df = pd.concat(ql)
+    qlats_df = pd.concat(ql, axis='columns').T
     qlats_df.to_csv('sugar_creek_qlats.csv')
 
 

@@ -23,14 +23,11 @@ ngen_network_df = next_gen_io.read_ngen_network_geojson("./sugar_creek_waterbody
 #Create dictionary mapping each connection ID
 ngen_network_dict = dict(zip(ngen_network_df.ID, ngen_network_df.toID))
 
-waterbody_connections = {}
+def node_key_func(x):
+    return int(x[4:])
 
-#Cycle through dictionary and extract only the ID integer values
-for key in ngen_network_dict:
-   to_waterbody_value = ngen_network_dict.get(key)
-   key = int(key[4 :])
-   to_waterbody_value = int(to_waterbody_value[4 :])
-   waterbody_connections[key] = to_waterbody_value
+#Extract the ID integer values
+waterbody_connections = {node_key_func(k): node_key_func(v) for k, v in ngen_network_dict.items()}
 
 #Convert dictionary connections to data frame and make ID column the index
 waterbody_df = pd.DataFrame.from_dict(waterbody_connections, orient='index', columns=['to'])
