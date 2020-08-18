@@ -49,13 +49,20 @@ def _handle_args():
     )
     parser.add_argument(
         "--test",
-        "--run-pocono-test-example",
+        "--run-pocono2-test-example",
         help="Use the data values stored in the repository for a test of the Pocono network",
-        dest="run_pocono_test",
+        dest="run_pocono2_test",
         action="store_true",
     )
     parser.add_argument(
-        "--test2",
+        "--test-full-pocono",
+        "--run-pocono1-test-example",
+        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
+        dest="run_pocono1_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--test-rnr",
         "--run-Mainstems-test-example",
         help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
         dest="run_route_and_replace_test",
@@ -105,10 +112,36 @@ def _handle_args():
         default=1,
     )
     parser.add_argument(
-        "--rwrf",
-        "--wrf_hydro_restart_file",
-        dest="wrf_hydro_warm_state_file",
-        help="provide a WRF-Hydro standard warm state file",
+        "--wrf_hydro_channel_restart_file",
+        dest="wrf_hydro_channel_restart_file",
+        help="provide a WRF-Hydro channel warm state file (may be the same as waterbody restart file)",
+    )
+    parser.add_argument(
+        "--wrf_hydro_channel_ID_crosswalk_file",
+        dest="wrf_hydro_channel_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name"
+    )
+    parser.add_argument(
+        "--wrf_hydro_channel_ID_crosswalk_file_field_name",
+        dest="wrf_hydro_channel_ID_crosswalk_file_field_name",
+        help="Name of the column providing the channel segment IDs in the channel crosswalk file",
+        default="ID",
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_restart_file",
+        dest="wrf_hydro_waterbody_restart_file",
+        help="provide a WRF-Hydro waterbody warm state file (may be the same as channel restart file)",
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_ID_crosswalk_file",
+        dest="wrf_hydro_waterbody_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the waterbody restart file. Specify the ID field with --wrf_hydro_waterbody_ID_crosswalk_file_field_name"
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_ID_crosswalk_file_field_name",
+        dest="wrf_hydro_waterbody_ID_crosswalk_file_field_name",
+        help="Name of the column providing the waterbody segment IDs in the waterbody crosswalk file",
+        default="ID"
     )
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
@@ -130,6 +163,12 @@ def _handle_args():
         "--ql_wrf_hydro_folder",
         help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
         dest="qlat_input_folder",
+    )
+    parser.add_argument(
+        "--qlat_file_pattern_filter",
+        help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
+        dest="qlat_file_pattern_filter",
+        default="/*.CHRTOUT_DOMAIN1",
     )
     parser.add_argument(
         "-t",
@@ -181,12 +220,13 @@ def _handle_args():
         help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example.",
     )
 
-    return parser.parse_args()
-
+    args = parser.parse_args()
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
             r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
         )
+
+    return args
 
 
 root = pathlib.Path("../..").resolve()
@@ -1021,8 +1061,15 @@ def main():
     qlat_const = float(args.qlat_const)
     qlat_input_folder = args.qlat_input_folder
     qlat_input_file = args.qlat_input_file
+    qlat_file_pattern_filter = args.qlat_file_pattern_filter
 
-    wrf_hydro_warm_state_file = args.wrf_hydro_warm_state_file
+    wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
+    wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
+    wrf_hydro_channel_ID_crosswalk_file_field_name = args.wrf_hydro_channel_ID_crosswalk_file_field_name
+
+    wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
+    wrf_hydro_waterbody_ID_crosswalk_file = args.wrf_hydro_waterbody_ID_crosswalk_file
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name = args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
 
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
@@ -1032,10 +1079,11 @@ def main():
     assume_short_ts = args.assume_short_ts
     parallel_compute = args.parallel_compute
 
-    run_pocono_test = args.run_pocono_test
+    run_pocono2_test = args.run_pocono2_test
+    run_pocono1_test = args.run_pocono1_test
     run_route_and_replace_test = args.run_route_and_replace_test
 
-    if run_pocono_test:
+    if run_pocono2_test:
         if verbose:
             print("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
@@ -1051,7 +1099,27 @@ def main():
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
         )
 
-    if run_route_and_replace_test:
+    elif run_pocono1_test:
+        if verbose:
+            print("running test case for Mainstems_CONUS domain")
+        # Overwrite the following test defaults
+        supernetwork = "Pocono_TEST1"
+        break_network_at_waterbodies = True
+        qts_subdivisions = 1
+        dt = 300 / qts_subdivisions
+        nts = 144 * qts_subdivisions
+        write_csv_output = False
+        write_nc_output = False
+        time_string = "2020-03-19_18:00_DOMAIN1"
+        # build a time string to specify input date
+        wrf_hydro_warm_state_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
+            + time_string
+        )
+        qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
+        qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
+
+    elif run_route_and_replace_test:
         if verbose:
             print("running test case for Mainstems_CONUS domain")
         # Overwrite the following test defaults
@@ -1064,11 +1132,22 @@ def main():
         write_nc_output = False
         time_string = "2020-03-19_18:00_DOMAIN1"
         # build a time string to specify input date
-        wrf_hydro_warm_state_file = (
+        wrf_hydro_channel_restart_file = (
             r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
             + time_string
         )
-        ql_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
+
+        wrf_hydro_channel_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
+        wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
+        wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
+        wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
+        wrf_hydro_channel_restart_depth_flow_field_name = None
+        wrf_hydro_waterbody_restart_file = wrf_hydro_channel_restart_file
+        wrf_hydro_waterbody_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/"
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
+
+        qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
+        qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
 
     test_folder = os.path.join(root, r"test")
 
@@ -1154,20 +1233,35 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
-    ################## Handle States
-    if wrf_hydro_warm_state_file:
-
-        channel_initial_states_file = wrf_hydro_warm_state_file
-
-        waterbody_intial_states_file = channel_initial_states_file
-        #
+    ################## Handle Channel States
+    if wrf_hydro_channel_restart_file:
 
         channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
-            channel_initial_states_file, initial_states_channel_ID_crosswalk_file
+            wrf_hydro_channel_restart_file, 
+            wrf_hydro_channel_ID_crosswalk_file, 
+            wrf_hydro_channel_ID_crosswalk_file_field_name,
+            wrf_hydro_channel_restart_upstream_flow_field_name,
+            wrf_hydro_channel_restart_downstream_flow_field_name,
+            wrf_hydro_channel_restart_depth_flow_field_name,
+        )
+    else:
+        channel_initial_flow_const = 0.0
+        channel_initial_depth_const = 0.0
+        # Set initial states from cold-state
+        # TODO: FIX THIS two-part dataframe
+        channel_initial_states_df = pd.DataFrame(
+            channel_initial_state_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
+    ################## Handle Waterbody States
+    import pdb; pdb.set_trace()
+
+    if wrf_hydro_waterbody_restart_file:
+
         waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
-            waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
+            wrf_hydro_waterbody_restart_file, 
+            wrf_hydro_waterbody_ID_crosswalk_file, 
+            wrf_hydro_waterbody_ID_crosswalk_file_field_name,
         )
     else:
         # Make initial states from cold-state
@@ -1178,20 +1272,18 @@ def main():
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
     if qlat_input_folder:
-        # TODO: add pattern_filter input argument
-        pattern_filter = "/*.CHRTOUT_DOMAIN1"
-        ql_files = glob.glob(qlat_input_folder + pattern_filter)
-        ql_df = nnu.get_ql_from_wrf_hydro(ql_files)
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        qlat_df = nnu.get_ql_from_wrf_hydro(ql_files)
 
     elif qlat_input_file:
-        ql_df = pd.read_csv(qlat_input_file, index_col=0)
+        qlat_df = pd.read_csv(qlat_input_file, index_col=0)
 
     else:
-        ql_df = pd.DataFrame(
+        qlat_df = pd.DataFrame(
             qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
-    for index, row in ql_df.iterrows():
+    for index, row in qlat_df.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
 
     ################### Main Execution Loop across ordered networks

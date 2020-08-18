@@ -697,49 +697,60 @@ def get_ql_from_wrf_hydro(ql_files):
 
 
 def get_stream_restart_from_wrf_hydro(
-    channel_initial_states_file, initial_states_stream_ID_crosswalk_file
+    channel_initial_states_file, 
+    crosswalk_file, 
+    channel_ID_column,
+    us_flow_column = "qlink1", 
+    ds_flow_column = "qlink2", 
+    depth_column = "hlink", 
+    default_us_flow_column = "qu0", 
+    default_ds_flow_column = "qd0", 
+    default_depth_column = "h0", 
 ):
+    '''
+    channel_initial_states_file: WRF-HYDRO standard restart file
+    us_flow_column: column in the restart file to use for upstream flow initial state
+    ds_flow_column: column in the restart file to use for downstream flow initial state
+    depth_column: column in the restart file to use for depth initial state
+    crosswalk_file: File containing channel IDs IN THE ORDER of the Restart File
+    channel_ID_column: field in the crosswalk file to assign as the index of the restart values
+    '''
 
-    ds = xr.open_dataset(initial_states_stream_ID_crosswalk_file)
+    import pdb; pdb.set_trace()
+    xds = xr.open_dataset(crosswalk_file)
 
-    frame = ds.to_dataframe()
-    mod = frame.reset_index()
+    xdf = xds.to_dataframe()
+    xdf = xdf.reset_index()
+    xdf = xdf[[channel_ID_column]]
 
-    mod = mod.set_index("station")
-    mod = mod[:109223]
-
-    ds2 = xr.open_dataset(channel_initial_states_file)
-    qdf = ds2.to_dataframe()
+    qds = xr.open_dataset(channel_initial_states_file)
+    qdf = qds.to_dataframe()
+    qdf = qdf[:len(xdf)]
     qdf = qdf.reset_index()
-    qdf = qdf.set_index(["links"])
-    qdf = qdf[:109223]
-
-    mod = mod.join(qdf)
-    mod = mod.drop(
-        columns=(
-            [
-                "time",
-                "streamflow",
-                "nudge",
-                "q_lateral",
-                "velocity",
-                "qSfcLatRunoff",
-                "qBucket",
-                "lakes",
-                "resht",
-                "qlakeo",
-            ]
-        )
+    if depth_column in qdf.columns:
+        qdf = qdf[[us_flow_column, ds_flow_column, depth_column]]
+    else:
+        qdf = qdf[[us_flow_column, ds_flow_column]]
+        qdf[depth_column] = 0
+    qdf.rename(
+        columns={
+            us_flow_column:default_us_flow_column,
+            ds_flow_column:default_ds_flow_column,
+            depth_column:default_depth_column,
+        },
+        inplace=True
     )
+
+    mod = xdf.join(qdf)
     mod = mod.reset_index()
-    mod = mod.set_index(["station_id"])
+    mod = mod.set_index([channel_ID_column])
     q_initial_states = mod
 
     return q_initial_states
 
 
 def get_reservoir_restart_from_wrf_hydro(
-    waterbody_intial_states_file, initial_states_waterbody_ID_crosswalk_file
+    waterbody_intial_states_file, crosswalk_file, waterbody_ID_field
 ):
     # read initial states from r&r output
     # steps to recreate crosswalk csv
