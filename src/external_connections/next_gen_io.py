@@ -22,7 +22,6 @@ def read_ngen_network_json(path):
 #Convert catchment lateral flows to format that can be processed by compute_network
 def read_catchment_lateral_flows(path):
     ql = []
-    qlats_df = pd.DataFrame({'A' : []})
 
     past_first_loop = False
 
@@ -33,12 +32,12 @@ def read_catchment_lateral_flows(path):
           file_name_str_list = file_name.split("_")
           catchment_id = int(file_name_str_list[0][4 :])
           catchment_id_list.append(catchment_id)
-          catchment_qlats = pd.read_csv(file_name, names=["", catchment_id])
-          catchment_qlats = catchment_qlats.iloc[:, [1]]
+          # Read the second column of a csv file and return a series. The index will be an autoincrementing range.
+          catchment_qlats = pd.read_csv(file_name, names=[catchment_id], usecols=[1], squeeze=True)
           ql.append(catchment_qlats)
 
-    qlats_df = pd.concat(ql, axis='columns').T
-    qlats_df.to_csv('sugar_creek_qlats.csv')
+    qlats = pd.concat(ql, axis='columns').T
+    qlats.to_csv('sugar_creek_qlats.csv')
 
 
 def read_qlat(path):
