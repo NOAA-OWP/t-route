@@ -6,6 +6,7 @@
 #                python compute_nhd_routing_SingleSeg.py -v -w --parallel
 #                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams
 #                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams --parallel
+#                python compute_nhd_routing_SingleSeg.py -f ../../test/input/json/CustomInput.json -w -v -t
 
 # a notebook-based version of very similar code is found here:
 # https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
