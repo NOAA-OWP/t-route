@@ -1,0 +1,38 @@
+cdef extern from "pyResLevelPool.h":
+    void c_levelpool_physics(float *dt,
+                              float *qi0,
+                              float *qi1,
+                              float *ql,
+                              float *ar,
+                              float *we,
+                              float *maxh,
+                              float *wc,
+                              float *wl,
+                              float *dl,
+                              float *oe,
+                              float *oc,
+                              float *oa,
+                              float *H0,
+                              float *H1,
+                              float *qo1) nogil;
+
+cdef extern from "pyMCsingleSegStime_NoLoop.h":
+    void c_muskingcungenwm(float *dt,
+                                  float *qup,
+                                  float *quc,
+                                  float *qdp,
+                                  float *ql,
+                                  float *dx,
+                                  float *bw,
+                                  float *tw,
+                                  float *twcc,
+                                  float *n,
+                                  float *ncc,
+                                  float *cs,
+                                  float *s0,
+                                  float *velp,
+                                  float *depthp,
+                                  float *qdc,
+                                  float *velc,
+                                  float *depthc) nogil;
+
