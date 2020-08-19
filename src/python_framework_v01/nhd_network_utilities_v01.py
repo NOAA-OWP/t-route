@@ -384,7 +384,7 @@ def set_supernetwork_data(
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameters": {
                 "level_pool_waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_POCONO.nc"
                 ),
                 "level_pool_waterbody_area": "LkArea",  # area of reservoir
                 "level_pool_weir_elevation": "WeirE",
@@ -652,12 +652,11 @@ def set_supernetwork_data(
             },
         }
 
-    elif supernetwork == "custom":
-        custominput = os.path.join(geo_input_folder)
-        with open(custominput) as json_file:
-            data = json.load(json_file)
-            # TODO: add error trapping for potentially missing files
-        return data
+def read_custom_input_json(custom_input_file):
+    with open(custom_input_file) as json_file:
+        data = json.load(json_file)
+        # TODO: add error trapping for potentially missing files
+    return data
 
 
 # TODO: confirm that this function is not used, and if so, consider removing it

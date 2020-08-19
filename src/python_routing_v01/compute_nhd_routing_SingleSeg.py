@@ -184,12 +184,12 @@ def _handle_args():
         dest="break_network_at_waterbodies",
         action="store_true",
     )
-    parser.add_argument(
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
         "-n",
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
         choices=[
-            "custom",
             "Pocono_TEST1",
             "Pocono_TEST2",
             "LowerColorado_Conchos_FULL_RES",
@@ -207,20 +207,23 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .json file containing a custom supernetwork information. See test/input/json/CustomInput.json for an example.",
+    )
     parser.add_argument(
         "--parallel",
         help="Use the parallel computation engine (omit flag for serial computation)",
         dest="parallel_compute",
         action="store_true",
     )
-    parser.add_argument(
-        "-f",
-        "--customnetworkfile",
-        dest="customnetworkfile",
-        help="OR... if 'custom' is chosen for the supernetwork, please enter the path of a .json file containing the supernetwork information. See test/input/json/CustomInput.json for an example.",
-    )
 
     args = parser.parse_args()
+
+    #TODO: Add any other checking
+    #TODO: This check is probably no longer needed
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
             r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
@@ -504,7 +507,7 @@ def compute_reach_upstream_flows(
 
             if ts == 0:
                 # Initialize qup from warm state array
-                qup = channel_initial_states_df.loc[us]['qd0']
+                qup = channel_initial_states_df.loc[us, "qd0"]
             else:
                 qup += us_flowveldepth[us]["flowval"][ts - 1]
 
@@ -564,9 +567,9 @@ def compute_mc_reach_up2down(
 
         if ts == 0:
             # initialize from initial states
-            qdp = channel_initial_states_df.loc[current_segment]['qd0']
+            qdp = channel_initial_states_df.loc[current_segment, "qd0"]
             velp = 0
-            depthp = channel_initial_states_df.loc[current_segment]['h0']
+            depthp = channel_initial_states_df.loc[current_segment, "h0"]
         else:
             qdp = flowveldepth[current_segment]["flowval"][-1]
             velp = 0  # flowveldepth[current_segment]["velval"][-1]
@@ -701,7 +704,7 @@ def compute_level_pool_reach_up2down(
     current_segment = reach["reach_tail"]
     if ts == 0:
         # Initialize from warm state
-        depthp = waterbody_initial_states_df.loc[waterbody]['h0']
+        depthp = waterbody_initial_states_df.loc[waterbody, "h0"]
     else:
         depthp = flowveldepth[current_segment]["depthval"][-1]
 
@@ -1059,6 +1062,14 @@ def main():
     global channel_initial_states_df
 
     supernetwork = args.supernetwork
+    custom_input_file = args.custom_input_file
+    if custom_input_file:
+        input_data = nnu.read_custom_input_json(custom_input_file)
+        supernetwork_data = input_data['supernetwork_data']
+    # Any specific commandline arguments will override the file
+    # TODO: There are probably some pathological collisions that could
+    # arise from this ordering ... check these out.
+
     break_network_at_waterbodies = args.break_network_at_waterbodies
 
     dt = float(args.dt)
@@ -1092,6 +1103,8 @@ def main():
     run_pocono2_test = args.run_pocono2_test
     run_pocono1_test = args.run_pocono1_test
     run_route_and_replace_test = args.run_route_and_replace_test
+
+    
 
     if run_pocono2_test:
         if verbose:
@@ -1170,24 +1183,23 @@ def main():
 
     test_folder = os.path.join(root, r"test")
 
-    if args.supernetwork == "custom":
-        geo_input_folder = args.customnetworkfile
-    else:
-        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
-
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
     # STEP 1
-    supernetwork_data, supernetwork_values = nnu.set_networks(
-        supernetwork=supernetwork,
-        geo_input_folder=geo_input_folder,
-        verbose=False
-        # , verbose = verbose
-        ,
-        debuglevel=debuglevel,
-    )
+    if args.custom_input_file:
+        supernetwork_values = nnu.get_nhd_connections(supernetwork_data, debuglevel, verbose)
+    else:
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+        supernetwork_data, supernetwork_values = nnu.set_networks(
+            supernetwork=supernetwork,
+            geo_input_folder=geo_input_folder,
+            verbose=False
+            # , verbose = verbose
+            ,
+            debuglevel=debuglevel,
+        )
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
@@ -1243,6 +1255,30 @@ def main():
             ordered_networks[network["network_seqorder"]].append(
                 (terminal_segment, network)
             )
+
+        ################## Handle Waterbody States
+        if wrf_hydro_waterbody_restart_file:
+
+            waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
+                wrf_hydro_waterbody_restart_file,
+                wrf_hydro_waterbody_ID_crosswalk_file,
+                wrf_hydro_waterbody_ID_crosswalk_file_field_name,
+                wrf_hydro_waterbody_crosswalk_filter_file,
+                wrf_hydro_waterbody_crosswalk_filter_file_field_name,
+            )
+        else:
+            # TODO: Consider adding option to read cold state from route-link file
+            waterbody_initial_ds_flow_const = 0.0
+            waterbody_initial_depth_const = 0.0
+            # Set initial states from cold-state
+            waterbody_initial_states_df = pd.DataFrame(
+                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+            )
+            # TODO: This assignment could probably by done in the above call
+            waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
+            waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
+            waterbody_initial_states_df["index"] = range(len(waterbody_initial_states_df))
+
     else:
         max_network_seqorder = 0
         ordered_networks = {}
@@ -1276,29 +1312,6 @@ def main():
         channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
         channel_initial_states_df["h0"] = channel_initial_depth_const
         channel_initial_states_df["index"] = range(len(channel_initial_states_df))
-
-    ################## Handle Waterbody States
-    if wrf_hydro_waterbody_restart_file:
-
-        waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
-            wrf_hydro_waterbody_restart_file,
-            wrf_hydro_waterbody_ID_crosswalk_file,
-            wrf_hydro_waterbody_ID_crosswalk_file_field_name,
-            wrf_hydro_waterbody_crosswalk_filter_file,
-            wrf_hydro_waterbody_crosswalk_filter_file_field_name,
-        )
-    else:
-        # TODO: Consider adding option to read cold state from route-link file
-        waterbody_initial_ds_flow_const = 0.0
-        waterbody_initial_depth_const = 0.0
-        # Set initial states from cold-state
-        waterbody_initial_states_df = pd.DataFrame(
-            0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
-        )
-        # TODO: This assignment could probably by done in the above call
-        waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
-        waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
-        waterbody_initial_states_df["index"] = range(len(waterbody_initial_states_df))
 
     ################## Read QLateral Inputs
     # initialize qlateral dict
