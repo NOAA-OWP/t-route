@@ -19,8 +19,9 @@ cdef void levelpool_physics(float dt,
         float oa,
         float H0,
         QH *rv) nogil:
-    cdef float H1 = 0.0
-    cdef float qo1 = 0.0
+    cdef:
+        float H1 = 0.0
+        float qo1 = 0.0
 
     c_levelpool_physics(
         &dt,
