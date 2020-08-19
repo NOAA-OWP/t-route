@@ -1245,17 +1245,27 @@ def main():
             wrf_hydro_channel_restart_depth_flow_field_name,
         )
     else:
-        channel_initial_flow_const = 0.0
+        #TODO: Consider adding option to read cold state from route-link file
+        channel_initial_us_flow_const = 0.0
+        channel_initial_ds_flow_const = 0.0
         channel_initial_depth_const = 0.0
         # Set initial states from cold-state
-        # TODO: FIX THIS two-part dataframe
         channel_initial_states_df = pd.DataFrame(
-            channel_initial_state_const, index=connections.keys(), columns=range(nts), dtype="float32"
+            0,
+            index=connections.keys(), 
+            columns=[
+                "qu0",
+                "qd0",
+                "h0",
+            ], 
+            dtype="float32"
         )
+        channel_initial_states_df["qu0"] = channel_initial_us_flow_const
+        channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
+        channel_initial_states_df["h0"] = channel_initial_depth_const
+        channel_initial_states_df["index"] = range(len(channel_initial_states_df))
 
     ################## Handle Waterbody States
-    import pdb; pdb.set_trace()
-
     if wrf_hydro_waterbody_restart_file:
 
         waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
@@ -1280,7 +1290,10 @@ def main():
 
     else:
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
+            qlat_const, 
+            index=connections.keys(), 
+            columns=range(nts), 
+            dtype="float32"
         )
 
     for index, row in qlat_df.iterrows():
