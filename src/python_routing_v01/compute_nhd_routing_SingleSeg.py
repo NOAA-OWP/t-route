@@ -119,7 +119,7 @@ def _handle_args():
     parser.add_argument(
         "--wrf_hydro_channel_ID_crosswalk_file",
         dest="wrf_hydro_channel_ID_crosswalk_file",
-        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name"
+        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name",
     )
     parser.add_argument(
         "--wrf_hydro_channel_ID_crosswalk_file_field_name",
@@ -135,13 +135,13 @@ def _handle_args():
     parser.add_argument(
         "--wrf_hydro_waterbody_ID_crosswalk_file",
         dest="wrf_hydro_waterbody_ID_crosswalk_file",
-        help="provide an xarray-readable file that defines the order of the outputs in the waterbody restart file. Specify the ID field with --wrf_hydro_waterbody_ID_crosswalk_file_field_name"
+        help="provide an xarray-readable file that defines the order of the outputs in the waterbody restart file. Specify the ID field with --wrf_hydro_waterbody_ID_crosswalk_file_field_name",
     )
     parser.add_argument(
         "--wrf_hydro_waterbody_ID_crosswalk_file_field_name",
         dest="wrf_hydro_waterbody_ID_crosswalk_file_field_name",
         help="Name of the column providing the waterbody segment IDs in the waterbody crosswalk file",
-        default="ID"
+        default="ID",
     )
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
@@ -1065,11 +1065,15 @@ def main():
 
     wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
     wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
-    wrf_hydro_channel_ID_crosswalk_file_field_name = args.wrf_hydro_channel_ID_crosswalk_file_field_name
+    wrf_hydro_channel_ID_crosswalk_file_field_name = (
+        args.wrf_hydro_channel_ID_crosswalk_file_field_name
+    )
 
     wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
     wrf_hydro_waterbody_ID_crosswalk_file = args.wrf_hydro_waterbody_ID_crosswalk_file
-    wrf_hydro_waterbody_ID_crosswalk_file_field_name = args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name = (
+        args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
+    )
 
     debuglevel = -1 * int(args.debuglevel)
     verbose = args.verbose
@@ -1137,13 +1141,17 @@ def main():
             + time_string
         )
 
-        wrf_hydro_channel_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
+        wrf_hydro_channel_ID_crosswalk_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
+        )
         wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
         wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
         wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
         wrf_hydro_channel_restart_depth_flow_field_name = None
         wrf_hydro_waterbody_restart_file = wrf_hydro_channel_restart_file
-        wrf_hydro_waterbody_ID_crosswalk_file = r"/home/APD/inland_hydraulics/wrf-hydro-run/"
+        wrf_hydro_waterbody_ID_crosswalk_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/"
+        )
         wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
 
         qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
@@ -1237,28 +1245,21 @@ def main():
     if wrf_hydro_channel_restart_file:
 
         channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
-            wrf_hydro_channel_restart_file, 
-            wrf_hydro_channel_ID_crosswalk_file, 
+            wrf_hydro_channel_restart_file,
+            wrf_hydro_channel_ID_crosswalk_file,
             wrf_hydro_channel_ID_crosswalk_file_field_name,
             wrf_hydro_channel_restart_upstream_flow_field_name,
             wrf_hydro_channel_restart_downstream_flow_field_name,
             wrf_hydro_channel_restart_depth_flow_field_name,
         )
     else:
-        #TODO: Consider adding option to read cold state from route-link file
+        # TODO: Consider adding option to read cold state from route-link file
         channel_initial_us_flow_const = 0.0
         channel_initial_ds_flow_const = 0.0
         channel_initial_depth_const = 0.0
         # Set initial states from cold-state
         channel_initial_states_df = pd.DataFrame(
-            0,
-            index=connections.keys(), 
-            columns=[
-                "qu0",
-                "qd0",
-                "h0",
-            ], 
-            dtype="float32"
+            0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         )
         channel_initial_states_df["qu0"] = channel_initial_us_flow_const
         channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
@@ -1269,8 +1270,8 @@ def main():
     if wrf_hydro_waterbody_restart_file:
 
         waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
-            wrf_hydro_waterbody_restart_file, 
-            wrf_hydro_waterbody_ID_crosswalk_file, 
+            wrf_hydro_waterbody_restart_file,
+            wrf_hydro_waterbody_ID_crosswalk_file,
             wrf_hydro_waterbody_ID_crosswalk_file_field_name,
         )
     else:
@@ -1290,10 +1291,7 @@ def main():
 
     else:
         qlat_df = pd.DataFrame(
-            qlat_const, 
-            index=connections.keys(), 
-            columns=range(nts), 
-            dtype="float32"
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
     for index, row in qlat_df.iterrows():
