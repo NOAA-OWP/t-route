@@ -19,10 +19,10 @@ cdef void muskingcunge(float dt,
         float velp,
         float depthp,
         QVD *rv) nogil:
-    cdef float qdc, depthc, velc
-    qdc = 0.0
-    depthc = 0.0
-    velc = 0.0
+    cdef:
+        float qdc = 0.0
+        float depthc = 0.0
+        float velc = 0.0
 
     c_muskingcungenwm(
         &dt,
@@ -129,3 +129,4 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
 
         qup = qdp
     return output_buffer
+
