@@ -7,10 +7,14 @@ from numpy cimport ndarray
 cimport numpy as np
 cimport cython
 
-from reach cimport muskingcunge, QVD
+from reach import compute_reach
+from reservoir import compute_reservoir
+from reach cimport QVD, muskingcunge, compute_reach
+from reservoir cimport compute_reservoir
 
 
-TYPES = {1: 3, 2: 2}
+COMPUTE_FUNCS = {'reach': compute_reach, 'reservoir': compute_reservoir}
+
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -28,6 +32,8 @@ cpdef object binary_find(object arr, object els):
 
     cdef Py_ssize_t L, R, m
     cdef long cand, el
+
+
     for el in els:
         L = 0
         R = hi - 1
