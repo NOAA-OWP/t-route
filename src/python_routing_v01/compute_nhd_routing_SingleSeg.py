@@ -1150,9 +1150,14 @@ def main():
         wrf_hydro_channel_restart_depth_flow_field_name = None
         wrf_hydro_waterbody_restart_file = wrf_hydro_channel_restart_file
         wrf_hydro_waterbody_ID_crosswalk_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/"
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/LAKEPARM.nc"
         )
         wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
+        wrf_hydro_waterbody_crosswalk_filter_file = (
+            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
+        #wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
 
         qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
@@ -1273,10 +1278,22 @@ def main():
             wrf_hydro_waterbody_restart_file,
             wrf_hydro_waterbody_ID_crosswalk_file,
             wrf_hydro_waterbody_ID_crosswalk_file_field_name,
+            wrf_hydro_waterbody_crosswalk_filter_file,
+            wrf_hydro_waterbody_crosswalk_filter_file_field_name,
         )
     else:
-        # Make initial states from cold-state
-        pass
+        # TODO: Consider adding option to read cold state from route-link file
+        waterbody_initial_ds_flow_const = 0.0
+        waterbody_initial_depth_const = 0.0
+        # Set initial states from cold-state
+        waterbody_initial_states_df = pd.DataFrame(
+            0, index=connections.keys(), columns=["qd0", "h0",], dtype="float32"
+        )
+        #TODO: This assignment could probably by done in the above call
+        waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
+        waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
+        waterbody_initial_states_df["index"] = range(len(waterbody_initial_states_df))
+
 
     ################## Read QLateral Inputs
     # initialize qlateral dict
@@ -1284,7 +1301,7 @@ def main():
 
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
-        qlat_df = nnu.get_ql_from_wrf_hydro(ql_files)
+        qlat_df = nnu.get_ql_from_wrf_hydro(qlat_files)
 
     elif qlat_input_file:
         qlat_df = pd.read_csv(qlat_input_file, index_col=0)
@@ -1345,7 +1362,6 @@ def main():
                     print("... in %s seconds." % (time.time() - start_time))
 
             else:  # parallel execution
-
                 nslist.append(
                     [
                         flowveldepth_connect,
@@ -1362,6 +1378,7 @@ def main():
                         assume_short_ts,
                     ]
                 )
+
         if parallel_compute:
             if verbose:
                 print(f"executing parallel computation on networks of order {nsq} ... ")

@@ -749,32 +749,45 @@ def get_stream_restart_from_wrf_hydro(
 
 
 def get_reservoir_restart_from_wrf_hydro(
-    waterbody_intial_states_file, crosswalk_file, waterbody_ID_field
+    waterbody_intial_states_file, 
+    crosswalk_file, 
+    waterbody_ID_field,
+    crosswalk_filter_file,
+    crosswalk_filter_file_field,
+    #crosswalk_file_output_order_field,
+    waterbody_flow_column="qlakeo",
+    waterbody_depth_column="resht",
+    default_waterbody_flow_column="qd0",
+    default_waterbody_depth_column="h0",
 ):
+    xds = xr.open_dataset(crosswalk_file)
+    xdf = xds.to_dataframe()
+    
+    fds = xr.open_dataset(crosswalk_filter_file)
+    fdf = fds.to_dataframe()
+
+    xdf = xdf[xdf[waterbody_ID_field].isin(fdf[crosswalk_filter_file_field])]
+    #xdf = xdf[waterbody_ID_field, crosswalk_file_output_order_field]
+    xdf = xdf[waterbody_ID_field]
+    xdf = xdf.reset_index()
+
     # read initial states from r&r output
-    # steps to recreate crosswalk csv
-    """import xarray as xr
-    import pandas as pd
-    ds = xr.open_dataset("/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc")
-    df2 = ds.to_dataframe()
-    df2 = df2.loc[df2['NHDWaterbodyComID']!=-9999]
-    unique_WB = df2.NHDWaterbodyComID.unique()
-    unique_WB_df = pd.DataFrame(unique_WB,columns=['Waterbody'])
-    unique_WB_df.to_csv("/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/Waterbody_ID_crosswalk.csv")"""
-    ds2 = xr.open_dataset(waterbody_intial_states_file)
-    resdf = ds2.to_dataframe()
+    resds = xr.open_dataset(waterbody_intial_states_file)
+    resdf = resds.to_dataframe()
+    resdf = resdf.xs(0,level='links',drop_level=False)
     resdf = resdf.reset_index()
-    resdf = resdf.set_index(["links"])
-    resdf = resdf.drop(columns=(["qlink1", "qlink2"]))
-    resdf = resdf.loc[0]
-    resdf = resdf.reset_index()
-    resdf = resdf.set_index(["lakes"])
-    resdf = resdf.drop(columns=(["links"]))
-    ds = pd.read_csv(crosswalk_file)
-    resdf = resdf.join(ds)
-    resdf = resdf.drop(columns=(["Unnamed: 0"]))
-    resdf = resdf.reset_index()
-    resdf = resdf.set_index(["Waterbody"])
-    # resdf = resdf.set_index([waterbody_ID_field])
-    init_waterbody_states = resdf
+    resdf = resdf[[waterbody_flow_column,waterbody_depth_column]]
+    resdf.rename(
+        columns={
+            waterbody_flow_column: default_waterbody_flow_column,
+            waterbody_depth_column: default_waterbody_depth_column,
+        },
+        inplace=True,
+    )
+
+    mod = resdf.join(xdf)
+    mod = mod.reset_index()
+    mod = mod.set_index([waterbody_ID_field])
+    init_waterbody_states = mod
+
     return init_waterbody_states
