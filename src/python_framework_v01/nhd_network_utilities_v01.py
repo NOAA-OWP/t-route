@@ -697,26 +697,25 @@ def get_ql_from_wrf_hydro(ql_files):
 
 
 def get_stream_restart_from_wrf_hydro(
-    channel_initial_states_file, 
-    crosswalk_file, 
+    channel_initial_states_file,
+    crosswalk_file,
     channel_ID_column,
-    us_flow_column = "qlink1", 
-    ds_flow_column = "qlink2", 
-    depth_column = "hlink", 
-    default_us_flow_column = "qu0", 
-    default_ds_flow_column = "qd0", 
-    default_depth_column = "h0", 
+    us_flow_column="qlink1",
+    ds_flow_column="qlink2",
+    depth_column="hlink",
+    default_us_flow_column="qu0",
+    default_ds_flow_column="qd0",
+    default_depth_column="h0",
 ):
-    '''
+    """
     channel_initial_states_file: WRF-HYDRO standard restart file
     us_flow_column: column in the restart file to use for upstream flow initial state
     ds_flow_column: column in the restart file to use for downstream flow initial state
     depth_column: column in the restart file to use for depth initial state
     crosswalk_file: File containing channel IDs IN THE ORDER of the Restart File
     channel_ID_column: field in the crosswalk file to assign as the index of the restart values
-    '''
+    """
 
-    import pdb; pdb.set_trace()
     xds = xr.open_dataset(crosswalk_file)
 
     xdf = xds.to_dataframe()
@@ -725,7 +724,7 @@ def get_stream_restart_from_wrf_hydro(
 
     qds = xr.open_dataset(channel_initial_states_file)
     qdf = qds.to_dataframe()
-    qdf = qdf[:len(xdf)]
+    qdf = qdf[: len(xdf)]
     qdf = qdf.reset_index()
     if depth_column in qdf.columns:
         qdf = qdf[[us_flow_column, ds_flow_column, depth_column]]
@@ -734,11 +733,11 @@ def get_stream_restart_from_wrf_hydro(
         qdf[depth_column] = 0
     qdf.rename(
         columns={
-            us_flow_column:default_us_flow_column,
-            ds_flow_column:default_ds_flow_column,
-            depth_column:default_depth_column,
+            us_flow_column: default_us_flow_column,
+            ds_flow_column: default_ds_flow_column,
+            depth_column: default_depth_column,
         },
-        inplace=True
+        inplace=True,
     )
 
     mod = xdf.join(qdf)
@@ -771,10 +770,11 @@ def get_reservoir_restart_from_wrf_hydro(
     resdf = resdf.reset_index()
     resdf = resdf.set_index(["lakes"])
     resdf = resdf.drop(columns=(["links"]))
-    ds = pd.read_csv(initial_states_waterbody_ID_crosswalk_file)
+    ds = pd.read_csv(crosswalk_file)
     resdf = resdf.join(ds)
     resdf = resdf.drop(columns=(["Unnamed: 0"]))
     resdf = resdf.reset_index()
     resdf = resdf.set_index(["Waterbody"])
+    # resdf = resdf.set_index([waterbody_ID_field])
     init_waterbody_states = resdf
     return init_waterbody_states
