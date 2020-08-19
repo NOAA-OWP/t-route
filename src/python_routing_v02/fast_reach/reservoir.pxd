@@ -17,3 +17,8 @@ cdef void levelpool_physics(float dt,
         float oa,
         float H0,
         QH *rv) nogil
+
+cpdef float[:,:] compute_reservoir(const float[:] boundary,
+                                    const float[:,:] previous_state,
+                                    const float[:,:] parameter_inputs,
+                                    float[:,:] output_buffer) nogil

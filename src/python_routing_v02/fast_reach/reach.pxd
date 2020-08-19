@@ -20,3 +20,8 @@ cdef void muskingcunge(float dt,
         float velp,
         float depthp,
         QVD *rv) nogil
+
+cpdef float[:,:] compute_reach(const float[:] boundary,
+                                const float[:,:] previous_state,
+                                const float[:,:] parameter_inputs,
+                                float[:,:] output_buffer) nogil
