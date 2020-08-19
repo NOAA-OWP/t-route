@@ -1157,7 +1157,7 @@ def main():
             r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
         )
         wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
-        #wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
+        # wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
 
         qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
@@ -1289,11 +1289,10 @@ def main():
         waterbody_initial_states_df = pd.DataFrame(
             0, index=connections.keys(), columns=["qd0", "h0",], dtype="float32"
         )
-        #TODO: This assignment could probably by done in the above call
+        # TODO: This assignment could probably by done in the above call
         waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
         waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
         waterbody_initial_states_df["index"] = range(len(waterbody_initial_states_df))
-
 
     ################## Read QLateral Inputs
     # initialize qlateral dict

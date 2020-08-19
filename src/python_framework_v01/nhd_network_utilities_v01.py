@@ -749,12 +749,13 @@ def get_stream_restart_from_wrf_hydro(
 
 
 def get_reservoir_restart_from_wrf_hydro(
-    waterbody_intial_states_file, 
-    crosswalk_file, 
+    waterbody_intial_states_file,
+    crosswalk_file,
     waterbody_ID_field,
     crosswalk_filter_file,
     crosswalk_filter_file_field,
-    #crosswalk_file_output_order_field,
+    crosswalk_file_xs_field="links",
+    crosswalk_file_xs_value=0,
     waterbody_flow_column="qlakeo",
     waterbody_depth_column="resht",
     default_waterbody_flow_column="qd0",
@@ -762,21 +763,24 @@ def get_reservoir_restart_from_wrf_hydro(
 ):
     xds = xr.open_dataset(crosswalk_file)
     xdf = xds.to_dataframe()
-    
+
     fds = xr.open_dataset(crosswalk_filter_file)
     fdf = fds.to_dataframe()
 
     xdf = xdf[xdf[waterbody_ID_field].isin(fdf[crosswalk_filter_file_field])]
-    #xdf = xdf[waterbody_ID_field, crosswalk_file_output_order_field]
+    # xdf = xdf[waterbody_ID_field, crosswalk_file_output_order_field]
     xdf = xdf[waterbody_ID_field]
     xdf = xdf.reset_index()
 
     # read initial states from r&r output
     resds = xr.open_dataset(waterbody_intial_states_file)
     resdf = resds.to_dataframe()
-    resdf = resdf.xs(0,level='links',drop_level=False)
+    # TODO: this step of taking a cross section may be an xarray artifact
+    resdf = resdf.xs(
+        crosswalk_file_xs_value, level=crosswalk_file_xs_field, drop_level=False
+    )
     resdf = resdf.reset_index()
-    resdf = resdf[[waterbody_flow_column,waterbody_depth_column]]
+    resdf = resdf[[waterbody_flow_column, waterbody_depth_column]]
     resdf.rename(
         columns={
             waterbody_flow_column: default_waterbody_flow_column,
