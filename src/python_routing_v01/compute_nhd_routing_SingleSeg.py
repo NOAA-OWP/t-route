@@ -284,6 +284,8 @@ connections = None
 networks = None
 qlateral = None
 waterbodies_df = None
+waterbody_initial_states_df = None
+channel_initial_states_df = None
 
 # WRITE_OUTPUT = False  # True
 
@@ -469,6 +471,7 @@ def compute_reach_upstream_flows(
     assume_short_ts=False,
 ):
     global connections
+    global channel_initial_states_df
 
     # upstream flow per reach
     qup = 0.0
@@ -501,7 +504,7 @@ def compute_reach_upstream_flows(
 
             if ts == 0:
                 # Initialize qup from warm state array
-                qup = 0.0
+                qup = channel_initial_states_df.loc[us]['qd0']
             else:
                 qup += us_flowveldepth[us]["flowval"][ts - 1]
 
@@ -561,12 +564,12 @@ def compute_mc_reach_up2down(
 
         if ts == 0:
             # initialize from initial states
-            qdp = 0
+            qdp = channel_initial_states_df.loc[current_segment]['qd0']
             velp = 0
-            depthp = 0
+            depthp = channel_initial_states_df.loc[current_segment]['h0']
         else:
             qdp = flowveldepth[current_segment]["flowval"][-1]
-            velp = flowveldepth[current_segment]["velval"][-1]
+            velp = 0  # flowveldepth[current_segment]["velval"][-1]
             depthp = flowveldepth[current_segment]["depthval"][-1]
 
         # run M-C model
@@ -685,6 +688,7 @@ def compute_level_pool_reach_up2down(
 ):
     global connections
     global waterbodies_df
+    global waterbody_initial_states_df
 
     if debuglevel <= -2:
         print(
@@ -697,7 +701,7 @@ def compute_level_pool_reach_up2down(
     current_segment = reach["reach_tail"]
     if ts == 0:
         # Initialize from warm state
-        depthp = 0
+        depthp = waterbody_initial_states_df.loc[waterbody]['h0']
     else:
         depthp = flowveldepth[current_segment]["depthval"][-1]
 
@@ -1051,6 +1055,8 @@ def main():
     global networks
     global qlateral
     global waterbodies_df
+    global waterbody_initial_states_df
+    global channel_initial_states_df
 
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
@@ -1287,7 +1293,7 @@ def main():
         waterbody_initial_depth_const = 0.0
         # Set initial states from cold-state
         waterbody_initial_states_df = pd.DataFrame(
-            0, index=connections.keys(), columns=["qd0", "h0",], dtype="float32"
+            0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
         )
         # TODO: This assignment could probably by done in the above call
         waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
