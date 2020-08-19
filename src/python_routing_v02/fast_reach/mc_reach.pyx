@@ -7,16 +7,10 @@ from numpy cimport ndarray
 cimport numpy as np
 cimport cython
 
+from reach cimport muskingcunge, QVD
 
-# TODO: Make this QVD
-cdef struct QVD:
-    float qdc
-    float velc
-    float depthc
 
-cdef struct QH:
-    float resoutflow
-    float reslevel
+TYPES = {1: 3, 2: 2}
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -54,166 +48,33 @@ cpdef object binary_find(object arr, object els):
     return idxs
 
 
-cdef extern from "pyResLevelPool.h":
-    void c_levelpool_physics(float *dt,
-                              float *qi0,
-                              float *qi1,
-                              float *ql,
-                              float *ar,
-                              float *we,
-                              float *maxh,
-                              float *wc,
-                              float *wl,
-                              float *dl,
-                              float *oe,
-                              float *oc,
-                              float *oa,
-                              float *H0,
-                              float *H1,
-                              float *qo1) nogil;
+def static_compile_program(reaches, types, data):
+    """
+    This compiles static data only.
+    It does not insert
 
-cdef extern from "pyMCsingleSegStime_NoLoop.h":
-    void c_muskingcungenwm(float *dt,
-                                  float *qup,
-                                  float *quc,
-                                  float *qdp,
-                                  float *ql,
-                                  float *dx,
-                                  float *bw,
-                                  float *tw,
-                                  float *twcc,
-                                  float *n,
-                                  float *ncc,
-                                  float *cs,
-                                  float *s0,
-                                  float *velp,
-                                  float *depthp,
-                                  float *qdc,
-                                  float *velc,
-                                  float *depthc) nogil;
+    Arguments:
+        reaches: List of lists of annotated reaches.
+        types: types of nodes. maps the annotations to a computation function
+        data: dictionary of dataframes. Columns must be in appropriate order!
 
+    Returns:
+        data array: static data (columns must be in appropriate order)
+        instruction array: length and instruction to execute
+        feature array: function pointers
+    """
+    instructions = []
+    datum = []
 
-@cython.boundscheck(False)
-cdef void levelpool_physics(float dt,
-        float qi0,
-        float qi1,
-        float ql,
-        float ar,
-        float we,
-        float maxh,
-        float wc,
-        float wl,
-        float dl,
-        float oe,
-        float oc,
-        float oa,
-        float H0,
-        QH *rv) nogil:
-    cdef float H1 = 0.0
-    cdef float qo1 = 0.0
+    type_ind = {t: i for i, t in enumerate(types)}
+    features = [types[k] for k in type_ind]
 
-    c_levelpool_physics(
-        &dt,
-        &qi0,
-        &qi1,
-        &ql,
-        &ar,
-        &we,
-        &maxh,
-        &wc,
-        &wl,
-        &dl,
-        &oe,
-        &oc,
-        &oa,
-        &H0,
-        &H1,
-        &qo1)
-    rv.reslevel = H1
-    rv.resoutflow = qo1
+    for _type, reach in reaches:
+        instructions.extend((len(reach), type_ind[_type]))
 
-
-cpdef compute_reservoir_kernel(float dt,
-        float qi0,
-        float qi1,
-        float ql,
-        float ar,
-        float we,
-        float maxh,
-        float wc,
-        float wl,
-        float dl,
-        float oe,
-        float oc,
-        float oa,
-        float H0):
-
-    cdef QH rv
-    cdef QH *out = &rv
-
-    levelpool_physics(dt,
-        qi0,
-        qi1,
-        ql,
-        ar,
-        we,
-        maxh,
-        wc,
-        wl,
-        dl,
-        oe,
-        oc,
-        oa,
-        H0,
-        out)
-
-    return rv
-    
-
-@cython.boundscheck(False)
-cdef void muskingcunge(float dt,
-        float qup,
-        float quc,
-        float qdp,
-        float ql,
-        float dx,
-        float bw,
-        float tw,
-        float twcc,
-        float n,
-        float ncc,
-        float cs,
-        float s0,
-        float velp,
-        float depthp,
-        QVD *rv) nogil:
-    cdef float qdc, depthc, velc
-    qdc = 0.0
-    depthc = 0.0
-    velc = 0.0
-
-    c_muskingcungenwm(
-        &dt,
-        &qup,
-        &quc,
-        &qdp,
-        &ql,
-        &dx,
-        &bw,
-        &tw,
-        &twcc,
-        &n,
-        &ncc,
-        &cs,
-        &s0,
-        &velp,
-        &depthp,
-        &qdc,
-        &velc,
-        &depthc)
-    rv.qdc = qdc
-    rv.depthc = depthc
-    rv.velc = velc
+        subset = data[_type].loc[reach]
+        datum.extend(subset.values.flat)
+    return instructions, features, datum
 
 
 @cython.boundscheck(False)
@@ -310,7 +171,8 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
-    const float[:, :] qlat_values, 
+    const float[:, :] qlat_values,
+    const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
     bint assume_short_ts=False):
     """
     Compute network
@@ -333,25 +195,57 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
+    # flowveldepth is 2D float array that holds results
+    # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
+    # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef Py_ssize_t[:] srows, drows_tmp, usrows
+    cdef:
+        Py_ssize_t[:] srows  # Source rows indexes
+        Py_ssize_t[:] drows_tmp
+        Py_ssize_t[:] usrows # Upstream row indexes 
+    
+    # Buffers and buffer views
+    # These are C-contiguous.
     cdef float[:, ::1] buf, buf_view
     cdef float[:, ::1] out_buf, out_view
 
+    # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
+    
+    # hard-coded column. Find a better way to do this
     cdef int buf_cols = 13
-    cdef Py_ssize_t i, ireach, ireach_cache, iusreach_cache
 
+    cdef:
+        Py_ssize_t i  # Temporary variable
+        Py_ssize_t ireach  # current reach index
+        Py_ssize_t ireach_cache  # current index of reach cache
+        Py_ssize_t iusreach_cache  # current index of upstream reach cache
+
+    # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
+    # For a given reach, get number of upstream nodes
     cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
 
-    cdef list reach, bf_results
+    cdef:
+        list reach  # Temporary variable
+        list bf_results  # Temporary variable
+
     cdef int reachlen, usreachlen
     cdef Py_ssize_t bidx
     cdef list buf_cache = []
-    cdef Py_ssize_t[:] reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
-    cdef Py_ssize_t[:] usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+
+    cdef:
+        Py_ssize_t[:] reach_cache
+        Py_ssize_t[:] usreach_cache
+
+    # reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
+    # upstream reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+
     ireach_cache = 0
     iusreach_cache = 0
     # copy reaches into an array
@@ -447,3 +341,39 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 
             timestep += 1
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+
+
+# cpdef compute_network_order(int nsteps, list reaches, dict connections,
+#         object parameter_values, object qlat_values, object waterbody_values,
+#         bint assume_short_ts=False):
+#     funcs = []
+#     instructions, features, datum = static_compile_program(reaches, 
+#                                         funcs,
+#                                         {'wb': waterbody_values, 'rch': parameter_values})
+
+#     cdef:
+#         int ilen, ifeature
+#         float[:] data
+
+#     cdef list nargs = [12, 10]
+#     cdef Py_ssize_t i = 0
+#     cdef Py_ssize_t di = 0
+#     cdef Py_ssize_t inst_size = len(instructions)
+
+#     cdef int[:] iview = instructions
+#     cdef float[:] dview = datum
+
+#     for i in range(0, inst_size, 2):
+#         ilen = iview[i]
+#         ifeature = iview[i+1]
+#         di = di
+
+
+
+#         func = features[ifeature]
+#         data = dview[di:di+(ilen*nargs[ifeature])]
+#         di += ilen*nargs[ifeature] + 1
+
+
+
+
