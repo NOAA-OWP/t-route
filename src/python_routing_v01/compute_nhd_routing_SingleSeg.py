@@ -1064,6 +1064,8 @@ def main():
 
     supernetwork = args.supernetwork
     custom_input_file = args.custom_input_file
+    supernetwork_data = None
+
     if custom_input_file:
         input_data = nnu.read_custom_input_json(custom_input_file)
         supernetwork_data = input_data['supernetwork_data']
@@ -1124,24 +1126,94 @@ def main():
         )
 
     elif run_pocono1_test:
+        #NOTE: The test case for the Pocono basin was derived from this 
+        # resource on HydroShare, developed by aaraney and sourced from the 
+        # wrf_hydro_nwm_public repository on GitHub
+        # https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
         if verbose:
             print("running test case for Mainstems_CONUS domain")
         # Overwrite the following test defaults
-        supernetwork = "Pocono_TEST1"
+
+        NWM_test_path = os.path.join(root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/")
+        lakeparm_file = os.path.join(
+            NWM_test_path, 
+            "primary_domain",
+            "DOMAIN",
+            "LAKEPARM.nc",
+        )
+        routelink_file = wrf_hydro_waterbody_crosswalk_filter_file = os.path.join(
+            NWM_test_path, 
+            "primary_domain",
+            "DOMAIN",
+            "Route_Link.nc",
+        )
+        time_string = "2017-12-31_06-00_DOMAIN1"
+        wrf_hydro_restart_file = os.path.join(
+            NWM_test_path, 
+            "example_RESTART",
+            "HYDRO_RST." + time_string
+        )
+        supernetwork_data = {
+            "title_string": "Custom Input Example (using Pocono Test Example datafile)",
+            "geo_file_path": routelink_file,
+            "cols_as_text": False,
+            "key_col": 16, # "link",
+            "downstream_col": 22, # "to",
+            "length_col": 3, # "Length",
+            "manningn_col": 18, # "n",
+            "manningncc_col": 19, # "nCC",
+            "slope_col": 8, # "So",
+            "bottomwidth_col": 0, # "BtmWdth",
+            "topwidth_col": 9, # "TopWdth",
+            "topwidthcc_col": 10, # "TopWdthCC",
+            "waterbody_col": 6, # "NHDWaterbodyComID",
+            "waterbody_null_code": -9999,
+            "MusK_col": 4, # "MusK",
+            "MusX_col": 5, # "MusX",
+            "ChSlp_col": 1, # "ChSlp",
+            "terminal_code": 0,
+            "driver_string": "NetCDF",
+            "layer_string": 0,
+            "waterbody_parameter_file_type": "Level_Pool",
+            "waterbody_parameters": {
+                "level_pool_waterbody_parameter_file_path": lakeparm_file,
+                "level_pool_waterbody_id": "lake_id", 
+                "level_pool_waterbody_area": "LkArea", 
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA"
+            }
+        }
         break_network_at_waterbodies = True
-        qts_subdivisions = 1
-        dt = 300 / qts_subdivisions
-        nts = 144 * qts_subdivisions
+        qts_subdivisions = 12
+        dt = 3600 / qts_subdivisions
+        nts = 24 * qts_subdivisions
         write_csv_output = False
         write_nc_output = False
-        time_string = "2020-03-19_18:00_DOMAIN1"
         # build a time string to specify input date
-        wrf_hydro_warm_state_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
-            + time_string
+        wrf_hydro_channel_restart_file = wrf_hydro_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = routelink_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
+        wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
+        wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
+        wrf_hydro_channel_restart_depth_flow_field_name = "hlink"
+        wrf_hydro_waterbody_restart_file = wrf_hydro_restart_file
+        wrf_hydro_waterbody_ID_crosswalk_file = lakeparm_file
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
+        wrf_hydro_waterbody_crosswalk_filter_file = routelink_file
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
+        # wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
+        qlat_input_folder = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
         )
-        qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
+        qlat_file_index_col = "feature_id"
+        qlat_file_value_col = "q_lateral"
 
     elif run_route_and_replace_test:
         if verbose:
@@ -1181,6 +1253,8 @@ def main():
 
         qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
         qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
+        qlat_file_index_col = "station_id"
+        qlat_file_value_col = "q_lateral"
 
     test_folder = os.path.join(root, r"test")
 
@@ -1189,7 +1263,7 @@ def main():
     if showtiming:
         start_time = time.time()
     # STEP 1
-    if args.custom_input_file:
+    if supernetwork_data:
         supernetwork_values = nnu.get_nhd_connections(supernetwork_data, debuglevel, verbose)
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
@@ -1238,6 +1312,9 @@ def main():
             supernetwork_data["waterbody_parameters"][
                 "level_pool_waterbody_parameter_file_path"
             ],
+            supernetwork_data["waterbody_parameters"][
+                "level_pool_waterbody_id"
+            ],
             waterbodies_values,
         )
         waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
@@ -1258,7 +1335,8 @@ def main():
             )
 
         ################## Handle Waterbody States
-        if wrf_hydro_waterbody_restart_file:
+        if 1 == 0:
+        # if wrf_hydro_waterbody_restart_file:
 
             waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
                 wrf_hydro_waterbody_restart_file,
@@ -1320,7 +1398,11 @@ def main():
 
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
-        qlat_df = nnu.get_ql_from_wrf_hydro(qlat_files)
+        qlat_df = nnu.get_ql_from_wrf_hydro(
+                qlat_files = qlat_files, 
+                index_col=qlat_file_index_col, 
+                value_col=qlat_file_value_col,
+           )
 
     elif qlat_input_file:
         qlat_df = pd.read_csv(qlat_input_file, index_col=0)

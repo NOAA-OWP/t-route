@@ -64,6 +64,7 @@ def get_geo_file_table_rows(
     # NOTE: these methods can lose the "connections" and "rows" arguments when
     # implemented as class methods where those arrays are members of the class.
     # TODO: Improve the error handling here for a corrupt input file
+
     if debuglevel <= -1:
         print(
             f"reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}"
@@ -71,6 +72,8 @@ def get_geo_file_table_rows(
     if driver_string == "NetCDF":  # Use Xarray to read a netcdf table
         try:
             geo_file = xr.open_dataset(geo_file_path)
+            geo_keys = geo_file.data_vars.keys()
+            geo_keys = list(geo_keys)
             geo_file_rows = (geo_file.to_dataframe()).values
         except Exception as e:
             print(e)
@@ -84,6 +87,7 @@ def get_geo_file_table_rows(
         try:
             HEADER = None  # TODO: standardize the mask format or add some logic to handle headers or other variations in format
             geo_file = pd.read_csv(geo_file_path, header=HEADER)
+            geo_keys = []
         except Exception as e:
             print(e)
             if debuglevel <= -1:
@@ -94,6 +98,7 @@ def get_geo_file_table_rows(
             with zipfile.ZipFile(geo_file_path, "r") as zcsv:
                 with zcsv.open(layer_string) as csv:
                     geo_file = pd.read_csv(csv)
+            geo_keys = []
         except Exception as e:
             print(e)
             if debuglevel <= -1:
@@ -104,6 +109,7 @@ def get_geo_file_table_rows(
             geo_file = gpd.read_file(
                 geo_file_path, driver=driver_string, layer=layer_string
             )
+            geo_keys = geo_file.keys().tolist()
             geo_file_rows = geo_file.to_numpy()
         except Exception as e:
             print(e)
@@ -123,7 +129,7 @@ def get_geo_file_table_rows(
         pd.set_option("display.max_colwidth", -1)
         print(geo_file.head())  # Preview the first 5 lines of the loaded data
 
-    return geo_file_rows
+    return geo_file_rows, geo_keys
 
 
 # TODO: Give this function a more appropriate general name (it does more that build connections)
@@ -226,10 +232,31 @@ def build_connections_object(
         waterbody_downstream_set,
     )
 
+def convert_text_cols_to_val(
+    geo_keys,
+    key_col,
+    downstream_col,
+    length_col,
+    waterbody_col,
+    verbose=False,
+    debuglevel=0,
+):
+    key_col = geo_keys.index(key_col) + 2
+    downstream_col = geo_keys.index(downstream_col) + 2
+    length_col = geo_keys.index(length_col) + 2
+    waterbody_col = geo_keys.index(waterbody_col) + 2
+
+    return ( 
+        key_col,
+        downstream_col,
+        length_col,
+        waterbody_col,
+    )
 
 def do_connections(
     geo_file_path=None,
     data_link=None,
+    cols_as_text=False,
     title_string=None,
     layer_string=None,
     driver_string=None,
@@ -249,7 +276,7 @@ def do_connections(
 
     if verbose:
         print(title_string)
-    geo_file_rows = get_geo_file_table_rows(
+    geo_file_rows, geo_keys = get_geo_file_table_rows(
         geo_file_path=geo_file_path,
         data_link=data_link,
         layer_string=layer_string,
@@ -258,10 +285,26 @@ def do_connections(
         debuglevel=debuglevel,
     )
 
+    if cols_as_text:
+        (
+            key_col,
+            downstream_col,
+            length_col,
+            waterbody_col,
+        ) = convert_text_cols_to_val(
+            geo_keys,
+            key_col,
+            downstream_col,
+            length_col,
+            waterbody_col,
+            verbose,
+            debuglevel,
+        )
+        
     if debuglevel <= -1:
         print(f"MASK: {mask_file_path}")
     if mask_file_path:
-        mask_file_rows = get_geo_file_table_rows(
+        mask_file_rows, _ = get_geo_file_table_rows(
             geo_file_path=mask_file_path,
             layer_string=mask_layer_string,
             driver_string=mask_driver_string,
@@ -294,6 +337,9 @@ def do_connections(
 
 
 def get_nhd_connections(supernetwork_data={}, debuglevel=0, verbose=False):
+    # TODO: convert to get.
+    # as in: text=supernetwork_data.get("cols_as_text",None):
+    # Will need to check if something depends on the None elsewhere.
     if "waterbody_col" not in supernetwork_data:
         supernetwork_data.update({"waterbody_col": None})
         supernetwork_data.update({"waterbody_null_code": None})
@@ -308,9 +354,11 @@ def get_nhd_connections(supernetwork_data={}, debuglevel=0, verbose=False):
     if "data_link" not in supernetwork_data:
         supernetwork_data.update({"data_link": None})
 
+    import pdb; pdb.set_trace()
     return do_connections(
         geo_file_path=supernetwork_data["geo_file_path"],
         data_link=supernetwork_data["data_link"],
+        cols_as_text=supernetwork_data.get("cols_as_text",None),
         key_col=supernetwork_data["key_col"],
         downstream_col=supernetwork_data["downstream_col"],
         length_col=supernetwork_data["length_col"],
@@ -671,18 +719,20 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
     return supernetwork_data, supernetwork_values
 
 
-def read_waterbody_df(parm_file, lake_id_mask=None):
+def read_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
+
+    import pdb; pdb.set_trace()
     ds = xr.open_dataset(parm_file)
-    df1 = ds.to_dataframe().set_index("lake_id")
+    df1 = ds.to_dataframe().set_index(lake_index_field)
     if lake_id_mask:
         df1 = df1.loc[lake_id_mask, :]
     return df1
 
 
-def get_ql_from_wrf_hydro(ql_files):
+def get_ql_from_wrf_hydro(qlat_files, index_col = "station_id", value_col="q_lateral"):
     li = []
 
-    for filename in ql_files:
+    for filename in qlat_files:
         ds = xr.open_dataset(filename)
         df1 = ds.to_dataframe()
 
@@ -690,7 +740,7 @@ def get_ql_from_wrf_hydro(ql_files):
 
     frame = pd.concat(li, axis=0, ignore_index=False)
     mod = frame.reset_index()
-    ql = mod.pivot(index="station_id", columns="time", values="q_lateral")
+    ql = mod.pivot(index=index_col, columns="time", values=value_col)
 
     return ql
 
@@ -715,6 +765,33 @@ def get_stream_restart_from_wrf_hydro(
     channel_ID_column: field in the crosswalk file to assign as the index of the restart values
     """
 
+    xds = xr.open_dataset(crosswalk_file)
+    xdf = xds[channel_ID_column].to_dataframe()
+    xdf = xdf.reset_index()
+    xdf = xdf[[channel_ID_column]]
+    qds = xr.open_dataset(channel_initial_states_file)
+    if depth_column in qds:
+        qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
+    else:
+        qdf2 = qds[[us_flow_column, ds_flow_column]].to_dataframe()
+        qdf2[depth_column] = 0
+    qdf2 = qdf2.reset_index()
+    qdf2 = qdf2[[us_flow_column, ds_flow_column, depth_column]]
+    qdf2.rename(
+        columns={
+            us_flow_column: default_us_flow_column,
+            ds_flow_column: default_ds_flow_column,
+            depth_column: default_depth_column,
+        },
+        inplace=True,
+    )
+    qdf2[channel_ID_column] = xdf
+    qdf2 = qdf2.reset_index().set_index([channel_ID_column])
+
+    import pdb; pdb.set_trace()
+    return qdf2
+
+    ### TODO: Delete this legacy code...
     xds = xr.open_dataset(crosswalk_file)
 
     xdf = xds.to_dataframe()
