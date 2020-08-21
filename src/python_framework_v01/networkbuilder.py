@@ -55,15 +55,17 @@ def get_waterbody_segments(
 ):
 
     if verbose:
-        print("waterbody_set ...")
-    waterbody_set = {con[data_key][waterbody_col] for key, con in connections.items()}
-    waterbody_set.discard(waterbody_null_code)
+        print("level_pool_waterbody_set ...")
+    waterbody_dict = {}
+    level_pool_waterbody_set = {con[data_key][waterbody_col] for key, con in connections.items()}
+    level_pool_waterbody_set.discard(waterbody_null_code)
+    waterbody_dict["level_pool"] = level_pool_waterbody_set
     if debuglevel <= -1:
-        print(f"found {len(waterbody_set)} waterbodies")
+        print(f"found {len(level_pool_waterbody_set)} waterbodies")
     if debuglevel <= -3:
-        print(waterbody_set)
+        print(level_pool_waterbody_set)
     if verbose:
-        print("waterbody_set complete")
+        print("level_pool_waterbody_set complete")
 
     if verbose:
         print("waterbody segments ...")
@@ -128,7 +130,7 @@ def get_waterbody_segments(
         print("waterbody_upstreams_set complete")
 
     return (
-        waterbody_set,
+        waterbody_dict,
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
@@ -489,7 +491,7 @@ def main():
     # TODO: Set/pass/identify a proper flag value
     if test_waterbody_col is not None:
         (
-            test_waterbody_set,
+            test_waterbody_dict,
             test_waterbody_segments,
             test_waterbody_outlet_set,
             test_waterbody_upstreams_set,

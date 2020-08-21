@@ -1,28 +1,48 @@
 {   
-    "supernetwork_data":
+    "run_parameters":
+    {
+        "parallel_compute": false,
+        "verbose": true,
+        "showtiming": true,
+        "debuglevel": 0,
+        "break_network_at_waterbodies": true,
+        "assume_short_ts": true,
+        "qts_subdivisions": 12,
+        "dt": 300,
+        "nts": 288
+    },
+    "output_parameters":
+    {
+        "write_csv_output": false,
+        "write_nc_output": false
+    },
+    "supernetwork_parameters":
     {
         "title_string": "Custom Input Example (using Pocono Test Example datafile)",
-        "geo_file_path": "../../test/input/geo/PoconoSampleData1/PoconoSampleRouteLink1.shp",
-        "key_col": 18,
-        "downstream_col": 23,
-        "length_col": 5,
-        "manningn_col": 20,
-        "manningncc_col": 21,
-        "slope_col": 10,
-        "bottomwidth_col": 2,
-        "waterbody_col": 8,
+        "geo_file_path": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
+        "key_col": 16,
+        "downstream_col": 22,
+        "length_col": 3,
+        "manningn_col": 18,
+        "manningncc_col": 19,
+        "slope_col": 8,
+        "bottomwidth_col": 0,
+        "waterbody_col": 6,
         "waterbody_null_code": -9999,
-        "topwidth_col": 11,
-        "topwidthcc_col": 12,
-        "MusK_col": 7,
-        "MusX_col": 8,
-        "ChSlp_col": 12,
+        "topwidth_col": 9,
+        "topwidthcc_col": 10,
+        "MusK_col": 4,
+        "MusX_col": 5,
+        "ChSlp_col": 1,
         "terminal_code": 0,
-        "driver_string": "ESRI Shapefile",
-        "layer_string": 0,
-        "waterbody_parameter_file_type": "Level_Pool",
-        "waterbody_parameters": {
-            "level_pool_waterbody_parameter_file_path": "../../test/input/geo/NWM_2.1_Sample_Datasets/LAKEPARM_POCONO.nc",
+        "driver_string": "NetCDF",
+        "layer_string": 0
+    },
+    "waterbody_parameters": {
+        "level_pool":
+        {
+            "level_pool_waterbody_parameter_file_path": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc",
+            "level_pool_waterbody_id": "lake_id",
             "level_pool_waterbody_area": "LkArea", 
             "level_pool_weir_elevation": "WeirE",
             "level_pool_waterbody_max_elevation": "LkMxE",
@@ -33,5 +53,26 @@
             "level_pool_orifice_coefficient": "OrificeC",
             "level_pool_orifice_area": "OrificeA"
         }
+    },
+    "forcing_parameters":
+    {
+        "qlat_input_folder": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
+        "qlat_file_pattern_filter": "/*.CHRTOUT_DOMAIN1",
+        "qlat_file_index_col": "feature_id",
+        "qlat_file_value_col": "q_lateral"
+    },
+    "restart_parameters":
+    {
+        "wrf_hydro_channel_restart_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1",
+        "wrf_hydro_channel_ID_crosswalk_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
+        "wrf_hydro_channel_ID_crosswalk_file_field_name": "link",
+        "wrf_hydro_channel_restart_upstream_flow_field_name": "qlink1",
+        "wrf_hydro_channel_restart_downstream_flow_field_name": "qlink2",
+        "wrf_hydro_channel_restart_depth_flow_field_name": "hlink",
+        "wrf_hydro_waterbody_restart_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1",
+        "wrf_hydro_waterbody_ID_crosswalk_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc",
+        "wrf_hydro_waterbody_ID_crosswalk_file_field_name": "lake_id",
+        "wrf_hydro_waterbody_crosswalk_filter_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
+        "wrf_hydro_waterbody_crosswalk_filter_file_field_name": "NHDWaterbodyComID"
     }
 }

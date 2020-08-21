@@ -63,13 +63,6 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--test-rnr",
-        "--run-Mainstems-test-example",
-        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
-        dest="run_route_and_replace_test",
-        action="store_true",
-    )
-    parser.add_argument(
         "--sts",
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
@@ -328,7 +321,8 @@ else:
 def compute_network(
     flowveldepth_connect,
     terminal_segment,
-    supernetwork_data,
+    supernetwork_parameters,
+    waterbody_parameters,
     waterbody,
     nts=1,
     dt=60,
@@ -385,7 +379,7 @@ def compute_network(
                     head_segment=head_segment,
                     reach=reach,
                     network=network,
-                    supernetwork_data=supernetwork_data,
+                    supernetwork_parameters=supernetwork_parameters,
                     waterbody=waterbody,
                     ts=ts,
                     dt=dt,
@@ -402,7 +396,8 @@ def compute_network(
                         head_segment=head_segment,
                         reach=reach,
                         network=network,
-                        supernetwork_data=supernetwork_data,
+                        supernetwork_parameters=supernetwork_parameters,
+                        waterbody_parameters=waterbody_parameters,
                         waterbody=waterbody,
                         ts=ts,
                         dt=dt,
@@ -420,7 +415,7 @@ def compute_network(
                         quc_reach=quc_reach,
                         head_segment=head_segment,
                         reach=reach,
-                        supernetwork_data=supernetwork_data,
+                        supernetwork_parameters=supernetwork_parameters,
                         ts=ts,
                         dt=dt,
                         qts_subdivisions=qts_subdivisions,
@@ -466,7 +461,7 @@ def compute_reach_upstream_flows(
     head_segment=None,
     reach=None,
     network=None,
-    supernetwork_data=None,
+    supernetwork_parameters=None,
     waterbody=None,
     ts=0,
     dt=60,
@@ -503,7 +498,7 @@ def compute_reach_upstream_flows(
         us_flowveldepth = flowveldepth
 
     for us in upstreams_list:
-        if us != supernetwork_data["terminal_code"]:  # Not Headwaters
+        if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
             quc += us_flowveldepth[us]["flowval"][ts]
 
             if ts == 0:
@@ -526,7 +521,7 @@ def compute_mc_reach_up2down(
     quc_reach,
     head_segment=None,
     reach=None,
-    supernetwork_data=None,
+    supernetwork_parameters=None,
     ts=0,
     dt=60,
     qts_subdivisions=1,
@@ -552,14 +547,14 @@ def compute_mc_reach_up2down(
         # current_flow = flowveldepth[current_segment]
 
         # for now treating as constant per reach
-        bw = data[supernetwork_data["bottomwidth_col"]]
-        tw = data[supernetwork_data["topwidth_col"]]
-        twcc = data[supernetwork_data["topwidthcc_col"]]
-        dx = data[supernetwork_data["length_col"]]
-        n_manning = data[supernetwork_data["manningn_col"]]
-        n_manning_cc = data[supernetwork_data["manningncc_col"]]
-        cs = data[supernetwork_data["ChSlp_col"]]
-        s0 = data[supernetwork_data["slope_col"]]
+        bw = data[supernetwork_parameters["bottomwidth_col"]]
+        tw = data[supernetwork_parameters["topwidth_col"]]
+        twcc = data[supernetwork_parameters["topwidthcc_col"]]
+        dx = data[supernetwork_parameters["length_col"]]
+        n_manning = data[supernetwork_parameters["manningn_col"]]
+        n_manning_cc = data[supernetwork_parameters["manningncc_col"]]
+        cs = data[supernetwork_parameters["ChSlp_col"]]
+        s0 = data[supernetwork_parameters["slope_col"]]
 
         # TODO: update this extremely simplistic handling of timestep adjustment
         # allow shorter timesteps
@@ -681,7 +676,8 @@ def compute_level_pool_reach_up2down(
     head_segment=None,
     reach=None,
     network=None,
-    supernetwork_data=None,
+    supernetwork_parameters=None,
+    waterbody_parameters=None,
     waterbody=None,
     ts=0,
     dt=60,
@@ -715,7 +711,7 @@ def compute_level_pool_reach_up2down(
     if debuglevel <= -2:
         print(f"executing reservoir computation on waterbody: {waterbody}")
 
-    wb_params = supernetwork_data["waterbody_parameters"]
+    wb_params = waterbody_parameters["level_pool"]
     ln = waterbody
     qi0 = qup
     qi1 = quc
@@ -1064,48 +1060,88 @@ def main():
 
     supernetwork = args.supernetwork
     custom_input_file = args.custom_input_file
-    supernetwork_data = None
+    supernetwork_parameters = None
 
     if custom_input_file:
-        input_data = nnu.read_custom_input_json(custom_input_file)
-        supernetwork_data = input_data["supernetwork_data"]
+        (
+            supernetwork_parameters, 
+            waterbody_parameters, 
+            forcing_parameters,
+            restart_parameters,
+            output_parameters,
+            run_parameters,
+        ) = nnu.read_custom_input_json(custom_input_file)
+        break_network_at_waterbodies = run_parameters.get("break_network_at_waterbodies", None)
+
+        dt = run_parameters.get("dt", None) 
+        nts = run_parameters.get("nts", None)
+        qts_subdivisions = run_parameters.get("qts_subdivisions", None)
+        debuglevel = run_parameters.get("debuglevel", None)
+        verbose = run_parameters.get("verbose", None)
+        showtiming = run_parameters.get("showtiming", None)
+        assume_short_ts = run_parameters.get("assume_short_ts", None)
+        parallel_compute = run_parameters.get("parallel_compute", None)
+
+        write_csv_output = output_parameters.get("write_csv_output", None)
+        write_nc_output = output_parameters.get("write_nc_output", None)
+
+        qlat_const = forcing_parameters.get("qlat_const", None)
+        qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+        qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+        qlat_file_pattern_filter = forcing_parameters.get("qlat_file_pattern_filter", None)
+        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+
+        wrf_hydro_channel_restart_file = restart_parameters.get("wrf_hydro_channel_restart_file", None)
+        wrf_hydro_channel_ID_crosswalk_file = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file", None)
+        wrf_hydro_channel_ID_crosswalk_file_field_name = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", None)
+        wrf_hydro_channel_restart_upstream_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", None)
+        wrf_hydro_channel_restart_downstream_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", None)
+        wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", None)
+
+        wrf_hydro_waterbody_restart_file = restart_parameters.get("wrf_hydro_waterbody_restart_file", None)
+        wrf_hydro_waterbody_ID_crosswalk_file = restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file", None)
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", None)
+        wrf_hydro_waterbody_crosswalk_filter_file = restart_parameters.get("wrf_hydro_waterbody_crosswalk_filter_file", None)
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = restart_parameters.get("wrf_hydro_waterbody_crosswalk_filter_file_field_name", None)
+
     # Any specific commandline arguments will override the file
     # TODO: There are probably some pathological collisions that could
     # arise from this ordering ... check these out.
 
-    break_network_at_waterbodies = args.break_network_at_waterbodies
+    else:
+        break_network_at_waterbodies = args.break_network_at_waterbodies
 
-    dt = float(args.dt)
-    nts = int(args.nts)
-    qts_subdivisions = args.qts_subdivisions
-    qlat_const = float(args.qlat_const)
-    qlat_input_folder = args.qlat_input_folder
-    qlat_input_file = args.qlat_input_file
-    qlat_file_pattern_filter = args.qlat_file_pattern_filter
+        dt = int(args.dt) 
+        nts = int(args.nts)
+        qts_subdivisions = args.qts_subdivisions
+        qlat_const = float(args.qlat_const)
+        qlat_input_folder = args.qlat_input_folder
+        qlat_input_file = args.qlat_input_file
+        qlat_file_pattern_filter = args.qlat_file_pattern_filter
 
-    wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
-    wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
-    wrf_hydro_channel_ID_crosswalk_file_field_name = (
-        args.wrf_hydro_channel_ID_crosswalk_file_field_name
-    )
+        wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = (
+            args.wrf_hydro_channel_ID_crosswalk_file_field_name
+        )
 
-    wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
-    wrf_hydro_waterbody_ID_crosswalk_file = args.wrf_hydro_waterbody_ID_crosswalk_file
-    wrf_hydro_waterbody_ID_crosswalk_file_field_name = (
-        args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
-    )
+        wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
+        wrf_hydro_waterbody_ID_crosswalk_file = args.wrf_hydro_waterbody_ID_crosswalk_file
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = (
+            args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
+        )
 
-    debuglevel = -1 * int(args.debuglevel)
-    verbose = args.verbose
-    showtiming = args.showtiming
-    write_csv_output = args.write_csv_output
-    write_nc_output = args.write_nc_output
-    assume_short_ts = args.assume_short_ts
-    parallel_compute = args.parallel_compute
+        debuglevel = -1 * int(args.debuglevel)
+        verbose = args.verbose
+        showtiming = args.showtiming
+        write_csv_output = args.write_csv_output
+        write_nc_output = args.write_nc_output
+        assume_short_ts = args.assume_short_ts
+        parallel_compute = args.parallel_compute
 
     run_pocono2_test = args.run_pocono2_test
     run_pocono1_test = args.run_pocono1_test
-    run_route_and_replace_test = args.run_route_and_replace_test
 
     if run_pocono2_test:
         if verbose:
@@ -1129,7 +1165,7 @@ def main():
         # wrf_hydro_nwm_public repository on GitHub
         # https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
         if verbose:
-            print("running test case for Mainstems_CONUS domain")
+            print("running test case for Pocono_TEST1 domain")
         # Overwrite the following test defaults
 
         NWM_test_path = os.path.join(
@@ -1138,14 +1174,14 @@ def main():
         lakeparm_file = os.path.join(
             NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
         )
-        routelink_file = wrf_hydro_waterbody_crosswalk_filter_file = os.path.join(
+        routelink_file = os.path.join(
             NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
         )
         time_string = "2017-12-31_06-00_DOMAIN1"
         wrf_hydro_restart_file = os.path.join(
             NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
         )
-        supernetwork_data = {
+        supernetwork_parameters = {
             "title_string": "Custom Input Example (using Pocono Test Example datafile)",
             "geo_file_path": routelink_file,
             "cols_as_text": False,
@@ -1166,8 +1202,9 @@ def main():
             "terminal_code": 0,
             "driver_string": "NetCDF",
             "layer_string": 0,
-            "waterbody_parameter_file_type": "Level_Pool",
-            "waterbody_parameters": {
+        }
+        waterbody_parameters = {
+            "level_pool": {
                 "level_pool_waterbody_parameter_file_path": lakeparm_file,
                 "level_pool_waterbody_id": "lake_id",
                 "level_pool_waterbody_area": "LkArea",
@@ -1179,7 +1216,7 @@ def main():
                 "level_pool_orifice_elevation": "OrificeE",
                 "level_pool_orifice_coefficient": "OrificeC",
                 "level_pool_orifice_area": "OrificeA",
-            },
+            }
         }
         break_network_at_waterbodies = True
         qts_subdivisions = 12
@@ -1207,47 +1244,6 @@ def main():
         qlat_file_index_col = "feature_id"
         qlat_file_value_col = "q_lateral"
 
-    elif run_route_and_replace_test:
-        if verbose:
-            print("running test case for Mainstems_CONUS domain")
-        # Overwrite the following test defaults
-        supernetwork = "Mainstems_CONUS"
-        break_network_at_waterbodies = True
-        qts_subdivisions = 12
-        dt = 3600 / qts_subdivisions
-        nts = 120 * qts_subdivisions
-        write_csv_output = False
-        write_nc_output = False
-        time_string = "2020-03-19_18:00_DOMAIN1"
-        # build a time string to specify input date
-        wrf_hydro_channel_restart_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/restart/HYDRO_RST."
-            + time_string
-        )
-
-        wrf_hydro_channel_ID_crosswalk_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
-        )
-        wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
-        wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
-        wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
-        wrf_hydro_channel_restart_depth_flow_field_name = None
-        wrf_hydro_waterbody_restart_file = wrf_hydro_channel_restart_file
-        wrf_hydro_waterbody_ID_crosswalk_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/LAKEPARM.nc"
-        )
-        wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
-        wrf_hydro_waterbody_crosswalk_filter_file = (
-            r"/home/APD/inland_hydraulics/wrf-hydro-run/DOMAIN/routeLink_subset.nc"
-        )
-        wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
-        # wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
-
-        qlat_input_folder = r"/home/APD/inland_hydraulics/wrf-hydro-run/OUTPUTS"
-        qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
-        qlat_file_index_col = "station_id"
-        qlat_file_value_col = "q_lateral"
-
     test_folder = os.path.join(root, r"test")
 
     if verbose:
@@ -1255,13 +1251,13 @@ def main():
     if showtiming:
         start_time = time.time()
     # STEP 1
-    if supernetwork_data:
+    if supernetwork_parameters:
         supernetwork_values = nnu.get_nhd_connections(
-            supernetwork_data, debuglevel, verbose
+            supernetwork_parameters, debuglevel, verbose
         )
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
-        supernetwork_data, supernetwork_values = nnu.set_networks(
+        supernetwork_parameters, supernetwork_values = nnu.set_networks(
             supernetwork=supernetwork,
             geo_input_folder=geo_input_folder,
             verbose=False
@@ -1303,12 +1299,10 @@ def main():
         connections_tailwaters = supernetwork_values[4]
 
         waterbodies_df = nnu.read_waterbody_df(
-            supernetwork_data["waterbody_parameters"][
-                "level_pool_waterbody_parameter_file_path"
-            ],
-            supernetwork_data["waterbody_parameters"]["level_pool_waterbody_id"],
+            waterbody_parameters,
             waterbodies_values,
         )
+
         waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
         nru.order_networks(connections, networks, connections_tailwaters)
 
@@ -1440,7 +1434,8 @@ def main():
                     compute_network(
                         flowveldepth_connect=flowveldepth_connect,
                         terminal_segment=terminal_segment,
-                        supernetwork_data=supernetwork_data,
+                        supernetwork_parameters=supernetwork_parameters,
+                        waterbody_parameters=waterbody_parameters,
                         waterbody=waterbody,
                         nts=nts,
                         dt=dt,
@@ -1460,7 +1455,8 @@ def main():
                     [
                         flowveldepth_connect,
                         terminal_segment,
-                        supernetwork_data,  # TODO: This should probably be global...
+                        supernetwork_parameters,  # TODO: This should probably be global...
+                        waterbody_parameters,
                         waterbody,
                         nts,
                         dt,

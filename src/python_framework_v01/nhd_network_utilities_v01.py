@@ -187,7 +187,7 @@ def build_connections_object(
         debuglevel=debuglevel,
     )
 
-    waterbody_set = None
+    waterbody_dict = None
     waterbody_segments = None
     waterbody_outlet_set = None
     waterbody_upstreams_set = None
@@ -196,7 +196,7 @@ def build_connections_object(
     # TODO: Set/pass/identify a proper flag value
     if waterbody_col is not None:
         (
-            waterbody_set,
+            waterbody_dict,
             waterbody_segments,
             waterbody_outlet_set,
             waterbody_upstreams_set,
@@ -225,7 +225,7 @@ def build_connections_object(
         visited_terminal_keys,
         junction_count,
         confluence_segment_set,
-        waterbody_set,
+        waterbody_dict,
         waterbody_segments,
         waterbody_outlet_set,
         waterbody_upstreams_set,
@@ -338,47 +338,47 @@ def do_connections(
     #     , junction_count
 
 
-def get_nhd_connections(supernetwork_data={}, debuglevel=0, verbose=False):
+def get_nhd_connections(supernetwork_parameters={}, debuglevel=0, verbose=False):
     # TODO: convert to get.
-    # as in: text=supernetwork_data.get("cols_as_text",None):
+    # as in: text=supernetwork_parameters.get("cols_as_text",None):
     # Will need to check if something depends on the None elsewhere.
-    if "waterbody_col" not in supernetwork_data:
-        supernetwork_data.update({"waterbody_col": None})
-        supernetwork_data.update({"waterbody_null_code": None})
+    if "waterbody_col" not in supernetwork_parameters:
+        supernetwork_parameters.update({"waterbody_col": None})
+        supernetwork_parameters.update({"waterbody_null_code": None})
 
-    if "mask_file_path" not in supernetwork_data:
+    if "mask_file_path" not in supernetwork_parameters:
         # TODO: doing things this way may mean we are reading the same file twice -- fix this [maybe] by implementing an overloaded return
-        supernetwork_data.update({"mask_file_path": None})
-        supernetwork_data.update({"mask_layer_string": None})
-        supernetwork_data.update({"mask_driver_string": None})
-        supernetwork_data.update({"mask_key_col": None})
+        supernetwork_parameters.update({"mask_file_path": None})
+        supernetwork_parameters.update({"mask_layer_string": None})
+        supernetwork_parameters.update({"mask_driver_string": None})
+        supernetwork_parameters.update({"mask_key_col": None})
 
-    if "data_link" not in supernetwork_data:
-        supernetwork_data.update({"data_link": None})
+    if "data_link" not in supernetwork_parameters:
+        supernetwork_parameters.update({"data_link": None})
 
     return do_connections(
-        geo_file_path=supernetwork_data["geo_file_path"],
-        data_link=supernetwork_data["data_link"],
-        cols_as_text=supernetwork_data.get("cols_as_text", None),
-        key_col=supernetwork_data["key_col"],
-        downstream_col=supernetwork_data["downstream_col"],
-        length_col=supernetwork_data["length_col"],
-        terminal_code=supernetwork_data["terminal_code"],
-        waterbody_col=supernetwork_data["waterbody_col"],
-        waterbody_null_code=supernetwork_data["waterbody_null_code"],
-        title_string=supernetwork_data["title_string"],
-        driver_string=supernetwork_data["driver_string"],
-        layer_string=supernetwork_data["layer_string"],
-        mask_file_path=supernetwork_data["mask_file_path"],
-        mask_layer_string=supernetwork_data["mask_layer_string"],
-        mask_driver_string=supernetwork_data["mask_driver_string"],
-        mask_key_col=supernetwork_data["mask_key_col"],
+        geo_file_path=supernetwork_parameters["geo_file_path"],
+        data_link=supernetwork_parameters["data_link"],
+        cols_as_text=supernetwork_parameters.get("cols_as_text", None),
+        key_col=supernetwork_parameters["key_col"],
+        downstream_col=supernetwork_parameters["downstream_col"],
+        length_col=supernetwork_parameters["length_col"],
+        terminal_code=supernetwork_parameters["terminal_code"],
+        waterbody_col=supernetwork_parameters["waterbody_col"],
+        waterbody_null_code=supernetwork_parameters["waterbody_null_code"],
+        title_string=supernetwork_parameters["title_string"],
+        driver_string=supernetwork_parameters["driver_string"],
+        layer_string=supernetwork_parameters["layer_string"],
+        mask_file_path=supernetwork_parameters["mask_file_path"],
+        mask_layer_string=supernetwork_parameters["mask_layer_string"],
+        mask_driver_string=supernetwork_parameters["mask_driver_string"],
+        mask_key_col=supernetwork_parameters["mask_key_col"],
         debuglevel=debuglevel,
         verbose=verbose,
     )
 
 
-def set_supernetwork_data(
+def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
 
@@ -448,7 +448,7 @@ def set_supernetwork_data(
         }
 
     elif supernetwork == "Pocono_TEST2":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -491,7 +491,7 @@ def set_supernetwork_data(
     # }
 
     elif supernetwork == "LowerColorado_Conchos_FULL_RES":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -532,7 +532,7 @@ def set_supernetwork_data(
         }
 
     elif supernetwork == "Brazos_LowerColorado_FULL_RES":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -553,7 +553,7 @@ def set_supernetwork_data(
         return dict
 
     elif supernetwork == "Brazos_LowerColorado_Named_Streams":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -574,7 +574,7 @@ def set_supernetwork_data(
         return dict
 
     elif supernetwork == "CONUS_ge5":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -592,7 +592,7 @@ def set_supernetwork_data(
         return dict
 
     elif supernetwork == "Mainstems_CONUS":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -634,7 +634,7 @@ def set_supernetwork_data(
         # }
 
     elif supernetwork == "CONUS_Named_Streams":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -705,23 +705,46 @@ def set_supernetwork_data(
 def read_custom_input_json(custom_input_file):
     with open(custom_input_file) as json_file:
         data = json.load(json_file)
+        supernetwork_parameters = data.get("supernetwork_parameters", None)
+        waterbody_parameters = data.get("waterbody_parameters", None)
+        forcing_parameters = data.get("forcing_parameters", None)
+        restart_parameters = data.get("restart_parameters", None)
+        output_parameters = data.get("output_parameters", None)
+        run_parameters = data.get("run_parameters", None)
         # TODO: add error trapping for potentially missing files
-    return data
+    return (
+        supernetwork_parameters, 
+        waterbody_parameters, 
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+    )
 
 
 # TODO: confirm that this function is not used, and if so, consider removing it
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
 
-    supernetwork_data = set_supernetwork_data(
+    supernetwork_parameters = set_supernetwork_parameters(
         supernetwork=supernetwork, geo_input_folder=geo_input_folder
     )
     supernetwork_values = get_nhd_connections(
-        supernetwork_data=supernetwork_data, verbose=verbose, debuglevel=debuglevel
+        supernetwork_parameters=supernetwork_parameters, verbose=verbose, debuglevel=debuglevel
     )
-    return supernetwork_data, supernetwork_values
+    return supernetwork_parameters, supernetwork_values
 
 
-def read_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
+def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype = "level_pool"):
+    if wbtype == "level_pool":
+        wb_params = waterbody_parameters[wbtype]
+        return read_level_pool_waterbody_df(
+            wb_params["level_pool_waterbody_parameter_file_path"],
+            wb_params["level_pool_waterbody_id"],
+            waterbodies_values[wbtype],
+        )
+    
+
+def read_level_pool_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
 
     ds = xr.open_dataset(parm_file)
     df1 = ds.to_dataframe().set_index(lake_index_field)
@@ -837,6 +860,7 @@ def get_reservoir_restart_from_wrf_hydro(
     default_waterbody_flow_column="qd0",
     default_waterbody_depth_column="h0",
 ):
+    # TODO: Instead of using a filter file, just use the set of waterbodies.
     xds = xr.open_dataset(crosswalk_file)
     X = xds[waterbody_ID_field]
 
