@@ -223,8 +223,8 @@ def _handle_args():
 
     args = parser.parse_args()
 
-    #TODO: Add any other checking
-    #TODO: This check is probably no longer needed
+    # TODO: Add any other checking
+    # TODO: This check is probably no longer needed
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
             r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
@@ -1068,7 +1068,7 @@ def main():
 
     if custom_input_file:
         input_data = nnu.read_custom_input_json(custom_input_file)
-        supernetwork_data = input_data['supernetwork_data']
+        supernetwork_data = input_data["supernetwork_data"]
     # Any specific commandline arguments will override the file
     # TODO: There are probably some pathological collisions that could
     # arise from this ordering ... check these out.
@@ -1107,8 +1107,6 @@ def main():
     run_pocono1_test = args.run_pocono1_test
     run_route_and_replace_test = args.run_route_and_replace_test
 
-    
-
     if run_pocono2_test:
         if verbose:
             print("running test case for Pocono_TEST2 domain")
@@ -1126,59 +1124,53 @@ def main():
         )
 
     elif run_pocono1_test:
-        #NOTE: The test case for the Pocono basin was derived from this 
-        # resource on HydroShare, developed by aaraney and sourced from the 
+        # NOTE: The test case for the Pocono basin was derived from this
+        # resource on HydroShare, developed by aaraney and sourced from the
         # wrf_hydro_nwm_public repository on GitHub
         # https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
         if verbose:
             print("running test case for Mainstems_CONUS domain")
         # Overwrite the following test defaults
 
-        NWM_test_path = os.path.join(root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/")
+        NWM_test_path = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
+        )
         lakeparm_file = os.path.join(
-            NWM_test_path, 
-            "primary_domain",
-            "DOMAIN",
-            "LAKEPARM.nc",
+            NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
         )
         routelink_file = wrf_hydro_waterbody_crosswalk_filter_file = os.path.join(
-            NWM_test_path, 
-            "primary_domain",
-            "DOMAIN",
-            "Route_Link.nc",
+            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
         )
         time_string = "2017-12-31_06-00_DOMAIN1"
         wrf_hydro_restart_file = os.path.join(
-            NWM_test_path, 
-            "example_RESTART",
-            "HYDRO_RST." + time_string
+            NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
         )
         supernetwork_data = {
             "title_string": "Custom Input Example (using Pocono Test Example datafile)",
             "geo_file_path": routelink_file,
             "cols_as_text": False,
-            "key_col": 16, # "link",
-            "downstream_col": 22, # "to",
-            "length_col": 3, # "Length",
-            "manningn_col": 18, # "n",
-            "manningncc_col": 19, # "nCC",
-            "slope_col": 8, # "So",
-            "bottomwidth_col": 0, # "BtmWdth",
-            "topwidth_col": 9, # "TopWdth",
-            "topwidthcc_col": 10, # "TopWdthCC",
-            "waterbody_col": 6, # "NHDWaterbodyComID",
+            "key_col": 16,  # "link",
+            "downstream_col": 22,  # "to",
+            "length_col": 3,  # "Length",
+            "manningn_col": 18,  # "n",
+            "manningncc_col": 19,  # "nCC",
+            "slope_col": 8,  # "So",
+            "bottomwidth_col": 0,  # "BtmWdth",
+            "topwidth_col": 9,  # "TopWdth",
+            "topwidthcc_col": 10,  # "TopWdthCC",
+            "waterbody_col": 6,  # "NHDWaterbodyComID",
             "waterbody_null_code": -9999,
-            "MusK_col": 4, # "MusK",
-            "MusX_col": 5, # "MusX",
-            "ChSlp_col": 1, # "ChSlp",
+            "MusK_col": 4,  # "MusK",
+            "MusX_col": 5,  # "MusX",
+            "ChSlp_col": 1,  # "ChSlp",
             "terminal_code": 0,
             "driver_string": "NetCDF",
             "layer_string": 0,
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameters": {
                 "level_pool_waterbody_parameter_file_path": lakeparm_file,
-                "level_pool_waterbody_id": "lake_id", 
-                "level_pool_waterbody_area": "LkArea", 
+                "level_pool_waterbody_id": "lake_id",
+                "level_pool_waterbody_area": "LkArea",
                 "level_pool_weir_elevation": "WeirE",
                 "level_pool_waterbody_max_elevation": "LkMxE",
                 "level_pool_outfall_weir_coefficient": "WeirC",
@@ -1186,8 +1178,8 @@ def main():
                 "level_pool_overall_dam_length": "DamL",
                 "level_pool_orifice_elevation": "OrificeE",
                 "level_pool_orifice_coefficient": "OrificeC",
-                "level_pool_orifice_area": "OrificeA"
-            }
+                "level_pool_orifice_area": "OrificeA",
+            },
         }
         break_network_at_waterbodies = True
         qts_subdivisions = 12
@@ -1264,7 +1256,9 @@ def main():
         start_time = time.time()
     # STEP 1
     if supernetwork_data:
-        supernetwork_values = nnu.get_nhd_connections(supernetwork_data, debuglevel, verbose)
+        supernetwork_values = nnu.get_nhd_connections(
+            supernetwork_data, debuglevel, verbose
+        )
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
         supernetwork_data, supernetwork_values = nnu.set_networks(
@@ -1312,9 +1306,7 @@ def main():
             supernetwork_data["waterbody_parameters"][
                 "level_pool_waterbody_parameter_file_path"
             ],
-            supernetwork_data["waterbody_parameters"][
-                "level_pool_waterbody_id"
-            ],
+            supernetwork_data["waterbody_parameters"]["level_pool_waterbody_id"],
             waterbodies_values,
         )
         waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
@@ -1355,7 +1347,9 @@ def main():
             # TODO: This assignment could probably by done in the above call
             waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
             waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
-            waterbody_initial_states_df["index"] = range(len(waterbody_initial_states_df))
+            waterbody_initial_states_df["index"] = range(
+                len(waterbody_initial_states_df)
+            )
 
     else:
         max_network_seqorder = 0
@@ -1398,10 +1392,10 @@ def main():
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
         qlat_df = nnu.get_ql_from_wrf_hydro(
-                qlat_files = qlat_files, 
-                index_col=qlat_file_index_col, 
-                value_col=qlat_file_value_col,
-           )
+            qlat_files=qlat_files,
+            index_col=qlat_file_index_col,
+            value_col=qlat_file_value_col,
+        )
 
     elif qlat_input_file:
         qlat_df = pd.read_csv(qlat_input_file, index_col=0)

@@ -232,6 +232,7 @@ def build_connections_object(
         waterbody_downstream_set,
     )
 
+
 def convert_text_cols_to_val(
     geo_keys,
     key_col,
@@ -246,12 +247,13 @@ def convert_text_cols_to_val(
     length_col = geo_keys.index(length_col) + 2
     waterbody_col = geo_keys.index(waterbody_col) + 2
 
-    return ( 
+    return (
         key_col,
         downstream_col,
         length_col,
         waterbody_col,
     )
+
 
 def do_connections(
     geo_file_path=None,
@@ -300,7 +302,7 @@ def do_connections(
             verbose,
             debuglevel,
         )
-        
+
     if debuglevel <= -1:
         print(f"MASK: {mask_file_path}")
     if mask_file_path:
@@ -357,7 +359,7 @@ def get_nhd_connections(supernetwork_data={}, debuglevel=0, verbose=False):
     return do_connections(
         geo_file_path=supernetwork_data["geo_file_path"],
         data_link=supernetwork_data["data_link"],
-        cols_as_text=supernetwork_data.get("cols_as_text",None),
+        cols_as_text=supernetwork_data.get("cols_as_text", None),
         key_col=supernetwork_data["key_col"],
         downstream_col=supernetwork_data["downstream_col"],
         length_col=supernetwork_data["length_col"],
@@ -699,6 +701,7 @@ def set_supernetwork_data(
             },
         }
 
+
 def read_custom_input_json(custom_input_file):
     with open(custom_input_file) as json_file:
         data = json.load(json_file)
@@ -727,7 +730,7 @@ def read_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
     return df1
 
 
-def get_ql_from_wrf_hydro(qlat_files, index_col = "station_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     li = []
 
     for filename in qlat_files:
@@ -842,7 +845,7 @@ def get_reservoir_restart_from_wrf_hydro(
         xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
     else:
         xdf = X.to_dataframe()
-    
+
     xdf = xdf.reset_index()[waterbody_ID_field]
 
     # read initial states from r&r output
