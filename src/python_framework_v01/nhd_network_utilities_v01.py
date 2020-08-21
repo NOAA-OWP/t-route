@@ -706,11 +706,11 @@ def read_custom_input_json(custom_input_file):
     with open(custom_input_file) as json_file:
         data = json.load(json_file)
         supernetwork_parameters = data.get("supernetwork_parameters", None)
-        waterbody_parameters = data.get("waterbody_parameters", None)
-        forcing_parameters = data.get("forcing_parameters", None)
-        restart_parameters = data.get("restart_parameters", None)
-        output_parameters = data.get("output_parameters", None)
-        run_parameters = data.get("run_parameters", None)
+        waterbody_parameters = data.get("waterbody_parameters", {})
+        forcing_parameters = data.get("forcing_parameters", {})
+        restart_parameters = data.get("restart_parameters", {})
+        output_parameters = data.get("output_parameters", {})
+        run_parameters = data.get("run_parameters", {})
         # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters, 
