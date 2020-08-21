@@ -1335,8 +1335,7 @@ def main():
             )
 
         ################## Handle Waterbody States
-        if 1 == 0:
-        # if wrf_hydro_waterbody_restart_file:
+        if wrf_hydro_waterbody_restart_file:
 
             waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
                 wrf_hydro_waterbody_restart_file,

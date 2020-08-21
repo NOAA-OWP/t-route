@@ -354,7 +354,6 @@ def get_nhd_connections(supernetwork_data={}, debuglevel=0, verbose=False):
     if "data_link" not in supernetwork_data:
         supernetwork_data.update({"data_link": None})
 
-    import pdb; pdb.set_trace()
     return do_connections(
         geo_file_path=supernetwork_data["geo_file_path"],
         data_link=supernetwork_data["data_link"],
@@ -721,7 +720,6 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
 
 def read_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
 
-    import pdb; pdb.set_trace()
     ds = xr.open_dataset(parm_file)
     df1 = ds.to_dataframe().set_index(lake_index_field)
     if lake_id_mask:
@@ -788,7 +786,6 @@ def get_stream_restart_from_wrf_hydro(
     qdf2[channel_ID_column] = xdf
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
 
-    import pdb; pdb.set_trace()
     return qdf2
 
     ### TODO: Delete this legacy code...
@@ -838,23 +835,19 @@ def get_reservoir_restart_from_wrf_hydro(
     default_waterbody_depth_column="h0",
 ):
     xds = xr.open_dataset(crosswalk_file)
-    xdf = xds.to_dataframe()
+    X = xds[waterbody_ID_field]
 
-    fds = xr.open_dataset(crosswalk_filter_file)
-    fdf = fds.to_dataframe()
-
-    xdf = xdf[xdf[waterbody_ID_field].isin(fdf[crosswalk_filter_file_field])]
-    # xdf = xdf[waterbody_ID_field, crosswalk_file_output_order_field]
-    xdf = xdf[waterbody_ID_field]
-    xdf = xdf.reset_index()
+    if crosswalk_filter_file:
+        fds = xr.open_dataset(crosswalk_filter_file)
+        xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
+    else:
+        xdf = X.to_dataframe()
+    
+    xdf = xdf.reset_index()[waterbody_ID_field]
 
     # read initial states from r&r output
     resds = xr.open_dataset(waterbody_intial_states_file)
-    resdf = resds.to_dataframe()
-    # TODO: this step of taking a cross section may be an xarray artifact
-    resdf = resdf.xs(
-        crosswalk_file_xs_value, level=crosswalk_file_xs_field, drop_level=False
-    )
+    resdf = resds[[waterbody_flow_column, waterbody_depth_column]].to_dataframe()
     resdf = resdf.reset_index()
     resdf = resdf[[waterbody_flow_column, waterbody_depth_column]]
     resdf.rename(
@@ -865,9 +858,7 @@ def get_reservoir_restart_from_wrf_hydro(
         inplace=True,
     )
 
-    mod = resdf.join(xdf)
-    mod = mod.reset_index()
-    mod = mod.set_index([waterbody_ID_field])
+    mod = resdf.join(xdf).reset_index().set_index(waterbody_ID_field)
     init_waterbody_states = mod
 
     return init_waterbody_states
