@@ -9,7 +9,7 @@ if COMPILE:
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
-        # fortran_compile_call.append(r"varPrecision.f90")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"module_levelpool.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"levelpools")
@@ -37,35 +37,11 @@ else:
 
     # import mc_sseg_stime as muskingcunge_module
 
-# # Method 1
-# Python: time loop; segment loop; constant channel variables are passed to Fortran
-# Fortran: Take constant variable values and then run MC for a single segment
-
-#comment this section out when attaching new data, fortran code needs values to run correctly
-# ln=1,
-# qi0=1,
-# qi1=1,
-# ql=1,
-# dt=1,
-# h=1,
-# ar=1,
-# we=1,
-# maxh=1,
-# wc=1,
-# wl=1,
-# dl=1,
-# oe=1,
-# oc=1,
-# oa=1,
-
-
 def reservoirs_calc(
-    ln=None,
+    dt=None,
     qi0=None,
     qi1=None,
     ql=None,
-    dt=None,
-    h=None,
     ar=None,
     we=None,
     maxh=None,
@@ -75,16 +51,37 @@ def reservoirs_calc(
     oe=None,
     oc=None,
     oa=None,
+    h0=None,
 ):
+    '''This test function demonstrates a simple connection between
+       the module_levelpool routing function and python via f2py
+       inputs are described by the fortran header:
+        real(prec), intent(IN)    :: qi0     ! inflow at previous timestep (cms)
+        real(prec), intent(IN)    :: qi1     ! inflow at current timestep (cms)
+        real(prec), intent(IN)    :: ql      ! lateral inflow
+        real(prec), intent(IN)    :: ar      ! area of reservoir (km^2)
+        real(prec), intent(IN)    :: we      ! bottom of weir elevation
+        real(prec), intent(IN)    :: wc      ! weir coeff.
+        real(prec), intent(IN)    :: wl      ! weir length (m)
+        real(prec), intent(IN)    :: dl      ! dam length(m)
+        real(prec), intent(IN)    :: oe      ! orifice elevation
+        real(prec), intent(IN)    :: oc      ! orifice coeff.
+        real(prec), intent(IN)    :: oa      ! orifice area (m^2)
+        real(prec), intent(IN)    :: maxh    ! max depth of reservoir before overtop (m)
+        real(prec), intent(IN)    :: H0      ! water elevation height (m)
+
+
+       outputs are, in order the new water depth and new outflow. 
+        real(prec), intent(OUT)   :: H1      ! water elevation height (m)
+        real(prec), intent(OUT)   :: qo1     ! outflow at current timestep
+       '''
 
     # call Fortran routine
     return module_levelpool.levelpool_physics(
-    ln,
+    dt,
     qi0,
     qi1,
     ql,
-    dt,
-    h,
     ar,
     we,
     maxh,
@@ -94,19 +91,35 @@ def reservoirs_calc(
     oe,
     oc,
     oa,
+    h0,
     )
-    # return qdc, vel, depth
+    # return hc, qdc
 
 
-# reservoirs_calc()
 def main():
-    reservoirs_calc(
-    ln,
+
+# dummy execution of reservoirs_calc()
+
+    dt=300
+    qi0=500
+    qi1=600
+    ql=400
+    ar=22
+    we=20
+    maxh=30
+    wc=1.6
+    wl=20
+    dl=200
+    oe=1
+    oc=0.6
+    oa=0.2
+    h0=22
+
+    print(reservoirs_calc(
+    dt,
     qi0,
     qi1,
     ql,
-    dt,
-    h,
     ar,
     we,
     maxh,
@@ -116,7 +129,8 @@ def main():
     oe,
     oc,
     oa,
-)
+    h0,
+))
 
 
 
