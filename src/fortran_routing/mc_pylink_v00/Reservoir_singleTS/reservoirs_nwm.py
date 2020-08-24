@@ -37,6 +37,7 @@ else:
 
     # import mc_sseg_stime as muskingcunge_module
 
+
 def reservoirs_calc(
     dt=None,
     qi0=None,
@@ -53,7 +54,7 @@ def reservoirs_calc(
     oa=None,
     h0=None,
 ):
-    '''This test function demonstrates a simple connection between
+    """This test function demonstrates a simple connection between
        the module_levelpool routing function and python via f2py
        inputs are described by the fortran header:
         real(prec), intent(IN)    :: qi0     ! inflow at previous timestep (cms)
@@ -74,64 +75,35 @@ def reservoirs_calc(
        outputs are, in order the new water depth and new outflow. 
         real(prec), intent(OUT)   :: H1      ! water elevation height (m)
         real(prec), intent(OUT)   :: qo1     ! outflow at current timestep
-       '''
+       """
 
     # call Fortran routine
     return module_levelpool.levelpool_physics(
-    dt,
-    qi0,
-    qi1,
-    ql,
-    ar,
-    we,
-    maxh,
-    wc,
-    wl,
-    dl,
-    oe,
-    oc,
-    oa,
-    h0,
+        dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, h0,
     )
     # return hc, qdc
 
 
 def main():
 
-# dummy execution of reservoirs_calc()
+    # dummy execution of reservoirs_calc()
 
-    dt=300
-    qi0=500
-    qi1=600
-    ql=400
-    ar=22
-    we=20
-    maxh=30
-    wc=1.6
-    wl=20
-    dl=200
-    oe=1
-    oc=0.6
-    oa=0.2
-    h0=22
+    dt = 300
+    qi0 = 500
+    qi1 = 600
+    ql = 400
+    ar = 22
+    we = 20
+    maxh = 30
+    wc = 1.6
+    wl = 20
+    dl = 200
+    oe = 1
+    oc = 0.6
+    oa = 0.2
+    h0 = 22
 
-    print(reservoirs_calc(
-    dt,
-    qi0,
-    qi1,
-    ql,
-    ar,
-    we,
-    maxh,
-    wc,
-    wl,
-    dl,
-    oe,
-    oc,
-    oa,
-    h0,
-))
-
+    print(reservoirs_calc(dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, h0,))
 
 
 if __name__ == "__main__":
