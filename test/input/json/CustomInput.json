@@ -14,7 +14,7 @@
     "output_parameters":
     {
         "write_csv_output": false,
-        "write_nc_output": false
+        "write_nc_output": true
     },
     "supernetwork_parameters":
     {

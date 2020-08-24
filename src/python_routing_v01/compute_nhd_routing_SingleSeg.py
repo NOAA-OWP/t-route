@@ -343,6 +343,7 @@ def compute_network(
         connection: {
             "time": [],
             "qlatCumval": [],
+            "qlatval": [],
             "flowval": [],
             "velval": [],
             "depthval": [],
@@ -430,7 +431,6 @@ def compute_network(
                 writeArraytoCSV(
                     connections=connections,
                     flowveldepth=flowveldepth,
-                    qlateral=qlateral,
                     reach=reach,
                     verbose=verbose,
                     debuglevel=debuglevel,
@@ -441,7 +441,6 @@ def compute_network(
         writeArraytoNC(
             connections=connections,
             flowveldepth=flowveldepth,
-            qlateral=qlateral,
             network=network,
             nts=nts,
             qts_subdivisions=qts_subdivisions,
@@ -646,7 +645,7 @@ def compute_mc_reach_up2down(
         """
 
         # update flowveldepth values for currentsegment for current timestep
-        # flowveldepth[current_segment]["qlatval"].append(qlat)  # NEVER UPDATED
+        flowveldepth[current_segment]["qlatval"].append(qlat)
         flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
         flowveldepth[current_segment]["flowval"].append(qdc)
         flowveldepth[current_segment]["depthval"].append(depthc)
@@ -743,6 +742,7 @@ def compute_level_pool_reach_up2down(
         volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
         qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
+    flowveldepth[current_segment]["qlatval"].append(qlat)
     flowveldepth[current_segment]["flowval"].append(qdc)
     flowveldepth[current_segment]["depthval"].append(depthc)
     flowveldepth[current_segment]["velval"].append(0)
@@ -758,7 +758,6 @@ def compute_level_pool_reach_up2down(
 def writeArraytoCSV(
     connections,
     flowveldepth,
-    qlateral,
     reach,
     verbose=False,
     debuglevel=0,
@@ -782,7 +781,7 @@ def writeArraytoCSV(
             csvwriter.writerows(
                 zip(
                     flowveldepth[current_segment]["time"],
-                    qlateral[current_segment]["qlatval"],
+                    flowveldepth[current_segment]["qlatval"],
                     flowveldepth[current_segment]["qlatCumval"],
                     flowveldepth[current_segment]["flowval"],
                     flowveldepth[current_segment]["velval"],
@@ -808,7 +807,6 @@ def writeArraytoCSV(
 def writeArraytoNC(
     connections,
     flowveldepth,
-    qlateral,
     network,
     nts,
     qts_subdivisions=1,
@@ -845,7 +843,7 @@ def writeArraytoNC(
                 # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
                 flowveldepth_data["qlatval"].append(
-                    qlateral[current_segment]["qlatval"]
+                    flowveldepth[current_segment]["qlatval"]
                 )
                 flowveldepth_data["qlatCumval"].append(
                     flowveldepth[current_segment]["qlatCumval"]
@@ -1348,7 +1346,7 @@ def main():
     else:
         max_network_seqorder = 0
         ordered_networks = {}
-        # TODO: Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
+        # TODO: DONE:1406 Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
         ordered_networks[0] = [
             (terminal_segment, network)
             for terminal_segment, network in networks.items()
