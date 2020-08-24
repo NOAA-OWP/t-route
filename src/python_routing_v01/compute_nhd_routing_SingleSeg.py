@@ -178,6 +178,12 @@ def _handle_args():
         dest="break_network_at_waterbodies",
         action="store_true",
     )
+    parser.add_argument(
+        "--sort-ordered-networks",
+        help="Sort networks by size, largest to smallest, so the deepest ones (network['maximum_reach_seqorder']) start earliest in a given network order",
+        dest="sort_networks",
+        action="store_true",
+    )
     supernetwork_arg_group = parser.add_mutually_exclusive_group()
     supernetwork_arg_group.add_argument(
         "-n",
@@ -1079,6 +1085,7 @@ def main():
         showtiming = run_parameters.get("showtiming", None)
         assume_short_ts = run_parameters.get("assume_short_ts", None)
         parallel_compute = run_parameters.get("parallel_compute", None)
+        sort_networks = run_parameters.get("sort_networks", None)
 
         write_csv_output = output_parameters.get("write_csv_output", None)
         write_nc_output = output_parameters.get("write_nc_output", None)
@@ -1137,6 +1144,7 @@ def main():
         write_nc_output = args.write_nc_output
         assume_short_ts = args.assume_short_ts
         parallel_compute = args.parallel_compute
+        sort_networks = args.sort_networks
 
     run_pocono2_test = args.run_pocono2_test
     run_pocono1_test = args.run_pocono1_test
@@ -1244,11 +1252,13 @@ def main():
 
     test_folder = os.path.join(root, r"test")
 
+
+    # STEP 1: Read the supernetwork dataset and build the connections graph
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
-    # STEP 1
+
     if supernetwork_parameters:
         supernetwork_values = nnu.get_nhd_connections(
             supernetwork_parameters, debuglevel, verbose
@@ -1268,7 +1278,10 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    # STEP 2
+    connections = supernetwork_values[0]
+
+
+    # STEP 2: Separate the networks and build the sub-graph of reaches within each network
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -1287,11 +1300,17 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-    connections = supernetwork_values[0]
 
-    ###################### Organize Network for Waterbodies
+    # STEP 3: Organize Network for Waterbodies
+    waterbody_parameters = {}
+
     if break_network_at_waterbodies:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("reading waterbody parameter file ...")
 
+        ## STEP 3a: Read waterbody parameter file
         waterbodies_values = supernetwork_values[12]
         waterbodies_segments = supernetwork_values[13]
         connections_tailwaters = supernetwork_values[4]
@@ -1303,6 +1322,18 @@ def main():
 
         waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
         nru.order_networks(connections, networks, connections_tailwaters)
+
+        if verbose:
+            print("waterbodies complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+        ## STEP 3b: Order subnetworks above and below reservoirs
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("ordering waterbody subnetworks ...")
 
         max_network_seqorder = -1
         for network in networks:
@@ -1318,7 +1349,18 @@ def main():
                 (terminal_segment, network)
             )
 
-        ################## Handle Waterbody States
+        if verbose:
+            print("ordering waterbody subnetworks complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+        ## STEP 3c: Handle Waterbody Initial States
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("setting waterbody initial states ...")
+
         if wrf_hydro_waterbody_restart_file:
 
             waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
@@ -1343,16 +1385,28 @@ def main():
                 len(waterbody_initial_states_df)
             )
 
+        if verbose:
+            print("waterbody initial states complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
     else:
+        # If we are not splitting the networks, we can put them all in one order
         max_network_seqorder = 0
         ordered_networks = {}
-        # TODO: DONE:1406 Sort these by size, largest to smallest, so the largest ones (network["maximum_reach_seqorder"]) start earliest
         ordered_networks[0] = [
             (terminal_segment, network)
             for terminal_segment, network in networks.items()
         ]
 
-    ################## Handle Channel States
+
+    # STEP 4: Handle Channel Initial States
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("setting channel initial states ...")
+
     if wrf_hydro_channel_restart_file:
 
         channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
@@ -1377,7 +1431,19 @@ def main():
         channel_initial_states_df["h0"] = channel_initial_depth_const
         channel_initial_states_df["index"] = range(len(channel_initial_states_df))
 
-    ################## Read QLateral Inputs
+    if verbose:
+        print("channel initial states complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
+
+
+    # STEP 5: Read (or set) QLateral Inputs
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("creating qlateral array ...")
+
     # initialize qlateral dict
     qlateral = {connection: {"qlatval": [],} for connection in connections}
 
@@ -1400,33 +1466,60 @@ def main():
     for index, row in qlat_df.iterrows():
         qlateral[index]["qlatval"] = row.tolist()
 
-    ################### Main Execution Loop across ordered networks
-    for nsq in range(max_network_seqorder, -1, -1):
-        sort_ordered_network(ordered_networks[nsq], True)
+    if verbose:
+        print("qlateral array complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
 
-    # Define the pool after we create the static global objects (and collect the garbage)
+
+    # STEP 6: Sort the ordered networks
+    if sort_networks:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("sorting the ordered networks ...")
+
+        for nsq in range(max_network_seqorder, -1, -1):
+            sort_ordered_network(ordered_networks[nsq], True)
+
+        if verbose:
+            print("sorting complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+
+    # Define them pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
         import gc
 
         gc.collect()
         pool = multiprocessing.Pool()
 
-    flowveldepth_connect = {}
+    flowveldepth_connect = {}  # dict to contain values to transfer from upstream to downstream networks
+
+    ################### Main Execution Loop across ordered networks
     for nsq in range(max_network_seqorder, -1, -1):
 
         if parallel_compute:
             nslist = []
         results = []
 
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print(f"executing routing computation ...")
+
+
         for terminal_segment, network in ordered_networks[nsq]:
             if break_network_at_waterbodies:
                 waterbody = waterbodies_segments.get(terminal_segment)
             else:
                 waterbody = None
-
             if not parallel_compute:  # serial execution
                 if verbose:
-                    print("executing computation on ordered reaches ...")
+                    print(f"routing ordered reaches for terminal segment {terminal_segment} ...")
 
                 results.append(
                     compute_network(
@@ -1446,7 +1539,7 @@ def main():
                     )
                 )
                 if showtiming:
-                    print("... in %s seconds." % (time.time() - start_time))
+                    print("... complete in %s seconds." % (time.time() - start_time))
 
             else:  # parallel execution
                 nslist.append(
@@ -1469,10 +1562,16 @@ def main():
 
         if parallel_compute:
             if verbose:
-                print(f"executing parallel computation on networks of order {nsq} ... ")
+                print(f"routing ordered reaches for networks of order {nsq} ... ")
+            if debuglevel <=-2:
+                print(f"reaches to be routed include:")
+                print(f"{[network[0] for network in ordered_networks[nsq]]}")
             # with pool:
             # with multiprocessing.Pool() as pool:
             results = pool.starmap(compute_network, nslist)
+
+            if showtiming:
+                print("... complete in %s seconds." % (time.time() - start_time))
 
         if (
             nsq > 0
