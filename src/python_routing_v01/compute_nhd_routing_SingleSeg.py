@@ -508,7 +508,7 @@ def compute_reach_upstream_flows(
 
             if ts == 0:
                 # Initialize qup from warm state array
-                qup = channel_initial_states_df.loc[us, "qd0"]
+                qup += channel_initial_states_df.loc[us, "qd0"]
             else:
                 qup += us_flowveldepth[us]["flowval"][ts - 1]
 
@@ -1350,7 +1350,6 @@ def main():
         waterbodies_segments = supernetwork_values[13]
         connections_tailwaters = supernetwork_values[4]
 
-        import pdb; pdb.set_trace()
         waterbodies_df = nnu.read_waterbody_df(
             waterbody_parameters, waterbodies_values,
         )
