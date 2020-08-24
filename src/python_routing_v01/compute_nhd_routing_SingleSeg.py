@@ -1282,6 +1282,11 @@ def main():
         qlat_file_index_col = "feature_id"
         qlat_file_value_col = "q_lateral"
 
+    if showtiming:
+        program_start_time = time.time()
+    if verbose:
+        print(f"begin program t-route ...")
+
     test_folder = os.path.join(root, r"test")
 
     # STEP 1: Read the supernetwork dataset and build the connections graph
@@ -1532,16 +1537,16 @@ def main():
     )  # dict to contain values to transfer from upstream to downstream networks
 
     ################### Main Execution Loop across ordered networks
+    if showtiming:
+        main_start_time = time.time()
+    if verbose:
+        print(f"executing routing computation ...")
+
     for nsq in range(max_network_seqorder, -1, -1):
 
         if parallel_compute:
             nslist = []
         results = []
-
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print(f"executing routing computation ...")
 
         for terminal_segment, network in ordered_networks[nsq]:
             if break_network_at_waterbodies:
@@ -1549,6 +1554,8 @@ def main():
             else:
                 waterbody = None
             if not parallel_compute:  # serial execution
+                if showtiming:
+                    start_time = time.time()
                 if verbose:
                     print(
                         f"routing ordered reaches for terminal segment {terminal_segment} ..."
@@ -1624,8 +1631,13 @@ def main():
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        print("... in %s seconds." % (time.time() - main_start_time))
+    if verbose:
+        print("program complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - program_start_time))
 
 
 if __name__ == "__main__":
     main()
+
