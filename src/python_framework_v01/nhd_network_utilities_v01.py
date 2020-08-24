@@ -242,6 +242,11 @@ def convert_text_cols_to_val(
     verbose=False,
     debuglevel=0,
 ):
+    """This function is now deprecated with 
+    the preferred path being to simply transition to 
+    use of a dataframe with column keys to refer to 
+    data columns."""
+
     key_col = geo_keys.index(key_col) + 2
     downstream_col = geo_keys.index(downstream_col) + 2
     length_col = geo_keys.index(length_col) + 2
@@ -338,7 +343,7 @@ def do_connections(
     #     , junction_count
 
 
-def get_nhd_connections(supernetwork_parameters={}, debuglevel=0, verbose=False):
+def get_nhd_connections(supernetwork_parameters={}, verbose=False, debuglevel=0):
     # TODO: convert to get.
     # as in: text=supernetwork_parameters.get("cols_as_text",None):
     # Will need to check if something depends on the None elsewhere.
@@ -378,9 +383,52 @@ def get_nhd_connections(supernetwork_parameters={}, debuglevel=0, verbose=False)
     )
 
 
+def set_waterbody_parameters(
+    supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
+):
+    """ Provide the waterbody parameters for the built-in cases """
+    if supernetwork == "Pocono_TEST1":
+        return {
+            "level_pool": {
+                "level_pool_waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_POCONO.nc"
+                ),
+                "level_pool_waterbody_id": "lake_id",
+                "level_pool_waterbody_area": "LkArea",  # area of reservoir
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA",
+            },
+        }
+    else:
+        return {
+            "level_pool": {
+                "level_pool_waterbody_parameter_file_path": os.path.join(
+                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+                ),
+                "level_pool_waterbody_id": "lake_id",
+                "level_pool_waterbody_area": "LkArea",  # area of reservoir
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA",
+            },
+        }
+
+
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
+    """ Provide the supernetwork parameters for the built-in cases """
 
     # The following datasets are extracts from the feature datasets available
     # from https://www.nohrsc.noaa.gov/pub/staff/keicher/NWM_live/web/data_tools/
@@ -430,21 +478,6 @@ def set_supernetwork_parameters(
             "title_string": "Pocono Test Example",
             "driver_string": "ESRI Shapefile",
             "layer_string": 0,
-            "waterbody_parameter_file_type": "Level_Pool",
-            "waterbody_parameters": {
-                "level_pool_waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_POCONO.nc"
-                ),
-                "level_pool_waterbody_area": "LkArea",  # area of reservoir
-                "level_pool_weir_elevation": "WeirE",
-                "level_pool_waterbody_max_elevation": "LkMxE",
-                "level_pool_outfall_weir_coefficient": "WeirC",
-                "level_pool_outfall_weir_length": "WeirL",
-                "level_pool_overall_dam_length": "DamL",
-                "level_pool_orifice_elevation": "OrificeE",
-                "level_pool_orifice_coefficient": "OrificeC",
-                "level_pool_orifice_area": "OrificeA",
-            },
         }
 
     elif supernetwork == "Pocono_TEST2":
@@ -685,20 +718,6 @@ def set_supernetwork_parameters(
             "driver_string": "NetCDF",
             "layer_string": 0,
             "waterbody_parameter_file_type": "Level_Pool",
-            "waterbody_parameters": {
-                "level_pool_waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-                ),
-                "level_pool_waterbody_area": "LkArea",  # area of reservoir
-                "level_pool_weir_elevation": "WeirE",
-                "level_pool_waterbody_max_elevation": "LkMxE",
-                "level_pool_outfall_weir_coefficient": "WeirC",
-                "level_pool_outfall_weir_length": "WeirL",
-                "level_pool_overall_dam_length": "DamL",
-                "level_pool_orifice_elevation": "OrificeE",
-                "level_pool_orifice_coefficient": "OrificeC",
-                "level_pool_orifice_area": "OrificeA",
-            },
         }
 
 
@@ -713,8 +732,8 @@ def read_custom_input_json(custom_input_file):
         run_parameters = data.get("run_parameters", {})
         # TODO: add error trapping for potentially missing files
     return (
-        supernetwork_parameters, 
-        waterbody_parameters, 
+        supernetwork_parameters,
+        waterbody_parameters,
         forcing_parameters,
         restart_parameters,
         output_parameters,
@@ -729,12 +748,14 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
         supernetwork=supernetwork, geo_input_folder=geo_input_folder
     )
     supernetwork_values = get_nhd_connections(
-        supernetwork_parameters=supernetwork_parameters, verbose=verbose, debuglevel=debuglevel
+        supernetwork_parameters=supernetwork_parameters,
+        verbose=verbose,
+        debuglevel=debuglevel,
     )
     return supernetwork_parameters, supernetwork_values
 
 
-def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype = "level_pool"):
+def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
         return read_level_pool_waterbody_df(
@@ -742,9 +763,11 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype = "level_
             wb_params["level_pool_waterbody_id"],
             waterbodies_values[wbtype],
         )
-    
 
-def read_level_pool_waterbody_df(parm_file, lake_index_field="lake_id", lake_id_mask=None):
+
+def read_level_pool_waterbody_df(
+    parm_file, lake_index_field="lake_id", lake_id_mask=None
+):
 
     ds = xr.open_dataset(parm_file)
     df1 = ds.to_dataframe().set_index(lake_index_field)

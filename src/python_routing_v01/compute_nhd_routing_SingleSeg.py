@@ -1065,19 +1065,22 @@ def main():
     supernetwork = args.supernetwork
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
+    waterbody_parameters = None
 
     if custom_input_file:
         (
-            supernetwork_parameters, 
-            waterbody_parameters, 
+            supernetwork_parameters,
+            waterbody_parameters,
             forcing_parameters,
             restart_parameters,
             output_parameters,
             run_parameters,
         ) = nnu.read_custom_input_json(custom_input_file)
-        break_network_at_waterbodies = run_parameters.get("break_network_at_waterbodies", None)
+        break_network_at_waterbodies = run_parameters.get(
+            "break_network_at_waterbodies", None
+        )
 
-        dt = run_parameters.get("dt", None) 
+        dt = run_parameters.get("dt", None)
         nts = run_parameters.get("nts", None)
         qts_subdivisions = run_parameters.get("qts_subdivisions", None)
         debuglevel = run_parameters.get("debuglevel", None)
@@ -1093,22 +1096,46 @@ def main():
         qlat_const = forcing_parameters.get("qlat_const", None)
         qlat_input_file = forcing_parameters.get("qlat_input_file", None)
         qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-        qlat_file_pattern_filter = forcing_parameters.get("qlat_file_pattern_filter", None)
+        qlat_file_pattern_filter = forcing_parameters.get(
+            "qlat_file_pattern_filter", None
+        )
         qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
 
-        wrf_hydro_channel_restart_file = restart_parameters.get("wrf_hydro_channel_restart_file", None)
-        wrf_hydro_channel_ID_crosswalk_file = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file", None)
-        wrf_hydro_channel_ID_crosswalk_file_field_name = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", None)
-        wrf_hydro_channel_restart_upstream_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", None)
-        wrf_hydro_channel_restart_downstream_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", None)
-        wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", None)
+        wrf_hydro_channel_restart_file = restart_parameters.get(
+            "wrf_hydro_channel_restart_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_channel_restart_upstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_upstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_downstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_downstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_depth_flow_field_name", None
+        )
 
-        wrf_hydro_waterbody_restart_file = restart_parameters.get("wrf_hydro_waterbody_restart_file", None)
-        wrf_hydro_waterbody_ID_crosswalk_file = restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file", None)
-        wrf_hydro_waterbody_ID_crosswalk_file_field_name = restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", None)
-        wrf_hydro_waterbody_crosswalk_filter_file = restart_parameters.get("wrf_hydro_waterbody_crosswalk_filter_file", None)
-        wrf_hydro_waterbody_crosswalk_filter_file_field_name = restart_parameters.get("wrf_hydro_waterbody_crosswalk_filter_file_field_name", None)
+        wrf_hydro_waterbody_restart_file = restart_parameters.get(
+            "wrf_hydro_waterbody_restart_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file_field_name", None
+        )
 
     # Any specific commandline arguments will override the file
     # TODO: There are probably some pathological collisions that could
@@ -1117,7 +1144,7 @@ def main():
     else:
         break_network_at_waterbodies = args.break_network_at_waterbodies
 
-        dt = int(args.dt) 
+        dt = int(args.dt)
         nts = int(args.nts)
         qts_subdivisions = args.qts_subdivisions
         qlat_const = float(args.qlat_const)
@@ -1132,7 +1159,9 @@ def main():
         )
 
         wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
-        wrf_hydro_waterbody_ID_crosswalk_file = args.wrf_hydro_waterbody_ID_crosswalk_file
+        wrf_hydro_waterbody_ID_crosswalk_file = (
+            args.wrf_hydro_waterbody_ID_crosswalk_file
+        )
         wrf_hydro_waterbody_ID_crosswalk_file_field_name = (
             args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
         )
@@ -1169,7 +1198,10 @@ def main():
         # NOTE: The test case for the Pocono basin was derived from this
         # resource on HydroShare, developed by aaraney and sourced from the
         # wrf_hydro_nwm_public repository on GitHub
-        # https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
+        # see: https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
+        # By downloading aaraney's docker job scheduler repo from GitHub, one can
+        # execute the WRF-Hydro model that generated the test results
+        # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
         if verbose:
             print("running test case for Pocono_TEST1 domain")
         # Overwrite the following test defaults
@@ -1252,7 +1284,6 @@ def main():
 
     test_folder = os.path.join(root, r"test")
 
-
     # STEP 1: Read the supernetwork dataset and build the connections graph
     if verbose:
         print("creating supernetwork connections set")
@@ -1261,25 +1292,32 @@ def main():
 
     if supernetwork_parameters:
         supernetwork_values = nnu.get_nhd_connections(
-            supernetwork_parameters, debuglevel, verbose
+            supernetwork_parameters=supernetwork_parameters,
+            verbose=False,
+            debuglevel=debuglevel,
         )
+
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
         supernetwork_parameters, supernetwork_values = nnu.set_networks(
             supernetwork=supernetwork,
             geo_input_folder=geo_input_folder,
-            verbose=False
-            # , verbose = verbose
-            ,
+            verbose=False,
             debuglevel=debuglevel,
         )
+        waterbody_parameters = nnu.set_waterbody_parameters(
+            supernetwork=supernetwork,
+            geo_input_folder=geo_input_folder,
+            verbose=False,
+            debuglevel=debuglevel,
+        )
+
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
     connections = supernetwork_values[0]
-
 
     # STEP 2: Separate the networks and build the sub-graph of reaches within each network
     if showtiming:
@@ -1300,10 +1338,7 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-
     # STEP 3: Organize Network for Waterbodies
-    waterbody_parameters = {}
-
     if break_network_at_waterbodies:
         if showtiming:
             start_time = time.time()
@@ -1315,9 +1350,9 @@ def main():
         waterbodies_segments = supernetwork_values[13]
         connections_tailwaters = supernetwork_values[4]
 
+        import pdb; pdb.set_trace()
         waterbodies_df = nnu.read_waterbody_df(
-            waterbody_parameters,
-            waterbodies_values,
+            waterbody_parameters, waterbodies_values,
         )
 
         waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
@@ -1400,7 +1435,6 @@ def main():
             for terminal_segment, network in networks.items()
         ]
 
-
     # STEP 4: Handle Channel Initial States
     if showtiming:
         start_time = time.time()
@@ -1437,7 +1471,6 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
         start_time = time.time()
@@ -1472,7 +1505,6 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-
     # STEP 6: Sort the ordered networks
     if sort_networks:
         if showtiming:
@@ -1489,7 +1521,6 @@ def main():
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
-
     # Define them pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
         import gc
@@ -1497,7 +1528,9 @@ def main():
         gc.collect()
         pool = multiprocessing.Pool()
 
-    flowveldepth_connect = {}  # dict to contain values to transfer from upstream to downstream networks
+    flowveldepth_connect = (
+        {}
+    )  # dict to contain values to transfer from upstream to downstream networks
 
     ################### Main Execution Loop across ordered networks
     for nsq in range(max_network_seqorder, -1, -1):
@@ -1511,7 +1544,6 @@ def main():
         if verbose:
             print(f"executing routing computation ...")
 
-
         for terminal_segment, network in ordered_networks[nsq]:
             if break_network_at_waterbodies:
                 waterbody = waterbodies_segments.get(terminal_segment)
@@ -1519,7 +1551,9 @@ def main():
                 waterbody = None
             if not parallel_compute:  # serial execution
                 if verbose:
-                    print(f"routing ordered reaches for terminal segment {terminal_segment} ...")
+                    print(
+                        f"routing ordered reaches for terminal segment {terminal_segment} ..."
+                    )
 
                 results.append(
                     compute_network(
@@ -1563,7 +1597,7 @@ def main():
         if parallel_compute:
             if verbose:
                 print(f"routing ordered reaches for networks of order {nsq} ... ")
-            if debuglevel <=-2:
+            if debuglevel <= -2:
                 print(f"reaches to be routed include:")
                 print(f"{[network[0] for network in ordered_networks[nsq]]}")
             # with pool:
