@@ -812,37 +812,7 @@ def get_stream_restart_from_wrf_hydro(
     qdf2[channel_ID_column] = xdf
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
 
-    return qdf2
-
-    ### TODO: Delete this legacy code...
-    xds = xr.open_dataset(crosswalk_file)
-
-    xdf = xds.to_dataframe()
-    xdf = xdf.reset_index()
-    xdf = xdf[[channel_ID_column]]
-
-    qds = xr.open_dataset(channel_initial_states_file)
-    qdf = qds.to_dataframe()
-    qdf = qdf[: len(xdf)]
-    qdf = qdf.reset_index()
-    if depth_column in qdf.columns:
-        qdf = qdf[[us_flow_column, ds_flow_column, depth_column]]
-    else:
-        qdf = qdf[[us_flow_column, ds_flow_column]]
-        qdf[depth_column] = 0
-    qdf.rename(
-        columns={
-            us_flow_column: default_us_flow_column,
-            ds_flow_column: default_ds_flow_column,
-            depth_column: default_depth_column,
-        },
-        inplace=True,
-    )
-
-    mod = xdf.join(qdf)
-    mod = mod.reset_index()
-    mod = mod.set_index([channel_ID_column])
-    q_initial_states = mod
+    q_initial_states = qdf2
 
     return q_initial_states
 
