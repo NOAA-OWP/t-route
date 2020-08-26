@@ -55,7 +55,7 @@ contains
 
         !!DJG Add lake option switch here...move up to namelist in future versions...
         integer :: LAKE_OPT            ! Lake model option (move to namelist later)
-        real(prec)    :: H, Htmp             ! Temporary assign of incoming lake el. (m)
+        real(prec)    :: H                   ! Temporary assign of incoming lake el. (m)
 
         !! ----------------------------  local variables
         real(prec) :: sap                    ! local surface area values
@@ -73,7 +73,6 @@ contains
         !!DJG Set hardwire for LAKE_OPT...move specification of this to namelist in
         !future versions...
         LAKE_OPT = 2
-        Htmp = H0  !temporary set of incoming lake water elevation...
         exp32 = 3._prec/2._prec
         quot23 = 0.667_prec
         zero = 0.0_prec
@@ -86,10 +85,11 @@ contains
         if (LAKE_OPT == 1) then     ! If-block for simple pass through scheme....
 
            qo1 = qi1                 ! Set outflow equal to inflow at current time
-           H = Htmp                  ! Set new lake water elevation to incoming lake el.
+           H = H0                    ! Set new lake water elevation to incoming lake el.
 
         else if (LAKE_OPT == 2) then   ! If-block for Chow et al level pool scheme
 
+           H = H0                    ! Set new lake water elevation to incoming lake el.
            It = qi0
            Itdt_3   = qi0 + ((qi1 + ql - qi0) * 0.33_prec)
            Itdt_2_3 = qi0 + ((qi1 + ql - qi0) * 0.67_prec)
@@ -212,11 +212,11 @@ contains
         !#ifndef NCEP_WCOSS
         !   ! Water balance check
         !   qdiff_vol = (qi1+ql-qo1)*dt !m3
-        !   hdiff_vol = (H-Htmp)*sap    !m3
+        !   hdiff_vol = (H-H0)*sap    !m3
         !22 format(f8.4,2x,f8.4,2x,f8.4,2x,f8.4,2x,f8.4,2x,f6.0,2x,f20.1,2x,f20.1)
         !   open (unit=67, &
         !     file='lake_massbalance_out.txt', status='unknown',position='append')
-        !   write(67,22) Htmp, H, qi1, ql, qo1, dt, qdiff_vol, hdiff_vol
+        !   write(67,22) H0, H, qi1, ql, qo1, dt, qdiff_vol, hdiff_vol
         !   close(67)
         !#endif
         !#endif

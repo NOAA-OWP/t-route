@@ -44,24 +44,23 @@ before submitting any pull requests.
 git clone github.com/<githubusername>/t-route.git
 ```
 
-* Make your changes to the source files 
+* Make a new branch and make your changes to the source files in the branch
 
 * Add changed files to the commit ... `git add <list of your changed files>`
 
 * ... and commit them: `git commit`
 
-* Push the accumulated commits to your fork in GitHub: `git push`
+* Push the accumulated commits to your fork/branch in GitHub: `git push`
 
 * Open GitHub and issue a pull request.
 
-* **IMPORTANT** Keep your code updated with the upstream. with the following commands. 
+* **IMPORTANT** Keep your master branch code up-to-date with the upstream repository using the following commands. As commits from other developers accumulate in the master, merge these into your fork prior to issuing a pull request.
 
 ```
 git remote add upstream https://github.com/NOAA-OWP/t-route.git
-git fetch upstream && git merge --rebase upstream/master
+git fetch upstream && git pull --rebase upstream master
 
 ```
-
 ## A more detailed step-by-step guide to contributing via GitHub
 
 ### 1. On GitHub, create a fork and clone it to your local directory 
