@@ -254,7 +254,7 @@ def in_wsl() -> bool:
     WSL is thought to be the only common Linux kernel with Microsoft in the name.
     """
 
-    return "Microsoft" in os.uname().release
+    return "microsoft" in (os.uname().release).lower()
 
 
 if COMPILE:
