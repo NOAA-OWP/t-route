@@ -65,6 +65,7 @@ def recursive_reach_read_new(
                 reach.update(
                     {"segments_list": segmentlist}
                 )  # Ordered Segment List bottom to top
+                network["all_segments"].update(segmentset)
                 network["reaches"].update({csegment: reach})
                 network["receiving_reaches"].add(csegment)
                 CONTINUE = False
@@ -100,6 +101,7 @@ def recursive_reach_read_new(
                 reach.update(
                     {"segments_list": segmentlist}
                 )  # Ordered Segment List bottom to top
+                network["all_segments"].update(segmentset)
                 network["reaches"].update({csegment: reach})
                 if i == 0:
                     network["total_junction_count"] += 1  # the Terminal Segment
@@ -153,6 +155,7 @@ def recursive_reach_read_new(
                     reach.update(
                         {"segments_list": segmentlist}
                     )  # Ordered Segment List bottom to top
+                    network["all_segments"].update(segmentset)
                     network["reaches"].update({csegment: reach})
                     network["headwater_reaches"].add(csegment)
                     CONTINUE = False
@@ -226,6 +229,7 @@ def recursive_reach_read(
             reach.update(
                 {"segments_list": segmentlist}
             )  # Ordered Segment List bottom to top
+            network["all_segments"].update(segmentset)
             network["reaches"].update({csegment: reach})
             network["total_junction_count"] += 1  # the Terminal Segment
             network["junctions"].add(csegment)
@@ -256,7 +260,6 @@ def recursive_reach_read(
             break
         else:
             (usegment,) = usegments
-            # import pdb; pdb.set_trace()
             if usegment in network_breaking_segments:  # NETWORK
                 if debuglevel <= -3:
                     print("NEW NETWORK UPSTREAM: RECORD AND STOP")
@@ -288,6 +291,7 @@ def recursive_reach_read(
                 reach.update(
                     {"segments_list": segmentlist}
                 )  # Ordered Segment List bottom to top
+                network["all_segments"].update(segmentset)
                 network["reaches"].update({csegment: reach})
                 network["receiving_reaches"].add(csegment)
                 break
@@ -322,6 +326,7 @@ def recursive_reach_read(
                 reach.update(
                     {"segments_list": segmentlist}
                 )  # Ordered Segment List bottom to top
+                network["all_segments"].update(segmentset)
                 network["reaches"].update({csegment: reach})
                 network["headwater_reaches"].add(csegment)
                 break
@@ -393,6 +398,7 @@ def DEPRECATED_recursive_junction_read(
                     reach.update(
                         {"segments_list": segmentlist}
                     )  # Ordered Segment List bottom to top
+                    network["all_segments"].update(segmentset)
                     network["reaches"].update({csegment: reach})
                     network["headwater_reaches"].add(csegment)
                     break
@@ -425,6 +431,7 @@ def DEPRECATED_recursive_junction_read(
                     reach.update(
                         {"segments_list": segmentlist}
                     )  # Ordered Segment List bottom to top
+                    network["all_segments"].update(segmentset)
                     network["reaches"].update({csegment: reach})
                     network["total_junction_count"] += 1  # the Terminal Segment
                     network["junctions"].add(csegment)
@@ -475,12 +482,15 @@ def network_trace(
     if 1 == 1:
         network.update({"total_segment_count": 0})
         network.update({"total_junction_count": 0})
+        network.update({"network_seqorder": 0})
         network.update({"maximum_reach_seqorder": 0})
         network.update({"junctions": set()})
         network.update({"headwater_reaches": set()})
+        network.update({"all_segments": set()})
         network.update(
             {"receiving_reaches": set()}
         )  # Reaches that are downstream of another network
+        network.update({"tailwater_reach": set()})
         network.update({"reaches": {}})
         recursive_reach_read_new(
             segment=terminal_segment,
@@ -526,6 +536,7 @@ def compose_networks(
         terminal_segments_super = terminal_segments_super.union(
             waterbody_breaking_segments
         )
+
     connections = supernetwork_values[0]
 
     networks = {terminal_segment: {} for terminal_segment in terminal_segments_super}
@@ -584,3 +595,26 @@ def compose_networks(
         print(f"Number of networks in the Supernetwork: {len(networks.items())}")
 
     return networks
+
+
+def order_networks(connections, networks, tailwaters):
+    """Assumes that every tailwater is a network -- but there may 
+        be many networks that are upstream networks and therefore 
+        not tailwaters."""
+
+    curr_seqorder = 0
+    recursive_order_networks(connections, networks, tailwaters, curr_seqorder)
+
+
+def recursive_order_networks(connections, networks, tailwaters, curr_seqorder):
+    for tailwater in tailwaters:
+        network = networks.get(tailwater, None)
+        if network:
+            network["network_seqorder"] = curr_seqorder
+            for rr in network["receiving_reaches"]:
+                recursive_order_networks(
+                    connections,
+                    networks,
+                    connections[rr]["upstreams"],
+                    curr_seqorder + 1,
+                )
