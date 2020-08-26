@@ -597,7 +597,7 @@ def compute_mc_reach_up2down(
         # storage
         volumec = dt * (quc - qdc + qlat)
         # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
-        qlatCum = qlat
+        qlatCum = qlat * dt
         if ts > 0:
             volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
             qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
@@ -743,7 +743,7 @@ def compute_level_pool_reach_up2down(
 
     volumec = dt * (quc - qdc + qlat)
     # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
-    qlatCum = qlat
+    qlatCum = qlat * dt
     if ts > 0:
         volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
         qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
