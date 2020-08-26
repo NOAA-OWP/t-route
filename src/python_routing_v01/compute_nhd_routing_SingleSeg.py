@@ -1,6 +1,12 @@
 # command line args and usage with: python compute_nhd_routing_SingleSeg.py --help
 # example to run test: python compute_nhd_routing_SingleSeg.py -v --test
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -onc -n Mainstems_CONUS
+#                python compute_nhd_routing_SingleSeg.py -n Mainstems_CONUS --nts 1440 --parallel &
+#                python compute_nhd_routing_SingleSeg.py -v --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w --parallel
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams
+#                python compute_nhd_routing_SingleSeg.py -v -w -n Brazos_LowerColorado_Named_Streams --parallel
+#                python compute_nhd_routing_SingleSeg.py -f ../../test/input/json/CustomInput.json -w -v -t
 
 # a notebook-based version of very similar code is found here:
 # https://github.com/NOAA-OWP/t-route/blob/master/notebooks/compute_nhd_routing_v2_clean_with_lateral_inflow_data.ipynb
@@ -9,6 +15,7 @@
 import os
 import sys
 import time
+import traceback
 import numpy as np
 import argparse
 import pathlib
@@ -17,6 +24,8 @@ import netCDF4
 import csv
 from datetime import datetime
 import multiprocessing
+import glob
+import xarray as xr
 
 
 def _handle_args():
@@ -28,7 +37,8 @@ def _handle_args():
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
-        choices=[0, -1, -2, -3],
+        type=int,
+        choices=[0, 1, 2, 3],
         default=0,
     )
     parser.add_argument(
@@ -39,13 +49,22 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--test" "--run-pocono-test-example",
+        "--test",
+        "--run-pocono2-test-example",
         help="Use the data values stored in the repository for a test of the Pocono network",
-        dest="run_pocono_test",
+        dest="run_pocono2_test",
         action="store_true",
     )
     parser.add_argument(
-        "--sts" "--assume-short-ts",
+        "--test-full-pocono",
+        "--run-pocono1-test-example",
+        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
+        dest="run_pocono1_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--sts",
+        "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
@@ -66,24 +85,84 @@ def _handle_args():
     )
     parser.add_argument(
         "--dt",
-        "--time-step",
+        "--qlateral-time-step",
         help="Set the default timestep length",
         dest="dt",
         default=300,
     )
     parser.add_argument(
         "--nts",
-        "--number-of-timesteps",
-        help="Set the number of timesteps to execute",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
         dest="nts",
         default=144,
     )
     parser.add_argument(
-        "--ql",
+        "--qN",
+        "--qts_subdivisions",
+        help="number of simulation timesteps per qlateral timestep",
+        dest="qts_subdivisions",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--wrf_hydro_channel_restart_file",
+        dest="wrf_hydro_channel_restart_file",
+        help="provide a WRF-Hydro channel warm state file (may be the same as waterbody restart file)",
+    )
+    parser.add_argument(
+        "--wrf_hydro_channel_ID_crosswalk_file",
+        dest="wrf_hydro_channel_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name",
+    )
+    parser.add_argument(
+        "--wrf_hydro_channel_ID_crosswalk_file_field_name",
+        dest="wrf_hydro_channel_ID_crosswalk_file_field_name",
+        help="Name of the column providing the channel segment IDs in the channel crosswalk file",
+        default="ID",
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_restart_file",
+        dest="wrf_hydro_waterbody_restart_file",
+        help="provide a WRF-Hydro waterbody warm state file (may be the same as channel restart file)",
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_ID_crosswalk_file",
+        dest="wrf_hydro_waterbody_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the waterbody restart file. Specify the ID field with --wrf_hydro_waterbody_ID_crosswalk_file_field_name",
+    )
+    parser.add_argument(
+        "--wrf_hydro_waterbody_ID_crosswalk_file_field_name",
+        dest="wrf_hydro_waterbody_ID_crosswalk_file_field_name",
+        help="Name of the column providing the waterbody segment IDs in the waterbody crosswalk file",
+        default="ID",
+    )
+    ql_arg_group = parser.add_mutually_exclusive_group()
+    ql_arg_group.add_argument(
+        "--qlc",
         "--constant_qlateral",
-        help="Set the number of timesteps to execute",
+        help="Constant qlateral to apply to all time steps at all segments",
         dest="qlat_const",
+        type=float,
         default=10,
+    )
+    ql_arg_group.add_argument(
+        "--qlf",
+        "--single_file_qlateral",
+        help="QLaterals arranged with segment IDs as rows and timesteps as columns in a single .csv",
+        dest="qlat_input_file",
+    )
+    ql_arg_group.add_argument(
+        "--qlw",
+        "--ql_wrf_hydro_folder",
+        help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
+        dest="qlat_input_folder",
+    )
+    parser.add_argument(
+        "--qlat_file_pattern_filter",
+        help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
+        dest="qlat_file_pattern_filter",
+        default="/*.CHRTOUT_DOMAIN1",
     )
     parser.add_argument(
         "-t",
@@ -100,6 +179,13 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--sort-ordered-networks",
+        help="Sort networks by size, largest to smallest, so the deepest ones (network['maximum_reach_seqorder']) start earliest in a given network order",
+        dest="sort_networks",
+        action="store_true",
+    )
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
         "-n",
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
@@ -121,6 +207,12 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .json file containing a custom supernetwork information. See test/input/json/CustomInput.json for an example.",
+    )
     parser.add_argument(
         "--parallel",
         help="Use the parallel computation engine (omit flag for serial computation)",
@@ -128,7 +220,16 @@ def _handle_args():
         action="store_true",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # TODO: Add any other checking
+    # TODO: This check is probably no longer needed
+    if args.supernetwork == "custom" and not args.customnetworkfile:
+        parser.error(
+            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
+        )
+
+    return args
 
 
 root = pathlib.Path("../..").resolve()
@@ -136,19 +237,34 @@ root = pathlib.Path("../..").resolve()
 sys.setrecursionlimit(4000)
 sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
-fortran_source_dir = os.path.join(
+fortran_routing_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
 )
-sys.path.append(fortran_source_dir)
+fortran_reservoir_dir = os.path.join(
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"Reservoir_singleTS"
+)
+sys.path.append(fortran_routing_dir)
 
 ## Muskingum Cunge
 COMPILE = True
+
+
+def in_wsl() -> bool:
+    """
+    WSL is thought to be the only common Linux kernel with Microsoft in the name.
+    """
+
+    return "microsoft" in (os.uname().release).lower()
+
+
 if COMPILE:
     try:
         import subprocess
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
+        if in_wsl():  # disable optimization for compiling on WSL
+            fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
@@ -156,32 +272,67 @@ if COMPILE:
         fortran_compile_call.append(r"mc_sseg_stime")
         subprocess.run(
             fortran_compile_call,
-            cwd=r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS",
+            cwd=fortran_routing_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         from mc_sseg_stime import muskingcunge_module as mc
     except Exception as e:
         print(e)
+        traceback.print_exc()
 else:
     from mc_sseg_stime import muskingcunge_module as mc
 
 connections = None
 networks = None
-flowveldepth = None
+qlateral = None
+waterbodies_df = None
+waterbody_initial_states_df = None
+channel_initial_states_df = None
+
 # WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
 import nhd_reach_utilities as nru
 
+sys.path.append(fortran_reservoir_dir)
+if COMPILE:
+    try:
+        import subprocess
+
+        fortran_compile_call = []
+        fortran_compile_call.append(r"f2py3")
+        if in_wsl():  # disable optimization for compiling on WSL
+            fortran_compile_call.append(r"--noopt")
+        fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
+        fortran_compile_call.append(r"module_levelpool.f90")
+        fortran_compile_call.append(r"-m")
+        fortran_compile_call.append(r"pymodule_levelpool")
+        subprocess.run(
+            fortran_compile_call,
+            cwd=fortran_reservoir_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        from pymodule_levelpool import module_levelpool as rc
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+else:
+    from pymodule_levelpool import module_levelpool as rc
+
 
 def compute_network(
-    terminal_segment=None,
-    network=None,
-    supernetwork_data=None,
-    nts=0,
-    dt=0,
+    flowveldepth_connect,
+    terminal_segment,
+    supernetwork_parameters,
+    waterbody_parameters,
+    waterbody,
+    nts=1,
+    dt=60,
+    qts_subdivisions=1,
     verbose=False,
     debuglevel=0,
     write_csv_output=False,
@@ -189,18 +340,34 @@ def compute_network(
     assume_short_ts=False,
 ):
     global connections
-    global flowveldepth
+    global networks
+    global qlateral
+
+    network = networks[terminal_segment]
+
+    flowveldepth = {
+        connection: {
+            "time": [],
+            "qlatCumval": [],
+            "qlatval": [],
+            "flowval": [],
+            "velval": [],
+            "depthval": [],
+            "storageval": [],
+        }
+        for connection in (network["all_segments"])
+    }
 
     if debuglevel <= -1:
         print(
-            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_order']}"
+            f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
         )
 
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches.update({reach["seqorder"]: []})
-        ordered_reaches[reach["seqorder"]].append([head_segment, reach])
+            ordered_reaches[reach["seqorder"]] = []
+        ordered_reaches[reach["seqorder"]].append((head_segment, reach))
 
     # initialize write to files variable
     writeToCSV = write_csv_output
@@ -210,16 +377,59 @@ def compute_network(
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
             for head_segment, reach in ordered_reaches[x]:
-                compute_mc_reach_up2down(
+                # print(f'timestep: {ts}\n')
+                # for loops should contain both waterbodies and mc_reach as it loops entire network
+                # TODO: Prune these inputs
+                qup_reach, quc_reach = compute_reach_upstream_flows(
+                    flowveldepth_connect=flowveldepth_connect,
+                    flowveldepth=flowveldepth,
                     head_segment=head_segment,
                     reach=reach,
-                    supernetwork_data=supernetwork_data,
+                    network=network,
+                    supernetwork_parameters=supernetwork_parameters,
+                    waterbody=waterbody,
                     ts=ts,
                     dt=dt,
                     verbose=verbose,
                     debuglevel=debuglevel,
                     assume_short_ts=assume_short_ts,
                 )
+                if waterbody:
+                    compute_level_pool_reach_up2down(
+                        flowveldepth=flowveldepth,
+                        qlateral=qlateral,
+                        qup_reach=qup_reach,
+                        quc_reach=quc_reach,
+                        head_segment=head_segment,
+                        reach=reach,
+                        network=network,
+                        supernetwork_parameters=supernetwork_parameters,
+                        waterbody_parameters=waterbody_parameters,
+                        waterbody=waterbody,
+                        ts=ts,
+                        dt=dt,
+                        qts_subdivisions=qts_subdivisions,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        assume_short_ts=assume_short_ts,
+                    )
+
+                else:
+                    compute_mc_reach_up2down(
+                        flowveldepth=flowveldepth,
+                        qlateral=qlateral,
+                        qup_reach=qup_reach,
+                        quc_reach=quc_reach,
+                        head_segment=head_segment,
+                        reach=reach,
+                        supernetwork_parameters=supernetwork_parameters,
+                        ts=ts,
+                        dt=dt,
+                        qts_subdivisions=qts_subdivisions,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        assume_short_ts=assume_short_ts,
+                    )
 
     if writeToCSV:
         for x in range(network["maximum_reach_seqorder"], -1, -1):
@@ -239,18 +449,25 @@ def compute_network(
             flowveldepth=flowveldepth,
             network=network,
             nts=nts,
+            qts_subdivisions=qts_subdivisions,
             dt=dt,
             verbose=verbose,
             debuglevel=debuglevel,
             pathToOutputFile=pathToOutputFile,
         )
 
+    return {terminal_segment: flowveldepth[terminal_segment]}
+
 
 # TODO: generalize with a direction flag
-def compute_mc_reach_up2down(
+def compute_reach_upstream_flows(
+    flowveldepth_connect,
+    flowveldepth,
     head_segment=None,
     reach=None,
-    supernetwork_data=None,
+    network=None,
+    supernetwork_parameters=None,
+    waterbody=None,
     ts=0,
     dt=60,
     verbose=False,
@@ -258,27 +475,74 @@ def compute_mc_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-    global flowveldepth
+    global channel_initial_states_df
+
+    # upstream flow per reach
+    qup = 0.0
+    quc = 0.0
+    ########################
+    if waterbody:
+        upstreams_list = set()
+        for rr in network["receiving_reaches"]:
+            for us in connections[rr]["upstreams"]:
+                upstreams_list.add(us)
+        # this step was critical -- there were receiving reaches that were junctions
+        # with only one of their upstreams out of the network. The other was inside
+        # the network, so it caused a lookup error.
+        upstreams_list = upstreams_list - network["all_segments"]
+        us_flowveldepth = flowveldepth_connect
+
+    elif head_segment in network["receiving_reaches"]:
+        # TODO: confirm this logic, to make sure we don't double count the head
+        upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        us_flowveldepth = flowveldepth
+        us_flowveldepth.update(flowveldepth_connect)
+
+    else:
+        upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        us_flowveldepth = flowveldepth
+
+    for us in upstreams_list:
+        if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
+            quc += us_flowveldepth[us]["flowval"][ts]
+
+            if ts == 0:
+                # Initialize qup from warm state array
+                qup += channel_initial_states_df.loc[us, "qd0"]
+            else:
+                qup += us_flowveldepth[us]["flowval"][ts - 1]
+
+    if assume_short_ts:
+        quc = qup
+
+    return quc, qup
+
+
+# TODO: generalize with a direction flag
+def compute_mc_reach_up2down(
+    flowveldepth,
+    qlateral,
+    qup_reach,
+    quc_reach,
+    head_segment=None,
+    reach=None,
+    supernetwork_parameters=None,
+    ts=0,
+    dt=60,
+    qts_subdivisions=1,
+    verbose=False,
+    debuglevel=0,
+    assume_short_ts=False,
+):
+    global connections
 
     if debuglevel <= -2:
         print(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
         )
 
-    # upstream flow per reach
-    qup = 0.0
-    quc = 0.0
-
-    if reach["upstream_reaches"] != {
-        supernetwork_data["terminal_code"]
-    }:  # Not Headwaters
-        for us in connections[reach["reach_head"]]["upstreams"]:
-            quc += flowveldepth[us]["flowval"][-1]
-            if ts > 0:
-                qup += flowveldepth[us]["flowval"][-2]
-
-    if assume_short_ts:
-        quc = qup
+    qup = qup_reach
+    quc = quc_reach
 
     current_segment = reach["reach_head"]
     # next_segment = connections[current_segment]["downstream"]
@@ -288,25 +552,29 @@ def compute_mc_reach_up2down(
         # current_flow = flowveldepth[current_segment]
 
         # for now treating as constant per reach
-        bw = data[supernetwork_data["bottomwidth_col"]]
-        tw = data[supernetwork_data["topwidth_col"]]
-        twcc = data[supernetwork_data["topwidthcc_col"]]
-        dx = data[supernetwork_data["length_col"]]
-        n_manning = data[supernetwork_data["manningn_col"]]
-        n_manning_cc = data[supernetwork_data["manningncc_col"]]
-        cs = data[supernetwork_data["ChSlp_col"]]
-        s0 = data[supernetwork_data["slope_col"]]
+        bw = data[supernetwork_parameters["bottomwidth_col"]]
+        tw = data[supernetwork_parameters["topwidth_col"]]
+        twcc = data[supernetwork_parameters["topwidthcc_col"]]
+        dx = data[supernetwork_parameters["length_col"]]
+        n_manning = data[supernetwork_parameters["manningn_col"]]
+        n_manning_cc = data[supernetwork_parameters["manningncc_col"]]
+        cs = data[supernetwork_parameters["ChSlp_col"]]
+        s0 = data[supernetwork_parameters["slope_col"]]
 
-        qlat = flowveldepth[current_segment]["qlatval"][ts]
+        # TODO: update this extremely simplistic handling of timestep adjustment
+        # allow shorter timesteps
+        qts = int(ts / qts_subdivisions)
+        qlat = qlateral[current_segment]["qlatval"][qts]
 
-        if ts > 0:
-            qdp = flowveldepth[current_segment]["flowval"][-1]
-            velp = flowveldepth[current_segment]["velval"][-1]
-            depthp = flowveldepth[current_segment]["depthval"][-1]
-        else:
-            qdp = 0
+        if ts == 0:
+            # initialize from initial states
+            qdp = channel_initial_states_df.loc[current_segment, "qd0"]
             velp = 0
-            depthp = 0
+            depthp = channel_initial_states_df.loc[current_segment, "h0"]
+        else:
+            qdp = flowveldepth[current_segment]["flowval"][-1]
+            velp = 0  # flowveldepth[current_segment]["velval"][-1]
+            depthp = flowveldepth[current_segment]["depthval"][-1]
 
         # run M-C model
         qdc, velc, depthc = singlesegment(
@@ -326,20 +594,69 @@ def compute_mc_reach_up2down(
             velp=velp,
             depthp=depthp,
         )
-
-        # for next segment qup / quc use the previous flow values
+        # storage
+        volumec = dt * (quc - qdc + qlat)
+        # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
+        qlatCum = qlat * dt
         if ts > 0:
-            qup = flowveldepth[current_segment]["flowval"][-1]  # input for next segment
-        else:
-            qup = 0
+            volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
+            qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
 
-        quc = qdc  # input for next segment
+        # for next segment qup / quc use the just-now and previously
+        # calculated flow values from the current segment
+        qup = qdp
+        quc = qdc
         if assume_short_ts:
-            quc = qup
+            # if we are assuming time steps are short, we can
+            # assume that the previous flow value sufficiently
+            # represents both the previous and current state.
+            # This approximation is entirely un-necessary in
+            # this framework, which preserves the connectivity
+            # between reach segments in time and in space, but
+            # it allows us to approximate the behavior of the
+            # previous version of the model, which made this
+            # assumption out of necessity to allow out-of-order
+            # computation on segments within a given time step,
+            # which was a peculiar requirement of the parallel-
+            # ization scheme used during execution.
+            quc = qup = qdp
 
+        """
+            Normal calculation:
+
+            current_segment
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc╮  ╰-qup      qdp
+                        ┊     │  Q-->  │
+                        ╰->╮  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
+
+
+            Short-time-step calculation:
+
+            current_segment
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc   ├-qup      qdp
+                           ┊  │  Q-->  │
+                           ┊  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
+        """
+
+        # update flowveldepth values for currentsegment for current timestep
+        flowveldepth[current_segment]["qlatval"].append(qlat)
+        flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
         flowveldepth[current_segment]["flowval"].append(qdc)
         flowveldepth[current_segment]["depthval"].append(depthc)
         flowveldepth[current_segment]["velval"].append(velc)
+        flowveldepth[current_segment]["storageval"].append(volumec)
         flowveldepth[current_segment]["time"].append(ts * dt)
 
         next_segment = connections[current_segment]["downstream"]
@@ -356,21 +673,105 @@ def compute_mc_reach_up2down(
     # end while loop
 
 
+def compute_level_pool_reach_up2down(
+    flowveldepth,
+    qlateral,
+    qup_reach,
+    quc_reach,
+    head_segment=None,
+    reach=None,
+    network=None,
+    supernetwork_parameters=None,
+    waterbody_parameters=None,
+    waterbody=None,
+    ts=0,
+    dt=60,
+    qts_subdivisions=1,
+    verbose=False,
+    debuglevel=0,
+    assume_short_ts=False,
+):
+    global connections
+    global waterbodies_df
+    global waterbody_initial_states_df
+
+    if debuglevel <= -2:
+        print(
+            f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
+        )
+
+    qup = qup_reach
+    quc = quc_reach
+
+    current_segment = reach["reach_tail"]
+    if ts == 0:
+        # Initialize from warm state
+        depthp = waterbody_initial_states_df.loc[waterbody, "h0"]
+    else:
+        depthp = flowveldepth[current_segment]["depthval"][-1]
+
+    # This Qlat gathers all segments of the waterbody
+    qts = int(ts / qts_subdivisions)
+    qlat = sum([qlateral[seg]["qlatval"][qts] for seg in network["all_segments"]])
+    if debuglevel <= -2:
+        print(f"executing reservoir computation on waterbody: {waterbody}")
+
+    wb_params = waterbody_parameters["level_pool"]
+    ln = waterbody
+    qi0 = qup
+    qi1 = quc
+    ql = qlat
+    dt = dt  # current timestep length
+    ar = waterbodies_df.loc[waterbody, wb_params["level_pool_waterbody_area"]]
+    we = waterbodies_df.loc[waterbody, wb_params["level_pool_weir_elevation"]]
+    maxh = waterbodies_df.loc[
+        waterbody, wb_params["level_pool_waterbody_max_elevation"]
+    ]
+    wc = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_coefficient"]]
+    wl = waterbodies_df.loc[waterbody, wb_params["level_pool_outfall_weir_length"]]
+    # TODO: find the right value for this variable -- it should be in the parameter file!
+    dl = (
+        10 * wl
+    )  # waterbodies_df.loc[waterbody, wb_params["level_pool_overall_dam_length"]]
+    oe = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_elevation"]]
+    oc = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_coefficient"]]
+    oa = waterbodies_df.loc[waterbody, wb_params["level_pool_orifice_area"]]
+
+    qdc, depthc = rc.levelpool_physics(
+        dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
+    )
+
+    volumec = dt * (quc - qdc + qlat)
+    # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
+    qlatCum = qlat * dt
+    if ts > 0:
+        volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
+        qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
+
+    flowveldepth[current_segment]["qlatval"].append(qlat)
+    flowveldepth[current_segment]["flowval"].append(qdc)
+    flowveldepth[current_segment]["depthval"].append(depthc)
+    flowveldepth[current_segment]["velval"].append(0)
+    flowveldepth[current_segment]["time"].append(ts * dt)
+    flowveldepth[current_segment]["storageval"].append(volumec)
+    flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
+
+
 # ### Psuedocode
 # Write Array  to CSV file
 # arguments reach , pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoCSV(
-    flowveldepth=None,
-    connections=None,
-    reach=None,
+    connections,
+    flowveldepth,
+    reach,
     verbose=False,
     debuglevel=0,
     pathToOutputFile="../../test/output/text",
 ):
 
     # define CSV file Header
-    header = ["time", "qlat", "q", "v", "d"]
+    header = ["time", "qlat", "qlatCum", "q", "v", "d", "storage"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -387,9 +788,11 @@ def writeArraytoCSV(
                 zip(
                     flowveldepth[current_segment]["time"],
                     flowveldepth[current_segment]["qlatval"],
+                    flowveldepth[current_segment]["qlatCumval"],
                     flowveldepth[current_segment]["flowval"],
                     flowveldepth[current_segment]["velval"],
                     flowveldepth[current_segment]["depthval"],
+                    flowveldepth[current_segment]["storageval"],
                 )
             )
 
@@ -408,10 +811,11 @@ def writeArraytoCSV(
 # arguments network, number of timesteps (nts),  timestep in seconds  (dt),  pathToOutputFile
 # using global connections and flowveldepth.
 def writeArraytoNC(
-    flowveldepth=None,
-    connections=None,
-    network=None,
-    nts=0,
+    connections,
+    flowveldepth,
+    network,
+    nts,
+    qts_subdivisions=1,
     dt=60,
     verbose=False,
     debuglevel=0,
@@ -422,18 +826,18 @@ def writeArraytoNC(
         "segment": [],
         "time": [],
         "qlatval": [],
+        "qlatCumval": [],
         "flowval": [],
         "depthval": [],
         "velval": [],
+        "storageval": [],
     }
 
     ordered_reaches = {}
     for head_segment, reach in network["reaches"].items():
         if reach["seqorder"] not in ordered_reaches:
-            ordered_reaches.update(
-                {reach["seqorder"]: []}
-            )  # TODO: Should this be a set/dictionary?
-        ordered_reaches[reach["seqorder"]].append([head_segment, reach])
+            ordered_reaches[reach["seqorder"]] = []
+        ordered_reaches[reach["seqorder"]].append((head_segment, reach))
 
     # get data into array - preparation step
     TIME_WRITTEN = False
@@ -447,8 +851,14 @@ def writeArraytoNC(
                 flowveldepth_data["qlatval"].append(
                     flowveldepth[current_segment]["qlatval"]
                 )
+                flowveldepth_data["qlatCumval"].append(
+                    flowveldepth[current_segment]["qlatCumval"]
+                )
                 flowveldepth_data["flowval"].append(
                     flowveldepth[current_segment]["flowval"]
+                )
+                flowveldepth_data["storageval"].append(
+                    flowveldepth[current_segment]["storageval"]
                 )
                 flowveldepth_data["depthval"].append(
                     flowveldepth[current_segment]["depthval"]
@@ -533,6 +943,13 @@ def writeNC(
     flow[:, :] = np.transpose(np.array(flowveldepth_data["flowval"], dtype=float))
     flow.units = "cu ft/s"
     flow.standard_name = "streamflow"  # this is a CF standard name
+    # write volume
+    storage = ncfile.createVariable(
+        "storage", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    storage[:, :] = np.transpose(np.array(flowveldepth_data["storageval"], dtype=float))
+    storage.units = "cu ft"
+    storage.standard_name = "storage"  # this is a CF standard name
     # write depth
     depth = ncfile.createVariable(
         "depth", np.float64, ("time", "stations")
@@ -556,6 +973,17 @@ def writeNC(
     )
     lateralflow.units = "cu ft/s"  #
     lateralflow.standard_name = "lateralflow"  # this is a CF standard name
+    # write  Cummulitive lateral flow (input from NWM)
+    lateralCumflow = ncfile.createVariable(
+        "Cummulativelateralflow", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    lateralCumflow[:, :] = np.transpose(
+        np.array(flowveldepth_data["qlatCumval"], dtype=float)
+    )
+    lateralCumflow.units = "cu ft/s"  #
+    lateralCumflow.standard_name = (
+        "Cummulativelateralflow"  # this is a CF standard name
+    )
     # write time in seconds since  TODO get time from lateral flow from NWM
     time = ncfile.createVariable("time", np.float64, "time")
     time.units = "seconds since 2011-08-27 00:00:00"  ## TODO get time fron NWM as argument to this function
@@ -580,7 +1008,7 @@ def writeNC(
 
 ## call to singlesegment MC Fortran Module
 def singlesegment(
-    dt,  # dt
+    dt=60,  # dt
     qup=None,  # qup
     quc=None,  # quc
     qdp=None,  # qdp
@@ -617,78 +1045,286 @@ def singlesegment(
     # return qdc, vel, depth
 
 
+def sort_ordered_network(l, reverse=False):
+    key = lambda x: x[1]["maximum_reach_seqorder"]
+    l.sort(key=key, reverse=reverse)
+    return l
+
+
 # Main Routine
 def main():
     args = _handle_args()
 
     global connections
     global networks
-    global flowveldepth
+    global qlateral
+    global waterbodies_df
+    global waterbody_initial_states_df
+    global channel_initial_states_df
 
     supernetwork = args.supernetwork
-    break_network_at_waterbodies = args.break_network_at_waterbodies
+    custom_input_file = args.custom_input_file
+    supernetwork_parameters = None
+    waterbody_parameters = None
 
-    dt = float(args.dt)
-    nts = int(args.nts)
-    qlat_const = float(args.qlat_const)
+    if custom_input_file:
+        (
+            supernetwork_parameters,
+            waterbody_parameters,
+            forcing_parameters,
+            restart_parameters,
+            output_parameters,
+            run_parameters,
+        ) = nnu.read_custom_input_json(custom_input_file)
+        break_network_at_waterbodies = run_parameters.get(
+            "break_network_at_waterbodies", None
+        )
 
-    debuglevel = -1 * int(args.debuglevel)
-    verbose = args.verbose
-    showtiming = args.showtiming
-    write_csv_output = args.write_csv_output
-    write_nc_output = args.write_nc_output
-    assume_short_ts = args.assume_short_ts
-    parallel_compute = args.parallel_compute
+        dt = run_parameters.get("dt", None)
+        nts = run_parameters.get("nts", None)
+        qts_subdivisions = run_parameters.get("qts_subdivisions", None)
+        debuglevel = run_parameters.get("debuglevel", None)
+        verbose = run_parameters.get("verbose", None)
+        showtiming = run_parameters.get("showtiming", None)
+        assume_short_ts = run_parameters.get("assume_short_ts", None)
+        parallel_compute = run_parameters.get("parallel_compute", None)
+        sort_networks = run_parameters.get("sort_networks", None)
 
-    run_pocono_test = args.run_pocono_test
+        write_csv_output = output_parameters.get("write_csv_output", None)
+        write_nc_output = output_parameters.get("write_nc_output", None)
 
-    if run_pocono_test:
+        qlat_const = forcing_parameters.get("qlat_const", None)
+        qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+        qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+        qlat_file_pattern_filter = forcing_parameters.get(
+            "qlat_file_pattern_filter", None
+        )
+        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+
+        wrf_hydro_channel_restart_file = restart_parameters.get(
+            "wrf_hydro_channel_restart_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_channel_restart_upstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_upstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_downstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_downstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_depth_flow_field_name", None
+        )
+
+        wrf_hydro_waterbody_restart_file = restart_parameters.get(
+            "wrf_hydro_waterbody_restart_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file_field_name", None
+        )
+
+    # Any specific commandline arguments will override the file
+    # TODO: There are probably some pathological collisions that could
+    # arise from this ordering ... check these out.
+
+    else:
+        break_network_at_waterbodies = args.break_network_at_waterbodies
+
+        dt = int(args.dt)
+        nts = int(args.nts)
+        qts_subdivisions = args.qts_subdivisions
+        qlat_const = float(args.qlat_const)
+        qlat_input_folder = args.qlat_input_folder
+        qlat_input_file = args.qlat_input_file
+        qlat_file_pattern_filter = args.qlat_file_pattern_filter
+
+        wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = (
+            args.wrf_hydro_channel_ID_crosswalk_file_field_name
+        )
+
+        wrf_hydro_waterbody_restart_file = args.wrf_hydro_waterbody_restart_file
+        wrf_hydro_waterbody_ID_crosswalk_file = (
+            args.wrf_hydro_waterbody_ID_crosswalk_file
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = (
+            args.wrf_hydro_waterbody_ID_crosswalk_file_field_name
+        )
+
+        debuglevel = -1 * int(args.debuglevel)
+        verbose = args.verbose
+        showtiming = args.showtiming
+        write_csv_output = args.write_csv_output
+        write_nc_output = args.write_nc_output
+        assume_short_ts = args.assume_short_ts
+        parallel_compute = args.parallel_compute
+        sort_networks = args.sort_networks
+
+    run_pocono2_test = args.run_pocono2_test
+    run_pocono1_test = args.run_pocono1_test
+
+    if run_pocono2_test:
         if verbose:
             print("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
         supernetwork = "Pocono_TEST2"
         break_network_at_waterbodies = False
-        dt = 300
-        nts = 144
+        qts_subdivisions = 1  # change qts_subdivisions = 1 as  default
+        dt = 300 / qts_subdivisions
+        nts = 144 * qts_subdivisions
         write_csv_output = True
         write_nc_output = True
+        # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
+        qlat_input_file = os.path.join(
+            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+        )
+
+    elif run_pocono1_test:
+        # NOTE: The test case for the Pocono basin was derived from this
+        # resource on HydroShare, developed by aaraney and sourced from the
+        # wrf_hydro_nwm_public repository on GitHub
+        # see: https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
+        # By downloading aaraney's docker job scheduler repo from GitHub, one can
+        # execute the WRF-Hydro model that generated the test results
+        # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
+        if verbose:
+            print("running test case for Pocono_TEST1 domain")
+        # Overwrite the following test defaults
+
+        NWM_test_path = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
+        )
+        lakeparm_file = os.path.join(
+            NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
+        )
+        routelink_file = os.path.join(
+            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
+        )
+        time_string = "2017-12-31_06-00_DOMAIN1"
+        wrf_hydro_restart_file = os.path.join(
+            NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
+        )
+        supernetwork_parameters = {
+            "title_string": "Custom Input Example (using Pocono Test Example datafile)",
+            "geo_file_path": routelink_file,
+            "cols_as_text": False,
+            "key_col": 16,  # "link",
+            "downstream_col": 22,  # "to",
+            "length_col": 3,  # "Length",
+            "manningn_col": 18,  # "n",
+            "manningncc_col": 19,  # "nCC",
+            "slope_col": 8,  # "So",
+            "bottomwidth_col": 0,  # "BtmWdth",
+            "topwidth_col": 9,  # "TopWdth",
+            "topwidthcc_col": 10,  # "TopWdthCC",
+            "waterbody_col": 6,  # "NHDWaterbodyComID",
+            "waterbody_null_code": -9999,
+            "MusK_col": 4,  # "MusK",
+            "MusX_col": 5,  # "MusX",
+            "ChSlp_col": 1,  # "ChSlp",
+            "terminal_code": 0,
+            "driver_string": "NetCDF",
+            "layer_string": 0,
+        }
+        waterbody_parameters = {
+            "level_pool": {
+                "level_pool_waterbody_parameter_file_path": lakeparm_file,
+                "level_pool_waterbody_id": "lake_id",
+                "level_pool_waterbody_area": "LkArea",
+                "level_pool_weir_elevation": "WeirE",
+                "level_pool_waterbody_max_elevation": "LkMxE",
+                "level_pool_outfall_weir_coefficient": "WeirC",
+                "level_pool_outfall_weir_length": "WeirL",
+                "level_pool_overall_dam_length": "DamL",
+                "level_pool_orifice_elevation": "OrificeE",
+                "level_pool_orifice_coefficient": "OrificeC",
+                "level_pool_orifice_area": "OrificeA",
+            }
+        }
+        break_network_at_waterbodies = True
+        qts_subdivisions = 12
+        dt = 3600 / qts_subdivisions
+        nts = 24 * qts_subdivisions
+        write_csv_output = False
+        write_nc_output = False
+        # build a time string to specify input date
+        wrf_hydro_channel_restart_file = wrf_hydro_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = routelink_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
+        wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
+        wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
+        wrf_hydro_channel_restart_depth_flow_field_name = "hlink"
+        wrf_hydro_waterbody_restart_file = wrf_hydro_restart_file
+        wrf_hydro_waterbody_ID_crosswalk_file = lakeparm_file
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
+        wrf_hydro_waterbody_crosswalk_filter_file = routelink_file
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
+        # wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
+        qlat_input_folder = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+        )
+        qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
+        qlat_file_index_col = "feature_id"
+        qlat_file_value_col = "q_lateral"
+
+    if showtiming:
+        program_start_time = time.time()
+    if verbose:
+        print(f"begin program t-route ...")
 
     test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
-    # TODO: Make these commandline args
-    """##NHD Subset (Brazos/Lower Colorado)"""
-    # supernetwork = 'Brazos_LowerColorado_Named_Streams'
-    # supernetwork = 'Brazos_LowerColorado_ge5'
-    # supernetwork = 'Pocono_TEST1'
-    # supernetwork = 'Pocono_TEST2'
-    """##NHD CONUS order 5 and greater"""
-    # supernetwork = 'CONUS_ge5'
-    """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
-    # supernetwork = 'CONUS_FULL_RES_v20'
-    # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
-    # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
-
+    # STEP 1: Read the supernetwork dataset and build the connections graph
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
-    # STEP 1
-    supernetwork_data, supernetwork_values = nnu.set_networks(
-        supernetwork=supernetwork,
-        geo_input_folder=geo_input_folder,
-        verbose=False
-        # , verbose = verbose
-        ,
-        debuglevel=debuglevel,
-    )
+
+    if supernetwork_parameters:
+        supernetwork_values = nnu.get_nhd_connections(
+            supernetwork_parameters=supernetwork_parameters,
+            verbose=False,
+            debuglevel=debuglevel,
+        )
+
+    else:
+        geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+        supernetwork_parameters, supernetwork_values = nnu.set_networks(
+            supernetwork=supernetwork,
+            geo_input_folder=geo_input_folder,
+            verbose=False,
+            debuglevel=debuglevel,
+        )
+        waterbody_parameters = nnu.set_waterbody_parameters(
+            supernetwork=supernetwork,
+            geo_input_folder=geo_input_folder,
+            verbose=False,
+            debuglevel=debuglevel,
+        )
+
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    # STEP 2
+    connections = supernetwork_values[0]
+
+    # STEP 2: Separate the networks and build the sub-graph of reaches within each network
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -700,93 +1336,308 @@ def main():
         debuglevel=debuglevel,
         showtiming=showtiming,
     )
+
     if verbose:
         print("reach organization complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-    connections = supernetwork_values[0]
+    # STEP 3: Organize Network for Waterbodies
+    if break_network_at_waterbodies:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("reading waterbody parameter file ...")
 
-    # initialize flowveldepth dict
-    flowveldepth = {
-        connection: {
-            "qlatval": [],
-            "time": [],
-            "flowval": [],
-            "velval": [],
-            "depthval": [],
-        }
-        for connection in connections
-    }
+        ## STEP 3a: Read waterbody parameter file
+        waterbodies_values = supernetwork_values[12]
+        waterbodies_segments = supernetwork_values[13]
+        connections_tailwaters = supernetwork_values[4]
 
-    # Lateral flow
-    if (
-        run_pocono_test
-    ):  # test 1. Take lateral flow from wrf-hydro output from Pocono Basin
-        ql_input_folder = os.path.join(
-            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+        waterbodies_df = nnu.read_waterbody_df(
+            waterbody_parameters, waterbodies_values,
         )
-        ql = pd.read_csv(ql_input_folder, index_col=0)
+
+        waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
+        nru.order_networks(connections, networks, connections_tailwaters)
+
+        if verbose:
+            print("waterbodies complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+        ## STEP 3b: Order subnetworks above and below reservoirs
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("ordering waterbody subnetworks ...")
+
+        max_network_seqorder = -1
+        for network in networks:
+            max_network_seqorder = max(
+                networks[network]["network_seqorder"], max_network_seqorder
+            )
+        ordered_networks = {}
+
+        for terminal_segment, network in networks.items():
+            if network["network_seqorder"] not in ordered_networks:
+                ordered_networks[network["network_seqorder"]] = []
+            ordered_networks[network["network_seqorder"]].append(
+                (terminal_segment, network)
+            )
+
+        if verbose:
+            print("ordering waterbody subnetworks complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+        ## STEP 3c: Handle Waterbody Initial States
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("setting waterbody initial states ...")
+
+        if wrf_hydro_waterbody_restart_file:
+
+            waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
+                wrf_hydro_waterbody_restart_file,
+                wrf_hydro_waterbody_ID_crosswalk_file,
+                wrf_hydro_waterbody_ID_crosswalk_file_field_name,
+                wrf_hydro_waterbody_crosswalk_filter_file,
+                wrf_hydro_waterbody_crosswalk_filter_file_field_name,
+            )
+        else:
+            # TODO: Consider adding option to read cold state from route-link file
+            waterbody_initial_ds_flow_const = 0.0
+            waterbody_initial_depth_const = 0.0
+            # Set initial states from cold-state
+            waterbody_initial_states_df = pd.DataFrame(
+                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+            )
+            # TODO: This assignment could probably by done in the above call
+            waterbody_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
+            waterbody_initial_states_df["h0"] = waterbody_initial_depth_const
+            waterbody_initial_states_df["index"] = range(
+                len(waterbody_initial_states_df)
+            )
+
+        if verbose:
+            print("waterbody initial states complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
 
     else:
-        ql = pd.DataFrame(
+        # If we are not splitting the networks, we can put them all in one order
+        max_network_seqorder = 0
+        ordered_networks = {}
+        ordered_networks[0] = [
+            (terminal_segment, network)
+            for terminal_segment, network in networks.items()
+        ]
+
+    # STEP 4: Handle Channel Initial States
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("setting channel initial states ...")
+
+    if wrf_hydro_channel_restart_file:
+
+        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
+            wrf_hydro_channel_restart_file,
+            wrf_hydro_channel_ID_crosswalk_file,
+            wrf_hydro_channel_ID_crosswalk_file_field_name,
+            wrf_hydro_channel_restart_upstream_flow_field_name,
+            wrf_hydro_channel_restart_downstream_flow_field_name,
+            wrf_hydro_channel_restart_depth_flow_field_name,
+        )
+    else:
+        # TODO: Consider adding option to read cold state from route-link file
+        channel_initial_us_flow_const = 0.0
+        channel_initial_ds_flow_const = 0.0
+        channel_initial_depth_const = 0.0
+        # Set initial states from cold-state
+        channel_initial_states_df = pd.DataFrame(
+            0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+        )
+        channel_initial_states_df["qu0"] = channel_initial_us_flow_const
+        channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
+        channel_initial_states_df["h0"] = channel_initial_depth_const
+        channel_initial_states_df["index"] = range(len(channel_initial_states_df))
+
+    if verbose:
+        print("channel initial states complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
+
+    # STEP 5: Read (or set) QLateral Inputs
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("creating qlateral array ...")
+
+    # initialize qlateral dict
+    qlateral = {connection: {"qlatval": [],} for connection in connections}
+
+    if qlat_input_folder:
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        qlat_df = nnu.get_ql_from_wrf_hydro(
+            qlat_files=qlat_files,
+            index_col=qlat_file_index_col,
+            value_col=qlat_file_value_col,
+        )
+
+    elif qlat_input_file:
+        qlat_df = pd.read_csv(qlat_input_file, index_col=0)
+
+    else:
+        qlat_df = pd.DataFrame(
             qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
-    for index, row in ql.iterrows():
-        flowveldepth[index]["qlatval"] = row.tolist()
+    for index, row in qlat_df.iterrows():
+        qlateral[index]["qlatval"] = row.tolist()
 
-    if not parallel_compute:
+    if verbose:
+        print("qlateral array complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
+
+    # STEP 6: Sort the ordered networks
+    if sort_networks:
+        if showtiming:
+            start_time = time.time()
         if verbose:
-            print("executing computation on ordered reaches ...")
+            print("sorting the ordered networks ...")
 
-        for terminal_segment, network in networks.items():
+        for nsq in range(max_network_seqorder, -1, -1):
+            sort_ordered_network(ordered_networks[nsq], True)
+
+        if verbose:
+            print("sorting complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
+    # Define them pool after we create the static global objects (and collect the garbage)
+    if parallel_compute:
+        import gc
+
+        gc.collect()
+        pool = multiprocessing.Pool()
+
+    flowveldepth_connect = (
+        {}
+    )  # dict to contain values to transfer from upstream to downstream networks
+
+    ################### Main Execution Loop across ordered networks
+    if showtiming:
+        main_start_time = time.time()
+    if verbose:
+        print(f"executing routing computation ...")
+
+    for nsq in range(max_network_seqorder, -1, -1):
+
+        if parallel_compute:
+            nslist = []
+        results = []
+
+        for terminal_segment, network in ordered_networks[nsq]:
+            if break_network_at_waterbodies:
+                waterbody = waterbodies_segments.get(terminal_segment)
+            else:
+                waterbody = None
+            if not parallel_compute:  # serial execution
+                if showtiming:
+                    start_time = time.time()
+                if verbose:
+                    print(
+                        f"routing ordered reaches for terminal segment {terminal_segment} ..."
+                    )
+
+                results.append(
+                    compute_network(
+                        flowveldepth_connect=flowveldepth_connect,
+                        terminal_segment=terminal_segment,
+                        supernetwork_parameters=supernetwork_parameters,
+                        waterbody_parameters=waterbody_parameters,
+                        waterbody=waterbody,
+                        nts=nts,
+                        dt=dt,
+                        qts_subdivisions=qts_subdivisions,
+                        verbose=verbose,
+                        debuglevel=debuglevel,
+                        write_csv_output=write_csv_output,
+                        write_nc_output=write_nc_output,
+                        assume_short_ts=assume_short_ts,
+                    )
+                )
+                if showtiming:
+                    print("... complete in %s seconds." % (time.time() - start_time))
+
+            else:  # parallel execution
+                nslist.append(
+                    [
+                        flowveldepth_connect,
+                        terminal_segment,
+                        supernetwork_parameters,  # TODO: This should probably be global...
+                        waterbody_parameters,
+                        waterbody,
+                        nts,
+                        dt,
+                        qts_subdivisions,
+                        verbose,
+                        debuglevel,
+                        write_csv_output,
+                        write_nc_output,
+                        assume_short_ts,
+                    ]
+                )
+
+        if parallel_compute:
             if verbose:
-                print(f"for network terminiating at segment {terminal_segment}")
-            compute_network(
-                terminal_segment=terminal_segment,
-                network=network,
-                supernetwork_data=supernetwork_data,
-                nts=nts,
-                dt=dt,
-                verbose=verbose,
-                debuglevel=debuglevel,
-                write_csv_output=write_csv_output,
-                write_nc_output=write_nc_output,
-                assume_short_ts=assume_short_ts,
-            )
-            if showtiming:
-                print("... in %s seconds." % (time.time() - start_time))
-    else:  # serial execution
-        if verbose:
-            print(f"executing parallel computation on ordered reaches .... ")
-        # for terminal_segment, network in networks.items():
-        #    print(terminal_segment, network)
-        # print(tuple(([x for x in networks.keys()][i], [x for x in networks.values()][i]) for i in range(len(networks))))
-        nslist = (
-            [
-                terminal_segment,
-                network,
-                supernetwork_data,  # TODO: This should probably be global...
-                nts,
-                dt,
-                verbose,
-                debuglevel,
-                write_csv_output,
-                write_nc_output,
-                assume_short_ts,
-            ]
-            for terminal_segment, network in networks.items()
-        )
-        with multiprocessing.Pool() as pool:
+                print(f"routing ordered reaches for networks of order {nsq} ... ")
+            if debuglevel <= -2:
+                print(f"reaches to be routed include:")
+                print(f"{[network[0] for network in ordered_networks[nsq]]}")
+            # with pool:
+            # with multiprocessing.Pool() as pool:
             results = pool.starmap(compute_network, nslist)
+
+            if showtiming:
+                print("... complete in %s seconds." % (time.time() - start_time))
+
+        if (
+            nsq > 0
+        ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
+            flowveldepth_connect = (
+                {}
+            )  # There is no need to preserve previously passed on values -- so we clear the dictionary
+            for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
+                # seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                seg = terminal_segment
+                flowveldepth_connect[seg] = {}
+                flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
+
+    if parallel_compute:
+        pool.close()
 
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        print("... in %s seconds." % (time.time() - main_start_time))
+    if verbose:
+        print("program complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - program_start_time))
 
 
 if __name__ == "__main__":
     main()
+
