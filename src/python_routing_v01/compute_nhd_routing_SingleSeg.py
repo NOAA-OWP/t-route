@@ -219,7 +219,12 @@ def _handle_args():
         dest="parallel_compute",
         action="store_true",
     )
-
+    parser.add_argument(
+        "--cpu_pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        default=None,
+    )
     args = parser.parse_args()
 
     # TODO: Add any other checking
@@ -1524,13 +1529,13 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
-
+    cpu_pool = args.cpu_pool
     # Define them pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
         import gc
 
         gc.collect()
-        pool = multiprocessing.Pool()
+        pool = multiprocessing.Pool(cpu_pool)
 
     flowveldepth_connect = (
         {}
