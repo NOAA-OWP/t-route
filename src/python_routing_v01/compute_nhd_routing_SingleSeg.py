@@ -630,29 +630,38 @@ def compute_mc_reach_up2down(
             Normal calculation:
 
             current_segment
-            qup      qdp╮
-             │  Q-->  │ ┊
-             │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
-            quc      qdc╮  ╰-qup      qdp
-                        ┊     │  Q-->  │
-                        ╰->╮  │━━━━━━━━│
-                           ┊  │        │  
-                           ╰-quc      qdc
+            qup      qdpn
+               Q-->   
+
+              p->n
+                         
+ next_segment
+            quc      qdcn  p-qup      qdp
+                        
+       Q-->  
+                        p->n  
+                           
+            
+                           p-quc      qdc
 
 
             Short-time-step calculation:
 
             current_segment
-            qup      qdp╮
-             │  Q-->  │ ┊
-             │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
-            quc      qdc   ├-qup      qdp
-                           ┊  │  Q-->  │
-                           ┊  │━━━━━━━━│
-                           ┊  │        │  
-                           ╰-quc      qdc
+            qup      qdpn
+               Q-->   
+
+              p->n
+                         
+ next_segment
+            quc      qdc   -qup      qdp
+                           
+    Q-->  
+                           
+  
+                           
+            
+                           p-quc      qdc
         """
 
         # update flowveldepth values for currentsegment for current timestep
@@ -1125,7 +1134,9 @@ def main():
         wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get(
             "wrf_hydro_channel_restart_depth_flow_field_name", None
         )
-
+        cpu_pool = run_parameters.get(
+            "cpu_pool", None
+        )
         wrf_hydro_waterbody_restart_file = restart_parameters.get(
             "wrf_hydro_waterbody_restart_file", None
         )
@@ -1645,4 +1656,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+ 
