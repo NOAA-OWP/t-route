@@ -1,29 +1,21 @@
-#Utility I/O functions for the next generation water model network.
-#The read_qlat and replace_downstreams functions are copies from nhd_io.py
-#and are placed here for now, so that this program can run without importing that module.
+"""This module includes a utility function to read next generation water modeling framework catchment lateral flows."""
+
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import os
 
-
-def read_ngen_network_csv(path):
-    return pd.read_csv(path, index_col=0)
-
-
-def read_ngen_network_geojson(path):
-    return gpd.read_file(path)
-
-
-def read_ngen_network_json(path):
-    return pd.read_json(path)
-
-
-#Convert catchment lateral flows to format that can be processed by compute_network
 def read_catchment_lateral_flows(path):
-    ql = []
+    """Read and convert catchment lateral flows to format that can be processed by compute_network
+    Args:
+       path: Path to lateral flows.
 
-    past_first_loop = False
+    Returns:
+       qlats: dataframe of lateral flows 
+    """
+    #ql = pd.read_csv(path, index_col=0)
+
+    ql = []
 
     catchment_id_list = []
 
@@ -33,27 +25,13 @@ def read_catchment_lateral_flows(path):
           catchment_id = int(file_name_str_list[0][4 :])
           catchment_id_list.append(catchment_id)
           # Read the second column of a csv file and return a series. The index will be an autoincrementing range.
-          catchment_qlats = pd.read_csv(file_name, names=[catchment_id], usecols=[1], squeeze=True)
+          catchment_qlats = pd.read_csv(os.path.join(path, file_name), names=[catchment_id], usecols=[1], squeeze=True)
           ql.append(catchment_qlats)
 
     qlats = pd.concat(ql, axis='columns').T
-    qlats.to_csv('sugar_creek_qlats.csv')
 
-
-def read_qlat(path):
-    ql = pd.read_csv(path, index_col=0)
-    ql.index = ql.index.astype(int)
-    ql.columns = ql.columns.astype(int)
-    ql = ql.sort_index(axis='index')
-    return ql.astype('float32')
-
-
-def replace_downstreams(data, downstream_col, terminal_code):
-    ds0_mask = data[downstream_col] == terminal_code
-    new_data = data.copy()
-    new_data.loc[ds0_mask, downstream_col] = ds0_mask.index[ds0_mask]
-
-    # Also set negative any nodes in downstream col not in data.index
-    new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
-    return new_data
+    qlats.index = qlats.index.astype(int)
+    qlats.columns = qlats.columns.astype(int)
+    qlats = qlats.sort_index(axis='index')
+    return qlats.astype('float32')
 
