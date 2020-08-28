@@ -13,7 +13,6 @@ def read_catchment_lateral_flows(path):
     Returns:
        qlats: dataframe of lateral flows 
     """
-    #ql = pd.read_csv(path, index_col=0)
 
     ql = []
 
