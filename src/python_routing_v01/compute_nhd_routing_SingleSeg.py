@@ -344,19 +344,14 @@ def compute_network(
     global qlateral
 
     network = networks[terminal_segment]
-
     flowveldepth = {
         connection: {
-            "time": [],
-            "qlatCumval": [],
-            "qlatval": [],
-            "flowval": [],
-            "velval": [],
-            "depthval": [],
-            "storageval": [],
+            'values' : np.zeros(np.array([144,7]))
         }
         for connection in (network["all_segments"])
     }
+    
+    # print(flowveldepth)
 
     if debuglevel <= -1:
         print(
@@ -458,7 +453,6 @@ def compute_network(
 
     return {terminal_segment: flowveldepth[terminal_segment]}
 
-
 # TODO: generalize with a direction flag
 def compute_reach_upstream_flows(
     flowveldepth_connect,
@@ -504,20 +498,27 @@ def compute_reach_upstream_flows(
 
     for us in upstreams_list:
         if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
-            quc += us_flowveldepth[us]["flowval"][ts]
+            quc += us_flowveldepth[us]["values"][ts][flowval_index]
 
             if ts == 0:
                 # Initialize qup from warm state array
                 qup += channel_initial_states_df.loc[us, "qd0"]
             else:
-                qup += us_flowveldepth[us]["flowval"][ts - 1]
+                qup += us_flowveldepth[us]["values"][ts - 1][flowval_index]
 
     if assume_short_ts:
         quc = qup
 
     return quc, qup
 
-
+time_index = 0 #time
+qlatCumval_index = 1 #qlatCumval
+qlatval_index = 2  #qlatval
+flowval_index = 3 #flowval
+velval_index = 4  #velval
+depthval_index = 5 #depthval 
+storageval_index = 6 #storageval
+segment_index = 7 #segment
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
     flowveldepth,
@@ -549,8 +550,6 @@ def compute_mc_reach_up2down(
 
     while True:
         data = connections[current_segment]["data"]
-        # current_flow = flowveldepth[current_segment]
-
         # for now treating as constant per reach
         bw = data[supernetwork_parameters["bottomwidth_col"]]
         tw = data[supernetwork_parameters["topwidth_col"]]
@@ -564,7 +563,7 @@ def compute_mc_reach_up2down(
         # TODO: update this extremely simplistic handling of timestep adjustment
         # allow shorter timesteps
         qts = int(ts / qts_subdivisions)
-        qlat = qlateral[current_segment]["qlatval"][qts]
+        qlat = qlateral[current_segment]["values"][qts][qlatval_index]
 
         if ts == 0:
             # initialize from initial states
@@ -572,9 +571,9 @@ def compute_mc_reach_up2down(
             velp = 0
             depthp = channel_initial_states_df.loc[current_segment, "h0"]
         else:
-            qdp = flowveldepth[current_segment]["flowval"][-1]
+            qdp = flowveldepth[current_segment]["values"][ts - 1][flowval_index]
             velp = 0  # flowveldepth[current_segment]["velval"][-1]
-            depthp = flowveldepth[current_segment]["depthval"][-1]
+            depthp = flowveldepth[current_segment]["values"][ts - 1][depthval_index]
 
         # run M-C model
         qdc, velc, depthc = singlesegment(
@@ -599,8 +598,8 @@ def compute_mc_reach_up2down(
         # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
         qlatCum = qlat * dt
         if ts > 0:
-            volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
-            qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
+            volumec = volumec + flowveldepth[current_segment]["values"][ts - 1][storageval_index]
+            qlatCum = qlatCum + flowveldepth[current_segment]["values"][ts - 1][qlatCumval_index]
 
         # for next segment qup / quc use the just-now and previously
         # calculated flow values from the current segment
@@ -625,39 +624,42 @@ def compute_mc_reach_up2down(
             Normal calculation:
 
             current_segment
-            qup      qdp╮
-             │  Q-->  │ ┊
-             │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
-            quc      qdc╮  ╰-qup      qdp
-                        ┊     │  Q-->  │
-                        ╰->╮  │━━━━━━━━│
-                           ┊  │        │  
-                           ╰-quc      qdc
+            qup      qdpn
+               Q-->   
+
+              p->n
+                         
+ next_segment
+            quc      qdcn  p-qup      qdp
+                        
+       Q-->  
+                        p->n  
+                           
+            
+                           p-quc      qdc
 
 
             Short-time-step calculation:
 
             current_segment
-            qup      qdp╮
-             │  Q-->  │ ┊
-             │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
-            quc      qdc   ├-qup      qdp
-                           ┊  │  Q-->  │
-                           ┊  │━━━━━━━━│
-                           ┊  │        │  
-                           ╰-quc      qdc
+            qup      qdpn
+               Q-->   
+
+              p->n
+                         
+ next_segment
+            quc      qdc   -qup      qdp
+                           
+    Q-->  
+                           
+  
+                           
+            
+                           p-quc      qdc
         """
 
         # update flowveldepth values for currentsegment for current timestep
-        flowveldepth[current_segment]["qlatval"].append(qlat)
-        flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
-        flowveldepth[current_segment]["flowval"].append(qdc)
-        flowveldepth[current_segment]["depthval"].append(depthc)
-        flowveldepth[current_segment]["velval"].append(velc)
-        flowveldepth[current_segment]["storageval"].append(volumec)
-        flowveldepth[current_segment]["time"].append(ts * dt)
+        flowveldepth[current_segment]['values'][ts] = [ts*dt, qlatCum, qlat, qdc, velc, depthc, volumec]
 
         next_segment = connections[current_segment]["downstream"]
         if current_segment == reach["reach_tail"]:
@@ -708,7 +710,7 @@ def compute_level_pool_reach_up2down(
         # Initialize from warm state
         depthp = waterbody_initial_states_df.loc[waterbody, "h0"]
     else:
-        depthp = flowveldepth[current_segment]["depthval"][-1]
+        depthp = flowveldepth[current_segment]["values"][ts - 1][depthval_index]
 
     # This Qlat gathers all segments of the waterbody
     qts = int(ts / qts_subdivisions)
@@ -745,16 +747,11 @@ def compute_level_pool_reach_up2down(
     # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
     qlatCum = qlat * dt
     if ts > 0:
-        volumec = volumec + flowveldepth[current_segment]["storageval"][-1]
-        qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][-1]
+        volumec = volumec + flowveldepth[current_segment]["values"][ts - 1][storageval_index]
+        qlatCum = qlatCum + flowveldepth[current_segment]["values"][ts - 1][qlatCumval_index]
 
-    flowveldepth[current_segment]["qlatval"].append(qlat)
-    flowveldepth[current_segment]["flowval"].append(qdc)
-    flowveldepth[current_segment]["depthval"].append(depthc)
-    flowveldepth[current_segment]["velval"].append(0)
-    flowveldepth[current_segment]["time"].append(ts * dt)
-    flowveldepth[current_segment]["storageval"].append(volumec)
-    flowveldepth[current_segment]["qlatCumval"].append(qlatCum)
+    flowveldepth[current_segment]['values'][ts] = [ts*dt, qlatCum, qlat, qdc, velc, depthc, volumec]
+
 
 
 # ### Psuedocode
@@ -786,13 +783,13 @@ def writeArraytoCSV(
             csvwriter.writerow(header)
             csvwriter.writerows(
                 zip(
-                    flowveldepth[current_segment]["time"],
-                    flowveldepth[current_segment]["qlatval"],
-                    flowveldepth[current_segment]["qlatCumval"],
-                    flowveldepth[current_segment]["flowval"],
-                    flowveldepth[current_segment]["velval"],
-                    flowveldepth[current_segment]["depthval"],
-                    flowveldepth[current_segment]["storageval"],
+                    flowveldepth[current_segment]["values"][time_index],
+                    flowveldepth[current_segment]["values"][qlatval_index],
+                    flowveldepth[current_segment]["values"][qlatCumval_index],
+                    flowveldepth[current_segment]["values"][flowval_index],
+                    flowveldepth[current_segment]["values"][velval_index],
+                    flowveldepth[current_segment]["values"][depthval_index],
+                    flowveldepth[current_segment]["values"][storageval_index],
                 )
             )
 
@@ -823,6 +820,7 @@ def writeArraytoNC(
 ):
     # create  array variables to copy from python "flowveldepth" which is global
     flowveldepth_data = {
+
         "segment": [],
         "time": [],
         "qlatval": [],
@@ -845,6 +843,7 @@ def writeArraytoNC(
     for x in range(network["maximum_reach_seqorder"], -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             current_segment = reach["reach_head"]
+            # TODO If we use numpy arrays, will this append work?
             while True:
                 # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
@@ -1639,5 +1638,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
+    main() 
