@@ -1040,7 +1040,6 @@ def singlesegment(
         n_manning_cc,
         cs,
         s0,
-        velp,
         depthp,
     )
     # return qdc, vel, depth
