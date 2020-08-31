@@ -226,6 +226,7 @@ def _handle_args():
         type=int,
         default=None,
     )
+
     args = parser.parse_args()
 
     # TODO: Add any other checking
