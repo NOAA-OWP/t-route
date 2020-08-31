@@ -350,8 +350,6 @@ def compute_network(
         }
         for connection in (network["all_segments"])
     }
-    
-    # print(flowveldepth)
 
     if debuglevel <= -1:
         print(
