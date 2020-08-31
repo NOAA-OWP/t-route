@@ -219,6 +219,13 @@ def _handle_args():
         dest="parallel_compute",
         action="store_true",
     )
+    parser.add_argument(
+        "--cpu-pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        type=int,
+        default=None,
+    )
 
     args = parser.parse_args()
 
@@ -1088,6 +1095,7 @@ def main():
         showtiming = run_parameters.get("showtiming", None)
         assume_short_ts = run_parameters.get("assume_short_ts", None)
         parallel_compute = run_parameters.get("parallel_compute", None)
+        cpu_pool = run_parameters.get("cpu_pool", None)
         sort_networks = run_parameters.get("sort_networks", None)
 
         write_csv_output = output_parameters.get("write_csv_output", None)
@@ -1174,6 +1182,7 @@ def main():
         assume_short_ts = args.assume_short_ts
         parallel_compute = args.parallel_compute
         sort_networks = args.sort_networks
+        cpu_pool = args.cpu_pool
 
     run_pocono2_test = args.run_pocono2_test
     run_pocono1_test = args.run_pocono1_test
@@ -1530,7 +1539,7 @@ def main():
         import gc
 
         gc.collect()
-        pool = multiprocessing.Pool()
+        pool = multiprocessing.Pool(cpu_pool)
 
     flowveldepth_connect = (
         {}
