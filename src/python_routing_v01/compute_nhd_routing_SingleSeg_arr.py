@@ -194,8 +194,9 @@ def compute_mc_reach_up2down(
     if WRITE_OUTPUT:
         file.close()
 
+
 def process_edge(N, RN, flowdepthvel, conn_data):
-    _key = conn_data[:,0]
+    _key = conn_data[:, 0]
     i = np.searchsorted(_key, N)
 
     dt = 60.0
@@ -226,13 +227,21 @@ def process_edge(N, RN, flowdepthvel, conn_data):
         quc,
         qdp,
         qlat,
-        dx, bw, tw, twcc, n_manning, n_manning_cc, cs, s0,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n_manning,
+        n_manning_cc,
+        cs,
+        s0,
         velp,
-        depthp
+        depthp,
     )
 
     # update flowdepthvel
     flowdepthvel[i, 4:7] = qdc, depthc, velc
+
 
 def singlesegment(
     dt,  # dt
@@ -367,7 +376,7 @@ def main():
     with np.printoptions(precision=5, suppress=True, linewidth=120):
         print(flowdepthvel)
     sorted_conns = sorted(connections.keys())
-    print(sorted_conns, all(conn_data[:,0] == sorted_conns))
+    print(sorted_conns, all(conn_data[:, 0] == sorted_conns))
 
     # parallelcompute = False
     # if not parallelcompute:
