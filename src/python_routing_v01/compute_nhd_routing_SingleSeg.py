@@ -1096,6 +1096,7 @@ def main():
         showtiming = run_parameters.get("showtiming", None)
         assume_short_ts = run_parameters.get("assume_short_ts", None)
         parallel_compute = run_parameters.get("parallel_compute", None)
+        cpu_pool = run_parameters.get("cpu_pool", None)
         sort_networks = run_parameters.get("sort_networks", None)
 
         write_csv_output = output_parameters.get("write_csv_output", None)
@@ -1128,7 +1129,7 @@ def main():
         wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get(
             "wrf_hydro_channel_restart_depth_flow_field_name", None
         )
-        cpu_pool = run_parameters.get("cpu_pool", None)
+
         wrf_hydro_waterbody_restart_file = restart_parameters.get(
             "wrf_hydro_waterbody_restart_file", None
         )
@@ -1533,6 +1534,7 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
+
     # Define them pool after we create the static global objects (and collect the garbage)
     if parallel_compute:
         import gc
