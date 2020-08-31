@@ -346,7 +346,7 @@ def compute_network(
     network = networks[terminal_segment]
     flowveldepth = {
         connection: {
-            'values' : np.zeros(np.array([144,7]))
+            'values' : np.zeros(np.array([nts,7]))
         }
         for connection in (network["all_segments"])
     }
@@ -561,7 +561,7 @@ def compute_mc_reach_up2down(
         # TODO: update this extremely simplistic handling of timestep adjustment
         # allow shorter timesteps
         qts = int(ts / qts_subdivisions)
-        qlat = qlateral[current_segment]["values"][qts][qlatval_index]
+        qlat = qlateral[current_segment]["qlatval"][qts]
 
         if ts == 0:
             # initialize from initial states
@@ -645,7 +645,6 @@ def compute_mc_reach_up2down(
                            ┊  │        │  
                            ╰-quc      qdc
         """
-        
         # update flowveldepth values for currentsegment for current timestep
         flowveldepth[current_segment]['values'][ts] = [ts*dt, qlatCum, qlat, qdc, velc, depthc, volumec]
 
