@@ -622,40 +622,30 @@ def compute_mc_reach_up2down(
             Normal calculation:
 
             current_segment
-            qup      qdpn
-               Q-->   
-
-              p->n
-                         
- next_segment
-            quc      qdcn  p-qup      qdp
-                        
-       Q-->  
-                        p->n  
-                           
-            
-                           p-quc      qdc
-
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc╮  ╰-qup      qdp
+                        ┊     │  Q-->  │
+                        ╰->╮  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
 
             Short-time-step calculation:
 
             current_segment
-            qup      qdpn
-               Q-->   
-
-              p->n
-                         
- next_segment
-            quc      qdc   -qup      qdp
-                           
-    Q-->  
-                           
-  
-                           
-            
-                           p-quc      qdc
+            qup      qdp╮
+             │  Q-->  │ ┊
+             │━━━━━━━━│ ╰->╮
+             │        │    ┊ next_segment
+            quc      qdc   ├-qup      qdp
+                           ┊  │  Q-->  │
+                           ┊  │━━━━━━━━│
+                           ┊  │        │  
+                           ╰-quc      qdc
         """
-
+        
         # update flowveldepth values for currentsegment for current timestep
         flowveldepth[current_segment]['values'][ts] = [ts*dt, qlatCum, qlat, qdc, velc, depthc, volumec]
 
