@@ -220,9 +220,10 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
-        "--cpu_pool",
+        "--cpu-pool",
         help="Assign the number of cores to multiprocess across.",
         dest="cpu_pool",
+        type=int,
         default=None,
     )
     args = parser.parse_args()
