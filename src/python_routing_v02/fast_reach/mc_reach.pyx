@@ -15,45 +15,6 @@ from reservoir cimport compute_reservoir
 
 COMPUTE_FUNCS = {'reach': compute_reach, 'reservoir': compute_reservoir}
 
-
-@cython.boundscheck(False)
-cpdef object binary_find(object arr, object els):
-    """
-    Find elements in els in arr.
-    Args:
-        arr: Array to search. Must be sorted
-        els:
-
-    Returns:
-
-    """
-    cdef long hi = len(arr)
-    cdef object idxs = []
-
-    cdef Py_ssize_t L, R, m
-    cdef long cand, el
-
-
-    for el in els:
-        L = 0
-        R = hi - 1
-        m = 0
-        while L <= R:
-            m = (L + R) // 2
-            cand = arr[m]
-            if cand < el:
-                L = m + 1
-            elif cand > el:
-                R = m - 1
-            else:
-                break
-        if arr[m] == el:
-            idxs.append(m)
-        else:
-            raise ValueError(f"element {el} not found in {np.asarray(arr)}")
-    return idxs
-
-
 def static_compile_program(reaches, types, data):
     """
     This compiles static data only.
