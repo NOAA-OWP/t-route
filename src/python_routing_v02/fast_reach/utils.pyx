@@ -79,24 +79,42 @@ cpdef Py_ssize_t[:,:] build_upstream_graph(object rconnections, const long[:] da
         0 0 0 1 2 3 -> index of upstream nodes in data_index!
     """
     cdef Py_ssize_t i = 0
-    cdef Py_ssize_t ind, k, len_v
+    cdef Py_ssize_t ind, k, len_v, kl
     cdef object v
     cdef object kv
-    #cdef const long[:] v_view
     cdef Py_ssize_t[:, :] arr_view
 
+    #Preprocess connections to be able to release gil below
     # Get the cumulative size of all values
     cdef long total = 0
-    for _v in rconnections.values():
-        total += len(_v)
+    cdef long[:] keys_lens = np.empty(len(rconnections)*2, dtype=np.long)
+    for v in rconnections.values():
+        total += len(v)
 
-    arr_view = np.empty((2, total), dtype=np.intp)
+    cdef long[:] values = np.empty(total, dtype=np.long)
+    cdef long vpos = 0
+    i = 0
     for kv in sorted(rconnections.items()):
-        k = kv[0]
+        keys_lens[i] = kv[0]
         v = kv[1]
         len_v = len(v)
-        for ind in range(i, i+len_v):
-            arr_view[0, ind] = k
-            arr_view[1, ind] = bisect_left_long(data_index, v[ind-i])
-        i += len_v
+        keys_lens[i+1] = len_v
+        i += 2
+
+        # copy values
+        for ind in range(len_v):
+            values[vpos+ind] = v[ind]
+        vpos += len_v
+
+    arr_view = np.empty((2, total), dtype=np.intp)
+    vpos = 0
+    with nogil:
+        for kl in range(0, keys_lens.shape[0]//2, 2):
+            k = keys_lens[kl]
+            len_v = keys_lens[kl+1]
+            for ind in range(vpos, vpos+len_v):
+                arr_view[0, ind] = k
+                arr_view[1, ind] = bisect_left_long(data_index, values[ind-vpos])
+            vpos += len_v
+
     return arr_view
