@@ -372,7 +372,7 @@ def compute_network(
     writeToCSV = write_csv_output
     writeToNETCDF = write_nc_output
     pathToOutputFile = os.path.join(root, "test", "output", "text")
-
+    
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
             for head_segment, reach in ordered_reaches[x]:
@@ -534,7 +534,6 @@ def compute_mc_reach_up2down(
     assume_short_ts=False,
 ):
     global connections
-
     if debuglevel <= -2:
         print(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
@@ -545,7 +544,6 @@ def compute_mc_reach_up2down(
 
     current_segment = reach["reach_head"]
     # next_segment = connections[current_segment]["downstream"]
-
     while True:
         data = connections[current_segment]["data"]
         # for now treating as constant per reach
@@ -1561,7 +1559,7 @@ def main():
                     print(
                         f"routing ordered reaches for terminal segment {terminal_segment} ..."
                     )
-
+                
                 results.append(
                     compute_network(
                         flowveldepth_connect=flowveldepth_connect,
