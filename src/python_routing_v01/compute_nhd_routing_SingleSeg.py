@@ -291,13 +291,12 @@ waterbody_initial_states_df = None
 channel_initial_states_df = None
 
 time_index = 0  # time
-qlatCumval_index = 1  # qlatCumval
-qlatval_index = 2  # qlatval
-flowval_index = 3  # flowval
-velval_index = 4  # velval
-depthval_index = 5  # depthval
-storageval_index = 6  # storageval
-segment_index = 7  # segment
+flowval_index = 1  # flowval
+velval_index = 2  # velval
+depthval_index = 3  # depthval
+qlatval_index = 4  # qlatval
+storageval_index = 5  # storageval
+qlatCumval_index = 6  # qlatCumval
 
 # WRITE_OUTPUT = False  # True
 
@@ -517,6 +516,7 @@ def compute_reach_upstream_flows(
 
     return quc, qup
 
+
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
     flowveldepth,
@@ -648,12 +648,12 @@ def compute_mc_reach_up2down(
         # update flowveldepth values for currentsegment for current timestep
         flowveldepth[current_segment][ts] = [
             ts * dt,
-            qlatCum,
-            qlat,
             qdc,
             velc,
             depthc,
+            qlat,
             volumec,
+            qlatCum,
         ]
 
         next_segment = connections[current_segment]["downstream"]
@@ -748,12 +748,12 @@ def compute_level_pool_reach_up2down(
 
     flowveldepth[current_segment][ts] = [
         ts * dt,
-        qlatCum,
-        qlat,
         qdc,
         velc,
         depthc,
+        qlat,
         volumec,
+        qlatCum,
     ]
 
 
