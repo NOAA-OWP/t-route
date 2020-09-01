@@ -47,6 +47,57 @@ cdef void muskingcunge(float dt,
     rv.depthc = depthc
     rv.velc = velc
 
+cpdef dict compute_reach_kernel(float dt,
+        float qup,
+        float quc,
+        float qdp,
+        float ql,
+        float dx,
+        float bw,
+        float tw,
+        float twcc,
+        float n,
+        float ncc,
+        float cs,
+        float s0,
+        float velp,
+        float depthp):
+
+    cdef QVD rv
+    cdef QVD *out = &rv
+
+    muskingcunge(
+        dt,
+        qup,
+        quc,
+        qdp,
+        ql,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n,
+        ncc,
+        cs,
+        s0,
+        velp,
+        depthp,
+        out)
+
+    return rv
+
+
+cpdef long boundary_shape():
+    return 2
+
+cpdef long previous_state_cols():
+    return 3
+
+cpdef long parameter_inputs_cols():
+    return 13
+
+cpdef long output_buffer_cols():
+    return 3
 
 @cython.boundscheck(False)
 cpdef float[:,:] compute_reach(const float[:] boundary,

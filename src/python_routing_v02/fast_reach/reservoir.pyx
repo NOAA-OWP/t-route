@@ -44,7 +44,7 @@ cdef void levelpool_physics(float dt,
     rv.resoutflow = qo1
 
 
-cpdef compute_reservoir_kernel(float dt,
+cpdef dict compute_reservoir_kernel(float dt,
         float qi0,
         float qi1,
         float ql,
@@ -81,7 +81,17 @@ cpdef compute_reservoir_kernel(float dt,
     return rv
 
 
+cpdef long boundary_shape():
+    return 2
 
+cpdef long previous_state_cols():
+    return 3
+
+cpdef long parameter_inputs_cols():
+    return 12
+
+cpdef long output_buffer_cols():
+    return 3
 
 
 @cython.boundscheck(False)
