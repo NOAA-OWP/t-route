@@ -771,7 +771,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-    header = ["time", "qlat", "qlatCum", "q", "v", "d", "storage"]
+    header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -788,11 +788,11 @@ def writeArraytoCSV(
                 zip(
                     flowveldepth[current_segment][time_index],
                     flowveldepth[current_segment][qlatval_index],
-                    flowveldepth[current_segment][qlatCumval_index],
                     flowveldepth[current_segment][flowval_index],
                     flowveldepth[current_segment][velval_index],
                     flowveldepth[current_segment][depthval_index],
                     flowveldepth[current_segment][storageval_index],
+                    flowveldepth[current_segment][qlatCumval_index],
                 )
             )
 
