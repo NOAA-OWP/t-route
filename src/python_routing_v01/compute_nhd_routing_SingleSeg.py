@@ -835,29 +835,29 @@ def writeArraytoNC(
                 # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
                 flowveldepth_data["qlatval"].append(
-                    flowveldepth[current_segment]["qlatval"]
+                    flowveldepth[current_segment]["values"][:,qlatval_index]
                 )
                 flowveldepth_data["qlatCumval"].append(
-                    flowveldepth[current_segment]["qlatCumval"]
+                    flowveldepth[current_segment]["values"][:,qlatCumval_index]
                 )
                 flowveldepth_data["flowval"].append(
-                    flowveldepth[current_segment]["flowval"]
+                    flowveldepth[current_segment]["values"][:,flowval_index]
                 )
                 flowveldepth_data["storageval"].append(
-                    flowveldepth[current_segment]["storageval"]
+                    flowveldepth[current_segment]["values"][:,storageval_index]
                 )
                 flowveldepth_data["depthval"].append(
-                    flowveldepth[current_segment]["depthval"]
+                    flowveldepth[current_segment]["values"][:,depthval_index]
                 )
                 flowveldepth_data["velval"].append(
-                    flowveldepth[current_segment]["velval"]
+                    flowveldepth[current_segment]["values"][:,velval_index]
                 )
                 # write segment flowveldepth_data['segment']
                 flowveldepth_data["segment"].append(current_segment)
                 if not TIME_WRITTEN:
                     # write time only once - for first segment
                     flowveldepth_data["time"].append(
-                        flowveldepth[current_segment]["time"]
+                        flowveldepth[current_segment]["values"][:,time_index]
                     )
                     TIME_WRITTEN = True
 
