@@ -290,6 +290,15 @@ waterbodies_df = None
 waterbody_initial_states_df = None
 channel_initial_states_df = None
 
+time_index = 0  # time
+qlatCumval_index = 1  # qlatCumval
+qlatval_index = 2  # qlatval
+flowval_index = 3  # flowval
+velval_index = 4  # velval
+depthval_index = 5  # depthval
+storageval_index = 6  # storageval
+segment_index = 7  # segment
+
 # WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
@@ -508,15 +517,6 @@ def compute_reach_upstream_flows(
 
     return quc, qup
 
-
-time_index = 0  # time
-qlatCumval_index = 1  # qlatCumval
-qlatval_index = 2  # qlatval
-flowval_index = 3  # flowval
-velval_index = 4  # velval
-depthval_index = 5  # depthval
-storageval_index = 6  # storageval
-segment_index = 7  # segment
 # TODO: generalize with a direction flag
 def compute_mc_reach_up2down(
     flowveldepth,
