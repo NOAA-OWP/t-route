@@ -9,7 +9,8 @@
         "assume_short_ts": true,
         "qts_subdivisions": 12,
         "dt": 300,
-        "nts": 288
+        "nts": 288,
+	"percentage_complete": true
     },
     "output_parameters":
     {

@@ -226,6 +226,13 @@ def _handle_args():
         type=int,
         default=None,
     )
+    parser.add_argument(
+        "-p",
+        "--percentage_complete",
+        help="Prints the percentage complete of the network computation.",
+        dest="percentage_complete",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
@@ -1074,7 +1081,7 @@ def main():
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
     waterbody_parameters = None
-
+    percentage_complete = args.percentage_complete
     if custom_input_file:
         (
             supernetwork_parameters,
@@ -1098,7 +1105,7 @@ def main():
         parallel_compute = run_parameters.get("parallel_compute", None)
         cpu_pool = run_parameters.get("cpu_pool", None)
         sort_networks = run_parameters.get("sort_networks", None)
-
+        percentage_complete = run_parameters.get("percentage_complete", None)
         write_csv_output = output_parameters.get("write_csv_output", None)
         write_nc_output = output_parameters.get("write_nc_output", None)
 
@@ -1561,106 +1568,105 @@ def main():
         # print(f"{[network[0] for network in ordered_networks[nsq]]}")
         for i,k in ordered_networks[nsq]:
             reaches_dict = list(k['reaches'].keys())
-            print(reaches_dict)
             for i in reaches_dict:
                 reaches_list.append(i)
-        print(reaches_list)
+            print(reaches_list)
+            for terminal_segment, network in ordered_networks[nsq]:
+                if break_network_at_waterbodies:
+                    waterbody = waterbodies_segments.get(terminal_segment)
+                else:
+                    waterbody = None
+                if not parallel_compute:  # serial execution
+                    if showtiming:
+                        start_time = time.time()
+                    if verbose:
+                        print(
+                            f"routing ordered reaches for terminal segment {terminal_segment} ..."
+                        )
 
-        for terminal_segment, network in ordered_networks[nsq]:
-            print(terminal_segment)
-            if break_network_at_waterbodies:
-                waterbody = waterbodies_segments.get(terminal_segment)
-            else:
-                waterbody = None
-            if not parallel_compute:  # serial execution
-                if showtiming:
-                    start_time = time.time()
+                    results.append(
+                        compute_network(
+                            flowveldepth_connect=flowveldepth_connect,
+                            terminal_segment=terminal_segment,
+                            supernetwork_parameters=supernetwork_parameters,
+                            waterbody_parameters=waterbody_parameters,
+                            waterbody=waterbody,
+                            nts=nts,
+                            dt=dt,
+                            qts_subdivisions=qts_subdivisions,
+                            verbose=verbose,
+                            debuglevel=debuglevel,
+                            write_csv_output=write_csv_output,
+                            write_nc_output=write_nc_output,
+                            assume_short_ts=assume_short_ts,
+                        )
+                    )
+
+                    if percentage_complete == True:
+                        percent_complete = (round(reaches_list.index(terminal_segment)/len(reaches_list)*100,2))
+                        print("Compute network is", percent_complete, "percent complete")
+                
+                    if showtiming:
+                        print("... complete in %s seconds." % (time.time() - start_time))
+
+                else:  # parallel execution
+                    nslist.append(
+                        [
+                            flowveldepth_connect,
+                            terminal_segment,
+                            supernetwork_parameters,  # TODO: This should probably be global...
+                            waterbody_parameters,
+                            waterbody,
+                            nts,
+                            dt,
+                            qts_subdivisions,
+                            verbose,
+                            debuglevel,
+                            write_csv_output,
+                            write_nc_output,
+                            assume_short_ts,
+                        ]
+                    )
+            if percentage_complete == True:
+                print("Compute network is 100 percent complete")
+            if parallel_compute:
                 if verbose:
-                    print(
-                        f"routing ordered reaches for terminal segment {terminal_segment} ..."
-                    )
+                    print(f"routing ordered reaches for networks of order {nsq} ... ")
+                if debuglevel <= -2:
+                    print(f"reaches to be routed include:")
+                    print(f"{[network[0] for network in ordered_networks[nsq]]}")
+                # with pool:
+                # with multiprocessing.Pool() as pool:
+                results = pool.starmap(compute_network, nslist)
 
-                results.append(
-                    compute_network(
-                        flowveldepth_connect=flowveldepth_connect,
-                        terminal_segment=terminal_segment,
-                        supernetwork_parameters=supernetwork_parameters,
-                        waterbody_parameters=waterbody_parameters,
-                        waterbody=waterbody,
-                        nts=nts,
-                        dt=dt,
-                        qts_subdivisions=qts_subdivisions,
-                        verbose=verbose,
-                        debuglevel=debuglevel,
-                        write_csv_output=write_csv_output,
-                        write_nc_output=write_nc_output,
-                        assume_short_ts=assume_short_ts,
-                    )
-                )
-                print(reaches_list.index(terminal_segment))
-                percent_complete = (round(reaches_list.index(terminal_segment)/len(reaches_list)*100,2))
-                print("Compute network is", percent_complete, "percent complete")
-               
                 if showtiming:
                     print("... complete in %s seconds." % (time.time() - start_time))
 
-            else:  # parallel execution
-                nslist.append(
-                    [
-                        flowveldepth_connect,
-                        terminal_segment,
-                        supernetwork_parameters,  # TODO: This should probably be global...
-                        waterbody_parameters,
-                        waterbody,
-                        nts,
-                        dt,
-                        qts_subdivisions,
-                        verbose,
-                        debuglevel,
-                        write_csv_output,
-                        write_nc_output,
-                        assume_short_ts,
-                    ]
-                )
-        print("Compute network is 100 percent complete")
+            if (
+                nsq > 0
+            ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
+                flowveldepth_connect = (
+                    {}
+                )  # There is no need to preserve previously passed on values -- so we clear the dictionary
+                for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
+                    # seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
+                    seg = terminal_segment
+                    flowveldepth_connect[seg] = {}
+                    flowveldepth_connect[seg] = results[i][seg]
+                    # TODO: The value passed here could be much more specific to
+                    # TODO: exactly and only the most recent time step for the passing reach
+
         if parallel_compute:
-            if verbose:
-                print(f"routing ordered reaches for networks of order {nsq} ... ")
-            if debuglevel <= -2:
-                print(f"reaches to be routed include:")
-                print(f"{[network[0] for network in ordered_networks[nsq]]}")
-            # with pool:
-            # with multiprocessing.Pool() as pool:
-            results = pool.starmap(compute_network, nslist)
+            pool.close()
 
-            if showtiming:
-                print("... complete in %s seconds." % (time.time() - start_time))
-
-        if (
-            nsq > 0
-        ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
-            flowveldepth_connect = (
-                {}
-            )  # There is no need to preserve previously passed on values -- so we clear the dictionary
-            for i, (terminal_segment, network) in enumerate(ordered_networks[nsq]):
-                # seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
-                seg = terminal_segment
-                flowveldepth_connect[seg] = {}
-                flowveldepth_connect[seg] = results[i][seg]
-                # TODO: The value passed here could be much more specific to
-                # TODO: exactly and only the most recent time step for the passing reach
-
-    if parallel_compute:
-        pool.close()
-
-    if verbose:
-        print("ordered reach computation complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - main_start_time))
-    if verbose:
-        print("program complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - program_start_time))
+        if verbose:
+            print("ordered reach computation complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - main_start_time))
+        if verbose:
+            print("program complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - program_start_time))
 
 
 if __name__ == "__main__":
