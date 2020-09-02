@@ -297,6 +297,14 @@ waterbodies_df = None
 waterbody_initial_states_df = None
 channel_initial_states_df = None
 
+time_index = 0  # time
+flowval_index = 1  # flowval
+velval_index = 2  # velval
+depthval_index = 3  # depthval
+qlatval_index = 4  # qlatval
+storageval_index = 5  # storageval
+qlatCumval_index = 6  # qlatCumval
+
 # WRITE_OUTPUT = False  # True
 
 ## network and reach utilities
@@ -351,17 +359,8 @@ def compute_network(
     global qlateral
 
     network = networks[terminal_segment]
-
     flowveldepth = {
-        connection: {
-            "time": np.zeros(nts),
-            "qlatCumval": np.zeros(nts),
-            "qlatval": np.zeros(nts),
-            "flowval": np.zeros(nts),
-            "velval": np.zeros(nts),
-            "depthval": np.zeros(nts),
-            "storageval": np.zeros(nts),
-        }
+        connection: np.zeros(np.array([nts, 7]))
         for connection in (network["all_segments"])
     }
 
@@ -511,13 +510,13 @@ def compute_reach_upstream_flows(
 
     for us in upstreams_list:
         if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
-            quc += us_flowveldepth[us]["flowval"][ts]
+            quc += us_flowveldepth[us][ts][flowval_index]
 
             if ts == 0:
                 # Initialize qup from warm state array
                 qup += channel_initial_states_df.loc[us, "qd0"]
             else:
-                qup += us_flowveldepth[us]["flowval"][ts - 1]
+                qup += us_flowveldepth[us][ts - 1][flowval_index]
 
     if assume_short_ts:
         quc = qup
@@ -556,8 +555,6 @@ def compute_mc_reach_up2down(
 
     while True:
         data = connections[current_segment]["data"]
-        # current_flow = flowveldepth[current_segment]
-
         # for now treating as constant per reach
         bw = data[supernetwork_parameters["bottomwidth_col"]]
         tw = data[supernetwork_parameters["topwidth_col"]]
@@ -579,9 +576,9 @@ def compute_mc_reach_up2down(
             velp = 0
             depthp = channel_initial_states_df.loc[current_segment, "h0"]
         else:
-            qdp = flowveldepth[current_segment]["flowval"][ts - 1]
+            qdp = flowveldepth[current_segment][ts - 1][flowval_index]
             velp = 0  # flowveldepth[current_segment]["velval"][-1]
-            depthp = flowveldepth[current_segment]["depthval"][ts - 1]
+            depthp = flowveldepth[current_segment][ts - 1][depthval_index]
 
         # run M-C model
         qdc, velc, depthc = singlesegment(
@@ -606,8 +603,8 @@ def compute_mc_reach_up2down(
         # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
         qlatCum = qlat * dt
         if ts > 0:
-            volumec = volumec + flowveldepth[current_segment]["storageval"][ts - 1]
-            qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][ts - 1]
+            volumec = volumec + flowveldepth[current_segment][ts - 1][storageval_index]
+            qlatCum = qlatCum + flowveldepth[current_segment][ts - 1][qlatCumval_index]
 
         # for next segment qup / quc use the just-now and previously
         # calculated flow values from the current segment
@@ -642,7 +639,6 @@ def compute_mc_reach_up2down(
                            ┊  │        │  
                            ╰-quc      qdc
 
-
             Short-time-step calculation:
 
             current_segment
@@ -656,15 +652,16 @@ def compute_mc_reach_up2down(
                            ┊  │        │  
                            ╰-quc      qdc
         """
-
         # update flowveldepth values for currentsegment for current timestep
-        flowveldepth[current_segment]["qlatval"][ts] = qlat
-        flowveldepth[current_segment]["qlatCumval"][ts] = qlatCum
-        flowveldepth[current_segment]["flowval"][ts] = qdc
-        flowveldepth[current_segment]["depthval"][ts] = depthc
-        flowveldepth[current_segment]["velval"][ts] = velc
-        flowveldepth[current_segment]["storageval"][ts] = volumec
-        flowveldepth[current_segment]["time"][ts] = ts * dt
+        flowveldepth[current_segment][ts] = [
+            ts * dt,
+            qdc,
+            velc,
+            depthc,
+            qlat,
+            volumec,
+            qlatCum,
+        ]
 
         next_segment = connections[current_segment]["downstream"]
         if current_segment == reach["reach_tail"]:
@@ -715,7 +712,7 @@ def compute_level_pool_reach_up2down(
         # Initialize from warm state
         depthp = waterbody_initial_states_df.loc[waterbody, "h0"]
     else:
-        depthp = flowveldepth[current_segment]["depthval"][ts - 1]
+        depthp = flowveldepth[current_segment][ts - 1][depthval_index]
 
     # This Qlat gathers all segments of the waterbody
     qts = int(ts / qts_subdivisions)
@@ -747,21 +744,24 @@ def compute_level_pool_reach_up2down(
     qdc, depthc = rc.levelpool_physics(
         dt, qi0, qi1, ql, ar, we, maxh, wc, wl, dl, oe, oc, oa, depthp
     )
+    velc = 0  # We assume a zero velocity for level-pool reaches
 
     volumec = dt * (quc - qdc + qlat)
     # TODO: This qlatCum is invalid as a cumulative value unless time is factored in
     qlatCum = qlat * dt
     if ts > 0:
-        volumec = volumec + flowveldepth[current_segment]["storageval"][ts - 1]
-        qlatCum = qlatCum + flowveldepth[current_segment]["qlatCumval"][ts - 1]
+        volumec = volumec + flowveldepth[current_segment][ts - 1][storageval_index]
+        qlatCum = qlatCum + flowveldepth[current_segment][ts - 1][qlatCumval_index]
 
-    flowveldepth[current_segment]["qlatval"][ts] = qlat
-    flowveldepth[current_segment]["flowval"][ts] = qdc
-    flowveldepth[current_segment]["depthval"][ts] = depthc
-    flowveldepth[current_segment]["velval"][ts] = 0
-    flowveldepth[current_segment]["time"][ts] = ts * dt
-    flowveldepth[current_segment]["storageval"][ts] = volumec
-    flowveldepth[current_segment]["qlatCumval"][ts] = qlatCum
+    flowveldepth[current_segment][ts] = [
+        ts * dt,
+        qdc,
+        velc,
+        depthc,
+        qlat,
+        volumec,
+        qlatCum,
+    ]
 
 
 # ### Psuedocode
@@ -778,7 +778,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-    header = ["time", "qlat", "qlatCum", "q", "v", "d", "storage"]
+    header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -793,13 +793,13 @@ def writeArraytoCSV(
             csvwriter.writerow(header)
             csvwriter.writerows(
                 zip(
-                    flowveldepth[current_segment]["time"],
-                    flowveldepth[current_segment]["qlatval"],
-                    flowveldepth[current_segment]["qlatCumval"],
-                    flowveldepth[current_segment]["flowval"],
-                    flowveldepth[current_segment]["velval"],
-                    flowveldepth[current_segment]["depthval"],
-                    flowveldepth[current_segment]["storageval"],
+                    flowveldepth[current_segment][:, time_index],
+                    flowveldepth[current_segment][:, qlatval_index],
+                    flowveldepth[current_segment][:, flowval_index],
+                    flowveldepth[current_segment][:, velval_index],
+                    flowveldepth[current_segment][:, depthval_index],
+                    flowveldepth[current_segment][:, storageval_index],
+                    flowveldepth[current_segment][:, qlatCumval_index],
                 )
             )
 
@@ -857,29 +857,29 @@ def writeArraytoNC(
                 # appending data from each segments to a single list  "flowveldepth_data"
                 # preserving ordering same as segment in a reach
                 flowveldepth_data["qlatval"].append(
-                    flowveldepth[current_segment]["qlatval"]
+                    flowveldepth[current_segment][:, qlatval_index]
                 )
                 flowveldepth_data["qlatCumval"].append(
-                    flowveldepth[current_segment]["qlatCumval"]
+                    flowveldepth[current_segment][:, qlatCumval_index]
                 )
                 flowveldepth_data["flowval"].append(
-                    flowveldepth[current_segment]["flowval"]
+                    flowveldepth[current_segment][:, flowval_index]
                 )
                 flowveldepth_data["storageval"].append(
-                    flowveldepth[current_segment]["storageval"]
+                    flowveldepth[current_segment][:, storageval_index]
                 )
                 flowveldepth_data["depthval"].append(
-                    flowveldepth[current_segment]["depthval"]
+                    flowveldepth[current_segment][:, depthval_index]
                 )
                 flowveldepth_data["velval"].append(
-                    flowveldepth[current_segment]["velval"]
+                    flowveldepth[current_segment][:, velval_index]
                 )
                 # write segment flowveldepth_data['segment']
                 flowveldepth_data["segment"].append(current_segment)
                 if not TIME_WRITTEN:
                     # write time only once - for first segment
                     flowveldepth_data["time"].append(
-                        flowveldepth[current_segment]["time"]
+                        flowveldepth[current_segment][:, time_index]
                     )
                     TIME_WRITTEN = True
 
@@ -1633,7 +1633,9 @@ def main():
                 # seg = network["reaches"][network["terminal_reach"]]["reach_tail"]
                 seg = terminal_segment
                 flowveldepth_connect[seg] = {}
-                flowveldepth_connect[seg]["flowval"] = results[i][seg]["flowval"]
+                flowveldepth_connect[seg] = results[i][seg]
+                # TODO: The value passed here could be much more specific to
+                # TODO: exactly and only the most recent time step for the passing reach
 
     if parallel_compute:
         pool.close()
