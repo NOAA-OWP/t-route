@@ -1557,8 +1557,17 @@ def main():
         if parallel_compute:
             nslist = []
         results = []
+        reaches_list = []
+        # print(f"{[network[0] for network in ordered_networks[nsq]]}")
+        for i,k in ordered_networks[nsq]:
+            reaches_dict = list(k['reaches'].keys())
+            print(reaches_dict)
+            for i in reaches_dict:
+                reaches_list.append(i)
+        print(reaches_list)
 
         for terminal_segment, network in ordered_networks[nsq]:
+            print(terminal_segment)
             if break_network_at_waterbodies:
                 waterbody = waterbodies_segments.get(terminal_segment)
             else:
@@ -1588,6 +1597,10 @@ def main():
                         assume_short_ts=assume_short_ts,
                     )
                 )
+                print(reaches_list.index(terminal_segment))
+                percent_complete = (round(reaches_list.index(terminal_segment)/len(reaches_list)*100,2))
+                print("Compute network is", percent_complete, "percent complete")
+               
                 if showtiming:
                     print("... complete in %s seconds." % (time.time() - start_time))
 
@@ -1609,7 +1622,7 @@ def main():
                         assume_short_ts,
                     ]
                 )
-
+        print("Compute network is 100 percent complete")
         if parallel_compute:
             if verbose:
                 print(f"routing ordered reaches for networks of order {nsq} ... ")
