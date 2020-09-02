@@ -87,23 +87,24 @@ cpdef dict compute_reach_kernel(float dt,
     return rv
 
 
-cpdef long boundary_shape():
+cpdef long boundary_shape() nogil:
     return 2
 
-cpdef long previous_state_cols():
-    return 3
+cpdef long previous_state_cols() nogil:
+    return output_buffer_cols()
 
-cpdef long parameter_inputs_cols():
+cpdef long parameter_inputs_cols() nogil:
     return 13
 
-cpdef long output_buffer_cols():
+cpdef long output_buffer_cols() nogil:
     return 3
 
 @cython.boundscheck(False)
 cpdef float[:,:] compute_reach(const float[:] boundary,
                                 const float[:,:] previous_state,
                                 const float[:,:] parameter_inputs,
-                                float[:,:] output_buffer) nogil:
+                                float[:,:] output_buffer,
+                                Py_ssize_t n=0) nogil:
     """
     Compute a reach
 
@@ -120,12 +121,19 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
 
     cdef:
         float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        Py_ssize_t i
+        Py_ssize_t i, rows
 
     # check that previous state, parameter_inputs and output_buffer all have same axis 0
-    cdef Py_ssize_t rows = previous_state.shape[0]
-    if rows != parameter_inputs.shape[0] or rows != output_buffer.shape[0]:
-        raise ValueError("axis 0 of input arguments do not agree")
+    if n > 0:
+        rows = n
+        if (parameter_inputs.shape[0] < n 
+                or output_buffer.shape[0] < n
+                or previous_state.shape[0] < n):
+            raise ValueError(f"axis 0 is not long enough for {n}")
+    else:
+        rows = previous_state.shape[0]
+        if rows != parameter_inputs.shape[0] or rows != output_buffer.shape[0]:
+            raise ValueError("axis 0 of input arguments do not agree")
 
     # check bounds
     if boundary.shape[0] < 2:
