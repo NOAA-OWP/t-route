@@ -99,7 +99,7 @@ cpdef float[:,:] compute_reservoir(const float[:] boundary,
                                     const float[:,:] previous_state,
                                     const float[:,:] parameter_inputs,
                                     float[:,:] output_buffer,
-                                    Py_ssize_t n=0) nogil:
+                                    Py_ssize_t size=0) nogil:
     """
     Compute a reservoir
 
@@ -118,12 +118,12 @@ cpdef float[:,:] compute_reservoir(const float[:] boundary,
         Py_ssize_t i, rows
 
     # check that previous state, parameter_inputs and output_buffer all have same axis 0
-    if n > 0:
-        rows = n
-        if (parameter_inputs.shape[0] < n 
-                or output_buffer.shape[0] < n
-                or previous_state.shape[0] < n):
-            raise ValueError(f"axis 0 is not long enough for {n}")
+    if size > 0:
+        rows = size
+        if (parameter_inputs.shape[0] < rows
+                or output_buffer.shape[0] < rows
+                or previous_state.shape[0] < rows):
+            raise ValueError(f"axis 0 is not long enough for {size}")
     else:
         rows = previous_state.shape[0]
         if rows != parameter_inputs.shape[0] or rows != output_buffer.shape[0]:
