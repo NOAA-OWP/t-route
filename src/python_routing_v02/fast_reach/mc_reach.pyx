@@ -63,8 +63,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     Ouput is nx3 (n reaches by 3 return values)
         0: current flow, 1: current depth, 2: current velocity
     """
-    cdef FDV rv
-    cdef FDV *out = &rv
+    cdef QVD rv
+    cdef QVD *out = &rv
 
     cdef:
         float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
