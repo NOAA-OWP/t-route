@@ -25,7 +25,8 @@ def main():
     supernetworks.update({'CONUS_ge5':{}}) ##NHD CONUS order 5 and greater"""
     supernetworks.update({'Mainstems_CONUS':{}})
     supernetworks.update({'CONUS_Named_Streams':{}})
-    supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
+    supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = FalsePocono_TEST3_3R1J
+    supernetworks.update({'Pocono_TEST3_3R1J':{}}) 
 
     debuglevel = 0
     verbose = True
