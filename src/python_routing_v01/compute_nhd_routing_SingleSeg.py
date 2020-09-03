@@ -1576,11 +1576,11 @@ def main():
             for terminal_segment, network in ordered_networks[nsq]:
                 if current_index_total == 0:
                     pbar.update(reaches_list.index(terminal_segment)+1)
-                    sleep(1)
+                    # sleep(1)
                     current_index_total = reaches_list.index(terminal_segment)+1
                 else:
                     pbar.update(reaches_list.index(terminal_segment)-current_index_total+1)
-                    sleep(1)
+                    # sleep(1)
                     current_index_total = current_index_total + reaches_list.index(terminal_segment)
                 if break_network_at_waterbodies:
                     waterbody = waterbodies_segments.get(terminal_segment)
@@ -1638,7 +1638,7 @@ def main():
                         ]
                     )
             pbar.update(len(reaches_list)-current_index_total+1)
-            sleep(1)
+            # sleep(1)
             if percentage_complete == True:
                 print("Compute network is 100 percent complete")
             if parallel_compute:
