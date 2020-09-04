@@ -1553,35 +1553,28 @@ def main():
     flowveldepth_connect = (
         {}
     )  # dict to contain values to transfer from upstream to downstream networks
-
+    
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
     if verbose:
         print(f"executing routing computation ...")
 # percent_complete = (round(reaches_list.index(terminal_segment)/len(reaches_list)*100,2))
+    progress_count = 0
     for nsq in range(max_network_seqorder, -1, -1):
-        reaches_list = []
-        # print(f"{[network[0] for network in ordered_networks[nsq]]}")
-        for i,k in ordered_networks[nsq]:
-            reaches_dict = list(k['reaches'].keys())
-            for i in reaches_dict:
-                reaches_list.append(i)
-        with tqdm(total=len(reaches_list)) as pbar:
+        for terminal_segment, network in ordered_networks[nsq]:
+            progress_count += len(network["all_segments"])
+    with tqdm(total=(progress_count)) as pbar:
+        for nsq in range(max_network_seqorder, -1, -1):
             if parallel_compute:
                 nslist = []
             results = []
             # print(reaches_list)
             current_index_total = 0
             for terminal_segment, network in ordered_networks[nsq]:
-                if current_index_total == 0:
-                    pbar.update(reaches_list.index(terminal_segment)+1)
-                    # sleep(1)
-                    current_index_total = reaches_list.index(terminal_segment)+1
-                else:
-                    pbar.update(reaches_list.index(terminal_segment)-current_index_total+1)
-                    # sleep(1)
-                    current_index_total = current_index_total + reaches_list.index(terminal_segment)
+                if percentage_complete == True:
+                    if current_index_total == 0:
+                        pbar.update(0)
                 if break_network_at_waterbodies:
                     waterbody = waterbodies_segments.get(terminal_segment)
                 else:
@@ -1611,13 +1604,11 @@ def main():
                             assume_short_ts=assume_short_ts,
                         )
                     )
-
-                    if percentage_complete == True:
-                        percent_complete = (round(reaches_list.index(terminal_segment)/len(reaches_list)*100,2))
-                        print("Compute network is", percent_complete, "percent complete")
                 
                     if showtiming:
                         print("... complete in %s seconds." % (time.time() - start_time))
+                    if percentage_complete == True:
+                        pbar.update(len(network['all_segments']))
 
                 else:  # parallel execution
                     nslist.append(
@@ -1637,10 +1628,7 @@ def main():
                             assume_short_ts,
                         ]
                     )
-            pbar.update(len(reaches_list)-current_index_total+1)
-            # sleep(1)
-            if percentage_complete == True:
-                print("Compute network is 100 percent complete")
+
             if parallel_compute:
                 if verbose:
                     print(f"routing ordered reaches for networks of order {nsq} ... ")
@@ -1653,7 +1641,10 @@ def main():
 
                 if showtiming:
                     print("... complete in %s seconds." % (time.time() - start_time))
-
+                if percentage_complete == True:
+                    # import pdb; pdb.set_trace()
+                    pbar.update(sum(len(network[1]['all_segments']) for network in ordered_networks[nsq]))
+                    # print(f"{[network[0] for network in ordered_networks[nsq]]}")
             if (
                 nsq > 0
             ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
