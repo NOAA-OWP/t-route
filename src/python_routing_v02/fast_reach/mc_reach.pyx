@@ -270,6 +270,11 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 quc = 0.0
                 for i in range(usreachlen):
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    
+                    # for intial condition, assume flow in previous timestep equals flow at current timestep
+                    if timestep == 0:
+                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                        
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
 
