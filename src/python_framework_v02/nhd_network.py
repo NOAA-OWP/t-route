@@ -168,8 +168,7 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
         return node in waterbody_nodes
     else:
         return len(network[node]) == 1
-    #return node not in waterbody_nodes and len(network[node]) == 1
-
+    # return node not in waterbody_nodes and len(network[node]) == 1
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
