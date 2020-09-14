@@ -1,10 +1,11 @@
 import json
 import os
 
+
 def set_supernetwork_data(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
-# TODO: consider managing path concatenation outside this function (and lose the os dependency)
+    # TODO: consider managing path concatenation outside this function (and lose the os dependency)
 
     # The following datasets are extracts from the feature datasets available
     # from https://www.nohrsc.noaa.gov/pub/staff/keicher/NWM_live/web/data_tools/

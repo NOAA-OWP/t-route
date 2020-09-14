@@ -34,7 +34,7 @@ def _handle_args():
         dest="debuglevel",
         choices=[0, -1, -2, -3],
         default=0,
-        type=int
+        type=int,
     )
     parser.add_argument(
         "-v",
@@ -92,12 +92,7 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
-    parser.add_argument(
-        "--ql",
-        help="QLat input data",
-        dest="ql",
-        default=None
-    )
+    parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
 
     return parser.parse_args()
 
@@ -106,7 +101,7 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
-    root = pathlib.Path('../..').resolve()
+    root = pathlib.Path("../..").resolve()
     sys.path.append(r"../python_framework_v02")
 
     # TODO: automate compile for the package scripts
@@ -125,7 +120,7 @@ def writetoFile(file, writeString):
 
 
 def constant_qlats(data, nsteps, qlat):
-    q = np.full((len(data.index), nsteps), qlat, dtype='float32')
+    q = np.full((len(data.index), nsteps), qlat, dtype="float32")
     ql = pd.DataFrame(q, index=data.index, columns=range(nsteps))
     return ql
 
@@ -166,10 +161,10 @@ def main():
 
     # STEP 1
     network_data = nnu.set_supernetwork_data(
-        supernetwork=args.supernetwork, 
+        supernetwork=args.supernetwork,
         geo_input_folder=geo_input_folder,
         verbose=False,
-        debuglevel=debuglevel
+        debuglevel=debuglevel,
     )
 
     cols = [v for c, v in network_data.items() if c.endswith("_col")]
@@ -180,12 +175,12 @@ def main():
     if "mask_file_path" in network_data:
         data_mask = nhd_io.read_mask(
             network_data["mask_file_path"],
-            layer_string=network_data["mask_layer_string"]
+            layer_string=network_data["mask_layer_string"],
         )
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
-    data = nhd_io.replace_downstreams(data, network_data['downstream_col'], 0)
+    data = nhd_io.replace_downstreams(data, network_data["downstream_col"], 0)
 
     if args.ql:
         qlats = nhd_io.read_qlat(args.ql)
@@ -204,7 +199,7 @@ def main():
         start_time = time.time()
     if verbose:
         print("organizing connections into reaches ...")
-    
+
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
     subreaches = {}
@@ -219,35 +214,43 @@ def main():
 
     if showtiming:
         start_time = time.time()
-    
-    data['dt'] = 300.0
+
+    data["dt"] = 300.0
 
     column_rename = {
-        network_data['length_col']: 'dx',
-        network_data['topwidth_col']: 'tw',
-        network_data['topwidthcc_col']: 'twcc',
-        network_data['bottomwidth_col']: 'bw',
-        network_data['manningncc_col']: 'ncc',
-        network_data['slope_col']: 's0',
-        network_data['ChSlp_col']: 'cs',
-        network_data['manningn_col']: 'n'
+        network_data["length_col"]: "dx",
+        network_data["topwidth_col"]: "tw",
+        network_data["topwidthcc_col"]: "twcc",
+        network_data["bottomwidth_col"]: "bw",
+        network_data["manningncc_col"]: "ncc",
+        network_data["slope_col"]: "s0",
+        network_data["ChSlp_col"]: "cs",
+        network_data["manningn_col"]: "n",
     }
     data = data.rename(columns=column_rename)
-    data = data.astype('float32')
+    data = data.astype("float32")
 
-    #datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-
+    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     parallelcompute = False
     if parallelcompute:
         with Parallel(n_jobs=-1, backend="threading") as parallel:
-            jobs = [] 
+            jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 r = list(chain.from_iterable(reach))
-                data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+                data_sub = data.loc[
+                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
-                jobs.append(delayed(mc_reach.compute_network)(
-                    nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values
+                jobs.append(
+                    delayed(mc_reach.compute_network)(
+                        nts,
+                        reach,
+                        subnets[tw],
+                        data_sub.index.values,
+                        data_sub.columns.values,
+                        data_sub.values,
+                        qlat_sub.values,
                     )
                 )
             results = parallel(jobs)
@@ -255,15 +258,28 @@ def main():
         results = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
             r = list(chain.from_iterable(reach))
-            data_sub = data.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+            data_sub = data.loc[
+                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+            ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
-            results.append(mc_reach.compute_network(
-                nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values
+            results.append(
+                mc_reach.compute_network(
+                    nts,
+                    reach,
+                    subnets[tw],
+                    data_sub.index.values,
+                    data_sub.columns.values,
+                    data_sub.values,
+                    qlat_sub.values,
                 )
             )
 
-    fdv_columns = pd.MultiIndex.from_product([range(nts), ['q', 'v', 'd']]).to_flat_index()
-    flowveldepth = pd.concat([pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False)
+    fdv_columns = pd.MultiIndex.from_product(
+        [range(nts), ["q", "v", "d"]]
+    ).to_flat_index()
+    flowveldepth = pd.concat(
+        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+    )
     flowveldepth = flowveldepth.sort_index()
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)

@@ -4,11 +4,12 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 
+
 def read_netcdf(geo_file_path):
     return xr.open_dataset(geo_file_path).to_dataframe()
 
 
-def read_csv(geo_file_path, header='infer', layer_string=None):
+def read_csv(geo_file_path, header="infer", layer_string=None):
     if geo_file_path.endswith(".zip"):
         if layer_string is None:
             raise ValueError("layer_string is needed if reading from compressed csv")
@@ -40,8 +41,8 @@ def read_qlat(path):
     ql = pd.read_csv(path, index_col=0)
     ql.index = ql.index.astype(int)
     ql.columns = ql.columns.astype(int)
-    ql = ql.sort_index(axis='index')
-    return ql.astype('float32')
+    ql = ql.sort_index(axis="index")
+    return ql.astype("float32")
 
 
 def replace_downstreams(data, downstream_col, terminal_code):
