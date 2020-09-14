@@ -1,6 +1,7 @@
 from collections import defaultdict, Counter, deque
 from itertools import chain
 from functools import reduce, partial
+from collections.abc import Iterable
 
 
 def nodes(N):
@@ -60,6 +61,20 @@ def extract_connections(rows, target_col, terminal_code=0):
         if dst > 0:
             network[src].append(dst)
     return network
+
+
+def extract_waterbodies(rows, target_col, waterbody_null=-9999):
+    """Extract waterbody mapping from dataframe.
+    """
+    return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
+
+
+def reverse_surjective_mapping(d):
+    rd = defaultdict(list)
+    for src, dst in d.items():
+        rd[dst].append(src)
+    rd.default_factory = None
+    return rd
 
 
 def reverse_network(N):
@@ -149,7 +164,11 @@ def split_at_junction(network, path, node):
 
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
-    return node not in waterbody_nodes and len(network[node]) == 1
+    if path[-1] in waterbody_nodes:
+        return node in waterbody_nodes
+    else:
+        return len(network[node]) == 1
+    # return node not in waterbody_nodes and len(network[node]) == 1
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
@@ -219,7 +238,7 @@ def segment_deps(segments, connections):
             if connections[cand]:
                 # There is a node downstream
                 deps[i].append(index[connections[cand][0]])
-    return deps
+    return dict(deps)
 
 
 def kahn_toposort(N):
@@ -249,3 +268,66 @@ def kahn_toposort_edges(N):
     for n in sorted_nodes:
         for m in N.get(n, ()):
             yield (n, m)
+
+
+def reservoir_shore(connections, waterbody_nodes):
+    wbody_set = set(waterbody_nodes)
+    not_in = lambda x: x not in wbody_set
+
+    shore = set()
+    for node in wbody_set:
+        shore.update(filter(not_in, connections[node]))
+    return list(shore)
+
+
+def reservoir_boundary(connections, waterbodies, n):
+    if n not in waterbodies and n in connections:
+        return any(x in waterbodies for x in connections[n])
+    return False
+
+
+def separate_waterbodies(connections, waterbodies):
+    waterbody_nodes = {}
+    for wb, nodes in reverse_surjective_mapping(waterbodies).items():
+        waterbody_nodes[wb] = net = {}
+        for n in nodes:
+            if n in connections:
+                net[n] = list(filter(waterbodies.__contains__, connections[n]))
+    return waterbody_nodes
+
+
+def replace_waterbodies_connections(connections, waterbodies):
+    """
+    Use a single node to represent waterbodies. The node id is the
+    waterbody id.
+
+    This returns a new copy of connections with transformation
+    """
+    new_conn = {}
+    waterbody_nets = separate_waterbodies(connections, waterbodies)
+
+    for n in connections:
+        if n in waterbodies:
+            wbody_code = waterbodies[n]
+            if wbody_code in new_conn:
+                continue
+
+            # get all nodes from waterbody
+            wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
+            outgoing = reservoir_shore(connections, wbody_nodes)
+            new_conn[wbody_code] = outgoing
+
+        elif reservoir_boundary(connections, waterbodies, n):
+            # one of the children of n is a member of a waterbody
+            # replace that child with waterbody code.
+            new_conn[n] = []
+
+            for child in connections[n]:
+                if child in waterbodies:
+                    new_conn[n].append(waterbodies[child])
+                else:
+                    new_conn[n].append(child)
+        else:
+            # copy to new network unchanged
+            new_conn[n] = connections[n]
+    return new_conn

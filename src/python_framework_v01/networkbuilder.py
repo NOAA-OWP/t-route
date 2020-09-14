@@ -57,7 +57,9 @@ def get_waterbody_segments(
     if verbose:
         print("level_pool_waterbody_set ...")
     waterbody_dict = {}
-    level_pool_waterbody_set = {con[data_key][waterbody_col] for key, con in connections.items()}
+    level_pool_waterbody_set = {
+        con[data_key][waterbody_col] for key, con in connections.items()
+    }
     level_pool_waterbody_set.discard(waterbody_null_code)
     waterbody_dict["level_pool"] = level_pool_waterbody_set
     if debuglevel <= -1:
