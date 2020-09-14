@@ -1,10 +1,11 @@
 import json
 import os
 
+
 def set_supernetwork_data(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
-# TODO: consider managing path concatenation outside this function (and lose the os dependency)
+    # TODO: consider managing path concatenation outside this function (and lose the os dependency)
 
     # The following datasets are extracts from the feature datasets available
     # from https://www.nohrsc.noaa.gov/pub/staff/keicher/NWM_live/web/data_tools/
@@ -60,8 +61,8 @@ def set_supernetwork_data(
             "layer_string": 0,
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-                ),
+                geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+            ),
             "waterbody_parameter_columns": {
                 "waterbody_area": "LkArea",  # area of reservoir
                 "weir_elevation": "WeirE",
@@ -72,7 +73,7 @@ def set_supernetwork_data(
                 "orifice_elevation": "OrificeE",
                 "orifice_coefficient": "OrificeC",
                 "orifice_area": "OrificeA",
-            }
+            },
         }
     elif supernetwork == "Pocono_TEST2":
         rv = set_supernetwork_data(
@@ -153,7 +154,7 @@ def set_supernetwork_data(
                 "bw": "BtmWdth",
                 "musk": "MusK",
                 "musx": "MusX",
-                "cs": "ChSlp"
+                "cs": "ChSlp",
             },
             "waterbody_null_code": -9999,
             "title_string": "NHD Subset including Brazos + Lower Colorado\nNHD stream orders 5 and greater",
@@ -310,12 +311,12 @@ def set_supernetwork_data(
                 "waterbody": "NHDWaterbodyComID",
                 "musk": "MusK",
                 "musx": "MusX",
-                "cs": "ChSlp"
+                "cs": "ChSlp",
             },
             "waterbody_parameter_file_type": "Level_Pool",
             "waterbody_parameter_file_path": os.path.join(
-                    geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-                ),
+                geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
+            ),
             "waterbody_parameter_columns": {
                 "waterbody_area": "LkArea",
                 "weir_elevation": "WeirE",
@@ -325,7 +326,7 @@ def set_supernetwork_data(
                 "overall_dam_length": "DamL",
                 "orifice_elevation": "OrificeE",
                 "oriface_coefficient": "OrificeC",
-                "oriface_are": "OrifaceA"
+                "oriface_are": "OrifaceA",
             },
             "waterbody_null_code": -9999,
             "title_string": "CONUS Full Resolution NWM v2.0",
