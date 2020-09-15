@@ -7,11 +7,8 @@ from numpy cimport ndarray
 cimport numpy as np
 cimport cython
 
+from reach cimport muskingcunge, QVD
 
-cdef struct FDV:
-    float qdc
-    float depthc
-    float velc
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -49,75 +46,6 @@ cpdef object binary_find(object arr, object els):
     return idxs
 
 
-cdef extern from "pyMCsingleSegStime_NoLoop.h":
-    void c_muskingcungenwm(float *dt,
-                                  float *qup,
-                                  float *quc,
-                                  float *qdp,
-                                  float *ql,
-                                  float *dx,
-                                  float *bw,
-                                  float *tw,
-                                  float *twcc,
-                                  float *n,
-                                  float *ncc,
-                                  float *cs,
-                                  float *s0,
-                                  float *velp,
-                                  float *depthp,
-                                  float *qdc,
-                                  float *velc,
-                                  float *depthc) nogil;
-
-
-@cython.boundscheck(False)
-cdef void muskingcunge(float dt,
-        float qup,
-        float quc,
-        float qdp,
-        float ql,
-        float dx,
-        float bw,
-        float tw,
-        float twcc,
-        float n,
-        float ncc,
-        float cs,
-        float s0,
-        float velp,
-        float depthp,
-        FDV *rv) nogil:
-    cdef float qdc, depthc, velc
-    qdc = 0.0
-    depthc = 0.0
-    velc = 0.0
-
-    #print(f"muskingcunge({dt},{qup},{quc},{qdp},{ql},{dx},{bw},{tw},{twcc},{n},{ncc},{cs},{s0},{velp},{depthp})")
-    c_muskingcungenwm(
-        &dt,
-        &qup,
-        &quc,
-        &qdp,
-        &ql,
-        &dx,
-        &bw,
-        &tw,
-        &twcc,
-        &n,
-        &ncc,
-        &cs,
-        &s0,
-        &velp,
-        &depthp,
-        &qdc,
-        &velc,
-        &depthc)
-    #print(f"rv=[qdc={qdc}, depthc={depthc}, velc={velc}]")
-    rv.qdc = qdc
-    rv.depthc = depthc
-    rv.velc = velc
-
-
 @cython.boundscheck(False)
 cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
     """
@@ -135,8 +63,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     Ouput is nx3 (n reaches by 3 return values)
         0: current flow, 1: current depth, 2: current velocity
     """
-    cdef FDV rv
-    cdef FDV *out = &rv
+    cdef QVD rv
+    cdef QVD *out = &rv
 
     cdef:
         float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
@@ -208,7 +136,8 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
-    const float[:, :] qlat_values, 
+    const float[:, :] qlat_values,
+    # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
     bint assume_short_ts=False):
     """
     Compute network
@@ -231,25 +160,57 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
+    # flowveldepth is 2D float array that holds results
+    # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
+    # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef Py_ssize_t[:] srows, drows_tmp, usrows
+    cdef:
+        Py_ssize_t[:] srows  # Source rows indexes
+        Py_ssize_t[:] drows_tmp
+        Py_ssize_t[:] usrows # Upstream row indexes 
+    
+    # Buffers and buffer views
+    # These are C-contiguous.
     cdef float[:, ::1] buf, buf_view
     cdef float[:, ::1] out_buf, out_view
 
+    # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
+    
+    # hard-coded column. Find a better way to do this
     cdef int buf_cols = 13
-    cdef Py_ssize_t i, ireach, ireach_cache, iusreach_cache
 
+    cdef:
+        Py_ssize_t i  # Temporary variable
+        Py_ssize_t ireach  # current reach index
+        Py_ssize_t ireach_cache  # current index of reach cache
+        Py_ssize_t iusreach_cache  # current index of upstream reach cache
+
+    # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
+    # For a given reach, get number of upstream nodes
     cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
 
-    cdef list reach, bf_results
+    cdef:
+        list reach  # Temporary variable
+        list bf_results  # Temporary variable
+
     cdef int reachlen, usreachlen
     cdef Py_ssize_t bidx
     cdef list buf_cache = []
-    cdef Py_ssize_t[:] reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
-    cdef Py_ssize_t[:] usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+
+    cdef:
+        Py_ssize_t[:] reach_cache
+        Py_ssize_t[:] usreach_cache
+
+    # reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
+    # upstream reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+
     ireach_cache = 0
     iusreach_cache = 0
     # copy reaches into an array
