@@ -167,10 +167,10 @@ def main():
         debuglevel=debuglevel,
     )
 
-    cols = [v for c, v in network_data.items() if c.endswith("_col")]
+    cols = network_data["columns"]
     data = nhd_io.read(network_data["geo_file_path"])
-    data = data[cols]
-    data = data.set_index(network_data["key_col"])
+    data = data[list(cols.values())]
+    data = data.set_index(cols["key"])
 
     if "mask_file_path" in network_data:
         data_mask = nhd_io.read_mask(
@@ -180,14 +180,17 @@ def main():
         data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
     data = data.sort_index()
-    data = nhd_io.replace_downstreams(data, network_data["downstream_col"], 0)
+    data = nhd_io.replace_downstreams(data, cols["downstream"], 0)
 
     if args.ql:
         qlats = nhd_io.read_qlat(args.ql)
     else:
         qlats = constant_qlats(data, nts, 10.0)
 
-    connections = nhd_network.extract_connections(data, network_data["downstream_col"])
+    connections = nhd_network.extract_connections(data, cols["downstream"])
+    wbodies = nhd_network.extract_waterbodies(
+        data, cols["waterbody"], network_data["waterbody_null_code"]
+    )
 
     if verbose:
         print("supernetwork connections set complete")
@@ -216,18 +219,7 @@ def main():
         start_time = time.time()
 
     data["dt"] = 300.0
-
-    column_rename = {
-        network_data["length_col"]: "dx",
-        network_data["topwidth_col"]: "tw",
-        network_data["topwidthcc_col"]: "twcc",
-        network_data["bottomwidth_col"]: "bw",
-        network_data["manningncc_col"]: "ncc",
-        network_data["slope_col"]: "s0",
-        network_data["ChSlp_col"]: "cs",
-        network_data["manningn_col"]: "n",
-    }
-    data = data.rename(columns=column_rename)
+    data = data.rename(columns=nnu.reverse_dict(cols))
     data = data.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]

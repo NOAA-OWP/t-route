@@ -53,3 +53,11 @@ def replace_downstreams(data, downstream_col, terminal_code):
     # Also set negative any nodes in downstream col not in data.index
     new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
     return new_data
+
+
+def read_waterbody_df(parm_file, lake_id_mask=None):
+    df1 = xr.open_dataset(parm_file).to_dataframe()
+    df1 = df1.set_index("lake_id").sort_index()
+    if lake_id_mask is None:
+        return df1
+    return df1.loc[lake_id_mask]
