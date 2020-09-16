@@ -626,13 +626,16 @@ def compute_mc_reach_up2down(
             quc = qup = qdp
 
         """
+            One time step, moving from one upstream segment 
+            to the calculation on it's downstream neighbor...
+            
             Normal calculation:
 
-            current_segment
+            current_segment (upstream)
             qup      qdp╮
              │  Q-->  │ ┊
              │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
+             │        │    ┊ next_segment (downstream)
             quc      qdc╮  ╰-qup      qdp
                         ┊     │  Q-->  │
                         ╰->╮  │━━━━━━━━│
@@ -641,11 +644,11 @@ def compute_mc_reach_up2down(
 
             Short-time-step calculation:
 
-            current_segment
+            current_segment (upstream)
             qup      qdp╮
              │  Q-->  │ ┊
              │━━━━━━━━│ ╰->╮
-             │        │    ┊ next_segment
+             │        │    ┊ next_segment (downstream)
             quc      qdc   ├-qup      qdp
                            ┊  │  Q-->  │
                            ┊  │━━━━━━━━│
