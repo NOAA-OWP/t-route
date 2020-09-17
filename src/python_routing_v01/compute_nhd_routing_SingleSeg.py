@@ -1100,7 +1100,7 @@ def main():
         dt = run_parameters.get("dt", None)
         nts = run_parameters.get("nts", None)
         qts_subdivisions = run_parameters.get("qts_subdivisions", None)
-        debuglevel = run_parameters.get("debuglevel", None)
+        debuglevel = -1 * int(run_parameters.get("debuglevel", 0))
         verbose = run_parameters.get("verbose", None)
         showtiming = run_parameters.get("showtiming", None)
         do_network_analysis_only = run_parameters.get("do_network_analysis_only", None)
