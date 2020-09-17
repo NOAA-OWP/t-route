@@ -574,7 +574,7 @@ def compute_mc_reach_up2down(
         # TODO: update this extremely simplistic handling of timestep adjustment
         # allow shorter timesteps
         qts = int(ts / qts_subdivisions)
-        qlat = qlateral[current_segment]["qlatval"][qts]
+        qlat = qlateral[current_segment][qts]
 
         if ts == 0:
             # initialize from initial states
@@ -725,7 +725,7 @@ def compute_level_pool_reach_up2down(
 
     # This Qlat gathers all segments of the waterbody
     qts = int(ts / qts_subdivisions)
-    qlat = sum([qlateral[seg]["qlatval"][qts] for seg in network["all_segments"]])
+    qlat = sum([qlateral[seg][qts] for seg in network["all_segments"]])
     if debuglevel <= -2:
         print(f"executing reservoir computation on waterbody: {waterbody}")
 
@@ -1507,7 +1507,7 @@ def main():
         print("creating qlateral array ...")
 
     # initialize qlateral dict
-    qlateral = {connection: {"qlatval": [],} for connection in connections}
+    qlateral = {}
 
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
@@ -1526,7 +1526,7 @@ def main():
         )
 
     for index, row in qlat_df.iterrows():
-        qlateral[index]["qlatval"] = row.tolist()
+        qlateral[index] = row.tolist()
 
     if verbose:
         print("qlateral array complete")
