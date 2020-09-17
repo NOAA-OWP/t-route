@@ -1398,7 +1398,7 @@ def main():
 
     else:
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
-        supernetwork_parameters, supernetwork_values = nnu.set_networks(
+        supernetwork_parameters, supernetwork_values = nnu.set_supernetwork_parameters(
             supernetwork=supernetwork,
             geo_input_folder=geo_input_folder,
             verbose=False,
