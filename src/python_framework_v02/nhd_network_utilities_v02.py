@@ -1,7 +1,7 @@
 import json
 import os
 
-def set_supernetwork_data(
+def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
 # TODO: consider managing path concatenation outside this function (and lose the os dependency)
@@ -75,7 +75,7 @@ def set_supernetwork_data(
             }
         }
     elif supernetwork == "Pocono_TEST2":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -118,7 +118,7 @@ def set_supernetwork_data(
     # }
 
     elif supernetwork == "LowerColorado_Conchos_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -163,7 +163,7 @@ def set_supernetwork_data(
         }
 
     elif supernetwork == "Brazos_LowerColorado_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -184,7 +184,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "Brazos_LowerColorado_Named_Streams":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -205,7 +205,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "CONUS_ge5":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -223,7 +223,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "Mainstems_CONUS":
-        dict = set_supernetwork_data(
+        dict = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         dict.update(
@@ -265,7 +265,7 @@ def set_supernetwork_data(
         # }
 
     elif supernetwork == "CONUS_Named_Streams":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -347,3 +347,131 @@ def reverse_dict(d):
     Values must be hashable!
     """
     return {v: k for k, v in d.items()}
+
+def get_nhd_connections(supernetwork_parameters={}, verbose=False, debuglevel=0):
+    # TODO: convert to get.
+    # as in: text=supernetwork_parameters.get("cols_as_text",None):
+    # Will need to check if something depends on the None elsewhere.
+    if "waterbody_col" not in supernetwork_parameters:
+        supernetwork_parameters.update({"waterbody_col": None})
+        supernetwork_parameters.update({"waterbody_null_code": None})
+
+    if "mask_file_path" not in supernetwork_parameters:
+        # TODO: doing things this way may mean we are reading the same file twice -- fix this [maybe] by implementing an overloaded return
+        supernetwork_parameters.update({"mask_file_path": None})
+        supernetwork_parameters.update({"mask_layer_string": None})
+        supernetwork_parameters.update({"mask_driver_string": None})
+        supernetwork_parameters.update({"mask_key_col": None})
+
+    if "data_link" not in supernetwork_parameters:
+        supernetwork_parameters.update({"data_link": None})
+
+    return do_connections(
+        geo_file_path=supernetwork_parameters["geo_file_path"],
+        data_link=supernetwork_parameters["data_link"],
+        cols_as_text=supernetwork_parameters.get("cols_as_text", None),
+        key_col=supernetwork_parameters["key_col"],
+        downstream_col=supernetwork_parameters["downstream_col"],
+        length_col=supernetwork_parameters["length_col"],
+        terminal_code=supernetwork_parameters["terminal_code"],
+        waterbody_col=supernetwork_parameters["waterbody_col"],
+        waterbody_null_code=supernetwork_parameters["waterbody_null_code"],
+        title_string=supernetwork_parameters["title_string"],
+        driver_string=supernetwork_parameters["driver_string"],
+        layer_string=supernetwork_parameters["layer_string"],
+        mask_file_path=supernetwork_parameters["mask_file_path"],
+        mask_layer_string=supernetwork_parameters["mask_layer_string"],
+        mask_driver_string=supernetwork_parameters["mask_driver_string"],
+        mask_key_col=supernetwork_parameters["mask_key_col"],
+        debuglevel=debuglevel,
+        verbose=verbose,
+    )
+
+def do_connections(
+    geo_file_path=None,
+    data_link=None,
+    cols_as_text=False,
+    title_string=None,
+    layer_string=None,
+    driver_string=None,
+    key_col=None,
+    downstream_col=None,
+    length_col=None,
+    terminal_code=None,
+    waterbody_col=None,
+    waterbody_null_code=None,
+    mask_file_path=None,
+    mask_driver_string=None,
+    mask_layer_string=None,
+    mask_key_col=None,
+    verbose=False,
+    debuglevel=0,
+):
+
+    if verbose:
+        print(title_string)
+    geo_file_rows, geo_keys = get_geo_file_table_rows(
+        geo_file_path=geo_file_path,
+        data_link=data_link,
+        layer_string=layer_string,
+        driver_string=driver_string,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+
+    if cols_as_text:
+        (
+            key_col,
+            downstream_col,
+            length_col,
+            waterbody_col,
+        ) = convert_text_cols_to_val(
+            geo_keys,
+            key_col,
+            downstream_col,
+            length_col,
+            waterbody_col,
+            verbose,
+            debuglevel,
+        )
+
+    if debuglevel <= -1:
+        print(f"MASK: {mask_file_path}")
+    if mask_file_path:
+        mask_file_rows, _ = get_geo_file_table_rows(
+            geo_file_path=mask_file_path,
+            layer_string=mask_layer_string,
+            driver_string=mask_driver_string,
+            verbose=verbose,
+            debuglevel=debuglevel,
+        )
+        # TODO: make mask dict with additional attributes, e.g., names
+        mask_set = {row[mask_key_col] for row in mask_file_rows}
+    else:
+        mask_set = {row[key_col] for row in geo_file_rows}
+
+    return build_connections_object(
+        geo_file_rows=geo_file_rows,
+        mask_set=mask_set,
+        key_col=key_col,
+        downstream_col=downstream_col,
+        length_col=length_col,
+        terminal_code=terminal_code,
+        waterbody_col=waterbody_col,
+        waterbody_null_code=waterbody_null_code,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+
+
+def set_supernetwork_data(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
+
+    supernetwork_parameters = set_supernetwork_parameters(
+        supernetwork=supernetwork, geo_input_folder=geo_input_folder
+    )
+    supernetwork_values = get_nhd_connections(
+        supernetwork_parameters=supernetwork_parameters,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+    return supernetwork_parameters, supernetwork_values

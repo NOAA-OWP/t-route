@@ -44,13 +44,13 @@ def read_qlat(path):
     return ql.astype('float32')
 
 
-def replace_downstreams(data, downstream_col, terminal_code):
-    ds0_mask = data[downstream_col] == terminal_code
-    new_data = data.copy()
+def replace_downstreams(routelink_data, downstream_col, terminal_code):
+    ds0_mask = routelink_data[downstream_col] == terminal_code
+    new_data = routelink_data.copy()
     new_data.loc[ds0_mask, downstream_col] = ds0_mask.index[ds0_mask]
 
     # Also set negative any nodes in downstream col not in data.index
-    new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
+    new_data.loc[~routelink_data[downstream_col].isin(routelink_data.index), downstream_col] *= -1
     return new_data
 
 
