@@ -70,6 +70,12 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--network-only",
+        help="Perform the network decomposition, then stop before executing the routing computation",
+        dest="do_network_analysis_only",
+        action="store_true",
+    )
+    parser.add_argument(
         "-ocsv",
         "--write-output-csv",
         help="Write csv output files (omit flag for no csv writing)",
@@ -1097,6 +1103,7 @@ def main():
         debuglevel = run_parameters.get("debuglevel", None)
         verbose = run_parameters.get("verbose", None)
         showtiming = run_parameters.get("showtiming", None)
+        do_network_analysis_only = run_parameters.get("do_network_analysis_only", None)
         assume_short_ts = run_parameters.get("assume_short_ts", None)
         parallel_compute = run_parameters.get("parallel_compute", None)
         cpu_pool = run_parameters.get("cpu_pool", None)
@@ -1181,6 +1188,7 @@ def main():
         debuglevel = -1 * int(args.debuglevel)
         verbose = args.verbose
         showtiming = args.showtiming
+        do_network_analysis_only = args.do_network_analysis_only
         write_csv_output = args.write_csv_output
         write_nc_output = args.write_nc_output
         assume_short_ts = args.assume_short_ts
@@ -1407,6 +1415,19 @@ def main():
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
+    else:
+        # If we are not splitting the networks, we can put them all in one order
+        max_network_seqorder = 0
+        ordered_networks = {}
+        ordered_networks[0] = [
+            (terminal_segment, network)
+            for terminal_segment, network in networks.items()
+        ]
+
+    if do_network_analysis_only:
+        sys.exit()
+
+    if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
         if showtiming:
             start_time = time.time()
@@ -1442,15 +1463,6 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
-
-    else:
-        # If we are not splitting the networks, we can put them all in one order
-        max_network_seqorder = 0
-        ordered_networks = {}
-        ordered_networks[0] = [
-            (terminal_segment, network)
-            for terminal_segment, network in networks.items()
-        ]
 
     # STEP 4: Handle Channel Initial States
     if showtiming:
