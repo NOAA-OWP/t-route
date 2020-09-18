@@ -72,8 +72,8 @@ def read_level_pool_waterbody_df(
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
-    """
 
+    Prior version filtered the dataframe as opposed to the dataset as in this version. 
     with xr.open_dataset(parm_file) as ds:
         df1 = ds.to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
@@ -81,6 +81,14 @@ def read_level_pool_waterbody_df(
         return df1
     else:
         return df1.loc[lake_id_mask]
+    """
+
+    #TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
+    with xr.open_dataset(parm_file) as ds:
+        ds = ds.swap_dims({"feature_id": lake_index_field})
+        df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+    df1 = df1.sort_index(axis="index")
+    return df1
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):
