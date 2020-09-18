@@ -78,15 +78,15 @@ def _handle_args():
     parser.add_argument(
         "-ocsv",
         "--write-output-csv",
-        help="Write csv output files (omit flag for no csv writing)",
-        dest="write_csv_output",
+        help="Write csv output files to this folder (omit flag for no csv writing)",
+        dest="csv_output_folder",
         action="store_true",
     )
     parser.add_argument(
         "-onc",
         "--write-output-nc",
-        help="Write netcdf output files (omit flag for no netcdf writing)",
-        dest="write_nc_output",
+        help="Write netcdf output files to this folder (omit flag for no netcdf writing)",
+        dest="nc_output_folder",
         action="store_true",
     )
     parser.add_argument(
@@ -356,8 +356,8 @@ def compute_network(
     qts_subdivisions=1,
     verbose=False,
     debuglevel=0,
-    write_csv_output=False,
-    write_nc_output=False,
+    csv_output=None,
+    nc_output_folder=None,
     assume_short_ts=False,
 ):
     global connections
@@ -382,9 +382,12 @@ def compute_network(
         ordered_reaches[reach["seqorder"]].append((head_segment, reach))
 
     # initialize write to files variable
-    writeToCSV = write_csv_output
-    writeToNETCDF = write_nc_output
-    pathToOutputFile = os.path.join(root, "test", "output", "text")
+    # TODO: Make one dictionary containing all output options
+    # The options below would become:
+    # writeToCSV = out_opt.get(csv_output,None)
+    # writeToNETCDF = out_opt.get(nc_output,None)
+    writeToCSV = csv_output
+    writeToNETCDF = nc_output_folder
 
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
@@ -452,7 +455,7 @@ def compute_network(
                     reach=reach,
                     verbose=verbose,
                     debuglevel=debuglevel,
-                    pathToOutputFile=pathToOutputFile,
+                    outputOptions=writeToCSV,
                 )
 
     if writeToNETCDF:
@@ -465,7 +468,7 @@ def compute_network(
             dt=dt,
             verbose=verbose,
             debuglevel=debuglevel,
-            pathToOutputFile=pathToOutputFile,
+            pathToOutputFile=writeToNETCDF,
         )
 
     return {terminal_segment: flowveldepth[terminal_segment]}
@@ -783,7 +786,7 @@ def writeArraytoCSV(
     reach,
     verbose=False,
     debuglevel=0,
-    pathToOutputFile="../../test/output/text",
+    outputOptions={"csv_output_folder": "../../test/output/text"},
 ):
 
     # define CSV file Header
@@ -792,26 +795,29 @@ def writeArraytoCSV(
     # Loop over reach segments
     current_segment = reach["reach_head"]
     next_segment = connections[current_segment]["downstream"]
+    pathToOutputFile = outputOptions["csv_output_folder"]
+    csv_output_segments = set(outputOptions.get("csv_output_segments",reach["segments"]))
 
     while True:
-        filename = f"{pathToOutputFile}/{current_segment}.csv"  #
-        if verbose:
-            print(f"writing segment output to --> {filename}")
-        with open(filename, "w+") as csvfile:
-            csvwriter = csv.writer(csvfile, delimiter=",", quoting=csv.QUOTE_ALL)
-            csvwriter.writerow(header)
-            csvwriter.writerows(
-                zip(
-                    flowveldepth[current_segment][:, time_index],
-                    flowveldepth[current_segment][:, qlatval_index],
-                    flowveldepth[current_segment][:, flowval_index],
-                    flowveldepth[current_segment][:, velval_index],
-                    flowveldepth[current_segment][:, depthval_index],
-                    flowveldepth[current_segment][:, storageval_index],
-                    flowveldepth[current_segment][:, qlatCumval_index],
+        if current_segment in csv_output_segments:
+            filename = f"{pathToOutputFile}/{current_segment}.csv"  #
+            if verbose:
+                print(f"writing segment output to --> {filename}")
+            with open(filename, "w+") as csvfile:
+                csvwriter = csv.writer(csvfile, delimiter=",", quoting=csv.QUOTE_ALL)
+                csvwriter.writerow(header)
+                csvwriter.writerows(
+                    zip(
+                        flowveldepth[current_segment][:, time_index],
+                        flowveldepth[current_segment][:, qlatval_index],
+                        flowveldepth[current_segment][:, qlatCumval_index],
+                        flowveldepth[current_segment][:, flowval_index],
+                        flowveldepth[current_segment][:, velval_index],
+                        flowveldepth[current_segment][:, depthval_index],
+                        flowveldepth[current_segment][:, storageval_index],
+                    )
                 )
-            )
-
+    
         if current_segment == reach["reach_tail"]:
             if debuglevel <= -2:
                 print(f"{current_segment} (tail)")
@@ -1109,8 +1115,8 @@ def main():
         cpu_pool = run_parameters.get("cpu_pool", None)
         sort_networks = run_parameters.get("sort_networks", None)
 
-        write_csv_output = output_parameters.get("write_csv_output", None)
-        write_nc_output = output_parameters.get("write_nc_output", None)
+        csv_output = output_parameters.get("csv_output", None)
+        nc_output_folder = output_parameters.get("nc_output_folder", None)
 
         qlat_const = forcing_parameters.get("qlat_const", None)
         qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -1189,8 +1195,8 @@ def main():
         verbose = args.verbose
         showtiming = args.showtiming
         do_network_analysis_only = args.do_network_analysis_only
-        write_csv_output = args.write_csv_output
-        write_nc_output = args.write_nc_output
+        csv_output = {"csv_output_folder": args.csv_output_folder}
+        nc_output_folder = args.nc_output_folder
         assume_short_ts = args.assume_short_ts
         parallel_compute = args.parallel_compute
         sort_networks = args.sort_networks
@@ -1208,8 +1214,8 @@ def main():
         qts_subdivisions = 1  # change qts_subdivisions = 1 as  default
         dt = 300 / qts_subdivisions
         nts = 144 * qts_subdivisions
-        write_csv_output = True
-        write_nc_output = True
+        csv_output = {"csv_output_folder": os.path.join(root, "test", "output", "text")}
+        nc_output_folder = os.path.join(root, "test", "output", "text")
         # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
         qlat_input_file = os.path.join(
             root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
@@ -1281,8 +1287,8 @@ def main():
         qts_subdivisions = 12
         dt = 3600 / qts_subdivisions
         nts = 24 * qts_subdivisions
-        write_csv_output = False
-        write_nc_output = False
+        csv_output_folder = None
+        nc_output_folder = None
         # build a time string to specify input date
         wrf_hydro_channel_restart_file = wrf_hydro_restart_file
         wrf_hydro_channel_ID_crosswalk_file = routelink_file
@@ -1308,8 +1314,6 @@ def main():
     if verbose:
         print(f"begin program t-route ...")
 
-    test_folder = os.path.join(root, r"test")
-
     # STEP 1: Read the supernetwork dataset and build the connections graph
     if verbose:
         print("creating supernetwork connections set")
@@ -1324,6 +1328,7 @@ def main():
         )
 
     else:
+        test_folder = os.path.join(root, r"test")
         geo_input_folder = os.path.join(test_folder, r"input", r"geo")
         supernetwork_parameters, supernetwork_values = nnu.set_networks(
             supernetwork=supernetwork,
@@ -1598,8 +1603,8 @@ def main():
                         qts_subdivisions=qts_subdivisions,
                         verbose=verbose,
                         debuglevel=debuglevel,
-                        write_csv_output=write_csv_output,
-                        write_nc_output=write_nc_output,
+                        csv_output=csv_output,
+                        nc_output_folder=nc_output_folder,
                         assume_short_ts=assume_short_ts,
                     )
                 )
@@ -1619,8 +1624,8 @@ def main():
                         qts_subdivisions,
                         verbose,
                         debuglevel,
-                        write_csv_output,
-                        write_nc_output,
+                        csv_output,
+                        nc_output_folder,
                         assume_short_ts,
                     ]
                 )
