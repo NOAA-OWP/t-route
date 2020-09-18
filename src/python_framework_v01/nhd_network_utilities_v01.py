@@ -49,7 +49,7 @@ def get_geo_file_table_rows(
 
         """
         Full CONUS route-link file not found on file system.
-        This routine will attempt to download the file. 
+        This routine will attempt to download the file.
 
         If you wish to manually download the file, please use the following commands:
 
@@ -242,9 +242,9 @@ def convert_text_cols_to_val(
     verbose=False,
     debuglevel=0,
 ):
-    """This function is now deprecated with 
-    the preferred path being to simply transition to 
-    use of a dataframe with column keys to refer to 
+    """This function is now deprecated with
+    the preferred path being to simply transition to
+    use of a dataframe with column keys to refer to
     data columns."""
 
     key_col = geo_keys.index(key_col) + 2
@@ -805,11 +805,24 @@ def get_stream_restart_from_wrf_hydro(
 ):
     """
     channel_initial_states_file: WRF-HYDRO standard restart file
+    crosswalk_file: File containing channel IDs IN THE ORDER of the Restart File
+    channel_ID_column: field in the crosswalk file to assign as the index of the restart values
     us_flow_column: column in the restart file to use for upstream flow initial state
     ds_flow_column: column in the restart file to use for downstream flow initial state
     depth_column: column in the restart file to use for depth initial state
-    crosswalk_file: File containing channel IDs IN THE ORDER of the Restart File
-    channel_ID_column: field in the crosswalk file to assign as the index of the restart values
+    default_us_flow_column: name used in remainder of program to refer to this column of the dataset
+    default_ds_flow_column: name used in remainder of program to refer to this column of the dataset
+    default_depth_column: name used in remainder of program to refer to this column of the dataset
+
+    The Restart file gives hlink, qlink1, and qlink2 values for channels --
+    the order is simply the same as that found in the Route-Link files.
+    *Subnote 1*: The order of these values is NOT the order found in the CHRTOUT files,
+    though the number of outputs is the same as in those files.
+    *Subnote 2*: If there is no mask applied, then providing the path to the RouteLink file should
+    be sufficient for the crosswalk file. If there is a mask applied (so that
+    not all segments in the RouteLink file are used in the routing computations) then
+    a pre-processing step will be need to provide only the relevant segments in the
+    crosswalk file.
     """
 
     xds = xr.open_dataset(crosswalk_file)
@@ -844,14 +857,31 @@ def get_reservoir_restart_from_wrf_hydro(
     waterbody_intial_states_file,
     crosswalk_file,
     waterbody_ID_field,
-    crosswalk_filter_file = None,
-    crosswalk_filter_file_field = None,
+    crosswalk_filter_file=None,
+    crosswalk_filter_file_field=None,
     waterbody_flow_column="qlakeo",
     waterbody_depth_column="resht",
     default_waterbody_flow_column="qd0",
     default_waterbody_depth_column="h0",
 ):
-    # TODO: Instead of using a filter file, just use the set of waterbodies.
+    """
+    waterbody_intial_states_file: WRF-HYDRO standard restart file
+    crosswalk_file: File containing reservoir IDs IN THE ORDER of the Restart File
+    waterbody_ID_field: field in the crosswalk file to assign as the index of the restart values
+    crosswalk_filter_file: file containing only reservoir ids needed in the crosswalk file (see notes below)
+    crosswalk_filter_file_field: waterbody id field in crosswalk filter file
+    waterbody_flow_column: column in the restart file to use for upstream flow initial state
+    waterbody_depth_column: column in the restart file to use for downstream flow initial state
+    default_waterbody_flow_column: name used in remainder of program to refer to this column of the dataset
+    default_waterbody_depth_column: name used in remainder of program to refer to this column of the dataset
+
+    The Restart file gives qlakeo and resht values for waterbodies.
+    The order of values in the file is the same as the order in the LAKEPARM file from WRF-Hydro.
+    However, there are many instances where only a subset of waterbodies described in the lakeparm
+    file are used. In these cases, a filter file must be provided which specifies
+    which of the reservoirs in the crosswalk file are to be used.
+    """
+
     xds = xr.open_dataset(crosswalk_file)
     X = xds[waterbody_ID_field]
 
