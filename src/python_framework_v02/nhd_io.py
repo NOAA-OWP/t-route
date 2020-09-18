@@ -47,9 +47,45 @@ def replace_downstreams(data, downstream_col, terminal_code):
     return new_data
 
 
-def read_waterbody_df(parm_file, lake_id_mask=None):
+def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
+    """
+    General waterbody dataframe reader. At present, only level-pool
+    capability exists. 
+    """
+    if wbtype == "level_pool":
+        wb_params = waterbody_parameters[wbtype]
+        return read_level_pool_waterbody_df(
+            wb_params["level_pool_waterbody_parameter_file_path"],
+            wb_params["level_pool_waterbody_id"],
+            waterbodies_values[wbtype],
+        )
+
+
+def read_level_pool_waterbody_df(
+    parm_file, lake_index_field="lake_id", lake_id_mask=None
+):
+    """
+    Reads LAKEPARM file and prepares a dataframe, filtered 
+    to the relevant reservoirs, to provide the parameters
+    for level-pool reservoir computation.
+    """
+
     df1 = xr.open_dataset(parm_file).to_dataframe()
-    df1 = df1.set_index("lake_id").sort_index()
+    df1 = df1.set_index(lake_index_field).sort_index(axis="index").sort_index(axis="columns")
+    if lake_id_mask:
+        df1 = df1.loc[lake_id_mask, :]
+    return df1
+
+
+def read_level_pool_waterbody_df_v02(
+    parm_file, lake_index_field="lake_id", lake_id_mask=None
+):
+    """
+    functionally equivalent to prior function...
+    #TODO: performance test above vs. this function and eliminate the slower one.
+    """
+    df1 = xr.open_dataset(parm_file).to_dataframe()
+    df1 = df1.set_index(lake_index_field).sort_index()
     if lake_id_mask is None:
         return df1
     return df1.loc[lake_id_mask]

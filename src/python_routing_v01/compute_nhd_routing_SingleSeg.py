@@ -1370,11 +1370,10 @@ def main():
         waterbodies_segments = supernetwork_values[13]
         connections_tailwaters = supernetwork_values[4]
 
-        waterbodies_df = nnu.read_waterbody_df(
+        waterbodies_df = nio.read_waterbody_df(
             waterbody_parameters, waterbodies_values,
         )
 
-        waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
         nru.order_networks(connections, networks, connections_tailwaters)
 
         if verbose:

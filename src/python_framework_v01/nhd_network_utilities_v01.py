@@ -754,23 +754,3 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
     )
     return supernetwork_parameters, supernetwork_values
 
-
-def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
-    if wbtype == "level_pool":
-        wb_params = waterbody_parameters[wbtype]
-        return read_level_pool_waterbody_df(
-            wb_params["level_pool_waterbody_parameter_file_path"],
-            wb_params["level_pool_waterbody_id"],
-            waterbodies_values[wbtype],
-        )
-
-
-def read_level_pool_waterbody_df(
-    parm_file, lake_index_field="lake_id", lake_id_mask=None
-):
-
-    ds = xr.open_dataset(parm_file)
-    df1 = ds.to_dataframe().set_index(lake_index_field)
-    if lake_id_mask:
-        df1 = df1.loc[lake_id_mask, :]
-    return df1
