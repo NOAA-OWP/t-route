@@ -17,7 +17,7 @@
         "csv_output":
         {
             "csv_output_folder": "../../test/output/text",
-            "csv_output_segments": [933020089]
+            "csv_output_segments": [4185713, 2743396, 4153198, 4186293, 4186169]
         },
         "nc_output_folder": "../../test/output/text"
     },
