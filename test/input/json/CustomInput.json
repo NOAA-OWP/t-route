@@ -25,6 +25,10 @@
     {
         "title_string": "Custom Input Example (using Pocono Test Example datafile)",
         "geo_file_path": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
+        "mask_file_path": "../../test/input/geo/Channels/masks/Pocono_mask.csv",
+        "mask_layer_string": "",
+        "mask_driver_string": "csv",
+        "mask_key_col": 0,
         "key_col": 16,
         "downstream_col": 22,
         "length_col": 3,
