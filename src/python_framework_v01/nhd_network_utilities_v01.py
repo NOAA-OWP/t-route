@@ -846,8 +846,6 @@ def get_reservoir_restart_from_wrf_hydro(
     waterbody_ID_field,
     crosswalk_filter_file,
     crosswalk_filter_file_field,
-    crosswalk_file_xs_field="links",
-    crosswalk_file_xs_value=0,
     waterbody_flow_column="qlakeo",
     waterbody_depth_column="resht",
     default_waterbody_flow_column="qd0",
