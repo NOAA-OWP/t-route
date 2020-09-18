@@ -14,8 +14,12 @@
     },
     "output_parameters":
     {
-        "write_csv_output": false,
-        "write_nc_output": true
+        "csv_output":
+        {
+            "csv_output_folder": "../../test/output/text",
+            "csv_output_segments": [933020089]
+        },
+        "nc_output_folder": "../../test/output/text"
     },
     "supernetwork_parameters":
     {
