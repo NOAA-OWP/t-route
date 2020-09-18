@@ -73,7 +73,8 @@ def read_level_pool_waterbody_df(
     of the v02 routing code.
     """
 
-    df1 = xr.open_dataset(parm_file).to_dataframe()
+    with xr.open_dataset(parm_file) as ds:
+        df1 = ds.to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
     if lake_id_mask is None:
         return df1
