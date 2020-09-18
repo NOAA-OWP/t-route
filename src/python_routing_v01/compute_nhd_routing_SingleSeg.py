@@ -797,7 +797,9 @@ def writeArraytoCSV(
     current_segment = reach["reach_head"]
     next_segment = connections[current_segment]["downstream"]
     pathToOutputFile = outputOptions["csv_output_folder"]
-    csv_output_segments = set(outputOptions.get("csv_output_segments",reach["segments"]))
+    csv_output_segments = set(
+        outputOptions.get("csv_output_segments", reach["segments"])
+    )
 
     while True:
         if current_segment in csv_output_segments:
@@ -818,7 +820,7 @@ def writeArraytoCSV(
                         flowveldepth[current_segment][:, storageval_index],
                     )
                 )
-    
+
         if current_segment == reach["reach_tail"]:
             if debuglevel <= -2:
                 print(f"{current_segment} (tail)")
