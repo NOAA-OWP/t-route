@@ -74,8 +74,7 @@ def read_level_pool_waterbody_df(
     """
 
     df1 = xr.open_dataset(parm_file).to_dataframe()
-    df1 = df1.set_index(lake_index_field).sort_index(axis="index").sort_index(axis="columns")
-    df1 = df1.set_index(lake_index_field).sort_index()
+    df1 = df1.set_index(lake_index_field).sort_index(axis="index")
     if lake_id_mask is None:
         return df1
     return df1.loc[lake_id_mask]
