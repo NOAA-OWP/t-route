@@ -1506,7 +1506,7 @@ def main():
         )
 
     elif qlat_input_file:
-        qlat_df = pd.read_csv(qlat_input_file, index_col=0)
+        qlat_df = nnu.get_ql_from_csv(qlat_input_file)
 
     else:
         qlat_df = pd.DataFrame(

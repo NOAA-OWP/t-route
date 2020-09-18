@@ -776,7 +776,28 @@ def read_level_pool_waterbody_df(
     return df1
 
 
+def get_ql_from_csv(qlat_input_file, index_col=0):
+    """
+    qlat_input_file: comma delimted file with header giving timesteps, rows for each segment
+    index_col = 0: column/field in the input file with the segment/link id
+    """
+
+    return pd.read_csv(qlat_input_file, index_col=0)
+
+
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
+    """
+    qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
+    index_col: column/field in the CHRTOUT files with the segment/link id
+    value_col: column/field in the CHRTOUT files with the lateral inflow value
+
+    In general the CHRTOUT files contain one value per time step. At present, there is
+    no capability for handling non-uniform timesteps in the qlaterals.
+
+    The qlateral may also be input using comma delimited file -- see
+    `get_ql_from_csv`
+    """
+
     li = []
 
     for filename in qlat_files:
