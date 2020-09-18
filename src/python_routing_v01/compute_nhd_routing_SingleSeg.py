@@ -1373,6 +1373,7 @@ def main():
         waterbodies_df = nio.read_waterbody_df(
             waterbody_parameters, waterbodies_values,
         )
+        waterbodies_df = waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
 
         nru.order_networks(connections, networks, connections_tailwaters)
 

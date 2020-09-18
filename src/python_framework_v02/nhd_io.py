@@ -68,23 +68,13 @@ def read_level_pool_waterbody_df(
     Reads LAKEPARM file and prepares a dataframe, filtered 
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
+
+    Completely replaces the read_waterbody_df function from prior versions
+    of the v02 routing code.
     """
 
     df1 = xr.open_dataset(parm_file).to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index").sort_index(axis="columns")
-    if lake_id_mask:
-        df1 = df1.loc[lake_id_mask, :]
-    return df1
-
-
-def read_level_pool_waterbody_df_v02(
-    parm_file, lake_index_field="lake_id", lake_id_mask=None
-):
-    """
-    functionally equivalent to prior function...
-    #TODO: performance test above vs. this function and eliminate the slower one.
-    """
-    df1 = xr.open_dataset(parm_file).to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index()
     if lake_id_mask is None:
         return df1
