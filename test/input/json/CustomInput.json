@@ -1,7 +1,7 @@
 {   
     "run_parameters":
     {
-        "parallel_compute": false,
+        "parallel_compute": true,
         "verbose": true,
         "showtiming": true,
         "debuglevel": 0,
@@ -9,7 +9,8 @@
         "assume_short_ts": true,
         "qts_subdivisions": 12,
         "dt": 300,
-        "nts": 288
+        "nts": 288,
+        "cpu-pool": 4
     },
     "output_parameters":
     {
