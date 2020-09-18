@@ -6,7 +6,8 @@ import geopandas as gpd
 
 
 def read_netcdf(geo_file_path):
-    return xr.open_dataset(geo_file_path).to_dataframe()
+    with xr.open_dataset(geo_file_path) as ds:
+        return ds.to_dataframe()
 
 
 def read_csv(geo_file_path, header="infer", layer_string=None):
@@ -78,7 +79,8 @@ def read_level_pool_waterbody_df(
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
     if lake_id_mask is None:
         return df1
-    return df1.loc[lake_id_mask]
+    else:
+        return df1.loc[lake_id_mask]
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):
@@ -116,8 +118,8 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     li = []
 
     for filename in qlat_files:
-        ds = xr.open_dataset(filename)
-        df1 = ds.to_dataframe()
+        with xr.open_dataset(filename) as ds:
+            df1 = ds.to_dataframe()
 
         li.append(df1)
 
@@ -161,16 +163,16 @@ def get_stream_restart_from_wrf_hydro(
     crosswalk file.
     """
 
-    xds = xr.open_dataset(crosswalk_file)
-    xdf = xds[channel_ID_column].to_dataframe()
+    with xr.open_dataset(crosswalk_file) as xds:
+        xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
-    qds = xr.open_dataset(channel_initial_states_file)
-    if depth_column in qds:
-        qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
-    else:
-        qdf2 = qds[[us_flow_column, ds_flow_column]].to_dataframe()
-        qdf2[depth_column] = 0
+    with xr.open_dataset(channel_initial_states_file) as qds:
+        if depth_column in qds:
+            qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
+        else:
+            qdf2 = qds[[us_flow_column, ds_flow_column]].to_dataframe()
+            qdf2[depth_column] = 0
     qdf2 = qdf2.reset_index()
     qdf2 = qdf2[[us_flow_column, ds_flow_column, depth_column]]
     qdf2.rename(
@@ -218,20 +220,20 @@ def get_reservoir_restart_from_wrf_hydro(
     which of the reservoirs in the crosswalk file are to be used.
     """
 
-    xds = xr.open_dataset(crosswalk_file)
-    X = xds[waterbody_ID_field]
+    with xr.open_dataset(crosswalk_file) as xds:
+        X = xds[waterbody_ID_field]
 
-    if crosswalk_filter_file:
-        fds = xr.open_dataset(crosswalk_filter_file)
-        xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
-    else:
-        xdf = X.to_dataframe()
+        if crosswalk_filter_file:
+            with xr.open_dataset(crosswalk_filter_file) as fds:
+                xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
+        else:
+            xdf = X.to_dataframe()
 
     xdf = xdf.reset_index()[waterbody_ID_field]
 
     # read initial states from r&r output
-    resds = xr.open_dataset(waterbody_intial_states_file)
-    resdf = resds[[waterbody_flow_column, waterbody_depth_column]].to_dataframe()
+    with xr.open_dataset(waterbody_intial_states_file) as resds:
+        resdf = resds[[waterbody_flow_column, waterbody_depth_column]].to_dataframe()
     resdf = resdf.reset_index()
     resdf = resdf[[waterbody_flow_column, waterbody_depth_column]]
     resdf.rename(
