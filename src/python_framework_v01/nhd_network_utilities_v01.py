@@ -6,7 +6,6 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
-import json
 
 
 def get_geo_file_table_rows(
@@ -721,26 +720,6 @@ def set_supernetwork_parameters(
         }
 
 
-def read_custom_input_json(custom_input_file):
-    with open(custom_input_file) as json_file:
-        data = json.load(json_file)
-        supernetwork_parameters = data.get("supernetwork_parameters", None)
-        waterbody_parameters = data.get("waterbody_parameters", {})
-        forcing_parameters = data.get("forcing_parameters", {})
-        restart_parameters = data.get("restart_parameters", {})
-        output_parameters = data.get("output_parameters", {})
-        run_parameters = data.get("run_parameters", {})
-        # TODO: add error trapping for potentially missing files
-    return (
-        supernetwork_parameters,
-        waterbody_parameters,
-        forcing_parameters,
-        restart_parameters,
-        output_parameters,
-        run_parameters,
-    )
-
-
 # TODO: confirm that this function is not used, and if so, consider removing it
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
 
@@ -753,4 +732,3 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
         debuglevel=debuglevel,
     )
     return supernetwork_parameters, supernetwork_values
-

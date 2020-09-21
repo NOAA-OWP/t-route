@@ -313,8 +313,6 @@ qlatval_index = 4  # qlatval
 storageval_index = 5  # storageval
 qlatCumval_index = 6  # qlatCumval
 
-# WRITE_OUTPUT = False  # True
-
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
 import nhd_io as nio
@@ -1292,7 +1290,7 @@ def main():
         qts_subdivisions = 12
         dt = 3600 / qts_subdivisions
         nts = 24 * qts_subdivisions
-        csv_output_folder = None
+        csv_output = None
         nc_output_folder = None
         # build a time string to specify input date
         wrf_hydro_channel_restart_file = wrf_hydro_restart_file
