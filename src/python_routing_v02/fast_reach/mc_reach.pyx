@@ -118,6 +118,16 @@ cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t[:] drows,
     const Py_ssize_t dcol,
     const float[:, :] src, float[:, ::1] out) nogil:
+    """
+    Parameters
+    ----------
+    srows: 
+    scol: column index for specified timestep
+    drows:
+    dcol: column index of buf_view to be edited
+    src: data set to grab data from
+    out: array to edit and pass back
+    """ 
 
     cdef Py_ssize_t i
     for i in range(srows.shape[0]):
@@ -155,13 +165,24 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     Compute network
 
     Args:
-        nsteps (int): number of time steps
-        reaches (list): List of reaches
-        connections (dict): Network
-        data_idx (ndarray): a 1D sorted index for data_values
-        data_values (ndarray): a 2D array of data inputs (nodes x variables)
-        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
-        initial_conditions (ndarray): a 2D array of initial states (nodes x [flow, vel, depth]). The index must be shared with data_values
+        nsteps (int): 
+            number of time steps
+        reaches (list): 
+            List of reaches
+        connections (dict): 
+            Network
+        data_idx (ndarray): 
+            a 1D sorted index for data_values
+        data_values (ndarray): 
+            a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): 
+            a 2D array of qlat values (nodes x nsteps of WRF simulation). The index must be shared with data_values.
+            NOTE: WRF simulations are often at a coarser timestep than the routing simulation.
+        initial_conditions (ndarray): 
+            a 2D array of initial states (nodes x [qu0, qd0, h0]). The index must be shared with data_values
+                qu0 = initial upstream flow
+                qd0 = initial downstream flow
+                h0 = initial depth
         assume_short_ts (bool): Assume short time steps (quc = qup)
 
     Notes:
@@ -169,8 +190,13 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     """
     
     # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0] or qlat_values.shape[1] != nsteps:
-        raise ValueError(f"Qlat shape is incorrect: expected ({data_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
+    """
+    EDIT
+    Changed the qlateral dim check to allow the number of timesteps (# of columns) to be different than nsteps
+    """
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+        
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
@@ -240,6 +266,10 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     # filled with seemingly random numbers, which are later re-set to specified values. 
     cdef Py_ssize_t[:] reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
     cdef Py_ssize_t[:] usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+    
+    # number of timesteps qlat dataframe, from wrf-hydro simulation
+    cdef int ntsteps_wrf = qlat_values.shape[1]
+    
     
     
     '''
@@ -351,15 +381,19 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     are equal to the initial conditions. 
                     '''
                     
-                    # upstream flow in the current timestep is equal the sum of flows in upstream segments, current timestep
+                    # upstream flow in the current timestep is equal the sum of flows 
+                    # in upstream segments, current timestep
+                    # Headwater reaches are computed before higher order reaches, so quc can
+                    # be evaulated even when the timestep == 0.
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
                     
-                    # upstream flow in the previous timestep is equal to the sum of flows in upstream segments, previous timestep
+                    # upstream flow in the previous timestep is equal to the sum of flows 
+                    # in upstream segments, previous timestep
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                     else:
-                        qup += initial_conditions[usreach_cache[iusreach_cache + i],0]
-                        
+                        # sum of qd0 (flow out of each segment) over all upstream reaches
+                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
                  
                 # create buf_view and out_view arrays, which contain as many rows as there are segments in the reach
                 buf_view = buf[:reachlen, :]
@@ -372,8 +406,26 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 # use srows to properly index data from initial_conditions
                 srows = reach_cache[ireach_cache:ireach_cache+reachlen]
                 
+                """
+                How to handle lateral inflows from WRF-Hydro?
+                ---------------------------------------------
+                - Lateral inflows from WRF-Hydro are at a shorter timestep than the routing model
+                - Need to take the same qlateral value several routing timesteps, before switching to next
+                - Lets assume that the total simulation time is equal between WRF and routing sims
+                    - if follows that the number of timesteps in the routing simulation, divided by the number
+                      of timesteps in the WRF simulation, equals the number of routing timesteps per WRF timestep.
+                - For example, there are 100 timesteps in the routing simulation and 10 timesteps in the WRF simulation
+                    - Then, there are 10 routing timesteps per WRF timestep. 
+                - Need to change src column indexing from scol to     
+                """
+ 
+                fill_buffer_column(srows, 
+                                   int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
+                                   drows, 
+                                   0, 
+                                   qlat_values, 
+                                   buf_view)
                 
-                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
                 for i in range(scols.shape[0]):
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
                     # fill buffer with qdp, depthp, velp
@@ -389,12 +441,13 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     # fill buffer with constant
                     '''
                     Changed made to accomodate initial conditions:
-                    when timestep == 0, qdp, velp, and depthp are taken from the initial_conditions array, using srows to properly index
+                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array, 
+                    using srows to properly index
                     '''
                     for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],0] # qdp
-                        buf_view[drows[i], 11] = initial_conditions[srows[i],0] # velp
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],0] # depthp
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],1] # qdp
+                        buf_view[drows[i], 11] = 0 # velp - zero b/c it isn't used in the MC routing model
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],2] # depthp
 
                 if assume_short_ts:
                     quc = qup
