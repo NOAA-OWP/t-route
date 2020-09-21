@@ -6,7 +6,7 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
-import json
+import yaml
 
 
 def get_geo_file_table_rows(
@@ -721,9 +721,9 @@ def set_supernetwork_parameters(
         }
 
 
-def read_custom_input_json(custom_input_file):
-    with open(custom_input_file) as json_file:
-        data = json.load(json_file)
+def read_custom_input_yaml(custom_input_file):
+    with open(custom_input_file) as yaml_file:
+        data = yaml.load(yaml_file)
         supernetwork_parameters = data.get("supernetwork_parameters", None)
         waterbody_parameters = data.get("waterbody_parameters", {})
         forcing_parameters = data.get("forcing_parameters", {})
