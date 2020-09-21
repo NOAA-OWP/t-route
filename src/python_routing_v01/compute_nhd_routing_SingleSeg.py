@@ -243,6 +243,7 @@ root = pathlib.Path("../..").resolve()
 
 sys.setrecursionlimit(4000)
 sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
+sys.path.append(os.path.join(root, r"src", r"python_framework_v02"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
 fortran_routing_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
@@ -309,6 +310,7 @@ qlatCumval_index = 6  # qlatCumval
 
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
+import nhd_io as nio
 import nhd_reach_utilities as nru
 
 sys.path.append(fortran_reservoir_dir)
@@ -1086,7 +1088,7 @@ def main():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nnu.read_custom_input_json(custom_input_file)
+        ) = nio.read_custom_input_json(custom_input_file)
         break_network_at_waterbodies = run_parameters.get(
             "break_network_at_waterbodies", None
         )
@@ -1368,11 +1370,11 @@ def main():
         waterbodies_segments = supernetwork_values[13]
         connections_tailwaters = supernetwork_values[4]
 
-        waterbodies_df = nnu.read_waterbody_df(
+        waterbodies_df = nio.read_waterbody_df(
             waterbody_parameters, waterbodies_values,
         )
+        waterbodies_df = waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
 
-        waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
         nru.order_networks(connections, networks, connections_tailwaters)
 
         if verbose:
@@ -1415,7 +1417,7 @@ def main():
 
         if wrf_hydro_waterbody_restart_file:
 
-            waterbody_initial_states_df = nnu.get_reservoir_restart_from_wrf_hydro(
+            waterbody_initial_states_df = nio.get_reservoir_restart_from_wrf_hydro(
                 wrf_hydro_waterbody_restart_file,
                 wrf_hydro_waterbody_ID_crosswalk_file,
                 wrf_hydro_waterbody_ID_crosswalk_file_field_name,
@@ -1460,7 +1462,7 @@ def main():
 
     if wrf_hydro_channel_restart_file:
 
-        channel_initial_states_df = nnu.get_stream_restart_from_wrf_hydro(
+        channel_initial_states_df = nio.get_stream_restart_from_wrf_hydro(
             wrf_hydro_channel_restart_file,
             wrf_hydro_channel_ID_crosswalk_file,
             wrf_hydro_channel_ID_crosswalk_file_field_name,
@@ -1499,14 +1501,14 @@ def main():
 
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
-        qlat_df = nnu.get_ql_from_wrf_hydro(
+        qlat_df = nio.get_ql_from_wrf_hydro(
             qlat_files=qlat_files,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
 
     elif qlat_input_file:
-        qlat_df = pd.read_csv(qlat_input_file, index_col=0)
+        qlat_df = nio.get_ql_from_csv(qlat_input_file)
 
     else:
         qlat_df = pd.DataFrame(
