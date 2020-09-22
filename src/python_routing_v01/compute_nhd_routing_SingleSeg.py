@@ -82,7 +82,7 @@ def _handle_args():
         nargs="?",
         help="Write csv output files to this folder (omit flag for no csv writing)",
         dest="csv_output_folder",
-        const="../../test/input/text",
+        const="../../test/output/text",
     )
     parser.add_argument(
         "-onc",
@@ -90,7 +90,7 @@ def _handle_args():
         nargs="?",
         help="Write netcdf output files to this folder (omit flag for no netcdf writing)",
         dest="nc_output_folder",
-        const="../../test/input/nc",
+        const="../../test/output/nc",
     )
     parser.add_argument(
         "--dt",
