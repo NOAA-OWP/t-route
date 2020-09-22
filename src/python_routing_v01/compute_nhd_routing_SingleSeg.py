@@ -1110,7 +1110,7 @@ def main():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nnu.read_custom_input_yaml(custom_input_file)
+        ) = nio.read_custom_input_yaml(custom_input_file)
         break_network_at_waterbodies = run_parameters.get(
             "break_network_at_waterbodies", None
         )
