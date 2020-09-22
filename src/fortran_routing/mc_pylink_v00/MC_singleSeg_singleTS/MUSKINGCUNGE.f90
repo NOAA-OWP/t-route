@@ -98,14 +98,14 @@ subroutine submuskingcunge(    &
 110     continue
 
         Qj_0  = 0.0                       !- initial flow of lower interval
-        WPC    = 0.0_prec
-        AREAC  = 0.0_prec
+        !WPC    = 0.0_prec
+        !AREAC  = 0.0_prec
         iter   = 0
 
         do while (rerror .gt. 0.01 .and. aerror .ge. mindepth .and. iter .le. maxiter)
 
-           !AREAC  = 0.0
-           !WPC    = 0.0
+           AREAC  = 0.0_prec
+           WPC    = 0.0_prec
 
           !----- lower interval  --------------------
            Twl = Bw + 2.0*z*h_0      !--top surface water width of the channel inflow
@@ -179,8 +179,8 @@ subroutine submuskingcunge(    &
                     (AREA+AREAC) * (R**(2./3.)) * sqrt(So)) !f0(x)
            endif
 
-           !AREAC  = 0.0
-           !WPC    = 0.0
+           AREAC  = 0.0_prec
+           WPC    = 0.0_prec
 
            !--upper interval -----------
            Twl = Bw + 2.0*z*h                    !--top width of the channel inflow
