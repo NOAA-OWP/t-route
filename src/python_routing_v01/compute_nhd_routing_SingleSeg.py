@@ -79,16 +79,18 @@ def _handle_args():
     parser.add_argument(
         "-ocsv",
         "--write-output-csv",
+        nargs="?",
         help="Write csv output files to this folder (omit flag for no csv writing)",
         dest="csv_output_folder",
-        action="store_true",
+        const="../../test/output/text",
     )
     parser.add_argument(
         "-onc",
         "--write-output-nc",
+        nargs="?",
         help="Write netcdf output files to this folder (omit flag for no netcdf writing)",
         dest="nc_output_folder",
-        action="store_true",
+        const="../../test/output/nc",
     )
     parser.add_argument(
         "--dt",
@@ -1198,7 +1200,10 @@ def main():
         verbose = args.verbose
         showtiming = args.showtiming
         do_network_analysis_only = args.do_network_analysis_only
-        csv_output = {"csv_output_folder": args.csv_output_folder}
+        if args.csv_output_folder:
+            csv_output = {"csv_output_folder": args.csv_output_folder}
+        else:
+            csv_output = None
         nc_output_folder = args.nc_output_folder
         assume_short_ts = args.assume_short_ts
         parallel_compute = args.parallel_compute
@@ -1387,7 +1392,9 @@ def main():
         waterbodies_df = nio.read_waterbody_df(
             waterbody_parameters, waterbodies_values,
         )
-        waterbodies_df = waterbodies_df.sort_index(axis="index").sort_index(axis="columns")
+        waterbodies_df = waterbodies_df.sort_index(axis="index").sort_index(
+            axis="columns"
+        )
 
         nru.order_networks(connections, networks, connections_tailwaters)
 
