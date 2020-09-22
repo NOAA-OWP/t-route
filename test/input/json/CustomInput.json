@@ -10,7 +10,8 @@
         "qts_subdivisions": 12,
         "dt": 300,
         "nts": 288,
-        "cpu-pool": 4
+        "cpu-pool": 4,
+        "percentage_complete": true
     },
     "output_parameters":
     {

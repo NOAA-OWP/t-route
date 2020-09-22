@@ -27,6 +27,7 @@ from datetime import datetime
 import multiprocessing
 import glob
 import xarray as xr
+from tqdm import tqdm
 
 
 def _handle_args():
@@ -234,6 +235,13 @@ def _handle_args():
         dest="cpu_pool",
         type=int,
         default=None,
+    )
+    parser.add_argument(
+        "-p",
+        "--percentage_complete",
+        help="Prints the percentage complete of the network computation.",
+        dest="percentage_complete",
+        action="store_true",
     )
 
     args = parser.parse_args()
@@ -1094,7 +1102,6 @@ def main():
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
     waterbody_parameters = None
-
     if custom_input_file:
         (
             supernetwork_parameters,
@@ -1114,6 +1121,7 @@ def main():
         debuglevel = -1 * int(run_parameters.get("debuglevel", 0))
         verbose = run_parameters.get("verbose", None)
         showtiming = run_parameters.get("showtiming", None)
+        percentage_complete = run_parameters.get("percentage_complete", None)
         do_network_analysis_only = run_parameters.get("do_network_analysis_only", None)
         assume_short_ts = run_parameters.get("assume_short_ts", None)
         parallel_compute = run_parameters.get("parallel_compute", None)
@@ -1199,6 +1207,7 @@ def main():
         debuglevel = -1 * int(args.debuglevel)
         verbose = args.verbose
         showtiming = args.showtiming
+        percentage_complete = args.percentage_complete
         do_network_analysis_only = args.do_network_analysis_only
         if args.csv_output_folder:
             csv_output = {"csv_output_folder": args.csv_output_folder}
@@ -1582,13 +1591,27 @@ def main():
     if verbose:
         print(f"executing routing computation ...")
 
+    progress_count = 0
+    if percentage_complete:
+        for nsq in range(max_network_seqorder, -1, -1):
+            for terminal_segment, network in ordered_networks[nsq]:
+                progress_count += len(network["all_segments"])
+        pbar = tqdm(total=(progress_count))
+
     for nsq in range(max_network_seqorder, -1, -1):
 
         if parallel_compute:
             nslist = []
         results = []
 
+        current_index_total = 0
+
         for terminal_segment, network in ordered_networks[nsq]:
+
+            if percentage_complete:
+                if current_index_total == 0:
+                    pbar.update(0)
+
             if break_network_at_waterbodies:
                 waterbody = waterbodies_segments.get(terminal_segment)
             else:
@@ -1618,8 +1641,11 @@ def main():
                         assume_short_ts=assume_short_ts,
                     )
                 )
+
                 if showtiming:
                     print("... complete in %s seconds." % (time.time() - start_time))
+                if percentage_complete:
+                    pbar.update(len(network["all_segments"]))
 
             else:  # parallel execution
                 nslist.append(
@@ -1652,7 +1678,15 @@ def main():
 
             if showtiming:
                 print("... complete in %s seconds." % (time.time() - start_time))
-
+            if percentage_complete:
+                # import pdb; pdb.set_trace()
+                pbar.update(
+                    sum(
+                        len(network[1]["all_segments"])
+                        for network in ordered_networks[nsq]
+                    )
+                )
+                # print(f"{[network[0] for network in ordered_networks[nsq]]}")
         if (
             nsq > 0
         ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
@@ -1669,6 +1703,9 @@ def main():
 
     if parallel_compute:
         pool.close()
+
+    if percentage_complete:
+        pbar.close()
 
     if verbose:
         print("ordered reach computation complete")
