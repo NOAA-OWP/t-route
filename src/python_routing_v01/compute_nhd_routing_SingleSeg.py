@@ -27,7 +27,8 @@ from datetime import datetime
 import multiprocessing
 import glob
 import xarray as xr
-from tqdm import tqdm 
+from tqdm import tqdm
+
 
 def _handle_args():
     # TODO: Convert to global argparser
@@ -1101,7 +1102,6 @@ def main():
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
     waterbody_parameters = None
-    percentage_complete = args.percentage_complete
     if custom_input_file:
         (
             supernetwork_parameters,
@@ -1207,6 +1207,7 @@ def main():
         debuglevel = -1 * int(args.debuglevel)
         verbose = args.verbose
         showtiming = args.showtiming
+        percentage_complete = args.percentage_complete
         do_network_analysis_only = args.do_network_analysis_only
         if args.csv_output_folder:
             csv_output = {"csv_output_folder": args.csv_output_folder}
@@ -1644,7 +1645,7 @@ def main():
                 if showtiming:
                     print("... complete in %s seconds." % (time.time() - start_time))
                 if percentage_complete:
-                    pbar.update(len(network['all_segments']))
+                    pbar.update(len(network["all_segments"]))
 
             else:  # parallel execution
                 nslist.append(
@@ -1679,7 +1680,12 @@ def main():
                 print("... complete in %s seconds." % (time.time() - start_time))
             if percentage_complete:
                 # import pdb; pdb.set_trace()
-                pbar.update(sum(len(network[1]['all_segments']) for network in ordered_networks[nsq]))
+                pbar.update(
+                    sum(
+                        len(network[1]["all_segments"])
+                        for network in ordered_networks[nsq]
+                    )
+                )
                 # print(f"{[network[0] for network in ordered_networks[nsq]]}")
         if (
             nsq > 0
