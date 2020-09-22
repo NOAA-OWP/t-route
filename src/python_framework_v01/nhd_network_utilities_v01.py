@@ -6,7 +6,10 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
+<<<<<<< HEAD
 import yaml
+=======
+>>>>>>> noaa_owp_master
 
 
 def get_geo_file_table_rows(
@@ -49,7 +52,7 @@ def get_geo_file_table_rows(
 
         """
         Full CONUS route-link file not found on file system.
-        This routine will attempt to download the file. 
+        This routine will attempt to download the file.
 
         If you wish to manually download the file, please use the following commands:
 
@@ -242,9 +245,9 @@ def convert_text_cols_to_val(
     verbose=False,
     debuglevel=0,
 ):
-    """This function is now deprecated with 
-    the preferred path being to simply transition to 
-    use of a dataframe with column keys to refer to 
+    """This function is now deprecated with
+    the preferred path being to simply transition to
+    use of a dataframe with column keys to refer to
     data columns."""
 
     key_col = geo_keys.index(key_col) + 2
@@ -721,6 +724,7 @@ def set_supernetwork_parameters(
         }
 
 
+<<<<<<< HEAD
 def read_custom_input_yaml(custom_input_file):
     with open(custom_input_file) as yaml_file:
         data = yaml.load(yaml_file)
@@ -741,6 +745,8 @@ def read_custom_input_yaml(custom_input_file):
     )
 
 
+=======
+>>>>>>> noaa_owp_master
 # TODO: confirm that this function is not used, and if so, consider removing it
 def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0):
 
@@ -753,132 +759,3 @@ def set_networks(supernetwork="", geo_input_folder=None, verbose=True, debugleve
         debuglevel=debuglevel,
     )
     return supernetwork_parameters, supernetwork_values
-
-
-def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
-    if wbtype == "level_pool":
-        wb_params = waterbody_parameters[wbtype]
-        return read_level_pool_waterbody_df(
-            wb_params["level_pool_waterbody_parameter_file_path"],
-            wb_params["level_pool_waterbody_id"],
-            waterbodies_values[wbtype],
-        )
-
-
-def read_level_pool_waterbody_df(
-    parm_file, lake_index_field="lake_id", lake_id_mask=None
-):
-
-    ds = xr.open_dataset(parm_file)
-    df1 = ds.to_dataframe().set_index(lake_index_field)
-    if lake_id_mask:
-        df1 = df1.loc[lake_id_mask, :]
-    return df1
-
-
-def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
-    li = []
-
-    for filename in qlat_files:
-        ds = xr.open_dataset(filename)
-        df1 = ds.to_dataframe()
-
-        li.append(df1)
-
-    frame = pd.concat(li, axis=0, ignore_index=False)
-    mod = frame.reset_index()
-    ql = mod.pivot(index=index_col, columns="time", values=value_col)
-
-    return ql
-
-
-def get_stream_restart_from_wrf_hydro(
-    channel_initial_states_file,
-    crosswalk_file,
-    channel_ID_column,
-    us_flow_column="qlink1",
-    ds_flow_column="qlink2",
-    depth_column="hlink",
-    default_us_flow_column="qu0",
-    default_ds_flow_column="qd0",
-    default_depth_column="h0",
-):
-    """
-    channel_initial_states_file: WRF-HYDRO standard restart file
-    us_flow_column: column in the restart file to use for upstream flow initial state
-    ds_flow_column: column in the restart file to use for downstream flow initial state
-    depth_column: column in the restart file to use for depth initial state
-    crosswalk_file: File containing channel IDs IN THE ORDER of the Restart File
-    channel_ID_column: field in the crosswalk file to assign as the index of the restart values
-    """
-
-    xds = xr.open_dataset(crosswalk_file)
-    xdf = xds[channel_ID_column].to_dataframe()
-    xdf = xdf.reset_index()
-    xdf = xdf[[channel_ID_column]]
-    qds = xr.open_dataset(channel_initial_states_file)
-    if depth_column in qds:
-        qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
-    else:
-        qdf2 = qds[[us_flow_column, ds_flow_column]].to_dataframe()
-        qdf2[depth_column] = 0
-    qdf2 = qdf2.reset_index()
-    qdf2 = qdf2[[us_flow_column, ds_flow_column, depth_column]]
-    qdf2.rename(
-        columns={
-            us_flow_column: default_us_flow_column,
-            ds_flow_column: default_ds_flow_column,
-            depth_column: default_depth_column,
-        },
-        inplace=True,
-    )
-    qdf2[channel_ID_column] = xdf
-    qdf2 = qdf2.reset_index().set_index([channel_ID_column])
-
-    q_initial_states = qdf2
-
-    return q_initial_states
-
-
-def get_reservoir_restart_from_wrf_hydro(
-    waterbody_intial_states_file,
-    crosswalk_file,
-    waterbody_ID_field,
-    crosswalk_filter_file,
-    crosswalk_filter_file_field,
-    crosswalk_file_xs_field="links",
-    crosswalk_file_xs_value=0,
-    waterbody_flow_column="qlakeo",
-    waterbody_depth_column="resht",
-    default_waterbody_flow_column="qd0",
-    default_waterbody_depth_column="h0",
-):
-    # TODO: Instead of using a filter file, just use the set of waterbodies.
-    xds = xr.open_dataset(crosswalk_file)
-    X = xds[waterbody_ID_field]
-
-    if crosswalk_filter_file:
-        fds = xr.open_dataset(crosswalk_filter_file)
-        xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
-    else:
-        xdf = X.to_dataframe()
-
-    xdf = xdf.reset_index()[waterbody_ID_field]
-
-    # read initial states from r&r output
-    resds = xr.open_dataset(waterbody_intial_states_file)
-    resdf = resds[[waterbody_flow_column, waterbody_depth_column]].to_dataframe()
-    resdf = resdf.reset_index()
-    resdf = resdf[[waterbody_flow_column, waterbody_depth_column]]
-    resdf.rename(
-        columns={
-            waterbody_flow_column: default_waterbody_flow_column,
-            waterbody_depth_column: default_waterbody_depth_column,
-        },
-        inplace=True,
-    )
-
-    mod = resdf.join(xdf).reset_index().set_index(waterbody_ID_field)
-    init_waterbody_states = mod
-
-    return init_waterbody_states

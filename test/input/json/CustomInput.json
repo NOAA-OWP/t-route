@@ -1,7 +1,7 @@
 {   
     "run_parameters":
     {
-        "parallel_compute": false,
+        "parallel_compute": true,
         "verbose": true,
         "showtiming": true,
         "debuglevel": 0,
@@ -9,17 +9,27 @@
         "assume_short_ts": true,
         "qts_subdivisions": 12,
         "dt": 300,
-        "nts": 288
+        "nts": 288,
+        "cpu-pool": 4,
+        "percentage_complete": true
     },
     "output_parameters":
     {
-        "write_csv_output": false,
-        "write_nc_output": true
+        "csv_output":
+        {
+            "csv_output_folder": "../../test/output/text",
+            "csv_output_segments": [4185713, 2743396, 4153198, 4186293, 4186169]
+        },
+        "nc_output_folder": "../../test/output/text"
     },
     "supernetwork_parameters":
     {
         "title_string": "Custom Input Example (using Pocono Test Example datafile)",
         "geo_file_path": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
+        "mask_file_path": "../../test/input/geo/Channels/masks/Pocono_mask.csv",
+        "mask_layer_string": "",
+        "mask_driver_string": "csv",
+        "mask_key_col": 0,
         "key_col": 16,
         "downstream_col": 22,
         "length_col": 3,
