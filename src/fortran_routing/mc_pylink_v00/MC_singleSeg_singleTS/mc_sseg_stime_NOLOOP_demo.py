@@ -24,14 +24,14 @@ if COMPILE:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        from mc_wrf_hydro import submuskingcunge_module
+        from mc_wrf_hydro import submuskingcunge_wrf_module
 
     except Exception as e:
         print(e)
         if debuglevel <= -1:
             traceback.print_exc()
 else:
-    from mc_wrf_hydro import submuskingcunge_module
+    from mc_wrf_hydro import submuskingcunge_wrf_module
 
 debuglevel = 0
 if COMPILE:
@@ -98,7 +98,7 @@ def singlesegment_wrf(
 ):
 
     # call Fortran routine
-    return submuskingcunge_module.submuskingcunge(
+    return submuskingcunge_wrf_module.submuskingcunge(
         qup,
         quc,
         qdp,
@@ -132,6 +132,7 @@ def singlesegment(
     cs=None,  # cs
     s0=None,  # s0
     depthp=None,  # depth at previous time step
+    velp=None,  # DUMMY -- dropped from the computation
 ):
 
     # call Fortran routine
@@ -161,7 +162,9 @@ def main():
       of the Muskingum Cunge routing calculation module under a low-flow 
       and a high-flow condition.
     """
-    print("First test low-flow, showing expected result depending on precision of calculation.")
+    print(
+        "First test low-flow, showing expected result depending on precision of calculation."
+    )
     dt = 60.0  # Time step
     dx = 1800.0  # segment length
     bw = 112.0  # Trapezoidal bottom width
@@ -305,7 +308,7 @@ def main():
     twcc = 623.5999755859375  # Flood plain width
     n_manning = 0.02800000086426735  # manning roughness of channel
     n_manning_cc = 0.03136000037193298  # manning roughness of floodplain
-    cs = .42  # channel trapezoidal sideslope
+    cs = 0.42  # channel trapezoidal sideslope
     s0 = 0.007999999690800905  # downstream segment bed slope
     qlat = 40.0  # Lateral inflow in this time step
 
@@ -313,7 +316,6 @@ def main():
     quc = 50098
     qdp = 50014
     depthp = 30
-
 
     # run M-C model
     qdc, velc, depthc = singlesegment(
@@ -362,6 +364,7 @@ def main():
             precision, qdc, velc, depthc
         )
     )
+
 
 if __name__ == "__main__":
     main()
