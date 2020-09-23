@@ -151,6 +151,7 @@ def singlesegment(
         cs,
         s0,
         depthp,
+        0,
     )
     # return qdc, vel, depth
 

@@ -6,7 +6,7 @@ module muskingcunge_module
 contains
 
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
-    n, ncc, cs, s0, depthp, qdc, velc, depthc)
+    n, ncc, cs, s0, depthp, velp, qdc, velc, depthc)
 
     !* exactly follows SUBMUSKINGCUNGE in NWM:
     !* 1) qup and quc for a reach in upstream limit take zero values all the time
@@ -19,6 +19,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(prec), intent(in) :: dt 
     real(prec), intent(in) :: qup, quc, qdp, ql
     real(prec), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
+    real(prec), intent(in) :: velp
     real(prec), intent(in) :: depthp
     real(prec), intent(out) :: qdc, velc, depthc
     real(prec) :: z
