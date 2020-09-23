@@ -10,6 +10,38 @@ if COMPILE:
         fortran_compile_call.append(r"f2py3")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
+        fortran_compile_call.append(r"MUSKINGCUNGE.f90")
+        fortran_compile_call.append(r"-m")
+        fortran_compile_call.append(r"mc_wrf_hydro")
+
+        if debuglevel <= -1:
+            print(fortran_compile_call)
+        if debuglevel <= -2:
+            subprocess.run(fortran_compile_call)
+        else:
+            subprocess.run(
+                fortran_compile_call,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        from mc_wrf_hydro import submuskingcunge_wrf_module
+
+    except Exception as e:
+        print(e)
+        if debuglevel <= -1:
+            traceback.print_exc()
+else:
+    from mc_wrf_hydro import submuskingcunge_wrf_module
+
+debuglevel = 0
+if COMPILE:
+    try:
+        import subprocess
+
+        fortran_compile_call = []
+        fortran_compile_call.append(r"f2py3")
+        fortran_compile_call.append(r"-c")
+        fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
@@ -48,6 +80,43 @@ def compute_mc_up2down_ReachbySegment():
     pass
 
 
+def singlesegment_wrf(
+    dt,  # dt
+    qup=None,  # qup
+    quc=None,  # quc
+    qdp=None,  # qdp
+    qlat=None,  # ql
+    dx=None,  # dx
+    bw=None,  # bw
+    tw=None,  # tw
+    twcc=None,  # twcc
+    n_manning=None,  #
+    n_manning_cc=None,  # ncc
+    cs=None,  # cs
+    s0=None,  # s0
+    depthp=None,  # depth at previous time step
+):
+
+    # call Fortran routine
+    return submuskingcunge_wrf_module.submuskingcunge(
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dt,
+        s0,
+        dx,
+        n_manning,
+        cs,
+        bw,
+        tw,
+        twcc,
+        n_manning_cc,
+        depthp,
+    )
+    # return qdc, vel, depth
+
+
 def singlesegment(
     dt,  # dt
     qup=None,  # qup
@@ -62,7 +131,7 @@ def singlesegment(
     n_manning_cc=None,  # ncc
     cs=None,  # cs
     s0=None,  # s0
-    velp=None,  # velocity at previous time step
+    velp=None,  # DUMMY -- dropped from the computation
     depthp=None,  # depth at previous time step
 ):
 
@@ -81,17 +150,22 @@ def singlesegment(
         n_manning_cc,
         cs,
         s0,
-        velp,
+        0,
         depthp,
     )
     # return qdc, vel, depth
 
 
 def main():
-
-    # precision = "double"  # the fortran precis module must be edited
-    precision = "single"
-
+    """
+      No Inputs: 
+      Uses seceral sets of hard-coded test values to show the behavior
+      of the Muskingum Cunge routing calculation module under a low-flow 
+      and a high-flow condition.
+    """
+    print(
+        "First test low-flow, showing expected result depending on precision of calculation."
+    )
     dt = 60.0  # Time step
     dx = 1800.0  # segment length
     bw = 112.0  # Trapezoidal bottom width
@@ -102,6 +176,9 @@ def main():
     cs = 1.399999976158142  # channel trapezoidal sideslope
     s0 = 0.0017999999690800905  # downstream segment bed slope
     qlat = 40.0  # Lateral inflow in this time step
+
+    # precision = "double"  # the fortran precis module must be edited
+    precision = "single"
 
     if precision is "single":
 
@@ -182,13 +259,7 @@ def main():
         n_manning_cc=n_manning_cc,
         cs=cs,
         s0=s0,
-        velp=velp,
         depthp=depthp,
-    )
-    print(
-        "real double precision computed q: {} vel: {} depth: {}".format(
-            qdc, velc, depthc
-        )
     )
     print(
         "real double precision expected q: {} vel: {} depth: {}".format(
@@ -201,25 +272,99 @@ def main():
         )
     )
 
-    # print(
-    # muskingcunge_module.muskingcungenwm(
-    # 60.0,
-    # 0.0,
-    # 0.082518570125103,
-    # 0.0,
-    # 0.004000000189989805,
-    # 30.15302085876465,
-    # 0.0,
-    # 6.030604362487793,
-    # 10.051007270812988,
-    # 408.0,
-    # 0.054999999701976776,
-    # 0.10999999940395355,
-    # 0.4216165244579315,
-    # 0.0,
-    # 0.0,
-    # )
-    # )
+    print(
+        "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
+            precision, qdc, velc, depthc
+        )
+    )
+    # run M-C model
+    qdc, velc, depthc = singlesegment_wrf(
+        # precision=precision,
+        dt=dt,
+        qup=qup,
+        quc=quc,
+        qdp=qdp,
+        qlat=qlat,
+        dx=dx,
+        bw=bw,
+        tw=tw,
+        twcc=twcc,
+        n_manning=n_manning,
+        n_manning_cc=n_manning_cc,
+        cs=cs,
+        s0=s0,
+        depthp=depthp,
+    )
+    print(
+        "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            precision, qdc, velc, depthc
+        )
+    )
+
+    print("\nSecond set of inputs activating compound channel")
+    dt = 60.0  # Time step
+    dx = 1800.0  # segment length
+    bw = 112.0  # Trapezoidal bottom width
+    tw = 248.0  # Channel top width (at bankfull)
+    twcc = 623.5999755859375  # Flood plain width
+    n_manning = 0.02800000086426735  # manning roughness of channel
+    n_manning_cc = 0.03136000037193298  # manning roughness of floodplain
+    cs = 0.42  # channel trapezoidal sideslope
+    s0 = 0.007999999690800905  # downstream segment bed slope
+    qlat = 40.0  # Lateral inflow in this time step
+
+    qup = 45009
+    quc = 50098
+    qdp = 50014
+    depthp = 30
+
+    # run M-C model
+    qdc, velc, depthc = singlesegment(
+        # precision=precision,
+        dt=dt,
+        qup=qup,
+        quc=quc,
+        qdp=qdp,
+        qlat=qlat,
+        dx=dx,
+        bw=bw,
+        tw=tw,
+        twcc=twcc,
+        n_manning=n_manning,
+        n_manning_cc=n_manning_cc,
+        cs=cs,
+        s0=s0,
+        depthp=depthp,
+    )
+
+    print(
+        "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
+            precision, qdc, velc, depthc
+        )
+    )
+    # run M-C model
+    qdc, velc, depthc = singlesegment_wrf(
+        # precision=precision,
+        dt=dt,
+        qup=qup,
+        quc=quc,
+        qdp=qdp,
+        qlat=qlat,
+        dx=dx,
+        bw=bw,
+        tw=tw,
+        twcc=twcc,
+        n_manning=n_manning,
+        n_manning_cc=n_manning_cc,
+        cs=cs,
+        s0=s0,
+        depthp=depthp,
+    )
+    print(
+        "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            precision, qdc, velc, depthc
+        )
+    )
 
 
 if __name__ == "__main__":
