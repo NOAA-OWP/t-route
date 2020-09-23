@@ -1,4 +1,5 @@
 import zipfile
+import logging
 
 import xarray as xr
 import pandas as pd
@@ -6,8 +7,11 @@ import geopandas as gpd
 import json
 
 
+LOG = logging.getLogger(__name__)
+
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
+        LOG.debug("Reading netcdf: %s", geo_file_path)
         return ds.to_dataframe()
 
 
@@ -16,13 +20,17 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
         if layer_string is None:
             raise ValueError("layer_string is needed if reading from compressed csv")
         with zipfile.ZipFile(geo_file_path, "r") as zcsv:
+            LOG.debug("Reading compressed csv: %s", geo_file_path)
             with zcsv.open(layer_string) as csv:
+                LOG.debug("Reading Layer %s", layer_string)
                 return pd.read_csv(csv, header=header)
     else:
+        LOG.debug("Reading uncompressed csv: %s", geo_file_path)
         return pd.read_csv(geo_file_path)
 
 
 def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
+    LOG.debug("Reading %s with geopandas [driver=%s, layer=%s]", geo_file_path, driver_string, layer_string)
     return gpd.read_file(geo_file_path, driver=driver_string, layer_string=layer_string)
 
 
@@ -36,6 +44,7 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 
 
 def read_mask(path, layer_string=None):
+    LOG.debug("Reading mask: %s", path)
     return read_csv(path, header=None, layer_string=layer_string)
 
 
@@ -60,6 +69,7 @@ def read_custom_input_json(custom_input_file):
 
 
 def replace_downstreams(data, downstream_col, terminal_code):
+    LOG.debug("Creating unique downstreams from code %d", terminal_code)
     ds0_mask = data[downstream_col] == terminal_code
     new_data = data.copy()
     new_data.loc[ds0_mask, downstream_col] = ds0_mask.index[ds0_mask]
@@ -72,7 +82,7 @@ def replace_downstreams(data, downstream_col, terminal_code):
 def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
     """
     General waterbody dataframe reader. At present, only level-pool
-    capability exists. 
+    capability exists.
     """
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
@@ -87,14 +97,14 @@ def read_level_pool_waterbody_df(
     parm_file, lake_index_field="lake_id", lake_id_mask=None
 ):
     """
-    Reads LAKEPARM file and prepares a dataframe, filtered 
+    Reads LAKEPARM file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
 
-    Prior version filtered the dataframe as opposed to the dataset as in this version. 
+    Prior version filtered the dataframe as opposed to the dataset as in this version.
     with xr.open_dataset(parm_file) as ds:
         df1 = ds.to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
@@ -117,6 +127,7 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     qlat_input_file: comma delimted file with header giving timesteps, rows for each segment
     index_col = 0: column/field in the input file with the segment/link id
     """
+    LOG.debug("Reading qlats from CSV (%s)", qlat_input_file)
     ql = pd.read_csv(qlat_input_file, index_col=index_col)
     ql.index = ql.index.astype(int)
     ql.columns = ql.columns.astype(int)
