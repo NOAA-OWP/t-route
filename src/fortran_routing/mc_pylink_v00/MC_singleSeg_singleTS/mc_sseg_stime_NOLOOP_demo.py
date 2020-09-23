@@ -131,8 +131,8 @@ def singlesegment(
     n_manning_cc=None,  # ncc
     cs=None,  # cs
     s0=None,  # s0
-    depthp=None,  # depth at previous time step
     velp=None,  # DUMMY -- dropped from the computation
+    depthp=None,  # depth at previous time step
 ):
 
     # call Fortran routine
@@ -150,8 +150,8 @@ def singlesegment(
         n_manning_cc,
         cs,
         s0,
-        depthp,
         0,
+        depthp,
     )
     # return qdc, vel, depth
 
