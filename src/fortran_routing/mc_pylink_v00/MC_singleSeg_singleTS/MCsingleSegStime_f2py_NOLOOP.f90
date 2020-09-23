@@ -19,10 +19,15 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(prec), intent(in) :: dt 
     real(prec), intent(in) :: qup, quc, qdp, ql
     real(prec), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
-    real(prec), intent(in) :: velp, depthp
+    real(prec), intent(in) :: velp
+    real(prec), intent(in) :: depthp
     real(prec), intent(out) :: qdc, velc, depthc
     real(prec) :: z
-    real(prec) :: bfd, WPC, AREAC, C1, C2, C3, C4
+    real(prec) :: bfd, C1, C2, C3, C4
+
+    !Uncomment next line for old initialization
+    !real(prec) :: WPC, AREAC
+
     integer :: iter
     integer :: maxiter, tries
     real(prec) :: mindepth, aerror, rerror
@@ -40,7 +45,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     rerror = 1.0_prec
     tries = 0
 
-    if(cs .eq. 0.00000000_prec) then
+    if(cs .eq. 0.0_prec) then
         z = 1.0_prec
     else
         z = 1.0_prec/cs          !channel side distance (m)
@@ -54,6 +59,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         bfd =  (tw - bw)/(2.0_prec*z)  !bankfull depth (m)
     endif
 
+    !print *, bfd
     if (n .le. 0.0_prec .or. s0 .le. 0.0_prec .or. z .le. 0.0_prec .or. bw .le. 0.0_prec) then
         !print*, "Error in channel coefficients -> Muskingum cunge", n, s0, z, bw
         !call hydro_stop("In MUSKINGCUNGE() - Error in channel coefficients")
@@ -63,24 +69,28 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     h     = (depthc * 1.33_prec) + mindepth !1.50 of  depthc
     h_0   = (depthc * 0.67_prec)            !0.50 of depthc
 
-    if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. qdp .gt. 0.0_prec) then  !only solve if there's water to flux
+    if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux
 110 continue
-        Qj_0 = 0.0_prec
-        WPC = 0.0_prec
-        AREAC = 0.0_prec
+
+        !Uncomment next two lines for old initialization
+        !WPC = 0.0_prec
+        !AREAC = 0.0_prec
+
         iter = 0
 
         do while (rerror .gt. 0.01_prec .and. aerror .ge. mindepth .and. iter .le. maxiter)
 
-            call secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, WPC, Qj_0, C1, C2, C3, C4)
-      !subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                !qdp, ql, qup, quc, h_0, Qj_0)
+            !Uncomment next four lines for old initialization
+            !call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+            !    qdp, ql, qup, quc, h_0, 1, WPC, Qj_0, C1, C2, C3, C4)
+            !call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+            !    qdp, ql, qup, quc, h, 2, WPC, Qj, C1, C2, C3, C4)
 
-            call secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, WPC, Qj, C1, C2, C3, C4)
-      !subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                !qdp, ql, qup, quc, h, Qj)
+            !Uncomment next four lines for new initialization
+            call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4)
+            call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4)
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -159,107 +169,19 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     end if !*if(ql .gt. 0.0 .or. ...
 
 end subroutine muskingcungenwm
+
 !**---------------------------------------------------**!
 !*                                                     *!
-!*                  NEXT SUBROUTINE                    *!
+!*                 SECANT2 SUBROUTINE                  *!
 !*                                                     *!
 !**---------------------------------------------------**!
-subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h_0, WPC, Qj_0, C1, C2, C3, C4)
+!Uncomment this function signature for old initialization
+!subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+!    qdp, ql, qup, quc, h, interval, WPC, Qj, C1, C2, C3, C4)
 
-    implicit none
-
-    real(prec), intent(in) :: z, bw, bfd, twcc, s0, n, ncc
-    real(prec), intent(in) :: dt, dx
-    real(prec), intent(in) :: qdp, ql, qup, quc
-    real(prec), intent(in) :: h_0  !, refQj_0
-    real(prec), intent(out) :: Qj_0, C1, C2, C3, C4
-    real(prec), intent(inout) :: WPC
-    real(prec) :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
-
-    !**top surface water width of the channel inflow
-    twl = bw + 2.0_prec*z*h_0
-
-    !**hydraulic radius, R
-    if(h_0 .gt. bfd) then !**water outside of defined channel
-        AREA =  (bw + bfd * z) * bfd
-        AREAC = (twcc * (h_0 -bfd)) !**assume compound component is rect. chan, that's 3 times the tw
-        WP = (bw + 2.0_prec * bfd * sqrt(1.0_prec + z*z))
-        WPC = twcc + (2.0_prec * (h_0-bfd)) !**WPC is 2 times the tw
-        R   = (AREA + AREAC)/(WP +WPC)  !**hydraulic radius
-        !print *, "warning: compound channel activated", h_0, bfd
-    else
-        AREA = (bw + h_0 * z ) * h_0
-        WP = (bw + 2.0_prec * h_0 * sqrt(1.0_prec + z*z))
-        !WPC = 0.0
-        if(WP .gt. 0.0_prec) then
-            R = AREA/ WP
-        else
-            R = 0.0_prec
-        endif
-    endif
-
-    !**kinematic celerity, c
-    if(h_0 .gt. bfd) then
-    !*water outside of defined channel weight the celerity by the contributing area, and
-    !*assume that the mannings of the spills is 2x the manning of the channel
-        Ck = max(0.0_prec,((sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z))))*AREA &
-            + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_0-bfd)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC))
-    else
-        if(h_0 .gt. 0.0_prec) then
-            Ck = max(0.0_prec,(sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_0*z)))))
-        else
-            Ck = 0.0_prec
-        endif
-    endif
-
-    !**MC parameter, K
-    if(Ck .gt. 0.000000_prec) then
-        Km = max(dt,dx/Ck)
-    else
-        Km = dt
-    endif
-
-    !**MC parameter, X
-    if(h_0 .gt. bfd) then !water outside of defined channel
-        X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj_0/(2.0_prec*twcc*s0*Ck*dx)))))
-        !X = min(0.5,max(0.0,0.5*(1-(refQj_0/(twcc*s0*Ck*dx)))))
-    else
-        if(Ck .gt. 0.0_prec) then
-            X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj_0/(2.0_prec*twl*s0*Ck*dx)))))
-            !X = min(0.5,max(0.0,0.5*(1-(refQj_0/(twl*s0*Ck*dx)))))
-        else
-            X = 0.5_prec
-        endif
-    endif
-
-    !write(45,"(3i5,2x,4f10.3)") gk, gi, idx, h_0, Ck, Km, X
-    D = (Km*(1.000_prec - X) + dt/2.0000_prec)              !--seconds
-    if(D .eq. 0.0_prec) then
-        !print *, "FATAL ERROR: D is 0 in MUSKINGCUNGE", Km, X, dt,D
-        !call hydro_stop("In MUSKINGCUNGE() - D is 0.")
-    endif
-
-    C1 =  (Km*X + dt/2.000000_prec)/D
-    C2 =  (dt/2.0000_prec - Km*X)/D
-    C3 =  (Km*(1.00000000_prec-X)-dt/2.000000_prec)/D
-    C4 =  (ql*dt)/D
-
-    if((WP+WPC) .gt. 0.0_prec) then  !avoid divide by zero
-        Qj_0 =  ((C1*qup)+(C2*quc)+(C3*qdp) + C4) - ((1.0_prec/(((WP*n)+(WPC*ncc))/(WP+WPC))) * &
-                (AREA+AREAC) * (R**(2.0_prec/3.0_prec)) * sqrt(s0)) !f0(x)
-    endif
-
-end subroutine secant_h0
-!**---------------------------------------------------**!
-!*                                                     *!
-!*                  NEXT SUBROUTINE                    *!
-!*                                                     *!
-!**---------------------------------------------------**!
-subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, WPC, Qj, C1, C2, C3, C4)
+!Uncomment this function signature for new initialization 
+subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
+    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4)
 
     implicit none
 
@@ -268,23 +190,51 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h
     real(prec), intent(out) :: Qj, C1, C2, C3, C4
-    real(prec), intent(inout) :: WPC
+    integer,    intent(in) :: interval
 
-    real(prec) :: twl, AREA, AREAC, WP, R, Ck, Km, X, D
+    real(prec) :: twl, AREA, WP, R, Ck, Km, X, D
+    integer    :: upper_interval, lower_interval
+
+    !Uncomment for old initialization
+    !real(prec), intent(out) :: WPC
+    !real(prec) :: AREAC
+    !Uncomment for new initialization 
+    real(prec) :: WPC, AREAC
+
+    twl = 0.0_prec
+    WP = 0.0_prec
+
+    !Uncomment next line for old initialization
+    !AREA = 0.0_prec
+    !Uncomment next two lines for new initialization 
+    WPC = 0.0_prec
+    AREAC = 0.0_prec
+
+    R = 0.0_prec
+    Ck = 0.0_prec
+    Km = 0.0_prec
+    X = 0.0_prec
+    D = 0.0_prec
 
     !--upper interval -----------
-    twl = bw + 2.0_prec*z*h  !--top width of the channel inflow
+    upper_interval = 1
+    !--lower interval -----------
+    lower_interval = 2
 
-    if(h .gt. bfd) then !water outside of defined channel
+    !**top surface water width of the channel inflow
+    twl = bw + 2.0_prec*z*h
+
+    !**hydraulic radius, R
+    if(h .gt. bfd) then !**water outside of defined channel
         AREA =  (bw + bfd * z) * bfd
-        AREAC = (twcc * (h-bfd)) !assume compound component is rect. chan, that's 3 times the tw
+        AREAC = (twcc * (h-bfd)) !**assume compound component is rect. chan, that's 3 times the tw
         WP = (bw + 2.0_prec * bfd * sqrt(1.0_prec + z*z))
-        WPC = twcc + (2.0_prec*(h-bfd)) !the additional wetted perimeter
-        R   = (AREA + AREAC)/(WP +WPC)
+        WPC = twcc + (2.0_prec*(h-bfd)) !**WPC is 2 times the tw ???
+        R   = (AREA + AREAC)/(WP +WPC)  !**hydraulic radius
         !print *, "warning: compound channel activated", h, bfd
     else
         AREA = (bw + h * z ) * h
-        WP = (bw + 2.0_prec * h * sqrt(1.000000_prec + z*z))
+        WP = (bw + 2.0_prec * h * sqrt(1.0_prec + z*z))
         !WPC = 0.0
         if(WP .gt. 0.0_prec) then
             R = AREA/WP
@@ -293,30 +243,49 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
         endif
     endif
 
-    if(h .gt. bfd) then !water outside of defined channel, assumed rectangular, 3x TW and n = 3x
+    !**kinematic celerity, c
+    if(h .gt. bfd) then
+    !*water outside of defined channel weight the celerity by the contributing area, and
+    !*assume that the mannings of the spills is 2x the manning of the channel
         Ck = max(0.0_prec,((sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw + 2.0_prec*bfd*z))))*AREA &
+            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z))))*AREA &
             + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h-bfd)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC))
     else
         if(h .gt. 0.0_prec) then !avoid divide by zero
             Ck = max(0.0_prec,(sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec * sqrt(1.0_prec + z*z)/(bw + 2.0_prec*h*z)))))
+                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
         else
             Ck = 0.0_prec
         endif
     endif
 
+    !**MC parameter, K
     if(Ck .gt. 0.0_prec) then
         Km = max(dt,dx/Ck)
     else
         Km = dt
     endif
 
+    !**MC parameter, X
     if(h .gt. bfd) then !water outside of defined channel
-        X = min(0.5_prec,max(0.25_prec,0.5_prec*(1.0_prec-(((C1*qup)+(C2*quc)+(C3*qdp) + C4)/(2.0_prec*twcc*s0*Ck*dx)))))
+        !H0
+        if (interval .eq. upper_interval) then
+            X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj/(2.0_prec*twcc*s0*Ck*dx)))))
+        endif
+        if (interval .eq. lower_interval) then
+        !H
+            X = min(0.5_prec,max(0.25_prec,0.5_prec*(1.0_prec-(((C1*qup)+(C2*quc)+(C3*qdp) + C4)/(2.0_prec*twcc*s0*Ck*dx)))))
+        endif
     else
         if(Ck .gt. 0.0_prec) then
-            X = min(0.5_prec,max(0.25_prec,0.5_prec*(1.0_prec-(((C1*qup)+(C2*quc)+(C3*qdp) + C4)/(2*twl*s0*Ck*dx)))))
+            !H0
+            if (interval .eq. upper_interval) then
+                X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj/(2.0_prec*twl*s0*Ck*dx)))))
+            endif
+            !H
+            if (interval .eq. lower_interval) then
+                X = min(0.5_prec,max(0.25_prec,0.5_prec*(1.0_prec-(((C1*qup)+(C2*quc)+(C3*qdp) + C4)/(2.0_prec*twl*s0*Ck*dx)))))
+            endif
         else
             X = 0.5_prec
         endif
@@ -329,20 +298,31 @@ subroutine secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
         !call hydro_stop("In MUSKINGCUNGE() - D is 0.")
     endif
 
-    C1 =  (Km*X + dt/2.000000_prec)/D
-    C2 =  (dt/2.000000_prec - Km*X)/D
-    C3 =  (Km*(1.000000_prec-X)-dt/2.000000_prec)/D
+    C1 =  (Km*X + dt/2.0_prec)/D
+    C2 =  (dt/2.0_prec - Km*X)/D
+    C3 =  (Km*(1.0_prec-X)-dt/2.0_prec)/D
     C4 =  (ql*dt)/D
 
-    if( (C4 .lt. 0.0_prec) .and. (abs(C4) .gt. (C1*qup)+(C2*quc)+(C3*qdp)))  then
-        C4 = -((C1*qup)+(C2*quc)+(C3*qdp))
+    !H
+    if (interval .eq. lower_interval) then
+        if( (C4 .lt. 0.0_prec) .and. (abs(C4) .gt. (C1*qup)+(C2*quc)+(C3*qdp)))  then
+            C4 = -((C1*qup)+(C2*quc)+(C3*qdp))
+        endif
     endif
+    !!Uncomment to show WP/WPC behavior above bankfull
+    !if (interval .eq. upper_interval) then
+    !    print *,"secant1 --", "WP:", WP, "WPC:", WPC
+    !else
+    !    print *,"secant2 --", "WP:", WP, "WPC:", WPC
+    !endif
 
-    if((WP+WPC) .gt. 0.0_prec) then
-        Qj =  ((C1*qup)+(C2*quc)+(C3*qdp) + C4) - ((1.0000000_prec/(((WP*n)+(WPC*ncc))/(WP+WPC))) * &
+    if((WP+WPC) .gt. 0.0_prec) then  !avoid divide by zero
+        Qj =  ((C1*qup)+(C2*quc)+(C3*qdp) + C4) - ((1.0_prec/(((WP*n)+(WPC*ncc))/(WP+WPC))) * &
                 (AREA+AREAC) * (R**(2.0_prec/3.0_prec)) * sqrt(s0)) !f(x)
+    else
+        Qj = 0.0_prec
     endif
 
-end subroutine secant_h
+end subroutine secant2_h
 
 end module muskingcunge_module
