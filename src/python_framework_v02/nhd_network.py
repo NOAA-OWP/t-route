@@ -1,8 +1,11 @@
+import logging
+
 from collections import defaultdict, Counter, deque
 from itertools import chain
 from functools import reduce, partial
 from collections.abc import Iterable
 
+LOG = logging.getLogger(__name__)
 
 def nodes(N):
     yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
@@ -53,6 +56,7 @@ def extract_connections(rows, target_col, terminal_code=0):
     Returns:
         (dict)
     """
+    LOG.debug("Extracting connections from index and %s", target_col)
     network = {}
     for src, dst in rows[target_col].items():
         if src not in network:
@@ -66,6 +70,7 @@ def extract_connections(rows, target_col, terminal_code=0):
 def extract_waterbodies(rows, target_col, waterbody_null=-9999):
     """Extract waterbody mapping from dataframe.
     """
+    LOG.debug("Extracting %s column (with null code = %s)", target_col, waterbody_null)
     return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
 
 
@@ -112,9 +117,11 @@ def reachable(N, sources=None, targets=None):
     Returns:
     """
     if sources is None:
+        LOG.debug("Using headwaters of network for source nodes.")
         sources = headwaters(N)
 
     rv = {}
+    LOG.debug("Target provided: %s", bool(targets))
     if targets is None:
         for h in sources:
             reach = set()
@@ -124,6 +131,7 @@ def reachable(N, sources=None, targets=None):
                 reach.add(x)
                 Q.extend(N.get(x, ()))
             rv[h] = reach
+            LOG.debug("%d nodes reachable from %s", len(reach), h)
     else:
         targets = set(targets)
 
@@ -136,6 +144,7 @@ def reachable(N, sources=None, targets=None):
                 if x not in targets:
                     Q.extend(N.get(x, ()))
             rv[h] = reach
+            LOG.debug("%d nodes reachable from %s until target was reached", len(reach), h)
     return rv
 
 
@@ -187,23 +196,28 @@ def dfs_decomposition(N, path_func, source_nodes=None):
         [List]: List of paths to be processed in order.
     """
     if source_nodes is None:
+        LOG.debug("Using headwaters of network as sources")
         source_nodes = headwaters(N)
 
     paths = []
     visited = set()
     for h in source_nodes:
+        LOG.debug("Starting at node %s", h)
         stack = [(h, iter(N[h]))]
         while stack:
             node, children = stack[-1]
+            LOG.debug("Processing node %s", node)
             try:
                 child = next(children)
                 if child not in visited:
+                    LOG.debug("Visiting child: %s", child)
                     # Check to see if we are at a leaf
                     if child in N:
                         stack.append((child, iter(N[child])))
                     visited.add(child)
             except StopIteration:
                 node, _ = stack.pop()
+                LOG.debug("All children of %s have been processed. Starting path.", node)
                 path = [node]
 
                 for n, _ in reversed(stack):
@@ -211,6 +225,7 @@ def dfs_decomposition(N, path_func, source_nodes=None):
                         path.append(n)
                     else:
                         break
+                LOG.debug("Path of length %d discovered (start=%s, end=%s)", len(path), path[0], path[-1])
                 paths.append(path)
                 if len(path) > 1:
                     # Only pop ancestor nodes that were added by path_func.
@@ -307,27 +322,40 @@ def replace_waterbodies_connections(connections, waterbodies):
     waterbody_nets = separate_waterbodies(connections, waterbodies)
 
     for n in connections:
+        LOG.debug("Current node: %s", n)
+
         if n in waterbodies:
+            # The current node is contained in a waterbody
+
+            # Determine which waterbody contains current node.
+            # If it is a waterbody that we have already processed, we can skip to next node.
             wbody_code = waterbodies[n]
             if wbody_code in new_conn:
+                LOG.debug("Node part of previously processed waterbody (%s)", wbody_code)
                 continue
 
             # get all nodes from waterbody
             wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
             outgoing = reservoir_shore(connections, wbody_nodes)
             new_conn[wbody_code] = outgoing
+            LOG.debug("Coalesced %s nodes to %s waterbody", len(wbody_nodes), wbody_code)
+
 
         elif reservoir_boundary(connections, waterbodies, n):
+            # The current node is not part of a waterbody, but is linked to a node that is.
             # one of the children of n is a member of a waterbody
             # replace that child with waterbody code.
             new_conn[n] = []
 
+            LOG.debug("Node part of waterbody shore")
             for child in connections[n]:
                 if child in waterbodies:
                     new_conn[n].append(waterbodies[child])
                 else:
                     new_conn[n].append(child)
         else:
+            # The current node is not connected in any way to a waterbody
             # copy to new network unchanged
+            LOG.debug("Node unconnected to waterbody")
             new_conn[n] = connections[n]
     return new_conn
