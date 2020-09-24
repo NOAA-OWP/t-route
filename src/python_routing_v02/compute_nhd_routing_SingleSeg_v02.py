@@ -52,6 +52,7 @@ def _handle_args():
         type=int,
     )
     parser.add_argument(
+        "--sts",
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
