@@ -59,6 +59,19 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--parallel",
+        help="Use the parallel computation engine (omit flag for serial computation)",
+        dest="parallel_compute",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--cpu-pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
         "-o",
         "--output",
         help="Write output files (leave blank for no writing)",
@@ -233,9 +246,9 @@ def main():
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
-    parallelcompute = False
-    if parallelcompute:
-        with Parallel(n_jobs=-1, backend="threading") as parallel:
+    parallel_compute = args.parallel_compute
+    if parallel_compute:
+        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 r = list(chain.from_iterable(reach))
