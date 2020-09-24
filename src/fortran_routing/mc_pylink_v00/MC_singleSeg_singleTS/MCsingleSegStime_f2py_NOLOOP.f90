@@ -326,3 +326,9 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 end subroutine secant2_h
 
 end module muskingcunge_module
+
+!**---------------------------------------------------**!
+!*                                                     *!
+!*                 COURANT SUBROUTINE                  *!
+!*                                                     *!
+!**---------------------------------------------------**!
