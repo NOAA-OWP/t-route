@@ -44,6 +44,14 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--nts",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+        type=int,
+    )
+    parser.add_argument(
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
@@ -129,7 +137,7 @@ def main():
 
     args = _handle_args()
 
-    nts = 144
+    nts = args.nts
     debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
