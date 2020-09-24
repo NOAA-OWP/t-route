@@ -136,8 +136,12 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
+<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
     const float[:, :] qlat_values,
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
+=======
+    const float[:, :] qlat_values, cost float[:,:] initial_conditions, 
+>>>>>>> new argument for initial conditions passed, change first three cols of flowveldepth:src/python_routing_v02/mc_reach.pyx
     bint assume_short_ts=False):
     """
     Compute network
@@ -164,6 +168,10 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    
+    flowveldepth[:,0] = initial_conditions[:,0] # initial flow
+    flowveldepth[:,1] = initial_conditions[:,1] # initial vel
+    flowveldepth[:,2] = initial_conditions[:,2] # initial depth
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
