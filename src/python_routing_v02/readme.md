@@ -4,8 +4,10 @@ _TL;DR_ If we order the reaches for JIT execution, we can execute each order as
 an embarrassingly parallel set across the whole supernetwork, (All the rivers together).
 So we can throw a batch of those from the entire network at the threading and let it grind through everything.
 
-The following datasets are debug outputs from the master version of the model
-I have manually 'prettified' the output with indentation to show the ordering we want to get out of the process. See below for examples of modified output. 
+The following datasets are debug outputs from the master version of the model.
+I have manually 'prettified' the output with indentation to show the ordering 
+we want to get out of the process. 
+See further below for examples of modified output. 
 
 ``` json
 {
