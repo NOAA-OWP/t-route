@@ -221,7 +221,7 @@ def _handle_args():
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
-        help="OR... please enter the path of a .yaml file containing a custom supernetwork information. See test/input/json/CustomInput.yaml for an example.",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See test/input/json/CustomInput.yaml for an example.",
     )
     parser.add_argument(
         "--parallel",
@@ -250,7 +250,7 @@ def _handle_args():
     # TODO: This check is probably no longer needed
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
-            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .yaml file"
+            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .yaml or .json file"
         )
 
     return args
@@ -1110,7 +1110,8 @@ def main():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nio.read_custom_input_yaml(custom_input_file)
+        ) = nio.read_custom_input(custom_input_file)
+        
         break_network_at_waterbodies = run_parameters.get(
             "break_network_at_waterbodies", None
         )
