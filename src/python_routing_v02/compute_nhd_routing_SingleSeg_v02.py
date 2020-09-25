@@ -230,8 +230,9 @@ def main():
     subreaches = {}
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
+        subreaches[tw] = nhd_network.dfs_decomposition_depth2(net, path_func)
 
+    import pdb; pdb.set_trace()
     if verbose:
         print("reach organization complete")
     if showtiming:

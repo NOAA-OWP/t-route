@@ -171,6 +171,117 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     # return node not in waterbody_nodes and len(network[node]) == 1
 
 
+def dfs_decomposition_depth(N, path_func, source_nodes=None):
+    """
+    Decompose N into a list of simple segments.
+    The order of these segments are suitable to be parallelized as we guarantee that for any segment,
+    the predecessor segments appear before it in the list.
+
+    This is accomplished by a depth first search on the reversed graph and
+    finding the path from node to its nearest junction.
+
+    Arguments:
+        N (Dict[obj: List[obj]]): The graph
+
+    Returns:
+        [List]: List of paths to be processed in order.
+    """
+    if source_nodes is None:
+        source_nodes = headwaters(N)
+
+    paths_dict = {}
+    paths_dict2 = {}
+    paths = []
+    visited = set()
+    for h in source_nodes:
+        stack = [(h, iter(N[h]))]
+        while stack:
+            node, children = stack[-1]
+            try:
+                child = next(children)
+                if child not in visited:
+                    # Check to see if we are at a leaf
+                    if child in N:
+                        stack.append((child, iter(N[child])))
+                    visited.add(child)
+            except StopIteration:
+                node, _ = stack.pop()
+                path = [node]
+
+                for n, _ in reversed(stack):
+                    if path_func(path, n):
+                        path.append(n)
+                    else:
+                        break
+                paths.append(path)
+                segment_seq_order = len(stack)
+                paths_dict[node] = {}
+                paths_dict[node]["path"] = path
+                paths_dict[node]["order"] = segment_seq_order
+                paths_dict2.setdefault(segment_seq_order, []).append(path)
+                if len(path) > 1:
+                    # Only pop ancestor nodes that were added by path_func.
+                    del stack[-(len(path) - 1) :]
+
+    return paths, paths_dict, paths_dict2
+
+
+def dfs_decomposition_depth2(N, path_func, source_nodes=None):
+    """
+    Decompose N into a list of simple segments.
+    The order of these segments are suitable to be parallelized as we guarantee that for any segment,
+    the predecessor segments appear before it in the list.
+
+    This is accomplished by a depth first search on the reversed graph and
+    finding the path from node to its nearest junction.
+
+    Arguments:
+        N (Dict[obj: List[obj]]): The graph
+
+    Returns:
+        [List]: List of paths to be processed in order.
+    """
+    if source_nodes is None:
+        source_nodes = headwaters(N)
+
+    paths = []
+    paths_dict = {}
+    reach_seq_order = 0
+    visited = set()
+    junctions = set()
+    for h in source_nodes:
+        stack = [(h, iter(N[h]))]
+        while stack:
+            node, children = stack[-1]
+            if not path_func(None, node) and (node not in junctions):
+                reach_seq_order += 1
+                junctions.add(node)
+            try:
+                child = next(children)
+                if child not in visited:
+                    # Check to see if we are at a leaf
+                    if child in N:
+                        stack.append((child, iter(N[child])))
+                    visited.add(child)
+            except StopIteration:
+                node, _ = stack.pop()
+                path = [node]
+
+                for n, _ in reversed(stack):
+                    if path_func(path, n):
+                        path.append(n)
+                    else:
+                        break
+                reach_seq_order -= 1
+                paths_dict.setdefault(reach_seq_order, []).append(path)
+                paths.append(path)
+                if len(path) > 1:
+                    # Only pop ancestor nodes that were added by path_func.
+                    del stack[-(len(path) - 1) :]
+
+    return paths, paths_dict
+
+
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
     Decompose N into a list of simple segments.
