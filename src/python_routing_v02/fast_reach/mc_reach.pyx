@@ -134,8 +134,8 @@ cpdef object column_mapper(object src_cols):
     return rv
 
 
-cpdef object compute_network(int nsteps, list reaches, dict connections, 
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
+cpdef object compute_network(int nsteps, list reaches, object connections, 
+    const long[:] parameter_idx, object[:] parameter_cols, const float[:,:] parameter_values, 
     const float[:, :] qlat_values,
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
     bint assume_short_ts=False):
@@ -146,24 +146,24 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         nsteps (int): number of time steps
         reaches (list): List of reaches
         connections (dict): Network
-        data_idx (ndarray): a 1D sorted index for data_values
-        data_values (ndarray): a 2D array of data inputs (nodes x variables)
-        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        parameter_idx (ndarray): a 1D sorted index for parameter_values
+        parameter_values (ndarray): a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with parameter_values
         assume_short_ts (bool): Assume short time steps (quc = qup)
 
     Notes:
         Array dimensions are checked as a precondition to this method.
     """
     # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0] or qlat_values.shape[1] != nsteps:
-        raise ValueError(f"Qlat shape is incorrect: expected ({data_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
-    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
-        raise ValueError(f"data_values shape mismatch")
+    if qlat_values.shape[0] != parameter_idx.shape[0] or qlat_values.shape[1] != nsteps:
+        raise ValueError(f"Qlat shape is incorrect: expected ({parameter_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
+    if parameter_values.shape[0] != parameter_idx.shape[0] or parameter_values.shape[1] != parameter_cols.shape[0]:
+        raise ValueError(f"parameter_values shape mismatch")
 
     # flowveldepth is 2D float array that holds results
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
-    # rows: indexed by data_idx
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    # rows: indexed by parameter_idx
+    cdef float[:,::1] flowveldepth = np.zeros((parameter_idx.shape[0], nsteps * 3), dtype='float32')
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -176,7 +176,8 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     cdef float[:, ::1] out_buf, out_view
 
     # Source columns
-    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
+    #cdef Py_ssize_t[:] scols = np.array(column_mapper(parameter_cols), dtype=np.intp)
+    cdef Py_ssize_t[:] scols = np.array(column_mapper(parameter_cols), dtype=np.intp)
     
     # hard-coded column. Find a better way to do this
     cdef int buf_cols = 13
@@ -222,7 +223,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         # set the length (must be negative to indicate reach boundary)
         reach_cache[ireach_cache] = -reachlen
         ireach_cache += 1
-        bf_results = binary_find(data_idx, reach)
+        bf_results = binary_find(parameter_idx, reach)
         for bidx in bf_results:
             reach_cache[ireach_cache] = bidx
             ireach_cache += 1
@@ -230,7 +231,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         usreach_cache[iusreach_cache] = -usreachlen
         iusreach_cache += 1
         if usreachlen > 0:
-            for bidx in binary_find(data_idx, connections[reach[0]]):
+            for bidx in binary_find(parameter_idx, connections[reach[0]]):
                 usreach_cache[iusreach_cache] = bidx
                 iusreach_cache += 1
 
@@ -272,7 +273,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
                 fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
                 for i in range(scols.shape[0]):
-                        fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                        fill_buffer_column(srows, scols[i], drows, i + 1, parameter_values, buf_view)
                     # fill buffer with qdp, depthp, velp
                 if timestep > 0:
                     fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
@@ -299,4 +300,4 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 iusreach_cache += usreachlen
                 
             timestep += 1
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+    return np.asarray(parameter_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
