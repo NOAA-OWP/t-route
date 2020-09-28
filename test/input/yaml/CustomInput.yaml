@@ -1,65 +1,106 @@
 ---
+#initial input parameters
 run_parameters:
-  parallel_compute: false
-  verbose: true
-  showtiming: true
-  debuglevel: 0
-  break_network_at_waterbodies: true
-  assume_short_ts: true
-  qts_subdivisions: 12
-  dt: 300
-  nts: 288
+    parallel_compute: false
+    verbose: true
+    showtiming: true
+    debuglevel: 0
+    break_network_at_waterbodies: true
+    assume_short_ts: true
+    qts_subdivisions: 12
+    dt: 300
+    nts: 288
+    #Use the parallel computation engine (omit flag for serial computation)
+    #Verbose output (leave blank for quiet output)
+    #Set the showtiming (omit flag for no timing information)
+    #Set the debuglevel
+    #Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)
+    #Use the previous timestep value for upstream flow
+    #number of simulation timesteps per qlateral timestep
+    #Set the default timestep length
+    #Set the default timestep length
+    #Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.
+#output file parameters
 output_parameters:
-  write_csv_output: false
-  write_nc_output: true
+    #output location for csv file 
+    csv_output:
+        csv_output_folder: "../../test/output/text"
+        csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
+    #out location for nc file
+    nc_output_folder: "../../test/output/text"
+#data column assignment inside supernetwork_parameters
 supernetwork_parameters:
-  title_string: Custom Input Example (using Pocono Test Example datafile)
-  geo_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-  key_col: 16
-  downstream_col: 22
-  length_col: 3
-  manningn_col: 18
-  manningncc_col: 19
-  slope_col: 8
-  bottomwidth_col: 0
-  waterbody_col: 6
-  waterbody_null_code: -9999
-  topwidth_col: 9
-  topwidthcc_col: 10
-  MusK_col: 4
-  MusX_col: 5
-  ChSlp_col: 1
-  terminal_code: 0
-  driver_string: NetCDF
-  layer_string: 0
+    title_string: Custom Input Example (using Pocono Test Example datafile)
+    geo_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+    key_col: 16
+    downstream_col: 22
+    length_col: 3
+    manningn_col: 18
+    manningncc_col: 19
+    slope_col: 8
+    bottomwidth_col: 0
+    waterbody_col: 6
+    waterbody_null_code: -9999
+    topwidth_col: 9
+    topwidthcc_col: 10
+    MusK_col: 4
+    MusX_col: 5
+    ChSlp_col: 1
+    terminal_code: 0
+    driver_string: NetCDF
+    layer_string: 0
+    # "link",
+    # "to",
+    # "Length",
+    # "n",
+    # "nCC",
+    # "So",
+    # "BtmWdth",
+    # "TopWdth",
+    # "TopWdthCC",
+    # "NHDWaterbodyComID",
+
+    # "MusK",
+    # "MusX",
+    # "ChSlp",
+
+#waterboy parameters and assignments from lake parm file
 waterbody_parameters:
-  level_pool:
-    level_pool_waterbody_parameter_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
-    level_pool_waterbody_id: lake_id
-    level_pool_waterbody_area: LkArea
-    level_pool_weir_elevation: WeirE
-    level_pool_waterbody_max_elevation: LkMxE
-    level_pool_outfall_weir_coefficient: WeirC
-    level_pool_outfall_weir_length: WeirL
-    level_pool_overall_dam_length: DamL
-    level_pool_orifice_elevation: OrificeE
-    level_pool_orifice_coefficient: OrificeC
-    level_pool_orifice_area: OrificeA
+    level_pool:
+        #WRF-Hydro lake parm file
+        level_pool_waterbody_parameter_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_id: lake_id
+        level_pool_waterbody_area: LkArea
+        level_pool_weir_elevation: WeirE
+        level_pool_waterbody_max_elevation: LkMxE
+        level_pool_outfall_weir_coefficient: WeirC
+        level_pool_outfall_weir_length: WeirL
+        level_pool_overall_dam_length: DamL
+        level_pool_orifice_elevation: OrificeE
+        level_pool_orifice_coefficient: OrificeC
+        level_pool_orifice_area: OrificeA
+#WRF-Hydro output file 
 forcing_parameters:
-  qlat_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
-  qlat_file_pattern_filter: "/*.CHRTOUT_DOMAIN1"
-  qlat_file_index_col: feature_id
-  qlat_file_value_col: q_lateral
+    qlat_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+    qlat_file_pattern_filter: "/*.CHRTOUT_DOMAIN1"
+    qlat_file_index_col: feature_id
+    qlat_file_value_col: q_lateral
+#WRF-Hydro restart files
 restart_parameters:
-  wrf_hydro_channel_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1"
-  wrf_hydro_channel_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-  wrf_hydro_channel_ID_crosswalk_file_field_name: link
-  wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
-  wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
-  wrf_hydro_channel_restart_depth_flow_field_name: hlink
-  wrf_hydro_waterbody_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1"
-  wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
-  wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
-  wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-  wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+    #WRF-Hydro channels restart file
+    wrf_hydro_channel_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1"
+    #WRF-Hydro channels ID crosswalk file
+    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+    wrf_hydro_channel_ID_crosswalk_file_field_name: link
+    wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+    wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+    wrf_hydro_channel_restart_depth_flow_field_name: hlink
+    #WRF-Hydro waterbodies restart file
+    wrf_hydro_waterbody_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN1"
+    #WRF-Hydro waterbody ID crosswalk file
+    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    #WRF-Hydro waterbody crosswalk filter file
+    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 
