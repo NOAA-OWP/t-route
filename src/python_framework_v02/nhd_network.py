@@ -173,6 +173,10 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
 
 def dfs_decomposition_depth(N, path_func, source_nodes=None):
     """
+    NOT USED -- experiemental modification to dfs_decomposition
+    Returns segment-based depth and could be useful later. 
+
+
     Decompose N into a list of simple segments.
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
     the predecessor segments appear before it in the list.
@@ -228,6 +232,7 @@ def dfs_decomposition_depth(N, path_func, source_nodes=None):
 
 def dfs_decomposition_depth2(N, path_func, source_nodes=None):
     """
+    NOT USED -- experiemental modification to dfs_decomposition
     Decompose N into a list of simple segments.
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
     the predecessor segments appear before it in the list.
@@ -244,7 +249,7 @@ def dfs_decomposition_depth2(N, path_func, source_nodes=None):
     if source_nodes is None:
         source_nodes = headwaters(N)
 
-    paths_dict = {}
+    paths_dict = defaultdict(list)
     reach_seq_order = 0
     visited = set()
     junctions = set()
@@ -272,7 +277,7 @@ def dfs_decomposition_depth2(N, path_func, source_nodes=None):
                     else:
                         break
                 reach_seq_order -= 1
-                paths_dict.setdefault(reach_seq_order, []).append(path)
+                paths_dict[reach_seq_order].append(path)
                 if len(path) > 1:
                     # Only pop ancestor nodes that were added by path_func.
                     del stack[-(len(path) - 1) :]
@@ -365,12 +370,10 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
         load_dict
     """
 
-    load_dict = {}
+    load_dict = defaultdict(list)
 
     for t in tuple_list:
-        k = t[key_idx]
-        v = t[val_idx]
-        load_dict.setdefault(k, []).append(v)
+        load_dict[t[key_idx]].append(t[val_idx])
 
     return load_dict
 
