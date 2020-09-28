@@ -244,7 +244,6 @@ def dfs_decomposition_depth2(N, path_func, source_nodes=None):
     if source_nodes is None:
         source_nodes = headwaters(N)
 
-    paths = []
     paths_dict = {}
     reach_seq_order = 0
     visited = set()
@@ -274,12 +273,106 @@ def dfs_decomposition_depth2(N, path_func, source_nodes=None):
                         break
                 reach_seq_order -= 1
                 paths_dict.setdefault(reach_seq_order, []).append(path)
-                paths.append(path)
                 if len(path) > 1:
                     # Only pop ancestor nodes that were added by path_func.
                     del stack[-(len(path) - 1) :]
 
-    return paths, paths_dict
+    return paths_dict
+
+
+def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
+    """
+    Decompose network into lists of simply connected nodes
+    For the routing problem, these sets of nodes are segments 
+    in a reach terminated by a junction, headwater, or tailwater.
+    
+    The function also identfies the network depth, by reach, 
+    of each reach and the output of the function is a list of tuples 
+    in the form: (network depth, [reach list]).
+
+    The order of these reaches are suitable to be parallelized as 
+    we guarantee that 
+      1) for any segment withn a reach, the predecessor segments
+      appear before it in the reach; and
+      2) for any reach, the predecessor reaches appear before it 
+      in the main list.
+
+    This is accomplished by a depth first search on the reversed 
+    graph. The depth first search function logs the path from 
+    each node to any network break defined by the `path_func`. 
+    The network depth is counted as the number of successive breaks.
+
+    Arguments:
+        N (Dict[obj: List[obj]]): The graph
+        path_func: partial function defining the Network breaking function
+        source_nodes: starting points (default use the top of the network,
+        which, for the reversed network passed to this function, 
+        is the set of tailwaters...)
+
+    Returns:
+        [List(tuple)]: List of tuples of (depth, path) to be processed 
+        in order.
+    """
+    if source_nodes is None:
+        source_nodes = headwaters(N)
+
+    path_tuples = []
+    reach_seq_order = 0
+    visited = set()
+    junctions = set()
+    for h in source_nodes:
+        stack = [(h, iter(N[h]))]
+        while stack:
+            node, children = stack[-1]
+            if not path_func(None, node) and (node not in junctions):
+                reach_seq_order += 1
+                junctions.add(node)
+            try:
+                child = next(children)
+                if child not in visited:
+                    # Check to see if we are at a leaf
+                    if child in N:
+                        stack.append((child, iter(N[child])))
+                    visited.add(child)
+            except StopIteration:
+                node, _ = stack.pop()
+                path = [node]
+
+                for n, _ in reversed(stack):
+                    if path_func(path, n):
+                        path.append(n)
+                    else:
+                        break
+                reach_seq_order -= 1
+                path_tuples.append((reach_seq_order, path))
+                if len(path) > 1:
+                    # Only pop ancestor nodes that were added by path_func.
+                    del stack[-(len(path) - 1) :]
+
+    return path_tuples
+
+
+def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
+    """
+    Append data values from a set of tuples of form (key, data) 
+    into a dictionary of the form {key: [list of data values]}.
+    Arguments: 
+        tuple_list
+        key_idx
+        val_idx
+
+    Returns:
+        load_dict
+    """
+
+    load_dict = {}
+
+    for t in tuple_list:
+        k = t[key_idx]
+        v = t[val_idx]
+        load_dict.setdefault(k, []).append(v)
+
+    return load_dict
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):

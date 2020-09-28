@@ -227,12 +227,27 @@ def main():
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
-    subreaches = {}
+    reaches = {}
+    ordered_reaches = {}
+    tuple_reaches = {}
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        subreaches[tw] = nhd_network.dfs_decomposition_depth2(net, path_func)
+        reaches[tw]         = nhd_network.dfs_decomposition(net, path_func)
+        ordered_reaches[tw] = nhd_network.dfs_decomposition_depth2(net, path_func)
+        tuple_reaches[tw] = nhd_network.dfs_decomposition_depth_tuple(net, path_func)
+    
+    overall_tuple_reaches = []
+    for _, tuple_list in tuple_reaches.items():
+        overall_tuple_reaches.extend(tuple_list)
 
-    import pdb; pdb.set_trace()
+    overall_ordered_reaches = nhd_network.tuple_with_orders_into_dict(overall_tuple_reaches)
+    rconn_ordered = {}
+    for o in range(max(overall_ordered_reaches.keys()),0,-1):
+        rconn_ordered[o] = {}
+        for reach in overall_ordered_reaches[o]:
+            for segment in reach:
+                rconn_ordered[o][segment] = rconn[segment]
+
     if verbose:
         print("reach organization complete")
     if showtiming:
@@ -251,7 +266,7 @@ def main():
     if parallel_compute:
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
-            for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            for twi, (tw, reach) in enumerate(reaches.items(), 1):
                 r = list(chain.from_iterable(reach))
                 data_sub = data.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -266,13 +281,16 @@ def main():
                         data_sub.columns.values,
                         data_sub.values,
                         qlat_sub.values,
+                        assume_short_ts,
                     )
                 )
             results = parallel(jobs)
     else:
         results = []
-        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = list(chain.from_iterable(reach))
+        import pdb; pdb.set_trace()
+        for o in range(max(overall_ordered_reaches.keys()),0,-1):
+            reach_list = overall_ordered_reaches[o] 
+            r = list(chain.from_iterable(reach_list))
             data_sub = data.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
@@ -280,12 +298,13 @@ def main():
             results.append(
                 mc_reach.compute_network(
                     nts,
-                    reach,
-                    subnets[tw],
+                    reach_list,
+                    rconn_ordered[o],
                     data_sub.index.values,
                     data_sub.columns.values,
                     data_sub.values,
                     qlat_sub.values,
+                    assume_short_ts,
                 )
             )
 
