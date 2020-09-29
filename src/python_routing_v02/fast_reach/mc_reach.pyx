@@ -266,10 +266,6 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
-                for i in range(usreachlen):
-                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
-                    if timestep > 0:
-                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
