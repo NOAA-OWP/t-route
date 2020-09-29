@@ -138,7 +138,9 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     const long[:] parameter_idx, object[:] parameter_cols, const float[:,:] parameter_values, 
     const float[:, :] qlat_values,
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
-    bint assume_short_ts=False):
+    bint carry_upstream_values=False,
+    bint assume_short_ts=False,
+):
     """
     Compute network
 

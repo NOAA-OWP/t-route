@@ -385,7 +385,6 @@ def main():
                     assume_short_ts,
                 )
             )
-        results = parallel(jobs)
 
     fdv_columns = pd.MultiIndex.from_product(
         [range(nts), ["q", "v", "d"]]
