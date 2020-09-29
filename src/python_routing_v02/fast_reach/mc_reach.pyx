@@ -191,7 +191,8 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
     # For a given reach, get number of upstream nodes
-    cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
+    cdef list usreach_sizes = [0 for reach in reaches]
+    # cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
 
     cdef:
         list reach  # Temporary variable
@@ -261,6 +262,10 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
 
                 qup = 0.0
                 quc = 0.0
+                for i in range(usreachlen):
+                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    if timestep > 0:
+                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                 for i in range(usreachlen):
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
                     if timestep > 0:

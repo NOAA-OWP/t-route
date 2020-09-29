@@ -264,10 +264,12 @@ def main():
 
     parallel_compute = args.parallel_compute
     if parallel_compute:
+        print("Executing in Parallel mode")
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
-            for twi, (tw, reach) in enumerate(reaches.items(), 1):
-                r = list(chain.from_iterable(reach))
+            for o in range(max(overall_ordered_reaches.keys()),0,-1):
+                reach_list = overall_ordered_reaches[o] 
+                r = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
@@ -275,8 +277,8 @@ def main():
                 jobs.append(
                     delayed(mc_reach.compute_network)(
                         nts,
-                        reach,
-                        subnets[tw],
+                        reach_list,
+                        rconn_ordered[o],
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
@@ -286,8 +288,8 @@ def main():
                 )
             results = parallel(jobs)
     else:
+        print("Executing in Serial mode")
         results = []
-        import pdb; pdb.set_trace()
         for o in range(max(overall_ordered_reaches.keys()),0,-1):
             reach_list = overall_ordered_reaches[o] 
             r = list(chain.from_iterable(reach_list))
