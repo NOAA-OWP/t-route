@@ -44,10 +44,32 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--nts",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+        type=int,
+    )
+    parser.add_argument(
+        "--sts",
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
+    )
+    parser.add_argument(
+        "--parallel",
+        help="Use the parallel computation engine (omit flag for serial computation)",
+        dest="parallel_compute",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--cpu-pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        type=int,
+        default=None,
     )
     parser.add_argument(
         "-o",
@@ -129,7 +151,7 @@ def main():
 
     args = _handle_args()
 
-    nts = 144
+    nts = args.nts
     debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
@@ -168,28 +190,28 @@ def main():
     )
 
     cols = network_data["columns"]
-    data = nhd_io.read(network_data["geo_file_path"])
-    data = data[list(cols.values())]
-    data = data.set_index(cols["key"])
+    param_df = nhd_io.read(network_data["geo_file_path"])
+    param_df = param_df[list(cols.values())]
+    param_df = param_df.set_index(cols["key"])
 
     if "mask_file_path" in network_data:
         data_mask = nhd_io.read_mask(
             network_data["mask_file_path"],
             layer_string=network_data["mask_layer_string"],
         )
-        data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
+        param_df = param_df.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
-    data = data.sort_index()
-    data = nhd_io.replace_downstreams(data, cols["downstream"], 0)
+    param_df = param_df.sort_index()
+    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     if args.ql:
         qlats = nhd_io.read_qlat(args.ql)
     else:
-        qlats = constant_qlats(data, nts, 10.0)
+        qlats = constant_qlats(param_df, nts, 10.0)
 
-    connections = nhd_network.extract_connections(data, cols["downstream"])
+    connections = nhd_network.extract_connections(param_df, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
-        data, cols["waterbody"], network_data["waterbody_null_code"]
+        param_df, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
     if verbose:
@@ -205,10 +227,26 @@ def main():
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
-    subreaches = {}
+    reaches = {}
+    ordered_reaches = {}
+    tuple_reaches = {}
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
+        reaches[tw]         = nhd_network.dfs_decomposition(net, path_func)
+        ordered_reaches[tw] = nhd_network.dfs_decomposition_depth2(net, path_func)
+        tuple_reaches[tw] = nhd_network.dfs_decomposition_depth_tuple(net, path_func)
+    
+    overall_tuple_reaches = []
+    for _, tuple_list in tuple_reaches.items():
+        overall_tuple_reaches.extend(tuple_list)
+
+    overall_ordered_reaches = nhd_network.tuple_with_orders_into_dict(overall_tuple_reaches)
+    rconn_ordered = {}
+    for o in range(max(overall_ordered_reaches.keys()),0,-1):
+        rconn_ordered[o] = {}
+        for reach in overall_ordered_reaches[o]:
+            for segment in reach:
+                rconn_ordered[o][segment] = rconn[segment]
 
     if verbose:
         print("reach organization complete")
@@ -218,19 +256,19 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    data["dt"] = 300.0
-    data = data.rename(columns=nnu.reverse_dict(cols))
-    data = data.astype("float32")
+    param_df["dt"] = 300.0
+    param_df = param_df.rename(columns=nnu.reverse_dict(cols))
+    param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
-    parallelcompute = False
-    if parallelcompute:
-        with Parallel(n_jobs=-1, backend="threading") as parallel:
+    parallel_compute = args.parallel_compute
+    if parallel_compute:
+        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
-            for twi, (tw, reach) in enumerate(subreaches.items(), 1):
+            for twi, (tw, reach) in enumerate(reaches.items(), 1):
                 r = list(chain.from_iterable(reach))
-                data_sub = data.loc[
+                param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
@@ -239,30 +277,34 @@ def main():
                         nts,
                         reach,
                         subnets[tw],
-                        data_sub.index.values,
-                        data_sub.columns.values,
-                        data_sub.values,
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
                         qlat_sub.values,
+                        assume_short_ts,
                     )
                 )
             results = parallel(jobs)
     else:
         results = []
-        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = list(chain.from_iterable(reach))
-            data_sub = data.loc[
+        import pdb; pdb.set_trace()
+        for o in range(max(overall_ordered_reaches.keys()),0,-1):
+            reach_list = overall_ordered_reaches[o] 
+            r = list(chain.from_iterable(reach_list))
+            param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(
                 mc_reach.compute_network(
                     nts,
-                    reach,
-                    subnets[tw],
-                    data_sub.index.values,
-                    data_sub.columns.values,
-                    data_sub.values,
+                    reach_list,
+                    rconn_ordered[o],
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
                     qlat_sub.values,
+                    assume_short_ts,
                 )
             )
 
