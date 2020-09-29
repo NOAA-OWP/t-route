@@ -60,16 +60,17 @@ def _handle_args():
     )
     parser.add_argument(
         "--parallel",
+        nargs="?",
         help="Use the parallel computation engine (omit flag for serial computation)",
         dest="parallel_compute",
-        action="store_true",
+        const="type1",
     )
     parser.add_argument(
         "--cpu-pool",
         help="Assign the number of cores to multiprocess across.",
         dest="cpu_pool",
         type=int,
-        default=None,
+        default="-1",
     )
     parser.add_argument(
         "-o",
@@ -263,8 +264,33 @@ def main():
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     parallel_compute = args.parallel_compute
-    if parallel_compute:
-        print("Executing in Parallel mode")
+    if parallel_compute=="type1":
+        print("Executing in Parallel type 1 mode (1 thread per independent basin)")
+        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
+            jobs = []
+            for twi, (tw, reach) in enumerate(reaches.items(), 1):
+                r = list(chain.from_iterable(reach))
+                param_df_sub = param_df.loc[
+                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
+                jobs.append(
+                    delayed(mc_reach.compute_network)(
+                        nts,
+                        reach,
+                        subnets[tw],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        assume_short_ts,
+                    )
+                )
+            results = parallel(jobs)
+
+    elif parallel_compute=="type2":
+        print("Executing in Parallel type 2 mode (thread pool shared across reaches)")
+        print("Communication between reaches handled by python framework")
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
             for o in range(max(overall_ordered_reaches.keys()),0,-1):
@@ -287,8 +313,36 @@ def main():
                     )
                 )
             results = parallel(jobs)
-    else:
-        print("Executing in Serial mode")
+
+    elif parallel_compute=="type3":
+        print("Executing in Parallel type 2 mode (thread pool shared across reaches)")
+        print("Communication between reaches handled by cython framework")
+        print("NOT YET IMPLEMENTED -- Falling back to Python Handling")
+        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
+            jobs = []
+            for o in range(max(overall_ordered_reaches.keys()),0,-1):
+                reach_list = overall_ordered_reaches[o] 
+                r = list(chain.from_iterable(reach_list))
+                param_df_sub = param_df.loc[
+                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
+                jobs.append(
+                    delayed(mc_reach.compute_network)(
+                        nts,
+                        reach_list,
+                        rconn_ordered[o],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        assume_short_ts,
+                    )
+                )
+            results = parallel(jobs)
+
+    elif parallel_compute == "serial_reach":
+        print("Executing in Reach-centric Serial mode")
         results = []
         for o in range(max(overall_ordered_reaches.keys()),0,-1):
             reach_list = overall_ordered_reaches[o] 
@@ -309,6 +363,29 @@ def main():
                     assume_short_ts,
                 )
             )
+
+    else:
+        print("Executing in Network-centric Serial mode")
+        results = []
+        for twi, (tw, reach) in enumerate(reaches.items(), 1):
+            r = list(chain.from_iterable(reach))
+            param_df_sub = param_df.loc[
+                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+            ].sort_index()
+            qlat_sub = qlats.loc[r].sort_index()
+            results.append(
+                mc_reach.compute_network(
+                    nts,
+                    reach,
+                    subnets[tw],
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
+                    qlat_sub.values,
+                    assume_short_ts,
+                )
+            )
+        results = parallel(jobs)
 
     fdv_columns = pd.MultiIndex.from_product(
         [range(nts), ["q", "v", "d"]]
