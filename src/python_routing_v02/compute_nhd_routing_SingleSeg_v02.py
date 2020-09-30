@@ -63,7 +63,7 @@ def _handle_args():
         nargs="?",
         help="Use the parallel computation engine (omit flag for serial computation)",
         dest="parallel_compute",
-        const="type1",
+        const="type3",
     )
     parser.add_argument(
         "--cpu-pool",
@@ -228,24 +228,35 @@ def main():
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
-    reaches = {}
+    reaches_bytw = {}
     ordered_reaches = {}
     tuple_reaches = {}
     for tw, net in subnets.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        reaches[tw]         = nhd_network.dfs_decomposition(net, path_func)
+        reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
         ordered_reaches[tw] = nhd_network.dfs_decomposition_depth2(net, path_func)
         tuple_reaches[tw] = nhd_network.dfs_decomposition_depth_tuple(net, path_func)
     
+    #TODO: instead of operating on the overall_ordered_reaches_list below, see if 
+    # we can directly use this list of tuples directly, which contains all the ordering
+    # information otherwise.
     overall_tuple_reaches = []
     for _, tuple_list in tuple_reaches.items():
         overall_tuple_reaches.extend(tuple_list)
 
-    overall_ordered_reaches = nhd_network.tuple_with_orders_into_dict(overall_tuple_reaches)
+    overall_ordered_reaches_dict = nhd_network.tuple_with_orders_into_dict(overall_tuple_reaches)
+    max_order = max(overall_ordered_reaches_dict.keys())
+
+    overall_ordered_reaches_list = []
+    ordered_reach_count = []
+    for o in range(max_order,-1,-1):
+        overall_ordered_reaches_list.extend(overall_ordered_reaches_dict[o])
+        ordered_reach_count.append(len(overall_ordered_reaches_dict[o]))
+
     rconn_ordered = {}
-    for o in range(max(overall_ordered_reaches.keys()),0,-1):
+    for o in range(max(overall_ordered_reaches_dict.keys()),0,-1):
         rconn_ordered[o] = {}
-        for reach in overall_ordered_reaches[o]:
+        for reach in overall_ordered_reaches_dict[o]:
             for segment in reach:
                 rconn_ordered[o][segment] = rconn[segment]
 
@@ -268,8 +279,8 @@ def main():
         print("Executing in Parallel type 1 mode (1 thread per independent basin)")
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
-            for twi, (tw, reach) in enumerate(reaches.items(), 1):
-                r = list(chain.from_iterable(reach))
+            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                r = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
@@ -277,12 +288,13 @@ def main():
                 jobs.append(
                     delayed(mc_reach.compute_network)(
                         nts,
-                        reach,
+                        reach_list,
                         subnets[tw],
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         qlat_sub.values,
+                        [len(reach_list)],
                         assume_short_ts,
                     )
                 )
@@ -293,8 +305,8 @@ def main():
         print("Communication between reaches handled by python framework")
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
             jobs = []
-            for o in range(max(overall_ordered_reaches.keys()),0,-1):
-                reach_list = overall_ordered_reaches[o] 
+            for o in range(max_order,0,-1):
+                reach_list = overall_ordered_reaches_dict[o] 
                 r = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -309,43 +321,40 @@ def main():
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         qlat_sub.values,
+                        [len(reach_list)],
                         assume_short_ts,
                     )
                 )
             results = parallel(jobs)
 
     elif parallel_compute=="type3":
-        print("Executing in Parallel type 2 mode (thread pool shared across reaches)")
-        print("Communication between reaches handled by cython framework")
-        print("NOT YET IMPLEMENTED -- Falling back to Python Handling")
-        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
-            jobs = []
-            for o in range(max(overall_ordered_reaches.keys()),0,-1):
-                reach_list = overall_ordered_reaches[o] 
-                r = list(chain.from_iterable(reach_list))
-                param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-                ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                jobs.append(
-                    delayed(mc_reach.compute_network)(
-                        nts,
-                        reach_list,
-                        rconn_ordered[o],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
-                        qlat_sub.values,
-                        assume_short_ts,
-                    )
-                )
-            results = parallel(jobs)
+        print("Executing in Parallel type 3 mode:")
+        print("(type3 = thread pool shared across reaches and ")
+        print("communication between reaches handled by cython framework)")
+
+        jobs = []
+        r = list(chain.from_iterable(overall_ordered_reaches_list))
+        param_df_sub = param_df.loc[
+            r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+        ].sort_index()
+        qlat_sub = qlats.loc[r].sort_index()
+        results = mc_reach.compute_network(
+            nts,
+            overall_ordered_reaches_list,
+            rconn,
+            param_df_sub.index.values,
+            param_df_sub.columns.values,
+            param_df_sub.values,
+            qlat_sub.values,
+            ordered_reach_count,
+            assume_short_ts,
+        )
 
     elif parallel_compute == "serial_reach":
         print("Executing in Reach-centric Serial mode")
         results = []
-        for o in range(max(overall_ordered_reaches.keys()),0,-1):
-            reach_list = overall_ordered_reaches[o] 
+        for o in range(max_order,0,-1):
+            reach_list = overall_ordered_reaches_dict[o] 
             r = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -360,6 +369,7 @@ def main():
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     qlat_sub.values,
+                    [len(reach_list)],
                     assume_short_ts,
                 )
             )
@@ -367,8 +377,8 @@ def main():
     else:
         print("Executing in Network-centric Serial mode")
         results = []
-        for twi, (tw, reach) in enumerate(reaches.items(), 1):
-            r = list(chain.from_iterable(reach))
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            r = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
@@ -376,12 +386,13 @@ def main():
             results.append(
                 mc_reach.compute_network(
                     nts,
-                    reach,
+                    reach_list,
                     subnets[tw],
                     param_df_sub.index.values,
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     qlat_sub.values,
+                    [len(reach_list)],
                     assume_short_ts,
                 )
             )
@@ -389,9 +400,14 @@ def main():
     fdv_columns = pd.MultiIndex.from_product(
         [range(nts), ["q", "v", "d"]]
     ).to_flat_index()
-    flowveldepth = pd.concat(
-        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
-    )
+    if parallel_compute == "type3":
+        #TODO: Why does this not just work with the else-condition code?
+        #Testing with the 'type3' execution yields baffling results... but this works for now.
+        flowveldepth = pd.DataFrame(results[1], index=results[0], columns=fdv_columns)
+    else:
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+        )
     flowveldepth = flowveldepth.sort_index()
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)

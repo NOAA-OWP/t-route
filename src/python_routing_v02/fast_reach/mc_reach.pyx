@@ -138,7 +138,7 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     const long[:] parameter_idx, object[:] parameter_cols, const float[:,:] parameter_values, 
     const float[:, :] qlat_values,
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
-    bint carry_upstream_values=False,
+    list reach_count=[],
     bint assume_short_ts=False,
 ):
     """
@@ -193,8 +193,8 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
     # For a given reach, get number of upstream nodes
-    cdef list usreach_sizes = [0 for reach in reaches]
-    # cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
+    # cdef list usreach_sizes = [0 for reach in reaches]
+    cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
 
     cdef:
         list reach  # Temporary variable
