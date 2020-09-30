@@ -66,6 +66,7 @@ def replace_downstreams(data, downstream_col, terminal_code):
 
     # Also set negative any nodes in downstream col not in data.index
     new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
+    new_data[downstream_col] = new_data[downstream_col].apply(int)
     return new_data
 
 
