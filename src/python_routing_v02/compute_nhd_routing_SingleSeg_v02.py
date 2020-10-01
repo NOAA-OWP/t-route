@@ -17,12 +17,12 @@ import time
 import numpy as np
 import argparse
 import pathlib
-import logging
 import pandas as pd
 from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
+import logging
 
 
 def _handle_args():
@@ -139,12 +139,8 @@ def main():
     write_output = args.write_output
     assume_short_ts = args.assume_short_ts
 
-    if verbose:
-        root_log.setLevel(logging.DEBUG)
-
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
-    root_log.info("Input folder %s", geo_input_folder)
 
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
@@ -159,7 +155,8 @@ def main():
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
-    root_log.info("creating supernetwork connections set ...")
+    if verbose:
+        logger.warning("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
 
@@ -196,14 +193,16 @@ def main():
         data, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-    root_log.info("supernetwork connections set complete")
+    if verbose:
+        logger.warning("supernetwork connections set complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        logger.warning("... in %s seconds." % (time.time() - start_time))
 
     # STEP 2
     if showtiming:
         start_time = time.time()
-    root_log.info("organizing connections into reaches ...")
+    if verbose:
+        logger.warning("organizing connections into reaches ...")
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
@@ -212,9 +211,10 @@ def main():
         path_func = partial(nhd_network.split_at_junction, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
-    root_log.info("reach organization complete")
+    if verbose:
+        logger.warning("reach organization complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        logger.warning("... in %s seconds." % (time.time() - start_time))
 
     if showtiming:
         start_time = time.time()
@@ -246,7 +246,6 @@ def main():
                         qlat_sub.values,
                     )
                 )
-            root_log.debug("Added %d jobs for %d worker threads", len(jobs), parallel.n_jobs)
             results = parallel(jobs)
     else:
         results = []
@@ -278,18 +277,15 @@ def main():
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)
 
-    root_log.info("ordered reach computation complete")
+    if verbose:
+        logger.warning("ordered reach computation complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        logger.warning("... in %s seconds." % (time.time() - start_time))
 
 
 if __name__ == "__main__":
     args = _handle_args()
-    custom_input_file = args.custom_input_file
-    if custom_input_file:
-        debuglevel = -1 * int(run_parameters.get("debuglevel", 0))
-    else:
-        debuglevel = -1 * int(args.debuglevel)
+    debuglevel = -1 * int(args.debuglevel)
     # create logger
     # logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
     logger = logging.getLogger('log')
@@ -317,4 +313,3 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     main()
-
