@@ -249,16 +249,20 @@ def main():
 
     overall_ordered_reaches_list = []
     ordered_reach_count = []
+    ordered_reach_cache_count = []
     for o in range(max_order,-1,-1):
         overall_ordered_reaches_list.extend(overall_ordered_reaches_dict[o])
         ordered_reach_count.append(len(overall_ordered_reaches_dict[o]))
+        ordered_reach_cache_count.append(sum(len(r) for r in overall_ordered_reaches_dict[o]))
 
     rconn_ordered = {}
+    rconn_ordered_byreach = {}
     for o in range(max(overall_ordered_reaches_dict.keys()),0,-1):
         rconn_ordered[o] = {}
         for reach in overall_ordered_reaches_dict[o]:
             for segment in reach:
                 rconn_ordered[o][segment] = rconn[segment]
+                rconn_ordered_byreach[segment] = rconn[segment]
 
     if verbose:
         print("reach organization complete")
@@ -275,32 +279,7 @@ def main():
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     parallel_compute = args.parallel_compute
-    if parallel_compute=="type1":
-        print("Executing in Parallel type 1 mode (1 thread per independent basin)")
-        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
-            jobs = []
-            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
-                param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-                ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                jobs.append(
-                    delayed(mc_reach.compute_network)(
-                        nts,
-                        reach_list,
-                        subnets[tw],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
-                        qlat_sub.values,
-                        [len(reach_list)],
-                        assume_short_ts,
-                    )
-                )
-            results = parallel(jobs)
-
-    elif parallel_compute=="type2":
+    if parallel_compute=="type2":
         print("Executing in Parallel type 2 mode (thread pool shared across reaches)")
         print("Communication between reaches handled by python framework")
         with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
@@ -321,7 +300,34 @@ def main():
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         qlat_sub.values,
-                        [len(reach_list)],
+                        np.array([len(reach_list)], dtype="int32"),
+                        np.array([sum(len(r) for r in reach_list)], dtype="int32"),
+                        assume_short_ts,
+                    )
+                )
+            results = parallel(jobs)
+
+    elif parallel_compute=="type1":
+        print("Executing in Parallel type 1 mode (1 thread per independent basin)")
+        with Parallel(n_jobs=args.cpu_pool, backend="threading") as parallel:
+            jobs = []
+            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                r = list(chain.from_iterable(reach_list))
+                param_df_sub = param_df.loc[
+                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
+                jobs.append(
+                    delayed(mc_reach.compute_network)(
+                        nts,
+                        reach_list,
+                        subnets[tw],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        np.array([len(reach_list)], dtype="int32"),
+                        np.array([sum(len(r) for r in reach_list)], dtype="int32"),
                         assume_short_ts,
                     )
                 )
@@ -332,7 +338,6 @@ def main():
         print("(type3 = thread pool shared across reaches and ")
         print("communication between reaches handled by cython framework)")
 
-        jobs = []
         r = list(chain.from_iterable(overall_ordered_reaches_list))
         param_df_sub = param_df.loc[
             r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -341,12 +346,13 @@ def main():
         results = mc_reach.compute_network(
             nts,
             overall_ordered_reaches_list,
-            rconn,
+            rconn_ordered_byreach,
             param_df_sub.index.values,
             param_df_sub.columns.values,
             param_df_sub.values,
             qlat_sub.values,
-            ordered_reach_count,
+            np.array(ordered_reach_count, dtype="int32"),
+            np.array(ordered_reach_cache_count, dtype="int32"),
             assume_short_ts,
         )
 
@@ -369,7 +375,8 @@ def main():
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     qlat_sub.values,
-                    [len(reach_list)],
+                    np.array([len(reach_list)], dtype="int32"),
+                    np.array([sum(len(r) for r in reach_list)], dtype="int32"),
                     assume_short_ts,
                 )
             )
@@ -392,7 +399,8 @@ def main():
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     qlat_sub.values,
-                    [len(reach_list)],
+                    np.array([len(reach_list)], dtype="int32"),
+                    np.array([sum(len(r) for r in reach_list)], dtype="int32"),
                     assume_short_ts,
                 )
             )

@@ -138,7 +138,8 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     const long[:] parameter_idx, object[:] parameter_cols, const float[:,:] parameter_values, 
     const float[:, :] qlat_values,
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
-    list reach_count=[],
+    const int[:] reach_groups,
+    const int[:] reach_group_cache_sizes,
     bint assume_short_ts=False,
 ):
     """
@@ -152,6 +153,8 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
         parameter_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with parameter_values
         assume_short_ts (bool): Assume short time steps (quc = qup)
+        reach_groups:
+        reach_group_cache_sizes:
 
     Notes:
         Array dimensions are checked as a precondition to this method.
@@ -178,7 +181,6 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     cdef float[:, ::1] out_buf, out_view
 
     # Source columns
-    #cdef Py_ssize_t[:] scols = np.array(column_mapper(parameter_cols), dtype=np.intp)
     cdef Py_ssize_t[:] scols = np.array(column_mapper(parameter_cols), dtype=np.intp)
     
     # hard-coded column. Find a better way to do this
@@ -188,6 +190,7 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
         Py_ssize_t i  # Temporary variable
         Py_ssize_t ireach  # current reach index
         Py_ssize_t ireach_cache  # current index of reach cache
+        Py_ssize_t ireach_cache_end  # end index of reach cache
         Py_ssize_t iusreach_cache  # current index of upstream reach cache
 
     # Measure length of all the reaches
@@ -254,53 +257,58 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
 
             ireach_cache = 0
             iusreach_cache = 0
-            while ireach_cache < reach_cache.shape[0]:
-                reachlen = -reach_cache[ireach_cache]
-                usreachlen = -usreach_cache[iusreach_cache]
+            for group_i in range(len(reach_group_cache_sizes)):
+                #while ireach_cache < reach_cache.shape[0]:
+                ireach_cache_end = ireach_cache + reach_group_cache_sizes[group_i] + reach_groups[group_i]
+                while ireach_cache < ireach_cache_end:
+                    
+                    reachlen = -reach_cache[ireach_cache]
+                    usreachlen = -usreach_cache[iusreach_cache]
 
-                ireach_cache += 1
-                iusreach_cache += 1
-                #print(ireach_cache, iusreach_cache, np.asarray(reach_cache, dtype=np.intp), np.asarray(usreach_cache, dtype=np.intp))
+                    ireach_cache += 1
+                    iusreach_cache += 1
+                    #print(ireach_cache, iusreach_cache, np.asarray(reach_cache, dtype=np.intp), np.asarray(usreach_cache, dtype=np.intp))
 
-                qup = 0.0
-                quc = 0.0
-                for i in range(usreachlen):
-                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    qup = 0.0
+                    quc = 0.0
+                    for i in range(usreachlen):
+                        quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                        if timestep > 0:
+                            qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+
+                    buf_view = buf[:reachlen, :]
+                    out_view = out_buf[:reachlen, :]
+                    drows = drows_tmp[:reachlen]
+                    srows = reach_cache[ireach_cache:ireach_cache+reachlen]
+
+                    fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
+                    for i in range(scols.shape[0]):
+                            fill_buffer_column(srows, scols[i], drows, i + 1, parameter_values, buf_view)
+                        # fill buffer with qdp, depthp, velp
                     if timestep > 0:
-                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+                        fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
+                        fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
+                        fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
+                    else:
+                        # fill buffer with constant
+                        for i in range(drows.shape[0]):
+                            buf_view[drows[i], 10] = 0.0
+                            buf_view[drows[i], 11] = 0.0
+                            buf_view[drows[i], 12] = 0.0
 
-                buf_view = buf[:reachlen, :]
-                out_view = out_buf[:reachlen, :]
-                drows = drows_tmp[:reachlen]
-                srows = reach_cache[ireach_cache:ireach_cache+reachlen]
+                    if assume_short_ts:
+                        quc = qup
 
-                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
-                for i in range(scols.shape[0]):
-                        fill_buffer_column(srows, scols[i], drows, i + 1, parameter_values, buf_view)
-                    # fill buffer with qdp, depthp, velp
-                if timestep > 0:
-                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
-                else:
-                    # fill buffer with constant
-                    for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = 0.0
-                        buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = 0.0
+                    compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
 
-                if assume_short_ts:
-                    quc = qup
+                    # copy out_buf results back to flowdepthvel
+                    for i in range(3):
+                        fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
 
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
-
-                # copy out_buf results back to flowdepthvel
-                for i in range(3):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
-
-                # Update indexes to point to next reach
-                ireach_cache += reachlen
-                iusreach_cache += usreachlen
-                
+                    # Update indexes to point to next reach
+                    ireach_cache += reachlen
+                    iusreach_cache += usreachlen
+                    
             timestep += 1
+
     return np.asarray(parameter_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
