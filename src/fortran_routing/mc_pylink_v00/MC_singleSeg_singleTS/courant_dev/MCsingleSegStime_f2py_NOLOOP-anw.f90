@@ -8,7 +8,7 @@ module muskingcunge_module
 contains
 
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
-    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn)
+    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
 
     !* exactly follows SUBMUSKINGCUNGE in NWM:
     !* 1) qup and quc for a reach in upstream limit take zero values all the time
@@ -23,7 +23,8 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(prec), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
     real(prec), intent(in) :: velp
     real(prec), intent(in) :: depthp
-    real(prec), intent(out) :: qdc, velc, depthc, ck, cn
+    real(prec), intent(out) :: qdc, velc, depthc
+    real(prec), intent(out) :: ck, cn, X
     real(prec) :: z
     real(prec) :: bfd, C1, C2, C3, C4
 
@@ -97,11 +98,11 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
             ! interval = 1 & h = h_0, return Qj_0, C1, C2, C3, C4
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4)
+                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4, X)
                 
             ! interval = 2 & h = h, return Qj, C1, C2, C3, C4  
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4)
+                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4, X)
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -188,7 +189,6 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     ! *************************************************************
     call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
-
 end subroutine muskingcungenwm
 
 !**---------------------------------------------------**!
@@ -202,7 +202,7 @@ end subroutine muskingcungenwm
 
 !Uncomment this function signature for new initialization 
 subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4)
+    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4, X)
 
     implicit none
 
@@ -210,10 +210,10 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: dt, dx
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h
-    real(prec), intent(out) :: Qj, C1, C2, C3, C4
+    real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
-    real(prec) :: twl, AREA, WP, R, Ck, Km, X, D
+    real(prec) :: twl, AREA, WP, R, Ck, Km, D
     integer    :: upper_interval, lower_interval
 
     !Uncomment for old initialization
@@ -241,8 +241,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     upper_interval = 1
     !--lower interval -----------
     lower_interval = 2
-    
-    ! call courant function - here ?
+
     ! top surface water width of the channel inflow
     twl = bw + 2.0_prec*z*h
 
