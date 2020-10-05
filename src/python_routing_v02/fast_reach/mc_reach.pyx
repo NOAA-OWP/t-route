@@ -131,7 +131,7 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
-    const float[:, :] qlat_values,
+    const float[:, :] qlat_values, const float[:,:] initial_conditions, 
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
     bint assume_short_ts=False):
     """
@@ -148,8 +148,12 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         Array dimensions are checked as a precondition to this method.
     """
     # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0] or qlat_values.shape[1] != nsteps:
-        raise ValueError(f"Qlat shape is incorrect: expected ({data_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
+        """
+    EDIT
+    Changed the qlateral dim check to allow the number of timesteps (# of columns) to be different than nsteps
+    """
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
@@ -254,16 +258,39 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 qup = 0.0
                 quc = 0.0
                 for i in range(usreachlen):
+                    
+                    '''
+                    New logic was added to handle initial conditions:
+                    When timestep == 0, the flow from the upstream segments in the previous timestep
+                    are equal to the initial conditions. 
+                    '''
+                        
+                    # upstream flow in the current timestep is equal the sum of flows 
+                    # in upstream segments, current timestep
+                    # Headwater reaches are computed before higher order reaches, so quc can
+                    # be evaulated even when the timestep == 0.
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    
+                    # upstream flow in the previous timestep is equal to the sum of flows 
+                    # in upstream segments, previous timestep
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+                    else:
+                        # sum of qd0 (flow out of each segment) over all upstream reaches
+                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
                 drows = drows_tmp[:reachlen]
                 srows = reach_cache[ireach_cache:ireach_cache+reachlen]
 
-                fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
+                fill_buffer_column(srows, 
+                                   int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
+                                   drows, 
+                                   0, 
+                                   qlat_values, 
+                                   buf_view)
+                
                 for i in range(scols.shape[0]):
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
                     # fill buffer with qdp, depthp, velp
@@ -274,9 +301,9 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 else:
                     # fill buffer with constant
                     for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = 0.0
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],1]
                         buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = 0.0
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],2]
 
                 if assume_short_ts:
                     quc = qup
