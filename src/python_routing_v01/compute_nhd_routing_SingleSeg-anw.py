@@ -846,9 +846,9 @@ def writeArraytoCSV(
                         flowveldepth[current_segment][:, velval_index],
                         flowveldepth[current_segment][:, depthval_index],
                         flowveldepth[current_segment][:, storageval_index],
-                        flowveldepth[current_segment][:, ck],
-                        flowveldepth[current_segment][:, cn],
-                        flowveldepth[current_segment][:, X],
+                        flowveldepth[current_segment][:, kinCelerity_index],
+                        flowveldepth[current_segment][:, courant_index],
+                        flowveldepth[current_segment][:, X_index],
                     )
                 )
 
@@ -922,9 +922,6 @@ def writeArraytoNC(
                 )
                 flowveldepth_data["depthval"].append(
                     flowveldepth[current_segment][:, depthval_index]
-                )
-                flowveldepth_data["velval"].append(
-                    flowveldepth[current_segment][:, velval_index]
                 )
                 flowveldepth_data["velval"].append(
                     flowveldepth[current_segment][:, velval_index]
@@ -1076,7 +1073,7 @@ def writeNC(
     
     # write  X parameter
     X_param = ncfile.createVariable(
-        "courant", np.float64, ("time", "stations")
+        "X", np.float64, ("time", "stations")
     )  # note: unlimited dimension is leftmost
     X_param.units = "-"  #
     X_param[:, :] = np.transpose(np.array(flowveldepth_data["xval"], dtype=float))
