@@ -29,8 +29,9 @@ def in_degrees(N):
     """
     degs = Counter(chain.from_iterable(N.values()))
     degs.update(dict.fromkeys(headwaters(N), 0))
-    return degs
     LOG.debug("In_degrees: %s", N)
+    return degs
+
 
 
 def out_degrees(N):
@@ -42,9 +43,9 @@ def out_degrees(N):
 
     Returns:
 
-    """
-    return in_degrees(reverse_network(N))
+    """    
     LOG.debug("Out_degrees: %s", N)
+    return in_degrees(reverse_network(N))
 
 def extract_connections(rows, target_col, terminal_code=0):
     """Extract connection network from dataframe.
@@ -64,22 +65,24 @@ def extract_connections(rows, target_col, terminal_code=0):
 
         if dst > 0:
             network[src].append(dst)
-    return network
     LOG.debug("Extract_connections rows: %s", rows, "Extract_connections target_col: %s", target_col)
+    return network
 
 def extract_waterbodies(rows, target_col, waterbody_null=-9999):
     """Extract waterbody mapping from dataframe.
     """
-    return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
     LOG.debug("Extract_connections rows: %s", rows, "Extract_connections target_col: %s", target_col)
+    return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
+
 
 def reverse_surjective_mapping(d):
     rd = defaultdict(list)
     for src, dst in d.items():
         rd[dst].append(src)
     rd.default_factory = None
-    return rd
     LOG.debug("Reverse_surjective_mapping: %s", d)
+    return rd
+
 
 def reverse_network(N):
     rg = defaultdict(list)
@@ -88,17 +91,20 @@ def reverse_network(N):
         for n in dst:
             rg[n].append(src)
     rg.default_factory = None
+    LOG.debug("reverse_network: %s", N)    
     return rg
-    LOG.debug("reverse_network: %s", N)
+
 
 def junctions(N):
     c = Counter(chain.from_iterable(N.values()))
+    LOG.debug("Junctions: %s", N)    
     return {k for k, v in c.items() if v > 1}
-    LOG.debug("Junctions: %s", N)
+
 
 def headwaters(N):
-    yield from N.keys() - chain.from_iterable(N.values())
     LOG.debug("Headwaters: %s", N)
+    yield from N.keys() - chain.from_iterable(N.values())
+
 
 def tailwaters(N):
     yield from chain.from_iterable(N.values()) - N.keys()
@@ -140,8 +146,9 @@ def reachable(N, sources=None, targets=None):
                 if x not in targets:
                     Q.extend(N.get(x, ()))
             rv[h] = reach
+    LOG.debug("Reachable: %s", N)            
     return rv
-    LOG.debug("Reachable: %s", N)
+
 
 def reachable_network(N, sources=None, targets=None, check_disjoint=True):
     """
@@ -160,20 +167,23 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
     rv = {}
     for k, n in reached.items():
         rv[k] = {m: N.get(m, []) for m in n}
+    LOG.debug("Reachable_network: %s", N)        
     return rv
-    LOG.debug("Reachable_network: %s", N)
 
 def split_at_junction(network, path, node):
+    LOG.debug("Split_at_junction - network: %s", network, "path: %s", path, "node: %s", node)    
     return len(network[node]) == 1
-    LOG.debug("Split_at_junction: %s", N)
+
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     if path[-1] in waterbody_nodes:
+        LOG.debug("split_at_waterbodies_and_junctions - waterbody_nodes: %s", waterbody_nodes, "network: %s", network, "path: %s", path, "node: %s", node)
         return node in waterbody_nodes
     else:
+        LOG.debug("split_at_waterbodies_and_junctions - waterbody_nodes: %s", waterbody_nodes, "network: %s", network, "path: %s", path, "node: %s", node)
         return len(network[node]) == 1
     # return node not in waterbody_nodes and len(network[node]) == 1
-    LOG.debug("split_at_waterbodies_and_junctions - waterbody_nodes: %s", waterbody_nodes, "network: %s", network, "path: %s", path, "node: %s", node)
+
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
@@ -220,9 +230,9 @@ def dfs_decomposition(N, path_func, source_nodes=None):
                 if len(path) > 1:
                     # Only pop ancestor nodes that were added by path_func.
                     del stack[-(len(path) - 1) :]
-
-    return paths
     LOG.debug("dfs_decomposition - N: %s", N, "path_func: %s", path_func)
+    return paths
+
 
 def segment_deps(segments, connections):
     """Build a dependency graph of segments
@@ -243,8 +253,9 @@ def segment_deps(segments, connections):
             if connections[cand]:
                 # There is a node downstream
                 deps[i].append(index[connections[cand][0]])
+    LOG.debug("segment_deps - segments: %s", segments, "path_func: %s", connections)                
     return dict(deps)
-    LOG.debug("segment_deps - segments: %s", segments, "path_func: %s", connections)
+
 
 def kahn_toposort(N):
     degrees = in_degrees(N)
@@ -282,14 +293,16 @@ def reservoir_shore(connections, waterbody_nodes):
     shore = set()
     for node in wbody_set:
         shore.update(filter(not_in, connections[node]))
+    LOG.debug("reservoir_shore - connections: %s", connections, "waterbody_nodes: %s", waterbody_nodes)        
     return list(shore)
-    LOG.debug("reservoir_shore - connections: %s", connections, "waterbody_nodes: %s", waterbody_nodes)
+
 
 def reservoir_boundary(connections, waterbodies, n):
     if n not in waterbodies and n in connections:
         return any(x in waterbodies for x in connections[n])
+    LOG.debug("reservoir_boundary - connections: %s", connections, "waterbodies: %s", waterbodies, "n: %s", n)    
     return False
-    LOG.debug("reservoir_boundary - connections: %s", connections, "waterbodies: %s", waterbodies, "n: %s", n)
+
 
 def separate_waterbodies(connections, waterbodies):
     waterbody_nodes = {}
@@ -298,8 +311,9 @@ def separate_waterbodies(connections, waterbodies):
         for n in nodes:
             if n in connections:
                 net[n] = list(filter(waterbodies.__contains__, connections[n]))
+    LOG.debug("separate_waterbodies - connections: %s", connections, "waterbodies: %s", waterbodies)    
     return waterbody_nodes
-    LOG.debug("separate_waterbodies - connections: %s", connections, "waterbodies: %s", waterbodies)
+
 
 def replace_waterbodies_connections(connections, waterbodies):
     """
@@ -335,5 +349,5 @@ def replace_waterbodies_connections(connections, waterbodies):
         else:
             # copy to new network unchanged
             new_conn[n] = connections[n]
+    LOG.debug("replace_waterbodies_connections - connections: %s", connections, "waterbodies: %s", waterbodies)    
     return new_conn
-    LOG.debug("replace_waterbodies_connections - connections: %s", connections, "waterbodies: %s", waterbodies)
