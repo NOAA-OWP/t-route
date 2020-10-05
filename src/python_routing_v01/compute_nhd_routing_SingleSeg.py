@@ -361,9 +361,9 @@ debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
 # create LOG
 # logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
-LOG = logging.getLogger('log')
+LOG = logging.getLogger("log")
 # # switch to debug for all, warning gives minor printouts
-if  verbose:
+if verbose:
     LOG.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
@@ -380,7 +380,7 @@ else:
     ch = logging.StreamHandler()
     ch.setLevel(logging.CRITICAL)
 # create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
 ch.setFormatter(formatter)
 # add ch to LOG
@@ -402,21 +402,21 @@ def compute_network(
     nc_output_folder=None,
     assume_short_ts=False,
 ):
-#     LOG.error("Computing network with flowveldepth_connect %s \n,terminal_segment %s \n,supernetwork_parameters %s \n,waterbody_parameters %s \n,\
-# waterbody %s \n,nts %s \n,dt %s \n,qts_subdivisions %s \n,verbose %s \n,debuglevel %s \n,csv_output %s \n,nc_output_folder %s \n,assume_short_ts %s", 
-#     flowveldepth_connect,
-#     terminal_segment,
-#     supernetwork_parameters,
-#     waterbody_parameters,
-#     waterbody,
-#     nts,
-#     dt,
-#     qts_subdivisions,
-#     verbose,
-#     debuglevel,
-#     csv_output,
-#     nc_output_folder,
-#     assume_short_ts)
+    #     LOG.error("Computing network with flowveldepth_connect %s \n,terminal_segment %s \n,supernetwork_parameters %s \n,waterbody_parameters %s \n,\
+    # waterbody %s \n,nts %s \n,dt %s \n,qts_subdivisions %s \n,verbose %s \n,debuglevel %s \n,csv_output %s \n,nc_output_folder %s \n,assume_short_ts %s",
+    #     flowveldepth_connect,
+    #     terminal_segment,
+    #     supernetwork_parameters,
+    #     waterbody_parameters,
+    #     waterbody,
+    #     nts,
+    #     dt,
+    #     qts_subdivisions,
+    #     verbose,
+    #     debuglevel,
+    #     csv_output,
+    #     nc_output_folder,
+    #     assume_short_ts)
 
     global connections
     global networks
@@ -1136,7 +1136,7 @@ def sort_ordered_network(l, reverse=False):
 # Main Routine
 def main():
     args = _handle_args()
-    
+
     global connections
     global networks
     global qlateral
@@ -1402,7 +1402,6 @@ def main():
             debuglevel=debuglevel,
         )
 
-
     LOG.info("supernetwork connections set complete")
     if showtiming:
         LOG.info("... in %s seconds." % (time.time() - start_time))
@@ -1516,7 +1515,6 @@ def main():
             waterbody_initial_states_df["index"] = range(
                 len(waterbody_initial_states_df)
             )
-
 
         LOG.info("waterbody initial states complete")
         if showtiming:
@@ -1744,5 +1742,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

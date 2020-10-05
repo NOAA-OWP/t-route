@@ -10,6 +10,7 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+
 def get_geo_file_table_rows(
     geo_file_path=None,
     data_link=None,

@@ -119,9 +119,9 @@ debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
 # create LOG
 # logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
-LOG = logging.getLogger('log')
+LOG = logging.getLogger("log")
 # # switch to debug for all, warning gives minor printouts
-if  verbose:
+if verbose:
     LOG.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
@@ -138,11 +138,12 @@ else:
     ch = logging.StreamHandler()
     ch.setLevel(logging.CRITICAL)
 # create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
 ch.setFormatter(formatter)
 # add ch to LOG
 LOG.addHandler(ch)
+
 
 def writetoFile(file, writeString):
     file.write(writeString)
@@ -184,7 +185,6 @@ def main():
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
-
     LOG.info("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
@@ -222,7 +222,6 @@ def main():
         data, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-    
     LOG.info("supernetwork connections set complete")
     if showtiming:
         LOG.info("... in %s seconds." % (time.time() - start_time))
@@ -230,7 +229,7 @@ def main():
     # STEP 2
     if showtiming:
         start_time = time.time()
-    
+
     LOG.info("organizing connections into reaches ...")
 
     rconn = nhd_network.reverse_network(connections)
@@ -304,7 +303,6 @@ def main():
     flowveldepth = flowveldepth.sort_index()
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)
-
 
     LOG.info("ordered reach computation complete")
     if showtiming:

@@ -9,6 +9,7 @@ import json
 
 LOG = logging.getLogger(__name__)
 
+
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         LOG.debug("Reading netcdf: %s", geo_file_path)
@@ -30,7 +31,12 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
 
 
 def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
-    LOG.debug("Reading %s with geopandas [driver=%s, layer=%s]", geo_file_path, driver_string, layer_string)
+    LOG.debug(
+        "Reading %s with geopandas [driver=%s, layer=%s]",
+        geo_file_path,
+        driver_string,
+        layer_string,
+    )
     return gpd.read_file(geo_file_path, driver=driver_string, layer_string=layer_string)
 
 
