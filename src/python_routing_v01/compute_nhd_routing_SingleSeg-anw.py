@@ -292,7 +292,7 @@ if COMPILE:
             fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
-        fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
+        fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP-anw.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
         subprocess.run(
