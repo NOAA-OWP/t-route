@@ -6,7 +6,9 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
+import logging
 
+LOG = logging.getLogger(__name__)
 
 def get_geo_file_table_rows(
     geo_file_path=None,
@@ -56,7 +58,7 @@ def get_geo_file_table_rows(
         > wget -c https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.3/parm/domain/$ROUTELINK
         > nccopy -d1 -s $ROUTELINK ${ROUTELINK/\.nc/_compressed.nc}
         """
-        print(msg)
+        LOG.debug(msg)
 
         network_dl.download(geo_file_path, data_link)
 
@@ -65,7 +67,7 @@ def get_geo_file_table_rows(
     # TODO: Improve the error handling here for a corrupt input file
 
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"reading -- dataset: {geo_file_path}; layer: {layer_string}; driver: {driver_string}"
         )
     if driver_string == "NetCDF":  # Use Xarray to read a netcdf table
@@ -75,7 +77,7 @@ def get_geo_file_table_rows(
             geo_keys = list(geo_keys)
             geo_file_rows = (geo_file.to_dataframe()).values
         except Exception as e:
-            print(e)
+            LOG.debug(e)
             if debuglevel <= -1:
                 traceback.print_exc()
         # The xarray method for NetCDFs was implemented after the geopandas method for
@@ -88,7 +90,7 @@ def get_geo_file_table_rows(
             geo_file = pd.read_csv(geo_file_path, header=HEADER)
             geo_keys = []
         except Exception as e:
-            print(e)
+            LOG.debug(e)
             if debuglevel <= -1:
                 traceback.print_exc()
         geo_file_rows = geo_file.to_numpy()
@@ -99,7 +101,7 @@ def get_geo_file_table_rows(
                     geo_file = pd.read_csv(csv)
             geo_keys = []
         except Exception as e:
-            print(e)
+            LOG.debug(e)
             if debuglevel <= -1:
                 traceback.print_exc()
         geo_file_rows = geo_file.to_numpy()
@@ -111,14 +113,14 @@ def get_geo_file_table_rows(
             geo_keys = geo_file.keys().tolist()
             geo_file_rows = geo_file.to_numpy()
         except Exception as e:
-            print(e)
+            LOG.debug(e)
             if debuglevel <= -1:
                 traceback.print_exc()
         if debuglevel <= -2:
             try:
                 geo_file.plot()
             except Exception as e:
-                print(r"cannot plot geofile (not necessarily a problem)")
+                LOG.debug(r"cannot plot geofile (not necessarily a problem)")
                 traceback.print_exc()
     if debuglevel <= -1:
         # official docs here:
@@ -126,7 +128,7 @@ def get_geo_file_table_rows(
         pd.set_option("display.max_columns", None)
         pd.set_option("display.width", None)
         pd.set_option("display.max_colwidth", -1)
-        print(geo_file.head())  # Preview the first 5 lines of the loaded data
+        LOG.debug(geo_file.head())  # Preview the first 5 lines of the loaded data
 
     return geo_file_rows, geo_keys
 
@@ -281,7 +283,7 @@ def do_connections(
 ):
 
     if verbose:
-        print(title_string)
+        LOG.debug(title_string)
     geo_file_rows, geo_keys = get_geo_file_table_rows(
         geo_file_path=geo_file_path,
         data_link=data_link,
@@ -308,7 +310,7 @@ def do_connections(
         )
 
     if debuglevel <= -1:
-        print(f"MASK: {mask_file_path}")
+        LOG.debug(f"MASK: {mask_file_path}")
     if mask_file_path:
         mask_file_rows, _ = get_geo_file_table_rows(
             geo_file_path=mask_file_path,
@@ -448,11 +450,11 @@ def set_supernetwork_parameters(
         "custom",
     }
     if supernetwork not in supernetwork_options:
-        print(
+        LOG.debug(
             "Note: please call function with supernetworks set to one of the following:"
         )
         for s in supernetwork_options:
-            print(f"'{s}'")
+            LOG.debug(f"'{s}'")
         exit()
     elif supernetwork == "Pocono_TEST1":
         return {
