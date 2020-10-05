@@ -148,7 +148,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         Array dimensions are checked as a precondition to this method.
     """
     # Check shapes
-        """
+    """
     EDIT
     Changed the qlateral dim check to allow the number of timesteps (# of columns) to be different than nsteps
     """
@@ -277,7 +277,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                     else:
                         # sum of qd0 (flow out of each segment) over all upstream reaches
-                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
+                        qup += initial_conditions[usreach_cache[iusreach_cache + i],2]
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
@@ -299,11 +299,15 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
                     fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
                 else:
-                    # fill buffer with constant
+                    '''
+                    Changed made to accomodate initial conditions:
+                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array, 
+                    using srows to properly index
+                    '''
                     for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],1]
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],2]
                         buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],2]
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],4]
 
                 if assume_short_ts:
                     quc = qup
