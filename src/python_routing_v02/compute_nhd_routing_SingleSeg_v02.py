@@ -131,8 +131,8 @@ def main():
     args = _handle_args()
 
     nts = 144
-    debuglevel = -1 * args.debuglevel
-    verbose = args.verbose
+    # debuglevel = -1 * args.debuglevel
+    # verbose = args.verbose
     showtiming = args.showtiming
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
@@ -155,8 +155,8 @@ def main():
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
-    if verbose:
-        logger.warning("creating supernetwork connections set")
+
+    LOG.info("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
 
@@ -193,16 +193,16 @@ def main():
         data, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-    if verbose:
-        logger.warning("supernetwork connections set complete")
+    
+    LOG.info("supernetwork connections set complete")
     if showtiming:
-        logger.warning("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     # STEP 2
     if showtiming:
         start_time = time.time()
-    if verbose:
-        logger.warning("organizing connections into reaches ...")
+    
+    LOG.info("organizing connections into reaches ...")
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
@@ -211,10 +211,9 @@ def main():
         path_func = partial(nhd_network.split_at_junction, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
-    if verbose:
-        logger.warning("reach organization complete")
+    LOG.info("reach organization complete")
     if showtiming:
-        logger.warning("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     if showtiming:
         start_time = time.time()
@@ -277,39 +276,40 @@ def main():
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)
 
-    if verbose:
-        logger.warning("ordered reach computation complete")
+
+    LOG.info("ordered reach computation complete")
     if showtiming:
-        logger.warning("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
 
 if __name__ == "__main__":
     args = _handle_args()
     debuglevel = -1 * int(args.debuglevel)
-    # create logger
+    verbose = args.verbose
+    # create LOG
     # logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
-    logger = logging.getLogger('log')
+    LOG = logging.getLogger('log')
     # # switch to debug for all, warning gives minor printouts
-    if  debuglevel == 0:
-        logger.setLevel(logging.WARNING)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.WARNING)
-    elif debuglevel == 1:
-        logger.setLevel(logging.INFO)
+    if  verbose:
+        LOG.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
-    elif debuglevel == 2:
-        logger.setLevel(logging.CRITICAL)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.CRITICAL)
-    else:
-        logger.setLevel(logging.DEBUG)
+    elif debuglevel == 1:
+        LOG.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
+    elif debuglevel == 2:
+        LOG.setLevel(logging.WARNING)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.WARNING)
+    else:
+        LOG.setLevel(logging.CRITICAL)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.CRITICAL)
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # add formatter to ch
     ch.setFormatter(formatter)
-    # add ch to logger
-    logger.addHandler(ch)
+    # add ch to LOG
+    LOG.addHandler(ch)
     main()
