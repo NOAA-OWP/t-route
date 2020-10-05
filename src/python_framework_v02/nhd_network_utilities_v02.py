@@ -15,6 +15,7 @@ def set_supernetwork_data(
     supernetwork_options = {
         "Pocono_TEST1",
         "Pocono_TEST2",
+        "Pocono_TEST_tiny",
         "LowerColorado_Conchos_FULL_RES",
         "Brazos_LowerColorado_ge5",
         "Brazos_LowerColorado_FULL_RES",
@@ -75,6 +76,28 @@ def set_supernetwork_data(
                 "orifice_area": "OrificeA",
             },
         }
+
+    elif supernetwork == "Pocono_TEST_tiny":
+        rv = set_supernetwork_data(
+            supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
+        )
+        rv.update(
+            {
+                "title_string": "Pocono Test 2 Example",  # overwrites other title...
+                "mask_file_path": os.path.join(
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "PoconoRouteLink_TEST_tiny_nwm_mc.txt",
+                ),
+                "mask_driver_string": "csv",
+                "mask_layer_string": "",
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
+            }
+        )
+        return rv
+
     elif supernetwork == "Pocono_TEST2":
         rv = set_supernetwork_data(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
