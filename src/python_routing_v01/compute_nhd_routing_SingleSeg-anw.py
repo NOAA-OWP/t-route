@@ -263,6 +263,9 @@ sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_framework_v02"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
 fortran_routing_dir = os.path.join(
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS","courant_dev"
+)
+fortran_routing_base = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
 )
 fortran_reservoir_dir = os.path.join(
@@ -285,6 +288,15 @@ def in_wsl() -> bool:
 if COMPILE:
     try:
         import subprocess
+        
+        cmd = subprocess.run(
+            ["cp", 
+             os.path.join(fortran_routing_base, "varPrecision.f90"), 
+             os.path.join(fortran_routing_dir,  "varPrecision.f90")],
+            cwd=fortran_routing_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
