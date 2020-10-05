@@ -47,7 +47,7 @@ cdef void muskingcunge(float dt,
     rv.depthc = depthc
     rv.velc = velc
 
-cpdef dict compute_reach_kernel(float dt,
+cpdef dict compute_segment_kernel(float dt,
         float qup,
         float quc,
         float qdp,

@@ -127,6 +127,7 @@ if ENV_IS_CL:
 elif not ENV_IS_CL:
     root = pathlib.Path("../..").resolve()
     sys.path.append(r"../python_framework_v02")
+    sys.path.append(r"./fast_reach")
 
     # TODO: automate compile for the package scripts
     # sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
@@ -134,6 +135,7 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import nhd_network_utilities_v02 as nnu
 import mc_reach
+import mc_reach_py
 import nhd_network
 import nhd_io
 
@@ -293,7 +295,7 @@ def main():
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
-                    delayed(mc_reach.compute_network)(
+                    delayed(mc_reach_py.compute_network)(
                         nts,
                         reach_list,
                         rconn_ordered[o],
@@ -319,7 +321,7 @@ def main():
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
-                    delayed(mc_reach.compute_network)(
+                    delayed(mc_reach_py.compute_network)(
                         nts,
                         reach_list,
                         subnets[tw],
@@ -344,7 +346,7 @@ def main():
             r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
         ].sort_index()
         qlat_sub = qlats.loc[r].sort_index()
-        results = mc_reach.compute_network(
+        results = mc_reach_py.compute_network(
             nts,
             overall_ordered_reaches_list,
             rconn_ordered_byreach,
@@ -368,7 +370,7 @@ def main():
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(
-                mc_reach.compute_network(
+                mc_reach_py.compute_network(
                     nts,
                     reach_list,
                     rconn_ordered[o],
@@ -392,7 +394,7 @@ def main():
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(
-                mc_reach.compute_network(
+                mc_reach_py.compute_network(
                     nts,
                     reach_list,
                     subnets[tw],

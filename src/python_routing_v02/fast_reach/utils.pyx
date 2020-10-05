@@ -5,6 +5,17 @@ cimport cython
 cimport numpy as np
 
 @cython.boundscheck(False)
+cpdef void fill_buffer_column(const Py_ssize_t[:] srows,
+    const Py_ssize_t scol,
+    const Py_ssize_t[:] drows,
+    const Py_ssize_t dcol,
+    const float[:, :] src, float[:, ::1] out) nogil:
+
+    cdef Py_ssize_t i
+    for i in range(srows.shape[0]):
+        out[drows[i], dcol] = src[srows[i], scol]
+
+@cython.boundscheck(False)
 cpdef Py_ssize_t bisect_left_long(const long[:] arr, long el) nogil:
     cdef Py_ssize_t L = 0
     cdef Py_ssize_t R = len(arr) - 1
