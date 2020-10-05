@@ -148,6 +148,7 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     Args:
         nsteps (int): number of time steps
         reaches (list): List of reaches
+    with gil:
         connections (dict): Network
         parameter_idx (ndarray): a 1D sorted index for parameter_values
         parameter_values (ndarray): a 2D array of data inputs (nodes x variables)
@@ -237,8 +238,10 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
         usreach_cache[iusreach_cache] = -usreachlen
         iusreach_cache += 1
         if usreachlen > 0:
+            print(np.asarray(connections[reach[0]]))
             for bidx in binary_find(parameter_idx, connections[reach[0]]):
                 usreach_cache[iusreach_cache] = bidx
+                print(np.asarray(usreach_cache))
                 iusreach_cache += 1
 
     cdef int maxreachlen = max(reach_sizes)
@@ -251,12 +254,23 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
     cdef int timestep = 0
     cdef int ts_offset
 
-    with nogil:
+    ireach_cache = 0
+    print(f"reach_cache.shape[0] {reach_cache.shape[0]}")
+    print(f"cache_sizes {np.asarray(reach_group_cache_sizes)} reach_groups {np.asarray(reach_groups)}")
+
+    print(f"reach_sizes {reach_sizes}, usreach_sizes {usreach_sizes}")
+    print(f"connections {[seg for reach in reaches for seg in reach]}")
+    print(f"reaches {reaches}")
+    print(f"reach_cache {np.asarray(reach_cache)}")
+    print(f"usreach_cache {np.asarray(usreach_cache)}")
+    #with nogil:
+    if 1 == 1:
         while timestep < nsteps:
             ts_offset = timestep * 3
 
             ireach_cache = 0
             iusreach_cache = 0
+            ireach = 0
             for group_i in range(len(reach_group_cache_sizes)):
                 #while ireach_cache < reach_cache.shape[0]:
                 ireach_cache_end = ireach_cache + reach_group_cache_sizes[group_i] + reach_groups[group_i]
@@ -283,7 +297,7 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
 
                     fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
                     for i in range(scols.shape[0]):
-                            fill_buffer_column(srows, scols[i], drows, i + 1, parameter_values, buf_view)
+                        fill_buffer_column(srows, scols[i], drows, i + 1, parameter_values, buf_view)
                         # fill buffer with qdp, depthp, velp
                     if timestep > 0:
                         fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
@@ -299,13 +313,20 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
                     if assume_short_ts:
                         quc = qup
 
+                    if timestep < 0:
+                        print(f"ts {timestep}, current reach_cache {reach_cache[ireach_cache]}, qup {qup}, quc {quc}, reachlen {reachlen}, buf_view {np.asarray(buf_view)}, out_view {np.asarray(out_view)}")
                     compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
+                    if timestep == 3:
+                        print(f"ts {timestep}, reach {reaches[ireach]} segment indexes (reach_cache) {np.asarray(srows)}, qup {qup}, quc {quc}, reachlen {reachlen})", end="")
+                        print(f"upstream segments {[[seg for reach in reaches for seg in reach][r] for r in usreach_cache[iusreach_cache:iusreach_cache + usreachlen]]}")
+                        #print(f"{np.asarray(out_view)}")
 
                     # copy out_buf results back to flowdepthvel
                     for i in range(3):
                         fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
 
                     # Update indexes to point to next reach
+                    ireach += 1
                     ireach_cache += reachlen
                     iusreach_cache += usreachlen
                     

@@ -418,6 +418,7 @@ def main():
         )
     flowveldepth = flowveldepth.sort_index()
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
+    #print(flowveldepth.loc[[4186169]])
     print(flowveldepth)
 
     if verbose:
