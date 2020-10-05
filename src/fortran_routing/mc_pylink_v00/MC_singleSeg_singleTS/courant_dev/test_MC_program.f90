@@ -16,7 +16,7 @@ use muskingcunge_module
       qup_in, quc_in, qdp_in, velp_in, depthp_in    
     
     ! variables output by muskingcunge subroutine
-    real(prec) :: qdc_o, velc_o, depthc_o, ck_o, cn_o
+    real(prec) :: qdc_o, velc_o, depthc_o, ck_o, cn_o, X_o
     
     ! ###############################################################################
     ! read parameters from control file
@@ -94,24 +94,29 @@ use muskingcunge_module
     ! run MC model and print output
     ! ###############################################################################
     
-    call muskingcungenwm(dt_in, qup_in, quc_in, qdp_in, ql_in, dx_in, bw_in, tw_in, twcc_in,&
-        n_in, ncc_in, cs_in, s0_in, velp_in, depthp_in, qdc_o, velc_o, depthc_o, ck_o, cn_o)
+     call muskingcungenwm(dt_in, qup_in, quc_in, qdp_in, ql_in, dx_in, bw_in, tw_in, twcc_in,&
+         n_in, ncc_in, cs_in, s0_in, velp_in, depthp_in, qdc_o, velc_o, depthc_o, ck_o, cn_o, X_o)
+
+!     call muskingcungenwm(dt_in, qup_in, quc_in, qdp_in, ql_in, dx_in, bw_in, tw_in, twcc_in,&
+!         n_in, ncc_in, cs_in, s0_in, velp_in, depthp_in, qdc_o, velc_o, depthc_o)
         
-!    print*, "--------------------------------------------------------------"
-!    print*, " "
-!    print*, "MC model outputs"
-!    print*, " "
-!    print*, "flow [m^3/s] = ", qdc_o
-!    print*, "velocity [m/s] = ", velc_o
-!    print*, "depth [m] = ", depthc_o
-!    print*, "kinematic celerity [m/s] = ", ck_o
-!    print*, "Courant number [-] = ", cn_o
+        
+    print*, "--------------------------------------------------------------"
+    print*, " "
+    print*, "MC model outputs"
+    print*, " "
+    print*, "flow [m^3/s] = ", qdc_o
+    print*, "velocity [m/s] = ", velc_o
+    print*, "depth [m] = ", depthc_o
+    print*, "kinematic celerity [m/s] = ", ck_o
+    print*, "Courant number [-] = ", cn_o
+    print*, "X parameter [-]", X_o
     
-    open(1, file = 'output.txt', status='replace')
-    write(1,"(a,f16.8)") "qdc ",qdc_o 
-    write(1,"(a,f16.8)") "velc ",velc_o 
-    write(1,"(a,f16.8)") "depthc ",depthc_o 
-    write(1,"(a,f16.8)") "ck ", ck_o 
-    write(1,"(a,f16.8)") "cn ",cn_o 
+!    open(1, file = 'output.txt', status='replace')
+!    write(1,"(a,f16.8)") "qdc ",qdc_o 
+!    write(1,"(a,f16.8)") "velc ",velc_o 
+!    write(1,"(a,f16.8)") "depthc ",depthc_o 
+!    write(1,"(a,f16.8)") "ck ", ck_o 
+!    write(1,"(a,f16.8)") "cn ",cn_o 
        
 end program test_MC_program
