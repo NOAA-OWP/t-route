@@ -356,6 +356,36 @@ if COMPILE:
 else:
     from pymodule_levelpool import module_levelpool as rc
 
+args = _handle_args()
+debuglevel = -1 * int(args.debuglevel)
+verbose = args.verbose
+# create LOG
+# logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
+LOG = logging.getLogger('log')
+# # switch to debug for all, warning gives minor printouts
+if  verbose:
+    LOG.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+elif debuglevel == 1:
+    LOG.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+elif debuglevel == 2:
+    LOG.setLevel(logging.WARNING)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARNING)
+else:
+    LOG.setLevel(logging.CRITICAL)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.CRITICAL)
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# add formatter to ch
+ch.setFormatter(formatter)
+# add ch to LOG
+LOG.addHandler(ch)
+
 
 def compute_network(
     flowveldepth_connect,
@@ -1713,35 +1743,6 @@ def main():
 
 
 if __name__ == "__main__":
-    args = _handle_args()
-    debuglevel = -1 * int(args.debuglevel)
-    verbose = args.verbose
-    # create LOG
-    # logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
-    LOG = logging.getLogger('log')
-    # # switch to debug for all, warning gives minor printouts
-    if  verbose:
-        LOG.setLevel(logging.INFO)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-    elif debuglevel == 1:
-        LOG.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-    elif debuglevel == 2:
-        LOG.setLevel(logging.WARNING)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.WARNING)
-    else:
-        LOG.setLevel(logging.CRITICAL)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.CRITICAL)
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # add formatter to ch
-    ch.setFormatter(formatter)
-    # add ch to LOG
-    LOG.addHandler(ch)
     main()
 
 
