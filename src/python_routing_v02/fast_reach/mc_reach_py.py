@@ -1,6 +1,68 @@
 import mc_reach
 import numpy as np
+#from reach import muskingcunge, QVD
+import reach
 import utils
+
+def compute_reach_kernel(qup, quc, nreach, input_buf, output_buf):
+    """
+    Kernel to compute reach.
+
+    Input buffer is array matching following description:
+    axis 0 is reach
+    axis 1 is inputs in th following order:
+        qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+
+        qup and quc are initial conditions.
+
+    Output buffer matches the same dimsions as input buffer in axis 0
+    Input is nxm (n reaches by m variables)
+    Ouput is nx3 (n reaches by 3 return values)
+        0: current flow, 1: current depth, 2: current velocity
+    """
+    #cdef:
+    #    float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+    #    int i
+
+    for i in range(nreach):
+        qlat = input_buf[i, 0] # n x 1
+        dt = input_buf[i, 1] # n x 1
+        dx = input_buf[i, 2] # n x 1
+        bw = input_buf[i, 3]
+        tw = input_buf[i, 4]
+        twcc =input_buf[i, 5]
+        n = input_buf[i, 6]
+        ncc = input_buf[i, 7]
+        cs = input_buf[i, 8]
+        s0 = input_buf[i, 9]
+        qdp = input_buf[i, 10]
+        velp = input_buf[i, 11]
+        depthp = input_buf[i, 12]
+
+        out = reach.compute_segment_kernel(
+                    dt,
+                    qup,
+                    quc,
+                    qdp,
+                    qlat,
+                    dx,
+                    bw,
+                    tw,
+                    twcc,
+                    n,
+                    ncc,
+                    cs,
+                    s0,
+                    velp,
+                    depthp,
+        )
+                    
+        output_buf[i, 0] = quc = out["qdc"]
+        output_buf[i, 1] = out["velc"]
+        output_buf[i, 2] = out["depthc"]
+
+        qup = qdp
+
 
 def compute_network(nsteps, reaches, connections, 
     parameter_idx, parameter_cols, parameter_values, 
@@ -81,13 +143,14 @@ def compute_network(nsteps, reaches, connections,
 
     # reach cache is ordered 1D view of reaches
     # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
+    reach_cache = np.zeros(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
     # upstream reach cache is ordered 1D view of reaches
     # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+    usreach_cache = np.zeros(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
 
     ireach_cache = 0
     iusreach_cache = 0
+
     # copy reaches into an array
     for ireach in range(len(reaches)):
         reachlen = reach_sizes[ireach]
@@ -114,8 +177,8 @@ def compute_network(nsteps, reaches, connections,
         print(np.asarray(usreach_cache))
 
     maxreachlen = max(reach_sizes)
-    buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+    buf = np.zeros((maxreachlen, buf_cols), dtype='float32')
+    out_buf = np.zeros((maxreachlen, 3), dtype='float32')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     #cdef Py_ssize_t[:] drows
@@ -128,8 +191,10 @@ def compute_network(nsteps, reaches, connections,
     print(f"cache_sizes {np.asarray(reach_group_cache_sizes)} reach_groups {np.asarray(reach_groups)}")
 
     print(f"reach_sizes {reach_sizes}, usreach_sizes {usreach_sizes}")
-    print(f"connections {[seg for reach in reaches for seg in reach]}")
+    print(f"connections in rconn order {connections}")
+    print(f"parameter_idx {np.asarray(parameter_idx)}")
     print(f"reaches {reaches}")
+    print(f"connections in reach order {[seg for reach in reaches for seg in reach]}")
     print(f"reach_cache {np.asarray(reach_cache)}")
     print(f"usreach_cache {np.asarray(usreach_cache)}")
     #with nogil:
@@ -185,9 +250,10 @@ def compute_network(nsteps, reaches, connections,
                     if timestep < 0:
                         print(f"ts {timestep}, current reach_cache {reach_cache[ireach_cache]}, qup {qup}, quc {quc}, reachlen {reachlen}, buf_view {np.asarray(buf_view)}, out_view {np.asarray(out_view)}")
                     mc_reach.compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
-                    if timestep == 3:
+                    if timestep == 1:
+                        print(np.asarray(buf_view))
                         print(f"ts {timestep}, reach {reaches[ireach]} segment indexes (reach_cache) {np.asarray(srows)}, qup {qup}, quc {quc}, reachlen {reachlen} ", end="")
-                        print(f"upstream segments {[[seg for reach in reaches for seg in reach][r] for r in usreach_cache[iusreach_cache:iusreach_cache + usreachlen]]}")
+                        print(f"upstream segments {[parameter_idx[r] for r in usreach_cache[iusreach_cache:iusreach_cache + usreachlen]]}")
                         #print(f"{np.asarray(out_view)}")
 
                     # copy out_buf results back to flowdepthvel
