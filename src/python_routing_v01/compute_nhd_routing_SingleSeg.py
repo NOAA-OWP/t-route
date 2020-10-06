@@ -244,6 +244,13 @@ def _handle_args():
         dest="percentage_complete",
         action="store_true",
     )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="Switch log file to overwrite or append to file using w or a",
+        dest="log_writer",
+        default="w",
+    )
 
     args = parser.parse_args()
 
@@ -359,10 +366,9 @@ else:
 args = _handle_args()
 debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
-# create LOG
-# logging.basicConfig(filename='INFO.log',level=logging.DEBUG)
+log_writer = args.log_writer
+
 LOG = logging.getLogger("log")
-# # switch to debug for all, warning gives minor printouts
 if verbose:
     LOG.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -379,12 +385,15 @@ else:
     LOG.setLevel(logging.CRITICAL)
     ch = logging.StreamHandler()
     ch.setLevel(logging.CRITICAL)
-# create formatter
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-# add formatter to ch
 ch.setFormatter(formatter)
-# add ch to LOG
 LOG.addHandler(ch)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S %p",
+    filename="logs.log",
+    filemode=log_writer,
+)
 
 
 def compute_network(
