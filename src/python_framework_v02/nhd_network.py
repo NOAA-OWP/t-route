@@ -9,14 +9,14 @@ LOG = logging.getLogger(__name__)
 
 def nodes(N):
     yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
-    LOG.debug("Edges: %s", N)
+    LOG.debug("Edges: %s",len(N) + sum(map(len, N.values())))
 
 
 def edges(N):
     for i, v in N.items():
         for j in v:
             yield (i, j)
-    LOG.debug("Edges: %s", N)
+    LOG.debug("Edges: %s",len(N) + sum(map(len, N.values())))
 
 
 def in_degrees(N):
@@ -329,12 +329,7 @@ def reservoir_shore(connections, waterbody_nodes):
     shore = set()
     for node in wbody_set:
         shore.update(filter(not_in, connections[node]))
-    LOG.debug(
-        "reservoir_shore - connections: %s",
-        connections,
-        "waterbody_nodes: %s",
-        waterbody_nodes,
-    )
+    LOG.debug("reservoir_shore - connections: %s waterbody_nodes: %s", connections, waterbody_nodes)
     return list(shore)
 
 
