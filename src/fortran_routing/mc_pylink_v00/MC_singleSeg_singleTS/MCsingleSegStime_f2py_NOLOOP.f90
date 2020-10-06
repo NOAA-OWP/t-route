@@ -198,7 +198,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
-    real(prec) :: twl, AREA, WP, R, Ck, Km, X, D
+    real(prec) :: twl, AREA, WP, R, Ck, Km, D
     integer    :: upper_interval, lower_interval
 
     !Uncomment for old initialization
