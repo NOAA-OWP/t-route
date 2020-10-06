@@ -110,16 +110,11 @@ https://github.com/NOAA-OWP/t-route/
 Open to the public 
 
 # Authors and acknowledgment
-Jacob E. Hreha, James S. Halgren,  Adam N. Wlostowski,  Alexander A. Maestre,  kumdonoaa
+jhrehanoaa, jameshalgren,  awlostowski-noaa, amaes3owp, and kumdonoaa
 
 # Project status
 Looking to improve the model accuracy beyond its current threshold. Model is reaching a limit of about +-.01 and we would like to see that improved by at least one order of magnitude. 
 Not sure if the model is rounding heavily or incapable of obtaining that level of accuracy because of a backend issue. 
 
-Author:      jhrehanoaa, Lynker Technologies/NOAA
+Author:      jhrehanoaa
 Created:     7/28/2020
-
-National Water Center 
-Office of Water Prediction
-205 Hackberry Ln, Tuscaloosa, AL 35401
-
