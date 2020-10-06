@@ -263,7 +263,7 @@ sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_framework_v02"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
 fortran_routing_dir = os.path.join(
-    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS","courant_dev"
 )
 fortran_reservoir_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"Reservoir_singleTS"
@@ -322,6 +322,9 @@ depthval_index = 3  # depthval
 qlatval_index = 4  # qlatval
 storageval_index = 5  # storageval
 qlatCumval_index = 6  # qlatCumval
+kinCelerity_index = 7 # ck
+courant_index = 8 # cn
+X_index = 9 # X
 
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
@@ -377,7 +380,7 @@ def compute_network(
 
     network = networks[terminal_segment]
     flowveldepth = {
-        connection: np.zeros(np.array([nts, 7]))
+        connection: np.zeros(np.array([nts, 10]))
         for connection in (network["all_segments"])
     }
 
@@ -601,7 +604,7 @@ def compute_mc_reach_up2down(
             depthp = flowveldepth[current_segment][ts - 1][depthval_index]
 
         # run M-C model
-        qdc, velc, depthc = singlesegment(
+        qdc, velc, depthc, ck, cn, X = singlesegment(
             dt=dt,
             qup=qup,
             quc=quc,
@@ -684,6 +687,9 @@ def compute_mc_reach_up2down(
             qlat,
             volumec,
             qlatCum,
+            ck,
+            cn, 
+            X
         ]
 
         next_segment = connections[current_segment]["downstream"]
@@ -801,7 +807,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-    header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum"]
+    header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum", "ck", "cn", "X"]
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -828,6 +834,9 @@ def writeArraytoCSV(
                         flowveldepth[current_segment][:, velval_index],
                         flowveldepth[current_segment][:, depthval_index],
                         flowveldepth[current_segment][:, storageval_index],
+                        flowveldepth[current_segment][:, kinCelerity_index],
+                        flowveldepth[current_segment][:, courant_index],
+                        flowveldepth[current_segment][:, X_index],
                     )
                 )
 
@@ -866,6 +875,9 @@ def writeArraytoNC(
         "depthval": [],
         "velval": [],
         "storageval": [],
+        "ckval": [],
+        "cnval": [],
+        "xval": [],
     }
 
     ordered_reaches = {}
@@ -902,6 +914,16 @@ def writeArraytoNC(
                 flowveldepth_data["velval"].append(
                     flowveldepth[current_segment][:, velval_index]
                 )
+                flowveldepth_data["ckval"].append(
+                    flowveldepth[current_segment][:, kinCelerity_index]
+                )
+                flowveldepth_data["cnval"].append(
+                    flowveldepth[current_segment][:, courant_index]
+                )
+                flowveldepth_data["xval"].append(
+                    flowveldepth[current_segment][:, X_index]
+                )
+            
                 # write segment flowveldepth_data['segment']
                 flowveldepth_data["segment"].append(current_segment)
                 if not TIME_WRITTEN:
@@ -1020,6 +1042,32 @@ def writeNC(
     lateralCumflow.standard_name = (
         "Cummulativelateralflow"  # this is a CF standard name
     )
+    
+    # write  kinematic celerity
+    celerity = ncfile.createVariable(
+        "celerity", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    celerity.units = "ft/s"  #
+    celerity[:, :] = np.transpose(np.array(flowveldepth_data["ckval"], dtype=float))
+    celerity.standard_name = "celerity" 
+    
+    # write  courant number
+    courant = ncfile.createVariable(
+        "courant", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    courant.units = "-"  #
+    courant[:, :] = np.transpose(np.array(flowveldepth_data["cnval"], dtype=float))
+    courant.standard_name = "courant number" 
+    
+    # write  X parameter
+    X_param = ncfile.createVariable(
+        "X", np.float64, ("time", "stations")
+    )  # note: unlimited dimension is leftmost
+    X_param.units = "-"  #
+    X_param[:, :] = np.transpose(np.array(flowveldepth_data["xval"], dtype=float))
+    X_param.standard_name = "MC X parameter" 
+    
+    
     # write time in seconds since  TODO get time from lateral flow from NWM
     time = ncfile.createVariable("time", np.float64, "time")
     time.units = "seconds since 2011-08-27 00:00:00"  ## TODO get time fron NWM as argument to this function
@@ -1078,7 +1126,7 @@ def singlesegment(
         0,
         depthp,
     )
-    # return qdc, vel, depth
+    # return qdc, vel, depth, ck, cn, X
 
 
 def sort_ordered_network(l, reverse=False):
