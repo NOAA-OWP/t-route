@@ -13,8 +13,10 @@ subroutine c_muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(c_float), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
     real(c_float), intent(in) :: velp, depthp
     real(c_float), intent(out) :: qdc, velc, depthc
+    real(c_float) :: ck, cn, X
 
     call muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
-    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc)
+    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
+    
 end subroutine c_muskingcungenwm
 end module muskingcunge_interface
