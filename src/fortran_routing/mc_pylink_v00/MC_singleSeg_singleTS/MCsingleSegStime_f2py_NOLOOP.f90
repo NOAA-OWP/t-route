@@ -6,7 +6,7 @@ module muskingcunge_module
 contains
 
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
-    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc)
+    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
 
     !* exactly follows SUBMUSKINGCUNGE in NWM:
     !* 1) qup and quc for a reach in upstream limit take zero values all the time
@@ -22,6 +22,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(prec), intent(in) :: velp
     real(prec), intent(in) :: depthp
     real(prec), intent(out) :: qdc, velc, depthc
+    real(prec), intent(out) :: ck, cn, X
     real(prec) :: z
     real(prec) :: bfd, C1, C2, C3, C4
 
@@ -88,9 +89,9 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
             !Uncomment next four lines for new initialization
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4)
+                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4,X)
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4)
+                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4,X)
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -167,6 +168,11 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         !qdc = -444.4
         depthc = 0.0_prec
     end if !*if(ql .gt. 0.0 .or. ...
+    
+    ! *************************************************************
+    ! call courant subroutine here
+    ! *************************************************************
+    call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
 end subroutine muskingcungenwm
 
@@ -181,7 +187,7 @@ end subroutine muskingcungenwm
 
 !Uncomment this function signature for new initialization 
 subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4)
+    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4, X)
 
     implicit none
 
@@ -189,7 +195,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: dt, dx
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h
-    real(prec), intent(out) :: Qj, C1, C2, C3, C4
+    real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
     real(prec) :: twl, AREA, WP, R, Ck, Km, X, D
@@ -325,10 +331,45 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
 end subroutine secant2_h
 
-end module muskingcunge_module
-
 !**---------------------------------------------------**!
 !*                                                     *!
 !*                 COURANT SUBROUTINE                  *!
 !*                                                     *!
 !**---------------------------------------------------**!
+subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+
+    implicit none
+
+    real(prec), intent(in) :: h, bfd, bw, twcc, ncc, s0, n, z, dx, dt
+    real(prec), intent(out) :: ck, cn
+    
+    real(prec) :: h_gt_bf, h_lt_bf, AREA, AREAC, WP, WPC, R
+    
+    h_gt_bf = max(h - bfd, 0.0_prec)
+    h_lt_bf = min(bfd, h)
+ 
+    AREA = (bw + h_lt_bf * z ) * h_lt_bf
+    
+    WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
+    
+    AREAC = (twcc * h_gt_bf) 
+    
+    if(h_gt_bf .gt. 0.0_prec) then
+        WPC = twcc + (2 * (h_gt_bf)) 
+    else 
+        WPC = 0
+    endif
+    
+    R   = (AREA + AREAC)/(WP + WPC)
+    
+    ck = ((sqrt(s0)/n)* &
+            ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)* &
+            (2*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
+                + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC)
+                
+    
+    cn = ck * (dt/dx)
+  
+end subroutine courant
+
+end module muskingcunge_module
