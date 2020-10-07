@@ -8,11 +8,7 @@ contains
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
 
-    !* exactly follows SUBMUSKINGCUNGE in NWM:
-    !* 1) qup and quc for a reach in upstream limit take zero values all the time
-    !* 2) initial value of depth of time t of each reach is equal to the value at time t-1
-    !* 3) qup as well as quc at time t for a downstream reach in a serial network takes
-    !*    exactly the same value qdp at time t (or qdc at time t-1) for the upstream reach
+    !* exactly follows SUBMUSKINGCUNGE in NWM
 
     implicit none
 
@@ -26,17 +22,10 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     real(prec) :: z
     real(prec) :: bfd, C1, C2, C3, C4
 
-    !Uncomment next line for old initialization
-    !real(prec) :: WPC, AREAC
-
     integer :: iter
     integer :: maxiter, tries
     real(prec) :: mindepth, aerror, rerror
     real(prec) :: R, twl, h_1, h, h_0, Qj, Qj_0
-
-    ! qdc = 0.0
-    ! velc = velp
-    ! depthc = depthp
 
     !* parameters of Secant method
     maxiter  = 100
@@ -70,28 +59,18 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     h     = (depthc * 1.33_prec) + mindepth !1.50 of  depthc
     h_0   = (depthc * 0.67_prec)            !0.50 of depthc
 
-    if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux
+    if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. quc .gt. 0.0_prec &
+        .or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux
 110 continue
-
-        !Uncomment next two lines for old initialization
-        !WPC = 0.0_prec
-        !AREAC = 0.0_prec
 
         iter = 0
 
         do while (rerror .gt. 0.01_prec .and. aerror .ge. mindepth .and. iter .le. maxiter)
 
-            !Uncomment next four lines for old initialization
-            !call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-            !    qdp, ql, qup, quc, h_0, 1, WPC, Qj_0, C1, C2, C3, C4)
-            !call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-            !    qdp, ql, qup, quc, h, 2, WPC, Qj, C1, C2, C3, C4)
-
-            !Uncomment next four lines for new initialization
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4,X)
+                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4, X)
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4,X)
+                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4, X)
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -159,20 +138,22 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
-        twl = bw + (2.0_prec*z*h)
-        R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
+    
+        ! *************************************************************
+        ! call courant subroutine one last time here
+        ! *************************************************************
+        call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn, twl, R)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
         depthc = h
     else   !*no flow to route
         qdc = 0.0_prec
+        cn = 0.0_prec
+        ck = 0.0_prec
         !qdc = -444.4
+        velc = 0.0_prec
         depthc = 0.0_prec
     end if !*if(ql .gt. 0.0 .or. ...
-    
-    ! *************************************************************
-    ! call courant subroutine here
-    ! *************************************************************
-    call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+
 
 end subroutine muskingcungenwm
 
@@ -198,72 +179,23 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
-    real(prec) :: twl, AREA, WP, R, Ck, Km, D
+    real(prec) :: twl, AREA, WP, R
+    real(prec) :: Ck, Cn, Km, D
     integer    :: upper_interval, lower_interval
 
-    !Uncomment for old initialization
-    !real(prec), intent(out) :: WPC
-    !real(prec) :: AREAC
-    !Uncomment for new initialization 
     real(prec) :: WPC, AREAC
-
-    twl = 0.0_prec
-    WP = 0.0_prec
-
-    !Uncomment next line for old initialization
-    !AREA = 0.0_prec
-    !Uncomment next two lines for new initialization 
-    WPC = 0.0_prec
-    AREAC = 0.0_prec
-
-    R = 0.0_prec
-    Ck = 0.0_prec
-    Km = 0.0_prec
-    X = 0.0_prec
-    D = 0.0_prec
 
     !--upper interval -----------
     upper_interval = 1
     !--lower interval -----------
     lower_interval = 2
 
-    !**top surface water width of the channel inflow
-    twl = bw + 2.0_prec*z*h
-
-    !**hydraulic radius, R
-    if(h .gt. bfd) then !**water outside of defined channel
-        AREA =  (bw + bfd * z) * bfd
-        AREAC = (twcc * (h-bfd)) !**assume compound component is rect. chan, that's 3 times the tw
-        WP = (bw + 2.0_prec * bfd * sqrt(1.0_prec + z*z))
-        WPC = twcc + (2.0_prec*(h-bfd)) !**WPC is 2 times the tw ???
-        R   = (AREA + AREAC)/(WP +WPC)  !**hydraulic radius
-        !print *, "warning: compound channel activated", h, bfd
-    else
-        AREA = (bw + h * z ) * h
-        WP = (bw + 2.0_prec * h * sqrt(1.0_prec + z*z))
-        !WPC = 0.0
-        if(WP .gt. 0.0_prec) then
-            R = AREA/WP
-        else
-            R = 0.0_prec
-        endif
-    endif
-
-    !**kinematic celerity, c
-    if(h .gt. bfd) then
-    !*water outside of defined channel weight the celerity by the contributing area, and
-    !*assume that the mannings of the spills is 2x the manning of the channel
-        Ck = max(0.0_prec,((sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z))))*AREA &
-            + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h-bfd)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC))
-    else
-        if(h .gt. 0.0_prec) then !avoid divide by zero
-            Ck = max(0.0_prec,(sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
-        else
-            Ck = 0.0_prec
-        endif
-    endif
+    ! *************************************************************
+    ! call courant subroutine to obtain celerity and obtain 
+    ! optional geometric parameters
+    ! *************************************************************
+    call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, Ck, Cn, &
+        twl, R, AREA, AREAC, WP, WPC)
 
     !**MC parameter, K
     if(Ck .gt. 0.0_prec) then
@@ -333,18 +265,20 @@ end subroutine secant2_h
 
 !**---------------------------------------------------**!
 !*                                                     *!
-!*                 COURANT SUBROUTINE                  *!
+!*           Hydraulic Geometry SUBROUTINE             *!
 !*                                                     *!
 !**---------------------------------------------------**!
-subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
+    twl, R, AREA, AREAC, WP, WPC, h_gt_bf, h_lt_bf)
 
     implicit none
 
-    real(prec), intent(in) :: h, bfd, bw, twcc, ncc, s0, n, z, dx, dt
-    real(prec), intent(out) :: ck, cn
+    real(prec), intent(in) :: h, bfd, bw, twcc, z
+    real(prec), intent(out) :: twl, AREA, AREAC, WP, WPC, R
+    real(prec), intent(out) :: h_gt_bf, h_lt_bf
     
-    real(prec) :: h_gt_bf, h_lt_bf, AREA, AREAC, WP, WPC, R
-    
+    twl = bw + 2.0_prec*z*h
+
     h_gt_bf = max(h - bfd, 0.0_prec)
     h_lt_bf = min(bfd, h)
  
@@ -361,15 +295,60 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
     endif
     
     R   = (AREA + AREAC)/(WP + WPC)
-    
+    !R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
+
+
+end subroutine hydraulic_geometry
+
+!**---------------------------------------------------**!
+!*                                                     *!
+!*                 COURANT SUBROUTINE                  *!
+!*                                                     *!
+!**---------------------------------------------------**!
+subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn, &
+    twl, R, AREA, AREAC, WP, WPC)
+
+    implicit none
+
+    real(prec), intent(in) :: h, bfd, bw, twcc, z
+    real(prec), intent(in) :: ncc, s0, n, dx, dt 
+    real(prec), intent(out) :: ck
+    real(prec), intent(out) :: cn 
+    real(prec), intent(out), optional :: twl, R, AREA, AREAC, WP, WPC
+    real(prec) :: h_gt_bf, h_lt_bf
+    real(prec) :: twl_loc, R_loc, AREA_loc, AREAC_loc, WP_loc, WPC_loc
+
+    call hydraulic_geometry(h, bfd, bw, twcc, z, &
+        twl_loc, R_loc, &
+        AREA_loc, AREAC_loc, WP_loc, WPC_loc, &
+        h_gt_bf, h_lt_bf)
+
     ck = ((sqrt(s0)/n)* &
-            ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)* &
-            (2*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
-                + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC)
+            ((5.0_prec/3.0_prec)*R_loc**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R_loc**(5.0_prec/3.0_prec)* &
+            (2*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA_loc &
+                + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC_loc)/(AREA_loc+AREAC_loc)
                 
-    
     cn = ck * (dt/dx)
   
+    if (present(twl)) then
+        twl = twl_loc
+    endif
+    if (present(R)) then
+        R = R_loc
+    endif
+    if (present(AREA)) then
+        AREA = AREA_loc
+    endif
+    if (present(AREAC)) then
+        AREAC = AREAC_loc 
+    endif
+    if (present(WP)) then
+        WP = WP_loc
+    endif
+    if (present(WPC)) then
+        WPC = WPC_loc 
+    endif
+
 end subroutine courant
 
 end module muskingcunge_module
