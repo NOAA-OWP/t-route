@@ -1,7 +1,7 @@
 import recursive_print
 import logging 
 
-LOG = logging.getLogger("SingleSeg")
+LOG = logging.getLogger("networkbuilder")
 
 
 def get_down_connections(
