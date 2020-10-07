@@ -782,6 +782,12 @@ def compute_level_pool_reach_up2down(
         volumec = volumec + flowveldepth[current_segment][ts - 1][storageval_index]
         qlatCum = qlatCum + flowveldepth[current_segment][ts - 1][qlatCumval_index]
 
+    #TODO: There may be a more useful output value to provide here.
+    #celerity values are nullified for reservoirs.
+    ck = 0
+    cn = 0
+    X = 0
+
     flowveldepth[current_segment][ts] = [
         ts * dt,
         qdc,
@@ -790,6 +796,9 @@ def compute_level_pool_reach_up2down(
         qlat,
         volumec,
         qlatCum,
+        ck,
+        cn,
+        X,
     ]
 
 
