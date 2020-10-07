@@ -155,7 +155,6 @@ def singlesegment(
     )
     # return qdc, vel, depth
 
-    print(rv)
     return rv[:3]
 
 def main():
