@@ -251,7 +251,13 @@ def _handle_args():
         dest="log_writer",
         default="w",
     )
-
+    parser.add_argument(
+        "-ln",
+        "--log_file",
+        help="Name of log output file",
+        dest="log_file",
+        default="log.log",
+    )
     args = parser.parse_args()
 
     # TODO: Add any other checking
@@ -367,6 +373,7 @@ args = _handle_args()
 debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
 log_writer = args.log_writer
+args.log_file
 
 LOG = logging.getLogger("SingleSeg")
 if verbose:
@@ -391,7 +398,7 @@ LOG.addHandler(ch)
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S %p",
-    filename="logs.log",
+    filename=args.log_file,
     filemode=log_writer,
 )
 
