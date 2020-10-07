@@ -1,5 +1,34 @@
 import recursive_print
+import logging 
 
+LOG = logging.getLogger(__name__)
+
+LOG = logging.getLogger("log")
+if verbose:
+    LOG.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+elif debuglevel == 1:
+    LOG.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+elif debuglevel == 2:
+    LOG.setLevel(logging.WARNING)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARNING)
+else:
+    LOG.setLevel(logging.CRITICAL)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.CRITICAL)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+ch.setFormatter(formatter)
+LOG.addHandler(ch)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S %p",
+    filename="logs.log",
+    filemode=w,
+)
 
 def get_down_connections(
     rows,
@@ -13,12 +42,13 @@ def get_down_connections(
     data_key=r"data",
     verbose=False,
     debuglevel=0,
+    LOG=LOG,
 ):
     # TODO: Consider moving debug and verbose prints to the calling function
     if debuglevel <= -100:
         breakpoint()
     if verbose:
-        print("down connections ...")
+        LOG.info("down connections ...")
 
     connections = {
         row[key_col]: {
@@ -31,13 +61,13 @@ def get_down_connections(
     }
 
     if debuglevel <= -1:
-        print(f"found {len(connections.keys())} segments")
+        LOG.debug(f"found {len(connections.keys())} segments")
     if debuglevel <= -3:
         if verbose:
-            print(f"The complete 'connections' object is as follows:")
-        print(connections)
+            LOG.info(f"The complete 'connections' object is as follows:")
+        LOG.critical(connections)
     if verbose:
-        print("down_connections complete")
+        LOG.info("down_connections complete")
 
     return connections
 
@@ -52,10 +82,11 @@ def get_waterbody_segments(
     upstreams_key=r"upstreams",
     verbose=False,
     debuglevel=0,
+    LOG=LOG,    
 ):
 
     if verbose:
-        print("level_pool_waterbody_set ...")
+        LOG.info("level_pool_waterbody_set ...")
     waterbody_dict = {}
     level_pool_waterbody_set = {
         con[data_key][waterbody_col] for key, con in connections.items()
@@ -63,57 +94,57 @@ def get_waterbody_segments(
     level_pool_waterbody_set.discard(waterbody_null_code)
     waterbody_dict["level_pool"] = level_pool_waterbody_set
     if debuglevel <= -1:
-        print(f"found {len(level_pool_waterbody_set)} waterbodies")
+        LOG.debug(f"found {len(level_pool_waterbody_set)} waterbodies")
     if debuglevel <= -3:
-        print(level_pool_waterbody_set)
+        LOG.critical(level_pool_waterbody_set)
     if verbose:
-        print("level_pool_waterbody_set complete")
+        LOG.info("level_pool_waterbody_set complete")
 
     if verbose:
-        print("waterbody segments ...")
+        LOG.info("waterbody segments ...")
     waterbody_segments = {
         key: con[data_key][waterbody_col]
         for key, con in connections.items()
         if not (con[data_key][waterbody_col] == waterbody_null_code)
     }
     if debuglevel <= -1:
-        print(f"found {len(waterbody_segments)} segments that are part of a waterbody")
+        LOG.debug(f"found {len(waterbody_segments)} segments that are part of a waterbody")
     if debuglevel <= -3:
-        print(waterbody_segments)
+        LOG.critical(waterbody_segments)
     if verbose:
-        print("waterbody_segments complete")
+        LOG.info("waterbody_segments complete")
 
     if verbose:
-        print("waterbody_outlet_set ...")
+        LOG.info("waterbody_outlet_set ...")
     waterbody_outlet_set = set()
     for waterbody_segment in waterbody_segments:
         if connections[waterbody_segment][downstream_key] not in waterbody_segments:
             waterbody_outlet_set.add(waterbody_segment)
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"found {len(waterbody_outlet_set)} segments that are outlets of a waterbody"
         )
     if debuglevel <= -3:
-        print(waterbody_outlet_set)
+        LOG.critical(waterbody_outlet_set)
     if verbose:
-        print("waterbody_outlet_set complete")
+        LOG.info("waterbody_outlet_set complete")
 
     if verbose:
-        print("waterbody_downstream_set ...")
+        LOG.info("waterbody_downstream_set ...")
     waterbody_downstream_set = set()
     for outlet_segment in waterbody_outlet_set:
         waterbody_downstream_set.add(connections[outlet_segment][downstream_key])
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"found {len(waterbody_downstream_set)} segments that are below outlets of a waterbody"
         )
     if debuglevel <= -3:
-        print(waterbody_downstream_set)
+        LOG.critical(waterbody_downstream_set)
     if verbose:
-        print("waterbody_downstream_set complete")
+        LOG.info("waterbody_downstream_set complete")
 
     if verbose:
-        print("waterbody_upstreams_set ...")
+        LOG.info("waterbody_upstreams_set ...")
     waterbody_upstreams_set = set()
     for waterbody_segment in waterbody_segments:
         for upstream in connections[waterbody_segment][upstreams_key]:
@@ -123,13 +154,13 @@ def get_waterbody_segments(
         terminal_code
     )  # TODO: Is this the best place for this filter -- check if ever used.
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"found {len(waterbody_upstreams_set)} segments that are upstream of a waterbody"
         )
     if debuglevel <= -3:
-        print(waterbody_upstreams_set)
+        LOG.critical(waterbody_upstreams_set)
     if verbose:
-        print("waterbody_upstreams_set complete")
+        LOG.info("waterbody_upstreams_set complete")
 
     return (
         waterbody_dict,
@@ -149,31 +180,32 @@ def determine_keys(
     downstream_key=r"downstream",
     verbose=False,
     debuglevel=0,
+    LOG=LOG,
 ):
 
     if verbose:
-        print("ref_keys ...")
+        LOG.info("ref_keys ...")
     ref_keys = {con[downstream_key] for key, con in connections.items()}
     if debuglevel <= -1:
-        print(f"found {len(ref_keys)} ref_keys")
+        LOG.debug(f"found {len(ref_keys)} ref_keys")
     if debuglevel <= -3:
-        print(ref_keys)
+        LOG.critical(ref_keys)
     if verbose:
-        print("ref_keys complete")
+        LOG.info("ref_keys complete")
 
     if verbose:
-        print("headwater_keys ...")
+        LOG.info("headwater_keys ...")
     headwater_keys = {x for x in connections.keys() if x not in ref_keys}
     if debuglevel <= -1:
-        print(f"found {len(headwater_keys)} headwater segments")
+        LOG.debug(f"found {len(headwater_keys)} headwater segments")
     if debuglevel <= -3:
-        print(headwater_keys)
+        LOG.critical(headwater_keys)
     if verbose:
-        print("headwater_keys complete")
+        LOG.info("headwater_keys complete")
 
     # Get the downstream terminating nodes
     if verbose:
-        print("terminal_keys ...")
+        LOG.info("terminal_keys ...")
     # Find the pointing-to keys not found in the key dataset.
     terminal_ref_keys = {x for x in ref_keys if x not in connections.keys()}
 
@@ -184,7 +216,7 @@ def determine_keys(
         if curr_term_ref_key in terminal_ref_keys:
             if curr_term_ref_key != terminal_code:
                 if debuglevel <= -2:
-                    print(
+                    LOG.warning(
                         f"Non-standard terminal key {con[downstream_key]} found in segment {key}"
                     )
             elif curr_term_ref_key == terminal_code:
@@ -194,18 +226,18 @@ def determine_keys(
                     )
             terminal_keys.add(key)
     if debuglevel <= -1:
-        print(f"found {len(terminal_keys)} terminal segments")
+        LOG.debug(f"found {len(terminal_keys)} terminal segments")
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"of those, {len([x for x in terminal_ref_keys if x != terminal_code])} had non-standard terminal keys"
         )
     if debuglevel <= -3:
-        print(terminal_keys)
+        LOG.critical(terminal_keys)
     if verbose:
-        print("terminal_keys complete")
+        LOG.info("terminal_keys complete")
 
     if verbose:
-        print("circular_keys ...")
+        LOG.info("circular_keys ...")
     circular_keys = set()
     for key, value in connections.items():
         try:
@@ -246,13 +278,13 @@ def determine_keys(
             pass
 
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"identified at least {len(circular_keys)} segments with circular references testing to the fourth level"
         )
     if debuglevel <= -3:
-        print(circular_keys)
+        LOG.critical(circular_keys)
     if verbose:
-        print("circular_keys complete")
+        LOG.info("circular_keys complete")
 
     return (
         connections.keys(),
@@ -273,11 +305,12 @@ def get_up_connections(
     downstream_key=r"downstream",
     verbose=False,
     debuglevel=0,
+    LOG=LOG,
 ):
 
     # Create inverse of connections looking upstream
     if verbose:
-        print("identifying upstream connections and junctions ...")
+        LOG.info("identifying upstream connections and junctions ...")
 
     # Using Sets for Junction and Visited keys is REALLY, REALLY, REALLY, FAST!!!
     junction_keys = set()
@@ -333,52 +366,52 @@ def get_up_connections(
                         junction_keys.add(dkey)
                         junction_count += 1
                     if debuglevel <= -2:
-                        print(
+                        LOG.warning(
                             f"Junction found above/into Segment {dkey} with upstream Segments {connections[dkey][upstreams_key]}"
                         )
                 elif len(connections[dkey][upstreams_key]) > 2:
                     if dkey not in junction_keys:
                         # At this point, the logic does not allow for this to be a non-junction
                         # TODO: raise/handle error/warning
-                        print(
+                        LOG.warning(
                             "key error -- junction analysis has an undetermined anomaly!"
                         )
                     #                         print(dkey in visited_keys)
                     #                         for temp_ukey in connections[dkey][upstreams_key]:
                     #                             print(temp_ukey, temp_ukey in visited_keys)
                     if debuglevel <= -2:
-                        print(
+                        LOG.warning(
                             f"revisited Junction above/into Segment {dkey} now with upstream Segments {connections[dkey][upstreams_key]}"
                         )
                     junction_count += 1
             ukey = dkey
 
     if debuglevel <= -1:
-        print(f"visited {len(visited_keys)} segments")
+        LOG.debug(f"visited {len(visited_keys)} segments")
     if debuglevel <= -1:
-        print(
+        LOG.debug(
             f"found {junction_count} junctions in {len(junction_keys)} junction nodes"
         )
     if debuglevel <= -3:
-        print(junction_keys)
-    if debuglevel <= -4:
-        print(connections)
+        LOG.critical(junction_keys)
+    # if debuglevel <= -4:
+    #     print(connections)
     if verbose:
-        print("up_connections complete")
+        LOG.info("up_connections complete")
     if verbose:
-        print("")
+        LOG.info("")
 
     if verbose:
-        print("confluence segments ...")
+        LOG.info("confluence segments ...")
     confluence_segment_set = {
         seg for seg, con in connections.items() if con[downstream_key] in junction_keys
     }
     if debuglevel <= -1:
-        print(f"found {len(confluence_segment_set)} confluence segments")
+        LOG.debug(f"found {len(confluence_segment_set)} confluence segments")
     if debuglevel <= -3:
-        print(confluence_segment_set)
+        LOG.critical(confluence_segment_set)
     if verbose:
-        print("confluence_segment_set complete")
+        LOG.info("confluence_segment_set complete")
 
     return (
         junction_keys,
