@@ -1,7 +1,8 @@
 import recursive_print
 import logging 
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("SingleSeg")
+
 
 def get_down_connections(
     rows,

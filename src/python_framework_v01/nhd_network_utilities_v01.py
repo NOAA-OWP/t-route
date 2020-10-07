@@ -8,7 +8,8 @@ import xarray as xr
 import network_dl
 import logging
 
-LOG = logging.getLogger(__name__)
+
+LOG = logging.getLogger("network_utilities")
 
 
 def get_geo_file_table_rows(
@@ -155,6 +156,7 @@ def build_connections_object(
         length_col=length_col,
         verbose=verbose,
         debuglevel=debuglevel,
+        LOG=LOG
     )
 
     (

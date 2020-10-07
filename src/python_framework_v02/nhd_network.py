@@ -4,7 +4,7 @@ from functools import reduce, partial
 from collections.abc import Iterable
 import logging
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("log")
 
 
 def nodes(N):

@@ -368,7 +368,7 @@ debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
 log_writer = args.log_writer
 
-LOG = logging.getLogger("log")
+LOG = logging.getLogger("SingleSeg")
 if verbose:
     LOG.setLevel(logging.INFO)
     ch = logging.StreamHandler()
@@ -395,6 +395,8 @@ logging.basicConfig(
     filemode=log_writer,
 )
 
+def log_send():
+    return LOG
 
 def compute_network(
     flowveldepth_connect,
