@@ -263,7 +263,7 @@ sys.path.append(os.path.join(root, r"src", r"python_framework_v01"))
 sys.path.append(os.path.join(root, r"src", r"python_framework_v02"))
 sys.path.append(os.path.join(root, r"src", r"python_routing_v01"))
 fortran_routing_dir = os.path.join(
-    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS","courant_dev"
+    root, r"src", r"fortran_routing", r"mc_pylink_v00", r"MC_singleSeg_singleTS"
 )
 fortran_reservoir_dir = os.path.join(
     root, r"src", r"fortran_routing", r"mc_pylink_v00", r"Reservoir_singleTS"
