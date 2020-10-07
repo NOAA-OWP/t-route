@@ -143,6 +143,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
         assume_short_ts (bool): Assume short time steps (quc = qup)
     Notes:
         Array dimensions are checked as a precondition to this method.
@@ -277,13 +278,21 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                     else:
                         # sum of qd0 (flow out of each segment) over all upstream reaches
-                        qup += initial_conditions[usreach_cache[iusreach_cache + i],2]
+                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
                 drows = drows_tmp[:reachlen]
                 srows = reach_cache[ireach_cache:ireach_cache+reachlen]
 
+                """
+                qlat_values may have fewer columns than data_values, if qlat data are taken from WRF hydro simulations,
+                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below, 
+                the second argument, which defines the column that data in qlat_values should be drawn from, is specified
+                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep. 
+                
+                check: Will this still work if lateral inflows are defined at the same timestep as the routing model?
+                """
                 fill_buffer_column(srows, 
                                    int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
                                    drows, 
@@ -305,9 +314,9 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     using srows to properly index
                     '''
                     for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],2]
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],1]
                         buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],4]
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],3]
 
                 if assume_short_ts:
                     quc = qup
