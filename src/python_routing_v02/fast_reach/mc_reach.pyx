@@ -149,10 +149,6 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         Array dimensions are checked as a precondition to this method.
     """
     # Check shapes
-    """
-    EDIT
-    Changed the qlateral dim check to allow the number of timesteps (# of columns) to be different than nsteps
-    """
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
     if qlat_values.shape[1] > ntsteps:
@@ -288,12 +284,10 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 srows = reach_cache[ireach_cache:ireach_cache+reachlen]
 
                 """
-                qlat_values may have fewer columns than data_values, if qlat data are taken from WRF hydro simulations,
+                qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
                 which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below, 
-                the second argument, which defines the column that data in qlat_values should be drawn from, is specified
+                the second argument, which defines the column in qlat_values that data should be drawn from, is specified
                 such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep. 
-                
-                check: Will this still work if lateral inflows are defined at the same timestep as the routing model?
                 """
                 fill_buffer_column(srows, 
                                    int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
