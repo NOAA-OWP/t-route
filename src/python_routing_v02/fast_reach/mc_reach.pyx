@@ -298,7 +298,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 
                 for i in range(scols.shape[0]):
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
-                    # fill buffer with qdp, depthp, velp
+                # fill buffer with qdp, depthp, velp
                 if timestep > 0:
                     fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
                     fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
@@ -310,9 +310,9 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     using srows to properly index
                     '''
                     for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],1]
-                        buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],2]
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],1] #qdp = qd0
+                        buf_view[drows[i], 11] = 0.0 # the velp argmument is never used, set to whatever
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],2] #hdp = h0
 
                 if assume_short_ts:
                     quc = qup
