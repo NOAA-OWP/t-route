@@ -160,6 +160,10 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
+        ! *************************************************************
+        ! call courant subroutine here
+        ! *************************************************************
+        call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
         twl = bw + (2.0_prec*z*h)
         R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
@@ -172,11 +176,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         velc = 0.0_prec
         depthc = 0.0_prec
     end if !*if(ql .gt. 0.0 .or. ...
-    
-    ! *************************************************************
-    ! call courant subroutine here
-    ! *************************************************************
-    call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+
 
 end subroutine muskingcungenwm
 
