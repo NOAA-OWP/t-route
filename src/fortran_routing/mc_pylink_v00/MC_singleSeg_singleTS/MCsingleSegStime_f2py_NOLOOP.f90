@@ -90,9 +90,9 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
             !Uncomment next four lines for new initialization
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4,X)
+                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4, X)
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4,X)
+                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4, X)
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -166,7 +166,10 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         depthc = h
     else   !*no flow to route
         qdc = 0.0_prec
+        cn = 0.0_prec
+        ck = 0.0_prec
         !qdc = -444.4
+        velc = 0.0_prec
         depthc = 0.0_prec
     end if !*if(ql .gt. 0.0 .or. ...
     
