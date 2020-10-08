@@ -231,27 +231,9 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     !--lower interval -----------
     lower_interval = 2
 
-    !**top surface water width of the channel inflow
-    twl = bw + 2.0_prec*z*h
 
-    !**hydraulic radius, R
-    if(h .gt. bfd) then !**water outside of defined channel
-        AREA =  (bw + bfd * z) * bfd
-        AREAC = (twcc * (h-bfd)) !**assume compound component is rect. chan, that's 3 times the tw
-        WP = (bw + 2.0_prec * bfd * sqrt(1.0_prec + z*z))
-        WPC = twcc + (2.0_prec*(h-bfd)) !**WPC is 2 times the tw ???
-        R   = (AREA + AREAC)/(WP +WPC)  !**hydraulic radius
-        !print *, "warning: compound channel activated", h, bfd
-    else
-        AREA = (bw + h * z ) * h
-        WP = (bw + 2.0_prec * h * sqrt(1.0_prec + z*z))
-        !WPC = 0.0
-        if(WP .gt. 0.0_prec) then
-            R = AREA/WP
-        else
-            R = 0.0_prec
-        endif
-    endif
+    call hydraulic_geometry(h, bfd, bw, twcc, z, &
+        twl, R, AREA, AREAC, WP, WPC)
 
     !**kinematic celerity, c
     if(h .gt. bfd) then
@@ -353,26 +335,26 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
     real(prec), intent(in) :: h, bfd, bw, twcc, ncc, s0, n, z, dx, dt
     real(prec), intent(out) :: ck, cn
-    
+
     real(prec) :: h_gt_bf, h_lt_bf, AREA, AREAC, WP, WPC, R
-    
+
     h_gt_bf = max(h - bfd, 0.0_prec)
     h_lt_bf = min(bfd, h)
- 
+
     AREA = (bw + h_lt_bf * z ) * h_lt_bf
-    
+
     WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
-    
+
     AREAC = (twcc * h_gt_bf) 
-    
+
     if(h_gt_bf .gt. 0.0_prec) then
         WPC = twcc + (2 * (h_gt_bf)) 
     else 
         WPC = 0
     endif
-    
+
     R   = (AREA + AREAC)/(WP + WPC)
-    
+
     ck = max(0.0_prec,((sqrt(s0)/n) &
         * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
         - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
@@ -383,7 +365,51 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
         / (AREA+AREAC)
     
     cn = ck * (dt/dx)
-  
+
 end subroutine courant
+
+!**---------------------------------------------------**!
+!*                                                     *!
+!*           Hydraulic Geometry SUBROUTINE             *!
+!*                                                     *!
+!**---------------------------------------------------**!
+subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
+    twl, R, AREA, AREAC, WP, WPC)
+
+    implicit none
+
+    real(prec), intent(in) :: h, bfd, bw, twcc, z
+    real(prec), intent(out) :: twl, R, AREA, AREAC, WP, WPC
+    real(prec) :: h_gt_bf, h_lt_bf
+
+    twl = 0.0_prec
+    R = 0.0_prec
+    AREA = 0.0_prec
+    AREAC = 0.0_prec
+    WP = 0.0_prec
+    WPC = 0.0_prec
+
+    twl = bw + 2.0_prec*z*h
+
+    h_gt_bf = max(h - bfd, 0.0_prec)
+    h_lt_bf = min(bfd, h)
+
+    AREA = (bw + h_lt_bf * z ) * h_lt_bf
+
+    WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
+
+    AREAC = (twcc * h_gt_bf)
+
+    if(h_gt_bf .gt. 0.0_prec) then
+        WPC = twcc + (2 * (h_gt_bf))
+    else
+        WPC = 0
+    endif
+
+    R   = (AREA + AREAC)/(WP + WPC)
+    !R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
+
+
+end subroutine hydraulic_geometry
 
 end module muskingcunge_module
