@@ -365,7 +365,7 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
     
     ck = ((sqrt(s0)/n)* &
             ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)* &
-            (2*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
+            (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
                 + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC)
                 
     
