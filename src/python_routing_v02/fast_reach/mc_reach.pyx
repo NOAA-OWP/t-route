@@ -155,6 +155,8 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     """
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+    if qlat_values.shape[1] > ntsteps:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
@@ -316,7 +318,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                     for i in range(drows.shape[0]):
                         buf_view[drows[i], 10] = initial_conditions[srows[i],1]
                         buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],3]
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],2]
 
                 if assume_short_ts:
                     quc = qup
@@ -332,4 +334,6 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 iusreach_cache += usreachlen
                 
             timestep += 1
+            
+
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
