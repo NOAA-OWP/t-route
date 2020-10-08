@@ -254,13 +254,20 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     if(h .gt. bfd) then
     !*water outside of defined channel weight the celerity by the contributing area, and
     !*assume that the mannings of the spills is 2x the manning of the channel
-        Ck = max(0.0_prec,((sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z))))*AREA &
-            + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h-bfd)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC))
+        Ck = max(0.0_prec,((sqrt(s0)/n) &
+            * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
+            - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
+            * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z)))) &
+            * AREA &
+            + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec) &
+            * (h-bfd)**(2.0_prec/3.0_prec))*AREAC) &
+            / (AREA+AREAC))
     else
         if(h .gt. 0.0_prec) then !avoid divide by zero
-            Ck = max(0.0_prec,(sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
+            Ck = max(0.0_prec,(sqrt(s0)/n) &
+                * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
+                - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
+                * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
         else
             Ck = 0.0_prec
         endif
@@ -363,11 +370,14 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
     
     R   = (AREA + AREAC)/(WP + WPC)
     
-    ck = ((sqrt(s0)/n)* &
-            ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)* &
-            (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z))))*AREA &
-                + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h_gt_bf)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC)
-                
+    ck = max(0.0_prec,((sqrt(s0)/n) &
+        * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
+        - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
+        * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z)))) &
+        * AREA &
+        + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec) &
+        * (h-bfd)**(2.0_prec/3.0_prec))*AREAC)) &
+        / (AREA+AREAC)
     
     cn = ck * (dt/dx)
   
