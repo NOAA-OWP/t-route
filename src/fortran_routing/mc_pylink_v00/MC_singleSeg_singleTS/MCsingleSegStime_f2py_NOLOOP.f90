@@ -202,7 +202,8 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
-    real(prec) :: twl, AREA, WP, R, Ck, Km, D
+    real(prec) :: twl, AREA, WP, R
+    real(prec) :: Ck, Cn, Km, D
     integer    :: upper_interval, lower_interval
 
     !Uncomment for old initialization
@@ -218,10 +219,13 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     !AREA = 0.0_prec
     !Uncomment next two lines for new initialization 
     WPC = 0.0_prec
+    AREA = 0.0_prec
     AREAC = 0.0_prec
 
     R = 0.0_prec
     Ck = 0.0_prec
+    Cn = 0.0_prec
+
     Km = 0.0_prec
     X = 0.0_prec
     D = 0.0_prec
@@ -324,6 +328,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
 end subroutine secant2_h
 
+
 !**---------------------------------------------------**!
 !*                                                     *!
 !*                 COURANT SUBROUTINE                  *!
@@ -333,27 +338,15 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
     implicit none
 
-    real(prec), intent(in) :: h, bfd, bw, twcc, ncc, s0, n, z, dx, dt
-    real(prec), intent(out) :: ck, cn
-
+    real(prec), intent(in) :: h, bfd, bw, twcc, z
+    real(prec), intent(in) :: ncc, s0, n, dx, dt
+    real(prec), intent(out) :: ck
+    real(prec), intent(out) :: cn
     real(prec) :: h_gt_bf, h_lt_bf, AREA, AREAC, WP, WPC, R
+    real(prec) :: twl !UNUSED -- needed only for hydraulic_geometry call
 
-    h_gt_bf = max(h - bfd, 0.0_prec)
-    h_lt_bf = min(bfd, h)
-
-    AREA = (bw + h_lt_bf * z ) * h_lt_bf
-
-    WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
-
-    AREAC = (twcc * h_gt_bf) 
-
-    if(h_gt_bf .gt. 0.0_prec) then
-        WPC = twcc + (2 * (h_gt_bf)) 
-    else 
-        WPC = 0
-    endif
-
-    R   = (AREA + AREAC)/(WP + WPC)
+    call hydraulic_geometry(h, bfd, bw, twcc, z, &
+        twl, R, AREA, AREAC, WP, WPC, h_lt_bf, h_gt_bf)
 
     ck = max(0.0_prec,((sqrt(s0)/n) &
         * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
@@ -374,13 +367,14 @@ end subroutine courant
 !*                                                     *!
 !**---------------------------------------------------**!
 subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
-    twl, R, AREA, AREAC, WP, WPC)
+    twl, R, AREA, AREAC, WP, WPC, h_lt_bf, h_gt_bf)
 
     implicit none
 
     real(prec), intent(in) :: h, bfd, bw, twcc, z
     real(prec), intent(out) :: twl, R, AREA, AREAC, WP, WPC
-    real(prec) :: h_gt_bf, h_lt_bf
+    real(prec), intent(out), optional :: h_gt_bf, h_lt_bf
+    real(prec) :: h_gt_bf_loc, h_lt_bf_loc
 
     twl = 0.0_prec
     R = 0.0_prec
@@ -391,25 +385,31 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
 
     twl = bw + 2.0_prec*z*h
 
-    h_gt_bf = max(h - bfd, 0.0_prec)
-    h_lt_bf = min(bfd, h)
+    h_gt_bf_loc = max(h - bfd, 0.0_prec)
+    h_lt_bf_loc = min(bfd, h)
 
-    AREA = (bw + h_lt_bf * z ) * h_lt_bf
+    AREA = (bw + h_lt_bf_loc * z ) * h_lt_bf_loc
 
-    WP = (bw + 2 * h_lt_bf * sqrt(1 + z*z))
+    WP = (bw + 2 * h_lt_bf_loc * sqrt(1 + z*z))
 
-    AREAC = (twcc * h_gt_bf)
+    AREAC = (twcc * h_gt_bf_loc)
 
-    if(h_gt_bf .gt. 0.0_prec) then
-        WPC = twcc + (2 * (h_gt_bf))
+    if(h_gt_bf_loc .gt. 0.0_prec) then
+        WPC = twcc + (2 * (h_gt_bf_loc))
     else
         WPC = 0
     endif
 
     R   = (AREA + AREAC)/(WP + WPC)
     !R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
-
+    if (present(h_gt_bf)) then
+        h_gt_bf = h_gt_bf_loc
+    endif
+    if (present(h_lt_bf)) then
+        h_lt_bf = h_lt_bf_loc
+    endif
 
 end subroutine hydraulic_geometry
+
 
 end module muskingcunge_module
