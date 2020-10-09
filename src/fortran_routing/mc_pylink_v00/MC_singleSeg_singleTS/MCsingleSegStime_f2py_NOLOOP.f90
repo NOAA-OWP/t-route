@@ -160,10 +160,6 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
-        ! *************************************************************
-        ! call courant subroutine here
-        ! *************************************************************
-        call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
         twl = bw + (2.0_prec*z*h)
         R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
@@ -177,6 +173,10 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
         depthc = 0.0_prec
     end if !*if(ql .gt. 0.0 .or. ...
 
+    ! *************************************************************
+    ! call courant subroutine here
+    ! *************************************************************
+    call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
 end subroutine muskingcungenwm
 
@@ -351,12 +351,12 @@ subroutine courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
     ck = max(0.0_prec,((sqrt(s0)/n) &
         * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
         - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
-        * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z)))) &
+        * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h_lt_bf*z)))) &
         * AREA &
         + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec) &
-        * (h-bfd)**(2.0_prec/3.0_prec))*AREAC)) &
-        / (AREA+AREAC)
-    
+        * (h_gt_bf)**(2.0_prec/3.0_prec))*AREAC) &
+        / (AREA+AREAC))
+
     cn = ck * (dt/dx)
 
 end subroutine courant
