@@ -16,7 +16,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
     implicit none
 
-    real(prec), intent(in) :: dt 
+    real(prec), intent(in) :: dt
     real(prec), intent(in) :: qup, quc, qdp, ql
     real(prec), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
     real(prec), intent(in) :: velp
@@ -160,7 +160,11 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
-        twl = bw + (2.0_prec*z*h)
+        call hydraulic_geometry(h, bfd, bw, twcc, z, twl, R)
+        !TODO: The following line allows the system to reproduce the current
+        !velocity calculation, however the hydraulic radius provided is not
+        !taking into account the flood-plan flow, nor is the velocity
+        !accouting for the variation in Manning n.
         R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
         depthc = h
@@ -189,7 +193,7 @@ end subroutine muskingcungenwm
 !subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 !    qdp, ql, qup, quc, h, interval, WPC, Qj, C1, C2, C3, C4)
 
-!Uncomment this function signature for new initialization 
+!Uncomment this function signature for new initialization
 subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4, X)
 
@@ -209,7 +213,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     !Uncomment for old initialization
     !real(prec), intent(out) :: WPC
     !real(prec) :: AREAC
-    !Uncomment for new initialization 
+    !Uncomment for new initialization
     real(prec) :: WPC, AREAC
 
     twl = 0.0_prec
@@ -217,7 +221,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
     !Uncomment next line for old initialization
     !AREA = 0.0_prec
-    !Uncomment next two lines for new initialization 
+    !Uncomment next two lines for new initialization
     WPC = 0.0_prec
     AREA = 0.0_prec
     AREAC = 0.0_prec
@@ -372,36 +376,55 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
     implicit none
 
     real(prec), intent(in) :: h, bfd, bw, twcc, z
-    real(prec), intent(out) :: twl, R, AREA, AREAC, WP, WPC
+    real(prec), intent(out), optional :: twl, R, AREA, AREAC, WP, WPC
+    real(prec) :: twl_loc, R_loc, AREA_loc, AREAC_loc, WP_loc, WPC_loc
     real(prec), intent(out), optional :: h_gt_bf, h_lt_bf
     real(prec) :: h_gt_bf_loc, h_lt_bf_loc
 
-    twl = 0.0_prec
-    R = 0.0_prec
-    AREA = 0.0_prec
-    AREAC = 0.0_prec
-    WP = 0.0_prec
-    WPC = 0.0_prec
+    twl_loc = 0.0_prec
+    R_loc = 0.0_prec
+    AREA_loc = 0.0_prec
+    AREAC_loc = 0.0_prec
+    WP_loc = 0.0_prec
+    WPC_loc = 0.0_prec
 
-    twl = bw + 2.0_prec*z*h
+    twl_loc = bw + 2.0_prec*z*h
 
     h_gt_bf_loc = max(h - bfd, 0.0_prec)
     h_lt_bf_loc = min(bfd, h)
 
-    AREA = (bw + h_lt_bf_loc * z ) * h_lt_bf_loc
+    AREA_loc = (bw + h_lt_bf_loc * z ) * h_lt_bf_loc
 
-    WP = (bw + 2 * h_lt_bf_loc * sqrt(1 + z*z))
+    WP_loc = (bw + 2 * h_lt_bf_loc * sqrt(1 + z*z))
 
-    AREAC = (twcc * h_gt_bf_loc)
+    AREAC_loc = (twcc * h_gt_bf_loc)
 
     if(h_gt_bf_loc .gt. 0.0_prec) then
-        WPC = twcc + (2 * (h_gt_bf_loc))
+        WPC_loc = twcc + (2 * (h_gt_bf_loc))
     else
-        WPC = 0
+        WPC_loc = 0
     endif
 
-    R   = (AREA + AREAC)/(WP + WPC)
+    R_loc   = (AREA_loc + AREAC_loc)/(WP_loc + WPC_loc)
     !R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
+    if (present(twl)) then
+        twl = twl_loc
+    endif
+    if (present(R)) then
+        R = R_loc
+    endif
+    if (present(AREA)) then
+        AREA = AREA_loc
+    endif
+    if (present(AREAC)) then
+        AREAC = AREAC_loc
+    endif
+    if (present(WP)) then
+        WP = WP_loc
+    endif
+    if (present(WPC)) then
+        WPC = WPC_loc
+    endif
     if (present(h_gt_bf)) then
         h_gt_bf = h_gt_bf_loc
     endif
