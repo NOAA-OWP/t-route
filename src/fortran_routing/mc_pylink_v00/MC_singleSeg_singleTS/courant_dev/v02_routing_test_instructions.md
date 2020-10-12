@@ -28,9 +28,9 @@ gfortran -c -O2 -fPIC -o pymodule_levelpool.o pymodule_levelpool.f90
 cp $FORTRAN_RES_DIR/*.o $FAST_REACH_DIR 
 
 # define more directory path variables - system specific!
-numpy_I="/home/awlostowski/tr/lib/python3.8/site-packages/numpy/core/include"
+numpy_I="/home/user/tr/lib/python3.8/site-packages/numpy/core/include"
 py_I="/usr/include/python3.8"
-py_lib="/home/awlostowski/tr/lib"
+py_lib="/home/user/tr/lib"
 
 cd $FAST_REACH_DIR
 cython -3 -v -p --gdb --line-directives -Wextra --cleanup 3 fortran_wrappers.pxd *.pyx
