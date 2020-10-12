@@ -45,7 +45,7 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
+cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts) nogil:
     """
     Kernel to compute reach.
     Input buffer is array matching following description:
@@ -98,11 +98,17 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     depthp,
                     out)
 
-        output_buf[i, 0] = quc = out.qdc
+#        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
+        output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
-
+        
         qup = qdp
+        
+        if assume_short_ts:
+            quc = qup
+        else:
+            quc = out.qdc        
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
@@ -151,7 +157,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
-    if qlat_values.shape[1] > ntsteps:
+    if qlat_values.shape[1] > nsteps:
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
@@ -317,7 +323,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 if assume_short_ts:
                     quc = qup
 
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
+                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts)
 
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
