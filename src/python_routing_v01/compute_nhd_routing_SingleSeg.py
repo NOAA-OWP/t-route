@@ -221,7 +221,7 @@ def _handle_args():
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
-        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See test/input/json/CustomInput.yaml for an example.",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
     )
     parser.add_argument(
         "--parallel",
@@ -247,7 +247,7 @@ def _handle_args():
     args = parser.parse_args()
 
     # TODO: Add any other checking
-    # TODO: This check is probably no longer needed
+    # TODO: This check is probably no longer needed; 'custom' functionality is managed by the 'custom-input-file' argument
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
             r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .yaml or .json file"
