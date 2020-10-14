@@ -6,7 +6,6 @@ import pandas as pd
 import zipfile
 import xarray as xr
 import network_dl
-import yaml
 
 
 def get_geo_file_table_rows(
