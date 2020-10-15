@@ -127,39 +127,16 @@ import nhd_network_utilities_v02 as nnu
 import mc_reach
 import nhd_network
 import nhd_io
+import set_logger as sl
 
 args = _handle_args()
 debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
 log_writer = args.log_writer
-args.log_file
+log_file = args.log_file
 
 LOG = logging.getLogger("SingleSeg")
-if verbose:
-    LOG.setLevel(logging.INFO)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-elif debuglevel == 1:
-    LOG.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-elif debuglevel == 2:
-    LOG.setLevel(logging.WARNING)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.WARNING)
-else:
-    LOG.setLevel(logging.CRITICAL)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.CRITICAL)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-ch.setFormatter(formatter)
-LOG.addHandler(ch)
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S %p",
-    filename=args.log_file,
-    filemode=log_writer,
-)
+sl.set_logger(LOG,verbose,debuglevel,log_writer,log_file)
 
 
 def writetoFile(file, writeString):

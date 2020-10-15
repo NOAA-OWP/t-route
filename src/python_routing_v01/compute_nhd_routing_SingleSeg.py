@@ -341,6 +341,7 @@ qlatCumval_index = 6  # qlatCumval
 import nhd_network_utilities_v01 as nnu
 import nhd_io as nio
 import nhd_reach_utilities as nru
+import set_logger as sl
 
 sys.path.append(fortran_reservoir_dir)
 if COMPILE:
@@ -370,40 +371,15 @@ else:
     from pymodule_levelpool import module_levelpool as rc
 
 args = _handle_args()
-debuglevel = -1 * int(args.debuglevel)
 verbose = args.verbose
+debuglevel = -1 * int(args.debuglevel)
 log_writer = args.log_writer
-args.log_file
+log_file = args.log_file
 
 LOG = logging.getLogger("SingleSeg")
-if verbose:
-    LOG.setLevel(logging.INFO)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-elif debuglevel == 1:
-    LOG.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-elif debuglevel == 2:
-    LOG.setLevel(logging.WARNING)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.WARNING)
-else:
-    LOG.setLevel(logging.CRITICAL)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.CRITICAL)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-ch.setFormatter(formatter)
-LOG.addHandler(ch)
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S %p",
-    filename=args.log_file,
-    filemode=log_writer,
-)
 
-def log_send():
-    return LOG
+sl.set_logger(LOG,verbose,debuglevel,log_writer,log_file)
+
 
 def compute_network(
     flowveldepth_connect,
