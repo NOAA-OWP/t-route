@@ -376,7 +376,7 @@ debuglevel = -1 * int(args.debuglevel)
 log_writer = args.log_writer
 log_file = args.log_file
 
-LOG = logging.getLogger("SingleSeg")
+LOG = logging.getLogger(__name__)
 
 sl.set_logger(LOG,verbose,debuglevel,log_writer,log_file)
 

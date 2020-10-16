@@ -7,9 +7,9 @@ import zipfile
 import xarray as xr
 import network_dl
 import logging
+# from compute_nhd_routing_SingleSeg import logging
 
-
-LOG = logging.getLogger("network_utilities")
+LOG = logging.getLogger(__name__)
 
 
 def get_geo_file_table_rows(
