@@ -101,7 +101,6 @@ ENV_IS_CL = False
 if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
-
     root = pathlib.Path("../..").resolve()
     sys.path.append(r"../python_framework_v02")
     # TODO: automate compile for the package scripts
