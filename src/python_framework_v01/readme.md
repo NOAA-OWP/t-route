@@ -10,7 +10,7 @@ and
 * Used by the function `get_nhd_connections`, which calls `do_connections` with the various keys passed to allow development of the connection object and key lists.
 e.g., 
 ```
-{'CONUS_ge5':{'geo_file_path': '***REMOVED***user/git/t-route/src/test/input/geo/Channels/NHD_Conus_Channels.shp'
+{'CONUS_ge5':{'geo_file_path': '/home/user/git/t-route/src/test/input/geo/Channels/NHD_Conus_Channels.shp'
               , 'key_col': 1
               , 'downstream_col': 6
               , 'length_col': 5
