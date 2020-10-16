@@ -136,7 +136,7 @@ def singlesegment(
 ):
 
     # call Fortran routine
-    return muskingcunge_module.muskingcungenwm(
+    rv = muskingcunge_module.muskingcungenwm(
         dt,
         qup,
         quc,
@@ -155,6 +155,7 @@ def singlesegment(
     )
     # return qdc, vel, depth
 
+    return rv[:3]
 
 def main():
     """
