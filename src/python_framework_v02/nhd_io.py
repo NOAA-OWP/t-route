@@ -4,7 +4,7 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import json
-
+import yaml
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -39,16 +39,20 @@ def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
 
-def read_custom_input_json(custom_input_file):
-    with open(custom_input_file) as json_file:
-        data = json.load(json_file)
-        supernetwork_parameters = data.get("supernetwork_parameters", None)
-        waterbody_parameters = data.get("waterbody_parameters", {})
-        forcing_parameters = data.get("forcing_parameters", {})
-        restart_parameters = data.get("restart_parameters", {})
-        output_parameters = data.get("output_parameters", {})
-        run_parameters = data.get("run_parameters", {})
-        # TODO: add error trapping for potentially missing files
+def read_custom_input(custom_input_file):
+    if custom_input_file[-4:] == "yaml":
+        with open(custom_input_file) as custom_file:
+            data = yaml.load(custom_file)
+    else:
+        with open(custom_input_file) as custom_file:
+            data = json.load(custom_file)
+    supernetwork_parameters = data.get("supernetwork_parameters", None)
+    waterbody_parameters = data.get("waterbody_parameters", {})
+    forcing_parameters = data.get("forcing_parameters", {})
+    restart_parameters = data.get("restart_parameters", {})
+    output_parameters = data.get("output_parameters", {})
+    run_parameters = data.get("run_parameters", {})
+    # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
         waterbody_parameters,
@@ -57,7 +61,6 @@ def read_custom_input_json(custom_input_file):
         output_parameters,
         run_parameters,
     )
-
 
 def replace_downstreams(data, downstream_col, terminal_code):
     ds0_mask = data[downstream_col] == terminal_code
