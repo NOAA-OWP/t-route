@@ -4,7 +4,7 @@ import numpy as np
 import reach
 import utils
 
-def compute_reach_kernel(qup, quc, nreach, input_buf, output_buf):
+def __compute_reach_kernel(qup, quc, nreach, input_buf, output_buf):
     """
     Kernel to compute reach.
 

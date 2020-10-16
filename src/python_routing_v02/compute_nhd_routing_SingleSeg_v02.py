@@ -59,6 +59,12 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--use-python",
+        help="Use the python version of the compute_network code (omit flag for cython-based compute_network).",
+        dest="debug_use_python_method",
+        action="store_true",
+    )
+    parser.add_argument(
         "--parallel",
         nargs="?",
         help="Use the parallel computation engine (omit flag for serial computation)",
@@ -281,6 +287,12 @@ def main():
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
+    debug_use_python_method = args.debug_use_python_method
+    if debug_use_python_method:
+        compute_func = mc_reach_py.compute_network  # Python
+    else:
+        compute_func = mc_reach.compute_network  # Cython
+
     parallel_compute = args.parallel_compute
     if parallel_compute=="type2":
         print("Executing in Parallel type 2 mode (thread pool shared across reaches)")
@@ -295,7 +307,7 @@ def main():
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
-                    delayed(mc_reach_py.compute_network)(
+                    delayed(compute_func)(
                         nts,
                         reach_list,
                         rconn_ordered[o],
@@ -321,7 +333,7 @@ def main():
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 jobs.append(
-                    delayed(mc_reach_py.compute_network)(
+                    delayed(compute_func)(
                         nts,
                         reach_list,
                         subnets[tw],
@@ -346,7 +358,7 @@ def main():
             r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
         ].sort_index()
         qlat_sub = qlats.loc[r].sort_index()
-        results = mc_reach_py.compute_network(
+        results = compute_func(
             nts,
             overall_ordered_reaches_list,
             rconn_ordered_byreach,
@@ -370,7 +382,7 @@ def main():
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(
-                mc_reach_py.compute_network(
+                compute_func(
                     nts,
                     reach_list,
                     rconn_ordered[o],
@@ -394,7 +406,7 @@ def main():
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             results.append(
-                mc_reach_py.compute_network(
+                compute_func(
                     nts,
                     reach_list,
                     subnets[tw],
