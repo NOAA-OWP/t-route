@@ -288,13 +288,15 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-        if in_wsl():  # disable optimization for compiling on WSL
-            fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
+        if in_wsl():  # disable optimization for compiling on WSL
+            fortran_compile_call.append(r"--noopt")
+        else:
+            fortran_compile_call.append(r"--opt='-O1'")
         subprocess.run(
             fortran_compile_call,
             cwd=fortran_routing_dir,
@@ -338,13 +340,15 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-        if in_wsl():  # disable optimization for compiling on WSL
-            fortran_compile_call.append(r"--noopt")
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"module_levelpool.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"pymodule_levelpool")
+        if in_wsl():  # disable optimization for compiling on WSL
+            fortran_compile_call.append(r"--noopt")
+        else:
+            fortran_compile_call.append(r"--opt='-O1'")
         subprocess.run(
             fortran_compile_call,
             cwd=fortran_reservoir_dir,
