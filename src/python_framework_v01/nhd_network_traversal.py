@@ -41,7 +41,7 @@ def main():
     # supernetworks.update({'CONUS_FULL_RES_v20':{}}) # = False
 
     for supernetwork in supernetworks:
-        supernetworks[supernetwork] = nnu.set_supernetwork_data(
+        supernetworks[supernetwork] = nnu.set_supernetwork_parameters(
             supernetwork=supernetwork,
             geo_input_folder=geo_input_folder,
             debuglevel=debuglevel,

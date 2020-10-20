@@ -22,6 +22,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
+import logging
 
 
 def _handle_args():
@@ -92,6 +93,20 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="Switch log file to overwrite or append to file using w or a",
+        dest="log_writer",
+        default="w",
+    )
+    parser.add_argument(
+        "-ln",
+        "--log_file",
+        help="Name of log output file",
+        dest="log_file",
+        default="log.log",
+    )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
 
     return parser.parse_args()
@@ -112,6 +127,16 @@ import nhd_network_utilities_v02 as nnu
 import mc_reach
 import nhd_network
 import nhd_io
+import set_logger as sl
+
+args = _handle_args()
+debuglevel = -1 * int(args.debuglevel)
+verbose = args.verbose
+log_writer = args.log_writer
+log_file = args.log_file
+
+LOG = logging.getLogger(__name__)
+sl.set_logger(LOG,verbose,debuglevel,log_writer,log_file)
 
 
 def writetoFile(file, writeString):
@@ -130,8 +155,8 @@ def main():
     args = _handle_args()
 
     nts = 144
-    debuglevel = -1 * args.debuglevel
-    verbose = args.verbose
+    # debuglevel = -1 * args.debuglevel
+    # verbose = args.verbose
     showtiming = args.showtiming
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
@@ -154,8 +179,7 @@ def main():
     # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
     # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
-    if verbose:
-        print("creating supernetwork connections set")
+    LOG.info("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
 
@@ -196,16 +220,15 @@ def main():
         data, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-    if verbose:
-        print("supernetwork connections set complete")
+    LOG.info("supernetwork connections set complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     # STEP 2
     if showtiming:
         start_time = time.time()
-    if verbose:
-        print("organizing connections into reaches ...")
+
+    LOG.info("organizing connections into reaches ...")
 
     rconn = nhd_network.reverse_network(connections)
     subnets = nhd_network.reachable_network(rconn)
@@ -214,10 +237,9 @@ def main():
         path_func = partial(nhd_network.split_at_junction, net)
         subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
 
-    if verbose:
-        print("reach organization complete")
+    LOG.info("reach organization complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     if showtiming:
         start_time = time.time()
@@ -284,10 +306,9 @@ def main():
     flowveldepth.to_csv(f"{args.supernetwork}.csv")
     print(flowveldepth)
 
-    if verbose:
-        print("ordered reach computation complete")
+    LOG.info("ordered reach computation complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
 
 if __name__ == "__main__":
