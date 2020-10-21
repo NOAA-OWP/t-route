@@ -244,7 +244,7 @@ cpdef object compute_network(int nsteps, list reaches, object connections,
                 usreach_cache[iusreach_cache] = bidx
                 iusreach_cache += 1
         # print(np.asarray(connections[reach[0]]))
-        print(np.asarray(usreach_cache))
+        print(f"np.asarray(usreach_cache) {np.asarray(usreach_cache)}")
 
     cdef int maxreachlen = max(reach_sizes)
     buf = np.zeros((maxreachlen, buf_cols), dtype='float32')
