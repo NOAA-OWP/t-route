@@ -252,11 +252,11 @@ def _handle_args():
         default="w",
     )
     parser.add_argument(
-        "-ln",
-        "--log_file",
-        help="Name of log output file",
+        "--log-file",
+        nargs="?",
+        help="Write logging to file; If argument is omitted, logging is written to default path __file__.log.",
         dest="log_file",
-        default="log.log",
+        const=__file__ + ".log",
     )
     args = parser.parse_args()
 
@@ -317,7 +317,7 @@ if COMPILE:
         )
         from mc_sseg_stime import muskingcunge_module as mc
     except Exception as e:
-        LOG.info(e)
+        LOG.critical(e)
         traceback.print_exc()
 else:
     from mc_sseg_stime import muskingcunge_module as mc
@@ -365,7 +365,7 @@ if COMPILE:
         )
         from pymodule_levelpool import module_levelpool as rc
     except Exception as e:
-        LOG.info(e)
+        LOG.critical(e)
         traceback.print_exc()
 else:
     from pymodule_levelpool import module_levelpool as rc
@@ -423,7 +423,7 @@ def compute_network(
     }
 
     if debuglevel <= -1:
-        LOG.debug(
+        LOG.warning(
             f"\nExecuting simulation on network {terminal_segment} beginning with streams of order {network['maximum_reach_seqorder']}"
         )
 
@@ -444,7 +444,7 @@ def compute_network(
     for ts in range(0, nts):
         for x in range(network["maximum_reach_seqorder"], -1, -1):
             for head_segment, reach in ordered_reaches[x]:
-                # LOG.info(f'timestep: {ts}\n')
+                # LOG.critical(f'timestep: {ts}\n')
                 # for loops should contain both waterbodies and mc_reach as it loops entire network
                 # TODO: Prune these inputs
                 qup_reach, quc_reach = compute_reach_upstream_flows(
@@ -605,7 +605,7 @@ def compute_mc_reach_up2down(
     global connections
 
     if debuglevel <= -2:
-        LOG.warning(
+        LOG.debug(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
         )
 
@@ -731,10 +731,10 @@ def compute_mc_reach_up2down(
         next_segment = connections[current_segment]["downstream"]
         if current_segment == reach["reach_tail"]:
             if debuglevel <= -2:
-                LOG.warning(f"{current_segment} (tail)")
+                LOG.debug(f"{current_segment} (tail)")
             break
         if debuglevel <= -3:
-            LOG.critical(f"{current_segment} --> {next_segment}\n")
+            LOG.info(f"{current_segment} --> {next_segment}\n")
         # current_segment = next_segment
         # next_segment = connections[current_segment]["downstream"]
         current_segment = next_segment
@@ -765,7 +765,7 @@ def compute_level_pool_reach_up2down(
     global waterbody_initial_states_df
 
     if debuglevel <= -2:
-        LOG.warning(
+        LOG.debug(
             f"\nreach: {head_segment} (order: {reach['seqorder']} n_segs: {len(reach['segments'])})"
         )
 
@@ -783,7 +783,7 @@ def compute_level_pool_reach_up2down(
     qts = int(ts / qts_subdivisions)
     qlat = sum([qlateral[seg][qts] for seg in network["all_segments"]])
     if debuglevel <= -2:
-        LOG.warning(f"executing reservoir computation on waterbody: {waterbody}")
+        LOG.debug(f"executing reservoir computation on waterbody: {waterbody}")
 
     wb_params = waterbody_parameters["level_pool"]
     ln = waterbody
@@ -856,7 +856,7 @@ def writeArraytoCSV(
     while True:
         if current_segment in csv_output_segments:
             filename = f"{pathToOutputFile}/{current_segment}.csv"  #
-            LOG.info(f"writing segment output to --> {filename}")
+            LOG.critical(f"writing segment output to --> {filename}")
             with open(filename, "w+") as csvfile:
                 csvwriter = csv.writer(csvfile, delimiter=",", quoting=csv.QUOTE_ALL)
                 csvwriter.writerow(header)
@@ -874,10 +874,10 @@ def writeArraytoCSV(
 
         if current_segment == reach["reach_tail"]:
             if debuglevel <= -2:
-                LOG.warning(f"{current_segment} (tail)")
+                LOG.debug(f"{current_segment} (tail)")
             break
         if debuglevel <= -3:
-            LOG.critical(f"{current_segment} --> {next_segment}\n")
+            LOG.info(f"{current_segment} --> {next_segment}\n")
         current_segment = next_segment
         next_segment = connections[current_segment]["downstream"]
 
@@ -955,16 +955,16 @@ def writeArraytoNC(
                 if current_segment == reach["reach_tail"]:
                     write_segment = current_segment
                     if debuglevel <= -2:
-                        LOG.warning(f"{current_segment} (tail)")
+                        LOG.debug(f"{current_segment} (tail)")
                     break
                 next_segment = connections[current_segment]["downstream"]
                 if debuglevel <= -3:
-                    LOG.critical(f"{current_segment} --> {next_segment}\n")
+                    LOG.info(f"{current_segment} --> {next_segment}\n")
                 current_segment = next_segment
 
     # check number of timesteps should match the time the data is written
     if len(flowveldepth_data["time"][0]) != nts:
-        LOG.info(
+        LOG.critical(
             f"Number of timesteps  {nts} does not match data timesteps {len(flowveldepth_data['time'][0])}\n"
         )
         return
@@ -997,7 +997,7 @@ def writeNC(
 ):
     # start writing data to nc file
     filename = f"{pathToOutputFile}/{terminal_segment}.nc"  # ncfile'
-    LOG.info(f"writing netcdf output to --> {filename}")
+    LOG.critical(f"writing netcdf output to --> {filename}")
     ncfile = netCDF4.Dataset(filename, mode="w", format="NETCDF4")
     # segcount = total segments for the current reach
     segcount = ncfile.createDimension("stations", segment_count)  # segment
@@ -1079,7 +1079,7 @@ def writeNC(
     #
     ncfile.close()
     if debuglevel <= -1:
-        LOG.debug(f"{filename} closed!")
+        LOG.warning(f"{filename} closed!")
 
 
 ## call to singlesegment MC Fortran Module
@@ -1263,7 +1263,7 @@ def main():
     run_pocono1_test = args.run_pocono1_test
 
     if run_pocono2_test:
-        LOG.info("running test case for Pocono_TEST2 domain")
+        LOG.critical("running test case for Pocono_TEST2 domain")
         # Overwrite the following test defaults
         supernetwork = "Pocono_TEST2"
         break_network_at_waterbodies = False
@@ -1285,7 +1285,7 @@ def main():
         # By downloading aaraney's docker job scheduler repo from GitHub, one can
         # execute the WRF-Hydro model that generated the test results
         # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
-        LOG.info("running test case for Pocono_TEST1 domain")
+        LOG.critical("running test case for Pocono_TEST1 domain")
         # Overwrite the following test defaults
 
         NWM_test_path = os.path.join(
@@ -1366,10 +1366,10 @@ def main():
 
     if showtiming:
         program_start_time = time.time()
-        LOG.info(f"begin program t-route ...")
+        LOG.critical(f"begin program t-route ...")
 
     # STEP 1: Read the supernetwork dataset and build the connections graph
-    LOG.info("creating supernetwork connections set")
+    LOG.critical("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
 
@@ -1396,16 +1396,16 @@ def main():
             debuglevel=debuglevel,
         )
 
-    LOG.info("supernetwork connections set complete")
+    LOG.critical("supernetwork connections set complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.critical("... in %s seconds." % (time.time() - start_time))
 
     connections = supernetwork_values[0]
 
     # STEP 2: Separate the networks and build the sub-graph of reaches within each network
     if showtiming:
         start_time = time.time()
-        LOG.info("organizing connections into reaches ...")
+        LOG.critical("organizing connections into reaches ...")
     networks = nru.compose_networks(
         supernetwork_values,
         break_network_at_waterbodies=break_network_at_waterbodies,
@@ -1414,16 +1414,16 @@ def main():
         showtiming=showtiming,
     )
 
-    LOG.info("reach organization complete")
+    LOG.critical("reach organization complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.critical("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 3: Organize Network for Waterbodies
     if break_network_at_waterbodies:
         if showtiming:
             start_time = time.time()
-            LOG.info("reading waterbody parameter file ...")
+            LOG.critical("reading waterbody parameter file ...")
 
         ## STEP 3a: Read waterbody parameter file
         waterbodies_values = supernetwork_values[12]
@@ -1439,15 +1439,15 @@ def main():
 
         nru.order_networks(connections, networks, connections_tailwaters)
 
-        LOG.info("waterbodies complete")
+        LOG.critical("waterbodies complete")
         if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+            LOG.critical("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
         ## STEP 3b: Order subnetworks above and below reservoirs
         if showtiming:
             start_time = time.time()
-            LOG.info("ordering waterbody subnetworks ...")
+            LOG.critical("ordering waterbody subnetworks ...")
 
         max_network_seqorder = -1
         for network in networks:
@@ -1463,9 +1463,9 @@ def main():
                 (terminal_segment, network)
             )
 
-        LOG.info("ordering waterbody subnetworks complete")
+        LOG.critical("ordering waterbody subnetworks complete")
         if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+            LOG.critical("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
     else:
@@ -1484,7 +1484,7 @@ def main():
         ## STEP 3c: Handle Waterbody Initial States
         if showtiming:
             start_time = time.time()
-            LOG.info("setting waterbody initial states ...")
+            LOG.critical("setting waterbody initial states ...")
 
         if wrf_hydro_waterbody_restart_file:
 
@@ -1510,15 +1510,15 @@ def main():
                 len(waterbody_initial_states_df)
             )
 
-        LOG.info("waterbody initial states complete")
+        LOG.critical("waterbody initial states complete")
         if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+            LOG.critical("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
     # STEP 4: Handle Channel Initial States
     if showtiming:
         start_time = time.time()
-        LOG.info("setting channel initial states ...")
+        LOG.critical("setting channel initial states ...")
 
     if wrf_hydro_channel_restart_file:
 
@@ -1544,15 +1544,15 @@ def main():
         channel_initial_states_df["h0"] = channel_initial_depth_const
         channel_initial_states_df["index"] = range(len(channel_initial_states_df))
 
-    LOG.info("channel initial states complete")
+    LOG.critical("channel initial states complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.critical("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
         start_time = time.time()
-    LOG.info("creating qlateral array ...")
+    LOG.critical("creating qlateral array ...")
 
     # initialize qlateral dict
     qlateral = {}
@@ -1576,23 +1576,23 @@ def main():
     for index, row in qlat_df.iterrows():
         qlateral[index] = row.tolist()
 
-    LOG.info("qlateral array complete")
+    LOG.critical("qlateral array complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.critical("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 6: Sort the ordered networks
     if sort_networks:
         if showtiming:
             start_time = time.time()
-        LOG.info("sorting the ordered networks ...")
+        LOG.critical("sorting the ordered networks ...")
 
         for nsq in range(max_network_seqorder, -1, -1):
             sort_ordered_network(ordered_networks[nsq], True)
 
-        LOG.info("sorting complete")
+        LOG.critical("sorting complete")
         if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+            LOG.critical("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
     # Define them pool after we create the static global objects (and collect the garbage)
@@ -1609,7 +1609,7 @@ def main():
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
-    LOG.info(f"executing routing computation ...")
+    LOG.critical(f"executing routing computation ...")
 
     progress_count = 0
     if percentage_complete:
@@ -1640,7 +1640,7 @@ def main():
                 if showtiming:
                     start_time = time.time()
 
-                LOG.info(
+                LOG.critical(
                     f"routing ordered reaches for terminal segment {terminal_segment} ..."
                 )
 
@@ -1663,7 +1663,7 @@ def main():
                 )
 
                 if showtiming:
-                    LOG.info("... complete in %s seconds." % (time.time() - start_time))
+                    LOG.critical("... complete in %s seconds." % (time.time() - start_time))
                 if percentage_complete:
                     pbar.update(len(network["all_segments"]))
 
@@ -1687,16 +1687,16 @@ def main():
                 )
 
         if parallel_compute:
-            LOG.info(f"routing ordered reaches for networks of order {nsq} ... ")
+            LOG.critical(f"routing ordered reaches for networks of order {nsq} ... ")
             if debuglevel <= -2:
-                LOG.warning(f"reaches to be routed include:")
-                LOG.warning(f"{[network[0] for network in ordered_networks[nsq]]}")
+                LOG.debug(f"reaches to be routed include:")
+                LOG.debug(f"{[network[0] for network in ordered_networks[nsq]]}")
             # with pool:
             # with multiprocessing.Pool() as pool:
             results = pool.starmap(compute_network, nslist)
 
             if showtiming:
-                LOG.info("... complete in %s seconds." % (time.time() - start_time))
+                LOG.critical("... complete in %s seconds." % (time.time() - start_time))
             if percentage_complete:
                 # import pdb; pdb.set_trace()
                 pbar.update(
@@ -1705,7 +1705,7 @@ def main():
                         for network in ordered_networks[nsq]
                     )
                 )
-                # LOG.info(f"{[network[0] for network in ordered_networks[nsq]]}")
+                # LOG.critical(f"{[network[0] for network in ordered_networks[nsq]]}")
         if (
             nsq > 0
         ):  # We skip this step for zero-order networks, i.e., those that have no downstream dependents
@@ -1726,12 +1726,12 @@ def main():
     if percentage_complete:
         pbar.close()
 
-    LOG.info("ordered reach computation complete")
+    LOG.critical("ordered reach computation complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - main_start_time))
-    LOG.info("program complete")
+        LOG.critical("... in %s seconds." % (time.time() - main_start_time))
+    LOG.critical("program complete")
     if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - program_start_time))
+        LOG.critical("... in %s seconds." % (time.time() - program_start_time))
 
 
 if __name__ == "__main__":

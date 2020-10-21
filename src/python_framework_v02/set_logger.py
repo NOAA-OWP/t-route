@@ -17,13 +17,13 @@ def set_logger(LOG,verbose,debuglevel,log_writer,log_file):
         LOG.setLevel(logging.CRITICAL)
         ch = logging.StreamHandler()
         ch.setLevel(logging.CRITICAL)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    # formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter)
     LOG.addHandler(ch)
-    logging.basicConfig(
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%m/%d/%Y %I:%M:%S %p",
-        filename=log_file,
-        filemode=log_writer,
-    )
+    # logging.basicConfig(
+    #     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    #     datefmt="%m/%d/%Y %I:%M:%S %p",
+    #     filename=log_file,
+    #     filemode=log_writer,
+    # )
     return LOG
