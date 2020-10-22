@@ -6,11 +6,7 @@ module muskingcunge_module
 contains
 
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
-<<<<<<< HEAD
-    n, ncc, cs, s0, velp, depthp, qdc, velc, depthc)
-=======
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
->>>>>>> upstream/master
 
     !* exactly follows SUBMUSKINGCUNGE in NWM:
     !* 1) qup and quc for a reach in upstream limit take zero values all the time
@@ -20,20 +16,13 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
     implicit none
 
-<<<<<<< HEAD
-    real(prec), intent(in) :: dt 
-=======
     real(prec), intent(in) :: dt
->>>>>>> upstream/master
     real(prec), intent(in) :: qup, quc, qdp, ql
     real(prec), intent(in) :: dx, bw, tw, twcc, n, ncc, cs, s0
     real(prec), intent(in) :: velp
     real(prec), intent(in) :: depthp
     real(prec), intent(out) :: qdc, velc, depthc
-<<<<<<< HEAD
-=======
     real(prec), intent(out) :: ck, cn, X
->>>>>>> upstream/master
     real(prec) :: z
     real(prec) :: bfd, C1, C2, C3, C4
 
@@ -81,12 +70,8 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     h     = (depthc * 1.33_prec) + mindepth !1.50 of  depthc
     h_0   = (depthc * 0.67_prec)            !0.50 of depthc
 
-<<<<<<< HEAD
-    if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux
-=======
     if(ql .gt. 0.0_prec .or. qup .gt. 0.0_prec .or. quc .gt. 0.0_prec &
         .or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux
->>>>>>> upstream/master
 110 continue
 
         !Uncomment next two lines for old initialization
@@ -105,15 +90,9 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
             !Uncomment next four lines for new initialization
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-<<<<<<< HEAD
-                qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4)
-            call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-                qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4)
-=======
                 qdp, ql, qup, quc, h_0, 1, Qj_0, C1, C2, C3, C4, X)
             call secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
                 qdp, ql, qup, quc, h, 2, Qj, C1, C2, C3, C4, X)
->>>>>>> upstream/master
 
             if(Qj_0-Qj .ne. 0.0_prec) then
                 h_1 = h - ((Qj * (h_0 - h))/(Qj_0 - Qj)) !update h, 3rd estimate
@@ -181,26 +160,16 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             !qdc = -333.3
         endif
 
-<<<<<<< HEAD
-        twl = bw + (2.0_prec*z*h)
-=======
         call hydraulic_geometry(h, bfd, bw, twcc, z, twl, R)
         !TODO: The following line allows the system to reproduce the current
         !velocity calculation, however the hydraulic radius provided is not
         !taking into account the flood-plan flow, nor is the velocity
         !accouting for the variation in Manning n.
->>>>>>> upstream/master
         R = (h*(bw + twl) / 2.0_prec) / (bw + 2.0_prec*(((twl - bw) / 2.0_prec)**2.0_prec + h**2.0_prec)**0.5_prec)
         velc = (1.0_prec/n) * (R **(2.0_prec/3.0_prec)) * sqrt(s0)  !*average velocity in m/s
         depthc = h
     else   !*no flow to route
         qdc = 0.0_prec
-<<<<<<< HEAD
-        !qdc = -444.4
-        depthc = 0.0_prec
-    end if !*if(ql .gt. 0.0 .or. ...
-
-=======
         cn = 0.0_prec
         ck = 0.0_prec
         !qdc = -444.4
@@ -213,7 +182,6 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     ! *************************************************************
     call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
 
->>>>>>> upstream/master
 end subroutine muskingcungenwm
 
 !**---------------------------------------------------**!
@@ -225,15 +193,9 @@ end subroutine muskingcungenwm
 !subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 !    qdp, ql, qup, quc, h, interval, WPC, Qj, C1, C2, C3, C4)
 
-<<<<<<< HEAD
-!Uncomment this function signature for new initialization 
-subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
-    qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4)
-=======
 !Uncomment this function signature for new initialization
 subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     qdp, ql, qup, quc, h, interval, Qj, C1, C2, C3, C4, X)
->>>>>>> upstream/master
 
     implicit none
 
@@ -241,28 +203,17 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     real(prec), intent(in) :: dt, dx
     real(prec), intent(in) :: qdp, ql, qup, quc
     real(prec), intent(in) :: h
-<<<<<<< HEAD
-    real(prec), intent(out) :: Qj, C1, C2, C3, C4
-    integer,    intent(in) :: interval
-
-    real(prec) :: twl, AREA, WP, R, Ck, Km, X, D
-=======
     real(prec), intent(out) :: Qj, C1, C2, C3, C4, X
     integer,    intent(in) :: interval
 
     real(prec) :: twl, AREA, WP, R
     real(prec) :: Ck, Cn, Km, D
->>>>>>> upstream/master
     integer    :: upper_interval, lower_interval
 
     !Uncomment for old initialization
     !real(prec), intent(out) :: WPC
     !real(prec) :: AREAC
-<<<<<<< HEAD
-    !Uncomment for new initialization 
-=======
     !Uncomment for new initialization
->>>>>>> upstream/master
     real(prec) :: WPC, AREAC
 
     twl = 0.0_prec
@@ -270,23 +221,15 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
     !Uncomment next line for old initialization
     !AREA = 0.0_prec
-<<<<<<< HEAD
-    !Uncomment next two lines for new initialization 
-    WPC = 0.0_prec
-=======
     !Uncomment next two lines for new initialization
     WPC = 0.0_prec
     AREA = 0.0_prec
->>>>>>> upstream/master
     AREAC = 0.0_prec
 
     R = 0.0_prec
     Ck = 0.0_prec
-<<<<<<< HEAD
-=======
     Cn = 0.0_prec
 
->>>>>>> upstream/master
     Km = 0.0_prec
     X = 0.0_prec
     D = 0.0_prec
@@ -296,47 +239,14 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     !--lower interval -----------
     lower_interval = 2
 
-<<<<<<< HEAD
-    !**top surface water width of the channel inflow
-    twl = bw + 2.0_prec*z*h
-
-    !**hydraulic radius, R
-    if(h .gt. bfd) then !**water outside of defined channel
-        AREA =  (bw + bfd * z) * bfd
-        AREAC = (twcc * (h-bfd)) !**assume compound component is rect. chan, that's 3 times the tw
-        WP = (bw + 2.0_prec * bfd * sqrt(1.0_prec + z*z))
-        WPC = twcc + (2.0_prec*(h-bfd)) !**WPC is 2 times the tw ???
-        R   = (AREA + AREAC)/(WP +WPC)  !**hydraulic radius
-        !print *, "warning: compound channel activated", h, bfd
-    else
-        AREA = (bw + h * z ) * h
-        WP = (bw + 2.0_prec * h * sqrt(1.0_prec + z*z))
-        !WPC = 0.0
-        if(WP .gt. 0.0_prec) then
-            R = AREA/WP
-        else
-            R = 0.0_prec
-        endif
-    endif
-=======
 
     call hydraulic_geometry(h, bfd, bw, twcc, z, &
         twl, R, AREA, AREAC, WP, WPC)
->>>>>>> upstream/master
 
     !**kinematic celerity, c
     if(h .gt. bfd) then
     !*water outside of defined channel weight the celerity by the contributing area, and
     !*assume that the mannings of the spills is 2x the manning of the channel
-<<<<<<< HEAD
-        Ck = max(0.0_prec,((sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-            ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*bfd*z))))*AREA &
-            + ((sqrt(s0)/(ncc))*(5.0_prec/3.0_prec)*(h-bfd)**(2.0_prec/3.0_prec))*AREAC)/(AREA+AREAC))
-    else
-        if(h .gt. 0.0_prec) then !avoid divide by zero
-            Ck = max(0.0_prec,(sqrt(s0)/n)*((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) - &
-                ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec)*(2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
-=======
         Ck = max(0.0_prec,((sqrt(s0)/n) &
             * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
             - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
@@ -351,7 +261,6 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
                 * ((5.0_prec/3.0_prec)*R**(2.0_prec/3.0_prec) &
                 - ((2.0_prec/3.0_prec)*R**(5.0_prec/3.0_prec) &
                 * (2.0_prec*sqrt(1.0_prec + z*z)/(bw+2.0_prec*h*z)))))
->>>>>>> upstream/master
         else
             Ck = 0.0_prec
         endif
@@ -423,8 +332,6 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
 
 end subroutine secant2_h
 
-<<<<<<< HEAD
-=======
 
 !**---------------------------------------------------**!
 !*                                                     *!
@@ -528,5 +435,4 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
 end subroutine hydraulic_geometry
 
 
->>>>>>> upstream/master
 end module muskingcunge_module

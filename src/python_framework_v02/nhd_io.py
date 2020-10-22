@@ -4,11 +4,7 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import json
-<<<<<<< HEAD
-
-=======
 import yaml
->>>>>>> upstream/master
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -43,18 +39,6 @@ def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
 
-<<<<<<< HEAD
-def read_custom_input_json(custom_input_file):
-    with open(custom_input_file) as json_file:
-        data = json.load(json_file)
-        supernetwork_parameters = data.get("supernetwork_parameters", None)
-        waterbody_parameters = data.get("waterbody_parameters", {})
-        forcing_parameters = data.get("forcing_parameters", {})
-        restart_parameters = data.get("restart_parameters", {})
-        output_parameters = data.get("output_parameters", {})
-        run_parameters = data.get("run_parameters", {})
-        # TODO: add error trapping for potentially missing files
-=======
 def read_custom_input(custom_input_file):
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
@@ -69,7 +53,6 @@ def read_custom_input(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
     # TODO: add error trapping for potentially missing files
->>>>>>> upstream/master
     return (
         supernetwork_parameters,
         waterbody_parameters,
@@ -79,10 +62,6 @@ def read_custom_input(custom_input_file):
         run_parameters,
     )
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
 def replace_downstreams(data, downstream_col, terminal_code):
     ds0_mask = data[downstream_col] == terminal_code
     new_data = data.copy()
@@ -240,11 +219,8 @@ def get_stream_restart_from_wrf_hydro(
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
 
     q_initial_states = qdf2
-<<<<<<< HEAD
-=======
     
     q_initial_states = q_initial_states.drop(columns = "index")
->>>>>>> upstream/master
 
     return q_initial_states
 

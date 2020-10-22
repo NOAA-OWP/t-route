@@ -221,11 +221,7 @@ def _handle_args():
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
-<<<<<<< HEAD
-        help="OR... please enter the path of a .json file containing a custom supernetwork information. See test/input/json/CustomInput.json for an example.",
-=======
         help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
->>>>>>> upstream/master
     )
     parser.add_argument(
         "--parallel",
@@ -251,17 +247,10 @@ def _handle_args():
     args = parser.parse_args()
 
     # TODO: Add any other checking
-<<<<<<< HEAD
-    # TODO: This check is probably no longer needed
-    if args.supernetwork == "custom" and not args.customnetworkfile:
-        parser.error(
-            r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .json file"
-=======
     # TODO: This check is probably no longer needed; 'custom' functionality is managed by the 'custom-input-file' argument
     if args.supernetwork == "custom" and not args.customnetworkfile:
         parser.error(
             r"If 'custom' is selected for the supernetwork, you must enter a path to a supernetwork-describing .yaml or .json file"
->>>>>>> upstream/master
         )
 
     return args
@@ -299,23 +288,15 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-<<<<<<< HEAD
-        if in_wsl():  # disable optimization for compiling on WSL
-            fortran_compile_call.append(r"--noopt")
-=======
->>>>>>> upstream/master
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"MCsingleSegStime_f2py_NOLOOP.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"mc_sseg_stime")
-<<<<<<< HEAD
-=======
         if in_wsl():  # disable optimization for compiling on WSL
             fortran_compile_call.append(r"--noopt")
         else:
             fortran_compile_call.append(r"--opt='-O1'")
->>>>>>> upstream/master
         subprocess.run(
             fortran_compile_call,
             cwd=fortran_routing_dir,
@@ -343,12 +324,9 @@ depthval_index = 3  # depthval
 qlatval_index = 4  # qlatval
 storageval_index = 5  # storageval
 qlatCumval_index = 6  # qlatCumval
-<<<<<<< HEAD
-=======
 kinCelerity_index = 7 # ck
 courant_index = 8 # cn
 X_index = 9 # X
->>>>>>> upstream/master
 
 ## network and reach utilities
 import nhd_network_utilities_v01 as nnu
@@ -362,23 +340,15 @@ if COMPILE:
 
         fortran_compile_call = []
         fortran_compile_call.append(r"f2py3")
-<<<<<<< HEAD
-        if in_wsl():  # disable optimization for compiling on WSL
-            fortran_compile_call.append(r"--noopt")
-=======
->>>>>>> upstream/master
         fortran_compile_call.append(r"-c")
         fortran_compile_call.append(r"varPrecision.f90")
         fortran_compile_call.append(r"module_levelpool.f90")
         fortran_compile_call.append(r"-m")
         fortran_compile_call.append(r"pymodule_levelpool")
-<<<<<<< HEAD
-=======
         if in_wsl():  # disable optimization for compiling on WSL
             fortran_compile_call.append(r"--noopt")
         else:
             fortran_compile_call.append(r"--opt='-O1'")
->>>>>>> upstream/master
         subprocess.run(
             fortran_compile_call,
             cwd=fortran_reservoir_dir,
@@ -414,11 +384,7 @@ def compute_network(
 
     network = networks[terminal_segment]
     flowveldepth = {
-<<<<<<< HEAD
-        connection: np.zeros(np.array([nts, 7]))
-=======
         connection: np.zeros(np.array([nts, 10]))
->>>>>>> upstream/master
         for connection in (network["all_segments"])
     }
 
@@ -642,11 +608,7 @@ def compute_mc_reach_up2down(
             depthp = flowveldepth[current_segment][ts - 1][depthval_index]
 
         # run M-C model
-<<<<<<< HEAD
-        qdc, velc, depthc = singlesegment(
-=======
         qdc, velc, depthc, ck, cn, X = singlesegment(
->>>>>>> upstream/master
             dt=dt,
             qup=qup,
             quc=quc,
@@ -729,12 +691,9 @@ def compute_mc_reach_up2down(
             qlat,
             volumec,
             qlatCum,
-<<<<<<< HEAD
-=======
             ck,
             cn, 
             X,
->>>>>>> upstream/master
         ]
 
         next_segment = connections[current_segment]["downstream"]
@@ -827,15 +786,12 @@ def compute_level_pool_reach_up2down(
         volumec = volumec + flowveldepth[current_segment][ts - 1][storageval_index]
         qlatCum = qlatCum + flowveldepth[current_segment][ts - 1][qlatCumval_index]
 
-<<<<<<< HEAD
-=======
     #TODO: There may be a more useful output value to provide here.
     #celerity values are nullified for reservoirs.
     ck = 0
     cn = 0
     X = 0
 
->>>>>>> upstream/master
     flowveldepth[current_segment][ts] = [
         ts * dt,
         qdc,
@@ -844,12 +800,9 @@ def compute_level_pool_reach_up2down(
         qlat,
         volumec,
         qlatCum,
-<<<<<<< HEAD
-=======
         ck,
         cn,
         X,
->>>>>>> upstream/master
     ]
 
 
@@ -867,11 +820,7 @@ def writeArraytoCSV(
 ):
 
     # define CSV file Header
-<<<<<<< HEAD
-    header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum"]
-=======
     header = ["time", "qlat", "q", "v", "d", "storage", "qlatCum", "ck", "cn", "X"]
->>>>>>> upstream/master
 
     # Loop over reach segments
     current_segment = reach["reach_head"]
@@ -893,21 +842,14 @@ def writeArraytoCSV(
                     zip(
                         flowveldepth[current_segment][:, time_index],
                         flowveldepth[current_segment][:, qlatval_index],
-<<<<<<< HEAD
-                        flowveldepth[current_segment][:, qlatCumval_index],
-=======
->>>>>>> upstream/master
                         flowveldepth[current_segment][:, flowval_index],
                         flowveldepth[current_segment][:, velval_index],
                         flowveldepth[current_segment][:, depthval_index],
                         flowveldepth[current_segment][:, storageval_index],
-<<<<<<< HEAD
-=======
                         flowveldepth[current_segment][:, qlatCumval_index],
                         flowveldepth[current_segment][:, kinCelerity_index],
                         flowveldepth[current_segment][:, courant_index],
                         flowveldepth[current_segment][:, X_index],
->>>>>>> upstream/master
                     )
                 )
 
@@ -946,12 +888,9 @@ def writeArraytoNC(
         "depthval": [],
         "velval": [],
         "storageval": [],
-<<<<<<< HEAD
-=======
         "ckval": [],
         "cnval": [],
         "xval": [],
->>>>>>> upstream/master
     }
 
     ordered_reaches = {}
@@ -988,8 +927,6 @@ def writeArraytoNC(
                 flowveldepth_data["velval"].append(
                     flowveldepth[current_segment][:, velval_index]
                 )
-<<<<<<< HEAD
-=======
                 flowveldepth_data["ckval"].append(
                     flowveldepth[current_segment][:, kinCelerity_index]
                 )
@@ -1000,7 +937,6 @@ def writeArraytoNC(
                     flowveldepth[current_segment][:, X_index]
                 )
             
->>>>>>> upstream/master
                 # write segment flowveldepth_data['segment']
                 flowveldepth_data["segment"].append(current_segment)
                 if not TIME_WRITTEN:
@@ -1119,8 +1055,6 @@ def writeNC(
     lateralCumflow.standard_name = (
         "Cummulativelateralflow"  # this is a CF standard name
     )
-<<<<<<< HEAD
-=======
     
     # write  kinematic celerity
     celerity = ncfile.createVariable(
@@ -1147,7 +1081,6 @@ def writeNC(
     X_param.standard_name = "MC X parameter" 
     
     
->>>>>>> upstream/master
     # write time in seconds since  TODO get time from lateral flow from NWM
     time = ncfile.createVariable("time", np.float64, "time")
     time.units = "seconds since 2011-08-27 00:00:00"  ## TODO get time fron NWM as argument to this function
@@ -1206,11 +1139,7 @@ def singlesegment(
         0,
         depthp,
     )
-<<<<<<< HEAD
-    # return qdc, vel, depth
-=======
     # return qdc, vel, depth, ck, cn, X
->>>>>>> upstream/master
 
 
 def sort_ordered_network(l, reverse=False):
@@ -1242,12 +1171,8 @@ def main():
             restart_parameters,
             output_parameters,
             run_parameters,
-<<<<<<< HEAD
-        ) = nio.read_custom_input_json(custom_input_file)
-=======
         ) = nio.read_custom_input(custom_input_file)
         
->>>>>>> upstream/master
         break_network_at_waterbodies = run_parameters.get(
             "break_network_at_waterbodies", None
         )
