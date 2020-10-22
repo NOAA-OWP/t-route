@@ -17,9 +17,13 @@ cpdef object binary_find(object arr, object els):
     Args:
         arr: Array to search. Must be sorted
         els:
+<<<<<<< HEAD
 
     Returns:
 
+=======
+    Returns:
+>>>>>>> upstream/master
     """
     cdef long hi = len(arr)
     cdef object idxs = []
@@ -47,17 +51,27 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
+<<<<<<< HEAD
 cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf) nogil:
     """
     Kernel to compute reach.
 
+=======
+cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts) nogil:
+    """
+    Kernel to compute reach.
+>>>>>>> upstream/master
     Input buffer is array matching following description:
     axis 0 is reach
     axis 1 is inputs in th following order:
         qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+<<<<<<< HEAD
 
         qup and quc are initial conditions.
 
+=======
+        qup and quc are initial conditions.
+>>>>>>> upstream/master
     Output buffer matches the same dimsions as input buffer in axis 0
     Input is nxm (n reaches by m variables)
     Ouput is nx3 (n reaches by 3 return values)
@@ -103,11 +117,25 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     depthp,
                     out)
 
+<<<<<<< HEAD
         output_buf[i, 0] = quc = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
 
         qup = qdp
+=======
+#        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
+        output_buf[i, 0] = out.qdc
+        output_buf[i, 1] = out.velc
+        output_buf[i, 2] = out.depthc
+        
+        qup = qdp
+        
+        if assume_short_ts:
+            quc = qup
+        else:
+            quc = out.qdc        
+>>>>>>> upstream/master
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
@@ -136,12 +164,19 @@ cpdef object column_mapper(object src_cols):
 
 cpdef object compute_network(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
+<<<<<<< HEAD
     const float[:, :] qlat_values,
+=======
+    const float[:, :] qlat_values, const float[:,:] initial_conditions, 
+>>>>>>> upstream/master
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
     bint assume_short_ts=False):
     """
     Compute network
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
     Args:
         nsteps (int): number of time steps
         reaches (list): List of reaches
@@ -149,14 +184,26 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+<<<<<<< HEAD
         assume_short_ts (bool): Assume short time steps (quc = qup)
 
+=======
+        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
+        assume_short_ts (bool): Assume short time steps (quc = qup)
+>>>>>>> upstream/master
     Notes:
         Array dimensions are checked as a precondition to this method.
     """
     # Check shapes
+<<<<<<< HEAD
     if qlat_values.shape[0] != data_idx.shape[0] or qlat_values.shape[1] != nsteps:
         raise ValueError(f"Qlat shape is incorrect: expected ({data_idx.shape[0], nsteps}), got ({qlat_values.shape[0], qlat_values.shape[1]})")
+=======
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+    if qlat_values.shape[1] > nsteps:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
+>>>>>>> upstream/master
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
 
@@ -261,34 +308,92 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 qup = 0.0
                 quc = 0.0
                 for i in range(usreachlen):
+<<<<<<< HEAD
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+=======
+                    
+                    '''
+                    New logic was added to handle initial conditions:
+                    When timestep == 0, the flow from the upstream segments in the previous timestep
+                    are equal to the initial conditions. 
+                    '''
+                        
+                    # upstream flow in the current timestep is equal the sum of flows 
+                    # in upstream segments, current timestep
+                    # Headwater reaches are computed before higher order reaches, so quc can
+                    # be evaulated even when the timestep == 0.
+                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    
+                    # upstream flow in the previous timestep is equal to the sum of flows 
+                    # in upstream segments, previous timestep
+                    if timestep > 0:
+                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+                    else:
+                        # sum of qd0 (flow out of each segment) over all upstream reaches
+                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
+>>>>>>> upstream/master
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
                 drows = drows_tmp[:reachlen]
                 srows = reach_cache[ireach_cache:ireach_cache+reachlen]
 
+<<<<<<< HEAD
                 fill_buffer_column(srows, timestep, drows, 0, qlat_values, buf_view)
                 for i in range(scols.shape[0]):
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
                     # fill buffer with qdp, depthp, velp
+=======
+                """
+                qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
+                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below, 
+                the second argument, which defines the column in qlat_values that data should be drawn from, is specified
+                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep. 
+                """
+                fill_buffer_column(srows, 
+                                   int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
+                                   drows, 
+                                   0, 
+                                   qlat_values, 
+                                   buf_view)
+                
+                for i in range(scols.shape[0]):
+                        fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                # fill buffer with qdp, depthp, velp
+>>>>>>> upstream/master
                 if timestep > 0:
                     fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
                     fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
                     fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
                 else:
+<<<<<<< HEAD
                     # fill buffer with constant
                     for i in range(drows.shape[0]):
                         buf_view[drows[i], 10] = 0.0
                         buf_view[drows[i], 11] = 0.0
                         buf_view[drows[i], 12] = 0.0
+=======
+                    '''
+                    Changed made to accomodate initial conditions:
+                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array, 
+                    using srows to properly index
+                    '''
+                    for i in range(drows.shape[0]):
+                        buf_view[drows[i], 10] = initial_conditions[srows[i],1] #qdp = qd0
+                        buf_view[drows[i], 11] = 0.0 # the velp argmument is never used, set to whatever
+                        buf_view[drows[i], 12] = initial_conditions[srows[i],2] #hdp = h0
+>>>>>>> upstream/master
 
                 if assume_short_ts:
                     quc = qup
 
+<<<<<<< HEAD
                 compute_reach_kernel(qup, quc, reachlen, buf_view, out_view)
+=======
+                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts)
+>>>>>>> upstream/master
 
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
@@ -299,4 +404,10 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 iusreach_cache += usreachlen
                 
             timestep += 1
+<<<<<<< HEAD
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+=======
+            
+
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+>>>>>>> upstream/master

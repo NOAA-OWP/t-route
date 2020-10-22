@@ -105,7 +105,11 @@ elif not ENV_IS_CL:
     sys.path.append(r"../python_framework_v02")
 
     # TODO: automate compile for the package scripts
+<<<<<<< HEAD
     # sys.path.append(r"../fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS")
+=======
+    sys.path.append("fast_reach")
+>>>>>>> upstream/master
 
 ## network and reach utilities
 import nhd_network_utilities_v02 as nnu
@@ -186,6 +190,13 @@ def main():
         qlats = nhd_io.read_qlat(args.ql)
     else:
         qlats = constant_qlats(data, nts, 10.0)
+<<<<<<< HEAD
+=======
+        
+    # initial conditions, assume to be zero
+    # TO DO: Allow optional reading of initial conditions from WRF
+    q0 = pd.DataFrame(0,index = data.index, columns = ["qu0","qd0","h0"], dtype = "float32")
+>>>>>>> upstream/master
 
     connections = nhd_network.extract_connections(data, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
@@ -234,6 +245,10 @@ def main():
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
+<<<<<<< HEAD
+=======
+                q0_sub = q0.loc[r].sort_index()
+>>>>>>> upstream/master
                 jobs.append(
                     delayed(mc_reach.compute_network)(
                         nts,
@@ -243,6 +258,10 @@ def main():
                         data_sub.columns.values,
                         data_sub.values,
                         qlat_sub.values,
+<<<<<<< HEAD
+=======
+                        q0_sub.values,
+>>>>>>> upstream/master
                     )
                 )
             results = parallel(jobs)
@@ -254,6 +273,10 @@ def main():
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
+<<<<<<< HEAD
+=======
+            q0_sub = q0.loc[r].sort_index()
+>>>>>>> upstream/master
             results.append(
                 mc_reach.compute_network(
                     nts,
@@ -263,6 +286,10 @@ def main():
                     data_sub.columns.values,
                     data_sub.values,
                     qlat_sub.values,
+<<<<<<< HEAD
+=======
+                    q0_sub.values,
+>>>>>>> upstream/master
                 )
             )
 
