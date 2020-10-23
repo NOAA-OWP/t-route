@@ -337,3 +337,217 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
 
+
+#---------------------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------------------#
+
+cpdef object compute_network_reorder(int nsteps, list reaches, dict connections, 
+    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
+    const float[:, :] qlat_values, const float[:,:] initial_conditions, 
+    const int[:] reach_groups,
+    const int[:] reach_group_cache_sizes,
+    bint assume_short_ts=False):
+    """
+    Compute network
+    Args:
+        nsteps (int): number of time steps
+        reaches (list): List of reaches
+        connections (dict): Network
+        data_idx (ndarray): a 1D sorted index for data_values
+        data_values (ndarray): a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
+        assume_short_ts (bool): Assume short time steps (quc = qup)
+    Notes:
+        Array dimensions are checked as a precondition to this method.
+    """
+    # Check shapes
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+    if qlat_values.shape[1] > nsteps:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
+    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
+        raise ValueError(f"data_values shape mismatch")
+
+    # flowveldepth is 2D float array that holds results
+    # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
+    # rows: indexed by data_idx
+    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+
+    cdef:
+        Py_ssize_t[:] srows  # Source rows indexes
+        Py_ssize_t[:] drows_tmp
+        Py_ssize_t[:] usrows # Upstream row indexes 
+    
+    # Buffers and buffer views
+    # These are C-contiguous.
+    cdef float[:, ::1] buf, buf_view
+    cdef float[:, ::1] out_buf, out_view
+
+    # Source columns
+    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
+    
+    # hard-coded column. Find a better way to do this
+    cdef int buf_cols = 13
+
+    cdef:
+        Py_ssize_t i  # Temporary variable
+        Py_ssize_t ireach  # current reach index
+        Py_ssize_t ireach_cache  # current index of reach cache
+        Py_ssize_t ireach_cache_end  # end index of reach cache
+        Py_ssize_t iusreach_cache  # current index of upstream reach cache
+
+    # Measure length of all the reaches
+    cdef list reach_sizes = list(map(len, reaches))
+    # For a given reach, get number of upstream nodes
+    cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
+
+    cdef:
+        list reach  # Temporary variable
+        list bf_results  # Temporary variable
+
+    cdef int reachlen, usreachlen
+    cdef Py_ssize_t bidx
+    cdef list buf_cache = []
+
+    cdef:
+        Py_ssize_t[:] reach_cache
+        Py_ssize_t[:] usreach_cache
+
+    # reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
+    # upstream reach cache is ordered 1D view of reaches
+    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
+    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
+
+    ireach_cache = 0
+    iusreach_cache = 0
+    # copy reaches into an array
+    for ireach in range(len(reaches)):
+        reachlen = reach_sizes[ireach]
+        usreachlen = usreach_sizes[ireach]
+        reach = reaches[ireach]
+
+        # set the length (must be negative to indicate reach boundary)
+        reach_cache[ireach_cache] = -reachlen
+        ireach_cache += 1
+        bf_results = binary_find(data_idx, reach)
+        for bidx in bf_results:
+            reach_cache[ireach_cache] = bidx
+            ireach_cache += 1
+
+        usreach_cache[iusreach_cache] = -usreachlen
+        iusreach_cache += 1
+        if usreachlen > 0:
+            for bidx in binary_find(data_idx, connections[reach[0]]):
+                usreach_cache[iusreach_cache] = bidx
+                iusreach_cache += 1
+
+    cdef int maxreachlen = max(reach_sizes)
+    buf = np.empty((maxreachlen, buf_cols), dtype='float32')
+    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+
+    drows_tmp = np.arange(maxreachlen, dtype=np.intp)
+    cdef Py_ssize_t[:] drows
+    cdef float qup, quc
+    cdef int timestep = 0
+    cdef int ts_offset
+
+    with nogil:
+        while timestep < nsteps:
+            ts_offset = timestep * 3
+
+            ireach_cache = 0
+            iusreach_cache = 0
+            
+            for group_i in range(len(reach_group_cache_sizes)):
+                
+                ireach_cache_end = ireach_cache + reach_group_cache_sizes[group_i] + reach_groups[group_i]
+            
+                while ireach_cache < ireach_cache_end:
+
+                    reachlen = -reach_cache[ireach_cache]
+                    usreachlen = -usreach_cache[iusreach_cache]
+
+                    ireach_cache += 1
+                    iusreach_cache += 1
+
+                    qup = 0.0
+                    quc = 0.0
+                    for i in range(usreachlen):
+
+                        '''
+                        New logic was added to handle initial conditions:
+                        When timestep == 0, the flow from the upstream segments in the previous timestep
+                        are equal to the initial conditions. 
+                        '''
+
+                        # upstream flow in the current timestep is equal the sum of flows 
+                        # in upstream segments, current timestep
+                        # Headwater reaches are computed before higher order reaches, so quc can
+                        # be evaulated even when the timestep == 0.
+                        quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+
+                        # upstream flow in the previous timestep is equal to the sum of flows 
+                        # in upstream segments, previous timestep
+                        if timestep > 0:
+                            qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
+                        else:
+                            # sum of qd0 (flow out of each segment) over all upstream reaches
+                            qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
+
+                    buf_view = buf[:reachlen, :]
+                    out_view = out_buf[:reachlen, :]
+                    drows = drows_tmp[:reachlen]
+                    srows = reach_cache[ireach_cache:ireach_cache+reachlen]
+
+                    """
+                    qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
+                    which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below, 
+                    the second argument, which defines the column in qlat_values that data should be drawn from, is specified
+                    such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep. 
+                    """
+                    fill_buffer_column(srows, 
+                                       int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
+                                       drows, 
+                                       0, 
+                                       qlat_values, 
+                                       buf_view)
+
+                    for i in range(scols.shape[0]):
+                            fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                    # fill buffer with qdp, depthp, velp
+                    if timestep > 0:
+                        fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
+                        fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
+                        fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
+                    else:
+                        '''
+                        Changed made to accomodate initial conditions:
+                        when timestep == 0, qdp, and depthp are taken from the initial_conditions array, 
+                        using srows to properly index
+                        '''
+                        for i in range(drows.shape[0]):
+                            buf_view[drows[i], 10] = initial_conditions[srows[i],1] #qdp = qd0
+                            buf_view[drows[i], 11] = 0.0 # the velp argmument is never used, set to whatever
+                            buf_view[drows[i], 12] = initial_conditions[srows[i],2] #hdp = h0
+
+                    if assume_short_ts:
+                        quc = qup
+
+                    compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts)
+
+                    # copy out_buf results back to flowdepthvel
+                    for i in range(3):
+                        fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+
+                    # Update indexes to point to next reach
+                    ireach_cache += reachlen
+                    iusreach_cache += usreachlen
+                
+            timestep += 1
+
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+
