@@ -171,7 +171,6 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
         Py_ssize_t[:] drows_tmp
-        Py_ssize_t[:] usrows # Upstream row indexes 
     
     # Buffers and buffer views
     # These are C-contiguous.
@@ -201,7 +200,6 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
     cdef int reachlen, usreachlen
     cdef Py_ssize_t bidx
-    cdef list buf_cache = []
 
     cdef:
         Py_ssize_t[:] reach_cache
@@ -341,11 +339,6 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
-
-cdef float[:, ::1] create_buf_view(int reachlen, float[:, ::1] buf) nogil:
-    return buf[:reachlen,:]
-
-
 cpdef object compute_network_reorder(int nsteps, list reaches, dict connections, 
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
     const float[:, :] qlat_values, const float[:,:] initial_conditions, 
@@ -380,14 +373,12 @@ cpdef object compute_network_reorder(int nsteps, list reaches, dict connections,
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
     cdef:
-        Py_ssize_t[:] srows  # Source rows indexes
         Py_ssize_t[:] drows_tmp
-        Py_ssize_t[:] usrows # Upstream row indexes 
     
     # Buffers and buffer views
     # These are C-contiguous.
-    cdef float[:, ::1] buf, buf_view
-    cdef float[:, ::1] out_buf, out_view
+    cdef float[:, ::1] buf
+    cdef float[:, ::1] out_buf
 
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -399,7 +390,6 @@ cpdef object compute_network_reorder(int nsteps, list reaches, dict connections,
         Py_ssize_t i  # Temporary variable
         Py_ssize_t ireach  # current reach index
         Py_ssize_t ireach_cache  # current index of reach cache
-        Py_ssize_t ireach_cache_end  # end index of reach cache
         Py_ssize_t iusreach_cache  # current index of upstream reach cache
 
     # Measure length of all the reaches
@@ -413,7 +403,6 @@ cpdef object compute_network_reorder(int nsteps, list reaches, dict connections,
 
     cdef int reachlen, usreachlen
     cdef Py_ssize_t bidx
-    cdef list buf_cache = []
 
     cdef:
         Py_ssize_t[:] reach_cache
@@ -467,7 +456,6 @@ cpdef object compute_network_reorder(int nsteps, list reaches, dict connections,
     out_buf = np.empty((maxreachlen, 3), dtype='float32')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
-    cdef Py_ssize_t[:] drows
     cdef float qup, quc
     cdef int timestep = 0
     cdef int ts_offset
