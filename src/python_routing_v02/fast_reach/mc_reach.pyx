@@ -8,8 +8,12 @@ cimport numpy as np
 cimport cython
 from cython.parallel import prange
 
-from reach cimport muskingcunge, QVD
-
+#NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
+#the mc_reach.so will have an undefined symbol _muskingcunge, and reach.so will have a ____pyx_f_5reach_muskingcunge
+#if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
+#____pyx_f_5reach_muskingcunge
+#from reach cimport muskingcunge, QVD
+cimport reach
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -59,8 +63,8 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
     Ouput is nx3 (n reaches by 3 return values)
         0: current flow, 1: current depth, 2: current velocity
     """
-    cdef QVD rv
-    cdef QVD *out = &rv
+    cdef reach.QVD rv
+    cdef reach.QVD *out = &rv
 
     cdef:
         float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
@@ -81,7 +85,7 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         velp = input_buf[i, 11]
         depthp = input_buf[i, 12]
 
-        muskingcunge(
+        reach.muskingcunge(
                     dt,
                     qup,
                     quc,
