@@ -289,7 +289,7 @@ def set_supernetwork_data(
     elif supernetwork == "CONUS_FULL_RES_v20":
 
         ROUTELINK = "RouteLink_NHDPLUS"
-        ModelVer = "nwm.v2.0.3"
+        ModelVer = "nwm.v2.0.4"
         ext = "nc"
         sep = "."
 
