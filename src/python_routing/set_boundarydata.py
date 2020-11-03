@@ -36,7 +36,7 @@ def set_bdrydata(
         yintc=1.0
         # for depth at downstream terminal segment
         mtp2=5.0
-        mn2= mn+10.0
+        mn2= mn + 10.0
         vr2=2.0*vr            
 
         for x in range(network['maximum_reach_seqorder'],-1,-1):   

@@ -134,7 +134,7 @@ def do_connections(
         , verbose = verbose
         , debuglevel = debuglevel
     )
-
+    #import pdb; pdb.set_trace()
     if debuglevel <= -1: print(f'MASK: {mask_file_path}')
     if mask_file_path:
         mask_file_rows = get_geo_file_table_rows(
@@ -208,6 +208,7 @@ def set_supernetwork_data(
     supernetwork_options = {
         'Pocono_TEST1'
         ,'Pocono_TEST2'
+        ,'Pocono_TEST3'
         , 'Pocono_TEST3_3R1J'
         , 'LowerColorado_Conchos_FULL_RES'
         , 'Brazos_LowerColorado_ge5'
@@ -237,9 +238,10 @@ def set_supernetwork_data(
             , 'bottomwidth_col' : 2
             , 'topwidth_col' : 11
             , 'topwidthcc_col' : 12
-            , 'MusK_col' : 7
-            , 'MusX_col' : 8
-            , 'ChSlp_col' : 12
+            , 'alt_col': 13
+            , 'MusK_col' : 6
+            , 'MusX_col' : 7
+            , 'ChSlp_col' : 3
             , 'terminal_code' : 0
             , 'title_string' : 'Pocono Test Example'
             , 'driver_string' : 'ESRI Shapefile'
@@ -248,8 +250,8 @@ def set_supernetwork_data(
     elif supernetwork == 'Pocono_TEST2':
         return {
             'geo_file_path' : os.path.join(geo_input_folder
-		    , r'PoconoSampleData2' 
-                    , r'PoconoRouteLink_testsamp1_nwm_mc.shp')
+               , r'PoconoSampleData2' 
+                , r'PoconoRouteLink_testsamp1_nwm_mc.shp')
             , 'key_col' : 18
             , 'downstream_col' : 23
             , 'length_col' : 5
@@ -259,11 +261,35 @@ def set_supernetwork_data(
             , 'bottomwidth_col' : 2
             , 'topwidth_col' : 11
             , 'topwidthcc_col' : 12
+            , 'alt_col': 13
             , 'MusK_col' : 6
             , 'MusX_col' : 7
             , 'ChSlp_col' : 3
             , 'terminal_code' : 0
             , 'title_string' : 'Pocono Test 2 Example'
+            , 'driver_string' : 'ESRI Shapefile'
+            , 'layer_string' : 0
+          }
+    elif supernetwork == 'Pocono_TEST3':
+        return {
+            'geo_file_path' : os.path.join(geo_input_folder
+              , r'PoconoSampleData3' 
+               , r'PoconoRouteLink3.shp')
+            , 'key_col' : 18
+            , 'downstream_col' : 23
+            , 'length_col' : 5
+            , 'manningn_col' : 20
+            , 'manningncc_col' : 21
+            , 'slope_col' : 10
+            , 'bottomwidth_col' : 2
+            , 'topwidth_col' : 11
+            , 'topwidthcc_col' : 12
+            , 'alt_col': 13
+            , 'MusK_col' : 6
+            , 'MusX_col' : 7
+            , 'ChSlp_col' : 3
+            , 'terminal_code' : 0
+            , 'title_string' : 'Pocono Test Example'
             , 'driver_string' : 'ESRI Shapefile'
             , 'layer_string' : 0
           }

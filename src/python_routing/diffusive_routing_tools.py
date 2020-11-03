@@ -333,7 +333,7 @@ def dfcnhi_elv(
                     for seg in range(0,ncomp):
                         segID= seg_list[seg]
                         elev.write("%s %s %s %s %s %s %s\n" %\
-                            ('elev',ts+1, tc+dtini/60.0, segID, ydaq[segID]['elev'][ts+1],\
+                            ('elev', ts+1, tc+dtini/60.0, segID, ydaq[segID]['elev'][ts+1],\
                             dfpara[segID]['celerity'][0],dfpara[segID]['diffusivity'][0]))
                 #elev.write("\n")  
 

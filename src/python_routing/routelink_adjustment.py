@@ -44,7 +44,7 @@ def adj_alt1(
                     z_all[segID]['adj.alt'][0]=\
                         connections[segID]['data'][supernetwork_data['alt_col']] 
                 #test
-                #orgz=-100.0
+                #orgz=- 100.0
                 #if seg<ncomp-1:
                 #    orgz= connections[segID]['data'][supernetwork_data['alt_col']]                
                 #print(f"segID:{segID} org.alt:{orgz} adj.alt:{z_all[segID]['adj.alt'][0]}")     
