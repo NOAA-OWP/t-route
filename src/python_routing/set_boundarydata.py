@@ -32,16 +32,16 @@ def set_bdrydata(
         # for headbasin segment q
         vr=3.0
         mtp=20.0
-        mn= 40.0
-        yintc=4.0
+        mn= 10 #40.0
+        yintc=1.0
         # for depth at downstream terminal segment
         mtp2=5.0
-        mn2=mn+10.0
+        mn2= mn+10.0
         vr2=2.0*vr            
 
         for x in range(network['maximum_reach_seqorder'],-1,-1):   
             for head_segment, reach in ordered_reaches[x]:                
-
+                yintc= yintc + 0.2
                 if reach['upstream_reaches']=={0}:              
                     for tsi in range(0,ntsi):
                         n=tsi+1
@@ -49,7 +49,7 @@ def set_bdrydata(
                               df.subtools.input_crtor1(mtp, mn, vr, yintc,n)                                              
                         #q_bdseg[head_segment]['known discharge'][tsi]=\
                         #     mtp*np.exp(-0.5*((float(tsi)-mn)/vr)**2.0)/(vr*(2.0*3.14)**0.5)+ yintc 
-                    yintc= yintc - 2.0
+                   
                 
                 if x==0:    
                     yintc2=1.0

@@ -34,9 +34,7 @@ def adj_alt1(
                     z_all[segID]['adj.alt'][0]=\
                       connections[dsrchID]['data'][supernetwork_data['alt_col']]
                 elif seg==ncomp-1 and seg_list.count(dbfksegID)>0:
-                # Terminal downstream fakesegment
-                    #z_all[segID]['adj.alt'][0]=\
-                    #  connections[segID]['data'][supernetwork_data['alt_col']]                    
+                # Terminal downstream fakesegment                
          ## AD HOC: need to be corrected later
                     segID2= seg_list[seg-1]
                     So= connections[segID2]['data'][supernetwork_data['slope_col']]
@@ -44,8 +42,12 @@ def adj_alt1(
                     z_all[segID]['adj.alt'][0]= z_all[segID2]['adj.alt'][0] - So*dx
                 else:
                     z_all[segID]['adj.alt'][0]=\
-                        connections[segID]['data'][supernetwork_data['alt_col']]    
-    
+                        connections[segID]['data'][supernetwork_data['alt_col']] 
+                #test
+                #orgz=-100.0
+                #if seg<ncomp-1:
+                #    orgz= connections[segID]['data'][supernetwork_data['alt_col']]                
+                #print(f"segID:{segID} org.alt:{orgz} adj.alt:{z_all[segID]['adj.alt'][0]}")     
     
     return z_all
                

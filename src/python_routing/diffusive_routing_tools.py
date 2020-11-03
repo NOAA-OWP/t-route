@@ -80,6 +80,7 @@ def dfcnhi_qqpx(
                 , dtini = None
                 , tc= None
                 , ts= None
+                , saveinterval= None
                 , theta= None
                 , tarri= None 
                 , q_bdseg= None
@@ -177,13 +178,15 @@ def dfcnhi_qqpx(
                     qjt= qjt + ydaq[uslsegID]['q'][ts+1]
                 # cascade the accumulated q at a junction down to the downream segments
                 ydaq[head_segment]['q'][ts+1]=qjt      
-
-            with open(os.path.join(output_path,"qqpx"),'a') as qqpx:
-                for seg in range(0,ncomp):
-                    segID= seg_list[seg]
-                    qqpx.write("%s %s %s %s %s %s\n" %\
-                               ('qqpx',ts+1, tc+dtini/60.0, segID, ydaq[segID]['q'][ts+1], dfpara[segID]['qpx'][0]))
-                #qqpx.write("\n")
+            
+            if (tc+dtini/60.0)%(saveinterval/60.0)==0.0:
+                with open(os.path.join(output_path,"qqpx"),'a') as qqpx:
+                    for seg in range(0,ncomp):
+                        segID= seg_list[seg]
+                        qqpx.write("%s %s %s %s %s %s\n" %\
+                                   ('qqpx',ts+1, tc+dtini/60.0, segID,\
+                                    ydaq[segID]['q'][ts+1], dfpara[segID]['qpx'][0]))
+                    #qqpx.write("\n")
     return ydaq
     return dfpara
 
@@ -208,6 +211,7 @@ def dfcnhi_elv(
                 , dtini = None
                 , tc= None
                 , ts= None
+                , saveinterval= None
                 , tarri= None 
                 , tzeq_flag= None
                 , y_opt= None
@@ -324,15 +328,15 @@ def dfcnhi_elv(
 
             cel_av[rch]= dfpara[head_segment]['celerity'][0]
             rch= rch+1
+            if (tc+dtini/60.0)%(saveinterval/60.0)==0.0:
+                with open(os.path.join(output_path,"elev"),'a') as elev:
+                    for seg in range(0,ncomp):
+                        segID= seg_list[seg]
+                        elev.write("%s %s %s %s %s %s %s\n" %\
+                            ('elev',ts+1, tc+dtini/60.0, segID, ydaq[segID]['elev'][ts+1],\
+                            dfpara[segID]['celerity'][0],dfpara[segID]['diffusivity'][0]))
+                #elev.write("\n")  
 
-            with open(os.path.join(output_path,"elev"),'a') as elev:
-                for seg in range(0,ncomp):
-                    segID= seg_list[seg]
-                    elev.write("%s %s %s %s %s %s %s\n" %\
-                        ('elev',ts+1, tc+dtini/60.0, segID, ydaq[segID]['elev'][ts+1],\
-                        dfpara[segID]['celerity'][0],dfpara[segID]['diffusivity'][0]))
-            #elev.write("\n")  
-    
     return ydaq
     return dfpara       
     return cel_av     
