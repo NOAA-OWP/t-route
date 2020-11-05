@@ -19,7 +19,7 @@ mc_single_seg.o: MCsingleSegStime_f2py_NOLOOP.f90 precis.mod
 pymc_single_seg.o: pyMCsingleSegStime_NoLoop.f90
 	$(FC) $(FCFLAGS) -o $@ $<
 
-reservoir: module_levelpool.o pymodule_levelpool.o
+reservoir:  precis.mod module_levelpool.o pymodule_levelpool.o
 
 precis.mod: varPrecision.f90
 	$(FC) $(FCFLAGS) $<
