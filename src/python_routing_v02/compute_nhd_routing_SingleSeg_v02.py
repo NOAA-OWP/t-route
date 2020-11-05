@@ -102,16 +102,16 @@ if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
     root = pathlib.Path("../..").resolve()
-    sys.path.append(r"../python_framework_v02")
+    #sys.path.append(r"../python_framework_v02")
 
     # TODO: automate compile for the package scripts
     sys.path.append("fast_reach")
 
 ## network and reach utilities
-import nhd_network_utilities_v02 as nnu
+import troute.nhd_network_utilities_v02 as nnu
 import mc_reach
-import nhd_network
-import nhd_io
+import troute.nhd_network as nhd_network
+import troute.nhd_io as nhd_io
 
 
 def writetoFile(file, writeString):
