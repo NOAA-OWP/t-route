@@ -6,8 +6,10 @@ FC := gfortran
 FCFLAGS = -c -O2 -fPIC
 # link flags
 FLFLAGS = -static-gfortran -static-libgcc -no-defaultlibs -lgfortran -lgcc
+VPATH = ../Reservoir_singleTS
 
 .PHONY: reach reservoir all install
+all: reach reservoir
 
 reach: mc_single_seg.o pymc_single_seg.o
 
@@ -24,8 +26,6 @@ precis.mod: varPrecision.f90
 
 install:
 	cp *.o ../../../../src/python_routing_v02/fast_reach
-
-all: reach reservoir
 
 %.o: %.F
 	$(FC) $(FCFLAGS) -o $@ $<
