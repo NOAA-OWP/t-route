@@ -1,4 +1,7 @@
 cimport numpy as np
+"""
+FIXME add some significant inline documentation
+"""
 
 cdef class Segment():
   """
@@ -14,12 +17,29 @@ cdef class MC_Segment(Segment):
   """
   #TODO document these attributes
   cdef readonly float dt, dx, bw, tw, twcc, n, ncc, cs, s0
-  cdef float qdp, velp, depthp
+  cdef readonly float qdp, velp, depthp
+
+cdef struct _MC_Segment:
+
+  long id
+  float dt, dx, bw, tw, twcc, n, ncc, cs, s0
+  float qdp, velp, depthp
+
+cdef struct _MC_Reach:
+  _MC_Segment* _segments
+  int _num_segments
+  long* _upstream_ids
+  int _num_upstream_ids
 
 cdef class MC_Reach():
   """
     A muskingcung reach -> collection of ordered MC_Segments
   """
+  cdef _MC_Segment* _segments
+  cdef int _num_segments # C only accessible
+  cdef readonly num_segments #Python accessible, readonly outside class
+  cdef int _num_upstream_ids
+  cdef _MC_Reach _reach
   cdef readonly list segments
   cdef readonly np.ndarray upstream_ids
   cdef route(self)
