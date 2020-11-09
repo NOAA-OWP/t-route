@@ -33,6 +33,13 @@ def _handle_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
+        "--nts",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+    )
+    parser.add_argument(
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
