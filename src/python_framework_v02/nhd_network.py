@@ -418,7 +418,7 @@ def replace_waterbodies_connections(connections, waterbodies):
             new_conn[n] = connections[n]
     return new_conn
 
-def build_subnetworks(connections, rconn, max_depth, sources=None):
+def build_subnetworks(connections, rconn, min_size, sources=None):
     '''
     Construct subnetworks using a truncated breadth-first-search
     
@@ -455,6 +455,7 @@ def build_subnetworks(connections, rconn, max_depth, sources=None):
                 reachable_depth = set()
                 Q = deque([h])
                 D = deque([0])
+                stop_depth = 1000000
                 while Q or D:
 
                     x = Q.popleft() 
@@ -466,8 +467,11 @@ def build_subnetworks(connections, rconn, max_depth, sources=None):
                         us_depth = y+1
                     else:
                         us_depth = y
+                        
+                    if len(reachable) > min_size:
+                        stop_depth = y
 
-                    if us_depth <= max_depth:
+                    if us_depth <= stop_depth:
                         D.extend([us_depth]*len(rconn.get(x, ())))
                         Q.extend(rconn.get(x, ()))
 
