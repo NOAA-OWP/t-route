@@ -417,3 +417,85 @@ def replace_waterbodies_connections(connections, waterbodies):
             # copy to new network unchanged
             new_conn[n] = connections[n]
     return new_conn
+
+def build_subnetworks(connections, rconn, max_depth, sources=None):
+    '''
+    Construct subnetworks using a truncated breadth-first-search
+    
+    Arguments:
+        connections
+        rconn
+        max_depth
+        sources
+    Returns:
+        subnetwork_master
+    '''
+    # if no sources provided, use tailwaters
+    if sources is None:
+        # identify tailwaters
+        sources = rconn.keys() - chain.from_iterable(rconn.values())
+    
+    # create a list of all headwaters in the network
+    all_hws = connections.keys() - chain.from_iterable(connections.values())
+
+    subnetwork_master = {}
+    for net in sources:
+
+        # subnetwork creation using a breadth first search restricted by maximum allowable depth
+        new_sources = [net]
+        subnetworks = {}
+        group_order = 0
+        while new_sources:
+
+            # Build dict object containing reachable nodes within max_depth from each source in new_sources
+            rv = {} 
+            for h in new_sources:
+
+                reachable = set()
+                reachable_depth = set()
+                Q = deque([h])
+                D = deque([0])
+                while Q or D:
+
+                    x = Q.popleft() 
+                    y = D.popleft()
+                    reachable.add(x)
+                    reachable_depth.add(y)
+
+                    if len(rconn.get(x, ())) > 1:
+                        us_depth = y+1
+                    else:
+                        us_depth = y
+
+                    if us_depth <= max_depth:
+                        D.extend([us_depth]*len(rconn.get(x, ())))
+                        Q.extend(rconn.get(x, ()))
+
+                # reachable: a list of reachable segments within max_depth from source node h
+                rv[h] = reachable
+
+            # find headwater segments in reachable groups, these will become the next set of sources
+            new_sources = []
+            for tw, seg in rv.items():
+                # identify downstream connections for segments in this subnetwork
+                c = {key: connections[key] for key in seg}
+                # find apparent headwaters, will include new sources and actual headwaters 
+                sub_hws = c.keys() - chain.from_iterable(c.values())
+                # extract new sources by differencing with list of actual headwaters
+                srcs = list(set(sub_hws) - set(all_hws))
+                # append list of new sources
+                new_sources.extend(srcs)
+                # remove new sources from the subnetwork list
+                for src in srcs:
+                    rv[tw].remove(src)
+
+            # append master dictionary
+            subnetworks[group_order] = rv
+
+            # advance group order
+            group_order += 1
+
+        subnetwork_master[net] = subnetworks
+        
+    return subnetwork_master
+    
