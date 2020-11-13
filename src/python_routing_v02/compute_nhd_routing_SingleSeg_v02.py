@@ -29,21 +29,6 @@ def _handle_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "-ocsv",
-        "--write-output-csv",
-        nargs="?",
-        help="Write csv output files to this folder (omit flag for no csv writing)",
-        dest="csv_output_folder",
-        const="../../test/output/text",
-    )
-    parser.add_argument(
-        "--nts",
-        "--number-of-qlateral-timesteps",
-        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
-        dest="nts",
-        default=144,
-    )
-    parser.add_argument(
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
@@ -59,17 +44,27 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--nts",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+        type=int,
+    )
+    parser.add_argument(
+        "--sts",
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
         action="store_true",
     )
     parser.add_argument(
-        "-o",
-        "--output",
-        help="Write output files (leave blank for no writing)",
-        dest="write_output",
-        action="store_true",
+        "-ocsv",
+        "--write-output-csv",
+        nargs="?",
+        help="Write csv output files to this folder (omit flag for no csv writing)",
+        dest="csv_output_folder",
+        const="../../test/output/text",
     )
     parser.add_argument(
         "-t",
@@ -87,9 +82,10 @@ def _handle_args():
     )
     parser.add_argument(
         "--parallel",
+        nargs="?",
         help="Use the parallel computation engine (omit flag for serial computation)",
-        dest="parallel_compute",
-        action="store_true",
+        dest="parallel_compute_method",
+        const="by-network",
     )
     parser.add_argument(
         "--cpu-pool",
@@ -157,13 +153,13 @@ def main():
 
     args = _handle_args()
 
-    nts = int(args.nts)
+    nts = args.nts
     debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
     supernetwork = args.supernetwork
     break_network_at_waterbodies = args.break_network_at_waterbodies
-    write_output = args.write_output
+    csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
 
     test_folder = pathlib.Path(root, "test")
@@ -258,10 +254,10 @@ def main():
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
-    parallelcompute = args.parallel_compute
+    parallel_compute_method = args.parallel_compute_method
     cpu_pool = args.cpu_pool
 
-    if parallelcompute:
+    if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
@@ -307,7 +303,7 @@ def main():
                 )
             )
 
-    if (debuglevel <= -1) or args.csv_output_folder:
+    if (debuglevel <= -1) or csv_output_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
@@ -315,9 +311,9 @@ def main():
             [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results], copy=False
         )
 
-        if args.csv_output_folder:
+        if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
-            output_path = pathlib.Path(args.csv_output_folder).resolve()
+            output_path = pathlib.Path(csv_output_folder).resolve()
             flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
 
         if debuglevel <= -1:
