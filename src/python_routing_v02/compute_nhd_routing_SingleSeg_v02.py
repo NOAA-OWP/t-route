@@ -143,9 +143,9 @@ def writetoFile(file, writeString):
     file.write("\n")
 
 
-def constant_qlats(data, nsteps, qlat):
-    q = np.full((len(data.index), nsteps), qlat, dtype="float32")
-    ql = pd.DataFrame(q, index=data.index, columns=range(nsteps))
+def constant_qlats(index_dataset, nsteps, qlat):
+    q = np.full((len(index_dataset.index), nsteps), qlat, dtype="float32")
+    ql = pd.DataFrame(q, index=index_dataset.index, columns=range(nsteps))
     return ql
 
 
@@ -192,34 +192,34 @@ def main():
     )
 
     cols = network_data["columns"]
-    data = nhd_io.read(network_data["geo_file_path"])
-    data = data[list(cols.values())]
-    data = data.set_index(cols["key"])
+    param_df = nhd_io.read(network_data["geo_file_path"])
+    param_df = param_df[list(cols.values())]
+    param_df = param_df.set_index(cols["key"])
 
     if "mask_file_path" in network_data:
         data_mask = nhd_io.read_mask(
             network_data["mask_file_path"],
             layer_string=network_data["mask_layer_string"],
         )
-        data = data.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
+        param_df = param_df.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
 
-    data = data.sort_index()
-    data = nhd_io.replace_downstreams(data, cols["downstream"], 0)
+    param_df = param_df.sort_index()
+    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     if args.ql:
         qlats = nhd_io.read_qlat(args.ql)
     else:
-        qlats = constant_qlats(data, nts, 10.0)
+        qlats = constant_qlats(param_df, nts, 10.0)
 
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
     q0 = pd.DataFrame(
-        0, index=data.index, columns=["qu0", "qd0", "h0"], dtype="float32"
+        0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
     )
 
-    connections = nhd_network.extract_connections(data, cols["downstream"])
+    connections = nhd_network.extract_connections(param_df, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
-        data, cols["waterbody"], network_data["waterbody_null_code"]
+        param_df, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
     if verbose:
@@ -248,9 +248,9 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    data["dt"] = 300.0
-    data = data.rename(columns=nnu.reverse_dict(cols))
-    data = data.astype("float32")
+    param_df["dt"] = 300.0
+    param_df = param_df.rename(columns=nnu.reverse_dict(cols))
+    param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
@@ -262,7 +262,7 @@ def main():
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 r = list(chain.from_iterable(reach))
-                data_sub = data.loc[
+                param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
@@ -272,9 +272,9 @@ def main():
                         nts,
                         reach,
                         subnets[tw],
-                        data_sub.index.values,
-                        data_sub.columns.values,
-                        data_sub.values,
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
                     )
@@ -285,7 +285,7 @@ def main():
         results = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
             r = list(chain.from_iterable(reach))
-            data_sub = data.loc[
+            param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
@@ -295,9 +295,9 @@ def main():
                     nts,
                     reach,
                     subnets[tw],
-                    data_sub.index.values,
-                    data_sub.columns.values,
-                    data_sub.values,
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
                 )
