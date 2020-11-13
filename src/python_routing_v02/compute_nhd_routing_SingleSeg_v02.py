@@ -29,6 +29,13 @@ def _handle_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
+        "--nts",
+        "--number-of-qlateral-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+    )
+    parser.add_argument(
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
@@ -102,7 +109,7 @@ if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
     root = pathlib.Path("../..").resolve()
-    #sys.path.append(r"../python_framework_v02")
+    # sys.path.append(r"../python_framework_v02")
 
     # TODO: automate compile for the package scripts
     sys.path.append("fast_reach")
@@ -129,7 +136,7 @@ def main():
 
     args = _handle_args()
 
-    nts = 144
+    nts = int(args.nts)
     debuglevel = -1 * args.debuglevel
     verbose = args.verbose
     showtiming = args.showtiming
@@ -186,10 +193,12 @@ def main():
         qlats = nhd_io.read_qlat(args.ql)
     else:
         qlats = constant_qlats(data, nts, 10.0)
-        
+
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
-    q0 = pd.DataFrame(0,index = data.index, columns = ["qu0","qd0","h0"], dtype = "float32")
+    q0 = pd.DataFrame(
+        0, index=data.index, columns=["qu0", "qd0", "h0"], dtype="float32"
+    )
 
     connections = nhd_network.extract_connections(data, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
