@@ -95,6 +95,12 @@ def _handle_args():
         default=None,
     )
     parser.add_argument(
+        "--compute_method",
+        help="Use the cython version of the compute_network code (enter additional flag options for other compute_network possibilities).",
+        dest="compute_method",
+        default="standard cython compute network",
+    )
+    parser.add_argument(
         "-n",
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
@@ -256,6 +262,12 @@ def main():
 
     parallel_compute_method = args.parallel_compute_method
     cpu_pool = args.cpu_pool
+    compute_method = args.compute_method
+
+    if compute_method == "standard cython compute network":
+        compute_func = mc_reach.compute_network
+    else:
+        compute_func = mc_reach.compute_network
 
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
@@ -268,7 +280,7 @@ def main():
                 qlat_sub = qlats.loc[r].sort_index()
                 q0_sub = q0.loc[r].sort_index()
                 jobs.append(
-                    delayed(mc_reach.compute_network)(
+                    delayed(compute_func)(
                         nts,
                         reach_list,
                         independent_networks[tw],
@@ -281,7 +293,7 @@ def main():
                 )
             results = parallel(jobs)
 
-    else: # Execute in serial
+    else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             r = list(chain.from_iterable(reach_list))
@@ -291,7 +303,7 @@ def main():
             qlat_sub = qlats.loc[r].sort_index()
             q0_sub = q0.loc[r].sort_index()
             results.append(
-                mc_reach.compute_network(
+                compute_func(
                     nts,
                     reach_list,
                     independent_networks[tw],
@@ -308,7 +320,8 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results], copy=False
+            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
+            copy=False,
         )
 
         if csv_output_folder:
