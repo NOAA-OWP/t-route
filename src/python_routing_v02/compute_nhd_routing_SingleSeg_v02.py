@@ -78,6 +78,19 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--parallel",
+        help="Use the parallel computation engine (omit flag for serial computation)",
+        dest="parallel_compute",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--cpu-pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
         "-n",
         "--supernetwork",
         help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
@@ -237,9 +250,11 @@ def main():
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
-    parallelcompute = False
+    parallelcompute = args.parallel_compute
+    cpu_pool = args.cpu_pool
+
     if parallelcompute:
-        with Parallel(n_jobs=-1, backend="threading") as parallel:
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach) in enumerate(subreaches.items(), 1):
                 r = list(chain.from_iterable(reach))
@@ -261,7 +276,8 @@ def main():
                     )
                 )
             results = parallel(jobs)
-    else:
+
+    else: # Execute in serial
         results = []
         for twi, (tw, reach) in enumerate(subreaches.items(), 1):
             r = list(chain.from_iterable(reach))
