@@ -29,6 +29,14 @@ def _handle_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
+        "-ocsv",
+        "--write-output-csv",
+        nargs="?",
+        help="Write csv output files to this folder (omit flag for no csv writing)",
+        dest="csv_output_folder",
+        const="../../test/output/text",
+    )
+    parser.add_argument(
         "--nts",
         "--number-of-qlateral-timesteps",
         help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
@@ -39,7 +47,7 @@ def _handle_args():
         "--debuglevel",
         help="Set the debuglevel",
         dest="debuglevel",
-        choices=[0, -1, -2, -3],
+        choices=[0, 1, 2, 3],
         default=0,
         type=int,
     )
@@ -299,15 +307,21 @@ def main():
                 )
             )
 
-    fdv_columns = pd.MultiIndex.from_product(
-        [range(nts), ["q", "v", "d"]]
-    ).to_flat_index()
-    flowveldepth = pd.concat(
-        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
-    )
-    flowveldepth = flowveldepth.sort_index()
-    flowveldepth.to_csv(f"{args.supernetwork}.csv")
-    print(flowveldepth)
+    if (debuglevel <= -1) or args.csv_output_folder:
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results], copy=False
+        )
+
+        if args.csv_output_folder:
+            flowveldepth = flowveldepth.sort_index()
+            output_path = pathlib.Path(args.csv_output_folder).resolve()
+            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
+
+        if debuglevel <= -1:
+            print(flowveldepth)
 
     if verbose:
         print("ordered reach computation complete")
