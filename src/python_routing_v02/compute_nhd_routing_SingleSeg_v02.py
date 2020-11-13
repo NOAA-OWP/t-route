@@ -234,11 +234,11 @@ def main():
         print("organizing connections into reaches ...")
 
     rconn = nhd_network.reverse_network(connections)
-    subnets = nhd_network.reachable_network(rconn)
-    subreaches = {}
-    for tw, net in subnets.items():
+    independent_networks = nhd_network.reachable_network(rconn)
+    reaches_bytw = {}
+    for tw, net in independent_networks.items():
         path_func = partial(nhd_network.split_at_junction, net)
-        subreaches[tw] = nhd_network.dfs_decomposition(net, path_func)
+        reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     if verbose:
         print("reach organization complete")
@@ -260,8 +260,8 @@ def main():
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
-            for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-                r = list(chain.from_iterable(reach))
+            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                r = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
@@ -270,8 +270,8 @@ def main():
                 jobs.append(
                     delayed(mc_reach.compute_network)(
                         nts,
-                        reach,
-                        subnets[tw],
+                        reach_list,
+                        independent_networks[tw],
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
@@ -283,8 +283,8 @@ def main():
 
     else: # Execute in serial
         results = []
-        for twi, (tw, reach) in enumerate(subreaches.items(), 1):
-            r = list(chain.from_iterable(reach))
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            r = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
@@ -293,8 +293,8 @@ def main():
             results.append(
                 mc_reach.compute_network(
                     nts,
-                    reach,
-                    subnets[tw],
+                    reach_list,
+                    independent_networks[tw],
                     param_df_sub.index.values,
                     param_df_sub.columns.values,
                     param_df_sub.values,
