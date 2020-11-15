@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 import pathlib
 import pandas as pd
+from collections import defaultdict
 from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
@@ -86,6 +87,13 @@ def _handle_args():
         help="Use the parallel computation engine (omit flag for serial computation)",
         dest="parallel_compute_method",
         const="by-network",
+    )
+    parser.add_argument(
+        "--subnet-size",
+        help="Set the target size (number of segments) for grouped subnetworks.",
+        dest="subnetwork_target_size",
+        default=-1,
+        type=int,
     )
     parser.add_argument(
         "--cpu-pool",
@@ -263,11 +271,59 @@ def main():
     parallel_compute_method = args.parallel_compute_method
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
+    subnetwork_target_size = args.subnetwork_target_size
 
     if compute_method == "standard cython compute network":
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
+
+    if parallel_compute_method == "by-subnetwork-jit":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(connections, rconn, subnetwork_target_size)
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    for k in independent_networks[tw]:
+                        if k in subnetwork:
+                            subnetworks[subn_tw].update({k: independent_networks[tw][k]})
+
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+
+            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                r = list(chain.from_iterable(reach_list))
+
+            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+                jobs = []
+                reaches_bysubntw = {}
+                for subn_tw, subnet in ordered_subn_dict.items():
+                    conn_subn = {k: connections[k] for k in subnet if k in connections}
+                    rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                    reaches_bysubntw[subn_tw] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+                for twi, (subn_tw, subn_reach_list) in enumerate(reaches_bysubntw.items(), 1):
+                    r = list(chain.from_iterable(subn_reach_list))
+                    param_df_sub = param_df.loc[
+                        r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    qlat_sub = qlats.loc[r].sort_index()
+                    q0_sub = q0.loc[r].sort_index()
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            subn_reach_list,
+                            {k: [] for k in subnetworks[subn_tw]},
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            qlat_sub.values,
+                            q0_sub.values,
+                        )
+                    )
+                results = parallel(jobs)
 
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
