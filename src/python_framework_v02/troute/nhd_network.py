@@ -150,7 +150,7 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
     """
     reached = reachable(N, sources=sources, targets=targets)
-    if check_disjoint and reduce(set.intersection, reached.values()):
+    if check_disjoint and len(reached) > 1 and reduce(set.intersection, reached.values()):
         raise ValueError("Networks not disjoint")
 
     rv = {}
