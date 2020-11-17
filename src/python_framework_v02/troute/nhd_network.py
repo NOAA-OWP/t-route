@@ -150,7 +150,11 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
     """
     reached = reachable(N, sources=sources, targets=targets)
-    if check_disjoint and len(reached) > 1 and reduce(set.intersection, reached.values()):
+    if (
+        check_disjoint
+        and len(reached) > 1
+        and reduce(set.intersection, reached.values())
+    ):
         raise ValueError("Networks not disjoint")
 
     rv = {}
@@ -238,6 +242,7 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
 
     return path_tuples
 
+
 def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
     """
     Append data values from a set of tuples of form (key, data) 
@@ -256,7 +261,8 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
         load_dict[t[key_idx]].append(t[val_idx])
 
     return load_dict
-    
+
+
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
     Decompose N into a list of simple segments.
@@ -418,8 +424,9 @@ def replace_waterbodies_connections(connections, waterbodies):
             new_conn[n] = connections[n]
     return new_conn
 
+
 def build_subnetworks(connections, rconn, min_size, sources=None):
-    '''
+    """
     Construct subnetworks using a truncated breadth-first-search
     
     Arguments:
@@ -429,12 +436,12 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
         sources
     Returns:
         subnetwork_master
-    '''
+    """
     # if no sources provided, use tailwaters
     if sources is None:
         # identify tailwaters
         sources = rconn.keys() - chain.from_iterable(rconn.values())
-    
+
     # create a list of all headwaters in the network
     all_hws = connections.keys() - chain.from_iterable(connections.values())
 
@@ -448,7 +455,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
         while new_sources:
 
             # Build dict object containing reachable nodes within max_depth from each source in new_sources
-            rv = {} 
+            rv = {}
             for h in new_sources:
 
                 reachable = set()
@@ -458,21 +465,21 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 stop_depth = 1000000
                 while Q or D:
 
-                    x = Q.popleft() 
+                    x = Q.popleft()
                     y = D.popleft()
                     reachable.add(x)
                     reachable_depth.add(y)
 
                     if len(rconn.get(x, ())) > 1:
-                        us_depth = y+1
+                        us_depth = y + 1
                     else:
                         us_depth = y
-                        
+
                     if len(reachable) > min_size:
                         stop_depth = y
 
                     if us_depth <= stop_depth:
-                        D.extend([us_depth]*len(rconn.get(x, ())))
+                        D.extend([us_depth] * len(rconn.get(x, ())))
                         Q.extend(rconn.get(x, ()))
 
                 # reachable: a list of reachable segments within max_depth from source node h
@@ -483,7 +490,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
             for tw, seg in rv.items():
                 # identify downstream connections for segments in this subnetwork
                 c = {key: connections[key] for key in seg}
-                # find apparent headwaters, will include new sources and actual headwaters 
+                # find apparent headwaters, will include new sources and actual headwaters
                 sub_hws = c.keys() - chain.from_iterable(c.values())
                 # extract new sources by differencing with list of actual headwaters
                 srcs = list(set(sub_hws) - set(all_hws))
@@ -500,6 +507,5 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
             group_order += 1
 
         subnetwork_master[net] = subnetworks
-        
+
     return subnetwork_master
-    
