@@ -290,21 +290,24 @@ def main():
                         if k in subnetwork:
                             subnetworks[subn_tw].update({k: independent_networks[tw][k]})
 
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        reaches_bysubntw = {}
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            reaches_bysubntw[order] = {}
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_bysubntw[order][subn_tw] = nhd_network.dfs_decomposition(rconn_subn, path_func)
 
-            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            r = list(chain.from_iterable(reach_list))
+
+        start_para_time = time.time()
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
 
             for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
                 jobs = []
-                reaches_bysubntw = {}
-                for subn_tw, subnet in ordered_subn_dict.items():
-                    conn_subn = {k: connections[k] for k in subnet if k in connections}
-                    rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                    reaches_bysubntw[subn_tw] = nhd_network.dfs_decomposition(rconn_subn, path_func)
-
-                for twi, (subn_tw, subn_reach_list) in enumerate(reaches_bysubntw.items(), 1):
+                for twi, (subn_tw, subn_reach_list) in enumerate(reaches_bysubntw[order].items(), 1):
                     r = list(chain.from_iterable(subn_reach_list))
                     param_df_sub = param_df.loc[
                         r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -325,7 +328,10 @@ def main():
                     )
                 results = parallel(jobs)
 
-    if parallel_compute_method == "by-network":
+        if showtiming:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
