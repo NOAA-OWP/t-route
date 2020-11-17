@@ -1,0 +1,10 @@
+In order to run pytest for all reservoir types:
+
+1. Activate python virtual enviroment and pip install pytest
+2. Navigate to "fortran/Reservoirs" directory
+3. Type "make"
+4. Navigate back to "kernels" directory
+5. Type "python setup.py install"
+6. Type "pytest test_compute_kernel.py"
+
+Six tests should run and pass successfully  
