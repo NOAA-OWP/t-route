@@ -449,7 +449,8 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
     for net in sources:
 
         # subnetwork creation using a breadth first search restricted by maximum allowable depth
-        new_sources = [net]
+        #new_sources_list = [net]
+        new_sources = set([net])
         subnetworks = {}
         group_order = 0
         while new_sources:
@@ -486,7 +487,8 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 rv[h] = reachable
 
             # find headwater segments in reachable groups, these will become the next set of sources
-            new_sources = []
+            #new_sources_list = []
+            new_sources = set()
             for tw, seg in rv.items():
                 # identify downstream connections for segments in this subnetwork
                 c = {key: connections[key] for key in seg}
@@ -495,7 +497,8 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 # extract new sources by differencing with list of actual headwaters
                 srcs = list(set(sub_hws) - set(all_hws))
                 # append list of new sources
-                new_sources.extend(srcs)
+                #new_sources_list.extend(srcs)
+                new_sources.update(srcs)
                 # remove new sources from the subnetwork list
                 for src in srcs:
                     rv[tw].remove(src)
