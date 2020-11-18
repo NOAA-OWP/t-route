@@ -278,7 +278,86 @@ def main():
     else:
         compute_func = mc_reach.compute_network
 
-    if parallel_compute_method == "by-subnetwork-jit":
+    if parallel_compute_method == "by-subnetwork-jit-clustered":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(connections, rconn, subnetwork_target_size)
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    for k in independent_networks[tw]:
+                        if k in subnetwork:
+                            subnetworks[subn_tw].update({k: independent_networks[tw][k]})
+
+        reaches_ordered_bysubntw = {}
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            reaches_ordered_bysubntw[order] = {}
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_ordered_bysubntw[order][subn_tw] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+        cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
+                                  # Otherwise, keep adding reaches.
+
+        reaches_ordered_bysubntw_clustered = {}
+        
+        for order in subnetworks_only_ordered_jit:
+            cluster = 0
+            reaches_ordered_bysubntw_clustered[order] = {}
+            for twi, (subn_tw, subn_reach_list) in enumerate(reaches_ordered_bysubntw[order].items(), 1):
+                reaches_ordered_bysubntw_clustered[order][cluster] = {'r':[], 'upstreams':{}, 'tw':[], 'subn_reach_list':[]}
+                r = list(chain.from_iterable(subn_reach_list))
+                reaches_ordered_bysubntw_clustered[order][cluster]['r'].extend(r) 
+                reaches_ordered_bysubntw_clustered[order][cluster]['upstreams'].update({k: [] for k in subnetworks[subn_tw]})
+                reaches_ordered_bysubntw_clustered[order][cluster]['tw'].append(subn_tw)
+                reaches_ordered_bysubntw_clustered[order][cluster]['subn_reach_list'].extend(subn_reach_list)
+
+                if len(reaches_ordered_bysubntw_clustered[order][cluster]['r']) >= cluster_threshold * subnetwork_target_size:
+                    cluster += 1
+
+        if showtiming:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+
+            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+                jobs = []
+                for cluster, clustered_subns in reaches_ordered_bysubntw_clustered[order].items():
+                    # for twi, (subn_tw, subn_reach_list) in enumerate(reaches_ordered_bysubntw[order].items(), 1):
+                    # r = list(chain.from_iterable(subn_reach_list))
+                    r = clustered_subns['r']
+                    param_df_sub = param_df.loc[
+                        r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    qlat_sub = qlats.loc[r].sort_index()
+                    q0_sub = q0.loc[r].sort_index()
+                    subn_reach_list = clustered_subns['subn_reach_list']
+                    upstreams = clustered_subns['upstreams']
+
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            subn_reach_list,
+                            upstreams,
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            qlat_sub.values,
+                            q0_sub.values,
+                        )
+                    )
+                # import pdb; pdb.set_trace()
+                results = parallel(jobs)
+
+        if showtiming:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-subnetwork-jit":
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(connections, rconn, subnetwork_target_size)
         subnetworks_only_ordered_jit = defaultdict(dict)
         subnetworks = defaultdict(dict)
@@ -301,6 +380,10 @@ def main():
 
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             r = list(chain.from_iterable(reach_list))
+
+        if showtiming:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
