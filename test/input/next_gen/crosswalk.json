@@ -1,0 +1,539 @@
+{
+  "cat-1": {
+    "COMID": "9731278",
+    "outlet_COMID": 9731278
+  },
+  "cat-2": {
+    "COMID": "9731422",
+    "outlet_COMID": 9731422
+  },
+  "cat-3": {
+    "COMID": "9731394",
+    "outlet_COMID": 9731394
+  },
+  "cat-4": {
+    "COMID": "9731384",
+    "outlet_COMID": 9731384
+  },
+  "cat-5": {
+    "COMID": ["9731370", "9731362.2"],
+    "outlet_COMID": 9731370
+  },
+  "cat-6": {
+    "COMID": ["9731546", "9731388"],
+    "outlet_COMID": 9731388
+  },
+  "cat-7": {
+    "COMID": ["9731548", "9731402", "9731396", "9731526", "9731524"],
+    "outlet_COMID": 9731402
+  },
+  "cat-8": {
+    "COMID": ["9731408", "9731528"],
+    "outlet_COMID": 9731528
+  },
+  "cat-9": {
+    "COMID": "9731276",
+    "outlet_COMID": 9731276
+  },
+  "cat-10": {
+    "COMID": ["9731538", "9731330"],
+    "outlet_COMID": 9731330
+  },
+  "cat-11": {
+    "COMID": "9731354",
+    "outlet_COMID": 9731354
+  },
+  "cat-12": {
+    "COMID": "9731314",
+    "outlet_COMID": 9731314
+  },
+  "cat-13": {
+    "COMID": "9731374",
+    "outlet_COMID": 9731374
+  },
+  "cat-14": {
+    "COMID": ["9731544", "9731378", "9731522", "9731386"],
+    "outlet_COMID": 9731386
+  },
+  "cat-15": {
+    "COMID": "9731322",
+    "outlet_COMID": 9731322
+  },
+  "cat-16": {
+    "COMID": "9731372",
+    "outlet_COMID": 9731372
+  },
+  "cat-17": {
+    "COMID": "9731390",
+    "outlet_COMID": 9731390
+  },
+  "cat-18": {
+    "COMID": ["9731318", "9731502.1"],
+    "outlet_COMID": 9731502
+  },
+  "cat-19": {
+    "COMID": "9731474",
+    "outlet_COMID": 9731474
+  },
+  "cat-20": {
+    "COMID": "9731280",
+    "outlet_COMID": 9731280
+  },
+  "cat-21": {
+    "COMID": ["9731344", "9731340.2"],
+    "outlet_COMID": 9731344
+  },
+  "cat-22": {
+    "COMID": ["9731424", "9731434", "9731430"],
+    "outlet_COMID": 9731430
+  },
+  "cat-23": {
+    "COMID": "9731420",
+    "outlet_COMID": 9731420
+  },
+  "cat-24": {
+    "COMID": "9731368",
+    "outlet_COMID": 9731368
+  },
+  "cat-25": {
+    "COMID": "9731352",
+    "outlet_COMID": 9731352
+  },
+  "cat-26": {
+    "COMID": "9731332",
+    "outlet_COMID": 9731332
+  },
+  "cat-27": {
+    "COMID": "9731334",
+    "outlet_COMID": 9731334
+  },
+  "cat-28": {
+    "COMID": "9731290",
+    "outlet_COMID": 9731290
+  },
+  "cat-29": {
+    "COMID": ["9731270", "9731532", "9731514"],
+    "outlet_COMID": 9731514
+  },
+  "cat-30": {
+    "COMID": "9731400",
+    "outlet_COMID": 9731400
+  },
+  "cat-31": {
+    "COMID": "9731358",
+    "outlet_COMID": 9731358
+  },
+  "cat-32": {
+    "COMID": ["9731492", "9731288", "9731486.3"],
+    "outlet_COMID": 9731492
+  },
+  "cat-33": {
+    "COMID": ["9731360", "9731506"],
+    "outlet_COMID": 9731360
+  },
+  "cat-34": {
+    "COMID": "9731328",
+    "outlet_COMID": 9731328
+  },
+  "cat-35": {
+    "COMID": "9731294",
+    "outlet_COMID": 9731294
+  },
+  "cat-36": {
+    "COMID": "9731392",
+    "outlet_COMID": 9731392
+  },
+  "cat-37": {
+    "COMID": "9731380",
+    "outlet_COMID": 9731380
+  },
+  "cat-38": {
+    "COMID": ["9731540", "9731346"],
+    "outlet_COMID": 9731346
+  },
+  "cat-39": {
+    "COMID": ["9731542", "9731338", "9731518", "9731350", "9731520"],
+    "outlet_COMID": 9731338
+  },
+  "cat-40": {
+    "COMID": ["9731536", "9731326"],
+    "outlet_COMID": 9731326
+  },
+  "cat-41": {
+    "COMID": "9731306",
+    "outlet_COMID": 9731306
+  },
+  "cat-42": {
+    "COMID": "9731304",
+    "outlet_COMID": 9731304
+  },
+  "cat-43": {
+    "COMID": "9731282",
+    "outlet_COMID": 9731282
+  },
+  "cat-44": {
+    "COMID": ["9731534", "9731310"],
+    "outlet_COMID": 9731310
+  },
+  "cat-45": {
+    "COMID": "9731478",
+    "outlet_COMID": 9731478
+  },
+  "cat-46": {
+    "COMID": "9731490",
+    "outlet_COMID": 9731490
+  },
+  "cat-47": {
+    "COMID": "9731496",
+    "outlet_COMID": 9731496
+  },
+  "cat-48": {
+    "COMID": ["9731356", "9731366"],
+    "outlet_COMID": 9731356
+  },
+  "cat-49": {
+    "COMID": "9731382",
+    "outlet_COMID": 9731382
+  },
+  "cat-50": {
+    "COMID": "9731308",
+    "outlet_COMID": 9731308
+  },
+  "cat-51": {
+    "COMID": "9731298",
+    "outlet_COMID": 9731298
+  },
+  "cat-52": {
+    "COMID": ["9731516", "9731302"],
+    "outlet_COMID": 9731516
+  },
+  "cat-53": {
+    "COMID": "9731348",
+    "outlet_COMID": 9731348
+  },
+  "cat-54": {
+    "COMID": ["9731262", "9731258"],
+    "outlet_COMID": 9731262
+  },
+  "cat-55": {
+    "COMID": "9731432",
+    "outlet_COMID": 9731432
+  },
+  "cat-56": {
+    "COMID": "9731244",
+    "outlet_COMID": 9731244
+  },
+  "cat-57": {
+    "COMID": "9731274",
+    "outlet_COMID": 9731274
+  },
+  "cat-58": {
+    "COMID": "9731470",
+    "outlet_COMID": 9731470
+  },
+  "cat-59": {
+    "COMID": "9731256",
+    "outlet_COMID": 9731256
+  },
+  "cat-60": {
+    "COMID": "9731252",
+    "outlet_COMID": 9731252
+  },
+  "cat-61": {
+    "COMID": "9731240",
+    "outlet_COMID": 9731240
+  },
+  "cat-62": {
+    "COMID": "9731236",
+    "outlet_COMID": 9731236
+  },
+  "cat-63": {
+    "COMID": ["9731530", "9731238"],
+    "outlet_COMID": 9731238
+  },
+  "cat-64": {
+    "COMID": "9731246",
+    "outlet_COMID": 9731246
+  },
+  "cat-65": {
+    "COMID": "9731472",
+    "outlet_COMID": 9731472
+  },
+  "cat-66": {
+    "COMID": ["9731242", "9731250", "9731512"],
+    "outlet_COMID": 9731250
+  },
+  "cat-67": {
+    "COMID": "9731254",
+    "outlet_COMID": 9731254
+  },
+  "cat-68": {
+    "COMID": "9731320.1",
+    "outlet_COMID": 9731320
+  },
+  "cat-69": {
+    "COMID": "9731320.2",
+    "site_no": "0214678175",
+    "outlet_COMID": 9731320
+  },
+  "cat-70": {
+    "COMID": "9731364.1",
+    "outlet_COMID": 9731364
+  },
+  "cat-71": {
+    "COMID": "9731364.2",
+    "outlet_COMID": 9731364
+  },
+  "cat-72": {
+    "COMID": "9731362.1",
+    "outlet_COMID": 9731362
+  },
+  "cat-73": {
+    "COMID": "9731312.1",
+    "outlet_COMID": 9731312
+  },
+  "cat-74": {
+    "COMID": "9731312.2",
+    "outlet_COMID": 9731312
+  },
+  "cat-75": {
+    "COMID": "9731428.1",
+    "outlet_COMID": 9731428
+  },
+  "cat-76": {
+    "COMID": "9731428.2",
+    "outlet_COMID": 9731428
+  },
+  "cat-77": {
+    "COMID": "9731398.1",
+    "outlet_COMID": 9731398
+  },
+  "cat-78": {
+    "COMID": "9731398.2",
+    "outlet_COMID": 9731398
+  },
+  "cat-79": {
+    "COMID": "9731502.2",
+    "outlet_COMID": 9731502
+  },
+  "cat-80": {
+    "COMID": "9731502.3",
+    "outlet_COMID": 9731502
+  },
+  "cat-81": {
+    "COMID": "9731324.1",
+    "outlet_COMID": 9731324
+  },
+  "cat-82": {
+    "COMID": "9731324.2",
+    "outlet_COMID": 9731324
+  },
+  "cat-83": {
+    "COMID": "9731340.1",
+    "outlet_COMID": 9731340
+  },
+  "cat-84": {
+    "COMID": "9731316.1",
+    "outlet_COMID": 9731316
+  },
+  "cat-85": {
+    "COMID": "9731316.2",
+    "outlet_COMID": 9731316
+  },
+  "cat-86": {
+    "COMID": "9731498.1",
+    "outlet_COMID": 9731498
+  },
+  "cat-87": {
+    "COMID": "9731498.2",
+    "outlet_COMID": 9731498
+  },
+  "cat-88": {
+    "COMID": "9731504.1",
+    "outlet_COMID": 9731504
+  },
+  "cat-89": {
+    "COMID": "9731504.2",
+    "outlet_COMID": 9731504
+  },
+  "cat-90": {
+    "COMID": "9731486.1",
+    "outlet_COMID": 9731486
+  },
+  "cat-91": {
+    "COMID": "9731486.2",
+    "outlet_COMID": 9731486
+  },
+  "cat-92": {
+    "COMID": "9731272.1",
+    "outlet_COMID": 9731272
+  },
+  "cat-93": {
+    "COMID": "9731272.2",
+    "outlet_COMID": 9731272
+  },
+  "cat-94": {
+    "COMID": "9731482.1",
+    "outlet_COMID": 9731482
+  },
+  "cat-95": {
+    "COMID": "9731482.2",
+    "site_no": "02146300",
+    "outlet_COMID": 9731482
+  },
+  "cat-96": {
+    "COMID": "9731248.1",
+    "outlet_COMID": 9731248
+  },
+  "cat-97": {
+    "COMID": "9731248.2",
+    "site_no": "02146211",
+    "outlet_COMID": 9731248
+  },
+  "cat-98": {
+    "COMID": "9731468.1",
+    "outlet_COMID": 9731468
+  },
+  "cat-99": {
+    "COMID": "9731468.2",
+    "outlet_COMID": 9731468
+  },
+  "cat-100": {
+    "COMID": "9731300.1",
+    "outlet_COMID": 9731300
+  },
+  "cat-101": {
+    "COMID": "9731300.2",
+    "site_no": "02146348",
+    "outlet_COMID": 9731300
+  },
+  "cat-102": {
+    "COMID": "9731286.1",
+    "outlet_COMID": 9731286
+  },
+  "cat-103": {
+    "COMID": "9731286.2",
+    "outlet_COMID": 9731286
+  },
+  "cat-104": {
+    "COMID": "9731286.3",
+    "site_no": "02146562",
+    "outlet_COMID": 9731286
+  },
+  "cat-105": {
+    "COMID": "9731342.1",
+    "outlet_COMID": 9731342
+  },
+  "cat-106": {
+    "COMID": "9731342.2",
+    "site_no": "02146670",
+    "outlet_COMID": 9731342
+  },
+  "cat-107": {
+    "COMID": "9731500.1",
+    "outlet_COMID": 9731500
+  },
+  "cat-108": {
+    "COMID": "9731500.2",
+    "site_no": "02146600",
+    "outlet_COMID": 9731500
+  },
+  "cat-109": {
+    "COMID": "9731284.1",
+    "outlet_COMID": 9731284
+  },
+  "cat-110": {
+    "COMID": "9731284.2",
+    "site_no": "0214655255",
+    "outlet_COMID": 9731284
+  },
+  "cat-111": {
+    "COMID": "9731296.1",
+    "outlet_COMID": 9731296
+  },
+  "cat-112": {
+    "COMID": "9731296.2",
+    "site_no": "02146507",
+    "outlet_COMID": 9731296
+  },
+  "cat-113": {
+    "COMID": "9731484.1",
+    "outlet_COMID": 9731484
+  },
+  "cat-114": {
+    "COMID": "9731484.2",
+    "outlet_COMID": 9731484
+  },
+  "cat-115": {
+    "COMID": "9731484.3",
+    "site_no": "0214645022",
+    "outlet_COMID": 9731484
+  },
+  "cat-116": {
+    "COMID": "9731260.1",
+    "outlet_COMID": 9731260
+  },
+  "cat-117": {
+    "COMID": "9731260.2",
+    "site_no": "0214642825",
+    "outlet_COMID": 9731260
+  },
+  "cat-118": {
+    "COMID": "9731264.1",
+    "outlet_COMID": 9731264
+  },
+  "cat-119": {
+    "COMID": "9731264.2",
+    "site_no": "02146285",
+    "outlet_COMID": 9731264
+  },
+  "cat-120": {
+    "COMID": "9731476.1",
+    "outlet_COMID": 9731476
+  },
+  "cat-121": {
+    "COMID": "9731476.2",
+    "site_no": "0214627970",
+    "outlet_COMID": 9731476
+  },
+  "cat-122": {
+    "COMID": "9731292.1",
+    "outlet_COMID": 9731292
+  },
+  "cat-123": {
+    "COMID": "9731292.2",
+    "outlet_COMID": 9731292
+  },
+  "cat-124": {
+    "COMID": "9731292.3",
+    "site_no": "0214657975",
+    "outlet_COMID": 9731292
+  },
+  "cat-125": {
+    "COMID": "9731494.1",
+    "outlet_COMID": 9731494
+  },
+  "cat-126": {
+    "COMID": "9731494.2",
+    "site_no": "02146700",
+    "outlet_COMID": 9731494
+  },
+  "cat-127": {
+    "COMID": "9731488.1",
+    "outlet_COMID": 9731488
+  },
+  "cat-128": {
+    "COMID": "9731488.2",
+    "site_no": "02146470",
+    "outlet_COMID": 9731488
+  },
+  "cat-129": {
+    "COMID": "9731454.1",
+    "outlet_COMID": 9731454
+  },
+  "cat-130": {
+    "COMID": "9731454.2",
+    "site_no": "02146800",
+    "outlet_COMID": 9731454
+  }
+}
