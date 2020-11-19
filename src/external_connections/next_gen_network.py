@@ -52,6 +52,7 @@ def main():
 
     # Currently tested on the Sugar Creek domain
     ngen_network_df = nhd_io.read_geopandas(os.path.join(next_gen_input_folder, args.supernetwork))
+    ngen_network_df = ngen_network_df[ ngen_network_df.id.isin( [ 'fp-58', 'fp-59', 'fp-60', 'fp-63'] ) ]
 
     # Create dictionary mapping each connection ID
     ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.toid))
@@ -80,23 +81,41 @@ def main():
 
     subnets = nhd_network.reachable_network(rconn, check_disjoint=False)
 
-    waterbody_df['dt'] = 300.0
-
     # read the routelink file
-    # nhd_routelink = nhd_io.read_netcdf("data/RouteLink_NHDPLUS.nc")
+    nhd_routelink = nhd_io.read_netcdf("data/RouteLink_NHDPLUS.nc")
+    nhd_routelink['dt'] = 300.0
 
-    # with open("data/default/crosswalk.json") as f:
-    #    data = json.load(f)
+    nhd_routelink.set_index("link", inplace=True)
 
-    # Setting all below to 1.0 until we can get the appropriate parameters
-    waterbody_df['bw'] = 1.0
-    waterbody_df['tw'] = 1.0
-    waterbody_df['twcc'] = 1.0
-    waterbody_df['dx'] = 1.0
-    waterbody_df['n'] = 1.0
-    waterbody_df['ncc'] = 1.0
-    waterbody_df['cs'] = 1.0
-    waterbody_df['s0'] = 1.0
+    routelink_cols = {
+        "downstream": "to",
+        "dx": "Length",
+        "n": "n",
+        "ncc": "nCC",
+        "s0": "So",
+        "bw": "BtmWdth",
+        "tw": "TopWdth",
+        "twcc": "TopWdthCC",
+        "waterbody": "NHDWaterbodyComID",
+        "musk": "MusK",
+        "musx": "MusX",
+        "cs": "ChSlp",
+    }
+
+    routelink_cols = dict([(value,key) for key, value in routelink_cols.items() ])
+
+    nhd_routelink.rename(columns=routelink_cols, inplace=True)
+
+    with open("data/coarse/crosswalk.json") as f:
+        crosswalk_data = json.load(f)
+    waterbody_df['comid'] = waterbody_df.apply(lambda x: crosswalk_data['fp-' + str(x.name)]['outlet_COMID'], axis=1)
+
+    waterbody_df = waterbody_df.join(nhd_routelink, on='comid', how='left')
+
+    del nhd_routelink
+
+    print(waterbody_df)
+    exit(0)
 
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
@@ -117,9 +136,11 @@ def main():
     results = []
     for twi, (tw, reach) in enumerate(subreaches.items(), 1):
         r = list(chain.from_iterable(reach))
-        data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+        #data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+        data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
         qlat_sub = qlats.loc[r].sort_index()
         q0_sub = q0.loc[r].sort_index()
+
         results.append(mc_reach.compute_network(
             nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values, q0_sub.values
             )
