@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# example usage: python next_gen_network.py -n sugar_creek_waterbody_data_subset.geojson
+# example usage: python next_gen_network.py -n ./data/coarse/flowpath_data.geojson -s cat-71 cat-42 cat-34 cat-26 cat-68 cat-67 cat-27 cat-52 -i ./data
 
 """This program reads in and modifies lateral flows from the next generation water modeling framework and feeds them into mc_reach.compute_network. 
 This program presupposes that the mc_reach has been compiled prior to running."""
