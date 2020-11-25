@@ -27,7 +27,19 @@ def _handle_args():
         help="Input catchment network",
         dest="supernetwork"
     )
-
+    parser.add_argument(
+        "-s",
+        "--subset",
+        help="Subset of catchments to process",
+        dest="subset",
+        nargs='+'
+    )
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="path to lateral flow inputs",
+        dest="input"
+    )
     return parser.parse_args()
 
 root = pathlib.Path('.').resolve()
@@ -36,24 +48,28 @@ sys.path.append(r"../python_routing_v02")
 sys.path.append(r"../../test/input/next_gen")
 
 test_folder = pathlib.Path(root, "test")
-next_gen_input_folder = test_folder.joinpath("input", "next_gen")
 
-import nhd_network
-import nhd_io
+import troute.nhd_network as nhd_network
+import troute.nhd_io as nhd_io
 import mc_reach
 
 def main():
 
     args = _handle_args()
+    
+    next_gen_input_folder = test_folder.joinpath("input", "next_gen")
+    if args.input:
+        next_gen_input_folder = pathlib.Path(args.input)
 
     # The following 2 values are currently hard coded for this test domain
     nts = 720  # number of timestep = 1140 * 60(model timestep) = 86400 = day
     dt_mc = 300.0  # time interval for MC
 
     # Currently tested on the Sugar Creek domain
-    ngen_network_df = nhd_io.read_geopandas(os.path.join(next_gen_input_folder, args.supernetwork))
-    ngen_network_df = ngen_network_df[ ngen_network_df.id.isin( [ 'fp-58', 'fp-59', 'fp-60', 'fp-63'] ) ]
-
+    ngen_network_df = nhd_io.read_geopandas( args.supernetwork )
+    if args.subset:
+        ngen_network_df = ngen_network_df[ ngen_network_df['realized_catchment'].isin(args.subset) ]
+    
     # Create dictionary mapping each connection ID
     ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.toid))
     #ngen_network_dict = dict(zip(ngen_network_df.ID, ngen_network_df.toID))
@@ -66,7 +82,6 @@ def main():
 
     # Convert dictionary connections to data frame and make ID column the index
     waterbody_df = pd.DataFrame.from_dict(waterbody_connections, orient='index', columns=['to'])
-
     # Sort ID index column
     waterbody_df = waterbody_df.sort_index()
 
@@ -76,11 +91,11 @@ def main():
 
     # Read and convert catchment lateral flows to format that can be processed by compute_network
     qlats = next_gen_io.read_catchment_lateral_flows(next_gen_input_folder)
-
+    print(qlats)
     rconn = nhd_network.reverse_network(connections)
 
     subnets = nhd_network.reachable_network(rconn, check_disjoint=False)
-
+    
     # read the routelink file
     nhd_routelink = nhd_io.read_netcdf("data/RouteLink_NHDPLUS.nc")
     nhd_routelink['dt'] = 300.0
@@ -106,16 +121,14 @@ def main():
 
     nhd_routelink.rename(columns=routelink_cols, inplace=True)
 
-    with open("data/coarse/crosswalk.json") as f:
+    with open(next_gen_input_folder/'coarse/crosswalk.json') as f:
         crosswalk_data = json.load(f)
-    waterbody_df['comid'] = waterbody_df.apply(lambda x: crosswalk_data['fp-' + str(x.name)]['outlet_COMID'], axis=1)
+    waterbody_df['comid'] = waterbody_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['outlet_COMID'], axis=1)
 
     waterbody_df = waterbody_df.join(nhd_routelink, on='comid', how='left')
 
     del nhd_routelink
 
-    print(waterbody_df)
-    exit(0)
 
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
@@ -125,7 +138,7 @@ def main():
 
     #Set types as float32
     waterbody_df = waterbody_df.astype({"dt": "float32", "bw": "float32", "tw": "float32", "twcc": "float32", "dx": "float32", "n": "float32", "ncc": "float32", "cs": "float32", "s0": "float32"})
-
+    
     subreaches = {}
 
     for tw, net in subnets.items():
@@ -136,11 +149,11 @@ def main():
     results = []
     for twi, (tw, reach) in enumerate(subreaches.items(), 1):
         r = list(chain.from_iterable(reach))
-        #data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
-        data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+        data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']].sort_index()
+        #data_sub = waterbody_df.loc[r, ['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
         qlat_sub = qlats.loc[r].sort_index()
         q0_sub = q0.loc[r].sort_index()
-
+        
         results.append(mc_reach.compute_network(
             nts, reach, subnets[tw], data_sub.index.values, data_sub.columns.values, data_sub.values, qlat_sub.values, q0_sub.values
             )
