@@ -272,6 +272,8 @@ def main():
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
     subnetwork_target_size = args.subnetwork_target_size
+    if (not subnetwork_target_size) or (subnetwork_target_size <=0): 
+        subnetwork_target_size = 1
 
     if compute_method == "standard cython compute network":
         compute_func = mc_reach.compute_network
