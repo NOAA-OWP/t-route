@@ -272,7 +272,7 @@ def main():
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
     subnetwork_target_size = args.subnetwork_target_size
-    if (not subnetwork_target_size) or (subnetwork_target_size <=0): 
+    if (not subnetwork_target_size) or (subnetwork_target_size <= 0):
         subnetwork_target_size = 1
 
     if compute_method == "standard cython compute network":
@@ -417,6 +417,7 @@ def main():
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            flowveldepth_interorder = {}
 
             for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
                 jobs = []
@@ -442,6 +443,19 @@ def main():
                         )
                     )
                 results = parallel(jobs)
+                for twi, (subn_tw, subn_reach_list) in enumerate(
+                    reaches_bysubntw[order].items()
+                ):
+                    # TODO: This index step is necessary because we sort the segment index
+                    # TODO: I think there are a number of ways we could remove the sorting step
+                    #       -- the binary search could be replaced with an index based on the known topology
+                    subn_tw_sortposition = results[twi][0].tolist().index(subn_tw)
+                    flowveldepth_interorder[subn_tw] = results[twi][1][
+                        subn_tw_sortposition
+                    ]
+                    # START HERE -- what will it take to get just the tw FVD values into an array to pass to the next loop?
+                    # There will be an empty array initialized at the top of the loop, then re-populated here.
+                    # we don't have to bother with populating it after the last group
 
         if showtiming:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
