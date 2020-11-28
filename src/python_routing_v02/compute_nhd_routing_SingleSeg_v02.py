@@ -426,8 +426,7 @@ def main():
                     reaches_bysubntw[order].items(), 1
                 ):
                     r = list(chain.from_iterable(subn_reach_list))
-                    r.extend(
-                        list(flowveldepth_interorder.keys()))
+                    r.extend(list(flowveldepth_interorder.keys()))
                     param_df_sub = param_df.loc[
                         r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
@@ -446,20 +445,25 @@ def main():
                         )
                     )
                 results_subn[order] = parallel(jobs)
-                import pdb; pdb.set_trace()
                 for twi, (subn_tw, subn_reach_list) in enumerate(
                     reaches_bysubntw[order].items()
                 ):
                     # TODO: This index step is necessary because we sort the segment index
                     # TODO: I think there are a number of ways we could remove the sorting step
                     #       -- the binary search could be replaced with an index based on the known topology
-                    subn_tw_sortposition = results_subn[order][twi][0].tolist().index(subn_tw)
+                    subn_tw_sortposition = (
+                        results_subn[order][twi][0].tolist().index(subn_tw)
+                    )
                     flowveldepth_interorder[subn_tw] = results_subn[order][twi][1][
                         subn_tw_sortposition
                     ]
                     # START HERE -- what will it take to get just the tw FVD values into an array to pass to the next loop?
                     # There will be an empty array initialized at the top of the loop, then re-populated here.
                     # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
 
         if showtiming:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
