@@ -420,7 +420,7 @@ def main():
             flowveldepth_interorder = {}
             results_subn = {}
 
-            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
                 jobs = []
                 for twi, (subn_tw, subn_reach_list) in enumerate(
                     reaches_bysubntw[order].items(), 1
