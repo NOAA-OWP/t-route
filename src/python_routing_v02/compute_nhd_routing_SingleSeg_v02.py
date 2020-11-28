@@ -445,21 +445,45 @@ def main():
                         )
                     )
                 results_subn[order] = parallel(jobs)
-                for twi, (subn_tw, subn_reach_list) in enumerate(
-                    reaches_bysubntw[order].items()
-                ):
-                    # TODO: This index step is necessary because we sort the segment index
-                    # TODO: I think there are a number of ways we could remove the sorting step
-                    #       -- the binary search could be replaced with an index based on the known topology
-                    subn_tw_sortposition = (
-                        results_subn[order][twi][0].tolist().index(subn_tw)
-                    )
-                    flowveldepth_interorder[subn_tw] = results_subn[order][twi][1][
-                        subn_tw_sortposition
-                    ]
-                    # START HERE -- what will it take to get just the tw FVD values into an array to pass to the next loop?
-                    # There will be an empty array initialized at the top of the loop, then re-populated here.
-                    # we don't have to bother with populating it after the last group
+
+                # The upstream keys have empty results because they are not part of any reaches
+                # so we need to delete the null values that return
+                # There will be no extra results in the uppermost order, so we skip that one
+                if order < max(reaches_bysubntw.keys()):
+                    results_to_delete = defaultdict(list)
+                    for prev_twi, prev_subn_tw in enumerate(
+                        reaches_bysubntw[order + 1]
+                    ):
+                        for twi, subn_tw in enumerate(reaches_bysubntw[order]):
+                            results_to_delete[subn_tw].append(
+                                results_subn[order][twi][0].tolist().index(prev_subn_tw)
+                            )
+                    for twi, subn_tw in enumerate(reaches_bysubntw[order]):
+                        pass
+                        # START HERE #2: This is intended to delete the results that shouldn't be passed along
+                        # BUT, because it is a tuple, it's not modifiable, so we have to make a new object.
+
+                        # results_subn[order][twi][0] = np.delete(
+                        #     results_subn[order][twi][0], [results_to_delete[subn_tw]]
+                        # )
+                        # results_subn[order][twi][1] = np.delete(
+                        #     results_subn[order][twi][1], [results_to_delete[subn_tw]]
+                        # )
+
+                if order > 0:
+                    for twi, subn_tw in enumerate(reaches_bysubntw[order]):
+                        # TODO: This index step is necessary because we sort the segment index
+                        # TODO: I think there are a number of ways we could remove the sorting step
+                        #       -- the binary search could be replaced with an index based on the known topology
+                        subn_tw_sortposition = (
+                            results_subn[order][twi][0].tolist().index(subn_tw)
+                        )
+                        flowveldepth_interorder[subn_tw] = results_subn[order][twi][1][
+                            subn_tw_sortposition
+                        ]
+                        # START HERE #1 -- what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # There will be an empty array initialized at the top of the loop, then re-populated here.
+                        # we don't have to bother with populating it after the last group
 
         results = []
         for order in subnetworks_only_ordered_jit:
