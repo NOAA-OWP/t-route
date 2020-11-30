@@ -122,8 +122,41 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    ql_arg_group = parser.add_mutually_exclusive_group()
+    ql_arg_group.add_argument(
+        "--qlc",
+        "--constant_qlateral",
+        help="Constant qlateral to apply to all time steps at all segments",
+        dest="qlat_const",
+        type=float,
+        default=10,
+    )
+    ql_arg_group.add_argument(
+        "--qlf",
+        "--single_file_qlateral",
+        help="QLaterals arranged with segment IDs as rows and timesteps as columns in a single .csv",
+        dest="qlat_input_file",
+    )
+    ql_arg_group.add_argument(
+        "--qlw",
+        "--ql_wrf_hydro_folder",
+        help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
+        dest="qlat_input_folder",
+    )
+    parser.add_argument(
+        "--qlat_file_pattern_filter",
+        help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
+        dest="qlat_file_pattern_filter",
+        default="/*.CHRTOUT_DOMAIN1",
+    )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+    )
     return parser.parse_args()
 
 
@@ -167,10 +200,32 @@ def main():
     break_network_at_waterbodies = args.break_network_at_waterbodies
     csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
-
+    custom_input_file = args.custom_input_file
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
 
+    if custom_input_file:
+        (
+            supernetwork_parameters,
+            waterbody_parameters,
+            forcing_parameters,
+            restart_parameters,
+            output_parameters,
+            run_parameters,
+        ) = nhd_io.read_custom_input(custom_input_file)
+
+        qlat_const = forcing_parameters.get("qlat_const", None)
+        qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+        qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+        qlat_file_pattern_filter = forcing_parameters.get(
+            "qlat_file_pattern_filter", None
+        )
+    else:
+        qlat_const = float(args.qlat_const)
+        qlat_input_folder = args.qlat_input_folder
+        qlat_input_file = args.qlat_input_file
+        qlat_file_pattern_filter = args.qlat_file_pattern_filter
+    # print(forcing_parameters,qlat_const)
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_Named_Streams'

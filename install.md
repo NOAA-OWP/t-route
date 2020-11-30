@@ -7,6 +7,7 @@ git clone git@github.com:NOAA-OWP/t-route.git
 
 #Step 2 - Compile necessary files
 cd t-route/src/python_routing_v02/
+
 ./compiler.sh
 
 #Step 3 - Run the model 
