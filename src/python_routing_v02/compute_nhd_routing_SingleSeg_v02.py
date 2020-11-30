@@ -17,6 +17,7 @@ import time
 import numpy as np
 import argparse
 import pathlib
+import glob
 import pandas as pd
 from functools import partial
 from joblib import delayed, Parallel
@@ -220,6 +221,8 @@ def main():
         qlat_file_pattern_filter = forcing_parameters.get(
             "qlat_file_pattern_filter", None
         )
+        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
     else:
         qlat_const = float(args.qlat_const)
         qlat_input_folder = args.qlat_input_folder
@@ -267,10 +270,41 @@ def main():
     param_df = param_df.sort_index()
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
-    if args.ql:
-        qlats = nhd_io.read_qlat(args.ql)
+    # STEP 5: Read (or set) QLateral Inputs
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("creating qlateral array ...")
+
+    # initialize qlateral dict
+    qlateral = {}
+
+    if qlat_input_folder:
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        qlat_df = nhd_io.get_ql_from_wrf_hydro(
+            qlat_files=qlat_files,
+            index_col=qlat_file_index_col,
+            value_col=qlat_file_value_col,
+        )
+
+    elif qlat_input_file:
+        qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
+
     else:
-        qlats = constant_qlats(param_df, nts, 10.0)
+        qlat_df = pd.DataFrame(
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
+        )
+
+    qlats = qlat_df
+
+    for index, row in qlat_df.iterrows():
+        qlateral[index] = row.tolist()
+
+    if verbose:
+        print("qlateral array complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
 
     # initial conditions, assume to be zero
     # TO DO: Allow optional reading of initial conditions from WRF
@@ -316,6 +350,7 @@ def main():
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     parallel_compute_method = args.parallel_compute_method
+    
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
 
@@ -323,7 +358,7 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-
+    
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
