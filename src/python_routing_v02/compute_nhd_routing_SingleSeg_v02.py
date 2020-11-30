@@ -436,7 +436,7 @@ def main():
                         delayed(compute_func)(
                             nts,
                             subn_reach_list,
-                            {k: [] for k in subnetworks[subn_tw]},
+                            subnetworks[subn_tw],
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
