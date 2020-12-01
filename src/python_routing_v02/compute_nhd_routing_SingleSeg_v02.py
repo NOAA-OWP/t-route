@@ -429,12 +429,19 @@ def main():
                     # TODO: Confirm that a list here is best -- we are sorting,
                     # so a set might be sufficient/better
                     segs = list(chain.from_iterable(subn_reach_list))
-                    segs.extend(list(flowveldepth_interorder.keys()))
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
                         segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
-                        for us_subn_tw in flowveldepth_interorder.keys():
+                        for us_subn_tw in offnetwork_upstreams:
                             subn_tw_sortposition = param_df_sub.index.get_loc(
                                 us_subn_tw
                             )
@@ -456,7 +463,11 @@ def main():
                             qlat_sub.values,
                             q0_sub.values,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
-                            flowveldepth_interorder,
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
                         )
                     )
                 # results_subn[order] = parallel(jobs)
