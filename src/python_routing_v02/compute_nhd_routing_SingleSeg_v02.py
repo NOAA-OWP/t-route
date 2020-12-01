@@ -144,13 +144,28 @@ def _handle_args():
         help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
         dest="qlat_input_folder",
     )
+    ql_arg_group.add_argument(
+        "--qlic",
+        "--qlat_file_index_col",
+        help="QLateral index column number",
+        dest="qlat_file_index_col",
+        default="feature_id",
+    )
+    ql_arg_group.add_argument(
+        "--qlvc",
+        "--qlat_file_value_col",
+        help="QLateral value column number",
+        dest="qlat_file_value_col",
+        default="q_lateral",
+    )
     parser.add_argument(
         "--qlat_file_pattern_filter",
         help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
         dest="qlat_file_pattern_filter",
-        default="/*.CHRTOUT_DOMAIN1",
+        default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
+#TODO: uncomment custominput file
     # supernetwork_arg_group = parser.add_mutually_exclusive_group()
     # supernetwork_arg_group.add_argument(
     #     "-f",
@@ -201,10 +216,12 @@ def main():
     break_network_at_waterbodies = args.break_network_at_waterbodies
     csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
+#TODO: uncomment custominput file
     # custom_input_file = args.custom_input_file
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
 
+#TODO: uncomment custominput file
     # if custom_input_file:
     #     (
     #         supernetwork_parameters,
@@ -224,10 +241,15 @@ def main():
     #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
     #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
     # else:
+
+
+#TODO: uncomment custominput file
     qlat_const = float(args.qlat_const)
     qlat_input_folder = args.qlat_input_folder
     qlat_input_file = args.qlat_input_file
     qlat_file_pattern_filter = args.qlat_file_pattern_filter
+    qlat_file_index_col = args.qlat_file_index_col
+    qlat_file_value_col = args.qlat_file_value_col
     # print(forcing_parameters,qlat_const)
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
@@ -323,7 +345,7 @@ def main():
         print("creating qlateral array ...")
 
     # initialize qlateral dict
-    qlateral = {}
+    # qlateral = {}
 
     if qlat_input_folder:
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
@@ -332,19 +354,27 @@ def main():
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
+        qlat_df = qlat_df[:len(connections.keys())]
+        df_length = len(qlat_df.columns)
+
+        for x in range(df_length, 144):
+            qlat_df[str(x)] = 0
+            qlat_df = qlat_df.astype("float32")
+        print(qlat_df)
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
 
     else:
         qlat_df = pd.DataFrame(
+            # qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
             qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
         )
 
+
     qlats = qlat_df
-    
-    for index, row in qlat_df.iterrows():
-        qlateral[index] = row.tolist()
+    # for index, row in qlat_df.iterrows():
+    #     qlateral[index] = row.tolist()
 
     if verbose:
         print("qlateral array complete")
