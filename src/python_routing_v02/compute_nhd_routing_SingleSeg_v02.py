@@ -373,9 +373,9 @@ def main():
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
+                            flowveldepth_interorder,
                         )
                     )
-                # import pdb; pdb.set_trace()
                 results = parallel(jobs)
 
         if showtiming:
@@ -430,6 +430,14 @@ def main():
                     param_df_sub = param_df.loc[
                         r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in flowveldepth_interorder.keys():
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[r].sort_index()
                     q0_sub = q0.loc[r].sort_index()
                     jobs.append(
@@ -442,6 +450,8 @@ def main():
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            flowveldepth_interorder,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -470,17 +480,21 @@ def main():
                         #     results_subn[order][twi][1], [results_to_delete[subn_tw]]
                         # )
 
-                if order > 0:
+                # if order > 0: #Technically, this is not needed for the last rank of subnetworks
+                # TODO: add logic in mc_reach to avoid collision when passing empty un-needed last-rank
+                if 1 == 1:
+                    flowveldepth_interorder = {}
                     for twi, subn_tw in enumerate(reaches_bysubntw[order]):
                         # TODO: This index step is necessary because we sort the segment index
                         # TODO: I think there are a number of ways we could remove the sorting step
                         #       -- the binary search could be replaced with an index based on the known topology
+                        flowveldepth_interorder[subn_tw] = {}
                         subn_tw_sortposition = (
                             results_subn[order][twi][0].tolist().index(subn_tw)
                         )
-                        flowveldepth_interorder[subn_tw] = results_subn[order][twi][1][
-                            subn_tw_sortposition
-                        ]
+                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                            order
+                        ][twi][1][subn_tw_sortposition]
                         # START HERE #1 -- what will it take to get just the tw FVD values into an array to pass to the next loop?
                         # There will be an empty array initialized at the top of the loop, then re-populated here.
                         # we don't have to bother with populating it after the last group

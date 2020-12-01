@@ -144,6 +144,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
     const float[:, :] qlat_values, const float[:,:] initial_conditions, 
     # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
+    dict upstream_results={},
     bint assume_short_ts=False):
     """
     Compute network
@@ -158,6 +159,8 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         assume_short_ts (bool): Assume short time steps (quc = qup)
     Notes:
         Array dimensions are checked as a precondition to this method.
+        data_idx inc. flowveldepth -- sorted numerically
+        Reach_buffer -- sorted topologically
     """
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
@@ -171,6 +174,24 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+
+    # Pseudocode: LOOP ON Upstream Inflowers
+        # to pre-fill FlowVelDepth
+        # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
+        # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
+        # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
+
+    # for ts in flowveldepth:
+        # print(f"{list(ts)}")
+    for upstream_tw_id in upstream_results:
+        fill_index = upstream_results[upstream_tw_id]["position_index"]
+        # print(f"{upstream_results[upstream_tw_id]['results']}")
+        # print(f"filling the {fill_index} row:")
+        # print(f"{list(flowveldepth[fill_index])}")
+        for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
+            flowveldepth[fill_index][idx] = val
+        # print(f"Now filled, it contains:")
+        # print(f"{list(flowveldepth[fill_index])}")
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
