@@ -472,18 +472,19 @@ def main():
                     )
                 # results_subn[order] = parallel(jobs)
 
-                # The upstream keys have empty results because they are not part of any reaches
-                # so we need to delete the null values that return
-                # There will be no extra results in the uppermost order, so we skip that one
-                if order < max(reaches_bysubntw.keys()):
-                    results_to_delete = defaultdict(list)
-                    for prev_twi, prev_subn_tw in enumerate(
-                        reaches_bysubntw[order + 1]
-                    ):
-                        for twi, subn_tw in enumerate(reaches_bysubntw[order]):
-                            results_to_delete[subn_tw].append(
-                                results_subn[order][twi][0].tolist().index(prev_subn_tw)
-                            )
+                # # TODO: delete the duplicate results that shouldn't be passed along
+                # # The upstream keys have empty results because they are not part of any reaches
+                # # so we need to delete the null values that return
+                # # There should be no extra results in the uppermost order, so we skip that one
+                # if order < max(reaches_bysubntw.keys()):
+                #     results_to_delete = defaultdict(list)
+                #     for prev_twi, prev_subn_tw in enumerate(
+                #         reaches_bysubntw[order + 1]
+                #     ):
+                #         for twi, subn_tw in enumerate(reaches_bysubntw[order]):
+                #             results_to_delete[subn_tw].append(
+                #                 results_subn[order][twi][0].tolist().index(prev_subn_tw)
+                #             )
 
                 # if order > 0: #Technically, this is not needed for the last rank of subnetworks
                 # TODO: add logic in mc_reach to avoid collision when passing empty un-needed last-rank
@@ -565,7 +566,6 @@ def main():
             [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
             copy=False,
         )
-        # TODO: delete the duplicate results that shouldn't be passed along
 
         if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
