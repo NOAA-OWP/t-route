@@ -270,6 +270,16 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     cdef int timestep = 0
     cdef int ts_offset
 
+# TODO: Split the compute network function so that the part where we set up
+# all the indices is separate from the call to loop through them.
+# That way, we can refine the functions for preparing the indexes in isolation
+# For example, the actual looping function could start about here in the current
+# function, and might look like the following Psuedocode
+# cpdef(Dataindex):
+    # pull indices and put them in arrays
+    # minimal validation,
+    # Jump straight to nogil.
+
     with nogil:
         while timestep < nsteps:
             ts_offset = timestep * 3

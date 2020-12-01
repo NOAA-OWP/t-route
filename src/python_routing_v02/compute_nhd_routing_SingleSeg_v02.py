@@ -468,17 +468,6 @@ def main():
                             results_to_delete[subn_tw].append(
                                 results_subn[order][twi][0].tolist().index(prev_subn_tw)
                             )
-                    for twi, subn_tw in enumerate(reaches_bysubntw[order]):
-                        pass
-                        # START HERE #2: This is intended to delete the results that shouldn't be passed along
-                        # BUT, because it is a tuple, it's not modifiable, so we have to make a new object.
-
-                        # results_subn[order][twi][0] = np.delete(
-                        #     results_subn[order][twi][0], [results_to_delete[subn_tw]]
-                        # )
-                        # results_subn[order][twi][1] = np.delete(
-                        #     results_subn[order][twi][1], [results_to_delete[subn_tw]]
-                        # )
 
                 # if order > 0: #Technically, this is not needed for the last rank of subnetworks
                 # TODO: add logic in mc_reach to avoid collision when passing empty un-needed last-rank
@@ -560,6 +549,7 @@ def main():
             [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
             copy=False,
         )
+        # TODO: delete the duplicate results that shouldn't be passed along
 
         if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
