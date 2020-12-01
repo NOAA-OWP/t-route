@@ -319,13 +319,13 @@ def main():
                 reaches_ordered_bysubntw[order].items(), 1
             ):
                 reaches_ordered_bysubntw_clustered[order][cluster] = {
-                    "r": [],
+                    "segs": [],
                     "upstreams": {},
                     "tw": [],
                     "subn_reach_list": [],
                 }
-                r = list(chain.from_iterable(subn_reach_list))
-                reaches_ordered_bysubntw_clustered[order][cluster]["r"].extend(r)
+                segs = list(chain.from_iterable(subn_reach_list))
+                reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
                 reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
                     {k: [] for k in subnetworks[subn_tw]}
                 )
@@ -335,7 +335,7 @@ def main():
                 ].extend(subn_reach_list)
 
                 if (
-                    len(reaches_ordered_bysubntw_clustered[order][cluster]["r"])
+                    len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
                     >= cluster_threshold * subnetwork_target_size
                 ):
                     cluster += 1
@@ -353,13 +353,13 @@ def main():
                     order
                 ].items():
                     # for twi, (subn_tw, subn_reach_list) in enumerate(reaches_ordered_bysubntw[order].items(), 1):
-                    # r = list(chain.from_iterable(subn_reach_list))
-                    r = clustered_subns["r"]
+                    # segs = list(chain.from_iterable(subn_reach_list))
+                    segs = clustered_subns["segs"]
                     param_df_sub = param_df.loc[
-                        r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
-                    qlat_sub = qlats.loc[r].sort_index()
-                    q0_sub = q0.loc[r].sort_index()
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
@@ -409,7 +409,7 @@ def main():
                 )
 
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            r = list(chain.from_iterable(reach_list))
+            segs = list(chain.from_iterable(reach_list))
 
         if showtiming:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
@@ -426,10 +426,12 @@ def main():
                 for twi, (subn_tw, subn_reach_list) in enumerate(
                     reaches_bysubntw[order].items(), 1
                 ):
-                    r = list(chain.from_iterable(subn_reach_list))
-                    r.extend(list(flowveldepth_interorder.keys()))
+                    # TODO: Confirm that a list here is best -- we are sorting,
+                    # so a set might be sufficient/better
+                    segs = list(chain.from_iterable(subn_reach_list))
+                    segs.extend(list(flowveldepth_interorder.keys()))
                     param_df_sub = param_df.loc[
-                        r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in flowveldepth_interorder.keys():
@@ -439,8 +441,8 @@ def main():
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-                    qlat_sub = qlats.loc[r].sort_index()
-                    q0_sub = q0.loc[r].sort_index()
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
                     # jobs.append(
                     # delayed(compute_func)(
                     results_subn[order].append(
@@ -502,12 +504,12 @@ def main():
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
+                segs = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                q0_sub = q0.loc[r].sort_index()
+                qlat_sub = qlats.loc[segs].sort_index()
+                q0_sub = q0.loc[segs].sort_index()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -525,12 +527,12 @@ def main():
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            r = list(chain.from_iterable(reach_list))
+            segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
-                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
-            qlat_sub = qlats.loc[r].sort_index()
-            q0_sub = q0.loc[r].sort_index()
+            qlat_sub = qlats.loc[segs].sort_index()
+            q0_sub = q0.loc[segs].sort_index()
             results.append(
                 compute_func(
                     nts,
