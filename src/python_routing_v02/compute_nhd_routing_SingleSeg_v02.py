@@ -100,7 +100,7 @@ def _handle_args():
         help="Assign the number of cores to multiprocess across.",
         dest="cpu_pool",
         type=int,
-        default=None,
+        default=-1,
     )
     parser.add_argument(
         "--compute_method",
