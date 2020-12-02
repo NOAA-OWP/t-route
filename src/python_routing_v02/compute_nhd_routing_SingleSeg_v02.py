@@ -165,7 +165,7 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-#TODO: uncomment custominput file
+    # TODO: uncomment custominput file
     # supernetwork_arg_group = parser.add_mutually_exclusive_group()
     # supernetwork_arg_group.add_argument(
     #     "-f",
@@ -216,12 +216,12 @@ def main():
     break_network_at_waterbodies = args.break_network_at_waterbodies
     csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
-#TODO: uncomment custominput file
+    # TODO: uncomment custominput file
     # custom_input_file = args.custom_input_file
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
 
-#TODO: uncomment custominput file
+    # TODO: uncomment custominput file
     # if custom_input_file:
     #     (
     #         supernetwork_parameters,
@@ -242,8 +242,7 @@ def main():
     #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
     # else:
 
-
-#TODO: uncomment custominput file
+    # TODO: uncomment custominput file
     qlat_const = float(args.qlat_const)
     qlat_input_folder = args.qlat_input_folder
     qlat_input_file = args.qlat_input_file
@@ -297,14 +296,11 @@ def main():
         param_df, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
- 
     # initial conditions, assume to be zero
     # TODO: Allow optional reading of initial conditions from WRF
     q0 = pd.DataFrame(
         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
     )
-
-
 
     if verbose:
         print("supernetwork connections set complete")
@@ -354,7 +350,7 @@ def main():
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
-        qlat_df = qlat_df[:len(connections.keys())]
+        qlat_df = qlat_df[: len(connections.keys())]
         df_length = len(qlat_df.columns)
 
         for x in range(df_length, 144):
@@ -368,9 +364,11 @@ def main():
     else:
         qlat_df = pd.DataFrame(
             # qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
-            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32"
+            qlat_const,
+            index=connections.keys(),
+            columns=range(nts),
+            dtype="float32",
         )
-
 
     qlats = qlat_df
     # for index, row in qlat_df.iterrows():
@@ -382,9 +380,8 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-
     parallel_compute_method = args.parallel_compute_method
-    
+
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
 
@@ -392,7 +389,7 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-    
+
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
