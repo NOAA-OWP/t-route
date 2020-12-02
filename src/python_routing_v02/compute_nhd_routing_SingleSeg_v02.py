@@ -487,9 +487,7 @@ def main():
                 #                 results_subn[order][twi][0].tolist().index(prev_subn_tw)
                 #             )
 
-                # if order > 0: #Technically, this is not needed for the last rank of subnetworks
-                # TODO: add logic in mc_reach to avoid collision when passing empty un-needed last-rank
-                if 1 == 1:
+                if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
                     for twi, subn_tw in enumerate(reaches_bysubntw[order]):
                         # TODO: This index step is necessary because we sort the segment index
