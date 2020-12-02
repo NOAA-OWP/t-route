@@ -416,13 +416,13 @@ def main():
             print("starting Parallel JIT calculation")
 
         start_para_time = time.time()
-        # with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
-        if 1 == 1:
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        # if 1 == 1:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
             for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
-                # jobs = []
+                jobs = []
                 for twi, (subn_tw, subn_reach_list) in enumerate(
                     reaches_bysubntw[order].items(), 1
                 ):
@@ -450,10 +450,10 @@ def main():
                             ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[segs].sort_index()
                     q0_sub = q0.loc[segs].sort_index()
-                    # jobs.append(
-                    # delayed(compute_func)(
-                    results_subn[order].append(
-                        compute_func(
+                    jobs.append(
+                    delayed(compute_func)(
+                    # results_subn[order].append(
+                    #     compute_func(
                             nts,
                             subn_reach_list,
                             subnetworks[subn_tw],
@@ -470,7 +470,8 @@ def main():
                             },
                         )
                     )
-                # results_subn[order] = parallel(jobs)
+
+                results_subn[order] = parallel(jobs)
 
                 # # TODO: delete the duplicate results that shouldn't be passed along
                 # # The upstream keys have empty results because they are not part of any reaches
