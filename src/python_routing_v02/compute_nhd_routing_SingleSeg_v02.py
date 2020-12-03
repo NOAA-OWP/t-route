@@ -417,7 +417,7 @@ def main():
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
-        # if 1 == 1:
+            # if 1 == 1:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
@@ -451,9 +451,9 @@ def main():
                     qlat_sub = qlats.loc[segs].sort_index()
                     q0_sub = q0.loc[segs].sort_index()
                     jobs.append(
-                    delayed(compute_func)(
-                    # results_subn[order].append(
-                    #     compute_func(
+                        delayed(compute_func)(
+                            # results_subn[order].append(
+                            #     compute_func(
                             nts,
                             subn_reach_list,
                             subnetworks[subn_tw],
@@ -473,19 +473,7 @@ def main():
 
                 results_subn[order] = parallel(jobs)
 
-                # # TODO: delete the duplicate results that shouldn't be passed along
-                # # The upstream keys have empty results because they are not part of any reaches
-                # # so we need to delete the null values that return
-                # # There should be no extra results in the uppermost order, so we skip that one
-                # if order < max(reaches_bysubntw.keys()):
-                #     results_to_delete = defaultdict(list)
-                #     for prev_twi, prev_subn_tw in enumerate(
-                #         reaches_bysubntw[order + 1]
-                #     ):
-                #         for twi, subn_tw in enumerate(reaches_bysubntw[order]):
-                #             results_to_delete[subn_tw].append(
-                #                 results_subn[order][twi][0].tolist().index(prev_subn_tw)
-                #             )
+                # Then add code to flowveldepth and test CONUS Full RES
 
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
@@ -500,7 +488,7 @@ def main():
                         flowveldepth_interorder[subn_tw]["results"] = results_subn[
                             order
                         ][twi][1][subn_tw_sortposition]
-                        # START HERE #1 -- what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
                         # There will be an empty array initialized at the top of the loop, then re-populated here.
                         # we don't have to bother with populating it after the last group
 
