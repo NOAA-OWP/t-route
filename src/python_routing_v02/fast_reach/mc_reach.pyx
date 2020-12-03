@@ -183,8 +183,17 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
     # for ts in flowveldepth:
         # print(f"{list(ts)}")
+
+    cdef set fill_index_mask = set()
+    # fill_index_mask is filled in the explicit loop below, which is
+    # identical to the following comprehension. But we use the explicit loop, because it
+    # is more transparent (and therefore optimizable) to cython.
+    # cdef set fill_index_mask = set([upstream_results[upstream_tw_id]["position_index"] for upstream_tw_id in upstream_results])
+    #print(f"{fill_index_mask}")
+
     for upstream_tw_id in upstream_results:
         fill_index = upstream_results[upstream_tw_id]["position_index"]
+        fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
         # print(f"{upstream_results[upstream_tw_id]['results']}")
         # print(f"filling the {fill_index} row:")
         # print(f"{list(flowveldepth[fill_index])}")
@@ -369,7 +378,13 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 
             timestep += 1
 
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+
+    # delete the duplicate results that shouldn't be passed along
+    # The upstream keys have empty results because they are not part of any reaches
+    # so we need to delete the null values that return
+    data_idx_ma = [ ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
+    flowveldepth_ma = [ ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
+    return [np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
