@@ -123,6 +123,11 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    parser.add_argument(
+        "--wrf_hydro_channel_restart_file",
+        dest="wrf_hydro_channel_restart_file",
+        help="provide a WRF-Hydro channel warm state file (may be the same as waterbody restart file)",
+    )
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
         "--qlc",
@@ -301,6 +306,73 @@ def main():
     q0 = pd.DataFrame(
         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
     )
+
+    flowveldepth = {
+        connection: np.zeros(np.array([nts, 10]))
+        for connection in (network["all_segments"])
+    }
+    flowveldepth_connect = (
+        {}
+    )  # dict to contain values to transfer from upstream to downstream networks
+    # TODO: generalize with a direction flag
+    def compute_reach_upstream_flows(
+        flowveldepth_connect,
+        flowveldepth,
+        head_segment=None,
+        reach=None,
+        network=None,
+        supernetwork_parameters=None,
+        waterbody=None,
+        ts=0,
+        dt=60,
+        verbose=False,
+        debuglevel=0,
+        assume_short_ts=False,
+    ):
+        global connections
+        global channel_initial_states_df
+
+            # upstream flow per reach
+        qup = 0.0
+        quc = 0.0
+        ########################
+        # if waterbody:
+        #     upstreams_list = set()
+        #     for rr in network["receiving_reaches"]:
+        #         for us in connections[rr]["upstreams"]:
+        #             upstreams_list.add(us)
+        #     # this step was critical -- there were receiving reaches that were junctions
+        #     # with only one of their upstreams out of the network. The other was inside
+        #     # the network, so it caused a lookup error.
+        #     upstreams_list = upstreams_list - network["all_segments"]
+        #     us_flowveldepth = flowveldepth_connect
+
+        # elif head_segment in network["receiving_reaches"]:
+        #     # TODO: confirm this logic, to make sure we don't double count the head
+        #     upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        #     us_flowveldepth = flowveldepth
+        #     us_flowveldepth.update(flowveldepth_connect)
+
+        # else:
+        #     upstreams_list = connections[reach["reach_head"]]["upstreams"]
+        #     us_flowveldepth = flowveldepth
+
+        for us in upstreams_list:
+            if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
+                quc += us_flowveldepth[us][ts][flowval_index]
+
+                if ts == 0:
+                    # Initialize qup from warm state array
+                    qup += channel_initial_states_df.loc[us, "qd0"]
+                else:
+                    qup += us_flowveldepth[us][ts - 1][flowval_index]
+
+        if assume_short_ts:
+            quc = qup
+
+        return quc, qup
+
+    compute_reach_upstream_flows()
 
     if verbose:
         print("supernetwork connections set complete")
