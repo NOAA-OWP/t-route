@@ -42,7 +42,7 @@ def read_mask(path, layer_string=None):
 def read_custom_input(custom_input_file):
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
-            data = yaml.safe_load(custom_file)
+            data = yaml.load(custom_file, Loader=yaml.SafeLoader)
     else:
         with open(custom_input_file) as custom_file:
             data = json.load(custom_file)
