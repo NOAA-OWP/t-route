@@ -248,7 +248,7 @@ def main():
     #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
     #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
     # else:
-
+    wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
     # TODO: uncomment custominput file
     qlat_const = float(args.qlat_const)
     qlat_input_folder = args.qlat_input_folder
@@ -309,73 +309,6 @@ def main():
         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
     )
 
-    flowveldepth = {
-        connection: np.zeros(np.array([nts, 10]))
-        for connection in (network["all_segments"])
-    }
-    flowveldepth_connect = (
-        {}
-    )  # dict to contain values to transfer from upstream to downstream networks
-    # TODO: generalize with a direction flag
-    def compute_reach_upstream_flows(
-        flowveldepth_connect,
-        flowveldepth,
-        head_segment=None,
-        reach=None,
-        network=None,
-        supernetwork_parameters=None,
-        waterbody=None,
-        ts=0,
-        dt=60,
-        verbose=False,
-        debuglevel=0,
-        assume_short_ts=False,
-    ):
-        global connections
-        global channel_initial_states_df
-
-            # upstream flow per reach
-        qup = 0.0
-        quc = 0.0
-        ########################
-        # if waterbody:
-        #     upstreams_list = set()
-        #     for rr in network["receiving_reaches"]:
-        #         for us in connections[rr]["upstreams"]:
-        #             upstreams_list.add(us)
-        #     # this step was critical -- there were receiving reaches that were junctions
-        #     # with only one of their upstreams out of the network. The other was inside
-        #     # the network, so it caused a lookup error.
-        #     upstreams_list = upstreams_list - network["all_segments"]
-        #     us_flowveldepth = flowveldepth_connect
-
-        # elif head_segment in network["receiving_reaches"]:
-        #     # TODO: confirm this logic, to make sure we don't double count the head
-        #     upstreams_list = connections[reach["reach_head"]]["upstreams"]
-        #     us_flowveldepth = flowveldepth
-        #     us_flowveldepth.update(flowveldepth_connect)
-
-        # else:
-        #     upstreams_list = connections[reach["reach_head"]]["upstreams"]
-        #     us_flowveldepth = flowveldepth
-
-        for us in upstreams_list:
-            if us != supernetwork_parameters["terminal_code"]:  # Not Headwaters
-                quc += us_flowveldepth[us][ts][flowval_index]
-
-                if ts == 0:
-                    # Initialize qup from warm state array
-                    qup += channel_initial_states_df.loc[us, "qd0"]
-                else:
-                    qup += us_flowveldepth[us][ts - 1][flowval_index]
-
-        if assume_short_ts:
-            quc = qup
-
-        return quc, qup
-
-    compute_reach_upstream_flows()
-
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
@@ -407,6 +340,42 @@ def main():
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    
+    # STEP 4: Handle Channel Initial States
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("setting channel initial states ...")
+
+    if wrf_hydro_channel_restart_file:
+
+        channel_initial_states_df = nhd_io.get_stream_restart_from_wrf_hydro(
+            wrf_hydro_channel_restart_file,
+            wrf_hydro_channel_ID_crosswalk_file,
+            wrf_hydro_channel_ID_crosswalk_file_field_name,
+            wrf_hydro_channel_restart_upstream_flow_field_name,
+            wrf_hydro_channel_restart_downstream_flow_field_name,
+            wrf_hydro_channel_restart_depth_flow_field_name,
+        )
+    else:
+        # TODO: Consider adding option to read cold state from route-link file
+        channel_initial_us_flow_const = 0.0
+        channel_initial_ds_flow_const = 0.0
+        channel_initial_depth_const = 0.0
+        # Set initial states from cold-state
+        channel_initial_states_df = pd.DataFrame(
+            0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+        )
+        channel_initial_states_df["qu0"] = channel_initial_us_flow_const
+        channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
+        channel_initial_states_df["h0"] = channel_initial_depth_const
+        channel_initial_states_df["index"] = range(len(channel_initial_states_df))
+
+    if verbose:
+        print("channel initial states complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
 
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
@@ -460,7 +429,7 @@ def main():
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
                 r = list(chain.from_iterable(reach_list))
-                param_df_sub = param_df.loc[
+                channel_initial_states_df = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
@@ -470,9 +439,9 @@ def main():
                         nts,
                         reach_list,
                         independent_networks[tw],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
+                        channel_initial_states_df.index.values,
+                        channel_initial_states_df.columns.values,
+                        channel_initial_states_df.values,
                         qlat_sub.values,
                         q0_sub.values,
                         assume_short_ts,
@@ -484,7 +453,7 @@ def main():
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             r = list(chain.from_iterable(reach_list))
-            param_df_sub = param_df.loc[
+            channel_initial_states_df = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
@@ -494,9 +463,9 @@ def main():
                     nts,
                     reach_list,
                     independent_networks[tw],
-                    param_df_sub.index.values,
-                    param_df_sub.columns.values,
-                    param_df_sub.values,
+                    channel_initial_states_df.index.values,
+                    channel_initial_states_df.columns.values,
+                    channel_initial_states_df.values,
                     qlat_sub.values,
                     q0_sub.values,
                     assume_short_ts,
