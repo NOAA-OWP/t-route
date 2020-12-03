@@ -289,6 +289,7 @@ def main():
                         param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
+                        assume_short_ts,
                     )
                 )
             results = parallel(jobs)
@@ -312,6 +313,7 @@ def main():
                     param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
+                    assume_short_ts,
                 )
             )
 
