@@ -17,6 +17,7 @@ import time
 import numpy as np
 import argparse
 import pathlib
+import glob
 import pandas as pd
 from functools import partial
 from joblib import delayed, Parallel
@@ -122,8 +123,56 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    ql_arg_group = parser.add_mutually_exclusive_group()
+    ql_arg_group.add_argument(
+        "--qlc",
+        "--constant_qlateral",
+        help="Constant qlateral to apply to all time steps at all segments",
+        dest="qlat_const",
+        type=float,
+        default=10,
+    )
+    ql_arg_group.add_argument(
+        "--qlf",
+        "--single_file_qlateral",
+        help="QLaterals arranged with segment IDs as rows and timesteps as columns in a single .csv",
+        dest="qlat_input_file",
+    )
+    ql_arg_group.add_argument(
+        "--qlw",
+        "--ql_wrf_hydro_folder",
+        help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
+        dest="qlat_input_folder",
+    )
+    ql_arg_group.add_argument(
+        "--qlic",
+        "--qlat_file_index_col",
+        help="QLateral index column number",
+        dest="qlat_file_index_col",
+        default="feature_id",
+    )
+    ql_arg_group.add_argument(
+        "--qlvc",
+        "--qlat_file_value_col",
+        help="QLateral value column number",
+        dest="qlat_file_value_col",
+        default="q_lateral",
+    )
+    parser.add_argument(
+        "--qlat_file_pattern_filter",
+        help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
+        dest="qlat_file_pattern_filter",
+        default="q_lateral",
+    )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-
+    # TODO: uncomment custominput file
+    # supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    # supernetwork_arg_group.add_argument(
+    #     "-f",
+    #     "--custom-input-file",
+    #     dest="custom_input_file",
+    #     help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+    # )
     return parser.parse_args()
 
 
@@ -167,10 +216,40 @@ def main():
     break_network_at_waterbodies = args.break_network_at_waterbodies
     csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
-
+    # TODO: uncomment custominput file
+    # custom_input_file = args.custom_input_file
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
 
+    # TODO: uncomment custominput file
+    # if custom_input_file:
+    #     (
+    #         supernetwork_parameters,
+    #         waterbody_parameters,
+    #         forcing_parameters,
+    #         restart_parameters,
+    #         output_parameters,
+    #         run_parameters,
+    #     ) = nhd_io.read_custom_input(custom_input_file)
+
+    #     qlat_const = forcing_parameters.get("qlat_const", None)
+    #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+    #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    #     qlat_file_pattern_filter = forcing_parameters.get(
+    #         "qlat_file_pattern_filter", None
+    #     )
+    #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+    #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+    # else:
+
+    # TODO: uncomment custominput file
+    qlat_const = float(args.qlat_const)
+    qlat_input_folder = args.qlat_input_folder
+    qlat_input_file = args.qlat_input_file
+    qlat_file_pattern_filter = args.qlat_file_pattern_filter
+    qlat_file_index_col = args.qlat_file_index_col
+    qlat_file_value_col = args.qlat_file_value_col
+    # print(forcing_parameters,qlat_const)
     # TODO: Make these commandline args
     """##NHD Subset (Brazos/Lower Colorado)"""
     # supernetwork = 'Brazos_LowerColorado_Named_Streams'
@@ -212,20 +291,15 @@ def main():
     param_df = param_df.sort_index()
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
-    if args.ql:
-        qlats = nhd_io.read_qlat(args.ql)
-    else:
-        qlats = constant_qlats(param_df, nts, 10.0)
-
-    # initial conditions, assume to be zero
-    # TO DO: Allow optional reading of initial conditions from WRF
-    q0 = pd.DataFrame(
-        0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
-    )
-
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
         param_df, cols["waterbody"], network_data["waterbody_null_code"]
+    )
+
+    # initial conditions, assume to be zero
+    # TODO: Allow optional reading of initial conditions from WRF
+    q0 = pd.DataFrame(
+        0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
     )
 
     if verbose:
@@ -260,7 +334,45 @@ def main():
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
+    # STEP 5: Read (or set) QLateral Inputs
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("creating qlateral array ...")
+
+    if qlat_input_folder:
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        qlat_df = nhd_io.get_ql_from_wrf_hydro(
+            qlat_files=qlat_files,
+            index_col=qlat_file_index_col,
+            value_col=qlat_file_value_col,
+        )
+
+        qlat_df = qlat_df[qlat_df.index.isin(connections.keys())]
+        df_length = len(qlat_df.columns)
+
+        for x in range(df_length, 144):
+            qlat_df[str(x)] = 0
+            qlat_df = qlat_df.astype("float32")
+
+    elif qlat_input_file:
+        qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
+
+    else:
+        qlat_df = pd.DataFrame(
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32",
+        )
+
+    qlats = qlat_df
+
+    if verbose:
+        print("qlateral array complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
+
     parallel_compute_method = args.parallel_compute_method
+
     cpu_pool = args.cpu_pool
     compute_method = args.compute_method
 
