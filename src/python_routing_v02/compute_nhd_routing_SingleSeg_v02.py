@@ -345,24 +345,43 @@ def main():
             print("starting Parallel JIT calculation")
 
         start_para_time = time.time()
+        # if 1 == 1:
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
 
-            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
                 jobs = []
                 for cluster, clustered_subns in reaches_ordered_bysubntw_clustered[
                     order
                 ].items():
-                    # for twi, (subn_tw, subn_reach_list) in enumerate(reaches_ordered_bysubntw[order].items(), 1):
-                    # segs = list(chain.from_iterable(subn_reach_list))
                     segs = clustered_subns["segs"]
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
                         segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[segs].sort_index()
                     q0_sub = q0.loc[segs].sort_index()
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
+                    # results_subn[order].append(
+                    #     compute_func(
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -373,10 +392,36 @@ def main():
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
-                            flowveldepth_interorder,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
                         )
                     )
-                results = parallel(jobs)
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
+                        # TODO: This index step is necessary because we sort the segment index
+                        # TODO: I think there are a number of ways we could remove the sorting step
+                        #       -- the binary search could be replaced with an index based on the known topology
+                        flowveldepth_interorder[subn_tw] = {}
+                        subn_tw_sortposition = (
+                            results_subn[order][twi][0].tolist().index(subn_tw)
+                        )
+                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                            order
+                        ][twi][1][subn_tw_sortposition]
+                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # There will be an empty array initialized at the top of the loop, then re-populated here.
+                        # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
 
         if showtiming:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
@@ -408,16 +453,12 @@ def main():
                     rconn_subn, path_func
                 )
 
-        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            segs = list(chain.from_iterable(reach_list))
-
         if showtiming:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             print("starting Parallel JIT calculation")
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
-            # if 1 == 1:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
@@ -452,8 +493,6 @@ def main():
                     q0_sub = q0.loc[segs].sort_index()
                     jobs.append(
                         delayed(compute_func)(
-                            # results_subn[order].append(
-                            #     compute_func(
                             nts,
                             subn_reach_list,
                             subnetworks[subn_tw],
@@ -472,8 +511,6 @@ def main():
                     )
 
                 results_subn[order] = parallel(jobs)
-
-                # Then add code to flowveldepth and test CONUS Full RES
 
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
