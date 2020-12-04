@@ -170,14 +170,13 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-    # TODO: uncomment custominput file
-    # supernetwork_arg_group = parser.add_mutually_exclusive_group()
-    # supernetwork_arg_group.add_argument(
-    #     "-f",
-    #     "--custom-input-file",
-    #     dest="custom_input_file",
-    #     help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
-    # )
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+    )
     return parser.parse_args()
 
 
@@ -221,52 +220,100 @@ def main():
     break_network_at_waterbodies = args.break_network_at_waterbodies
     csv_output_folder = args.csv_output_folder
     assume_short_ts = args.assume_short_ts
-    # TODO: uncomment custominput file
-    # custom_input_file = args.custom_input_file
+    custom_input_file = args.custom_input_file
     test_folder = pathlib.Path(root, "test")
     geo_input_folder = test_folder.joinpath("input", "geo")
 
-    # TODO: uncomment custominput file
-    # if custom_input_file:
-    #     (
-    #         supernetwork_parameters,
-    #         waterbody_parameters,
-    #         forcing_parameters,
-    #         restart_parameters,
-    #         output_parameters,
-    #         run_parameters,
-    #     ) = nhd_io.read_custom_input(custom_input_file)
+    if custom_input_file:
+        (
+            supernetwork_parameters,
+            waterbody_parameters,
+            forcing_parameters,
+            restart_parameters,
+            output_parameters,
+            run_parameters,
+        ) = nhd_io.read_custom_input(custom_input_file)
 
-    #     qlat_const = forcing_parameters.get("qlat_const", None)
-    #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-    #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    #     qlat_file_pattern_filter = forcing_parameters.get(
-    #         "qlat_file_pattern_filter", None
-    #     )
-    #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-    #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
-    # else:
-    wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
-    # TODO: uncomment custominput file
-    qlat_const = float(args.qlat_const)
-    qlat_input_folder = args.qlat_input_folder
-    qlat_input_file = args.qlat_input_file
-    qlat_file_pattern_filter = args.qlat_file_pattern_filter
-    qlat_file_index_col = args.qlat_file_index_col
-    qlat_file_value_col = args.qlat_file_value_col
-    # print(forcing_parameters,qlat_const)
-    # TODO: Make these commandline args
-    """##NHD Subset (Brazos/Lower Colorado)"""
-    # supernetwork = 'Brazos_LowerColorado_Named_Streams'
-    # supernetwork = 'Brazos_LowerColorado_ge5'
-    # supernetwork = 'Pocono_TEST1'
-    """##NHD CONUS order 5 and greater"""
-    # supernetwork = 'CONUS_ge5'
-    """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
-    # supernetwork = 'CONUS_FULL_RES_v20'
-    # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
-    # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
+        dt = run_parameters.get("dt", None)
+        nts = run_parameters.get("nts", None)
+        qts_subdivisions = run_parameters.get("qts_subdivisions", None)
+        debuglevel = -1 * int(run_parameters.get("debuglevel", 0))
+        verbose = run_parameters.get("verbose", None)
+        showtiming = run_parameters.get("showtiming", None)
+        percentage_complete = run_parameters.get("percentage_complete", None)
+        do_network_analysis_only = run_parameters.get("do_network_analysis_only", None)
+        assume_short_ts = run_parameters.get("assume_short_ts", None)
+        parallel_compute = run_parameters.get("parallel_compute", None)
+        cpu_pool = run_parameters.get("cpu_pool", None)
+        sort_networks = run_parameters.get("sort_networks", None)
+
+        csv_output = output_parameters.get("csv_output", None)
+        nc_output_folder = output_parameters.get("nc_output_folder", None)
+
+        qlat_const = forcing_parameters.get("qlat_const", None)
+        qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+        qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+        qlat_file_pattern_filter = forcing_parameters.get(
+            "qlat_file_pattern_filter", None
+        )
+        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+
+        wrf_hydro_channel_restart_file = restart_parameters.get(
+            "wrf_hydro_channel_restart_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file", None
+        )
+        wrf_hydro_channel_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_channel_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_channel_restart_upstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_upstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_downstream_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_downstream_flow_field_name", None
+        )
+        wrf_hydro_channel_restart_depth_flow_field_name = restart_parameters.get(
+            "wrf_hydro_channel_restart_depth_flow_field_name", None
+        )
+
+        wrf_hydro_waterbody_restart_file = restart_parameters.get(
+            "wrf_hydro_waterbody_restart_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file", None
+        )
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_ID_crosswalk_file_field_name", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file", None
+        )
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name = restart_parameters.get(
+            "wrf_hydro_waterbody_crosswalk_filter_file_field_name", None
+        )
+    else:
+        wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
+        qlat_const = float(args.qlat_const)
+        qlat_input_folder = args.qlat_input_folder
+        qlat_input_file = args.qlat_input_file
+        qlat_file_pattern_filter = args.qlat_file_pattern_filter
+        qlat_file_index_col = args.qlat_file_index_col
+        qlat_file_value_col = args.qlat_file_value_col
+        # print(forcing_parameters,qlat_const)
+        # TODO: Make these commandline args
+        """##NHD Subset (Brazos/Lower Colorado)"""
+        # supernetwork = 'Brazos_LowerColorado_Named_Streams'
+        # supernetwork = 'Brazos_LowerColorado_ge5'
+        # supernetwork = 'Pocono_TEST1'
+        """##NHD CONUS order 5 and greater"""
+        # supernetwork = 'CONUS_ge5'
+        """These are large -- be careful"""
+        # supernetwork = 'Mainstems_CONUS'
+        # supernetwork = 'CONUS_FULL_RES_v20'
+        # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
+        # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
 
     if verbose:
         print("creating supernetwork connections set")
