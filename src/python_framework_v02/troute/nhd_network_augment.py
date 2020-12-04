@@ -370,8 +370,10 @@ def merge_parameters(to_merge):
     """
 
     data_replace = to_merge.tail(1)
+    data_replace._is_copy = None
 
     idx = to_merge.tail(1).index
+    
     data_replace.loc[idx, "Length"] = to_merge.Length.sum()
     data_replace.loc[idx, "n"] = len_weighted_av(to_merge, "n", "Length")
     data_replace.loc[idx, "nCC"] = len_weighted_av(to_merge, "nCC", "Length")
@@ -384,7 +386,7 @@ def merge_parameters(to_merge):
     data_replace.loc[idx, "MusK"] = len_weighted_av(to_merge, "MusK", "Length")
     data_replace.loc[idx, "MusX"] = len_weighted_av(to_merge, "MusX", "Length")
     data_replace.loc[idx, "ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
-
+    
     return data_replace
 
 def correct_reach_connections(data_merged):
@@ -533,19 +535,18 @@ def update_network_data(data, rch, data_merged, chop, rconn):
 
 def qlat_destination_compute(data_native, data_merged, merged_segments, pruned_segments, network_data):
     
-    if bool(list(pruned_segments)):
-        
+    # build a list of all segments that need crosswalking
+    if bool(list(pruned_segments)):    
         segments = merged_segments + list(pruned_segments)
         
     else:
-        
         segments = merged_segments
 
-    # compute connections
+    # compute connections using native network data
     conn = nhd_network.extract_connections(data_native, network_data["columns"]["downstream"])
+    rconn = nhd_network.reverse_network(conn)
     
-    # initialize a library to store qlat desinations for pruned/merged segments
-#     qlat_destinations = {x: {} for x in str(segments)}
+    # initialize a dictionary to store qlat destination nodes for pruned/merged segments
     qlat_destinations = {}
 
     for idx in segments:
@@ -553,19 +554,24 @@ def qlat_destination_compute(data_native, data_merged, merged_segments, pruned_s
         # get the downstream connection of this segment in the original network
         ds_idx = conn[idx]
 
-        # find the nearest downstream segment remaining in the pruned/merged network 
-        while bool(ds_idx[0] in data_merged.index) == False:
-            ds_idx = conn[ds_idx[0]]
+        # find the segment to recieve qlats from the pruned or merged segment 
+        if ds_idx:
+            # if a downstream connection exists, find the nearest one reamining
+            while bool(ds_idx[0] in data_merged.index) == False:
+                ds_idx = conn[ds_idx[0]]
+        else:
+            # TO DO: this method simply discards lateral inflows for tailwater segs, need to find a destination !! 
+            ds_idx = []
 
         # update the qlat destination dict
-        qlat_destinations[str(idx)] = str(ds_idx[0])
+        qlat_destinations[str(idx)] = str(ds_idx)
         
     return qlat_destinations
 
 def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     
     # create a copy of the pruned network dataset, which will be updated with merged data
-    data_merged = data.copy()
+    data_merged = data.copy() # !! this line may be throwing a warning 
 
     # initialize list to store merged segment IDs
     merged_segments = []
@@ -636,7 +642,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
                         # upstream merge
                         chop = []
-                        reach_merged, chop = upstream_merge(reach_merged, chop)
+                        reach_merged, chop = upstream_merge(reach_merged, chop) # this is thowing a warning
 
                         # update chop_reach list with merged-out segments
                         chop_reach.extend(chop)
@@ -697,7 +703,7 @@ def main():
     # prune headwaters
     if prune and snap:
         filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.nc"
-        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.nc"
+        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.json"
         
         print("Prune, snap, then merge:")
         print("pruning headwaters...")
@@ -720,7 +726,7 @@ def main():
         
     if snap and not prune:
         filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_snap_merge.nc"
-        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_snap_merge.nc"
+        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_snap_merge.json"
         
         print("Snap and merge:")
         print("snapping junctions...")
@@ -737,7 +743,7 @@ def main():
         
     if not snap and prune:
         filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_merge.nc"
-        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_merge.nc"
+        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_merge.json"
         
         print("Prune and merge:")
         print("snapping junctions...")
@@ -754,7 +760,7 @@ def main():
         
     if not snap and not prune:
         filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_merge.nc"
-        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_merge.nc"
+        filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_merge.json"
         print("Just merge:")
         print("merging segments...")
         data_merged, qlat_destinations = segment_merge(
@@ -766,12 +772,8 @@ def main():
                                    )
     
     # update RouteLink data
-    RouteLink_edit = RouteLink.loc[data_merged.index.values]
-    
-    print(RouteLink_edit.head())
-    
+    RouteLink_edit = RouteLink.loc[data_merged.index.values]    
     for (columnName, columnData) in data_merged.iteritems(): 
-        print(columnName)
         RouteLink_edit.loc[:,columnName] = columnData
 
     for idx in RouteLink_edit.index:
@@ -782,15 +784,12 @@ def main():
     print("exporting RouteLink file:", filename, "to", os.path.join(root, "test", "input", "geo", "Channels"))
     DS = xr.Dataset.from_dataframe(RouteLink_edit)
     DS.to_netcdf(os.path.join(root, "test", "input", "geo", "Channels", filename))
-    
-    print(qlat_destinations)
-    
+        
     # save cross walk as json
     print("exporting CrossWalk file:", filename_cw, "to", os.path.join(root, "test", "input", "geo", "Channels"))
     with open(os.path.join(root, "test", "input", "geo", "Channels", filename_cw), "w") as outfile:  
         json.dump(qlat_destinations, outfile) 
     
-        
 if __name__ == "__main__":
     main()    
                                  
