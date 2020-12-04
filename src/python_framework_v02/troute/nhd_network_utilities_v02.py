@@ -23,6 +23,7 @@ def set_supernetwork_data(
         "Mainstems_CONUS",
         "CONUS_Named_Streams",
         "CONUS_FULL_RES_v20",
+        "CapeFear_FULL_RES",
         "custom",
     }
 
@@ -286,6 +287,27 @@ def set_supernetwork_data(
         )
         return rv
 
+    elif supernetwork == "CapeFear_FULL_RES":
+        rv = set_supernetwork_data(
+            supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
+        )
+        rv.update(
+            {
+                "title_string": "Cape Fear River Basin, NC",  # overwrites other title...
+                "mask_file_path": os.path.join(
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "CapeFear_FULL_RES.txt",
+                ),
+                "mask_driver_string": "csv",
+                "mask_layer_string": "",
+                "mask_key": 0,
+                "mask_name": 1,  # TODO: Not used yet.
+            }
+        )
+        return rv
+    
     elif supernetwork == "CONUS_FULL_RES_v20":
 
         ROUTELINK = "RouteLink_NHDPLUS"
