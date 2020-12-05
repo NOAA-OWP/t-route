@@ -604,7 +604,7 @@ def main():
         flowveldepth = pd.concat(
             [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
             copy=False,
-        )
+        ).sort_index()
 
         if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
