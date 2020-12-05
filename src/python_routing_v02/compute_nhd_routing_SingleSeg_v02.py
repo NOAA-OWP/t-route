@@ -315,20 +315,21 @@ def main():
         for order in subnetworks_only_ordered_jit:
             cluster = 0
             reaches_ordered_bysubntw_clustered[order] = {}
+            reaches_ordered_bysubntw_clustered[order][cluster] = {
+                "segs": [],
+                "upstreams": {},
+                "tw": [],
+                "subn_reach_list": [],
+            }
             for twi, (subn_tw, subn_reach_list) in enumerate(
                 reaches_ordered_bysubntw[order].items(), 1
             ):
-                reaches_ordered_bysubntw_clustered[order][cluster] = {
-                    "segs": [],
-                    "upstreams": {},
-                    "tw": [],
-                    "subn_reach_list": [],
-                }
                 segs = list(chain.from_iterable(subn_reach_list))
                 reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
                 reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
-                    {k: [] for k in subnetworks[subn_tw]}
+                    subnetworks[subn_tw]
                 )
+
                 reaches_ordered_bysubntw_clustered[order][cluster]["tw"].append(subn_tw)
                 reaches_ordered_bysubntw_clustered[order][cluster][
                     "subn_reach_list"
@@ -337,8 +338,19 @@ def main():
                 if (
                     len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
                     >= cluster_threshold * subnetwork_target_size
+                ) and (
+                    twi
+                    < len(reaches_ordered_bysubntw[order])
+                    # i.e., we haven't reached the end
+                    # TODO: perhaps this should be a while condition...
                 ):
                     cluster += 1
+                    reaches_ordered_bysubntw_clustered[order][cluster] = {
+                        "segs": [],
+                        "upstreams": {},
+                        "tw": [],
+                        "subn_reach_list": [],
+                    }
 
         if showtiming:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
@@ -404,20 +416,23 @@ def main():
 
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
-                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
-                        # TODO: This index step is necessary because we sort the segment index
-                        # TODO: I think there are a number of ways we could remove the sorting step
-                        #       -- the binary search could be replaced with an index based on the known topology
-                        flowveldepth_interorder[subn_tw] = {}
-                        subn_tw_sortposition = (
-                            results_subn[order][twi][0].tolist().index(subn_tw)
-                        )
-                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
-                            order
-                        ][twi][1][subn_tw_sortposition]
-                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
-                        # There will be an empty array initialized at the top of the loop, then re-populated here.
-                        # we don't have to bother with populating it after the last group
+                    for ci, (cluster, clustered_subns) in enumerate(
+                        reaches_ordered_bysubntw_clustered[order].items()
+                    ):
+                        for subn_tw in clustered_subns["tw"]:
+                            # TODO: This index step is necessary because we sort the segment index
+                            # TODO: I think there are a number of ways we could remove the sorting step
+                            #       -- the binary search could be replaced with an index based on the known topology
+                            flowveldepth_interorder[subn_tw] = {}
+                            subn_tw_sortposition = (
+                                results_subn[order][ci][0].tolist().index(subn_tw)
+                            )
+                            flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                                order
+                            ][ci][1][subn_tw_sortposition]
+                            # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                            # There will be an empty array initialized at the top of the loop, then re-populated here.
+                            # we don't have to bother with populating it after the last group
 
         results = []
         for order in subnetworks_only_ordered_jit:
