@@ -199,6 +199,10 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
         # print(f"{list(flowveldepth[fill_index])}")
         for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
             flowveldepth[fill_index][idx] = val
+        # TODO: Identify a more efficient ways potentially to handle this array filling
+        # The following may be options:
+        # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
+        # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
         # print(f"Now filled, it contains:")
         # print(f"{list(flowveldepth[fill_index])}")
 
