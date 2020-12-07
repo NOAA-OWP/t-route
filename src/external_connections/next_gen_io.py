@@ -24,7 +24,8 @@ def read_catchment_lateral_flows(path):
           catchment_id = int(file_name_str_list[0][4 :])
           catchment_id_list.append(catchment_id)
           # Read the second column of a csv file and return a series. The index will be an autoincrementing range.
-          catchment_qlats = pd.read_csv(os.path.join(path, file_name), names=[catchment_id], usecols=[1], squeeze=True)
+          catchment_qlats = pd.read_csv(os.path.join(path, file_name), usecols=['Flow'], squeeze=True)
+          catchment_qlats.rename(catchment_id, inplace=True)
           ql.append(catchment_qlats)
 
     qlats = pd.concat(ql, axis='columns').T
