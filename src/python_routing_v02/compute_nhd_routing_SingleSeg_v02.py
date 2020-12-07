@@ -552,6 +552,11 @@ def main():
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-network":
+        if showtiming:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
@@ -574,6 +579,9 @@ def main():
                     )
                 )
             results = parallel(jobs)
+
+        if showtiming:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     else:  # Execute in serial
         results = []
