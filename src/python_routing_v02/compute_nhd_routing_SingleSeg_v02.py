@@ -287,14 +287,11 @@ def main():
         subnetworks_only_ordered_jit = defaultdict(dict)
         subnetworks = defaultdict(dict)
         for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
             for order, subnet_sets in ordered_network.items():
                 subnetworks_only_ordered_jit[order].update(subnet_sets)
                 for subn_tw, subnetwork in subnet_sets.items():
-                    for k in independent_networks[tw]:
-                        if k in subnetwork:
-                            subnetworks[subn_tw].update(
-                                {k: independent_networks[tw][k]}
-                            )
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
         reaches_ordered_bysubntw = {}
         for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
