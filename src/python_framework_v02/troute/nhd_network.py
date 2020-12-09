@@ -443,10 +443,10 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
     # if no sources provided, use tailwaters
     if sources is None:
         # identify tailwaters
-        sources = rconn.keys() - chain.from_iterable(rconn.values())
+        sources = headwaters(rconn)
 
     # create a list of all headwaters in the network
-    all_hws = connections.keys() - chain.from_iterable(connections.values())
+    all_hws = headwaters(connections)
 
     subnetwork_master = {}
     for net in sources:
@@ -496,7 +496,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 # identify downstream connections for segments in this subnetwork
                 c = {key: connections[key] for key in seg}
                 # find apparent headwaters, will include new sources and actual headwaters
-                sub_hws = c.keys() - chain.from_iterable(c.values())
+                sub_hws = headwaters(c)
                 # extract new sources by differencing with list of actual headwaters
                 srcs = sub_hws - all_hws
                 # append list of new sources
