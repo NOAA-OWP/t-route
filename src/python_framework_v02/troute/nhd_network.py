@@ -463,18 +463,15 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
             for h in new_sources:
 
                 reachable = set()
-                reachable_depth = set()
-                Q = deque([h])
-                D = deque([0])
+                Q = deque([(h, 0)])
                 stop_depth = 1000000
-                while Q or D:
+                while Q:
 
-                    x = Q.popleft()
-                    y = D.popleft()
+                    x, y = Q.popleft()
                     reachable.add(x)
-                    reachable_depth.add(y)
 
-                    if len(rconn.get(x, ())) > 1:
+                    rx = rconn.get(x, ())
+                    if len(rx) > 1:
                         us_depth = y + 1
                     else:
                         us_depth = y
@@ -483,8 +480,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                         stop_depth = y
 
                     if us_depth <= stop_depth:
-                        D.extend([us_depth] * len(rconn.get(x, ())))
-                        Q.extend(rconn.get(x, ()))
+                        Q.extend(zip(rx, [us_depth] * len(rx)))
 
                 # reachable: a list of reachable segments within max_depth from source node h
                 rv[h] = reachable
@@ -500,7 +496,6 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 # extract new sources by differencing with list of actual headwaters
                 srcs = sub_hws - all_hws
                 # append list of new sources
-                #new_sources_list.extend(srcs)
                 new_sources.update(srcs)
                 # remove new sources from the subnetwork list
                 rv[tw].difference_update(srcs)
