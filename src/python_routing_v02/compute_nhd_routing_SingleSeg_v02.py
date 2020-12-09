@@ -306,11 +306,10 @@ def main():
         cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
         # Otherwise, keep adding reaches.
 
-        reaches_ordered_bysubntw_clustered = {}
+        reaches_ordered_bysubntw_clustered = defaultdict(dict)
 
         for order in subnetworks_only_ordered_jit:
             cluster = 0
-            reaches_ordered_bysubntw_clustered[order] = {}
             reaches_ordered_bysubntw_clustered[order][cluster] = {
                 "segs": [],
                 "upstreams": {},
@@ -444,25 +443,21 @@ def main():
         subnetworks_only_ordered_jit = defaultdict(dict)
         subnetworks = defaultdict(dict)
         for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
             for order, subnet_sets in ordered_network.items():
                 subnetworks_only_ordered_jit[order].update(subnet_sets)
                 for subn_tw, subnetwork in subnet_sets.items():
-                    for k in independent_networks[tw]:
-                        if k in subnetwork:
-                            subnetworks[subn_tw].update(
-                                {k: independent_networks[tw][k]}
-                            )
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
-        reaches_bysubntw = {}
+        reaches_ordered_bysubntw = defaultdict(dict)
         for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
-            reaches_bysubntw[order] = {}
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
                 path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                reaches_bysubntw[order][subn_tw] = nhd_network.dfs_decomposition(
-                    rconn_subn, path_func
-                )
+                reaches_ordered_bysubntw[order][
+                    subn_tw
+                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
 
         if showtiming:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
@@ -476,7 +471,7 @@ def main():
             for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
                 jobs = []
                 for twi, (subn_tw, subn_reach_list) in enumerate(
-                    reaches_bysubntw[order].items(), 1
+                    reaches_ordered_bysubntw[order].items(), 1
                 ):
                     # TODO: Confirm that a list here is best -- we are sorting,
                     # so a set might be sufficient/better
@@ -525,7 +520,7 @@ def main():
 
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
-                    for twi, subn_tw in enumerate(reaches_bysubntw[order]):
+                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
                         # TODO: This index step is necessary because we sort the segment index
                         # TODO: I think there are a number of ways we could remove the sorting step
                         #       -- the binary search could be replaced with an index based on the known topology
