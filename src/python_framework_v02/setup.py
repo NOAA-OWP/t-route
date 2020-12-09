@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 from distutils.extension import Extension
 import sys
 import numpy as np
@@ -19,7 +19,8 @@ ext = 'pyx' if USE_CYTHON else 'c'
 reach = Extension("troute.network.reach",
         sources = ["troute/network/reach.{}".format(ext)],
         include_dirs=[np.get_include()],
-        extra_objects = [])
+        extra_objects = [],
+        extra_compile_args=['-g'])
 
 package_data = {
     'troute.network':['reach.pxd']
@@ -30,7 +31,7 @@ ext_modules=[
 
 if USE_CYTHON:
     from Cython.Build import cythonize
-    ext_modules = cythonize(ext_modules)
+    ext_modules = cythonize(ext_modules, compiler_directives={"language_level": 3})
 
 setup(
   name = 'Network',
