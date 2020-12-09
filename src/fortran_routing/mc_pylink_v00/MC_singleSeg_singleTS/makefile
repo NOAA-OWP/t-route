@@ -3,7 +3,7 @@ FC := gfortran
 
 # compile flags
 #FCFLAGS = -c -fdefault-real-8 -fno-align-commons -fbounds-check --free-form
-FCFLAGS = -c -O2 -fPIC
+FCFLAGS = -g -c -O2 -fPIC
 # link flags
 FLFLAGS = -static-gfortran -static-libgcc -no-defaultlibs -lgfortran -lgcc
 VPATH = ../Reservoir_singleTS
