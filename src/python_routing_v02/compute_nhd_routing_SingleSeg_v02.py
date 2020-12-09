@@ -293,9 +293,8 @@ def main():
                 for subn_tw, subnetwork in subnet_sets.items():
                     subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
-        reaches_ordered_bysubntw = {}
+        reaches_ordered_bysubntw = defaultdict(dict)
         for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
-            reaches_ordered_bysubntw[order] = {}
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
