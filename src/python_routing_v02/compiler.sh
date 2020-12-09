@@ -13,9 +13,13 @@ make install
 #creates troute package
 cd $REPOROOT/src/python_framework_v02
 rm -rf build
-python setup.py --use-cython install
+#python setup.py --use-cython develop
+python setup.py build_ext --inplace
+pip install -e .
 
 #updates troute package with the execution script
 cd $REPOROOT/src/python_routing_v02
 rm -rf build
-python setup.py --use-cython install
+#python setup.py --use-cython develop
+python setup.py build_ext --inplace
+pip install -e .
