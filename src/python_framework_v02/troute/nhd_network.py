@@ -500,8 +500,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 #new_sources_list.extend(srcs)
                 new_sources.update(srcs)
                 # remove new sources from the subnetwork list
-                for src in srcs:
-                    rv[tw].remove(src)
+                rv[tw].difference_update(srcs)
 
             # append master dictionary
             subnetworks[group_order] = rv
