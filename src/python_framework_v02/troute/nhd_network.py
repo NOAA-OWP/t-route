@@ -495,7 +495,7 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
                 # find apparent headwaters, will include new sources and actual headwaters
                 sub_hws = c.keys() - chain.from_iterable(c.values())
                 # extract new sources by differencing with list of actual headwaters
-                srcs = list(set(sub_hws) - set(all_hws))
+                srcs = sub_hws - all_hws
                 # append list of new sources
                 #new_sources_list.extend(srcs)
                 new_sources.update(srcs)
