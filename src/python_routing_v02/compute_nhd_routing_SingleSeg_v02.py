@@ -115,6 +115,8 @@ def _handle_args():
             "Mainstems_CONUS",
             "CONUS_Named_Streams",
             "CONUS_FULL_RES_v20",
+            "CapeFear_FULL_RES",
+            "Florence_FULL_RES"
         ],
         # TODO: accept multiple or a Path (argparse Action perhaps)
         # action='append',
