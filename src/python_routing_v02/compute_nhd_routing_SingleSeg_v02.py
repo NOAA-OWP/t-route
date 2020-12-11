@@ -303,11 +303,11 @@ def main():
         param_df, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-    # initial conditions, assume to be zero
-    # TODO: Allow optional reading of initial conditions from WRF
-    q0 = pd.DataFrame(
-        0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
-    )
+#     # initial conditions, assume to be zero
+#     # TODO: Allow optional reading of initial conditions from WRF
+#     q0 = pd.DataFrame(
+#         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
+#     )
 
     if verbose:
         print("supernetwork connections set complete")
@@ -349,7 +349,7 @@ def main():
 
     if wrf_hydro_channel_restart_file:
 
-        channel_initial_states_df = nhd_io.get_stream_restart_from_wrf_hydro(
+        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
             wrf_hydro_channel_restart_file,
             wrf_hydro_channel_ID_crosswalk_file,
             wrf_hydro_channel_ID_crosswalk_file_field_name,
@@ -358,18 +358,10 @@ def main():
             wrf_hydro_channel_restart_depth_flow_field_name,
         )
     else:
-        # TODO: Consider adding option to read cold state from route-link file
-        channel_initial_us_flow_const = 0.0
-        channel_initial_ds_flow_const = 0.0
-        channel_initial_depth_const = 0.0
-        # Set initial states from cold-state
-        channel_initial_states_df = pd.DataFrame(
+        # Set cold initial state
+        q0 = pd.DataFrame(
             0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         )
-        channel_initial_states_df["qu0"] = channel_initial_us_flow_const
-        channel_initial_states_df["qd0"] = channel_initial_ds_flow_const
-        channel_initial_states_df["h0"] = channel_initial_depth_const
-        channel_initial_states_df["index"] = range(len(channel_initial_states_df))
 
     if verbose:
         print("channel initial states complete")
@@ -429,7 +421,7 @@ def main():
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
                 r = list(chain.from_iterable(reach_list))
-                channel_initial_states_df = param_df.loc[
+                param_df_sub = param_df.loc[
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
@@ -439,9 +431,9 @@ def main():
                         nts,
                         reach_list,
                         independent_networks[tw],
-                        channel_initial_states_df.index.values,
-                        channel_initial_states_df.columns.values,
-                        channel_initial_states_df.values,
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
                         assume_short_ts,
@@ -453,7 +445,7 @@ def main():
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             r = list(chain.from_iterable(reach_list))
-            channel_initial_states_df = param_df.loc[
+            param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
@@ -463,9 +455,9 @@ def main():
                     nts,
                     reach_list,
                     independent_networks[tw],
-                    channel_initial_states_df.index.values,
-                    channel_initial_states_df.columns.values,
-                    channel_initial_states_df.values,
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
                     assume_short_ts,
