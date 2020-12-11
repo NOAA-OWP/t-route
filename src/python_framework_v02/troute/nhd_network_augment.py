@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import xarray as xr
 from functools import partial
 from itertools import chain
@@ -8,6 +9,8 @@ import sys
 import pathlib
 import argparse
 import json
+from tqdm import tqdm
+import time
 
 root = pathlib.Path("../../../").resolve()
 sys.path.append(os.path.join(root, "src", "python_framework_v01"))
@@ -45,7 +48,8 @@ def _handle_args():
             "Mainstems_CONUS",
             "CONUS_Named_Streams",
             "CONUS_FULL_RES_v20",
-            "CapeFear_FULL_RES"
+            "CapeFear_FULL_RES",
+            "Florence_FULL_RES"
         ],
         default="CapeFear_FULL_RES",
     )
@@ -61,6 +65,13 @@ def _handle_args():
         "--snap",
         help = "snap junctions adjacent to short reaches, 1 if yes, 0 if no",
         dest = "snap",
+        action = "store_true"
+    )
+    parser.add_argument(
+        "-return_original",
+        "--return_original",
+        help = "return an unmodified RouteLink.nc file for the specified domain",
+        dest = "return_original",
         action = "store_true"
     )
     
@@ -84,8 +95,7 @@ def get_network_data(network_name):
         network_dl.download(network_data["geo_file_path"], network_data["data_link"])
         
     # read-in NHD data, retain copies for viz- and full network analysis purposes
-    data = nhd_io.read(network_data["geo_file_path"]) 
-    RouteLink = data.copy() # copy of full resolution CONUS network
+    RouteLink = nhd_io.read(network_data["geo_file_path"]) 
     
     # select only the necessary columns of geospatial data, set the DataFrame index
     cols = [v for c, v in network_data["columns"].items()]
@@ -285,20 +295,18 @@ def snap_junctions(data, threshold, network_data):
 
         # build list of headwater segments
         hws = connections.keys() - chain.from_iterable(connections.values())
-
+        
+        print("finding non-headwater reaches")
         # create a list of short reaches stranded between junctions
-        short_reaches = [] 
-        for sublists in list(subreaches.values()):
+        short_reaches = () 
+        for sublists in tqdm(list(subreaches.values())):
+
             for rch in sublists:
-
+                head = rch[0]
+                
                 # if reach is not a headwater
-                if len(np.setdiff1d(rch,list(hws))) == len(rch):
-
-                    # and if reach is shorter than threshold length
-                    if data.loc[rch,"Length"].sum() < threshold:
-
-                        # consider it for junction snapping
-                        short_reaches.append(rch)
+                if rconn[head] and data.loc[rch,"Length"].sum() < threshold:    
+                    short_reaches += tuple(rch)
 
         if iter_num > 1:
             print("After iteration", iter_num - 1, ",", len(short_reaches), "short reaches remain")
@@ -313,8 +321,13 @@ def snap_junctions(data, threshold, network_data):
         for i, rch in enumerate(short_reaches):
 
             # identify reach tail (downstream-most) and head (upstream-most) segments
-            tail = rch[-1]
-            head = rch[0] 
+            
+            if type(rch) is tuple:
+                tail = rch[-1]
+                head = rch[0] 
+            else:
+                tail = rch
+                head = rch
 
             # identify segments that drain to reach head
             us_conn = rconn[head]
@@ -515,17 +528,14 @@ def update_network_data(data, rch, data_merged, chop, rconn):
         data (DataFrame): Updated network routing parameters
     """
 
-    # make a copy of the data to be replaced with merged
-    data_old = data.loc[rch].copy()
-
     # drop the segments that disapeared with merger
     data = data.drop(chop)
-
+    
     # adjust the segment data for those that remain
     data.loc[data_merged.index] = data_merged
 
     # update out of reach connections - these will change in the first segment was merged out
-    upstreams = rconn[data_old.head(1).index.values[0]]  # upstream connection of the OLD reach head
+    upstreams = rconn[rch[0]]  # upstream connection of the OLD reach head
 
     if bool(upstreams):
         
@@ -551,16 +561,18 @@ def qlat_destination_compute(data_native, data_merged, merged_segments, pruned_s
 
     for idx in segments:
 
-        # get the downstream connection of this segment in the original network
-        ds_idx = conn[idx]
-
         # find the segment to recieve qlats from the pruned or merged segment 
-        if ds_idx:
-            # if a downstream connection exists, find the nearest one reamining
+        if conn[idx]:
+            ds_idx = conn[idx]
             while bool(ds_idx[0] in data_merged.index) == False:
                 ds_idx = conn[ds_idx[0]]
+                
+        elif rconn[idx]:
+            ds_idx = rconn[idx]
+            while bool(ds_idx[0] in data_merged.index) == False:
+                us_idx = conn[ds_idx[0]]
+                
         else:
-            # TO DO: this method simply discards lateral inflows for tailwater segs, need to find a destination !! 
             ds_idx = []
 
         # update the qlat destination dict
@@ -570,8 +582,10 @@ def qlat_destination_compute(data_native, data_merged, merged_segments, pruned_s
 
 def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     
-    # create a copy of the pruned network dataset, which will be updated with merged data
-    data_merged = data.copy() # !! this line may be throwing a warning 
+    
+    
+    # create a copy of the pruned network dataset, which will be updated with merged data    
+    data_merged = data.copy()
 
     # initialize list to store merged segment IDs
     merged_segments = []
@@ -586,10 +600,9 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     for twi, (tw, rchs) in enumerate(subreaches.items(), 1):
 
         for rch in rchs:
-
-            # calculate reach length
+                        
             rch_len = data.loc[rch].Length.sum()
-
+        
             ##################################################
             # orphaned short single segment reaches
             ##################################################
@@ -642,7 +655,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
                         # upstream merge
                         chop = []
-                        reach_merged, chop = upstream_merge(reach_merged, chop) # this is thowing a warning
+                        reach_merged, chop = upstream_merge(reach_merged, chop)
 
                         # update chop_reach list with merged-out segments
                         chop_reach.extend(chop)
@@ -659,6 +672,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
                         # update chop_reach list with merged-out segments
                         chop_reach.extend(chop)
+
                 
                 # correct segment connections within reach
                 reach_merged = correct_reach_connections(reach_merged)
@@ -686,23 +700,24 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
 def main():
     
+    # unpack command line arguments
     args = _handle_args()
-    
     supernetwork = args.supernetwork
     threshold = args.threshold
     prune = args.prune
     snap = args.snap
+    return_original = args.return_original
     
     # get network data
     print("Extracting and organizing supernetwork data")
     data, RouteLink, network_data = get_network_data(supernetwork)
     RouteLink = RouteLink.set_index(network_data["columns"]["key"])
-    
+
     pruned_segs = []
-    
     # prune headwaters
     if prune and snap:
-        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.nc"
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge"
+        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.shp"
         filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_snap_merge.json"
         
         print("Prune, snap, then merge:")
@@ -725,7 +740,8 @@ def main():
                                    )
         
     if snap and not prune:
-        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_snap_merge.nc"
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_snap_merge"
+        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_snap_merge.shp"
         filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_snap_merge.json"
         
         print("Snap and merge:")
@@ -742,7 +758,8 @@ def main():
                                    )
         
     if not snap and prune:
-        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_merge.nc"
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_merge"
+        filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_prune_merge.shp"
         filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_prune_merge.json"
         
         print("Prune and merge:")
@@ -759,6 +776,7 @@ def main():
                                    )
         
     if not snap and not prune:
+        dirname = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_merge"
         filename = "RouteLink_" + supernetwork + "_" + str(threshold) + "m_merge.nc"
         filename_cw = "CrossWalk_" + supernetwork + "_" + str(threshold) + "m_merge.json"
         print("Just merge:")
@@ -773,6 +791,7 @@ def main():
     
     # update RouteLink data
     RouteLink_edit = RouteLink.loc[data_merged.index.values]    
+
     for (columnName, columnData) in data_merged.iteritems(): 
         RouteLink_edit.loc[:,columnName] = columnData
 
@@ -780,15 +799,44 @@ def main():
         if RouteLink_edit.loc[idx,'to'] < 0:
             RouteLink_edit.loc[idx,'to'] = 0
             
-    # export as NetCDF
+    # convert RouteLink to geodataframe
+    RouteLink_edit = gpd.GeoDataFrame(RouteLink_edit, geometry=gpd.points_from_xy(RouteLink_edit.lon, RouteLink_edit.lat))
+               
+    # export merged data
     print("exporting RouteLink file:", filename, "to", os.path.join(root, "test", "input", "geo", "Channels"))
-    DS = xr.Dataset.from_dataframe(RouteLink_edit)
-    DS.to_netcdf(os.path.join(root, "test", "input", "geo", "Channels", filename))
+    
+    dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+    if not os.path.isdir(dir_path):
+        os.mkdir(dir_path)
         
+    # save RouteLink data as shapefile
+    RouteLink_edit = RouteLink_edit.drop(columns = ['time', 'gages'])
+    RouteLink_edit.to_file(os.path.join(dir_path,filename))
+     
     # save cross walk as json
     print("exporting CrossWalk file:", filename_cw, "to", os.path.join(root, "test", "input", "geo", "Channels"))
-    with open(os.path.join(root, "test", "input", "geo", "Channels", filename_cw), "w") as outfile:  
+    with open(os.path.join(dir_path, filename_cw), "w") as outfile:  
         json.dump(qlat_destinations, outfile) 
+        
+    # export original data
+    if return_original:
+        dirname = "RouteLink_" + supernetwork
+        filename = "RouteLink_" + supernetwork + ".shp"
+        print("exporting unmodified RouteLink file:", filename, "to", os.path.join(root, "test", "input", "geo", "Channels"))
+        
+        dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+        if not os.path.isdir(dir_path):
+            os.mkdir(dir_path)
+            
+        RouteLink_domain = RouteLink.loc[data.index.values]
+        RouteLink_domain = gpd.GeoDataFrame(RouteLink_domain, geometry=gpd.points_from_xy(RouteLink_domain.lon, RouteLink_domain.lat))
+
+        RouteLink_domain = RouteLink_domain.drop(columns = ['time', 'gages'])
+        RouteLink_domain.to_file(os.path.join(dir_path,filename))   
+        
+    print("Number of segments in modified RouteLink:", len(RouteLink_edit))
+    print("Number of segments in original RouteLink:", len(RouteLink_domain))
+    
     
 if __name__ == "__main__":
     main()    
