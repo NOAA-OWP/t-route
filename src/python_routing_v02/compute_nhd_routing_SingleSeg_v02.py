@@ -289,6 +289,8 @@ def main():
     args = _handle_args()
 
     custom_input_file = args.custom_input_file
+    supernetwork_parameters = None
+    waterbody_parameters = None
 
     if custom_input_file:
         (
@@ -409,21 +411,22 @@ def main():
         supernetwork_parameters = {
             "title_string": "Custom Input Example (using Pocono Test Example datafile)",
             "geo_file_path": routelink_file,
-            "cols_as_text": False,
-            "key_col": 16,  # "link",
-            "downstream_col": 22,  # "to",
-            "length_col": 3,  # "Length",
-            "manningn_col": 18,  # "n",
-            "manningncc_col": 19,  # "nCC",
-            "slope_col": 8,  # "So",
-            "bottomwidth_col": 0,  # "BtmWdth",
-            "topwidth_col": 9,  # "TopWdth",
-            "topwidthcc_col": 10,  # "TopWdthCC",
-            "waterbody_col": 6,  # "NHDWaterbodyComID",
+            "columns": {
+                "key": "link",
+                "downstream": "to",
+                "dx": "Length",
+                "n": "n",  # TODO: rename to `manningn`
+                "ncc": "nCC",  # TODO: rename to `mannningncc`
+                "s0": "So",  # TODO: rename to `bedslope`
+                "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
+                "waterbody": "NHDWaterbodyComID",
+                "tw": "TopWdth",  # TODO: rename to `topwidth`
+                "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
+                "musk": "MusK",
+                "musx": "MusX",
+                "cs": "ChSlp",  # TODO: rename to `sideslope`
+            },
             "waterbody_null_code": -9999,
-            "MusK_col": 4,  # "MusK",
-            "MusX_col": 5,  # "MusX",
-            "ChSlp_col": 1,  # "ChSlp",
             "terminal_code": 0,
             "driver_string": "NetCDF",
             "layer_string": 0,
@@ -475,15 +478,17 @@ def main():
         start_time = time.time()
 
     # STEP 1
-    supernetwork_parameters = nnu.set_supernetwork_parameters(
-        supernetwork=supernetwork,
-        geo_input_folder=geo_input_folder,
-        verbose=False,
-        debuglevel=debuglevel,
-    )
+    if not supernetwork_parameters:
+        supernetwork_parameters = nnu.set_supernetwork_parameters(
+            supernetwork=supernetwork,
+            geo_input_folder=geo_input_folder,
+            verbose=False,
+            debuglevel=debuglevel,
+        )
 
     cols = supernetwork_parameters["columns"]
     param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
+
     param_df = param_df[list(cols.values())]
     param_df = param_df.set_index(cols["key"])
 
