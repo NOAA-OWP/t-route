@@ -226,10 +226,10 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "Mainstems_CONUS":
-        dict = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
-        dict.update(
+        rv.update(
             {
                 "title_string": "CONUS 'Mainstems' (Channels below gages and AHPS prediction points)",  # overwrites other title...
                 "mask_file_path": os.path.join(
@@ -241,7 +241,7 @@ def set_supernetwork_data(
                 "mask_name": 1,  # TODO: Not used yet.
             }
         )
-        return dict
+        return rv
 
         # return {
         #     "geo_file_path": os.path.join(
