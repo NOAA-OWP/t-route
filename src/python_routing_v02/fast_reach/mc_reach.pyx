@@ -107,13 +107,13 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
-        
+
         qup = qdp
-        
+
         if assume_short_ts:
             quc = qup
         else:
-            quc = out.qdc        
+            quc = out.qdc
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
@@ -140,11 +140,21 @@ cpdef object column_mapper(object src_cols):
     return rv
 
 
-cpdef object compute_network(int nsteps, list reaches, dict connections, 
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
-    const float[:, :] qlat_values, const float[:,:] initial_conditions, 
-    # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
-    bint assume_short_ts=False):
+cpdef object compute_network(
+    int nsteps,
+    int qts_subdivisions,
+    list reaches,
+    dict connections,
+    const long[:] data_idx,
+    object[:] data_cols,
+    const float[:,:] data_values,
+    const float[:,:] qlat_values,
+    const float[:,:] initial_conditions,
+    # const float[:] wbody_idx,
+    # object[:] wbody_cols,
+    # const float[:, :] wbody_vals,
+    bint assume_short_ts=False,
+    ):
     """
     Compute network
     Args:
@@ -175,7 +185,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
         Py_ssize_t[:] drows_tmp
-    
+
     # Buffers and buffer views
     # These are C-contiguous.
     cdef float[:, ::1] buf, buf_view
@@ -183,7 +193,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
-    
+
     # hard-coded column. Find a better way to do this
     cdef int buf_cols = 13
 
@@ -261,31 +271,31 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
                 ireach_cache += 1
                 iusreach_cache += 1
-                
+
                 qup = 0.0
                 quc = 0.0
                 for i in range(usreachlen):
-                    
+
                     '''
                     New logic was added to handle initial conditions:
                     When timestep == 0, the flow from the upstream segments in the previous timestep
-                    are equal to the initial conditions. 
+                    are equal to the initial conditions.
                     '''
-                        
-                    # upstream flow in the current timestep is equal the sum of flows 
+
+                    # upstream flow in the current timestep is equal the sum of flows
                     # in upstream segments, current timestep
                     # Headwater reaches are computed before higher order reaches, so quc can
                     # be evaulated even when the timestep == 0.
                     quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
-                    
-                    # upstream flow in the previous timestep is equal to the sum of flows 
+
+                    # upstream flow in the previous timestep is equal to the sum of flows
                     # in upstream segments, previous timestep
                     if timestep > 0:
                         qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                     else:
                         # sum of qd0 (flow out of each segment) over all upstream reaches
                         qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
-                        
+
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
                 drows = drows_tmp[:reachlen]
@@ -293,20 +303,20 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 
                 """
                 qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
-                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below, 
+                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below,
                 the second argument, which defines the column in qlat_values that data should be drawn from, is specified
-                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep. 
+                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep.
                 """
-                fill_buffer_column(srows, 
-                                   int(timestep/(nsteps/qlat_values.shape[1])),  # adjust timestep to WRF-hydro timestep
-                                   drows, 
-                                   0, 
-                                   qlat_values, 
+                fill_buffer_column(srows,
+                                   int(timestep/qts_subdivisions),  # adjust timestep to WRF-hydro timestep
+                                   drows,
+                                   0,
+                                   qlat_values,
                                    buf_view)
-                
+
                 for i in range(scols.shape[0]):
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
-                        
+
                 # fill buffer with qdp, depthp, velp
                 if timestep > 0:
                     fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
@@ -315,7 +325,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 else:
                     '''
                     Changed made to accomodate initial conditions:
-                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array, 
+                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array,
                     using srows to properly index
                     '''
                     for i in range(drows.shape[0]):
@@ -335,7 +345,7 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-                
+
             timestep += 1
 
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
@@ -343,9 +353,9 @@ cpdef object compute_network(int nsteps, list reaches, dict connections,
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
-cpdef object compute_network_multithread(int nsteps, list reaches, dict connections, 
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values, 
-    const float[:, :] qlat_values, const float[:,:] initial_conditions, 
+cpdef object compute_network_multithread(int nsteps, list reaches, dict connections,
+    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
+    const float[:, :] qlat_values, const float[:,:] initial_conditions,
     const int[:] reach_groups,
     const int[:] reach_group_cache_sizes,
     bint assume_short_ts=False):
@@ -358,7 +368,7 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
-        initial_conditions (ndarray): an n x 3 array of initial conditions. 
+        initial_conditions (ndarray): an n x 3 array of initial conditions.
         assume_short_ts (bool): Assume short time steps (quc = qup)
     Notes:
         Array dimensions are checked as a precondition to this method.
@@ -370,16 +380,16 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
-    
+
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
-    
+
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
         Py_ssize_t[:] drows_tmp
-    
+
     # hard-coded column. Find a better way to do this
     cdef int buf_cols = 13
-    
+
     # Buffers and buffer views
     # These are C-contiguous.
     cdef float[:, ::1] buf, buf_view
@@ -387,7 +397,7 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
     cdef int maxgrouplen = max(reach_group_cache_sizes)
     buf = np.empty((maxgrouplen, buf_cols), dtype='float32')
     out_buf = np.empty((maxgrouplen, 3), dtype='float32')
-    
+
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
 
@@ -422,14 +432,14 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
     # upstream reach cache is ordered 1D view of reaches
     # [-len, item, item, item, -len, item, item, -len, item, item, ...]
     usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
-    
+
     # ireach_cache_array
     ireach_cache_array = np.empty(len(reach_sizes), dtype=np.intp)
     iusreach_cache_array = np.empty(len(reach_sizes), dtype=np.intp)
 
     ireach_cache = 0
     iusreach_cache = 0
-    
+
     ireach_cache_array[0] = 0
     iusreach_cache_array[0] = 0
     # copy reaches into an array
@@ -452,32 +462,32 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
             for bidx in binary_find(data_idx, connections[reach[0]]):
                 usreach_cache[iusreach_cache] = bidx
                 iusreach_cache += 1
-                
+
         if ireach < max(range(len(reaches))):
             ireach_cache_array[ireach+1] = ireach_cache
             iusreach_cache_array[ireach+1] = iusreach_cache
 
     drows_tmp = np.arange(maxgrouplen, dtype=np.intp)
-    
+
     cdef Py_ssize_t[:] drows
     cdef int timestep = 0
     cdef int ts_offset
 
     cdef int maxgroupsize = max(reach_groups)
     cdef float[:] qu_buf = np.empty(maxgroupsize, dtype = "float32")
-    cdef float[:] quc_view 
+    cdef float[:] quc_view
     cdef float[:] qup_view
     cdef float quc, qup
     cdef int qu_idx
     cdef int buf_idx
     cdef Py_ssize_t[:] srowsgroup_buf = np.empty(maxgrouplen, dtype = np.intp)
     cdef int srows_idx
-    
+
     cdef:
-        Py_ssize_t istart  
+        Py_ssize_t istart
         Py_ssize_t iend
         int r
-    
+
     with nogil:
         while timestep < nsteps:
             ts_offset = timestep * 3
@@ -485,10 +495,10 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
             istart = 0
             iend = -1
             for group_i in range(len(reach_group_cache_sizes)):
-                
+
                 # index of final reach entry in reach_cache for this group
                 iend += reach_groups[group_i]
-                
+
                 # prepare group buffers
                 buf_view = buf[:reach_group_cache_sizes[group_i],:]
                 out_view = out_buf[:reach_group_cache_sizes[group_i],:]
@@ -496,19 +506,19 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
                 qup_view = qu_buf[:reach_groups[group_i]]
                 srows = srowsgroup_buf[:reach_group_cache_sizes[group_i]]
                 drows = drows_tmp[:reach_group_cache_sizes[group_i]]
-                
+
                 # extract upstream flows and populate srows
                 qu_idx = 0
                 srows_idx = 0
                 for r in range(istart,iend+1):
-                    
+
                     ireach_cache = ireach_cache_array[r]
                     iusreach_cache = iusreach_cache_array[r]
                     reachlen = -reach_cache[ireach_cache]
                     usreachlen = -usreach_cache[iusreach_cache]
                     iusreach_cache += 1
                     ireach_cache += 1
-                    
+
                     quc = 0.0
                     qup = 0.0
                     for i in range(usreachlen):
@@ -517,25 +527,25 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
                             qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
                         else:
                             qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
-                            
+
                     quc_view[qu_idx] = quc
                     qup_view[qu_idx] = qup
                     qu_idx += 1
-                    
+
                     # build srows
                     for i in range(reachlen):
                         srows[srows_idx] = reach_cache[ireach_cache + i]
                         srows_idx += 1
-                             
+
                 # fill buf_view with qlat, parameter and initial conditions data
-                # qlats    
-                fill_buffer_column(srows, 
+                # qlats
+                fill_buffer_column(srows,
                            int(timestep/(nsteps/qlat_values.shape[1])),
-                           drows, 
-                           0, 
-                           qlat_values, 
+                           drows,
+                           0,
+                           qlat_values,
                            buf_view)
-            
+
                 # parameters
                 for i in range(scols.shape[0]):
                     fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
@@ -550,15 +560,15 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
                         buf_view[drows[i], 10] = initial_conditions[srows[i],1]
                         buf_view[drows[i], 11] = 0.0
                         buf_view[drows[i], 12] = initial_conditions[srows[i],2]
-                
+
                 # ------ !!!!! MULTITHREAD LOOP !!!!! ------ #
                 # compute each reach
                 for r in prange(istart,iend+1):
-                    
+
                     # reach length for reach r of group
                     ireach_cache = ireach_cache_array[r]
                     reachlen = -reach_cache[ireach_cache]
-                    
+
                     # total reach length of reaches preceeding reach r in group
                     if r > istart:
                         prevreachlen = 0
@@ -566,33 +576,33 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
                             prevreachlen = prevreachlen + -reach_cache[ireach_cache_array[(r-(i+1))]]
                     else:
                         prevreachlen = 0
-                            
+
                     # compute reach routing
-                    if assume_short_ts:    
-                        compute_reach_kernel(qup_view[r-istart], 
+                    if assume_short_ts:
+                        compute_reach_kernel(qup_view[r-istart],
                                              quc_view[r-istart], # quc = qup
-                                             reachlen, 
+                                             reachlen,
                                              buf_view[prevreachlen:prevreachlen+reachlen,:],
                                              out_view[prevreachlen:prevreachlen+reachlen,:],
                                              assume_short_ts)
-                        
+
                     else:
-                        compute_reach_kernel(qup_view[r-istart], 
-                                             quc_view[r-istart], 
-                                             reachlen, 
+                        compute_reach_kernel(qup_view[r-istart],
+                                             quc_view[r-istart],
+                                             reachlen,
                                              buf_view[prevreachlen:prevreachlen+reachlen,:],
                                              out_view[prevreachlen:prevreachlen+reachlen,:],
                                              assume_short_ts)
                 # END ------ !!!!! MULTITHREAD LOOP !!!!! ------ #
-                        
-                        
+
+
                 # place out_view results into flowveldepth
                 for i in range(3):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
-                
-                    
+
+
                 istart = istart + reach_groups[group_i]
-                
+
             timestep += 1
 
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
