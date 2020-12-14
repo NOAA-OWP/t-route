@@ -554,37 +554,7 @@ def main():
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    cols = supernetwork_parameters["columns"]
-    param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
-
-    param_df = param_df[list(cols.values())]
-    param_df = param_df.set_index(cols["key"])
-
-    if "mask_file_path" in supernetwork_parameters:
-        data_mask = nhd_io.read_mask(
-            supernetwork_parameters["mask_file_path"],
-            layer_string=supernetwork_parameters["mask_layer_string"],
-        )
-        param_df = param_df.filter(
-            data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
-        )
-
-    param_df = param_df.sort_index()
-    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
-
-    connections = nhd_network.extract_connections(param_df, cols["downstream"])
-    # TODO: reorganize this so the wbodies object doesn't use the par-final param_df
-    # This could mean doing something different to get the final param_df,
-    # or changing the wbodies call to use the final param_df as it stands.
-    wbodies = nhd_network.extract_waterbodies(
-        param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
-    )
-
-    param_df["dt"] = dt
-    param_df = param_df.rename(columns=nnu.reverse_dict(cols))
-    param_df = param_df.astype("float32")
-
-    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    connections, wbodies, param_df = nnu.build_connections(supernetwork_parameters, dt)
 
     if verbose:
         print("supernetwork connections set complete")
