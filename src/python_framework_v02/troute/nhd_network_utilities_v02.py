@@ -2,7 +2,7 @@ import json
 import os
 
 
-def set_supernetwork_data(
+def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
     # TODO: consider managing path concatenation outside this function (and lose the os dependency)
@@ -78,7 +78,7 @@ def set_supernetwork_data(
             },
         }
     elif supernetwork == "Pocono_TEST2":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -121,7 +121,7 @@ def set_supernetwork_data(
     # }
 
     elif supernetwork == "LowerColorado_Conchos_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -166,7 +166,7 @@ def set_supernetwork_data(
         }
 
     elif supernetwork == "Brazos_LowerColorado_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -187,7 +187,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "Brazos_LowerColorado_Named_Streams":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -208,7 +208,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "CONUS_ge5":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -268,7 +268,7 @@ def set_supernetwork_data(
         # }
 
     elif supernetwork == "CONUS_Named_Streams":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -289,7 +289,7 @@ def set_supernetwork_data(
         return rv
 
     elif supernetwork == "CapeFear_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
@@ -310,7 +310,7 @@ def set_supernetwork_data(
         return rv
     
     elif supernetwork == "Florence_FULL_RES":
-        rv = set_supernetwork_data(
+        rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
         )
         rv.update(
