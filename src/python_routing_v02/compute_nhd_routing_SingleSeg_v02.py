@@ -468,6 +468,8 @@ def main():
         qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
         qlat_file_index_col = "feature_id"
         qlat_file_value_col = "q_lateral"
+        
+        # get wrf-simulated flows
 
     if verbose:
         print("creating supernetwork connections set")
