@@ -156,7 +156,7 @@ def _handle_args():
             "CONUS_Named_Streams",
             "CONUS_FULL_RES_v20",
             "CapeFear_FULL_RES",
-            "Florence_FULL_RES"
+            "Florence_FULL_RES",
         ],
         # TODO: accept multiple or a Path (argparse Action perhaps)
         # action='append',
@@ -472,12 +472,7 @@ def main():
         qlat_file_index_col = "feature_id"
         qlat_file_value_col = "q_lateral"
 
-    if verbose:
-        print("creating supernetwork connections set")
-    if showtiming:
-        start_time = time.time()
-
-    # STEP 1
+    # STEP 0.5: Obtain Supernetwork Parameters for test cases
     if not supernetwork_parameters:
         supernetwork_parameters = nnu.set_supernetwork_parameters(
             supernetwork=supernetwork,
@@ -486,6 +481,12 @@ def main():
             debuglevel=debuglevel,
         )
 
+    if verbose:
+        print("creating supernetwork connections set")
+    if showtiming:
+        start_time = time.time()
+
+    # STEP 1: Build basic network connections graph
     cols = supernetwork_parameters["columns"]
     param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
 
@@ -497,7 +498,9 @@ def main():
             supernetwork_parameters["mask_file_path"],
             layer_string=supernetwork_parameters["mask_layer_string"],
         )
-        param_df = param_df.filter(data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0)
+        param_df = param_df.filter(
+            data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
+        )
 
     param_df = param_df.sort_index()
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
@@ -507,18 +510,12 @@ def main():
         param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
     )
 
-    #     # initial conditions, assume to be zero
-    #     # TODO: Allow optional reading of initial conditions from WRF
-    #     q0 = pd.DataFrame(
-    #         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
-    #     )
-
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    # STEP 2
+    # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -563,8 +560,10 @@ def main():
         )
     else:
         # Set cold initial state
+        # assume to be zero
+        # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
-            0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+            0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
 
     if verbose:
@@ -609,12 +608,68 @@ def main():
         print("qlateral array complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-        start_time = time.time()
+
+    ################### Main Execution Loop across ordered networks
+    if showtiming:
+        main_start_time = time.time()
+    if verbose:
+        print(f"executing routing computation ...")
 
     if compute_method == "standard cython compute network":
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
+
+    results = compute_nhd_routing_v02(
+        reaches_bytw,
+        compute_func,
+        parallel_compute_method,
+        cpu_pool,
+        nts,
+        qts_subdivisions,
+        independent_networks,
+        param_df,
+        qlats,
+        q0,
+        assume_short_ts,
+    )
+
+    if (debuglevel <= -1) or csv_output_folder:
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
+            copy=False,
+        )
+
+        if csv_output_folder:
+            flowveldepth = flowveldepth.sort_index()
+            output_path = pathlib.Path(csv_output_folder).resolve()
+            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
+
+        if debuglevel <= -1:
+            print(flowveldepth)
+
+    if verbose:
+        print("ordered reach computation complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+
+def compute_nhd_routing_v02(
+    reaches_bytw,
+    compute_func,
+    parallel_compute_method,
+    cpu_pool,
+    nts,
+    qts_subdivisions,
+    independent_networks,
+    param_df,
+    qlats,
+    q0,
+    assume_short_ts,
+):
 
     if parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
@@ -666,28 +721,7 @@ def main():
                 )
             )
 
-    if (debuglevel <= -1) or csv_output_folder:
-        qvd_columns = pd.MultiIndex.from_product(
-            [range(nts), ["q", "v", "d"]]
-        ).to_flat_index()
-        flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
-            copy=False,
-        )
-
-        if csv_output_folder:
-            flowveldepth = flowveldepth.sort_index()
-            output_path = pathlib.Path(csv_output_folder).resolve()
-            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
-
-        if debuglevel <= -1:
-            print(flowveldepth)
-
-    if verbose:
-        print("ordered reach computation complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-
+    return results
 
 if __name__ == "__main__":
     main()
