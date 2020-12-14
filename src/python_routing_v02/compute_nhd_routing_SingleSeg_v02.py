@@ -506,9 +506,18 @@ def main():
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
+    # TODO: reorganize this so the wbodies object doesn't use the par-final param_df
+    # This could mean doing something different to get the final param_df,
+    # or changing the wbodies call to use the final param_df as it stands.
     wbodies = nhd_network.extract_waterbodies(
         param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
     )
+
+    param_df["dt"] = dt
+    param_df = param_df.rename(columns=nnu.reverse_dict(cols))
+    param_df = param_df.astype("float32")
+
+    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     if verbose:
         print("supernetwork connections set complete")
@@ -532,15 +541,6 @@ def main():
         print("reach organization complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
-    if showtiming:
-        start_time = time.time()
-
-    param_df["dt"] = dt
-    param_df = param_df.rename(columns=nnu.reverse_dict(cols))
-    param_df = param_df.astype("float32")
-
-    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
 
     # STEP 4: Handle Channel Initial States
     if showtiming:
@@ -722,6 +722,7 @@ def compute_nhd_routing_v02(
             )
 
     return results
+
 
 if __name__ == "__main__":
     main()
