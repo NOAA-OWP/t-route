@@ -285,6 +285,73 @@ def constant_qlats(index_dataset, nsteps, qlat):
     return ql
 
 
+def compute_nhd_routing_v02(
+    reaches_bytw,
+    compute_func,
+    parallel_compute_method,
+    cpu_pool,
+    nts,
+    qts_subdivisions,
+    independent_networks,
+    param_df,
+    qlats,
+    q0,
+    assume_short_ts,
+):
+
+    if parallel_compute_method == "by-network":
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            jobs = []
+            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                r = list(chain.from_iterable(reach_list))
+                param_df_sub = param_df.loc[
+                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
+                qlat_sub = qlats.loc[r].sort_index()
+                q0_sub = q0.loc[r].sort_index()
+                jobs.append(
+                    delayed(compute_func)(
+                        nts,
+                        qts_subdivisions,
+                        reach_list,
+                        independent_networks[tw],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        q0_sub.values,
+                        assume_short_ts,
+                    )
+                )
+            results = parallel(jobs)
+
+    else:  # Execute in serial
+        results = []
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            r = list(chain.from_iterable(reach_list))
+            param_df_sub = param_df.loc[
+                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+            ].sort_index()
+            qlat_sub = qlats.loc[r].sort_index()
+            q0_sub = q0.loc[r].sort_index()
+            results.append(
+                compute_func(
+                    nts,
+                    qts_subdivisions,
+                    reach_list,
+                    independent_networks[tw],
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
+                    qlat_sub.values,
+                    q0_sub.values,
+                    assume_short_ts,
+                )
+            )
+
+    return results
+
+
 def main():
     args = _handle_args()
 
@@ -655,73 +722,6 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
-
-def compute_nhd_routing_v02(
-    reaches_bytw,
-    compute_func,
-    parallel_compute_method,
-    cpu_pool,
-    nts,
-    qts_subdivisions,
-    independent_networks,
-    param_df,
-    qlats,
-    q0,
-    assume_short_ts,
-):
-
-    if parallel_compute_method == "by-network":
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
-            jobs = []
-            for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
-                param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-                ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                q0_sub = q0.loc[r].sort_index()
-                jobs.append(
-                    delayed(compute_func)(
-                        nts,
-                        qts_subdivisions,
-                        reach_list,
-                        independent_networks[tw],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
-                        qlat_sub.values,
-                        q0_sub.values,
-                        assume_short_ts,
-                    )
-                )
-            results = parallel(jobs)
-
-    else:  # Execute in serial
-        results = []
-        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            r = list(chain.from_iterable(reach_list))
-            param_df_sub = param_df.loc[
-                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-            ].sort_index()
-            qlat_sub = qlats.loc[r].sort_index()
-            q0_sub = q0.loc[r].sort_index()
-            results.append(
-                compute_func(
-                    nts,
-                    qts_subdivisions,
-                    reach_list,
-                    independent_networks[tw],
-                    param_df_sub.index.values,
-                    param_df_sub.columns.values,
-                    param_df_sub.values,
-                    qlat_sub.values,
-                    q0_sub.values,
-                    assume_short_ts,
-                )
-            )
-
-    return results
 
 
 if __name__ == "__main__":
