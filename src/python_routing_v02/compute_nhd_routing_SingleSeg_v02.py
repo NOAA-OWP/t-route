@@ -47,8 +47,30 @@ def _handle_args():
         action="store_true",
     )
     parser.add_argument(
+        "--qlat-dt",
+        "--qlateral-time-step",
+        help="Set the default qlateral timestep length",
+        dest="qdt",
+        default=3600,
+    )
+    parser.add_argument(
+        "--qN",
+        "--qts-subdivisions",
+        help="number of simulation timesteps per qlateral timestep",
+        dest="qts_subdivisions",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--dt",
+        "--simulation-time-step",
+        help="Set the default simulation timestep length",
+        dest="dt",
+        default=300,
+    )
+    parser.add_argument(
         "--nts",
-        "--number-of-qlateral-timesteps",
+        "--number-of-simulation-timesteps",
         help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
         dest="nts",
         default=144,
@@ -335,12 +357,12 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    param_df["dt"] = 300.0
+    param_df["dt"] = dt
     param_df = param_df.rename(columns=nnu.reverse_dict(cols))
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    
+
     # STEP 4: Handle Channel Initial States
     if showtiming:
         start_time = time.time()
@@ -386,9 +408,10 @@ def main():
         qlat_df = qlat_df[qlat_df.index.isin(connections.keys())]
         df_length = len(qlat_df.columns)
 
-        for x in range(df_length, 144):
-            qlat_df[str(x)] = 0
-            qlat_df = qlat_df.astype("float32")
+    # TODO: These three lines seem extraneous
+    #        for x in range(df_length, 144):
+    #            qlat_df[str(x)] = 0
+    #            qlat_df = qlat_df.astype("float32")
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
@@ -429,6 +452,7 @@ def main():
                 jobs.append(
                     delayed(compute_func)(
                         nts,
+                        qts_subdivisions,
                         reach_list,
                         independent_networks[tw],
                         param_df_sub.index.values,
@@ -453,6 +477,7 @@ def main():
             results.append(
                 compute_func(
                     nts,
+                    qts_subdivisions,
                     reach_list,
                     independent_networks[tw],
                     param_df_sub.index.values,
