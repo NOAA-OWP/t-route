@@ -475,7 +475,7 @@ def main():
         start_time = time.time()
 
     # STEP 1
-    network_data = nnu.set_supernetwork_data(
+    network_data = nnu.set_supernetwork_parameters(
         supernetwork=supernetwork,
         geo_input_folder=geo_input_folder,
         verbose=False,
