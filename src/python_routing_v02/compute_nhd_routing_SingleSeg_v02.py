@@ -77,6 +77,20 @@ def _handle_args():
         type=int,
     )
     parser.add_argument(
+        "--test",
+        "--run-pocono2-test-example",
+        help="Use the data values stored in the repository for a test of the Pocono network",
+        dest="run_pocono2_test",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--test-full-pocono",
+        "--run-pocono1-test-example",
+        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
+        dest="run_pocono1_test",
+        action="store_true",
+    )
+    parser.add_argument(
         "--sts",
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
@@ -120,15 +134,16 @@ def _handle_args():
         default=None,
     )
     parser.add_argument(
-        "--compute_method",
+        "--compute-method",
         help="Use the cython version of the compute_network code (enter additional flag options for other compute_network possibilities).",
         dest="compute_method",
         default="standard cython compute network",
     )
-    parser.add_argument(
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
         "-n",
         "--supernetwork",
-        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20",
+        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20)",
         choices=[
             "Pocono_TEST1",
             "Pocono_TEST2",
@@ -147,10 +162,45 @@ def _handle_args():
         dest="supernetwork",
         default="Pocono_TEST1",
     )
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+    )
     parser.add_argument(
-        "--wrf_hydro_channel_restart_file",
+        "--wrf-hydro-channel-restart-file",
         dest="wrf_hydro_channel_restart_file",
         help="provide a WRF-Hydro channel warm state file (may be the same as waterbody restart file)",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-ID-crosswalk-file",
+        dest="wrf_hydro_channel_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-ID-crosswalk-file-field-name",
+        dest="wrf_hydro_channel_ID_crosswalk_file_field_name",
+        help="Name of the column providing the channel segment IDs in the channel crosswalk file",
+        default="ID",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-upstream-flow-field-name",
+        dest="wrf_hydro_channel_restart_upstream_flow_field_name",
+        help="Name of the column providing the upstream flow at the beginning of the simulation.",
+        default="qlink1",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-downstream-flow-field-name",
+        dest="wrf_hydro_channel_restart_downstream_flow_field_name",
+        help="Name of the column providing the downstream flow at the beginning of the simulation.",
+        default="qlink2",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-depth-flow-field-name",
+        dest="wrf_hydro_channel_restart_depth_flow_field_name",
+        help="Name of the column providing the depth of flow at the beginning of the simulation.",
+        default="hlink",
     )
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
@@ -234,63 +284,188 @@ def constant_qlats(index_dataset, nsteps, qlat):
 
 
 def main():
-
     args = _handle_args()
 
-    nts = args.nts
-    debuglevel = -1 * args.debuglevel
-    verbose = args.verbose
-    showtiming = args.showtiming
-    supernetwork = args.supernetwork
-    break_network_at_waterbodies = args.break_network_at_waterbodies
-    csv_output_folder = args.csv_output_folder
-    assume_short_ts = args.assume_short_ts
-    # TODO: uncomment custominput file
-    # custom_input_file = args.custom_input_file
-    test_folder = pathlib.Path(root, "test")
-    geo_input_folder = test_folder.joinpath("input", "geo")
+    custom_input_file = args.custom_input_file
 
-    # TODO: uncomment custominput file
-    # if custom_input_file:
-    #     (
-    #         supernetwork_parameters,
-    #         waterbody_parameters,
-    #         forcing_parameters,
-    #         restart_parameters,
-    #         output_parameters,
-    #         run_parameters,
-    #     ) = nhd_io.read_custom_input(custom_input_file)
+    if custom_input_file:
+        (
+            supernetwork_parameters,
+            waterbody_parameters,
+            forcing_parameters,
+            restart_parameters,
+            output_parameters,
+            run_parameters,
+        ) = nio.read_custom_input(custom_input_file)
+        # TODO: uncomment custominput file
+        #     qlat_const = forcing_parameters.get("qlat_const", None)
+        #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+        #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+        #     qlat_file_pattern_filter = forcing_parameters.get(
+        #         "qlat_file_pattern_filter", None
+        #     )
+        #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
+        #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+        # else:
+        # TODO: uncomment custominput file
+    else:
+        dt = args.dt
+        nts = args.nts
+        qts_subdivisions = args.qts_subdivisions
+        debuglevel = -1 * args.debuglevel
+        verbose = args.verbose
+        showtiming = args.showtiming
+        supernetwork = args.supernetwork
+        break_network_at_waterbodies = args.break_network_at_waterbodies
+        csv_output_folder = args.csv_output_folder
+        assume_short_ts = args.assume_short_ts
+        test_folder = pathlib.Path(root, "test")
+        geo_input_folder = test_folder.joinpath("input", "geo")
 
-    #     qlat_const = forcing_parameters.get("qlat_const", None)
-    #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-    #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    #     qlat_file_pattern_filter = forcing_parameters.get(
-    #         "qlat_file_pattern_filter", None
-    #     )
-    #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-    #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
-    # else:
-    wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
-    # TODO: uncomment custominput file
-    qlat_const = float(args.qlat_const)
-    qlat_input_folder = args.qlat_input_folder
-    qlat_input_file = args.qlat_input_file
-    qlat_file_pattern_filter = args.qlat_file_pattern_filter
-    qlat_file_index_col = args.qlat_file_index_col
-    qlat_file_value_col = args.qlat_file_value_col
-    # print(forcing_parameters,qlat_const)
-    # TODO: Make these commandline args
-    """##NHD Subset (Brazos/Lower Colorado)"""
-    # supernetwork = 'Brazos_LowerColorado_Named_Streams'
-    # supernetwork = 'Brazos_LowerColorado_ge5'
-    # supernetwork = 'Pocono_TEST1'
-    """##NHD CONUS order 5 and greater"""
-    # supernetwork = 'CONUS_ge5'
-    """These are large -- be careful"""
-    # supernetwork = 'Mainstems_CONUS'
-    # supernetwork = 'CONUS_FULL_RES_v20'
-    # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
-    # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
+        parallel_compute_method = args.parallel_compute_method
+
+        cpu_pool = args.cpu_pool
+        compute_method = args.compute_method
+        wrf_hydro_channel_restart_file = args.wrf_hydro_channel_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = args.wrf_hydro_channel_ID_crosswalk_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = (
+            args.wrf_hydro_channel_ID_crosswalk_file_field_name
+        )
+        wrf_hydro_channel_restart_upstream_flow_field_name = (
+            args.wrf_hydro_channel_restart_upstream_flow_field_name
+        )
+        wrf_hydro_channel_restart_downstream_flow_field_name = (
+            args.wrf_hydro_channel_restart_downstream_flow_field_name
+        )
+        wrf_hydro_channel_restart_depth_flow_field_name = (
+            args.wrf_hydro_channel_restart_depth_flow_field_name
+        )
+        qlat_const = float(args.qlat_const)
+        qlat_input_folder = args.qlat_input_folder
+        qlat_input_file = args.qlat_input_file
+        qlat_file_pattern_filter = args.qlat_file_pattern_filter
+        qlat_file_index_col = args.qlat_file_index_col
+        qlat_file_value_col = args.qlat_file_value_col
+        # print(forcing_parameters,qlat_const)
+        # TODO: Make these commandline args
+        """##NHD Subset (Brazos/Lower Colorado)"""
+        # supernetwork = 'Brazos_LowerColorado_Named_Streams'
+        # supernetwork = 'Brazos_LowerColorado_ge5'
+        # supernetwork = 'Pocono_TEST1'
+        """##NHD CONUS order 5 and greater"""
+        # supernetwork = 'CONUS_ge5'
+        """These are large -- be careful"""
+        # supernetwork = 'Mainstems_CONUS'
+        # supernetwork = 'CONUS_FULL_RES_v20'
+        # supernetwork = 'CONUS_Named_Streams' #create a subset of the full resolution by reading the GNIS field
+        # supernetwork = 'CONUS_Named_combined' #process the Named streams through the Full-Res paths to join the many hanging reaches
+
+    run_pocono2_test = args.run_pocono2_test
+    run_pocono1_test = args.run_pocono1_test
+
+    if run_pocono2_test:
+        if verbose:
+            print("running test case for Pocono_TEST2 domain")
+        # Overwrite the following test defaults
+        supernetwork = "Pocono_TEST2"
+        break_network_at_waterbodies = False
+        qts_subdivisions = 1  # change qts_subdivisions = 1 as  default
+        dt = 300 / qts_subdivisions
+        nts = 144 * qts_subdivisions
+        csv_output = {"csv_output_folder": os.path.join(root, "test", "output", "text")}
+        nc_output_folder = os.path.join(root, "test", "output", "text")
+        # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
+        qlat_input_file = os.path.join(
+            root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
+        )
+
+    elif run_pocono1_test:
+        # NOTE: The test case for the Pocono basin was derived from this
+        # resource on HydroShare, developed by aaraney and sourced from the
+        # wrf_hydro_nwm_public repository on GitHub
+        # see: https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
+        # By downloading aaraney's docker job scheduler repo from GitHub, one can
+        # execute the WRF-Hydro model that generated the test results
+        # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
+        if verbose:
+            print("running test case for Pocono_TEST1 domain")
+        # Overwrite the following test defaults
+
+        NWM_test_path = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
+        )
+        # lakeparm_file = os.path.join(
+        #     NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
+        # )
+        routelink_file = os.path.join(
+            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
+        )
+        time_string = "2017-12-31_06-00_DOMAIN1"
+        wrf_hydro_restart_file = os.path.join(
+            NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
+        )
+        supernetwork_parameters = {
+            "title_string": "Custom Input Example (using Pocono Test Example datafile)",
+            "geo_file_path": routelink_file,
+            "cols_as_text": False,
+            "key_col": 16,  # "link",
+            "downstream_col": 22,  # "to",
+            "length_col": 3,  # "Length",
+            "manningn_col": 18,  # "n",
+            "manningncc_col": 19,  # "nCC",
+            "slope_col": 8,  # "So",
+            "bottomwidth_col": 0,  # "BtmWdth",
+            "topwidth_col": 9,  # "TopWdth",
+            "topwidthcc_col": 10,  # "TopWdthCC",
+            "waterbody_col": 6,  # "NHDWaterbodyComID",
+            "waterbody_null_code": -9999,
+            "MusK_col": 4,  # "MusK",
+            "MusX_col": 5,  # "MusX",
+            "ChSlp_col": 1,  # "ChSlp",
+            "terminal_code": 0,
+            "driver_string": "NetCDF",
+            "layer_string": 0,
+        }
+        # waterbody_parameters = {
+        #     "level_pool": {
+        #         "level_pool_waterbody_parameter_file_path": lakeparm_file,
+        #         "level_pool_waterbody_id": "lake_id",
+        #         "level_pool_waterbody_area": "LkArea",
+        #         "level_pool_weir_elevation": "WeirE",
+        #         "level_pool_waterbody_max_elevation": "LkMxE",
+        #         "level_pool_outfall_weir_coefficient": "WeirC",
+        #         "level_pool_outfall_weir_length": "WeirL",
+        #         "level_pool_overall_dam_length": "DamL",
+        #         "level_pool_orifice_elevation": "OrificeE",
+        #         "level_pool_orifice_coefficient": "OrificeC",
+        #         "level_pool_orifice_area": "OrificeA",
+        #     }
+        # }
+        # break_network_at_waterbodies = True
+        qts_subdivisions = 12
+        dt = 3600 / qts_subdivisions
+        nts = 24 * qts_subdivisions
+        csv_output = None
+        nc_output_folder = None
+        # build a time string to specify input date
+        wrf_hydro_channel_restart_file = wrf_hydro_restart_file
+        wrf_hydro_channel_ID_crosswalk_file = routelink_file
+        wrf_hydro_channel_ID_crosswalk_file_field_name = "link"
+        wrf_hydro_channel_restart_upstream_flow_field_name = "qlink1"
+        wrf_hydro_channel_restart_downstream_flow_field_name = "qlink2"
+        wrf_hydro_channel_restart_depth_flow_field_name = "hlink"
+        # wrf_hydro_waterbody_restart_file = wrf_hydro_restart_file
+        # wrf_hydro_waterbody_ID_crosswalk_file = lakeparm_file
+        # wrf_hydro_waterbody_ID_crosswalk_file_field_name = "lake_id"
+        # wrf_hydro_waterbody_crosswalk_filter_file = routelink_file
+        # wrf_hydro_waterbody_crosswalk_filter_file_field_name = "NHDWaterbodyComID"
+        # wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
+        qlat_input_folder = os.path.join(
+            root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+        )
+        qlat_file_pattern_filter = "/*.CHRTOUT_DOMAIN1"
+        qlat_file_index_col = "feature_id"
+        qlat_file_value_col = "q_lateral"
 
     if verbose:
         print("creating supernetwork connections set")
@@ -299,7 +474,7 @@ def main():
 
     # STEP 1
     network_data = nnu.set_supernetwork_data(
-        supernetwork=args.supernetwork,
+        supernetwork=supernetwork,
         geo_input_folder=geo_input_folder,
         verbose=False,
         debuglevel=debuglevel,
@@ -325,11 +500,11 @@ def main():
         param_df, cols["waterbody"], network_data["waterbody_null_code"]
     )
 
-#     # initial conditions, assume to be zero
-#     # TODO: Allow optional reading of initial conditions from WRF
-#     q0 = pd.DataFrame(
-#         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
-#     )
+    #     # initial conditions, assume to be zero
+    #     # TODO: Allow optional reading of initial conditions from WRF
+    #     q0 = pd.DataFrame(
+    #         0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32"
+    #     )
 
     if verbose:
         print("supernetwork connections set complete")
@@ -428,11 +603,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
-
-    parallel_compute_method = args.parallel_compute_method
-
-    cpu_pool = args.cpu_pool
-    compute_method = args.compute_method
 
     if compute_method == "standard cython compute network":
         compute_func = mc_reach.compute_network
