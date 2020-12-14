@@ -475,31 +475,31 @@ def main():
         start_time = time.time()
 
     # STEP 1
-    network_data = nnu.set_supernetwork_parameters(
+    supernetwork_parameters = nnu.set_supernetwork_parameters(
         supernetwork=supernetwork,
         geo_input_folder=geo_input_folder,
         verbose=False,
         debuglevel=debuglevel,
     )
 
-    cols = network_data["columns"]
-    param_df = nhd_io.read(network_data["geo_file_path"])
+    cols = supernetwork_parameters["columns"]
+    param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
     param_df = param_df[list(cols.values())]
     param_df = param_df.set_index(cols["key"])
 
-    if "mask_file_path" in network_data:
+    if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
-            network_data["mask_file_path"],
-            layer_string=network_data["mask_layer_string"],
+            supernetwork_parameters["mask_file_path"],
+            layer_string=supernetwork_parameters["mask_layer_string"],
         )
-        param_df = param_df.filter(data_mask.iloc[:, network_data["mask_key"]], axis=0)
+        param_df = param_df.filter(data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0)
 
     param_df = param_df.sort_index()
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
     wbodies = nhd_network.extract_waterbodies(
-        param_df, cols["waterbody"], network_data["waterbody_null_code"]
+        param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
     )
 
     #     # initial conditions, assume to be zero
