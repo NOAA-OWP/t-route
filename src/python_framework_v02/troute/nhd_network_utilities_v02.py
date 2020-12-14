@@ -1,6 +1,8 @@
 import json
 import os
 
+import troute.nhd_io as nhd_io
+import troute.nhd_network as nhd_network
 
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
@@ -392,3 +394,39 @@ def reverse_dict(d):
     Values must be hashable!
     """
     return {v: k for k, v in d.items()}
+
+def build_connections(supernetwork_parameters, dt):
+    
+    cols = supernetwork_parameters["columns"]
+    param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
+
+    param_df = param_df[list(cols.values())]
+    param_df = param_df.set_index(cols["key"])
+
+    if "mask_file_path" in supernetwork_parameters:
+        data_mask = nhd_io.read_mask(
+            supernetwork_parameters["mask_file_path"],
+            layer_string=supernetwork_parameters["mask_layer_string"],
+        )
+        param_df = param_df.filter(
+            data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
+        )
+
+    param_df = param_df.sort_index()
+    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
+
+    connections = nhd_network.extract_connections(param_df, cols["downstream"])
+    # TODO: reorganize this so the wbodies object doesn't use the par-final param_df
+    # This could mean doing something different to get the final param_df,
+    # or changing the wbodies call to use the final param_df as it stands.
+    wbodies = nhd_network.extract_waterbodies(
+        param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
+    )
+
+    param_df["dt"] = dt
+    param_df = param_df.rename(columns=reverse_dict(cols))
+    param_df = param_df.astype("float32")
+
+    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
+    return connections, wbodies, param_df
+
