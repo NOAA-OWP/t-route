@@ -596,31 +596,7 @@ def main():
     if verbose:
         print("creating qlateral array ...")
 
-    if qlat_input_folder:
-        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
-        qlat_df = nhd_io.get_ql_from_wrf_hydro(
-            qlat_files=qlat_files,
-            index_col=qlat_file_index_col,
-            value_col=qlat_file_value_col,
-        )
-
-        qlat_df = qlat_df[qlat_df.index.isin(connections.keys())]
-        df_length = len(qlat_df.columns)
-
-    # TODO: These three lines seem extraneous
-    #        for x in range(df_length, 144):
-    #            qlat_df[str(x)] = 0
-    #            qlat_df = qlat_df.astype("float32")
-
-    elif qlat_input_file:
-        qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
-
-    else:
-        qlat_df = pd.DataFrame(
-            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32",
-        )
-
-    qlats = qlat_df
+    qlats = nnu.build_qlateral_array(forcing_parameters, connections.keys())
 
     if verbose:
         print("qlateral array complete")
