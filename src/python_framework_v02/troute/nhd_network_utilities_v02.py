@@ -1,6 +1,7 @@
 import json
 import os
 
+from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 
@@ -429,4 +430,16 @@ def build_connections(supernetwork_parameters, dt):
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, wbodies, param_df
+
+def organize_independent_networks(connections):
+
+    rconn = nhd_network.reverse_network(connections)
+    independent_networks = nhd_network.reachable_network(rconn)
+    reaches_bytw = {}
+    for tw, net in independent_networks.items():
+        path_func = partial(nhd_network.split_at_junction, net)
+        reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
+
+    return independent_networks, reaches_bytw, rconn
+
 
