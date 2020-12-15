@@ -567,12 +567,9 @@ def main():
     if verbose:
         print("organizing connections into reaches ...")
 
-    rconn = nhd_network.reverse_network(connections)
-    independent_networks = nhd_network.reachable_network(rconn)
-    reaches_bytw = {}
-    for tw, net in independent_networks.items():
-        path_func = partial(nhd_network.split_at_junction, net)
-        reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
+    independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
+        connections
+    )
 
     if verbose:
         print("reach organization complete")
