@@ -470,7 +470,8 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connection_keys):
+def build_qlateral_array(forcing_parameters, connections_keys, nts):
+    # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -501,8 +502,9 @@ def build_qlateral_array(forcing_parameters, connection_keys):
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
 
     else:
+        qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32",
+            qlat_const, index=connections_keys, columns=range(nts), dtype="float32",
         )
 
     return qlat_df
