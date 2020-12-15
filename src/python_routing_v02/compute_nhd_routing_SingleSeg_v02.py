@@ -25,6 +25,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
+import xarray as xr
 
 
 def _handle_args():
@@ -390,9 +391,12 @@ def main():
         # execute the WRF-Hydro model that generated the test results
         # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
         if verbose:
-            print("running test case for Pocono_TEST1 domain")
+            print("running test case for Pocono_TEST1 domain") 
         # Overwrite the following test defaults
 
+        supernetwork = "Pocono_TEST2"
+        assume_short_ts = True
+        
         NWM_test_path = os.path.join(
             root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
         )
@@ -444,9 +448,6 @@ def main():
         #     }
         # }
         # break_network_at_waterbodies = True
-        qts_subdivisions = 12
-        dt = 3600 / qts_subdivisions
-        nts = 24 * qts_subdivisions
         csv_output = None
         nc_output_folder = None
         # build a time string to specify input date
@@ -469,7 +470,35 @@ def main():
         qlat_file_index_col = "feature_id"
         qlat_file_value_col = "q_lateral"
         
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # time domain - develop from temporal extent of qlat data
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter, recursive=True)
+        ql = nhd_io.get_ql_from_wrf_hydro(qlat_files,qlat_file_index_col)
+        
+        wrf_time = ql.columns.astype("datetime64[ns]")
+        dt_wrf = (wrf_time[1] - wrf_time[0])
+        sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+        
+        dt = 300.0  # routing simulation timestep (seconds) 
+        dt_routing = pd.Timedelta(str(dt) + 'seconds')
+        nts = round(sim_duration / dt_routing)
+        qts_subdivisions = dt_wrf/dt_routing
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # get wrf-simulated flows
+        flow_wrf = nhd_io.get_ql_from_wrf_hydro(qlat_files,qlat_file_index_col, "streamflow")
+#         li = []
+#         for filename in qlat_files:
+#             with xr.open_dataset(filename) as ds:
+#                 df1 = ds.to_dataframe()
+#             li.append(df1)
+
+#         frame = pd.concat(li, axis=0, ignore_index=False)
+#         mod = frame.reset_index()
+#         flow_wrf = mod.pivot(index=qlat_file_index_col, columns="time", values="streamflow")
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
 
     if verbose:
         print("creating supernetwork connections set")
@@ -684,6 +713,39 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+        
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if verbose and run_pocono1_test:
+        print("parity check against WRF Hydro data")
+    
+        # create a multi-index DataFrame with flow, depth, and velocity simulations
+        fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+        )
+        flowveldepth = flowveldepth.sort_index()
+
+        flows = flowveldepth.loc[:, (slice(None), "q")]
+        flows = flows.T.reset_index(level = [0,1])
+        flows.rename(columns = {"level_0": "Timestep", "level_1": "Parameter"}, inplace = True)
+        flows['Time (d)'] = ((flows.Timestep + 1) * dt)/(24*60*60)
+        flows = flows.set_index('Time (d)')
+        
+        
+        # specify calendar times for each simulation
+        time_routing = pd.period_range((wrf_time[0]-dt_wrf+dt_routing), periods=nts, freq=dt_routing).astype("datetime64[ns]")
+        time_wrf = flow_wrf.columns.values
+
+        compare_node = 4186169
+        
+        # print flow values at common timesteps
+        # create table of flow results at common timesteps
+        trt = pd.DataFrame(flows.loc[:,compare_node ].values, index = time_routing, columns = ["flow, t-route (cms)"])
+        wrf = pd.DataFrame(flow_wrf.loc[compare_node ,:].values, index = time_wrf, columns = ["flow, wrf (cms)"])
+
+        compare = pd.concat([wrf, trt], axis=1, sort=False, join = 'inner')
+        
+        print(compare)
 
 
 if __name__ == "__main__":
