@@ -6,6 +6,7 @@ from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 
+
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
 ):
@@ -300,10 +301,7 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Cape Fear River Basin, NC",  # overwrites other title...
                 "mask_file_path": os.path.join(
-                    geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "CapeFear_FULL_RES.txt",
+                    geo_input_folder, "Channels", "masks", "CapeFear_FULL_RES.txt",
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -312,7 +310,7 @@ def set_supernetwork_parameters(
             }
         )
         return rv
-    
+
     elif supernetwork == "Florence_FULL_RES":
         rv = set_supernetwork_parameters(
             supernetwork="CONUS_FULL_RES_v20", geo_input_folder=geo_input_folder
@@ -321,10 +319,7 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Hurricane Florence Domain, near Durham NC",  # overwrites other title...
                 "mask_file_path": os.path.join(
-                    geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "Florence_FULL_RES.txt",
+                    geo_input_folder, "Channels", "masks", "Florence_FULL_RES.txt",
                 ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -333,7 +328,7 @@ def set_supernetwork_parameters(
             }
         )
         return rv
-    
+
     elif supernetwork == "CONUS_FULL_RES_v20":
 
         ROUTELINK = "RouteLink_NHDPLUS"
@@ -397,9 +392,10 @@ def reverse_dict(d):
     """
     return {v: k for k, v in d.items()}
 
+
 def build_connections(supernetwork_parameters, dt):
     # TODO: Remove the dependence on dt in this function
-    
+
     cols = supernetwork_parameters["columns"]
     param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
 
@@ -433,6 +429,7 @@ def build_connections(supernetwork_parameters, dt):
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, wbodies, param_df
 
+
 def organize_independent_networks(connections):
 
     rconn = nhd_network.reverse_network(connections)
@@ -447,7 +444,9 @@ def organize_independent_networks(connections):
 
 def build_channel_initial_state(restart_parameters, channel_index=None):
 
-    wrf_hydro_channel_restart_file = restart_parameters.get("wrf_hydro_channel_restart_file",None)
+    wrf_hydro_channel_restart_file = restart_parameters.get(
+        "wrf_hydro_channel_restart_file", None
+    )
 
     if wrf_hydro_channel_restart_file:
 
@@ -475,9 +474,13 @@ def build_qlateral_array(forcing_parameters, connection_keys):
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
     if qlat_input_folder:
-        qlat_file_pattern_filter = forcing_parameters.get("qlat_file_pattern_filter","*CHRT_OUT*")
-        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col","feature_id")
-        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col","q_lateral")
+        qlat_file_pattern_filter = forcing_parameters.get(
+            "qlat_file_pattern_filter", "*CHRT_OUT*"
+        )
+        qlat_file_index_col = forcing_parameters.get(
+            "qlat_file_index_col", "feature_id"
+        )
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro(
             qlat_files=qlat_files,
@@ -502,4 +505,3 @@ def build_qlateral_array(forcing_parameters, connection_keys):
         )
 
     return qlat_df
-

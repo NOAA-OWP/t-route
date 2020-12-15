@@ -238,6 +238,7 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
 
     return path_tuples
 
+
 def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
     """
     Append data values from a set of tuples of form (key, data) 
@@ -256,7 +257,8 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
         load_dict[t[key_idx]].append(t[val_idx])
 
     return load_dict
-    
+
+
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
     Decompose N into a list of simple segments.
