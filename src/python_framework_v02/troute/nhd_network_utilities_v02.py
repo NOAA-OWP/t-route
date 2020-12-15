@@ -466,7 +466,7 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
             0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
 
-        return q0
+    return q0
 
 
 def build_qlateral_array(forcing_parameters, connection_keys):
