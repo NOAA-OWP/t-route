@@ -470,3 +470,36 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
         return q0
 
 
+def build_qlateral_array(forcing_parameters, connection_keys):
+
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+    if qlat_input_folder:
+        qlat_file_pattern_filter = forcing_parameters.get("qlat_file_pattern_filter","*CHRT_OUT*")
+        qlat_file_index_col = forcing_parameters.get("qlat_file_index_col","feature_id")
+        qlat_file_value_col = forcing_parameters.get("qlat_file_value_col","q_lateral")
+        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        qlat_df = nhd_io.get_ql_from_wrf_hydro(
+            qlat_files=qlat_files,
+            index_col=qlat_file_index_col,
+            value_col=qlat_file_value_col,
+        )
+
+        qlat_df = qlat_df[qlat_df.index.isin(connections_keys)]
+
+    # TODO: These four lines seem extraneous
+    #    df_length = len(qlat_df.columns)
+    #    for x in range(df_length, 144):
+    #        qlat_df[str(x)] = 0
+    #        qlat_df = qlat_df.astype("float32")
+
+    elif qlat_input_file:
+        qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
+
+    else:
+        qlat_df = pd.DataFrame(
+            qlat_const, index=connections.keys(), columns=range(nts), dtype="float32",
+        )
+
+    return qlat_df
+
