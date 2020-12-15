@@ -397,6 +397,7 @@ def reverse_dict(d):
     return {v: k for k, v in d.items()}
 
 def build_connections(supernetwork_parameters, dt):
+    # TODO: Remove the dependence on dt in this function
     
     cols = supernetwork_parameters["columns"]
     param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
