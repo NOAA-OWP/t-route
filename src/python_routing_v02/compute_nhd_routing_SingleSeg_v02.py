@@ -442,7 +442,7 @@ def _input_handler():
                 NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
             )
             time_string = "2017-12-31_06-00_DOMAIN1"
-            restart_parameters["wrf_hydro_restart_file"] = os.path.join(
+            wrf_hydro_restart_file = os.path.join(
                 NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
             )
             supernetwork_parameters = {
@@ -484,15 +484,13 @@ def _input_handler():
             #     }
             # }
             # break_network_at_waterbodies = True
-            run_parameters["qts_subdivisions"] = 12
+            run_parameters["qts_subdivisions"] = qts_subdivisions = 12
             run_parameters["dt"] = 3600 / qts_subdivisions
             run_parameters["nts"] = 24 * qts_subdivisions
             output_parameters["csv_output"] = None
             output_parameters["nc_output_folder"] = None
             # build a time string to specify input date
-            restart_parameters[
-                "wrf_hydro_channel_restart_file"
-            ] = wrf_hydro_restart_file
+            restart_parameters["wrf_hydro_channel_restart_file"] = wrf_hydro_restart_file
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"] = routelink_file
             restart_parameters[
                 "wrf_hydro_channel_ID_crosswalk_file_field_name"
@@ -562,12 +560,13 @@ def _input_handler():
             supernetwork = args.supernetwork
 
         # STEP 0.5: Obtain Supernetwork Parameters for test cases
-        supernetwork_parameters = nnu.set_supernetwork_parameters(
-            supernetwork=supernetwork,
-            geo_input_folder=geo_input_folder,
-            verbose=False,
-            debuglevel=debuglevel,
-        )
+        if not supernetwork_parameters:
+            supernetwork_parameters = nnu.set_supernetwork_parameters(
+                supernetwork=supernetwork,
+                geo_input_folder=geo_input_folder,
+                verbose=False,
+                debuglevel=debuglevel,
+            )
 
     return (
         supernetwork_parameters,
@@ -644,7 +643,7 @@ def main():
     if verbose:
         print("creating qlateral array ...")
 
-    qlats = nnu.build_qlateral_array(forcing_parameters, connections.keys())
+    qlats = nnu.build_qlateral_array(forcing_parameters, connections.keys(), nts)
 
     if verbose:
         print("qlateral array complete")
