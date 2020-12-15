@@ -6,6 +6,7 @@ import geopandas as gpd
 import json
 import yaml
 
+
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
@@ -61,6 +62,7 @@ def read_custom_input(custom_input_file):
         output_parameters,
         run_parameters,
     )
+
 
 def replace_downstreams(data, downstream_col, terminal_code):
     ds0_mask = data[downstream_col] == terminal_code
@@ -219,8 +221,8 @@ def get_stream_restart_from_wrf_hydro(
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
 
     q_initial_states = qdf2
-    
-    q_initial_states = q_initial_states.drop(columns = "index")
+
+    q_initial_states = q_initial_states.drop(columns="index")
 
     return q_initial_states
 
