@@ -1,6 +1,7 @@
 import json
 import os
 
+import pandas as pd
 from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
@@ -442,5 +443,30 @@ def organize_independent_networks(connections):
         reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     return independent_networks, reaches_bytw, rconn
+
+
+def build_channel_initial_state(restart_parameters, channel_index=None):
+
+    wrf_hydro_channel_restart_file = restart_parameters.get("wrf_hydro_channel_restart_file",None)
+
+    if wrf_hydro_channel_restart_file:
+
+        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
+            restart_parameters["wrf_hydro_channel_restart_file"],
+            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+            restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
+            restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"],
+            restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"],
+            restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"],
+        )
+    else:
+        # Set cold initial state
+        # assume to be zero
+        # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+        q0 = pd.DataFrame(
+            0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+        )
+
+        return q0
 
 

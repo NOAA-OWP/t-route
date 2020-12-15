@@ -582,23 +582,7 @@ def main():
     if verbose:
         print("setting channel initial states ...")
 
-    if wrf_hydro_channel_restart_file:
-
-        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
-            wrf_hydro_channel_restart_file,
-            wrf_hydro_channel_ID_crosswalk_file,
-            wrf_hydro_channel_ID_crosswalk_file_field_name,
-            wrf_hydro_channel_restart_upstream_flow_field_name,
-            wrf_hydro_channel_restart_downstream_flow_field_name,
-            wrf_hydro_channel_restart_depth_flow_field_name,
-        )
-    else:
-        # Set cold initial state
-        # assume to be zero
-        # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
-        q0 = pd.DataFrame(
-            0, index=param_df.index, columns=["qu0", "qd0", "h0"], dtype="float32",
-        )
+    q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
 
     if verbose:
         print("channel initial states complete")
