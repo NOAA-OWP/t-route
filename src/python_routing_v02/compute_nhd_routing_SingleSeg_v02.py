@@ -372,18 +372,8 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nio.read_custom_input(custom_input_file)
-        # TODO: uncomment custominput file
-        #     qlat_const = forcing_parameters.get("qlat_const", None)
-        #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-        #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-        #     qlat_file_pattern_filter = forcing_parameters.get(
-        #         "qlat_file_pattern_filter", None
-        #     )
-        #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-        #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
-        # else:
-        # TODO: uncomment custominput file
+        ) = nhd_io.read_custom_input(custom_input_file)
+        run_parameters["debuglevel"] *= -1
 
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
