@@ -76,20 +76,15 @@ def _handle_args():
         default=144,
         type=int,
     )
+    
+    # change this so after --test, the user enters a test choice
     parser.add_argument(
         "--test",
-        "--run-pocono2-test-example",
-        help="Use the data values stored in the repository for a test of the Pocono network",
-        dest="run_pocono2_test",
-        action="store_true",
+        help = "Select a test case, routing results will be compared against WRF hydro for parity",
+        choices=["pocono1"],
+        dest = "test_case"
     )
-    parser.add_argument(
-        "--test-full-pocono",
-        "--run-pocono1-test-example",
-        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
-        dest="run_pocono1_test",
-        action="store_true",
-    )
+    
     parser.add_argument(
         "--sts",
         "--assume-short-ts",
@@ -272,6 +267,7 @@ import troute.nhd_network_utilities_v02 as nnu
 import mc_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
+import build_tests
 
 
 def writetoFile(file, writeString):
@@ -355,7 +351,7 @@ def compute_nhd_routing_v02(
 def _input_handler():
 
     args = _handle_args()
-
+    
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
     waterbody_parameters = {}
@@ -363,6 +359,7 @@ def _input_handler():
     restart_parameters = {}
     output_parameters = {}
     run_parameters = {}
+    parity_parameters = {}
 
     if custom_input_file:
         (
@@ -372,6 +369,7 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
+            parity_parameters
         ) = nhd_io.read_custom_input(custom_input_file)
         run_parameters["debuglevel"] *= -1
 
@@ -380,133 +378,34 @@ def _input_handler():
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
-
+        
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
 
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
-
-        run_pocono2_test = args.run_pocono2_test
-        run_pocono1_test = args.run_pocono1_test
-
-        if run_pocono2_test:
-            if verbose:
-                print("running test case for Pocono_TEST2 domain")
-            # Overwrite the following test defaults
-            supernetwork = "Pocono_TEST2"
-            waterbody_parameters["break_network_at_waterbodies"] = False
-            run_parameters["qts_subdivisions"] = qts_subdivisions = 1
-            run_parameters["dt"] = 300 / qts_subdivisions
-            run_parameters["nts"] = 144 * qts_subdivisions
-            output_parameters["csv_output"] = {
-                "csv_output_folder": os.path.join(root, "test", "output", "text")
-            }
-            output_parameters["nc_output_folder"] = os.path.join(
-                root, "test", "output", "text"
-            )
-            # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
-            forcing_parameters["qlat_input_file"] = os.path.join(
-                root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
-            )
-
-        elif run_pocono1_test:
-            # NOTE: The test case for the Pocono basin was derived from this
-            # resource on HydroShare, developed by aaraney and sourced from the
-            # wrf_hydro_nwm_public repository on GitHub
-            # see: https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
-            # By downloading aaraney's docker job scheduler repo from GitHub, one can
-            # execute the WRF-Hydro model that generated the test results
-            # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
-            if verbose:
-                print("running test case for Pocono_TEST1 domain")
-            # Overwrite the following test defaults
-
-            NWM_test_path = os.path.join(
-                root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
-            )
-            # lakeparm_file = os.path.join(
-            #     NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
-            # )
-            routelink_file = os.path.join(
-                NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
-            )
-            time_string = "2017-12-31_06-00_DOMAIN1"
-            wrf_hydro_restart_file = os.path.join(
-                NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
-            )
-            supernetwork_parameters = {
-                "title_string": "Custom Input Example (using Pocono Test Example datafile)",
-                "geo_file_path": routelink_file,
-                "columns": {
-                    "key": "link",
-                    "downstream": "to",
-                    "dx": "Length",
-                    "n": "n",  # TODO: rename to `manningn`
-                    "ncc": "nCC",  # TODO: rename to `mannningncc`
-                    "s0": "So",  # TODO: rename to `bedslope`
-                    "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
-                    "waterbody": "NHDWaterbodyComID",
-                    "tw": "TopWdth",  # TODO: rename to `topwidth`
-                    "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
-                    "musk": "MusK",
-                    "musx": "MusX",
-                    "cs": "ChSlp",  # TODO: rename to `sideslope`
-                },
-                "waterbody_null_code": -9999,
-                "terminal_code": 0,
-                "driver_string": "NetCDF",
-                "layer_string": 0,
-            }
-            # waterbody_parameters = {
-            #     "level_pool": {
-            #         "level_pool_waterbody_parameter_file_path": lakeparm_file,
-            #         "level_pool_waterbody_id": "lake_id",
-            #         "level_pool_waterbody_area": "LkArea",
-            #         "level_pool_weir_elevation": "WeirE",
-            #         "level_pool_waterbody_max_elevation": "LkMxE",
-            #         "level_pool_outfall_weir_coefficient": "WeirC",
-            #         "level_pool_outfall_weir_length": "WeirL",
-            #         "level_pool_overall_dam_length": "DamL",
-            #         "level_pool_orifice_elevation": "OrificeE",
-            #         "level_pool_orifice_coefficient": "OrificeC",
-            #         "level_pool_orifice_area": "OrificeA",
-            #     }
-            # }
-            # break_network_at_waterbodies = True
-            run_parameters["qts_subdivisions"] = qts_subdivisions = 12
-            run_parameters["dt"] = 3600 / qts_subdivisions
-            run_parameters["nts"] = 24 * qts_subdivisions
-            output_parameters["csv_output"] = None
-            output_parameters["nc_output_folder"] = None
-            # build a time string to specify input date
-            restart_parameters["wrf_hydro_channel_restart_file"] = wrf_hydro_restart_file
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"] = routelink_file
-            restart_parameters[
-                "wrf_hydro_channel_ID_crosswalk_file_field_name"
-            ] = "link"
-            restart_parameters[
-                "wrf_hydro_channel_restart_upstream_flow_field_name"
-            ] = "qlink1"
-            restart_parameters[
-                "wrf_hydro_channel_restart_downstream_flow_field_name"
-            ] = "qlink2"
-            restart_parameters[
-                "wrf_hydro_channel_restart_depth_flow_field_name"
-            ] = "hlink"
-            # restart_parameters["wrf_hydro_waterbody_restart_file"] = wrf_hydro_restart_file
-            # restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"] = lakeparm_file
-            # restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"] = "lake_id"
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"] = routelink_file
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"] = "NHDWaterbodyComID"
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
-            forcing_parameters["qlat_input_folder"] = os.path.join(
-                root,
-                "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
-            )
-            forcing_parameters["qlat_file_pattern_filter"] = "/*.CHRTOUT_DOMAIN1"
-            forcing_parameters["qlat_file_index_col"] = "feature_id"
-            forcing_parameters["qlat_file_value_col"] = "q_lateral"
+        
+        test_case = args.test_case
+        
+        if test_case:
+            
+            # call test case assemble function
+            (
+                supernetwork_parameters, 
+                run_parameters, 
+                output_parameters, 
+                restart_parameters, 
+                forcing_parameters,
+                parity_parameters,
+            )  = build_tests.build_test_parameters( 
+                                                    test_case, 
+                                                    supernetwork_parameters, 
+                                                    run_parameters, 
+                                                    output_parameters, 
+                                                    restart_parameters, 
+                                                    forcing_parameters,
+                                                    parity_parameters
+                                                    )
 
         else:
             run_parameters["dt"] = args.dt
@@ -565,8 +464,8 @@ def _input_handler():
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
     )
-
 
 def main():
 
@@ -577,6 +476,7 @@ def main():
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -687,7 +587,23 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
+        
+    
+    if "validation_data" in parity_parameters:
+        
+        if verbose:
+            print("conducting parity check, comparing t-route results against WRF Hydro results")
+            
+        build_tests.parity_check(
+            parity_parameters["wrf_time"],
+            parity_parameters["dt_wrf"],
+            run_parameters["nts"],
+            run_parameters["dt"],
+            parity_parameters["validation_data"],
+            results,
+            parity_parameters["compare_node"]
+        )
+        
 
 if __name__ == "__main__":
     main()
