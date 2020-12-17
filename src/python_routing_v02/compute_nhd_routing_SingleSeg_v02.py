@@ -644,7 +644,6 @@ def _input_handler():
             run_parameters,
             parity_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
-        run_parameters["debuglevel"] *= -1
 
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
@@ -825,6 +824,16 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
+    
+    usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
+    usgs_files = glob.glob(usgs_file_pattern_filter)
+
+    usgs_df = nhd_io.get_usgs_from_wrf_hydro(
+        qlat_files=usgs_files,
+        index_col="stationIdInd",
+        value_col="discharge",
+    )
+    print(usgs_df)
 
     results = compute_nhd_routing_v02(
         connections,
