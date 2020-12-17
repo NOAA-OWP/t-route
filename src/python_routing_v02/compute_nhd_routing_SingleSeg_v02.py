@@ -372,7 +372,7 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nio.read_custom_input(custom_input_file)
+        ) = nhd_nio.read_custom_input(custom_input_file)
         # TODO: uncomment custominput file
         #     qlat_const = forcing_parameters.get("qlat_const", None)
         #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -661,16 +661,16 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
+    
+    usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
+    usgs_files = glob.glob(usgs_file_pattern_filter)
 
-    # os.chdir("/home/jacob.hreha/github/t-route_fresh/t-route/test/input/geo/nudgingTimeSliceObs/")
-    usgs_files = glob.glob(file_filter)
-
-    usgs_df = get_usgs_from_wrf_hydro(
+    usgs_df = nhd_io.get_usgs_from_wrf_hydro(
         qlat_files=usgs_files,
         index_col="stationIdInd",
         value_col="discharge",
     )
-    usgs_df
+    print(usgs_df)
 
     results = compute_nhd_routing_v02(
         reaches_bytw,
