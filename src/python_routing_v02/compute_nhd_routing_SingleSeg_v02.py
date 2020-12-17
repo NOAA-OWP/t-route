@@ -396,6 +396,7 @@ def _input_handler():
 
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
+        usgs_input_folder = test_folder.joinpath("input", "geo","nudgingTimeSliceObs")
 
         run_pocono2_test = args.run_pocono2_test
         run_pocono1_test = args.run_pocono1_test
@@ -660,6 +661,16 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
+
+    # os.chdir("/home/jacob.hreha/github/t-route_fresh/t-route/test/input/geo/nudgingTimeSliceObs/")
+    usgs_files = glob.glob(file_filter)
+
+    usgs_df = get_usgs_from_wrf_hydro(
+        qlat_files=usgs_files,
+        index_col="stationIdInd",
+        value_col="discharge",
+    )
+    usgs_df
 
     results = compute_nhd_routing_v02(
         reaches_bytw,

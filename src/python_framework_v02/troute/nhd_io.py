@@ -163,6 +163,33 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     return ql
 
+def get_usgs_from_wrf_hydro(qlat_files,index_col="stationIdInd",value_col="discharge"):
+    """
+    qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
+    index_col: column/field in the CHRTOUT files with the segment/link id
+    value_col: column/field in the CHRTOUT files with the lateral inflow value
+
+    In general the CHRTOUT files contain one value per time step. At present, there is
+    no capability for handling non-uniform timesteps in the qlaterals.
+
+    The qlateral may also be input using comma delimited file -- see
+    `get_ql_from_csv`
+    """
+
+    li = []
+
+    for filename in qlat_files:
+        with xr.open_dataset(filename) as ds:
+            df1 = ds.to_dataframe()
+
+        li.append(df1)
+
+    frame = pd.concat(li, axis=0, ignore_index=False)
+    mod = frame.reset_index()
+    usgs_df = mod.pivot(index="stationIdInd", columns="time", values=[value_col])
+
+    return usgs_df
+
 
 def get_stream_restart_from_wrf_hydro(
     channel_initial_states_file,
