@@ -829,7 +829,7 @@ def main():
     usgs_files = glob.glob(usgs_file_pattern_filter)
 
     usgs_df = nhd_io.get_usgs_from_wrf_hydro(
-        qlat_files=usgs_files,
+        usgs_files=usgs_files,
         index_col="stationIdInd",
         value_col="discharge",
     )
