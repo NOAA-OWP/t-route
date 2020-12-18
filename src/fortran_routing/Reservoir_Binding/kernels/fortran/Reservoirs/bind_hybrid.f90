@@ -1,3 +1,5 @@
+! This module defines Fortran to C bindings for Persistence Level Pool Hybrid type reservoirs
+
 module reservoir_to_c_hybrid
     use module_persistence_levelpool_hybrid
 
@@ -31,7 +33,7 @@ contains
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER, C_CHAR, c_null_char
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
             real,    intent(inout) :: water_elevation           ! meters AMSL
-            real,    intent(in)    :: lake_area      		    ! area of lake (km^2)
+            real,    intent(in)    :: lake_area                 ! area of lake (km^2)
             real,    intent(in)    :: weir_elevation            ! bottom of weir elevation (meters AMSL)
             real,    intent(in)    :: weir_coeffecient          ! weir coefficient
             real,    intent(in)    :: weir_length               ! weir length (meters)
