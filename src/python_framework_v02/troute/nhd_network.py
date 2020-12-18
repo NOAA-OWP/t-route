@@ -93,12 +93,15 @@ def junctions(N):
 
 
 def headwaters(N):
-    yield from N.keys() - chain.from_iterable(N.values())
+    return N.keys() - chain.from_iterable(N.values())
 
 
 def tailwaters(N):
-    yield from chain.from_iterable(N.values()) - N.keys()
-    yield from (m for m, n in N.items() if not n)
+    tw = chain.from_iterable(N.values()) - N.keys()
+    for m, n in N.items():
+        if not n:
+            tw.add(m)
+    return tw
 
 
 def reachable(N, sources=None, targets=None):
