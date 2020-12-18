@@ -199,6 +199,7 @@ def _handle_args():
         help="Name of the column providing the depth of flow at the beginning of the simulation.",
         default="hlink",
     )
+    # TODO: Refine exclusivity of ql args (currently not going to accept more than one arg; more than one is needed for qlw, for instance.)
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
         "--qlc",
@@ -241,14 +242,6 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-    # TODO: uncomment custominput file
-    # supernetwork_arg_group = parser.add_mutually_exclusive_group()
-    # supernetwork_arg_group.add_argument(
-    #     "-f",
-    #     "--custom-input-file",
-    #     dest="custom_input_file",
-    #     help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
-    # )
     return parser.parse_args()
 
 
@@ -267,7 +260,7 @@ import troute.nhd_network_utilities_v02 as nnu
 import mc_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
-import build_tests
+import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
 
 
 def writetoFile(file, writeString):
