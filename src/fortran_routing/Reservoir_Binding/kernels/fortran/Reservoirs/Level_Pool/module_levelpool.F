@@ -159,7 +159,6 @@ contains
         real, intent(out)   :: assimilated_value        ! value assimilated from observation or forecast
         character(len=256), intent(out) :: assimilated_source_file ! source file of assimilated value
 
-
         ! Update input variables
         this%input%inflow = inflow
         this%input%lateral_inflow = lateral_inflow

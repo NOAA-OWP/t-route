@@ -1,3 +1,5 @@
+! This module defines Fortran to C bindings for RFC type reservoirs
+
 module reservoir_to_c_rfc
     use module_rfc_forecasts
 

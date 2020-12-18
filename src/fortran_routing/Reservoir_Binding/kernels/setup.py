@@ -14,7 +14,7 @@ ext_modules=[
               include_dirs = [],
               libraries=['gfortran', 'netcdff', 'netcdf'],
               library_dirs=['/lib/gcc/x86_64-redhat-linux/4.8.5', '/usr/lib64/openmpi/lib/'],
-              extra_objects=['fortran/Reservoirs/binding.a']),
+              extra_objects=['fortran/Reservoirs/binding_lp.a']),
 
     Extension("compute_kernel_hybrid", 
               sources = ["compute_kernel_hybrid.pyx"],
