@@ -21,6 +21,7 @@ import argparse
 import pathlib
 import glob
 import pandas as pd
+from collections import defaultdict
 from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
@@ -122,11 +123,18 @@ def _handle_args():
         const="by-network",
     )
     parser.add_argument(
+        "--subnet-size",
+        help="Set the target size (number of segments) for grouped subnetworks.",
+        dest="subnetwork_target_size",
+        default=-1,
+        type=int,
+    )
+    parser.add_argument(
         "--cpu-pool",
         help="Assign the number of cores to multiprocess across.",
         dest="cpu_pool",
         type=int,
-        default=None,
+        default=-1,
     )
     parser.add_argument(
         "--compute-method",
@@ -275,9 +283,12 @@ def constant_qlats(index_dataset, nsteps, qlat):
 
 
 def compute_nhd_routing_v02(
+    connections, 
+    rconn,
     reaches_bytw,
     compute_func,
     parallel_compute_method,
+    subnetwork_target_size,
     cpu_pool,
     nts,
     qts_subdivisions,
@@ -288,16 +299,283 @@ def compute_nhd_routing_v02(
     assume_short_ts,
 ):
 
-    if parallel_compute_method == "by-network":
+    start_time = time.time()
+    if parallel_compute_method == "by-subnetwork-jit-clustered":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+            connections, rconn, subnetwork_target_size
+        )
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+        reaches_ordered_bysubntw = defaultdict(dict)
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_ordered_bysubntw[order][
+                    subn_tw
+                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+        cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
+        # Otherwise, keep adding reaches.
+
+        reaches_ordered_bysubntw_clustered = defaultdict(dict)
+
+        for order in subnetworks_only_ordered_jit:
+            cluster = 0
+            reaches_ordered_bysubntw_clustered[order][cluster] = {
+                "segs": [],
+                "upstreams": {},
+                "tw": [],
+                "subn_reach_list": [],
+            }
+            for twi, (subn_tw, subn_reach_list) in enumerate(
+                reaches_ordered_bysubntw[order].items(), 1
+            ):
+                segs = list(chain.from_iterable(subn_reach_list))
+                reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
+                reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
+                    subnetworks[subn_tw]
+                )
+
+                reaches_ordered_bysubntw_clustered[order][cluster]["tw"].append(subn_tw)
+                reaches_ordered_bysubntw_clustered[order][cluster][
+                    "subn_reach_list"
+                ].extend(subn_reach_list)
+
+                if (
+                    len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
+                    >= cluster_threshold * subnetwork_target_size
+                ) and (
+                    twi
+                    < len(reaches_ordered_bysubntw[order])
+                    # i.e., we haven't reached the end
+                    # TODO: perhaps this should be a while condition...
+                ):
+                    cluster += 1
+                    reaches_ordered_bysubntw_clustered[order][cluster] = {
+                        "segs": [],
+                        "upstreams": {},
+                        "tw": [],
+                        "subn_reach_list": [],
+                    }
+
+        if 1==1:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        # if 1 == 1:
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
+
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
+                jobs = []
+                for cluster, clustered_subns in reaches_ordered_bysubntw_clustered[
+                    order
+                ].items():
+                    segs = clustered_subns["segs"]
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
+                    param_df_sub = param_df.loc[
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
+                    subn_reach_list = clustered_subns["subn_reach_list"]
+                    upstreams = clustered_subns["upstreams"]
+
+                    # results_subn[order].append(
+                    #     compute_func(
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            qts_subdivisions,
+                            subn_reach_list,
+                            upstreams,
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            qlat_sub.values,
+                            q0_sub.values,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
+                            assume_short_ts,
+                        )
+                    )
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for ci, (cluster, clustered_subns) in enumerate(
+                        reaches_ordered_bysubntw_clustered[order].items()
+                    ):
+                        for subn_tw in clustered_subns["tw"]:
+                            # TODO: This index step is necessary because we sort the segment index
+                            # TODO: I think there are a number of ways we could remove the sorting step
+                            #       -- the binary search could be replaced with an index based on the known topology
+                            flowveldepth_interorder[subn_tw] = {}
+                            subn_tw_sortposition = (
+                                results_subn[order][ci][0].tolist().index(subn_tw)
+                            )
+                            flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                                order
+                            ][ci][1][subn_tw_sortposition]
+                            # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                            # There will be an empty array initialized at the top of the loop, then re-populated here.
+                            # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
+
+        if 1==1:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-subnetwork-jit":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+            connections, rconn, subnetwork_target_size
+        )
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+        reaches_ordered_bysubntw = defaultdict(dict)
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_ordered_bysubntw[order][
+                    subn_tw
+                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+        if 1==1:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
+
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
+                jobs = []
+                for twi, (subn_tw, subn_reach_list) in enumerate(
+                    reaches_ordered_bysubntw[order].items(), 1
+                ):
+                    # TODO: Confirm that a list here is best -- we are sorting,
+                    # so a set might be sufficient/better
+                    segs = list(chain.from_iterable(subn_reach_list))
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
+                    param_df_sub = param_df.loc[
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            qts_subdivisions,
+                            subn_reach_list,
+                            subnetworks[subn_tw],
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            qlat_sub.values,
+                            q0_sub.values,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
+                            assume_short_ts,
+                        )
+                    )
+
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
+                        # TODO: This index step is necessary because we sort the segment index
+                        # TODO: I think there are a number of ways we could remove the sorting step
+                        #       -- the binary search could be replaced with an index based on the known topology
+                        flowveldepth_interorder[subn_tw] = {}
+                        subn_tw_sortposition = (
+                            results_subn[order][twi][0].tolist().index(subn_tw)
+                        )
+                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                            order
+                        ][twi][1][subn_tw_sortposition]
+                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # There will be an empty array initialized at the top of the loop, then re-populated here.
+                        # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
+
+        if 1==1:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
+                segs = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                q0_sub = q0.loc[r].sort_index()
+                qlat_sub = qlats.loc[segs].sort_index()
+                q0_sub = q0.loc[segs].sort_index()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -309,6 +587,7 @@ def compute_nhd_routing_v02(
                         param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
+                        {},
                         assume_short_ts,
                     )
                 )
@@ -317,12 +596,12 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            r = list(chain.from_iterable(reach_list))
+            segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
-                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
-            qlat_sub = qlats.loc[r].sort_index()
-            q0_sub = q0.loc[r].sort_index()
+            qlat_sub = qlats.loc[segs].sort_index()
+            q0_sub = q0.loc[segs].sort_index()
             results.append(
                 compute_func(
                     nts,
@@ -334,6 +613,7 @@ def compute_nhd_routing_v02(
                     param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
+                    {},
                     assume_short_ts,
                 )
             )
@@ -369,6 +649,7 @@ def _input_handler():
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
+        run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
         
@@ -545,9 +826,13 @@ def main():
         compute_func = mc_reach.compute_network
 
     results = compute_nhd_routing_v02(
+        connections,
+        rconn,
         reaches_bytw,
         compute_func,
         run_parameters.get("parallel_compute_method", None),
+        run_parameters.get("subnetwork_target_size", 1),
+        # The default here might be the whole network or some percentage...
         run_parameters.get("cpu_pool", None),
         run_parameters.get("nts", 1),
         run_parameters.get("qts_subdivisions", 1),
