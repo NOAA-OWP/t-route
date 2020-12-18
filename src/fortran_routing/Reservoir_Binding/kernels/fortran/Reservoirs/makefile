@@ -10,9 +10,9 @@ VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
 
 .PHONY: all
 
-all: test_main
+all: binding_lp.a bind_hybrid.a bind_rfc.a
 
-test_main: test_main.o binding.a bind_hybrid.a bind_rfc.a
+test_main: test_main.o binding_lp.a bind_hybrid.a bind_rfc.a
 	gfortran -g -o $@ $^
 
 test_main.o: test_binding.c
@@ -30,7 +30,7 @@ bind_hybrid.o: module_persistence_levelpool_hybrid.o
 
 bind_rfc.o: module_rfc_forecasts.o
 
-binding.a: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o bind_lp.o
+binding_lp.a: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o bind_lp.o
 	$(AR) $(ARFLAGS) $@ $^
 
 bind_hybrid.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_persistence_levelpool_hybrid_properties.o module_persistence_levelpool_hybrid_state.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o module_reservoir_read_timeslice_data.o module_persistence_levelpool_hybrid.o bind_hybrid.o
@@ -51,3 +51,4 @@ clean:
 	rm -f *.mod
 	rm -f *.a
 	rm -f reservoir_tests
+	rm -f test_main

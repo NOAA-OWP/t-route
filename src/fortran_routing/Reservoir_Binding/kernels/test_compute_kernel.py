@@ -49,6 +49,34 @@ def lp_reservoir():
 
 
 @pytest.fixture()
+def lp_reservoir2():
+    """
+        an lp compute kernel to put under test
+    """
+    print ("lp2 test")
+
+    water_elevation = 9.70;
+    lake_area = 15.0949;
+    weir_elevation = 9.626;
+    weir_coefficient = 0.4;
+    weir_length = 10.0;
+    dam_length = 10.0;
+    orifice_elevation = 7.733;
+    orifice_coefficient = 0.1;
+    orifice_area = 1.0;
+    max_depth = 9.96;
+    lake_number = 16944277;
+
+    k = lp_kernel(0, 1,
+                water_elevation, lake_area,
+                weir_elevation, weir_coefficient, weir_length,
+                dam_length, orifice_elevation, orifice_coefficient,
+                orifice_area, max_depth, lake_number)
+    yield k
+
+
+
+@pytest.fixture()
 def hybrid_reservoir():
     """
         an lp compute kernel to put under test
@@ -126,13 +154,6 @@ def rfc_reservoir():
     yield k
 
 
-def test_compute_kernel_lp(lp_reservoir):
-    """
-        test a simple construction of LP cython object
-    """
-    assert lp_reservoir is not None
-
-
 def test_lp_run(lp_reservoir):
     """
         test running a LP reservoir
@@ -161,14 +182,40 @@ def test_lp_run(lp_reservoir):
 
     expected_final_outflow = 17.0437641
 
+    assert lp_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
 
 
-def test_compute_kernel_hybrid(hybrid_reservoir):
+def test_lp2_run(lp_reservoir2):
     """
-        test a simple construction of hybrid cython object
+        test running a LP reservoir
     """
-    assert hybrid_reservoir is not None
+
+    inflow_list = [91.27196, 91.7394, 92.15904, 92.1518, 91.84663, \
+    91.38554, 90.86131, 90.32736, 89.81273, 89.3325, 88.89427, 88.5025, 88.16228, \
+    87.41539, 86.80043, 86.03979, 85.3849, 85.33451, 86.84274, 91.6084, 101.81398, \
+    118.85916, 143.99232, 177.7355, 219.2348, 267.22351, 319.90402, 374.54324, 428.86066, \
+    480.92096, 529.23584, 572.77673, 610.93237, 643.4389, 670.28516, 691.67767, 707.96088, \
+    719.57312, 726.96997, 730.63269, 731.03186, 728.61438, 723.79578, 716.9549, 708.43268, \
+    698.53247, 687.52112, 675.63123, 663.06421, 649.99976, 636.57898, 622.92926, 609.1745, \
+    595.40369, 581.68799, 568.08588, 554.64484, 541.4032, 528.39185, 515.63513, 503.14838, \
+    490.95123, 479.05109, 467.45493, 456.16663, 445.18753, 434.51706, 424.15311,414.0921, \
+    404.32956, 394.86014, 385.67789, 376.77621, 368.14966, 359.78958, 351.68875, 343.83972, \
+    336.23505, 328.86719, 321.7287, 314.81219, 308.11047, 301.61646, 295.32312, 289.22369, \
+    283.31207, 277.5813, 272.02521, 266.63776, 261.41315, 256.34564, 251.42978, 246.66023, \
+    242.03192, 237.53989, 233.17944, 228.94595, 224.83511, 220.84265, 216.96449, 213.19672, \
+    209.53554, 205.97734, 202.51857, 199.1559, 195.88605, 192.70595, 189.61255]
+
+    routing_period = 300.0
+
+    for inflow in inflow_list:
+        out = lp_reservoir2.run(inflow, 0.0, routing_period)
+        print(out)
+
+    expected_final_outflow = 15.5038433
+
+    assert lp_reservoir2 is not None
+    assert expected_final_outflow == pytest.approx(out)
 
 
 def test_compute_hybrid_run(hybrid_reservoir):
@@ -200,14 +247,8 @@ def test_compute_hybrid_run(hybrid_reservoir):
 
     expected_final_outflow = 13.73367
 
+    assert hybrid_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
-
-
-def test_compute_kernel_rfc(rfc_reservoir):
-    """
-        test a simple construction of RFC cython object
-    """
-    assert rfc_reservoir is not None
 
 
 def test_compute_rfc_run(rfc_reservoir):
@@ -235,5 +276,6 @@ def test_compute_rfc_run(rfc_reservoir):
 
     expected_final_outflow = 3.6
 
+    assert rfc_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
 

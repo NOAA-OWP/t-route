@@ -1,4 +1,6 @@
-module reservoir_to_c
+! This module defines Fortran to C bindings for Level Pool type reservoirs
+
+module reservoir_to_c_lp
     use module_levelpool
     implicit none
 
@@ -86,4 +88,4 @@ contains
 
         END SUBROUTINE run_lp
 
-end module reservoir_to_c
+end module reservoir_to_c_lp

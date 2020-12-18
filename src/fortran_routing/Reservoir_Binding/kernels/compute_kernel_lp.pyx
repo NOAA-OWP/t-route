@@ -16,7 +16,6 @@ cdef extern void run_lp(void* handle, float *inflow, float *lateral_inflow,
 cdef extern void free_lp(void* handle);
 
 
-
 ############ Other Reservoir Interface ############
 
 #ctypedef enum compute_type: REACH, RESERVOIR_LP
