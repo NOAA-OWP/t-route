@@ -2,6 +2,7 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
+#TODO: Imitate more general usage demonstrated in src/python_routing_v02/setup.py (OR integrate directly into that file...)
 
 #Document to set this up
 #When installing this module from source
