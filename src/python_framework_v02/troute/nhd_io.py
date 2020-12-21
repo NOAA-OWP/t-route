@@ -237,7 +237,7 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 def get_usgs_from_wrf_hydro(usgs_files,index_col="stationIdInd",value_col="discharge"):
 
     li = []
-
+    
     for filename in usgs_files:
         with xr.open_dataset(filename) as ds:
             df1 = ds[["time", value_col]].to_dataframe()
