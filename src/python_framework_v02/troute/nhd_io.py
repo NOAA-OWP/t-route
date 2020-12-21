@@ -166,7 +166,7 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 def get_usgs_from_wrf_hydro(usgs_files,index_col="stationIdInd",value_col="discharge"):
 
     li = []
-
+    
     for filename in usgs_files:
         with xr.open_dataset(filename) as ds:
             df1 = ds.to_dataframe()
@@ -174,10 +174,11 @@ def get_usgs_from_wrf_hydro(usgs_files,index_col="stationIdInd",value_col="disch
         li.append(df1)
 
     frame = pd.concat(li, axis=0, ignore_index=False)
+    frame['stationId'] = frame['stationId'].str.decode('utf-8') 
+    frame['time'] = frame['time'].str.decode('utf-8') 
     mod = frame.reset_index()
     usgs_df = mod.pivot(index="stationIdInd", columns="time", values=[value_col])
-
-    return usgs_df
+    return frame
 
 
 def get_stream_restart_from_wrf_hydro(
