@@ -233,21 +233,37 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     return ql
 
+def get_usgs_from_wrf_hydro(routelink_file,usgs_timeslices_folder,file_name):
 
-def get_usgs_from_wrf_hydro(usgs_files,index_col="stationIdInd",value_col="discharge"):
-
-    li = []
+    ds = xr.open_dataset("../../test/input/geo/routelink/routeLink_subset.nc")
+    df = ds.to_dataframe()
+    df = df.reset_index()
+    df.drop(df.columns.difference(['link','to','gages','ascendingIndex']), 1, inplace=True)
+    df['gages'] = df['gages'].str.decode('utf-8')
+    nan_value = float("NaN")
+    df['gages'].replace('               ', nan_value, inplace=True)
+    df = df[df['gages'].notna()]
+    df.dropna(subset=['gages'], inplace=True)
+    df = df.set_index('gages')
     
-    for filename in usgs_files:
-        with xr.open_dataset(filename) as ds:
-            df1 = ds[["time", value_col]].to_dataframe()
+    ds = xr.open_dataset(usgs_timeslices_folder + file_name)
+    df2 = ds.to_dataframe()
+    df2['stationId'] = df2['stationId'].str.decode('utf-8') 
+    df2['time'] = df2['time'].str.decode('utf-8') 
+    df2 = df2.reset_index()
+    df2.drop(df2.columns.difference(['stationId','time','discharge','discharge_quality']), 1, inplace=True)
+    df2.reset_index()
+    df2.set_index('stationId', inplace=True)
 
-        li.append(df1)
-
-    frame = pd.concat(li, axis=0, ignore_index=False)
-    mod = frame.reset_index()
-    usgs_df = mod.pivot(index=index_col, columns="time", values=[value_col])
-
+    usgs_df = df2.join(df)
+    usgs_df = usgs_df.reset_index()
+    usgs_df = usgs_df[usgs_df['index'].notna()]
+    nan_value = float("NaN")
+    usgs_df['index'].replace(['               ','            N/A','           NONE'], nan_value, inplace=True)
+    usgs_df = usgs_df[usgs_df['index'].notna()]
+    # pd.to_numeric(usgs_df['index']) 
+    usgs_df = usgs_df.set_index('index')
+    
     return usgs_df
 
 
