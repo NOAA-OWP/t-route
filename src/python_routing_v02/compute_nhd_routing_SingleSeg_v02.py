@@ -372,7 +372,7 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
-        ) = nhd_nio.read_custom_input(custom_input_file)
+        ) = nhd_io.read_custom_input(custom_input_file)
         # TODO: uncomment custominput file
         #     qlat_const = forcing_parameters.get("qlat_const", None)
         #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -650,6 +650,30 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
+    #STEP 6
+
+    
+    usgs_timeslices_folder = os.path.join(
+        root,
+        "test/input/geo/nudgingTimeSliceObs/",
+    )
+    routelink_folder = os.path.join(
+        root,
+        "test/input/geo/routelink/",
+    )
+    routelink_file = routelink_folder+"RouteLink.nc"
+    # usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
+
+    # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
+    file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
+
+    usgs_df = nhd_io.get_usgs_from_wrf_hydro(routelink_file,
+    usgs_timeslices_folder,
+    file_name
+    )
+
+    print(usgs_df)
+    
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
@@ -660,22 +684,6 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-    
-    usgs_timeslices_folder = os.path.join(
-        root,
-        "test/input/geo/nudgingTimeSliceObs/",
-    )
-    usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
-
-    usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
-
-    usgs_df = nhd_io.get_usgs_from_wrf_hydro(
-        usgs_files=usgs_files,
-        index_col="stationIdInd",
-        value_col="discharge",
-    )
-
-    print(usgs_df)
 
     results = compute_nhd_routing_v02(
         reaches_bytw,
