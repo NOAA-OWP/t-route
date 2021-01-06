@@ -185,10 +185,17 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_la
     #       method should be better for all cases.
     if len(qlat_files) == 1:
         with xr.open_mfdataset(qlat_files, combine='nested', concat_dim='time') as ds:
-            df1 = ds[value_col].to_dataframe()
+            if not filter_list:
+                df1 = ds[value_col].to_dataframe()
+            else:
+                df1 = ds.sel({index_col:filter_list})[value_col].to_dataframe()
+
     else: # Assumes > 1
         with xr.open_mfdataset(qlat_files, combine='by_coords') as ds:
-            df1 = ds[value_col].to_dataframe()
+            if not filter_list:
+                df1 = ds[value_col].to_dataframe()
+            else:
+                df1 = ds.sel({index_col:filter_list})[value_col].to_dataframe()
 
     mod = df1.reset_index()
     ql = mod.pivot(index=index_col, columns="time", values=value_col)
@@ -213,7 +220,7 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     for filename in qlat_files:
         with xr.open_dataset(filename) as ds:
-            df1 = ds.to_dataframe()
+            df1 = ds[value_col].to_dataframe()
 
         li.append(df1)
 
