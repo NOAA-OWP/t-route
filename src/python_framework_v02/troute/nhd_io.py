@@ -233,9 +233,9 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     return ql
 
-def get_usgs_from_wrf_hydro(routelink_file,usgs_timeslices_folder,file_name):
+def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
 
-    with xr.open_dataset("../../test/input/geo/routelink/routeLink_subset.nc") as ds:
+    with xr.open_dataset(routelink_subset_file) as ds:
         df = ds.to_dataframe()
         df = df.reset_index()
         df.drop(df.columns.difference(['link','to','gages','ascendingIndex']), 1, inplace=True)
@@ -246,7 +246,7 @@ def get_usgs_from_wrf_hydro(routelink_file,usgs_timeslices_folder,file_name):
         df.dropna(subset=['gages'], inplace=True)
         df = df.set_index('gages')
     
-    with xr.open_dataset(usgs_timeslices_folder + file_name) as ds:
+    with xr.open_mfdataset(usgs_timeslices_folder+"*",combine='nested',concat_dim='stationIdInd') as ds:
         df2 = ds.to_dataframe()
         df2['stationId'] = df2['stationId'].str.decode('utf-8') 
         df2['time'] = df2['time'].str.decode('utf-8') 
