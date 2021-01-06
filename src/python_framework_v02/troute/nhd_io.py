@@ -263,6 +263,8 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
     usgs_df = usgs_df[usgs_df['index'].notna()]
     # pd.to_numeric(usgs_df['index']) 
     usgs_df = usgs_df.set_index('index')
+    usgs_df = usgs_df.reset_index()
+    usgs_df = usgs_df.set_index('link')
     
     return usgs_df
 
