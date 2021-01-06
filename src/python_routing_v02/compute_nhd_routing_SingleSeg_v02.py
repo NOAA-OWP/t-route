@@ -867,19 +867,16 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
         
     
-    if "validation_data" in parity_parameters:
+    if "parity_check_input_folder" in parity_parameters:
         
         if verbose:
             print("conducting parity check, comparing t-route results against WRF Hydro results")
             
         build_tests.parity_check(
-            parity_parameters["wrf_time"],
-            parity_parameters["dt_wrf"],
+            parity_parameters,
             run_parameters["nts"],
             run_parameters["dt"],
-            parity_parameters["validation_data"],
             results,
-            parity_parameters["compare_node"]
         )
         
 
