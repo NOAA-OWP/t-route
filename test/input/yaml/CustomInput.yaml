@@ -103,4 +103,7 @@ restart_parameters:
     #WRF-Hydro waterbody crosswalk filter file
     wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+data_assimilation_parameters:
+    wrf_hydro_channel_ID_routelink_file: "../../test/input/geo/routelink/routeLink_subset.nc"
+
 

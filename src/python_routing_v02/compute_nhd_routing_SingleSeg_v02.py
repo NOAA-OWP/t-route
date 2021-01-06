@@ -363,6 +363,7 @@ def _input_handler():
     restart_parameters = {}
     output_parameters = {}
     run_parameters = {}
+    data_assimilation_parameters = {}
 
     if custom_input_file:
         (
@@ -372,6 +373,7 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
+            data_assimilation_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
         # TODO: uncomment custominput file
         #     qlat_const = forcing_parameters.get("qlat_const", None)
@@ -393,7 +395,7 @@ def _input_handler():
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
-
+        
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
 
@@ -487,6 +489,7 @@ def _input_handler():
             run_parameters["qts_subdivisions"] = qts_subdivisions = 12
             run_parameters["dt"] = 3600 / qts_subdivisions
             run_parameters["nts"] = 24 * qts_subdivisions
+            data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
             output_parameters["csv_output"] = None
             output_parameters["nc_output_folder"] = None
             # build a time string to specify input date
@@ -523,12 +526,11 @@ def _input_handler():
             run_parameters["nts"] = args.nts
             run_parameters["qts_subdivisions"] = args.qts_subdivisions
             run_parameters["compute_method"] = args.compute_method
-
             waterbody_parameters[
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
             output_parameters["csv_output_folder"] = args.csv_output_folder
-
+            data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = args.wrf_hydro_channel_ID_crosswalk_file
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -575,6 +577,7 @@ def _input_handler():
         restart_parameters,
         output_parameters,
         run_parameters,
+        data_assimilation_parameters,
     )
 
 
@@ -587,6 +590,7 @@ def main():
         restart_parameters,
         output_parameters,
         run_parameters,
+        data_assimilation_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -657,19 +661,20 @@ def main():
         root,
         "test/input/geo/nudgingTimeSliceObs/",
     )
-    routelink_folder = os.path.join(
+    routelink_subset_folder = os.path.join(
         root,
         "test/input/geo/routelink/",
     )
-    routelink_file = routelink_folder+"RouteLink.nc"
+    # "../../test/input/geo/routelink/routeLink_subset.nc"
+    routelink_subset_file = routelink_subset_folder+"routeLink_subset.nc"
+    data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
     # usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
 
     # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
-    file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
+    # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
 
-    usgs_df = nhd_io.get_usgs_from_wrf_hydro(routelink_file,
+    usgs_df = nhd_io.get_usgs_from_wrf_hydro(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"],
     usgs_timeslices_folder,
-    file_name
     )
 
     print(usgs_df)
