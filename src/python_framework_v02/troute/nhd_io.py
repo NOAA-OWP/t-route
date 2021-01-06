@@ -136,6 +136,64 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
+def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_lateral"):
+    """
+    qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
+    index_col: column/field in the CHRTOUT files with the segment/link id
+    value_col: column/field in the CHRTOUT files with the lateral inflow value
+
+    In general the CHRTOUT files contain one value per time step. At present, there is
+    no capability for handling non-uniform timesteps in the qlaterals.
+
+    The qlateral may also be input using comma delimited file -- see
+    `get_ql_from_csv`
+
+
+    Note:
+    For later needs, filtering may be accomplished with one of:
+        ds.loc[{selectors}]
+        ds.sel({selectors})
+        ds.isel({selectors})
+
+    Returns from these selection functions are sub-datasets.
+
+    For example:
+    ```
+    (Pdb) ds.sel({"feature_id":[4186117],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
+                                     latitude  longitude  q_lateral
+    time                feature_id
+    2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
+    2018-01-02 00:00:00 4186117     41.233807 -75.413895   0.006460
+    ```
+
+    or...
+    ```
+    (Pdb) ds.sel({"feature_id":[4186117],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
+                                     latitude  longitude  q_lateral
+    time                feature_id
+    2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
+    ```
+    """
+
+    # TODO: compare performance with `combine='by_coords'`
+    # NOTE: This check for len(qlat_files) is because of a potential bug in
+    #       in open_mfdataset which strips the unit time dimension from an
+    #       input where only one timestamp (i.e., one input file) is provided.
+    #       Assuming the bug is resolved at some point, the 'by_coords'
+    #       method should be better for all cases.
+    if len(qlat_files) == 1:
+        with xr.open_mfdataset(qlat_files, combine='nested', concat_dim='time') as ds:
+            df1 = ds[value_col].to_dataframe()
+    else: # Assumes > 1
+        with xr.open_mfdataset(qlat_files, combine='by_coords') as ds:
+            df1 = ds[value_col].to_dataframe()
+
+    mod = df1.reset_index()
+    ql = mod.pivot(index=index_col, columns="time", values=value_col)
+
+    return ql
+
+
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
