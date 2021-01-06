@@ -53,6 +53,7 @@ def read_custom_input(custom_input_file):
     restart_parameters = data.get("restart_parameters", {})
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
+    parity_parameters = data.get("parity_parameters", {})
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -61,6 +62,7 @@ def read_custom_input(custom_input_file):
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
     )
 
 
@@ -136,7 +138,7 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_lateral", filter_list=None):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id

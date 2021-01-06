@@ -117,46 +117,60 @@ def build_test_parameters(test_name,
         forcing_parameters["qlat_file_value_col"] = "q_lateral"
         
         # construct time domain (run_parameters)
-        qlat_files = glob.glob(
-            forcing_parameters["qlat_input_folder"] + forcing_parameters["qlat_file_pattern_filter"], 
-            recursive=True
-        )
-        ql = nhd_io.get_ql_from_wrf_hydro(
-            qlat_files,
-            forcing_parameters["qlat_file_index_col"]
-        )
+        #qlat_files = glob.glob(
+            #forcing_parameters["qlat_input_folder"] + forcing_parameters["qlat_file_pattern_filter"], 
+            #recursive=True
+        #)
+        #ql = nhd_io.get_ql_from_wrf_hydro_mf(
+            #qlat_files,
+            #forcing_parameters["qlat_file_index_col"]
+        #)
         
-        wrf_time = ql.columns.astype("datetime64[ns]")
-        dt_wrf = (wrf_time[1] - wrf_time[0])
-        sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+        #wrf_time = ql.columns.astype("datetime64[ns]")
+        #dt_wrf = (wrf_time[1] - wrf_time[0])
+        #sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
         
-        dt = 300
-        dt_routing = pd.Timedelta(str(dt) + 'seconds')
+        #dt = 300
+        #dt_routing = pd.Timedelta(str(dt) + 'seconds')
         
-        run_parameters["dt"] = dt
-        run_parameters["nts"] = round(sim_duration / dt_routing)
-        run_parameters["qts_subdivisions"] = dt_wrf/dt_routing
+        run_parameters["dt"] = 300
+        run_parameters["nts"] = 288
+        run_parameters["qts_subdivisions"] = 12 
         
         run_parameters["assume_short_ts"] = True
         
-        # construct parity parameter set
-        validation_data = nhd_io.get_ql_from_wrf_hydro(
-            qlat_files,
-            forcing_parameters["qlat_file_index_col"],
-            "streamflow"
+        parity_parameters["parity_check_input_folder"] = os.path.join(
+            root,
+            "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
         )
-        
-        compare_node = 4186169
-        parity_parameters["wrf_time"] = wrf_time
-        parity_parameters["dt_wrf"] = dt_wrf
-        parity_parameters["compare_node"] = compare_node
-        parity_parameters["validation_data"] = validation_data
+        parity_parameters["parity_check_file_pattern_filter"] = "/*.CHRTOUT_DOMAIN1"
+        parity_parameters["parity_check_file_index_col"] = "feature_id"
+        parity_parameters["parity_check_file_value_col"] = "streamflow"
+        parity_parameters["parity_check_compare_node"] = 4186169
         
     return supernetwork_parameters, run_parameters, output_parameters, restart_parameters, forcing_parameters, parity_parameters
 
-def parity_check(wrf_time, dt_wrf, nts, dt, validation_data, results, compare_node):
-    
-    # conpstruct a dataframe of simulated flows
+def parity_check(parity_parameters, nts, dt, results):
+    validation_files = glob.glob(
+        parity_parameters["parity_check_input_folder"] + parity_parameters["parity_check_file_pattern_filter"], 
+        recursive=True
+    )
+
+    compare_node = parity_parameters["parity_check_compare_node"]
+
+    # construct parity parameter set
+    validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
+        validation_files,
+        parity_parameters["parity_check_file_index_col"],
+        parity_parameters["parity_check_file_value_col"],
+        [compare_node],
+    )
+
+    wrf_time = validation_data.columns.astype("datetime64[ns]")
+    dt_wrf = (wrf_time[1] - wrf_time[0])
+    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+        
+    # construct a dataframe of simulated flows
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
     flowveldepth = pd.concat(
         [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
