@@ -79,7 +79,7 @@ def replace_downstreams(data, downstream_col, terminal_code):
 def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
     """
     General waterbody dataframe reader. At present, only level-pool
-    capability exists. 
+    capability exists.
     """
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
@@ -94,14 +94,14 @@ def read_level_pool_waterbody_df(
     parm_file, lake_index_field="lake_id", lake_id_mask=None
 ):
     """
-    Reads LAKEPARM file and prepares a dataframe, filtered 
+    Reads LAKEPARM file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
 
-    Prior version filtered the dataframe as opposed to the dataset as in this version. 
+    Prior version filtered the dataframe as opposed to the dataset as in this version.
     with xr.open_dataset(parm_file) as ds:
         df1 = ds.to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
@@ -138,7 +138,9 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_lateral", filter_list=None):
+def get_ql_from_wrf_hydro_mf(
+    qlat_files, index_col="station_id", value_col="q_lateral", filter_list=None
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -184,18 +186,18 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="station_id", value_col="q_la
     #       Assuming the bug is resolved at some point, the 'by_coords'
     #       method should be better for all cases.
     if len(qlat_files) == 1:
-        with xr.open_mfdataset(qlat_files, combine='nested', concat_dim='time') as ds:
+        with xr.open_mfdataset(qlat_files, combine="nested", concat_dim="time") as ds:
             if not filter_list:
                 df1 = ds[value_col].to_dataframe()
             else:
-                df1 = ds.sel({index_col:filter_list})[value_col].to_dataframe()
+                df1 = ds.sel({index_col: filter_list})[value_col].to_dataframe()
 
-    else: # Assumes > 1
-        with xr.open_mfdataset(qlat_files, combine='by_coords') as ds:
+    else:  # Assumes > 1
+        with xr.open_mfdataset(qlat_files, combine="by_coords") as ds:
             if not filter_list:
                 df1 = ds[value_col].to_dataframe()
             else:
-                df1 = ds.sel({index_col:filter_list})[value_col].to_dataframe()
+                df1 = ds.sel({index_col: filter_list})[value_col].to_dataframe()
 
     mod = df1.reset_index()
     ql = mod.pivot(index=index_col, columns="time", values=value_col)

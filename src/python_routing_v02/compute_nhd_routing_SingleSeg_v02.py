@@ -77,15 +77,15 @@ def _handle_args():
         default=144,
         type=int,
     )
-    
+
     # change this so after --test, the user enters a test choice
     parser.add_argument(
         "--test",
-        help = "Select a test case, routing results will be compared against WRF hydro for parity",
+        help="Select a test case, routing results will be compared against WRF hydro for parity",
         choices=["pocono1"],
-        dest = "test_case"
+        dest="test_case",
     )
-    
+
     parser.add_argument(
         "--sts",
         "--assume-short-ts",
@@ -283,7 +283,7 @@ def constant_qlats(index_dataset, nsteps, qlat):
 
 
 def compute_nhd_routing_v02(
-    connections, 
+    connections,
     rconn,
     reaches_bytw,
     compute_func,
@@ -367,7 +367,7 @@ def compute_nhd_routing_v02(
                         "subn_reach_list": [],
                     }
 
-        if 1==1:
+        if 1 == 1:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             print("starting Parallel JIT calculation")
 
@@ -455,7 +455,7 @@ def compute_nhd_routing_v02(
         for order in subnetworks_only_ordered_jit:
             results.extend(results_subn[order])
 
-        if 1==1:
+        if 1 == 1:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-subnetwork-jit":
@@ -481,7 +481,7 @@ def compute_nhd_routing_v02(
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
 
-        if 1==1:
+        if 1 == 1:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             print("starting Parallel JIT calculation")
 
@@ -563,7 +563,7 @@ def compute_nhd_routing_v02(
         for order in subnetworks_only_ordered_jit:
             results.extend(results_subn[order])
 
-        if 1==1:
+        if 1 == 1:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-network":
@@ -624,7 +624,7 @@ def compute_nhd_routing_v02(
 def _input_handler():
 
     args = _handle_args()
-    
+
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None
     waterbody_parameters = {}
@@ -642,7 +642,7 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
-            parity_parameters
+            parity_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
         run_parameters["debuglevel"] *= -1
 
@@ -652,34 +652,34 @@ def _input_handler():
         run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
-        
+
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
 
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
-        
+
         test_case = args.test_case
-        
+
         if test_case:
-            
+
             # call test case assemble function
             (
-                supernetwork_parameters, 
-                run_parameters, 
-                output_parameters, 
-                restart_parameters, 
+                supernetwork_parameters,
+                run_parameters,
+                output_parameters,
+                restart_parameters,
                 forcing_parameters,
                 parity_parameters,
-            )  = build_tests.build_test_parameters( 
-                                                    test_case, 
-                                                    supernetwork_parameters, 
-                                                    run_parameters, 
-                                                    output_parameters, 
-                                                    restart_parameters, 
-                                                    forcing_parameters,
-                                                    parity_parameters
-                                                    )
+            ) = build_tests.build_test_parameters(
+                test_case,
+                supernetwork_parameters,
+                run_parameters,
+                output_parameters,
+                restart_parameters,
+                forcing_parameters,
+                parity_parameters,
+            )
 
         else:
             run_parameters["dt"] = args.dt
@@ -740,6 +740,7 @@ def _input_handler():
         run_parameters,
         parity_parameters,
     )
+
 
 def main():
 
@@ -865,20 +866,18 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-        
-    
+
     if "parity_check_input_folder" in parity_parameters:
-        
+
         if verbose:
-            print("conducting parity check, comparing t-route results against WRF Hydro results")
-            
+            print(
+                "conducting parity check, comparing t-route results against WRF Hydro results"
+            )
+
         build_tests.parity_check(
-            parity_parameters,
-            run_parameters["nts"],
-            run_parameters["dt"],
-            results,
+            parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
         )
-        
+
 
 if __name__ == "__main__":
     main()
