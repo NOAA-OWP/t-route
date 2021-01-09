@@ -139,7 +139,7 @@ def read_qlat(path):
 
 
 def get_ql_from_wrf_hydro_mf(
-    qlat_files, index_col="station_id", value_col="q_lateral", filter_list=None
+    qlat_files, index_col="feature_id", value_col="q_lateral"
 ):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
@@ -153,8 +153,9 @@ def get_ql_from_wrf_hydro_mf(
     `get_ql_from_csv`
 
 
-    Note:
-    For later needs, filtering may be accomplished with one of:
+    Note/Todo:
+    For later needs, filtering for specific features or times may
+    be accomplished with one of:
         ds.loc[{selectors}]
         ds.sel({selectors})
         ds.isel({selectors})
@@ -163,7 +164,7 @@ def get_ql_from_wrf_hydro_mf(
 
     For example:
     ```
-    (Pdb) ds.sel({"feature_id":[4186117],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
+    (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
                                      latitude  longitude  q_lateral
     time                feature_id
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
@@ -172,37 +173,37 @@ def get_ql_from_wrf_hydro_mf(
 
     or...
     ```
-    (Pdb) ds.sel({"feature_id":[4186117],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
+    (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
                                      latitude  longitude  q_lateral
     time                feature_id
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
+    filter_list = None
 
-    # TODO: compare performance with `combine='by_coords'`
-    # NOTE: This check for len(qlat_files) is because of a potential bug in
-    #       in open_mfdataset which strips the unit time dimension from an
-    #       input where only one timestamp (i.e., one input file) is provided.
-    #       Assuming the bug is resolved at some point, the 'by_coords'
-    #       method should be better for all cases.
-    if len(qlat_files) == 1:
-        with xr.open_mfdataset(qlat_files, combine="nested", concat_dim="time") as ds:
-            if not filter_list:
-                df1 = ds[value_col].to_dataframe()
-            else:
-                df1 = ds.sel({index_col: filter_list})[value_col].to_dataframe()
-
-    else:  # Assumes > 1
-        with xr.open_mfdataset(qlat_files, combine="by_coords") as ds:
-            if not filter_list:
-                df1 = ds[value_col].to_dataframe()
-            else:
-                df1 = ds.sel({index_col: filter_list})[value_col].to_dataframe()
-
-    mod = df1.reset_index()
-    ql = mod.pivot(index=index_col, columns="time", values=value_col)
+    with xr.open_mfdataset(
+        qlat_files,
+        combine="by_coords",
+        # combine="nested",
+        # concat_dim="time",
+        # data_vars="minimal",
+        # coords="minimal",
+        # compat="override",
+        preprocess=drop_all_coords,
+        # parallel=True,
+    ) as ds:
+        ql = pd.DataFrame(
+            ds[value_col].values.T,
+            index=ds[index_col].values,
+            columns=ds.time.values,
+            # dtype=float,
+        )
 
     return ql
+
+
+def drop_all_coords(ds):
+    return ds.reset_coords(drop=True)
 
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
@@ -222,7 +223,7 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     for filename in qlat_files:
         with xr.open_dataset(filename) as ds:
-            df1 = ds[value_col].to_dataframe()
+            df1 = ds[["time", value_col]].to_dataframe()
 
         li.append(df1)
 
