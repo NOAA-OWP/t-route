@@ -170,7 +170,7 @@ def parity_check(parity_parameters, nts, dt, results):
         validation_files,
         parity_parameters["parity_check_file_index_col"],
         parity_parameters["parity_check_file_value_col"],
-        [compare_node],
+        # [compare_node],
     )
 
     wrf_time = validation_data.columns.astype("datetime64[ns]")

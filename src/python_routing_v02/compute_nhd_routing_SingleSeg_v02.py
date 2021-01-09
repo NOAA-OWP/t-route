@@ -871,7 +871,7 @@ def main():
 
         if verbose:
             print(
-                "conducting parity check, comparing t-route results against WRF Hydro results"
+                "conducting parity check, comparing WRF Hydro results against t-route results"
             )
 
         build_tests.parity_check(
