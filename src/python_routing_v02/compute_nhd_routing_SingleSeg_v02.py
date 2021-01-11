@@ -617,8 +617,9 @@ def compute_nhd_routing_v02(
                     assume_short_ts,
                 )
             )
-
+        # print(results)
     return results
+   
 
 
 def _input_handler():
@@ -796,7 +797,7 @@ def main():
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
-
+    
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -840,7 +841,7 @@ def main():
     )
 
     print(usgs_df)
-    
+    # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
