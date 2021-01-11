@@ -309,6 +309,7 @@ def compute_nhd_routing_v02(
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
                 q0_sub = q0.loc[r].sort_index()
+                # da_sub = da.loc[r].sort_index()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -320,6 +321,7 @@ def compute_nhd_routing_v02(
                         param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
+                        # da_sub.values,
                         assume_short_ts,
                     )
                 )
@@ -334,6 +336,9 @@ def compute_nhd_routing_v02(
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             q0_sub = q0.loc[r].sort_index()
+            # print(q0_sub)
+            # print(qlat_sub)
+            # da_sub = da.loc[r].sort_index()
             results.append(
                 compute_func(
                     nts,
@@ -345,11 +350,13 @@ def compute_nhd_routing_v02(
                     param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
+                    # da_sub.values,
                     assume_short_ts,
                 )
             )
-
+        # print(results)
     return results
+   
 
 
 def _input_handler():
@@ -634,7 +641,7 @@ def main():
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
-
+    
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -678,7 +685,7 @@ def main():
     )
 
     print(usgs_df)
-    
+    # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
@@ -727,6 +734,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-
+    # print(q0)
 if __name__ == "__main__":
     main()

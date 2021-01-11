@@ -5,7 +5,7 @@ import pandas as pd
 import geopandas as gpd
 import json
 import yaml
-
+import numpy as np
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -196,6 +196,29 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.set_index('link')
     
+    columns_list = (usgs_df.columns)
+
+    for i in range(0,(len(columns_list)*3)-12,12):
+        original_string = usgs_df.columns[i]
+        original_string_shortened = original_string[:-5]
+        temp_name1 = original_string_shortened + str('05:00')
+        temp_name2 = original_string_shortened + str('10:00')
+        temp_name3 = original_string_shortened + str('20:00')
+        temp_name4 = original_string_shortened + str('25:00')
+        temp_name5 = original_string_shortened + str('35:00')
+        temp_name6 = original_string_shortened + str('40:00')
+        temp_name7 = original_string_shortened + str('50:00')
+        temp_name8 = original_string_shortened + str('55:00')
+        usgs_df.insert(i+1, temp_name1, np.nan)
+        usgs_df.insert(i+2, temp_name2, np.nan)
+        usgs_df.insert(i+4, temp_name3, np.nan)
+        usgs_df.insert(i+5, temp_name4, np.nan)
+        usgs_df.insert(i+7, temp_name5, np.nan)
+        usgs_df.insert(i+8, temp_name6, np.nan)
+        usgs_df.insert(i+10, temp_name7, np.nan)
+        usgs_df.insert(i+11, temp_name8, np.nan)
+    usgs_df = usgs_df.interpolate(method='linear',  axis=1)
+
     return usgs_df
 
 
