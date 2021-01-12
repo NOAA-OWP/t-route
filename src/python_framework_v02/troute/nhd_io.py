@@ -265,6 +265,8 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
     usgs_df = usgs_df.set_index('index')
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.set_index('link')
+
+    usgs_df = usgs_df.pivot_table(values='discharge', index=usgs_df.index, columns='time', aggfunc='first')
     
     columns_list = (usgs_df.columns)
 
@@ -287,6 +289,11 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
         usgs_df.insert(i+8, temp_name6, np.nan)
         usgs_df.insert(i+10, temp_name7, np.nan)
         usgs_df.insert(i+11, temp_name8, np.nan)
+
+        # usgs_df = usgs_df.astype(float)
+
+        
+
     usgs_df = usgs_df.interpolate(method='linear',  axis=1)
 
     return usgs_df
