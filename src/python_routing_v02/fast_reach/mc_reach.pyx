@@ -399,9 +399,9 @@ cpdef object compute_network(
     if len(fill_index_mask) > 0:
         data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
         flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
-        return [np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')]
+        return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
     else:
-        return [np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')]
+        return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
