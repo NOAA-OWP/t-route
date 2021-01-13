@@ -131,6 +131,10 @@ def build_test_parameters(
         # dt = 300
         # dt_routing = pd.Timedelta(str(dt) + 'seconds')
 
+        # run_parameters["dt"] = dt
+        # run_parameters["nts"] = round(sim_duration / dt_routing)
+        # run_parameters["qts_subdivisions"] = dt_wrf/dt_routing
+
         run_parameters["dt"] = 300
         run_parameters["nts"] = 288
         run_parameters["qts_subdivisions"] = 12
