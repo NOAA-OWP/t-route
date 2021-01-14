@@ -194,9 +194,7 @@ cpdef object compute_network(
     # for ts in flowveldepth:
         # print(f"{list(ts)}")
 
-    cdef bint[:] fill_index_mask = np.ones_like(data_idx, dtype=bool)
-    cdef Py_ssize_t fill_index
-    cdef long upstream_tw_id
+    fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef dict tmp
     
     # cdef set fill_index_mask = set()
@@ -415,9 +413,9 @@ cpdef object compute_network(
 #     else:
 #         return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
     
-    if fill_index_mask.count(False) > 1:
-         return np.asarray(data_idx[fill_index_mask], dtype=np.intp), np.asarray(flowveldepth_ma[fill_index_mask], dtype='float32')
-    else
+    if np.size(fill_index_mask) - np.count_nonzero(fill_index_mask) > 0:
+         return np.asarray(data_idx[fill_index_mask], dtype=np.intp), np.asarray(flowveldepth[fill_index_mask], dtype='float32')
+    else:
          return [np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')]
 
 #---------------------------------------------------------------------------------------------------------------#
