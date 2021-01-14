@@ -12,8 +12,9 @@ import json
 from tqdm import tqdm
 import time
 
+
 root = pathlib.Path("../../../").resolve()
-sys.path.append(os.path.join(root, "src", "python_framework_v01"))
+pathlib.Path(root, "src", "python_framework_v01")
 
 import nhd_network_utilities_v02 as nnu
 import nhd_network
@@ -82,8 +83,8 @@ def _handle_args():
 def get_network_data(network_name):
 
     # Create directory path variable for test/input/geo, where NHD data and masks are stored
-    test_folder = os.path.join(root, r"test")
-    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
+    test_folder = pathlib.Path(root, r"test").resolve()
+    geo_input_folder = pathlib.Path(test_folder, r"input", r"geo").resolve()
 
     # Load network meta data for the Cape Fear Basin
     supernetwork = network_name
@@ -848,25 +849,25 @@ def main():
         "exporting RouteLink file:",
         filename,
         "to",
-        os.path.join(root, "test", "input", "geo", "Channels"),
+        pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
     )
 
-    dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+    dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
     if not os.path.isdir(dir_path):
         os.mkdir(dir_path)
 
     # save RouteLink data as shapefile
     RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
-    RouteLink_edit.to_file(os.path.join(dir_path, filename))
+    RouteLink_edit.to_file(pathlib.Path(dir_path, filename).resolve())
 
     # save cross walk as json
     print(
         "exporting CrossWalk file:",
         filename_cw,
         "to",
-        os.path.join(root, "test", "input", "geo", "Channels"),
+        pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
     )
-    with open(os.path.join(dir_path, filename_cw), "w") as outfile:
+    with open(pathlib.Path(dir_path, filename_cw).resolve(), "w") as outfile:
         json.dump(qlat_destinations, outfile)
 
     # export original data
@@ -877,10 +878,10 @@ def main():
             "exporting unmodified RouteLink file:",
             filename,
             "to",
-            os.path.join(root, "test", "input", "geo", "Channels"),
+            pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
         )
 
-        dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+        dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
         if not os.path.isdir(dir_path):
             os.mkdir(dir_path)
 
@@ -891,7 +892,7 @@ def main():
         )
 
         RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
-        RouteLink_domain.to_file(os.path.join(dir_path, filename))
+        RouteLink_domain.to_file(pathlib.Path(dir_path, filename).resolve())
 
     print("Number of segments in modified RouteLink:", len(RouteLink_edit))
     print("Number of segments in original RouteLink:", len(RouteLink_domain))
