@@ -406,12 +406,17 @@ cpdef object compute_network(
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
     # TO DO: Reconfigure with boolean mask
-    if len(fill_index_mask) > 0:
-        data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
-        flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
-        return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
-    else:
-        return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+#     if len(fill_index_mask) > 0:
+#         data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
+#         flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
+#         return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
+#     else:
+#         return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+    
+    if fill_index_mask.count(False) > 1:
+         return np.asarray(data_idx[fill_index_mask], dtype=np.intp), np.asarray(flowveldepth_ma[fill_index_mask], dtype='float32')
+    else
+         return [np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
