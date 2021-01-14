@@ -194,7 +194,10 @@ cpdef object compute_network(
     # for ts in flowveldepth:
         # print(f"{list(ts)}")
 
-    cdef set fill_index_mask = set()
+    cdef bint[:] fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef Py_ssize_t fill_index
+    cdef long upstream_tw_id
+    cdef dict tmp
     # fill_index_mask is filled in the explicit loop below, which is
     # identical to the following comprehension. But we use the explicit loop, because it
     # is more transparent (and therefore optimizable) to cython.
@@ -202,19 +205,25 @@ cpdef object compute_network(
     #print(f"{fill_index_mask}")
 
     for upstream_tw_id in upstream_results:
-        fill_index = upstream_results[upstream_tw_id]["position_index"]
-        fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
-        # print(f"{upstream_results[upstream_tw_id]['results']}")
-        # print(f"filling the {fill_index} row:")
-        # print(f"{list(flowveldepth[fill_index])}")
-        for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
-            flowveldepth[fill_index][idx] = val
-        # TODO: Identify a more efficient ways potentially to handle this array filling
-        # The following may be options:
-        # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
-        # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
-        # print(f"Now filled, it contains:")
-        # print(f"{list(flowveldepth[fill_index])}")
+        tmp = upstream_results[upstream_tw_id]
+        fill_index = tmp["position_index"]
+        fill_index_mask[fill_index] = False
+        flowveldepth[fill_index] = tmp["results"]
+    
+#     for upstream_tw_id in upstream_results:
+#         fill_index = upstream_results[upstream_tw_id]["position_index"]
+#         fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
+#         # print(f"{upstream_results[upstream_tw_id]['results']}")
+#         # print(f"filling the {fill_index} row:")
+#         # print(f"{list(flowveldepth[fill_index])}")
+#         for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
+#             flowveldepth[fill_index][idx] = val
+#         # TODO: Identify a more efficient ways potentially to handle this array filling
+#         # The following may be options:
+#         # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
+#         # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
+#         # print(f"Now filled, it contains:")
+#         # print(f"{list(flowveldepth[fill_index])}")
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
