@@ -402,6 +402,7 @@ cpdef object compute_network(
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
+    # TO DO: Reconfigure with boolean mask
     if len(fill_index_mask) > 0:
         data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
         flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
