@@ -198,6 +198,8 @@ cpdef object compute_network(
     cdef Py_ssize_t fill_index
     cdef long upstream_tw_id
     cdef dict tmp
+    
+    # cdef set fill_index_mask = set()
     # fill_index_mask is filled in the explicit loop below, which is
     # identical to the following comprehension. But we use the explicit loop, because it
     # is more transparent (and therefore optimizable) to cython.
