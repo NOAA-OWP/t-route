@@ -191,41 +191,15 @@ cpdef object compute_network(
         # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
         # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
 
-    # for ts in flowveldepth:
-        # print(f"{list(ts)}")
-
     fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef dict tmp
-    
-    # cdef set fill_index_mask = set()
-    # fill_index_mask is filled in the explicit loop below, which is
-    # identical to the following comprehension. But we use the explicit loop, because it
-    # is more transparent (and therefore optimizable) to cython.
-    # cdef set fill_index_mask = set([upstream_results[upstream_tw_id]["position_index"] for upstream_tw_id in upstream_results])
-    #print(f"{fill_index_mask}")
 
     for upstream_tw_id in upstream_results:
         tmp = upstream_results[upstream_tw_id]
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
-#         flowveldepth[fill_index] = tmp["results"]
         for idx, val in enumerate(tmp["results"]):
             flowveldepth[fill_index][idx] = val
-    
-#     for upstream_tw_id in upstream_results:
-#         fill_index = upstream_results[upstream_tw_id]["position_index"]
-#         fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
-#         # print(f"{upstream_results[upstream_tw_id]['results']}")
-#         # print(f"filling the {fill_index} row:")
-#         # print(f"{list(flowveldepth[fill_index])}")
-#         for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
-#             flowveldepth[fill_index][idx] = val
-#         # TODO: Identify a more efficient ways potentially to handle this array filling
-#         # The following may be options:
-#         # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
-#         # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
-#         # print(f"Now filled, it contains:")
-#         # print(f"{list(flowveldepth[fill_index])}")
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -406,14 +380,6 @@ cpdef object compute_network(
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
-    # TO DO: Reconfigure with boolean mask
-#     if len(fill_index_mask) > 0:
-#         data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
-#         flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
-#         return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
-#     else:
-#         return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
-    
     if np.size(fill_index_mask) - np.count_nonzero(fill_index_mask) > 0:        
         return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
     else:
