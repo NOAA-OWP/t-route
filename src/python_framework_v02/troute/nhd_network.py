@@ -428,6 +428,9 @@ def replace_waterbodies_connections(connections, waterbodies):
     return new_conn
 
 
+# TO DO: 
+# - add if statement check to Q.extend
+# more descriptive variable names
 def build_subnetworks(connections, rconn, min_size, sources=None):
     """
     Construct subnetworks using a truncated breadth-first-search
