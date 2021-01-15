@@ -92,9 +92,9 @@ def get_network_data(network_name):
     )
 
     # if the NHDPlus RouteLink file does not exist, download it.
-    if not os.path.exists(network_data["geo_file_path"]):
-        filename = os.path.basename(network_data["geo_file_path"])
-        network_dl.download(network_data["geo_file_path"], network_data["data_link"])
+    # if not os.path.exists(network_data["geo_file_path"]):
+    #     filename = os.path.basename(network_data["geo_file_path"])
+    #     network_dl.download(network_data["geo_file_path"], network_data["data_link"])
 
     # read-in NHD data, retain copies for viz- and full network analysis purposes
     RouteLink = nhd_io.read(network_data["geo_file_path"])
@@ -852,8 +852,8 @@ def main():
     )
 
     dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
-    if not os.path.isdir(dir_path):
-        os.mkdir(dir_path)
+    # if not os.path.isdir(dir_path):
+    #     os.mkdir(dir_path)
 
     # save RouteLink data as shapefile
     RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
@@ -881,8 +881,8 @@ def main():
         )
 
         dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
-        if not os.path.isdir(dir_path):
-            os.mkdir(dir_path)
+        # if not os.path.isdir(dir_path):
+        #     os.mkdir(dir_path)
 
         RouteLink_domain = RouteLink.loc[data.index.values]
         RouteLink_domain = gpd.GeoDataFrame(
