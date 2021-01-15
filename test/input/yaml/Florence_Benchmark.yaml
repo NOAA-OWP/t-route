@@ -32,8 +32,8 @@ output_parameters:
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: Custom Input Example (using Florence-Event Cutout datafile)
-    geo_file_path: "../../test/input/florence_933020089/NWM/DOMAIN/Route_Link.nc"
-    mask_file_path: "./933020089_mask.csv"
+    geo_file_path: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -59,7 +59,7 @@ supernetwork_parameters:
 waterbody_parameters:
     level_pool:
         #WRF-Hydro lake parm file
-        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/NWM/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
         level_pool_waterbody_id: lake_id
         level_pool_waterbody_area: LkArea
         level_pool_weir_elevation: WeirE
@@ -72,7 +72,7 @@ waterbody_parameters:
         level_pool_orifice_area: OrificeA
 #WRF-Hydro output file 
 forcing_parameters:
-    qlat_input_file: "SeptemberFlorenceQlateral.csv"
+    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral.csv"
     #qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
     #qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
     #qlat_file_index_col: feature_id
@@ -81,28 +81,26 @@ forcing_parameters:
 restart_parameters:
     ##WRF-Hydro channels restart file
     #wrf_hydro_channel_restart_file: "../../test/input/CONUS_benchmark/RESTART/RESTART.2018110100_DOMAIN1.znc"
-    wrf_hydro_channel_restart_file: "../../test/input/florence_933020089/Full_Model_Run/RESTARTS/HYDRO_RST.2018-09-01_00:00_DOMAIN1"
+    wrf_hydro_channel_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
     #WRF-Hydro channels ID crosswalk file
     #wrf_hydro_channel_ID_crosswalk_file: "../../test/input/CONUS_benchmark/DOMAIN/RouteLink_NWMv2.1z.nc"
-    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_933020089/NWM/DOMAIN/Route_Link.nc"
+    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     wrf_hydro_channel_ID_crosswalk_file_field_name: link
     wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
     wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
     wrf_hydro_channel_restart_depth_flow_field_name: hlink
     #WRF-Hydro waterbodies restart file
-    wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/Full_Model_Run/RESTARTS/HYDRO_RST.2018-09-01_00:00_DOMAIN1"
+    wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
     #WRF-Hydro waterbody ID crosswalk file
-    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/NWM/DOMAIN/LAKEPARM.nc"
+    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
     wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
     #WRF-Hydro waterbody crosswalk filter file
-    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/NWM/DOMAIN/Route_Link.nc"
+    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
-parity_parameters:
-    parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
-    parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
-    parity_check_file_index_col: feature_id
-    parity_check_file_value_col: streamflow
-    # parity_check_compare_node: 933020089
-    parity_check_compare_node: 8777701
-    # parity_check_compare_node: 8778877
+# parity_parameters:
+#     parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+#     parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+#     parity_check_file_index_col: feature_id
+#     parity_check_file_value_col: streamflow
+#     parity_check_compare_node: 8777701
 
