@@ -294,8 +294,9 @@ def compute_nhd_routing_v02(
     qts_subdivisions,
     independent_networks,
     param_df,
-    qlats,
     q0,
+    qlats,
+    usgs_df,
     assume_short_ts,
 ):
 
@@ -308,6 +309,7 @@ def compute_nhd_routing_v02(
                     r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[r].sort_index()
+                usgs_df_sub  = usgs_df.loc[r].sort_index()
                 q0_sub = q0.loc[r].sort_index()
                 # da_sub = da.loc[r].sort_index()
                 jobs.append(
@@ -319,9 +321,9 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
-                        qlat_sub.values,
                         q0_sub.values,
-                        # da_sub.values,
+                        qlat_sub.values,
+                        usgs_df_sub.values,
                         assume_short_ts,
                     )
                 )
@@ -331,14 +333,15 @@ def compute_nhd_routing_v02(
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             r = list(chain.from_iterable(reach_list))
+            s = list(usgs_df.index)
             param_df_sub = param_df.loc[
                 r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[r].sort_index()
             q0_sub = q0.loc[r].sort_index()
-            # print(q0_sub)
-            # print(qlat_sub)
-            # da_sub = da.loc[r].sort_index()
+            # import pdb; pdb.set_trace()
+            usgs_df_sub  = usgs_df.loc[s].sort_index()
+
             results.append(
                 compute_func(
                     nts,
@@ -348,9 +351,9 @@ def compute_nhd_routing_v02(
                     param_df_sub.index.values,
                     param_df_sub.columns.values,
                     param_df_sub.values,
-                    qlat_sub.values,
                     q0_sub.values,
-                    # da_sub.values,
+                    qlat_sub.values,
+                    usgs_df_sub.values,
                     assume_short_ts,
                 )
             )
@@ -706,8 +709,9 @@ def main():
         run_parameters.get("qts_subdivisions", 1),
         independent_networks,
         param_df,
-        qlats,
         q0,
+        qlats,
+        usgs_df,
         run_parameters.get("assume_short_ts", False),
     )
 
