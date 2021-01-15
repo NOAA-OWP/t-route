@@ -1,6 +1,4 @@
 import json
-import os
-
 import glob
 import pandas as pd
 from functools import partial
