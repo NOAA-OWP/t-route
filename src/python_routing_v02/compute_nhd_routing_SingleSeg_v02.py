@@ -590,7 +590,7 @@ def compute_nhd_routing_v02(
                         q0_sub.values,
                         qlat_sub.values,
                         {},
-                        usgs_df_sub.values,
+                        np.single(usgs_df_sub.values),
                         assume_short_ts,
                     )
                 )
@@ -620,7 +620,7 @@ def compute_nhd_routing_v02(
                     q0_sub.values,
                     qlat_sub.values,
                     {},
-                    usgs_df_sub.values,
+                    np.single(usgs_df_sub.values),
                     assume_short_ts,
                 )
             )
