@@ -97,10 +97,11 @@ restart_parameters:
     #WRF-Hydro waterbody crosswalk filter file
     wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
-# parity_parameters:
+parity_parameters:
+    parity_check_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv" 
 #     parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
 #     parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
 #     parity_check_file_index_col: feature_id
 #     parity_check_file_value_col: streamflow
-#     parity_check_compare_node: 8777701
+    parity_check_compare_node: 8777701
 
