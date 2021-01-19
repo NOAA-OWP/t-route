@@ -161,21 +161,30 @@ def build_test_parameters(
 
 
 def parity_check(parity_parameters, nts, dt, results):
-    validation_files = glob.glob(
-        parity_parameters["parity_check_input_folder"]
-        + parity_parameters["parity_check_file_pattern_filter"],
-        recursive=True,
-    )
+        
+    if "parity_check_input_folder" in parity_parameters.keys():
+        # Glob list of CHRTOUT files for validation
+        validation_files = glob.glob(
+            parity_parameters["parity_check_input_folder"]
+            + parity_parameters["parity_check_file_pattern_filter"],
+            recursive=True,
+        )
 
+        # read validation data from CHRTOUT files
+        validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
+            validation_files,
+            parity_parameters["parity_check_file_index_col"],
+            parity_parameters["parity_check_file_value_col"],
+            # [compare_node],
+        )
+    
+    if "parity_check_file" in parity_parameters.keys():
+        validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
+        validation_data.index = validation_data.index.astype(int)
+        validation_data.columns = validation_data.columns.astype("datetime64[ns]")
+        validation_data = validation_data.sort_index(axis="index")
+        
     compare_node = parity_parameters["parity_check_compare_node"]
-
-    # construct parity parameter set
-    validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
-        validation_files,
-        parity_parameters["parity_check_file_index_col"],
-        parity_parameters["parity_check_file_value_col"],
-        # [compare_node],
-    )
 
     wrf_time = validation_data.columns.astype("datetime64[ns]")
     dt_wrf = wrf_time[1] - wrf_time[0]
