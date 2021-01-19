@@ -4,7 +4,7 @@
         "parallel_compute": true,
         "verbose": true,
         "showtiming": true,
-        "debuglevel": 0,
+        "debuglevel": 1,
         "break_network_at_waterbodies": true,
         "assume_short_ts": true,
         "qts_subdivisions": 12,
@@ -29,21 +29,23 @@
         "mask_file_path": "../../test/input/geo/Channels/masks/Pocono_mask.csv",
         "mask_layer_string": "",
         "mask_driver_string": "csv",
-        "mask_key_col": 0,
-        "key_col": 16,
-        "downstream_col": 22,
-        "length_col": 3,
-        "manningn_col": 18,
-        "manningncc_col": 19,
-        "slope_col": 8,
-        "bottomwidth_col": 0,
-        "waterbody_col": 6,
+        "mask_key": 0,
+        "columns": {
+            "key": "link",
+            "downstream": "to",
+            "dx": "Length",
+            "n": "n",
+            "ncc": "nCC",
+            "s0": "So",
+            "bw": "BtmWdth",
+            "tw": "TopWdth",
+            "twcc": "TopWdthCC",
+            "waterbody": "NHDWaterbodyComID",
+            "musk": "MusK",
+            "musx": "MusX",
+            "cs": "ChSlp"
+        },
         "waterbody_null_code": -9999,
-        "topwidth_col": 9,
-        "topwidthcc_col": 10,
-        "MusK_col": 4,
-        "MusX_col": 5,
-        "ChSlp_col": 1,
         "terminal_code": 0,
         "driver_string": "NetCDF",
         "layer_string": 0
@@ -84,5 +86,13 @@
         "wrf_hydro_waterbody_ID_crosswalk_file_field_name": "lake_id",
         "wrf_hydro_waterbody_crosswalk_filter_file": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc",
         "wrf_hydro_waterbody_crosswalk_filter_file_field_name": "NHDWaterbodyComID"
+    },
+    "parity_parameters":
+    {
+        "parity_check_input_folder": "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
+        "parity_check_file_pattern_filter": "/*.CHRTOUT_DOMAIN1",
+        "parity_check_file_index_col": "feature_id",
+        "parity_check_file_value_col": "streamflow",
+        "parity_check_compare_node": 4186169
     }
 }

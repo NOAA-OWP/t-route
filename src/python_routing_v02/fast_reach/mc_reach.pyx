@@ -154,6 +154,7 @@ cpdef object compute_network(
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
+    dict upstream_results={},
     bint assume_short_ts=False,
     ):
     """
@@ -169,6 +170,8 @@ cpdef object compute_network(
         assume_short_ts (bool): Assume short time steps (quc = qup)
     Notes:
         Array dimensions are checked as a precondition to this method.
+        data_idx inc. flowveldepth -- sorted numerically
+        Reach_buffer -- sorted topologically
     """
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
@@ -182,6 +185,37 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+
+    # Pseudocode: LOOP ON Upstream Inflowers
+        # to pre-fill FlowVelDepth
+        # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
+        # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
+        # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
+
+    # for ts in flowveldepth:
+        # print(f"{list(ts)}")
+
+    cdef set fill_index_mask = set()
+    # fill_index_mask is filled in the explicit loop below, which is
+    # identical to the following comprehension. But we use the explicit loop, because it
+    # is more transparent (and therefore optimizable) to cython.
+    # cdef set fill_index_mask = set([upstream_results[upstream_tw_id]["position_index"] for upstream_tw_id in upstream_results])
+    #print(f"{fill_index_mask}")
+
+    for upstream_tw_id in upstream_results:
+        fill_index = upstream_results[upstream_tw_id]["position_index"]
+        fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
+        # print(f"{upstream_results[upstream_tw_id]['results']}")
+        # print(f"filling the {fill_index} row:")
+        # print(f"{list(flowveldepth[fill_index])}")
+        for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
+            flowveldepth[fill_index][idx] = val
+        # TODO: Identify a more efficient ways potentially to handle this array filling
+        # The following may be options:
+        # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
+        # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
+        # print(f"Now filled, it contains:")
+        # print(f"{list(flowveldepth[fill_index])}")
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -259,6 +293,16 @@ cpdef object compute_network(
     cdef float qup, quc
     cdef int timestep = 0
     cdef int ts_offset
+
+# TODO: Split the compute network function so that the part where we set up
+# all the indices is separate from the call to loop through them.
+# That way, we can refine the functions for preparing the indexes in isolation
+# For example, the actual looping function could start about here in the current
+# function, and might look like the following Psuedocode
+# cpdef(Dataindex):
+    # pull indices and put them in arrays
+    # minimal validation,
+    # Jump straight to nogil.
 
     with nogil:
         while timestep < nsteps:
@@ -349,7 +393,16 @@ cpdef object compute_network(
 
             timestep += 1
 
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+
+    # delete the duplicate results that shouldn't be passed along
+    # The upstream keys have empty results because they are not part of any reaches
+    # so we need to delete the null values that return
+    if len(fill_index_mask) > 0:
+        data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
+        flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
+        return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
+    else:
+        return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#

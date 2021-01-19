@@ -21,6 +21,7 @@ import argparse
 import pathlib
 import glob
 import pandas as pd
+from collections import defaultdict
 from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
@@ -76,20 +77,15 @@ def _handle_args():
         default=144,
         type=int,
     )
+
+    # change this so after --test, the user enters a test choice
     parser.add_argument(
         "--test",
-        "--run-pocono2-test-example",
-        help="Use the data values stored in the repository for a test of the Pocono network",
-        dest="run_pocono2_test",
-        action="store_true",
+        help="Select a test case, routing results will be compared against WRF hydro for parity",
+        choices=["pocono1"],
+        dest="test_case",
     )
-    parser.add_argument(
-        "--test-full-pocono",
-        "--run-pocono1-test-example",
-        help="Use the data values stored in the repository for a test of the Mainstems_CONUS network",
-        dest="run_pocono1_test",
-        action="store_true",
-    )
+
     parser.add_argument(
         "--sts",
         "--assume-short-ts",
@@ -127,11 +123,18 @@ def _handle_args():
         const="by-network",
     )
     parser.add_argument(
+        "--subnet-size",
+        help="Set the target size (number of segments) for grouped subnetworks.",
+        dest="subnetwork_target_size",
+        default=-1,
+        type=int,
+    )
+    parser.add_argument(
         "--cpu-pool",
         help="Assign the number of cores to multiprocess across.",
         dest="cpu_pool",
         type=int,
-        default=None,
+        default=-1,
     )
     parser.add_argument(
         "--compute-method",
@@ -204,6 +207,7 @@ def _handle_args():
         help="Name of the column providing the depth of flow at the beginning of the simulation.",
         default="hlink",
     )
+    # TODO: Refine exclusivity of ql args (currently not going to accept more than one arg; more than one is needed for qlw, for instance.)
     ql_arg_group = parser.add_mutually_exclusive_group()
     ql_arg_group.add_argument(
         "--qlc",
@@ -246,14 +250,6 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-    # TODO: uncomment custominput file
-    # supernetwork_arg_group = parser.add_mutually_exclusive_group()
-    # supernetwork_arg_group.add_argument(
-    #     "-f",
-    #     "--custom-input-file",
-    #     dest="custom_input_file",
-    #     help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
-    # )
     return parser.parse_args()
 
 
@@ -272,6 +268,7 @@ import troute.nhd_network_utilities_v02 as nnu
 import mc_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
+import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
 
 
 def writetoFile(file, writeString):
@@ -286,9 +283,12 @@ def constant_qlats(index_dataset, nsteps, qlat):
 
 
 def compute_nhd_routing_v02(
+    connections,
+    rconn,
     reaches_bytw,
     compute_func,
     parallel_compute_method,
+    subnetwork_target_size,
     cpu_pool,
     nts,
     qts_subdivisions,
@@ -300,18 +300,284 @@ def compute_nhd_routing_v02(
     assume_short_ts,
 ):
 
-    if parallel_compute_method == "by-network":
+    start_time = time.time()
+    if parallel_compute_method == "by-subnetwork-jit-clustered":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+            connections, rconn, subnetwork_target_size
+        )
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+        reaches_ordered_bysubntw = defaultdict(dict)
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_ordered_bysubntw[order][
+                    subn_tw
+                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+        cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
+        # Otherwise, keep adding reaches.
+
+        reaches_ordered_bysubntw_clustered = defaultdict(dict)
+
+        for order in subnetworks_only_ordered_jit:
+            cluster = 0
+            reaches_ordered_bysubntw_clustered[order][cluster] = {
+                "segs": [],
+                "upstreams": {},
+                "tw": [],
+                "subn_reach_list": [],
+            }
+            for twi, (subn_tw, subn_reach_list) in enumerate(
+                reaches_ordered_bysubntw[order].items(), 1
+            ):
+                segs = list(chain.from_iterable(subn_reach_list))
+                reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
+                reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
+                    subnetworks[subn_tw]
+                )
+
+                reaches_ordered_bysubntw_clustered[order][cluster]["tw"].append(subn_tw)
+                reaches_ordered_bysubntw_clustered[order][cluster][
+                    "subn_reach_list"
+                ].extend(subn_reach_list)
+
+                if (
+                    len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
+                    >= cluster_threshold * subnetwork_target_size
+                ) and (
+                    twi
+                    < len(reaches_ordered_bysubntw[order])
+                    # i.e., we haven't reached the end
+                    # TODO: perhaps this should be a while condition...
+                ):
+                    cluster += 1
+                    reaches_ordered_bysubntw_clustered[order][cluster] = {
+                        "segs": [],
+                        "upstreams": {},
+                        "tw": [],
+                        "subn_reach_list": [],
+                    }
+
+        if 1 == 1:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        # if 1 == 1:
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
+
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
+                jobs = []
+                for cluster, clustered_subns in reaches_ordered_bysubntw_clustered[
+                    order
+                ].items():
+                    segs = clustered_subns["segs"]
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
+                    param_df_sub = param_df.loc[
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
+                    subn_reach_list = clustered_subns["subn_reach_list"]
+                    upstreams = clustered_subns["upstreams"]
+
+                    # results_subn[order].append(
+                    #     compute_func(
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            qts_subdivisions,
+                            subn_reach_list,
+                            upstreams,
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            q0_sub.values,
+                            qlat_sub.values,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
+                            assume_short_ts,
+                        )
+                    )
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for ci, (cluster, clustered_subns) in enumerate(
+                        reaches_ordered_bysubntw_clustered[order].items()
+                    ):
+                        for subn_tw in clustered_subns["tw"]:
+                            # TODO: This index step is necessary because we sort the segment index
+                            # TODO: I think there are a number of ways we could remove the sorting step
+                            #       -- the binary search could be replaced with an index based on the known topology
+                            flowveldepth_interorder[subn_tw] = {}
+                            subn_tw_sortposition = (
+                                results_subn[order][ci][0].tolist().index(subn_tw)
+                            )
+                            flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                                order
+                            ][ci][1][subn_tw_sortposition]
+                            # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                            # There will be an empty array initialized at the top of the loop, then re-populated here.
+                            # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
+
+        if 1 == 1:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-subnetwork-jit":
+        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+            connections, rconn, subnetwork_target_size
+        )
+        subnetworks_only_ordered_jit = defaultdict(dict)
+        subnetworks = defaultdict(dict)
+        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+            intw = independent_networks[tw]
+            for order, subnet_sets in ordered_network.items():
+                subnetworks_only_ordered_jit[order].update(subnet_sets)
+                for subn_tw, subnetwork in subnet_sets.items():
+                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+        reaches_ordered_bysubntw = defaultdict(dict)
+        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+            for subn_tw, subnet in ordered_subn_dict.items():
+                conn_subn = {k: connections[k] for k in subnet if k in connections}
+                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                reaches_ordered_bysubntw[order][
+                    subn_tw
+                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+        if 1 == 1:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
+
+            for order in range(max(subnetworks_only_ordered_jit.keys()), -1, -1):
+                jobs = []
+                for twi, (subn_tw, subn_reach_list) in enumerate(
+                    reaches_ordered_bysubntw[order].items(), 1
+                ):
+                    # TODO: Confirm that a list here is best -- we are sorting,
+                    # so a set might be sufficient/better
+                    segs = list(chain.from_iterable(subn_reach_list))
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
+                    param_df_sub = param_df.loc[
+                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    ].sort_index()
+                    if order < max(subnetworks_only_ordered_jit.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
+                    qlat_sub = qlats.loc[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
+                    jobs.append(
+                        delayed(compute_func)(
+                            nts,
+                            qts_subdivisions,
+                            subn_reach_list,
+                            subnetworks[subn_tw],
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            q0_sub.values,
+                            qlat_sub.values,
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
+                            assume_short_ts,
+                        )
+                    )
+
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
+                        # TODO: This index step is necessary because we sort the segment index
+                        # TODO: I think there are a number of ways we could remove the sorting step
+                        #       -- the binary search could be replaced with an index based on the known topology
+                        flowveldepth_interorder[subn_tw] = {}
+                        subn_tw_sortposition = (
+                            results_subn[order][twi][0].tolist().index(subn_tw)
+                        )
+                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                            order
+                        ][twi][1][subn_tw_sortposition]
+                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # There will be an empty array initialized at the top of the loop, then re-populated here.
+                        # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
+
+        if 1 == 1:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-                r = list(chain.from_iterable(reach_list))
+                segs = list(chain.from_iterable(reach_list))
                 param_df_sub = param_df.loc[
-                    r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
-                qlat_sub = qlats.loc[r].sort_index()
-                usgs_df_sub  = usgs_df.loc[r].sort_index()
-                q0_sub = q0.loc[r].sort_index()
-                # da_sub = da.loc[r].sort_index()
+                qlat_sub = qlats.loc[segs].sort_index()
+                usgs_df_sub  = usgs_df.loc[segs].sort_index()
+                q0_sub = q0.loc[segs].sort_index()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -323,7 +589,8 @@ def compute_nhd_routing_v02(
                         param_df_sub.values,
                         q0_sub.values,
                         qlat_sub.values,
-                        usgs_df_sub.values,
+                        np.single(usgs_df_sub.values),
+                        {},
                         assume_short_ts,
                     )
                 )
@@ -332,14 +599,13 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            r = list(chain.from_iterable(reach_list))
+            segs = list(chain.from_iterable(reach_list))
             s = list(usgs_df.index)
             param_df_sub = param_df.loc[
-                r, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
-            qlat_sub = qlats.loc[r].sort_index()
-            q0_sub = q0.loc[r].sort_index()
-            # import pdb; pdb.set_trace()
+            qlat_sub = qlats.loc[segs].sort_index()
+            q0_sub = q0.loc[segs].sort_index()
             usgs_df_sub  = usgs_df.loc[s].sort_index()
 
             results.append(
@@ -353,7 +619,8 @@ def compute_nhd_routing_v02(
                     param_df_sub.values,
                     q0_sub.values,
                     qlat_sub.values,
-                    usgs_df_sub.values,
+                    np.single(usgs_df_sub.values),
+                    {},
                     assume_short_ts,
                 )
             )
@@ -373,6 +640,7 @@ def _input_handler():
     restart_parameters = {}
     output_parameters = {}
     run_parameters = {}
+    parity_parameters = {}
     data_assimilation_parameters = {}
 
     if custom_input_file:
@@ -383,23 +651,14 @@ def _input_handler():
             restart_parameters,
             output_parameters,
             run_parameters,
+            parity_parameters,
             data_assimilation_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
-        # TODO: uncomment custominput file
-        #     qlat_const = forcing_parameters.get("qlat_const", None)
-        #     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-        #     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-        #     qlat_file_pattern_filter = forcing_parameters.get(
-        #         "qlat_file_pattern_filter", None
-        #     )
-        #     qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-        #     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
-        # else:
-        # TODO: uncomment custominput file
-
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
+        run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
+
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
 
@@ -409,127 +668,27 @@ def _input_handler():
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
 
-        run_pocono2_test = args.run_pocono2_test
-        run_pocono1_test = args.run_pocono1_test
+        test_case = args.test_case
 
-        if run_pocono2_test:
-            if verbose:
-                print("running test case for Pocono_TEST2 domain")
-            # Overwrite the following test defaults
-            supernetwork = "Pocono_TEST2"
-            waterbody_parameters["break_network_at_waterbodies"] = False
-            run_parameters["qts_subdivisions"] = qts_subdivisions = 1
-            run_parameters["dt"] = 300 / qts_subdivisions
-            run_parameters["nts"] = 144 * qts_subdivisions
-            output_parameters["csv_output"] = {
-                "csv_output_folder": os.path.join(root, "test", "output", "text")
-            }
-            output_parameters["nc_output_folder"] = os.path.join(
-                root, "test", "output", "text"
-            )
-            # test 1. Take lateral flow from re-formatted wrf-hydro output from Pocono Basin simulation
-            forcing_parameters["qlat_input_file"] = os.path.join(
-                root, r"test/input/geo/PoconoSampleData2/Pocono_ql_testsamp1_nwm_mc.csv"
-            )
+        if test_case:
 
-        elif run_pocono1_test:
-            # NOTE: The test case for the Pocono basin was derived from this
-            # resource on HydroShare, developed by aaraney and sourced from the
-            # wrf_hydro_nwm_public repository on GitHub
-            # see: https://www.hydroshare.org/resource/03ca354200e540018d44183598890448/
-            # By downloading aaraney's docker job scheduler repo from GitHub, one can
-            # execute the WRF-Hydro model that generated the test results
-            # see: https://github.com/aaraney/NWM-Dockerized-Job-Scheduler
-            if verbose:
-                print("running test case for Pocono_TEST1 domain")
-            # Overwrite the following test defaults
-
-            NWM_test_path = os.path.join(
-                root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
+            # call test case assemble function
+            (
+                supernetwork_parameters,
+                run_parameters,
+                output_parameters,
+                restart_parameters,
+                forcing_parameters,
+                parity_parameters,
+            ) = build_tests.build_test_parameters(
+                test_case,
+                supernetwork_parameters,
+                run_parameters,
+                output_parameters,
+                restart_parameters,
+                forcing_parameters,
+                parity_parameters,
             )
-            # lakeparm_file = os.path.join(
-            #     NWM_test_path, "primary_domain", "DOMAIN", "LAKEPARM.nc",
-            # )
-            routelink_file = os.path.join(
-                NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
-            )
-            time_string = "2017-12-31_06-00_DOMAIN1"
-            wrf_hydro_restart_file = os.path.join(
-                NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
-            )
-            supernetwork_parameters = {
-                "title_string": "Custom Input Example (using Pocono Test Example datafile)",
-                "geo_file_path": routelink_file,
-                "columns": {
-                    "key": "link",
-                    "downstream": "to",
-                    "dx": "Length",
-                    "n": "n",  # TODO: rename to `manningn`
-                    "ncc": "nCC",  # TODO: rename to `mannningncc`
-                    "s0": "So",  # TODO: rename to `bedslope`
-                    "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
-                    "waterbody": "NHDWaterbodyComID",
-                    "tw": "TopWdth",  # TODO: rename to `topwidth`
-                    "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
-                    "musk": "MusK",
-                    "musx": "MusX",
-                    "cs": "ChSlp",  # TODO: rename to `sideslope`
-                },
-                "waterbody_null_code": -9999,
-                "terminal_code": 0,
-                "driver_string": "NetCDF",
-                "layer_string": 0,
-            }
-            # waterbody_parameters = {
-            #     "level_pool": {
-            #         "level_pool_waterbody_parameter_file_path": lakeparm_file,
-            #         "level_pool_waterbody_id": "lake_id",
-            #         "level_pool_waterbody_area": "LkArea",
-            #         "level_pool_weir_elevation": "WeirE",
-            #         "level_pool_waterbody_max_elevation": "LkMxE",
-            #         "level_pool_outfall_weir_coefficient": "WeirC",
-            #         "level_pool_outfall_weir_length": "WeirL",
-            #         "level_pool_overall_dam_length": "DamL",
-            #         "level_pool_orifice_elevation": "OrificeE",
-            #         "level_pool_orifice_coefficient": "OrificeC",
-            #         "level_pool_orifice_area": "OrificeA",
-            #     }
-            # }
-            # break_network_at_waterbodies = True
-            run_parameters["qts_subdivisions"] = qts_subdivisions = 12
-            run_parameters["dt"] = 3600 / qts_subdivisions
-            run_parameters["nts"] = 24 * qts_subdivisions
-            data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
-            output_parameters["csv_output"] = None
-            output_parameters["nc_output_folder"] = None
-            # build a time string to specify input date
-            restart_parameters["wrf_hydro_channel_restart_file"] = wrf_hydro_restart_file
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"] = routelink_file
-            restart_parameters[
-                "wrf_hydro_channel_ID_crosswalk_file_field_name"
-            ] = "link"
-            restart_parameters[
-                "wrf_hydro_channel_restart_upstream_flow_field_name"
-            ] = "qlink1"
-            restart_parameters[
-                "wrf_hydro_channel_restart_downstream_flow_field_name"
-            ] = "qlink2"
-            restart_parameters[
-                "wrf_hydro_channel_restart_depth_flow_field_name"
-            ] = "hlink"
-            # restart_parameters["wrf_hydro_waterbody_restart_file"] = wrf_hydro_restart_file
-            # restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"] = lakeparm_file
-            # restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"] = "lake_id"
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"] = routelink_file
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"] = "NHDWaterbodyComID"
-            # restart_parameters["wrf_hydro_waterbody_crosswalk_file_output_order_field= "AscendingIndex"
-            forcing_parameters["qlat_input_folder"] = os.path.join(
-                root,
-                "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
-            )
-            forcing_parameters["qlat_file_pattern_filter"] = "/*.CHRTOUT_DOMAIN1"
-            forcing_parameters["qlat_file_index_col"] = "feature_id"
-            forcing_parameters["qlat_file_value_col"] = "q_lateral"
 
         else:
             run_parameters["dt"] = args.dt
@@ -587,6 +746,7 @@ def _input_handler():
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
         data_assimilation_parameters,
     )
 
@@ -600,6 +760,7 @@ def main():
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler()
 
@@ -701,9 +862,13 @@ def main():
         compute_func = mc_reach.compute_network
 
     results = compute_nhd_routing_v02(
+        connections,
+        rconn,
         reaches_bytw,
         compute_func,
         run_parameters.get("parallel_compute_method", None),
+        run_parameters.get("subnetwork_target_size", 1),
+        # The default here might be the whole network or some percentage...
         run_parameters.get("cpu_pool", None),
         run_parameters.get("nts", 1),
         run_parameters.get("qts_subdivisions", 1),
@@ -738,6 +903,18 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    # print(q0)
+
+    if "parity_check_input_folder" in parity_parameters:
+
+        if verbose:
+            print(
+                "conducting parity check, comparing WRF Hydro results against t-route results"
+            )
+
+        build_tests.parity_check(
+            parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
+        )
+ 
+
 if __name__ == "__main__":
     main()

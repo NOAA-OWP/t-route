@@ -53,6 +53,7 @@ def read_custom_input(custom_input_file):
     restart_parameters = data.get("restart_parameters", {})
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
+    parity_parameters = data.get("parity_parameters", {})
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -61,6 +62,7 @@ def read_custom_input(custom_input_file):
         restart_parameters,
         output_parameters,
         run_parameters,
+        parity_parameters,
     )
 
 
@@ -77,7 +79,7 @@ def replace_downstreams(data, downstream_col, terminal_code):
 def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
     """
     General waterbody dataframe reader. At present, only level-pool
-    capability exists. 
+    capability exists.
     """
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
@@ -92,14 +94,14 @@ def read_level_pool_waterbody_df(
     parm_file, lake_index_field="lake_id", lake_id_mask=None
 ):
     """
-    Reads LAKEPARM file and prepares a dataframe, filtered 
+    Reads LAKEPARM file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
 
-    Prior version filtered the dataframe as opposed to the dataset as in this version. 
+    Prior version filtered the dataframe as opposed to the dataset as in this version.
     with xr.open_dataset(parm_file) as ds:
         df1 = ds.to_dataframe()
     df1 = df1.set_index(lake_index_field).sort_index(axis="index")
@@ -134,6 +136,74 @@ def read_qlat(path):
     retained for backwards compatibility with early v02 files
     """
     return get_ql_from_csv(path)
+
+
+def get_ql_from_wrf_hydro_mf(
+    qlat_files, index_col="feature_id", value_col="q_lateral"
+):
+    """
+    qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
+    index_col: column/field in the CHRTOUT files with the segment/link id
+    value_col: column/field in the CHRTOUT files with the lateral inflow value
+
+    In general the CHRTOUT files contain one value per time step. At present, there is
+    no capability for handling non-uniform timesteps in the qlaterals.
+
+    The qlateral may also be input using comma delimited file -- see
+    `get_ql_from_csv`
+
+
+    Note/Todo:
+    For later needs, filtering for specific features or times may
+    be accomplished with one of:
+        ds.loc[{selectors}]
+        ds.sel({selectors})
+        ds.isel({selectors})
+
+    Returns from these selection functions are sub-datasets.
+
+    For example:
+    ```
+    (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
+                                     latitude  longitude  q_lateral
+    time                feature_id
+    2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
+    2018-01-02 00:00:00 4186117     41.233807 -75.413895   0.006460
+    ```
+
+    or...
+    ```
+    (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
+                                     latitude  longitude  q_lateral
+    time                feature_id
+    2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
+    ```
+    """
+    filter_list = None
+
+    with xr.open_mfdataset(
+        qlat_files,
+        combine="by_coords",
+        # combine="nested",
+        # concat_dim="time",
+        # data_vars="minimal",
+        # coords="minimal",
+        # compat="override",
+        preprocess=drop_all_coords,
+        # parallel=True,
+    ) as ds:
+        ql = pd.DataFrame(
+            ds[value_col].values.T,
+            index=ds[index_col].values,
+            columns=ds.time.values,
+            # dtype=float,
+        )
+
+    return ql
+
+
+def drop_all_coords(ds):
+    return ds.reset_coords(drop=True)
 
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):

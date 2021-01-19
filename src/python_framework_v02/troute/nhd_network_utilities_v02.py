@@ -484,7 +484,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
         qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
-        qlat_df = nhd_io.get_ql_from_wrf_hydro(
+        qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
