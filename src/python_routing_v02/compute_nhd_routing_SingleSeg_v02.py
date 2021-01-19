@@ -419,8 +419,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            qlat_sub.values,
                             q0_sub.values,
+                            qlat_sub.values,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
@@ -529,8 +529,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            qlat_sub.values,
                             q0_sub.values,
+                            qlat_sub.values,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
@@ -589,8 +589,8 @@ def compute_nhd_routing_v02(
                         param_df_sub.values,
                         q0_sub.values,
                         qlat_sub.values,
-                        {},
                         np.single(usgs_df_sub.values),
+                        {},
                         assume_short_ts,
                     )
                 )
@@ -619,8 +619,8 @@ def compute_nhd_routing_v02(
                     param_df_sub.values,
                     q0_sub.values,
                     qlat_sub.values,
-                    {},
                     np.single(usgs_df_sub.values),
+                    {},
                     assume_short_ts,
                 )
             )
