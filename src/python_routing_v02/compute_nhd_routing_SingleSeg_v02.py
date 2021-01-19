@@ -658,6 +658,7 @@ def _input_handler():
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
         run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
+
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
 
@@ -902,6 +903,7 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
+
     if "parity_check_input_folder" in parity_parameters:
 
         if verbose:
@@ -912,7 +914,7 @@ def main():
         build_tests.parity_check(
             parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
         )
-
+ 
 
 if __name__ == "__main__":
     main()
