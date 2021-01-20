@@ -191,8 +191,12 @@ cpdef object compute_network(
         # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
         # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
 
-    fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef Py_ssize_t fill_index
+    cdef long upstream_tw_id
     cdef dict tmp
+    cdef int idx
+    cdef float val
 
     for upstream_tw_id in upstream_results:
         tmp = upstream_results[upstream_tw_id]
