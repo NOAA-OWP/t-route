@@ -72,7 +72,7 @@ waterbody_parameters:
         level_pool_orifice_area: OrificeA
 #WRF-Hydro output file 
 forcing_parameters:
-    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral.csv"
+    qlat_input_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceQlateral.csv"
     #qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
     #qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
     #qlat_file_index_col: feature_id
