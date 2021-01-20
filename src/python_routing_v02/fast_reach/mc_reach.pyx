@@ -672,11 +672,22 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
 
-cpdef object compute_network_structured_obj(int nsteps, list reaches, dict connections,
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
-    const float[:, :] qlat_values, const float[:,:] initial_conditions,
-    # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
-    bint assume_short_ts=False):
+cpdef object compute_network_structured_obj(
+    int nsteps,
+    int qts_subdivisions,
+    list reaches,
+    dict connections,
+    const long[:] data_idx,
+    object[:] data_cols,
+    const float[:,:] data_values,
+    const float[:,:] qlat_values,
+    const float[:,:] initial_conditions,
+    # const float[:] wbody_idx,
+    # object[:] wbody_cols,
+    # const float[:,:] wbody_vals,
+    dict upstream_results={},
+    bint assume_short_ts=False
+    ):
     """
     Compute network
     Args:
