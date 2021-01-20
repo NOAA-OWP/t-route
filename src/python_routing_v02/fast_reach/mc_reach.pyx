@@ -380,10 +380,12 @@ cpdef object compute_network(
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
-    if np.size(fill_index_mask) - np.count_nonzero(fill_index_mask) > 0:        
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
-    else:
-        return [np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')]
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
+    
+#     if np.size(fill_index_mask) - np.count_nonzero(fill_index_mask) > 0:        
+#         return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
+#     else:
+#         return [np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
