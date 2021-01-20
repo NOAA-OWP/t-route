@@ -147,9 +147,10 @@ def _handle_args():
     )
     parser.add_argument(
         "--compute-method",
-        help="Use the cython version of the compute_network code (enter additional flag options for other compute_network possibilities).",
+        nargs="?",
+        help="Use the cython version of the compute_network code [options: 'V02-caching'; 'V02-structured'; 'V02-structured-obj' ... ).",
         dest="compute_method",
-        default="standard cython compute network",
+        default="VO2-caching",
     )
     supernetwork_arg_group = parser.add_mutually_exclusive_group()
     supernetwork_arg_group.add_argument(
@@ -667,6 +668,7 @@ def _input_handler():
         run_parameters["subnetwork_target_size"] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
+        run_parameters["compute_method"] = args.compute_method
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
@@ -851,8 +853,12 @@ def main():
         else:
             print(f"executing routing computation ...")
 
-    if run_parameters.get("compute_method", None) == "standard cython compute network":
+    if run_parameters.get("compute_method", None) == "V02-caching":
         compute_func = mc_reach.compute_network
+    elif run_parameters.get("compute_method", None) == "V02-structured":
+        compute_func = mc_reach.compute_network_structured
+    elif run_parameters.get("compute_method", None) == "V02-structured-obj":
+        compute_func = mc_reach.compute_network_structured_obj
     else:
         compute_func = mc_reach.compute_network
 
