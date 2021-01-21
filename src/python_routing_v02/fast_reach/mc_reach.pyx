@@ -718,6 +718,8 @@ cpdef object compute_network_structured_obj(
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
     ###### Declare/type variables #####
+    # Source columns
+    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
     cdef Py_ssize_t max_buff_size = 0
     #lists to hold reach definitions, i.e. list of ids
     cdef list reach
@@ -758,10 +760,13 @@ cpdef object compute_network_structured_obj(
         max_buff_size=len(segment_ids)
 
       for sid in segment_ids:
-        #FIXME data_array order is important, column_mapper might help with this
+        #Initialize parameters  from the data_array, and set the initial initial_conditions
+        #These aren't actually used (the initial contions) in the kernel as they are extracted from the
+        #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
+        #it is inialized to 0.0
         segment_objects.append(
-            MC_Segment(sid, *data_array[sid], *init_array[sid])
-            )
+        MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
+        )
 
       reach_objects.append(
           MC_Reach(segment_objects, array('l',upstream_ids))
@@ -867,6 +872,8 @@ cpdef object compute_network_structured(
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
     ###### Declare/type variables #####
+    # Source columns
+    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
     cdef Py_ssize_t max_buff_size = 0
     #lists to hold reach definitions, i.e. list of ids
     cdef list reach
@@ -912,9 +919,12 @@ cpdef object compute_network_structured(
         max_buff_size=len(segment_ids)
 
       for sid in segment_ids:
-        #FIXME data_array order is important, column_mapper might help with this
+        #Initialize parameters  from the data_array, and set the initial initial_conditions
+        #These aren't actually used (the initial contions) in the kernel as they are extracted from the
+        #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
+        #it is inialized to 0.0
         segment_objects.append(
-            MC_Segment(sid, *data_array[sid], *init_array[sid])
+            MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
             )
 
       reach_objects.append(
