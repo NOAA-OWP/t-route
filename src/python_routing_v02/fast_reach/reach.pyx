@@ -42,7 +42,10 @@ cdef void muskingcunge(float dt,
         &depthp,
         &qdc,
         &velc,
-        &depthc)
+        &depthc,
+        &ck,
+        &cn,
+        &X)
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
