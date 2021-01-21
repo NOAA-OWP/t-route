@@ -34,5 +34,8 @@ cdef extern from "pyMCsingleSegStime_NoLoop.h":
                                   float *depthp,
                                   float *qdc,
                                   float *velc,
+                                  float *ck,
+                                  float *cn,
+                                  float *X,
                                   float *depthc) nogil;
 
