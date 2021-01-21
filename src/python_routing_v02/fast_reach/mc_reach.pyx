@@ -806,7 +806,7 @@ cpdef object compute_network_structured_obj(
               buf_view[i][8] = segment.cs
               buf_view[i][9] = segment.s0
               buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
-              buf_view[i][11] = flowveldepth[segment.id, timestep-1, 1]
+              buf_view[i][11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
               buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
 
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
@@ -980,7 +980,7 @@ cpdef object compute_network_structured(
                 buf_view[i][8] = segment.cs
                 buf_view[i][9] = segment.s0
                 buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
-                buf_view[i][11] = flowveldepth[segment.id, timestep-1, 1]
+                buf_view[i][11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                 buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
 
               compute_reach_kernel(previous_upstream_flows, upstream_flows,
