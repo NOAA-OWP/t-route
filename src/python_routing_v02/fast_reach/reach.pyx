@@ -18,14 +18,15 @@ cdef void muskingcunge(float dt,
         float s0,
         float velp,
         float depthp,
-        QVD *rv,
-        float ck,
-        float cn,
-        float X) nogil:
+        QVD *rv) nogil:
+    
     cdef:
         float qdc = 0.0
         float depthc = 0.0
         float velc = 0.0
+        float ck = 0.0
+        float cn = 0.0
+        float X = 0.0
 
     c_muskingcungenwm(
         &dt,
