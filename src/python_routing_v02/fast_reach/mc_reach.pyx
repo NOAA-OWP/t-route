@@ -391,7 +391,7 @@ cpdef object compute_network(
                     
                 # copy out_buf results back to flowdepthvel
                 for i in range(3,6):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+                    fill_buffer_column(drows, i, srows, ts_offset + (i-3), out_view, courant)
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
@@ -402,7 +402,7 @@ cpdef object compute_network(
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
