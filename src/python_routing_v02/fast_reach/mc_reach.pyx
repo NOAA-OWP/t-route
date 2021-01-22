@@ -108,7 +108,7 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     velp,
                     depthp,
                     out)
-
+        
 #        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
@@ -190,6 +190,10 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    
+    # courant is a 2D float array that holds courant results
+    # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
+    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
