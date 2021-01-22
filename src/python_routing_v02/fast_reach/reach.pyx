@@ -50,9 +50,15 @@ cdef void muskingcunge(float dt,
         &ck,
         &cn,
         &X)
+    
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
+    
+    # to do: make these additional variable's conditional, somehow
+    rv.ck = ck
+    rv.cn = cn
+    rv.X = X
 
 cpdef dict compute_reach_kernel(float dt,
         float qup,
