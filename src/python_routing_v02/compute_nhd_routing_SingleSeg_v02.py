@@ -607,8 +607,9 @@ def compute_nhd_routing_v02(
             param_df_positions = param_df_positions.drop(columns=['dt','bw','tw','twcc','dx','n','ncc','cs','s0'])
             param_df_positions = param_df_positions.reset_index()
             param_df_positions = param_df_positions.set_index(['link'])
-            for seg in segs:
-                positions_list.append(int(param_df_positions.loc[seg]))
+            # TODO: make this a generator or at least a list comprehension
+            for gage in usgs_df.index:
+                if gage in param_df_positions.index: positions_list.append(int(param_df_positions.loc[gage]))
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
             usgs_df_sub  = usgs_df.loc[s].sort_index()
