@@ -184,7 +184,7 @@ def parity_check(parity_parameters, nts, dt, results):
     # construct a dataframe of simulated flows
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
     flowveldepth = pd.concat(
-        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d, c in results], copy=False
     )
     flowveldepth = flowveldepth.sort_index()
 
