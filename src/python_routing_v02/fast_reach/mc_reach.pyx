@@ -113,6 +113,9 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
+        output_buf[i, 3] = out.cn
+        output_buf[i, 4] = out.ck
+        output_buf[i, 5] = out.X
 
         qup = qdp
 
