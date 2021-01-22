@@ -844,7 +844,7 @@ def main():
         run_parameters.get("assume_short_ts", False),
     )
 
-    csv_output_folder = output_parameters.get("csv_output_folder", None)
+    csv_output_folder = output_parameters["csv_output"].get("csv_output_folder", None)
     if (debuglevel <= -1) or csv_output_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -862,12 +862,21 @@ def main():
         )
 
         if csv_output_folder:
-            flowveldepth = flowveldepth.sort_index()
-            courant = courant.sort_index()
+            # create filenames
+            #TO DO: create more descriptive filenames
+            if supernetwork_parameters["title_string"]:
+                filename_fvd = "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                filename_courant = "courant_" + supernetwork_parameters["title_string"] + ".csv"
+            elif arg.supernetwork:
+                filename_fvd = "flowveldepth_" + arg.supernetwork + ".csv"
+                filename_courant = "courant_" + arg.supernetwork + ".csv"
+            
             output_path = pathlib.Path(csv_output_folder).resolve()
-            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
-            courant.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
-
+            flowveldepth = flowveldepth.sort_index()
+            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+            courant = courant.sort_index()
+            courant.to_csv(output_path.joinpath(filename_courant))
+            
         if debuglevel <= -1:
             print(flowveldepth)
 
