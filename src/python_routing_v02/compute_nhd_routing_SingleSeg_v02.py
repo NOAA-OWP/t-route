@@ -617,7 +617,7 @@ def compute_nhd_routing_v02(
                     assume_short_ts,
                 )
             )
-
+    
     return results
 
 
@@ -850,7 +850,14 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
+            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
+            copy=False,
+        )
+        courant_columns = pd.MultiIndex.from_product(
+            [range(nts), ["cn", "ck", "X"]]
+        ).to_flat_index()
+        courant = pd.concat(
+            [pd.DataFrame(c, index=i, columns=courant_columns) for i, d, c in results],
             copy=False,
         )
 
