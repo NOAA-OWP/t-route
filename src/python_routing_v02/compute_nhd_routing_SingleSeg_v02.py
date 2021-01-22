@@ -863,8 +863,10 @@ def main():
 
         if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
+            courant = courant.sort_index()
             output_path = pathlib.Path(csv_output_folder).resolve()
             flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
+            courant.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
