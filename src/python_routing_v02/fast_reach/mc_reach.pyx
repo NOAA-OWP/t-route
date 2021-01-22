@@ -193,6 +193,7 @@ cpdef object compute_network(
     
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
+    # rows: indexed by data_idx
     cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
     # Pseudocode: LOOP ON Upstream Inflowers
@@ -284,7 +285,7 @@ cpdef object compute_network(
 
     cdef int maxreachlen = max(reach_sizes)
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+    out_buf = np.empty((maxreachlen, 6), dtype='float32')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
