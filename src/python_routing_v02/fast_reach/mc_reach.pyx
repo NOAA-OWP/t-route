@@ -388,6 +388,10 @@ cpdef object compute_network(
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+                    
+                # copy out_buf results back to flowdepthvel
+                for i in range(3,6):
+                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
