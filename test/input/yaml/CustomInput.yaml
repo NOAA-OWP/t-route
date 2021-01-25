@@ -10,6 +10,7 @@ run_parameters:
     qts_subdivisions: 12
     dt: 300
     nts: 288
+    return_courant: true
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
     #Set the showtiming (omit flag for no timing information)
