@@ -151,6 +151,7 @@ cpdef object compute_network(
     const float[:,:] initial_conditions,
     const float[:,:] qlat_values,
     const float[:,:] nudging_values,
+    nudging_positions_list,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -390,9 +391,14 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-
-            timestep += 1
-
+            with gil:
+                if nudging_positions_list != []:
+                    for gage_loc, values in enumerate(nudging_values):
+                        flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]  
+    
+                    timestep += 1
+                else:
+                    timestep += 1
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches

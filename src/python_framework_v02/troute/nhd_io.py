@@ -41,6 +41,7 @@ def read_mask(path, layer_string=None):
 
 
 def read_custom_input(custom_input_file):
+    # import pdb; pdb.set_trace()
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
@@ -54,6 +55,7 @@ def read_custom_input(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
     parity_parameters = data.get("parity_parameters", {})
+    data_assimilation_parameters = data.get("data_assimilation_parameters", {})
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -63,6 +65,7 @@ def read_custom_input(custom_input_file):
         output_parameters,
         run_parameters,
         parity_parameters,
+        data_assimilation_parameters,
     )
 
 
@@ -179,6 +182,7 @@ def get_ql_from_wrf_hydro_mf(
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
+    # import pdb; pdb.set_trace()
     filter_list = None
 
     with xr.open_mfdataset(
@@ -194,7 +198,7 @@ def get_ql_from_wrf_hydro_mf(
     ) as ds:
         ql = pd.DataFrame(
             ds[value_col].values.T,
-            index=ds[index_col].values,
+            index=ds[index_col].values[0],
             columns=ds.time.values,
             # dtype=float,
         )

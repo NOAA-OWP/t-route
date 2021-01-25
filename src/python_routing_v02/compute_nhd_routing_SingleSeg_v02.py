@@ -250,6 +250,13 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
+    
+    parser.add_argument(
+        "--data_assimilation_file_path",
+        help="Provide a path to a data assimilation routelink file folder",
+        dest="data_assimilation_parameters_file",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -404,7 +411,7 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc[segs].sort_index()
+                    q0_sub = q0.loc5[segs].sort_index()
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
                     # results_subn[order].append(
@@ -597,24 +604,34 @@ def compute_nhd_routing_v02(
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             segs = list(chain.from_iterable(reach_list))
-            s = list(usgs_df.index)
-            positions_list = []
             param_df_sub = param_df.loc[
-                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-            ].sort_index()
-            param_df_positions = param_df_sub.reset_index()
-            param_df_positions.index = param_df_positions.index.set_names(['position'])
-            param_df_positions = param_df_positions.drop(columns=['dt','bw','tw','twcc','dx','n','ncc','cs','s0'])
-            param_df_positions = param_df_positions.reset_index()
-            param_df_positions = param_df_positions.set_index(['link'])
-            # TODO: make this a generator or at least a list comprehension
-            for gage in usgs_df.index:
-                if gage in param_df_positions.index: positions_list.append(int(param_df_positions.loc[gage]))
+                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                ].sort_index()
+            if not usgs_df.empty:
+                s = list(usgs_df.index)
+                nudging_positions_list = []
+                param_df_positions = param_df_sub.reset_index()
+                param_df_positions.index = param_df_positions.index.set_names(['position'])
+                param_df_positions = param_df_positions.drop(columns=['dt','bw','tw','twcc','dx','n','ncc','cs','s0'])
+                param_df_positions = param_df_positions.reset_index()
+                param_df_positions = param_df_positions.set_index(['link'])
+
+                # TODO: make this a generator or at least a list comprehension
+                for gage in usgs_df.index:
+                    if gage in param_df_positions.index: nudging_positions_list.append(int(param_df_positions.loc[gage]))
+                usgs_df_sub  = usgs_df.loc[s].sort_index()
+            else:
+                usgs_df_sub = pd.DataFrame()
+                nudging_positions_list = None
+            print(qlats)
+            print(q0)
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
-            usgs_df_sub  = usgs_df.loc[s].sort_index()
             
-
+            
+        
+            # print(nudging_positions_list)
+            # print(usgs_df_sub)
             results.append(
                 compute_func(
                     nts,
@@ -627,11 +644,13 @@ def compute_nhd_routing_v02(
                     q0_sub.values,
                     qlat_sub.values,
                     np.single(usgs_df_sub.values),
+                    nudging_positions_list,
                     {},
                     assume_short_ts,
+                    
                 )
             )
-        print(positions_list)
+        
         
     return results
    
@@ -707,7 +726,7 @@ def _input_handler():
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
             output_parameters["csv_output_folder"] = args.csv_output_folder
-            data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = args.wrf_hydro_channel_ID_crosswalk_file
+            data_assimilation_parameters["data_assimilation_parameters_file"] = args.data_assimilation_parameters_file
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -835,27 +854,29 @@ def main():
 
     #STEP 6
 
-    
-    usgs_timeslices_folder = os.path.join(
-        root,
-        "test/input/geo/nudgingTimeSliceObs/",
-    )
-    routelink_subset_folder = os.path.join(
-        root,
-        "test/input/geo/routelink/",
-    )
-    # "../../test/input/geo/routelink/routeLink_subset.nc"
-    routelink_subset_file = routelink_subset_folder+"routeLink_subset.nc"
-    data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
-    # usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
+    if data_assimilation_parameters["data_assimilation_parameters_file"] != None:
+        usgs_timeslices_folder = os.path.join(
+            root,
+            "test/input/geo/nudgingTimeSliceObs/",
+        )
+        # routelink_subset_folder = os.path.join(
+        #     root,
+        #     "test/input/geo/routelink/",
+        # )
+        # "../../test/input/geo/routelink/routeLink_subset.nc"
+        # routelink_subset_file = routelink_subset_folder+"routeLink_subset.nc"
+        # data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
+        # usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
 
-    # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
-    # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
+        # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
+        # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
 
-    usgs_df = nhd_io.get_usgs_from_wrf_hydro(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"],
-    usgs_timeslices_folder,
-    )
-    print(usgs_df)
+        usgs_df = nhd_io.get_usgs_from_wrf_hydro(data_assimilation_parameters["data_assimilation_parameters_file"],
+        usgs_timeslices_folder,
+        )
+        print(usgs_df)
+    else:
+        usgs_df = pd.DataFrame()
     # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
     ################### Main Execution Loop across ordered networks
     if showtiming:
