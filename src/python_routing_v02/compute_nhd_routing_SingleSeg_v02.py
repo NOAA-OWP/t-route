@@ -27,7 +27,6 @@ from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
 
-
 def _handle_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
