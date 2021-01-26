@@ -66,7 +66,7 @@ def build_test_parameters(
 
         # specify supernetwork parameters
         supernetwork_parameters = {
-            "title_string": "Custom Input Example (using Pocono Test Example datafile)",
+            "title_string": "Pocono1_TEST",
             "geo_file_path": routelink_file,
             "columns": {
                 "key": "link",
@@ -90,7 +90,6 @@ def build_test_parameters(
         }
 
         # specity output parameters
-        output_parameters["csv_output"] = None
         output_parameters["nc_output_folder"] = None
 
         # specify restart parameters
@@ -160,15 +159,12 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, nts, dt, results):
-        
-    if "parity_check_input_folder" in parity_parameters.keys():
-        # Glob list of CHRTOUT files for validation
-        validation_files = glob.glob(
-            parity_parameters["parity_check_input_folder"]
-            + parity_parameters["parity_check_file_pattern_filter"],
-            recursive=True,
-        )
+def parity_check(parity_parameters, run_parameters, nts, dt, results):
+    validation_files = glob.glob(
+        parity_parameters["parity_check_input_folder"]
+        + parity_parameters["parity_check_file_pattern_filter"],
+        recursive=True,
+    )
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
@@ -192,9 +188,14 @@ def parity_check(parity_parameters, nts, dt, results):
 
     # construct a dataframe of simulated flows
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
-    flowveldepth = pd.concat(
-        [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
-    )
+    if run_parameters.get("return_courant", False):
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d, c in results], copy=False
+        )
+    else:
+        flowveldepth = pd.concat(
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+        )
     flowveldepth = flowveldepth.sort_index()
 
     flows = flowveldepth.loc[:, (slice(None), "q")]

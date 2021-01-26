@@ -10,6 +10,7 @@ run_parameters:
     qts_subdivisions: 12
     dt: 300
     nts: 288
+    return_courant: true
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
     #Set the showtiming (omit flag for no timing information)
@@ -30,7 +31,7 @@ output_parameters:
     nc_output_folder: "../../test/output/text"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
-    title_string: Custom Input Example (using Pocono Test Example datafile)
+    title_string: "Pocono1"
     geo_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     mask_file_path: "../../test/input/geo/Channels/masks/Pocono_mask.csv"
     mask_layer_string: ""

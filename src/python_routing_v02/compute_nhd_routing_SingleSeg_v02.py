@@ -27,7 +27,6 @@ from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
 
-
 def _handle_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -91,6 +90,13 @@ def _handle_args():
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--courant",
+        "--return-courant-metrics",
+        help="Return Courant evaluation metrics for each segment/timestep",
+        dest="return_courant",
         action="store_true",
     )
     parser.add_argument(
@@ -297,6 +303,7 @@ def compute_nhd_routing_v02(
     qlats,
     q0,
     assume_short_ts,
+    return_courant,
 ):
 
     start_time = time.time()
@@ -427,6 +434,7 @@ def compute_nhd_routing_v02(
                                 if us in offnetwork_upstreams
                             },
                             assume_short_ts,
+                            return_courant,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -537,6 +545,7 @@ def compute_nhd_routing_v02(
                                 if us in offnetwork_upstreams
                             },
                             assume_short_ts,
+                            return_courant,
                         )
                     )
 
@@ -589,6 +598,7 @@ def compute_nhd_routing_v02(
                         q0_sub.values,
                         {},
                         assume_short_ts,
+                        return_courant,
                     )
                 )
             results = parallel(jobs)
@@ -615,9 +625,10 @@ def compute_nhd_routing_v02(
                     q0_sub.values,
                     {},
                     assume_short_ts,
+                    return_courant,
                 )
             )
-
+    
     return results
 
 
@@ -648,6 +659,7 @@ def _input_handler():
 
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
+        run_parameters["return_courant"] = args.return_courant
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
         run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
@@ -655,6 +667,9 @@ def _input_handler():
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
+        
+        output_parameters["csv_output"] = {}
+        output_parameters["csv_output"]["csv_output_folder"] = args.csv_output_folder
 
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
@@ -680,7 +695,7 @@ def _input_handler():
                 forcing_parameters,
                 parity_parameters,
             )
-
+        
         else:
             run_parameters["dt"] = args.dt
             run_parameters["nts"] = args.nts
@@ -690,7 +705,6 @@ def _input_handler():
             waterbody_parameters[
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
-            output_parameters["csv_output_folder"] = args.csv_output_folder
 
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
@@ -818,8 +832,11 @@ def main():
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
-    if verbose:
-        print(f"executing routing computation ...")
+    if verbose and run_parameters["return_courant"]:
+        if run_parameters["return_courant"]:
+            print(f"executing routing computation, with Courant evaluation metrics returned")
+        else:
+            print(f"executing routing computation ...")
 
     if run_parameters.get("compute_method", None) == "standard cython compute network":
         compute_func = mc_reach.compute_network
@@ -842,23 +859,55 @@ def main():
         qlats,
         q0,
         run_parameters.get("assume_short_ts", False),
+        run_parameters.get("return_courant", False),
     )
 
-    csv_output_folder = output_parameters.get("csv_output_folder", None)
-    if (debuglevel <= -1) or csv_output_folder:
+    if output_parameters["csv_output"]:
+        csv_output_folder = output_parameters["csv_output"].get("csv_output_folder", None)
+        
+    if (debuglevel <= -1) or output_parameters["csv_output"]:
+        
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
-        flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
-            copy=False,
-        )
+        if run_parameters["return_courant"]: 
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
+                copy=False,
+            )
+        else:
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
+                copy=False,
+            )
+        
+        if run_parameters["return_courant"]:
+            courant_columns = pd.MultiIndex.from_product(
+                [range(nts), ["cn", "ck", "X"]]
+            ).to_flat_index()
+            courant = pd.concat(
+                [pd.DataFrame(c, index=i, columns=courant_columns) for i, d, c in results],
+                copy=False,
+            )
 
         if csv_output_folder:
-            flowveldepth = flowveldepth.sort_index()
+            # create filenames
+            #TO DO: create more descriptive filenames
+            if supernetwork_parameters["title_string"]:
+                filename_fvd = "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                filename_courant = "courant_" + supernetwork_parameters["title_string"] + ".csv"
+            elif arg.supernetwork:
+                filename_fvd = "flowveldepth_" + arg.supernetwork + ".csv"
+                filename_courant = "courant_" + arg.supernetwork + ".csv"
+            
             output_path = pathlib.Path(csv_output_folder).resolve()
-            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
-
+            flowveldepth = flowveldepth.sort_index()
+            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+            
+            if run_parameters["return_courant"]:
+                courant = courant.sort_index()
+                courant.to_csv(output_path.joinpath(filename_courant))
+            
         if debuglevel <= -1:
             print(flowveldepth)
 
@@ -875,9 +924,8 @@ def main():
             )
 
         build_tests.parity_check(
-            parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
+            parity_parameters, run_parameters, run_parameters["nts"], run_parameters["dt"], results
         )
-
 
 if __name__ == "__main__":
     main()

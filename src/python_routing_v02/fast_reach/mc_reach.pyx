@@ -4,10 +4,16 @@ import numpy as np
 from itertools import chain
 from operator import itemgetter
 from numpy cimport ndarray
+from array import array
 cimport numpy as np
 cimport cython
+from libc.stdlib cimport malloc, free
+#Note may get slightly better performance using cython mem module (pulls from python's heap)
+#from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from troute.network.reach cimport MC_Segment, MC_Reach, _MC_Segment, _MC_Reach
 from cython.parallel import prange
-
+#import cProfile
+#pr = cProfile.Profile()
 #NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
 #the mc_reach.so will have an undefined symbol _muskingcunge, and reach.so will have a ____pyx_f_5reach_muskingcunge
 #if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
@@ -50,7 +56,7 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts) nogil:
+cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
     """
     Kernel to compute reach.
     Input buffer is array matching following description:
@@ -102,11 +108,16 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     velp,
                     depthp,
                     out)
-
+        
 #        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
+        
+        if return_courant:
+            output_buf[i, 3] = out.cn
+            output_buf[i, 4] = out.ck
+            output_buf[i, 5] = out.X
 
         qup = qdp
 
@@ -155,6 +166,7 @@ cpdef object compute_network(
     # const float[:, :] wbody_vals,
     dict upstream_results={},
     bint assume_short_ts=False,
+    bint return_courant=False,
     ):
     """
     Compute network
@@ -184,6 +196,11 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    
+    # courant is a 2D float array that holds courant results
+    # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
+    # rows: indexed by data_idx
+    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -191,30 +208,19 @@ cpdef object compute_network(
         # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
         # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
 
-    # for ts in flowveldepth:
-        # print(f"{list(ts)}")
-
-    cdef set fill_index_mask = set()
-    # fill_index_mask is filled in the explicit loop below, which is
-    # identical to the following comprehension. But we use the explicit loop, because it
-    # is more transparent (and therefore optimizable) to cython.
-    # cdef set fill_index_mask = set([upstream_results[upstream_tw_id]["position_index"] for upstream_tw_id in upstream_results])
-    #print(f"{fill_index_mask}")
+    cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef Py_ssize_t fill_index
+    cdef long upstream_tw_id
+    cdef dict tmp
+    cdef int idx
+    cdef float val
 
     for upstream_tw_id in upstream_results:
-        fill_index = upstream_results[upstream_tw_id]["position_index"]
-        fill_index_mask.add(upstream_results[upstream_tw_id]["position_index"])
-        # print(f"{upstream_results[upstream_tw_id]['results']}")
-        # print(f"filling the {fill_index} row:")
-        # print(f"{list(flowveldepth[fill_index])}")
-        for idx, val in enumerate(upstream_results[upstream_tw_id]["results"]):
+        tmp = upstream_results[upstream_tw_id]
+        fill_index = tmp["position_index"]
+        fill_index_mask[fill_index] = False
+        for idx, val in enumerate(tmp["results"]):
             flowveldepth[fill_index][idx] = val
-        # TODO: Identify a more efficient ways potentially to handle this array filling
-        # The following may be options:
-        # flowveldepth[fill_index] = upstream_results[upstream_tw_id]["results"]
-        # flowveldepth[fill_index, :] = upstream_results[upstream_tw_id]["results"]
-        # print(f"Now filled, it contains:")
-        # print(f"{list(flowveldepth[fill_index])}")
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -285,7 +291,11 @@ cpdef object compute_network(
 
     cdef int maxreachlen = max(reach_sizes)
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+    
+    if return_courant:
+        out_buf = np.empty((maxreachlen, 6), dtype='float32')
+    else:
+        out_buf = np.empty((maxreachlen, 3), dtype='float32') 
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
@@ -380,11 +390,16 @@ cpdef object compute_network(
                 if assume_short_ts:
                     quc = qup
 
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts)
+                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
 
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+                    
+                # copy out_buf results back to courant
+                if return_courant:
+                    for i in range(3,6):
+                        fill_buffer_column(drows, i, srows, ts_offset + (i-3), out_view, courant)
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
@@ -392,16 +407,13 @@ cpdef object compute_network(
 
             timestep += 1
 
-
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
-    if len(fill_index_mask) > 0:
-        data_idx_ma = [ix for i, ix in enumerate(data_idx) if i not in fill_index_mask]
-        flowveldepth_ma = [ix for i, ix in enumerate(flowveldepth) if i not in fill_index_mask]
-        return np.asarray(data_idx_ma, dtype=np.intp), np.asarray(flowveldepth_ma, dtype='float32')
+    if return_courant:
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
     else:
-        return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
@@ -659,3 +671,302 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
             timestep += 1
 
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
+
+cpdef object compute_network_structured_obj(int nsteps, list reaches, dict connections,
+    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
+    const float[:, :] qlat_values, const float[:,:] initial_conditions,
+    # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
+    bint assume_short_ts=False):
+    """
+    Compute network
+    Args:
+        nsteps (int): number of time steps
+        reaches (list): List of reaches
+        connections (dict): Network
+        data_idx (ndarray): a 1D sorted index for data_values
+        data_values (ndarray): a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
+        assume_short_ts (bool): Assume short time steps (quc = qup)
+    Notes:
+        Array dimensions are checked as a precondition to this method.
+        This version uses only the cdef python object interface, and is a little slower
+        It is left here for reference, not reccomended for use
+    """
+    # Check shapes
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+    if qlat_values.shape[1] > nsteps:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
+    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
+        raise ValueError(f"data_values shape mismatch")
+    #define an intialize the final output array
+    cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps, 3), dtype='float32')
+    #Make ndarrays from the mem views for convience of indexing...may be a better method
+    cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
+    cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
+    cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    ###### Declare/type variables #####
+    cdef Py_ssize_t max_buff_size = 0
+    #lists to hold reach definitions, i.e. list of ids
+    cdef list reach
+    cdef list upstream_reach
+    #lists to hold segment ids
+    cdef list segment_ids
+    cdef list upstream_ids
+    #flow accumulation variables
+    cdef float upstream_flows, previous_upstream_flows
+    #starting timestep, shifted by 1 to account for initial conditions
+    cdef int timestep = 1
+    #buffers to pass to compute_reach_kernel
+    cdef float[:,:] buf_view
+    cdef float[:,:] out_buf
+    cdef float[:] lateral_flows
+    #reach iterator
+    cdef MC_Reach r
+    # list of reach objects to operate on
+    cdef list reach_objects = []
+    cdef list segment_objects
+    #pre compute the qlat resample fraction
+    cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
+
+    cdef long sid
+    cdef MC_Segment segment
+    #pr.enable()
+    #Preprocess the raw reaches, creating MC_Reach/MC_Segments
+    for reach in reaches:
+      upstream_reach = connections.get(reach[0], ())
+      segment_ids = binary_find(data_idx, reach)
+      upstream_ids = binary_find(data_idx, upstream_reach)
+
+      #Set the initial condtions before running loop
+      flowveldepth[segment_ids, 0] = init_array[segment_ids]
+      segment_objects = []
+      #Find the max reach size, used to create buffer for compute_reach_kernel
+      if len(segment_ids) > max_buff_size:
+        max_buff_size=len(segment_ids)
+
+      for sid in segment_ids:
+        #FIXME data_array order is important, column_mapper might help with this
+        segment_objects.append(
+            MC_Segment(sid, *data_array[sid], *init_array[sid])
+            )
+
+      reach_objects.append(
+          MC_Reach(segment_objects, array('l',upstream_ids))
+          )
+
+    #Init buffers
+    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
+    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
+    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+
+    #Run time
+    while timestep < nsteps:
+      for r in reach_objects:
+            #Need to get quc and qup
+            upstream_flows = 0.0
+            previous_upstream_flows = 0.0
+            for id in r.upstream_ids: #Explicit loop reduces some overhead
+              upstream_flows += flowveldepth[id, timestep, 0]
+              previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+            #Index of segments required to process this reach
+            segment_ids = []
+
+            if assume_short_ts:
+                upstream_flows = previous_upstream_flows
+            #Create compute reach kernel input buffer
+            for i in range(r.num_segments):
+              segment = r.segments[i]
+              segment_ids.append(segment.id)
+              buf_view[i][0] = qlat_array[ segment.id, int(timestep/qlat_resample)]
+              buf_view[i][1] = segment.dt
+              buf_view[i][2] = segment.dx
+              buf_view[i][3] = segment.bw
+              buf_view[i][4] = segment.tw
+              buf_view[i][5] = segment.twcc
+              buf_view[i][6] = segment.n
+              buf_view[i][7] = segment.ncc
+              buf_view[i][8] = segment.cs
+              buf_view[i][9] = segment.s0
+              buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
+              buf_view[i][11] = flowveldepth[segment.id, timestep-1, 1]
+              buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
+
+            compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                 len(r.segments), buf_view,
+                                 out_buf,
+                                 assume_short_ts)
+            #Copy the output out
+            for i, id in enumerate(segment_ids):
+              flowveldepth[id, timestep, 0] = out_buf[i, 0]
+              flowveldepth[id, timestep, 1] = out_buf[i, 1]
+              flowveldepth[id, timestep, 2] = out_buf[i, 2]
+
+      timestep += 1
+    #copy t1 to t0 to be consistent
+    flowveldepth[:,0,:] = flowveldepth[:,1,:]
+    #pr.disable()
+    #pr.print_stats(sort='time')
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.reshape(flowveldepth.shape[0], -1), dtype='float32')
+
+
+cpdef object compute_network_structured(int nsteps, list reaches, dict connections,
+    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
+    const float[:, :] qlat_values, const float[:,:] initial_conditions,
+    # const float[:] wbody_idx, object[:] wbody_cols, const float[:, :] wbody_vals,
+    bint assume_short_ts=False):
+    """
+    Compute network
+    Args:
+        nsteps (int): number of time steps
+        reaches (list): List of reaches
+        connections (dict): Network
+        data_idx (ndarray): a 1D sorted index for data_values
+        data_values (ndarray): a 2D array of data inputs (nodes x variables)
+        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
+        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
+        assume_short_ts (bool): Assume short time steps (quc = qup)
+    Notes:
+        Array dimensions are checked as a precondition to this method.
+        This version creates python objects for segments and reaches,
+        but then uses only the C structures and access for efficiency
+    """
+    # Check shapes
+    if qlat_values.shape[0] != data_idx.shape[0]:
+        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
+    if qlat_values.shape[1] > nsteps:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
+    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
+        raise ValueError(f"data_values shape mismatch")
+    #define an intialize the final output array
+    cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps, 3), dtype='float32')
+    #Make ndarrays from the mem views for convience of indexing...may be a better method
+    cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
+    cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
+    cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    ###### Declare/type variables #####
+    cdef Py_ssize_t max_buff_size = 0
+    #lists to hold reach definitions, i.e. list of ids
+    cdef list reach
+    cdef list upstream_reach
+    #lists to hold segment ids
+    cdef list segment_ids
+    cdef list upstream_ids
+    #flow accumulation variables
+    cdef float upstream_flows, previous_upstream_flows
+    #starting timestep, shifted by 1 to account for initial conditions
+    cdef int timestep = 1
+    #buffers to pass to compute_reach_kernel
+    cdef float[:,:] buf_view
+    cdef float[:,:] out_buf
+    cdef float[:] lateral_flowsr
+    # list of reach objects to operate on
+    cdef list reach_objects = []
+    cdef list segment_objects
+    #pre compute the qlat resample fraction
+    cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
+
+    cdef long sid
+    cdef _MC_Segment segment
+    #pr.enable()
+    #Preprocess the raw reaches, creating MC_Reach/MC_Segments
+    for reach in reaches:
+      upstream_reach = connections.get(reach[0], ())
+      segment_ids = binary_find(data_idx, reach)
+
+      if len(upstream_reach) > 0:
+        upstream_ids = binary_find(data_idx, upstream_reach)
+      else:
+        upstream_ids = []
+
+      #Set the initial condtions before running loop
+      flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
+      #Using the segment/reach classes essentially as factory methods to create the lower level C structs
+      #This loop isn't intensive, so the python list overhead is minimal
+      #Could move to more direct creation/use for fine tuned optimization
+      segment_objects = []
+      #Find the max reach size, used to create buffer for compute_reach_kernel
+      if len(segment_ids) > max_buff_size:
+        max_buff_size=len(segment_ids)
+
+      for sid in segment_ids:
+        #FIXME data_array order is important, column_mapper might help with this
+        segment_objects.append(
+            MC_Segment(sid, *data_array[sid], *init_array[sid])
+            )
+
+      reach_objects.append(
+          MC_Reach(segment_objects, array('l',upstream_ids))
+          )
+
+    #Init buffers
+    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
+    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
+    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+
+    cdef int num_reaches = len(reach_objects)
+    #Dynamically allocate a C array of reach structs
+    cdef _MC_Reach* reach_structs = <_MC_Reach*>malloc(sizeof(_MC_Reach)*num_reaches)
+    #Populate the above array with the structs contained in each reach object
+    for i in range(num_reaches):
+      reach_structs[i] = (<MC_Reach>reach_objects[i])._reach
+
+    #reach iterator
+    cdef _MC_Reach r
+    #create a memory view of the ndarray
+    cdef float[:,:,::1] flowveldepth = flowveldepth_nd
+    #Run time
+    with nogil:
+      while timestep < nsteps:
+        #for r in reach_objects:
+        for i in range(num_reaches):
+              r = reach_structs[i]
+              #Need to get quc and qup
+              upstream_flows = 0.0
+              previous_upstream_flows = 0.0
+              for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
+                id = r._upstream_ids[_i]
+                upstream_flows += flowveldepth[id, timestep, 0]
+                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+              #Index of segments required to process this reach
+              #segment_ids = []#[segment.id for segment in r._segments]
+
+              if assume_short_ts:
+                  upstream_flows = previous_upstream_flows
+              #Create compute reach kernel input buffer
+              #for i, segment in enumerate(r.segments):
+              for i in range(r._num_segments):
+                segment = r._segments[i]
+                buf_view[i][0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
+                buf_view[i][1] = segment.dt
+                buf_view[i][2] = segment.dx
+                buf_view[i][3] = segment.bw
+                buf_view[i][4] = segment.tw
+                buf_view[i][5] = segment.twcc
+                buf_view[i][6] = segment.n
+                buf_view[i][7] = segment.ncc
+                buf_view[i][8] = segment.cs
+                buf_view[i][9] = segment.s0
+                buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
+                buf_view[i][11] = flowveldepth[segment.id, timestep-1, 1]
+                buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
+
+              compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                   r._num_segments, buf_view,
+                                   out_buf,
+                                   assume_short_ts)
+              #Copy the output out
+              for i in range(r._num_segments):
+                flowveldepth[r._segments[i].id, timestep, 0] = out_buf[i, 0]
+                flowveldepth[r._segments[i].id, timestep, 1] = out_buf[i, 1]
+                flowveldepth[r._segments[i].id, timestep, 2] = out_buf[i, 2]
+
+        timestep += 1
+    #copy t1 to t0 to be consistent
+    flowveldepth[:,0,:] = flowveldepth[:,1,:]
+    #pr.disable()
+    #pr.print_stats(sort='time')
+    #IMPORTANT, free the dynamic array created
+    free(reach_structs)
+    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
