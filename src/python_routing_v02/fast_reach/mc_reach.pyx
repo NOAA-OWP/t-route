@@ -392,7 +392,7 @@ cpdef object compute_network(
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
             with gil:
-                if nudging_positions_list != []:
+                if nudging_positions_list:
                     for gage_loc, values in enumerate(nudging_values):
                         flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]  
     
