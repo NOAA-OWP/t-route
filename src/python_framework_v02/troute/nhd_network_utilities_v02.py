@@ -414,28 +414,50 @@ def build_connections(supernetwork_parameters, dt):
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
-    # TODO: reorganize this so the wbodies object doesn't use the par-final param_df
-    # This could mean doing something different to get the final param_df,
-    # or changing the wbodies call to use the final param_df as it stands.
-    wbodies = nhd_network.extract_waterbodies(
-        param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
-    )
 
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, wbodies, param_df
+    return connections, param_df
 
 
-def organize_independent_networks(connections):
+def build_waterbodies(
+    segment_reservoir_df,
+    supernetwork_parameters,
+    waterbody_crosswalk_column="waterbody",
+):
+    """
+    segment_reservoir_list
+    supernetwork_parameters
+    waterbody_crosswalk_column
+    """
+    wbodies = nhd_network.extract_waterbodies(
+        segment_reservoir_df,
+        waterbody_crosswalk_column,
+        supernetwork_parameters["waterbody_null_code"],
+    )
+
+    # TODO: Add function to read LAKEPARM.nc here
+    # TODO: return the lakeparam_df
+
+    return wbodies
+
+
+def organize_independent_networks(connections, wbodies=None):
 
     rconn = nhd_network.reverse_network(connections)
     independent_networks = nhd_network.reachable_network(rconn)
     reaches_bytw = {}
     for tw, net in independent_networks.items():
-        path_func = partial(nhd_network.split_at_junction, net)
+        if wbodies:
+            path_func = partial(
+                nhd_network.split_at_waterbodies_and_junctions, wbodies, net
+            )
+        else:
+            path_func = partial(nhd_network.split_at_junction, net)
+
         reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     return independent_networks, reaches_bytw, rconn
