@@ -793,6 +793,8 @@ def main():
     # STEP 1: Build basic network connections graph
     connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
     wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
+    if break_network_at_waterbodies:
+        connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
 
     if verbose:
         print("supernetwork connections set complete")
