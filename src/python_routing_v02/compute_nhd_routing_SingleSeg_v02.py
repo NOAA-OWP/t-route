@@ -806,7 +806,7 @@ def main():
         print("organizing connections into reaches ...")
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections
+        connections, wbodies if break_network_at_waterbodies else False,
     )
 
     if verbose:
