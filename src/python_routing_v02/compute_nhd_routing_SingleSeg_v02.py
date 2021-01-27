@@ -778,6 +778,9 @@ def main():
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
+    break_network_at_waterbodies = run_parameters.get(
+        "break_network_at_waterbodies", False
+    )
 
     if showtiming:
         main_start_time = time.time()
@@ -788,7 +791,8 @@ def main():
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, wbodies, param_df = nnu.build_connections(supernetwork_parameters, dt)
+    connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
+    wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
 
     if verbose:
         print("supernetwork connections set complete")
