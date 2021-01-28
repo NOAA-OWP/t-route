@@ -1,57 +1,95 @@
-Efficient Routing Computations with a Graph-Based Routing Framework
+# Efficient Routing Computations with a Graph-Based Routing Framework
 
-![](https://s3.amazonaws.com/ipostersessions-agu/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png width="200" height="100">
 
-James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier,
-Nicholas Chadwick, Ryan D. Grout,  
-Alexander A. Maestre, Jacob E. Hreha, Adam N. Wlostowski, Graeme R.
-Aggett 
+__James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier,
+Nicholas Chadwick, Ryan D. Grout, Alexander A. Maestre, Jacob E. Hreha, Adam N. Wlostowski, Graeme R.
+Aggett__
 
-Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA; Lynker
-Technologies, Leesburg, VA, USA; 
-ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center,
-Tuscaloosa, AL, USA 
-<!-- ![](https://s3.amazonaws.com/ipostersessions-agu/d22d5f15-69ca-48ea-b5df-420ec3e2eb60.jpeg {:height="700px" width="400px"})
-![](https://s3.amazonaws.com/ipostersessions-agu/6e0a282b-3631-4874-9533-3a9e58fc4e12.png {:height="700px" width="400px"})
-![](https://s3.amazonaws.com/ipostersessions-agu/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg {:height="700px" width="400px"})
-![](https://s3.amazonaws.com/ipostersessions-agu/6358cd22-3645-46ca-a31b-1ea2cc498f80.png {:height="700px" width="400px"})
-![](https://s3.amazonaws.com/ipostersessions-agu/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg {:height="700px" width="400px"})
-![](https://s3.amazonaws.com/ipostersessions-agu/6f1e8bbb-6ff0-459d-8f73-25ee1cc5f134.jpg {:height="700px" width="400px"}) -->
+_Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA;_<br>
+_Lynker Technologies, Leesburg, VA, USA;_<br>
+_ERT, Inc., Laurel, MD, USA;_<br>
+_University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA_<br>
 
-Presented at:
+<img src=https://s3.amazonaws.com/ipostersessions-agu/d22d5f15-69ca-48ea-b5df-420ec3e2eb60.jpeg width="100" height="100">
+<img src=https://s3.amazonaws.com/ipostersessions-agu/6e0a282b-3631-4874-9533-3a9e58fc4e12.png width="100" height="100">
+<img src=https://s3.amazonaws.com/ipostersessions-agu/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg width="100" height="100">
+<img src=https://s3.amazonaws.com/ipostersessions-agu/6358cd22-3645-46ca-a31b-1ea2cc498f80.png width="100" height="100">
+<img src=https://s3.amazonaws.com/ipostersessions-agu/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg width="100" height="100">
+<img src=https://s3.amazonaws.com/ipostersessions-agu/6f1e8bbb-6ff0-459d-8f73-25ee1cc5f134.jpg width="100" height="100">
+
+__Originally a Poster Presented at:__
 ![](https://agu2020fallmeeting-agu.ipostersessions.com/GetFile.ashx?file=020_40144_FM_LogInPage_Header_1920x240-01.jpg)
 
-Efficient Routing Computations with a Graph-Based Routing Framework 
--------------------------------------------------------------------
 
-### James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier, Nicholas Chadwick, Ryan D. Grout,  
+# The CONUS routing challenge
+Under direction of the NOAA-NWS Office of Water Prediction (OWP) we have
+created **a new routing framework for the National Water Model
+(NWM).** This new framework permits use of advanced routing methods but
+implies additional compute burden.
 
-
-
-#### Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA; Lynker Technologies, Leesburg, VA, USA;  
-ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA 
-
-
-The National Water Model (NWM) Channel Routing Network 
-------------------------------------------------------
-
-![](https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)
- *Caption: Distribution of the 213 independent networks in the CONUS NWM
-dataset of river segments below all existing national weather service
-forecast points called the “Mainstem” network. Colors are used to
-indicate independent networks, each draining to unique tailwater
-segments at the CONUS boundary. *
-
- 
-
-Using the NHD+ V2.0 Medium Resolution data set, the CONUS river network
-is composed of:
+## The National Water Model (NWM) Channel Routing Network
+Based on the NHD+ V2.0 Medium Resolution data set, the National Water Model CONUS river network is composed of:
 
 -   4.3M stream/river miles
 -   2,729,077 individual segments
 -   2,102,010 reaches 
 -   1,029,217 junctions, and 
 -   14,713 independent drainage basins (disjoint networks). 
+
+### Key Challenges for CONUS-scale routing
+### Computation Volume
+Continental scale routing in the NWM is an enormous computational challenge. The NWM routing computation includes:
+-   multiple forecast realizations (analysis, short, medium-range
+    deterministic, medium-range ensemble, and long-range ensemble),
+-   carried out on over 4.3M river miles consisting of 2.7M+ segments
+    ...
+-   representing over 600 billion routing computations daily, 
+-   or about 7 million routing calculations per second on average.
+
+*Table: Daily Volume of Operational NWM Routing Calculations*
+
+<!--
+_NWM Forecast_ | _Time Steps_ | _Segments (approx.)_ | _Number of Times per day_ | _Number of Ensemble Members_ | _Total Daily Routing Calculations_
+-- | -- | -- | -- | -- | --
+Analysis and Assimilation | 3 | 2,700,000 | 24 | 1 | 194,400,000
+Short Range | 216 | 2,700,000 | 24 | 1 | 13,996,800,000
+Medium Range deterministic | 2880 | 2,700,000 | 4 | 1 | 31,104,000,000
+Medium Range ensembles | 2448 | 2,700,000 | 4 | 7 | 185,068,800,000
+Long Range | 8640 | 2,700,000 | 4 | 4 | 373,248,000,000
+  |   |   |   | TOTAL | 603,612,000,000
+-->
+
+![](https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png)
+
+ 
+## Graph Representation of NWM Channels
+We represent the CONUS river network as a series of directed acyclic
+graphs, each consisting of a hydraulically independent drainage basin
+exiting to the ocean or to an inland sink.
+
+<img src=https://s3.amazonaws.com/ipostersessions-agu/d3725fe6-d7ae-40cb-aae2-93f3b29da588.png width="200">
+
+Caption: *Elementary components of the CONUS river network graph. The
+smallest elements, denoted by discrete colors, are individual stream
+segments. Linear combinations of segments between junctions form
+reaches. Junctions exist at the confluence of two or more reaches.*
+
+Network complexity, expressed as a number of junctions, is a useful
+measure of the level of dependence of the graph, and gives an idea of
+the computational burden for each independent network.
+
+<img src=https://s3.amazonaws.com/ipostersessions-agu/dfdf0e2c-b9f3-4746-978d-347d2e457e06.png height="400">
+
+*Caption: Size distribution of river networks with greater than 2k junctions in the CONUS NWM dataset.*
+
+### Independent Networks in the CONUS Dataset
+![](https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)
+*Figure: Distribution of the 213 independent networks in the CONUS NWM
+dataset of river segments below all existing national weather service
+forecast points called the “Mainstem” network. Colors are used to
+indicate independent networks, each draining to unique tailwater
+segments at the CONUS boundary.*
 
 Terminal segments, which represent river outlets emptying into the ocean
 or an inland sink, define independent river networks within the larger
@@ -67,89 +105,10 @@ networks of the NWM channel dataset network. Distribution of the 213
 independent networks in the CONUS NWM dataset of river segments below
 all existing national weather service forecast points.*
 
-Representation of NWM Channels 
+## Parallel scaling results
 
--------------------------------
-
- 
- We represent the CONUS river network as a series of directed acyclic
-graphs, each consisting of a hydraulically independent drainage basin
-exiting to the ocean or to an inland sink.
-
-![](https://s3.amazonaws.com/ipostersessions-agu/d3725fe6-d7ae-40cb-aae2-93f3b29da588.png)
-
-Caption: *Elementary components of the CONUS river network graph. The
-smallest elements, denoted by discrete colors, are individual stream
-segments. Linear combinations of segments between junctions form
-reaches. Junctions exist at the confluence of two or more reaches.*
-
-Network complexity, expressed as a number of junctions, is a useful
-measure of the level of dependence of the graph, and gives an idea of
-the computational burden for each independent network. 
-
-![](https://s3.amazonaws.com/ipostersessions-agu/dfdf0e2c-b9f3-4746-978d-347d2e457e06.png)
-
-Caption: *Size distribution of river networks with greater than 2k
-junctions in the CONUS NWM dataset.* 
-  
-
- 
-
-The CONUS routing challenge 
----------------------------
-
-Under direction of the NOAA-NWS Office of Water Prediction (OWP) we have
-created**a new routing framework for the National Water Model
-(NWM).**This new framework permits use of advanced routing methods but
-implies additional compute burden.
-
-**Continental scale routing in the NWM is an enormous computational
-challenge**
-
-The NWM routing computation includes:
-
--   multiple forecast realizations (analysis, short, medium-range
-    deterministic, medium-range ensemble, and long-range ensemble),
--   carried out on over 4.3M river miles consisting of 2.7M+ segments
-    ...
--   representing over 600 billion routing computations daily, 
--   or about 7 million routing calculations per second on average.
-
-*Caption: Daily Volume of Operational NWM Routing Calculations*
-
-![](https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png)
-
- 
-
-**Enforcing topological dependencies increases the challenge of routing
-for the NWM.**
-
-OWP is developing the new framework which tracks topological
-connectivity of the entire stream network to support diffusive- and
-dynamic-wave hydraulic routing simulations.
-
-Tracking the topological connectivity and enforcing dependence of the
-calculations permits use of the routing methods, but also means that
-some calculations must wait for others to be completed instead of being
-completely embarrassingly parallel within each timestep. The current
-method uses simplifying assumptions, incompatible with higher-order
-routing solutions, to allow for simplified, fully parallel routing
-execution within each timestep.
-
-Our challenge was to introduce this topological dependency in the NWM
-routing framework while still managing the required hourly calculation
-volume. 
-
-Here, we present our routing framework and a computing scheme to drive
-rapid parallel computation while maintaining the topological dependence
-of the routing network. 
-
-Parallel scaling results 
-
--------------------------
-
-By representing the NWM routing network as a graph,**we have achieved up
-to 20% of the theoretical 40x speedup**possible with carefully
+By representing the NWM routing network as a graph, **we have achieved up
+to 20% of the theoretical 40x speedup** possible with carefully
 orchestrated graph-based parallelization.
 
 **We estimate an approximately 1000x theoretical potential speedup for
@@ -172,7 +131,7 @@ National Weather Service forecast points, referred to as the
 *Caption: Performance improvement with additional parallel cores for
 Mainstems network domain. Note that the network-based performance is
 very near the theoretical maximum; the JIT performance is significantly
-better, but falls short of the theoretical maximum.* 
+better, but falls short of the theoretical maximum.*
   
 
 Theoretical potential parallel computational speedup is calculated
@@ -205,9 +164,7 @@ The actual speedup will be affected by numerous computational realities
 including: i/o overhead, parallel thread or process pool spin-up time,
 array access efficiency (i.e. cache misses), etc.
 
-Network-based or Just-in-Time? 
-
--------------------------------
+### Network-based or Just-in-Time?
 
 Two parallelization approaches, By-network, and Just-in-time (JIT)
 as detailed below, were tested in comparison to pure serial computation:
@@ -217,18 +174,14 @@ as detailed below, were tested in comparison to pure serial computation:
 *Caption: Animation of Just-In-Time network traversal, with calculations
 on separate portions of the tree coalescing to finish simultaneously at
 the outlet. At any moment in the animation, red sparks highlight reaches
-of a common reverse network order that may be computed in parallel. *
-
- 
+of a common reverse network order that may be computed in parallel.*
 
 Serial computation 
-
 -   Starting upstream, proceeding downstream,
 -   One network at a time.
 -   Computationally inefficient, but a useful benchmark.
 
 Independent network parallelization
-
 -   Divide computation according to separate networks, e.g., the
     Colorado River, Mississippi, etc. are computed independently. 
 -   Performance limited by the size of the largest basin, i.e., the
@@ -252,11 +205,10 @@ impact of many parallel calls. An optimal subnetwork size is small
 enough to permit sufficient parallelism and large enough to ensure that
 parallel overhead is not burdensome. Colors denote subnetworks of common
 reverse network order. Higher order subnetworks are computed prior to
-lower order subnetworks in order to maintain topological dependencies. *
+lower order subnetworks in order to maintain topological dependencies.*
 
-Learn more: T-route on GitHub 
-
-------------------------------
+---
+# Learn more: T-route on GitHub
 
 The new routing framework is publicly developed and we encourage
 interested community members to access...
@@ -271,57 +223,25 @@ effectively for hydrologic hazards.
 
 
 -----
-
-Author Information
-------------------
-
- 
+# Author Information
 
 The authors are part of the development team for the National Water
-Model at the Office of Water Predcition for NOAA's National Weather
+Model at the Office of Water Prediction for NOAA's National Weather
 Service. We wish to gratefully acknowledge the excellent work of the OWP
 and NCAR teams (and others) who have prepared the National Water Model
-as it stands today. Author affililiations are as follows: James S.
-Halgren^1,2^, Dong Ha Kim^1,2^, Juzer F. Dhondia^1,4^, Nels J.
-Frazier^1,3^, Nicholas Chadwick,^1,3^, Ryan D. Grout^1,2^, Alexander A.
-Maestre^1,4^, Jacob E. Hreha^1,2^, Adam N. Wlostowski^1,2^, Graeme R.
-Aggett^2 ^
+as it stands today. Author affiliations are as follows: James S.
+Halgren<sup>1,2</sup>, Dong Ha Kim<sup>1,2</sup>, Juzer F. Dhondia<sup>1,4</sup>, Nels J.
+Frazier<sup>1,3</sup>, Nicholas Chadwick,<sup>1,3</sup>, Ryan D. Grout<sup>1,2</sup>, Alexander A.
+Maestre<sup>1,4</sup>, Jacob E. Hreha<sup>1,2</sup>, Adam N. Wlostowski<sup>1,2</sup>, Graeme R.
+Aggett<sup>2 </sup>
 
- 
+<sup>1</sup>Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA <br>
+<sup>2</sup>Lynker Technologies, Leesburg, VA, USA <br>
+<sup>3</sup>ERT, Inc., Laurel, MD, USA <br>
+<sup>4</sup>University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA <br>
 
-^1^Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA
-
-^2^Lynker Technologies, Leesburg, VA, USA
-
-^3^ERT, Inc., Laurel, MD, USA
-
-^4^University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA
-
- 
-
-The authors are part of the development team for the National Water
-Model at the Office of Water Predcition for NOAA's National Weather
-Service. We wish to gratefully acknowledge the excellent work of the OWP
-and NCAR teams (and others) who have prepared the National Water Model
-as it stands today. Author affililiations are as follows: James S.
-Halgren^1,2^, Dong Ha Kim^1,2^, Juzer F. Dhondia^1,4^, Nels J.
-Frazier^1,3^, Nicholas Chadwick,^1,3^, Ryan D. Grout^1,2^, Alexander A.
-Maestre^1,4^, Jacob E. Hreha^1,2^, Adam N. Wlostowski^1,2^, Graeme R.
-Aggett^2 ^
-
- 
-
-^1^Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA
-
-^2^Lynker Technologies, Leesburg, VA, USA
-
-^3^ERT, Inc., Laurel, MD, USA
-
-^4^University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA
-
-Abstract
---------
-
+---
+# Abstract
 To resolve non-uniform and unsteady flows in the National Water Model
 (NWM), the Office of Water Prediction is developing additional routing
 engines to power simulations with the dynamic and diffusive
@@ -335,10 +255,6 @@ operational modeling as an element of the National Water Model, the
 computational framework for dynamic routing must address these
 challenges.
 
- 
-
- 
-
 We present a continental-scale flow routing framework that represents
 the flow network as a collection of directed acyclic graphs where edges
 point in the direction of downstream flow. We use information from this
@@ -349,8 +265,6 @@ resources for the routing cases we have tested. The framework is
 publicly developed and we encourage interested community members to use
 our approach and provide feedback.
 
- 
-
 Initial results show that we can simulate 5 days of continental scale
 flow routing below all existing national weather service forecast points
 in approximately 10 minutes using only 4 processors. Also, the new
@@ -359,7 +273,7 @@ timesteps, which is not possible in the present NWM routing framework.
 We will continue our work with the goal of significantly reducing
 barriers to efficient application of higher order routing solutions in
 the National Water Model, enabling more useful forecasts that help
-communities prepare for hydrologic hazards. 
+communities prepare for hydrologic hazards.
 
 [![](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)
 
@@ -376,10 +290,6 @@ operational modeling as an element of the National Water Model, the
 computational framework for dynamic routing must address these
 challenges.
 
- 
-
- 
-
 We present a continental-scale flow routing framework that represents
 the flow network as a collection of directed acyclic graphs where edges
 point in the direction of downstream flow. We use information from this
@@ -390,8 +300,6 @@ resources for the routing cases we have tested. The framework is
 publicly developed and we encourage interested community members to use
 our approach and provide feedback.
 
- 
-
 Initial results show that we can simulate 5 days of continental scale
 flow routing below all existing national weather service forecast points
 in approximately 10 minutes using only 4 processors. Also, the new
@@ -400,7 +308,6 @@ timesteps, which is not possible in the present NWM routing framework.
 We will continue our work with the goal of significantly reducing
 barriers to efficient application of higher order routing solutions in
 the National Water Model, enabling more useful forecasts that help
-communities prepare for hydrologic hazards. 
+communities prepare for hydrologic hazards.
 
 ![](https://agu.confex.com/data/abstract/agu/fm20/8/9/Paper_758298_abstract_728584_0.gif)
-
