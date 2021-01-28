@@ -3,7 +3,7 @@ Efficient Routing Computations with a Graph-Based Routing Framework
 ![](./AGU%20-%20iPosterSessions.com_files/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
 
 James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier,
-Nicholas Chadwick, Ryan D. Grout, \
+Nicholas Chadwick, Ryan D. Grout,  
 Alexander A. Maestre, Jacob E. Hreha, Adam N. Wlostowski, Graeme R.
 Aggett 
 
@@ -28,18 +28,18 @@ Tuscaloosa, AL, USA
 Efficient Routing Computations with a Graph-Based Routing Framework 
 -------------------------------------------------------------------
 
-### James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier, Nicholas Chadwick, Ryan D. Grout, \
+### James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier, Nicholas Chadwick, Ryan D. Grout,  
 
 
 
-#### Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA; Lynker Technologies, Leesburg, VA, USA; \
+#### Office of Water Prediction, NOAA/NWS, Tuscaloosa, AL, USA; Lynker Technologies, Leesburg, VA, USA;  
 ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA 
 
 
 The National Water Model (NWM) Channel Routing Network 
 ------------------------------------------------------
 
-*![](./AGU%20-%20iPosterSessions.com_files/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)*\
+*![](./AGU%20-%20iPosterSessions.com_files/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)* 
  *Caption: Distribution of the 213 independent networks in the CONUS NWM
 dataset of river segments below all existing national weather service
 forecast points called the “Mainstem” network. Colors are used to
@@ -71,11 +71,11 @@ networks of the NWM channel dataset network. Distribution of the 213
 independent networks in the CONUS NWM dataset of river segments below
 all existing national weather service forecast points.*
 
-Representation of NWM Channels\
+Representation of NWM Channels 
 
 -------------------------------
 
-\
+ 
  We represent the CONUS river network as a series of directed acyclic
 graphs, each consisting of a hydraulically independent drainage basin
 exiting to the ocean or to an inland sink.
@@ -89,17 +89,17 @@ reaches. Junctions exist at the confluence of two or more reaches.*
 
 Network complexity, expressed as a number of junctions, is a useful
 measure of the level of dependence of the graph, and gives an idea of
-the computational burden for each independent network.\
+the computational burden for each independent network. 
 
 ![](./AGU%20-%20iPosterSessions.com_files/dfdf0e2c-b9f3-4746-978d-347d2e457e06.png)
 
 Caption: *Size distribution of river networks with greater than 2k
-junctions in the CONUS NWM dataset.*\
+junctions in the CONUS NWM dataset.* 
   
 
  
 
-The CONUS routing challenge {#iTitleField3}
+The CONUS routing challenge 
 ---------------------------
 
 Under direction of the NOAA-NWS Office of Water Prediction (OWP) we have
@@ -148,7 +148,7 @@ Here, we present our routing framework and a computing scheme to drive
 rapid parallel computation while maintaining the topological dependence
 of the routing network. 
 
-Parallel scaling results\
+Parallel scaling results 
 
 -------------------------
 
@@ -176,7 +176,7 @@ National Weather Service forecast points, referred to as the
 *Caption: Performance improvement with additional parallel cores for
 Mainstems network domain. Note that the network-based performance is
 very near the theoretical maximum; the JIT performance is significantly
-better, but falls short of the theoretical maximum.*\
+better, but falls short of the theoretical maximum.* 
   
 
 Theoretical potential parallel computational speedup is calculated
@@ -209,7 +209,7 @@ The actual speedup will be affected by numerous computational realities
 including: i/o overhead, parallel thread or process pool spin-up time,
 array access efficiency (i.e. cache misses), etc.
 
-Network-based or Just-in-Time?\
+Network-based or Just-in-Time? 
 
 -------------------------------
 
@@ -258,7 +258,7 @@ parallel overhead is not burdensome. Colors denote subnetworks of common
 reverse network order. Higher order subnetworks are computed prior to
 lower order subnetworks in order to maintain topological dependencies. *
 
-Learn more: T-route on GitHub\
+Learn more: T-route on GitHub 
 
 ------------------------------
 
@@ -363,7 +363,7 @@ timesteps, which is not possible in the present NWM routing framework.
 We will continue our work with the goal of significantly reducing
 barriers to efficient application of higher order routing solutions in
 the National Water Model, enabling more useful forecasts that help
-communities prepare for hydrologic hazards.\
+communities prepare for hydrologic hazards. 
 
 [![](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)
 
@@ -404,7 +404,7 @@ timesteps, which is not possible in the present NWM routing framework.
 We will continue our work with the goal of significantly reducing
 barriers to efficient application of higher order routing solutions in
 the National Water Model, enabling more useful forecasts that help
-communities prepare for hydrologic hazards.\
+communities prepare for hydrologic hazards. 
 
 [![](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)
 
