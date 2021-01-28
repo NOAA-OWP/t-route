@@ -12,7 +12,7 @@ Technologies, Leesburg, VA, USA;
 ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center,
 Tuscaloosa, AL, USA 
 
-![](./AGU%20-%20iPosterSessions.com_files/d22d5f15-69ca-48ea-b5df-420ec3e2eb60.jpeg)
+![](https://s3.amazonaws.com/ipostersessions-agu/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
 ![](./AGU%20-%20iPosterSessions.com_files/6e0a282b-3631-4874-9533-3a9e58fc4e12.png)![](./AGU%20-%20iPosterSessions.com_files/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg)
 ![](./AGU%20-%20iPosterSessions.com_files/6358cd22-3645-46ca-a31b-1ea2cc498f80.png)![](./AGU%20-%20iPosterSessions.com_files/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg)![](./AGU%20-%20iPosterSessions.com_files/6f1e8bbb-6ff0-459d-8f73-25ee1cc5f134.jpg)
 ![](./AGU%20-%20iPosterSessions.com_files/b15324f5-bfc9-4231-b498-bcac93b6fd5e.png)
