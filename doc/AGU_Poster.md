@@ -1,6 +1,6 @@
 Efficient Routing Computations with a Graph-Based Routing Framework
 
-![](./AGU%20-%20iPosterSessions.com_files/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
 
 James S. Halgren, Dong Ha Kim, Juzer F. Dhondia, Nels J. Frazier,
 Nicholas Chadwick, Ryan D. Grout,  
@@ -12,18 +12,10 @@ Technologies, Leesburg, VA, USA;
 ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center,
 Tuscaloosa, AL, USA 
 
-![](https://s3.amazonaws.com/ipostersessions-agu/3B-5C-F9-F6-F6-5F-E3-AC-C6-38-7F-8B-14-48-F7-37.png)
-![](./AGU%20-%20iPosterSessions.com_files/6e0a282b-3631-4874-9533-3a9e58fc4e12.png)![](./AGU%20-%20iPosterSessions.com_files/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg)
-![](./AGU%20-%20iPosterSessions.com_files/6358cd22-3645-46ca-a31b-1ea2cc498f80.png)![](./AGU%20-%20iPosterSessions.com_files/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg)![](./AGU%20-%20iPosterSessions.com_files/6f1e8bbb-6ff0-459d-8f73-25ee1cc5f134.jpg)
-![](./AGU%20-%20iPosterSessions.com_files/b15324f5-bfc9-4231-b498-bcac93b6fd5e.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/6e0a282b-3631-4874-9533-3a9e58fc4e12.png)
 
-
-![](./AGU%20-%20iPosterSessions.com_files/d7a52466-4d50-413f-9b76-193830d765f4.png)![](./AGU%20-%20iPosterSessions.com_files/3666295b-b360-456d-b4d8-732ccc8f48db.png)![](./AGU%20-%20iPosterSessions.com_files/7c061f86-1d15-4ed8-8a1b-2680f00d4d66.png)![](./AGU%20-%20iPosterSessions.com_files/4728b242-eaf9-4831-b4e3-1d651c464b44.png)
-
-![](./AGU%20-%20iPosterSessions.com_files/d22d5f15-69ca-48ea-b5df-420ec3e2eb60.jpeg)
-![](./AGU%20-%20iPosterSessions.com_files/6e0a282b-3631-4874-9533-3a9e58fc4e12.png)![](./AGU%20-%20iPosterSessions.com_files/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg)
-![](./AGU%20-%20iPosterSessions.com_files/6358cd22-3645-46ca-a31b-1ea2cc498f80.png)![](./AGU%20-%20iPosterSessions.com_files/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg)![](./AGU%20-%20iPosterSessions.com_files/6f1e8bbb-6ff0-459d-8f73-25ee1cc5f134.jpg)
-![](./AGU%20-%20iPosterSessions.com_files/b15324f5-bfc9-4231-b498-bcac93b6fd5e.png)
+Presented at:
+![](https://agu2020fallmeeting-agu.ipostersessions.com/GetFile.ashx?file=020_40144_FM_LogInPage_Header_1920x240-01.jpg)
 
 Efficient Routing Computations with a Graph-Based Routing Framework 
 -------------------------------------------------------------------
@@ -39,7 +31,7 @@ ERT, Inc., Laurel, MD, USA; University of Alabama Remote Sensing Center, Tuscalo
 The National Water Model (NWM) Channel Routing Network 
 ------------------------------------------------------
 
-*![](./AGU%20-%20iPosterSessions.com_files/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)* 
+![](https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)
  *Caption: Distribution of the 213 independent networks in the CONUS NWM
 dataset of river segments below all existing national weather service
 forecast points called the “Mainstem” network. Colors are used to
@@ -64,7 +56,7 @@ order 1, meaning that they define an independent network consisting of a
 single reach with no tributaries emptying directly into the ocean. Only
 the Mississippi outlet reaches order 10
 
-![](./AGU%20-%20iPosterSessions.com_files/90e08f09-c4d5-4ef9-bc1d-21185f9d2750.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/90e08f09-c4d5-4ef9-bc1d-21185f9d2750.png)
 
 *Caption: Tabulation of orders represented in the 14k+ independent
 networks of the NWM channel dataset network. Distribution of the 213
@@ -80,7 +72,7 @@ Representation of NWM Channels
 graphs, each consisting of a hydraulically independent drainage basin
 exiting to the ocean or to an inland sink.
 
-![](./AGU%20-%20iPosterSessions.com_files/d3725fe6-d7ae-40cb-aae2-93f3b29da588.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/d3725fe6-d7ae-40cb-aae2-93f3b29da588.png)
 
 Caption: *Elementary components of the CONUS river network graph. The
 smallest elements, denoted by discrete colors, are individual stream
@@ -91,7 +83,7 @@ Network complexity, expressed as a number of junctions, is a useful
 measure of the level of dependence of the graph, and gives an idea of
 the computational burden for each independent network. 
 
-![](./AGU%20-%20iPosterSessions.com_files/dfdf0e2c-b9f3-4746-978d-347d2e457e06.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/dfdf0e2c-b9f3-4746-978d-347d2e457e06.png)
 
 Caption: *Size distribution of river networks with greater than 2k
 junctions in the CONUS NWM dataset.* 
@@ -121,7 +113,7 @@ The NWM routing computation includes:
 
 *Caption: Daily Volume of Operational NWM Routing Calculations*
 
-![](./AGU%20-%20iPosterSessions.com_files/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png)
 
  
 
@@ -171,7 +163,7 @@ Tests were conducted primarily on the subset of channels below existing
 National Weather Service forecast points, referred to as the
 “Mainstems”.
 
-![](./AGU%20-%20iPosterSessions.com_files/fac0a954-5cf6-48e7-baed-8a8d97bfaa84.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/fac0a954-5cf6-48e7-baed-8a8d97bfaa84.png)
 
 *Caption: Performance improvement with additional parallel cores for
 Mainstems network domain. Note that the network-based performance is
@@ -216,7 +208,7 @@ Network-based or Just-in-Time?
 Two parallelization approaches, By-network, and Just-in-time (JIT)
 as detailed below, were tested in comparison to pure serial computation:
 
-![](./AGU%20-%20iPosterSessions.com_files/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif)
+![](https://s3.amazonaws.com/ipostersessions-agu/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif)
 
 *Caption: Animation of Just-In-Time network traversal, with calculations
 on separate portions of the tree coalescing to finish simultaneously at
@@ -249,7 +241,7 @@ Just-In-Time parallelization
 -   Practical efficiencies are obtained by grouping the reaches into
     cascading orders of subnetworks.
 
-![](./AGU%20-%20iPosterSessions.com_files/110c901d-0bc5-499b-bcbf-75a2893255c6.png)
+![](https://s3.amazonaws.com/ipostersessions-agu/110c901d-0bc5-499b-bcbf-75a2893255c6.png)
 
 *Caption: Grouping the reaches into subnetworks balances the practical
 impact of many parallel calls. An optimal subnetwork size is small
