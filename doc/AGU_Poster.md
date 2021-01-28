@@ -398,5 +398,5 @@ barriers to efficient application of higher order routing solutions in
 the National Water Model, enabling more useful forecasts that help
 communities prepare for hydrologic hazards. 
 
-[![](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)](./AGU%20-%20iPosterSessions.com_files/Paper_758298_abstract_728584_0.gif)
+![](https://agu.confex.com/data/abstract/agu/fm20/8/9/Paper_758298_abstract_728584_0.gif)
 
