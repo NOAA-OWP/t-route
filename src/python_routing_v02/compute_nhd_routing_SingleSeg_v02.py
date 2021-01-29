@@ -610,12 +610,19 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            # The X_sub lines use SEGS...
+            # which is now invalid with the wbodies included.
+            # So we define "common_segs" to identify regular routing segments
+            # and wbodies_segs for the waterbody reaches/segments
             segs = list(chain.from_iterable(reach_list))
+            common_segs = param_df.index.intersection(segs)
+            # Assumes everything else is a waterbody...
+            wbodies_segs = set(segs).symmetric_difference(common_segs)
             param_df_sub = param_df.loc[
-                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
-            qlat_sub = qlats.loc[segs].sort_index()
-            q0_sub = q0.loc[segs].sort_index()
+            qlat_sub = qlats.loc[common_segs].sort_index()
+            q0_sub = q0.loc[common_segs].sort_index()
             results.append(
                 compute_func(
                     nts,
