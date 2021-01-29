@@ -17,7 +17,7 @@ _University of Alabama Remote Sensing Center, Tuscaloosa, AL, USA_<br>
 <img src=https://s3.amazonaws.com/ipostersessions-agu/2d5dd5fa-5ea3-4e0e-ae3d-bad1f075608c.jpg alt="@jdhondia-noaa" width="100" height="100"> 
 <img src=https://s3.amazonaws.com/ipostersessions-agu/d22d5f15-69ca-48ea-b5df-420ec3e2eb60.jpeg alt="@groutr" width="100" height="100"> 
 <img src=https://s3.amazonaws.com/ipostersessions-agu/6358cd22-3645-46ca-a31b-1ea2cc498f80.png alt="@awlostowski-noaa" width="100" height="100"> 
-<img src=https://s3.amazonaws.com/ipostersessions-agu/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg alt="graeme.aggett@lynker.com" width="100" height="100"> 
+<img src=https://s3.amazonaws.com/ipostersessions-agu/ede3d422-0af6-4ea4-baf1-44eb027d75ae.jpg alt="gaggett" width="100" height="100"> 
 
 __Originally a Poster Presented at:__
 ![](https://agu2020fallmeeting-agu.ipostersessions.com/GetFile.ashx?file=020_40144_FM_LogInPage_Header_1920x240-01.jpg)
