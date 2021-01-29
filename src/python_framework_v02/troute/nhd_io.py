@@ -6,6 +6,7 @@ import geopandas as gpd
 import json
 import yaml
 import numpy as np
+import glob
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -237,7 +238,40 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
 
     return ql
 
+def read_netcdfs(files, dim, transform_func=None):
+    def process_one_path(path):
+        with xr.open_dataset(path) as ds:
+            if transform_func is not None:
+                ds = transform_func(ds)
+            ds.load()
+            return ds
+
+    paths = sorted(glob.glob(files))
+    datasets = [process_one_path(p) for p in paths]
+    combined = xr.concat(datasets, dim)
+    return combined
+
+def add_time_dimension(ds):
+    t = [ds['queryTime'].values[0]]
+    time_da = xr.DataArray(t,[('time',t)])
+    return ds.drop_vars('time').expand_dims(time=time_da,axis=1)
+
 def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
+    usgs_file_pattern_filter = "2020-03-21*.usgsTimeSlice.ncdf"
+    usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
+
+    with read_netcdfs(usgs_timeslices_folder + usgs_file_pattern_filter,'time',add_time_dimension) as ds3:
+        df3 = pd.DataFrame(ds3['discharge'].values,index=ds3['stationId'].values,columns=ds3.time.values)
+        
+    with xr.open_mfdataset(usgs_files,preprocess=add_time_dimension, combine= "nested", concat_dim='time') as ds2:
+        df2 = pd.DataFrame(ds2['discharge'].values,index=ds2['stationId'].values,columns=ds2.time.values)
+        
+    ds = xr.open_dataset(usgs_files[0])
+    t = [ds['queryTime'].values[0]]
+    time_da = xr.DataArray(t,[('time',t)])
+    stationId_da = ds.stationId
+    ds2 = ds.drop_vars('time').expand_dims(time=time_da,axis=1)
+    ds2 = ds2.drop_vars('stationId').expand_dims(stationId=stationId_da,axis=1)
 
     with xr.open_dataset(routelink_subset_file) as ds:
         df = ds.to_dataframe()
@@ -249,8 +283,8 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
         df = df[df['gages'].notna()]
         df.dropna(subset=['gages'], inplace=True)
         df = df.set_index('gages')
-    
-    with xr.open_mfdataset(usgs_timeslices_folder+"*",combine='nested',concat_dim='stationIdInd') as ds:
+        
+    with xr.open_mfdataset(usgs_files,combine='nested',concat_dim='stationIdInd') as ds:
         df2 = ds.to_dataframe()
         df2['stationId'] = df2['stationId'].str.decode('utf-8') 
         df2['time'] = df2['time'].str.decode('utf-8') 
@@ -258,14 +292,13 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
         df2.drop(df2.columns.difference(['stationId','time','discharge','discharge_quality']), 1, inplace=True)
         df2.reset_index()
         df2.set_index('stationId', inplace=True)
-
+        
     usgs_df = df2.join(df)
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df[usgs_df['index'].notna()]
     nan_value = float("NaN")
     usgs_df['index'].replace(['               ','            N/A','           NONE'], nan_value, inplace=True)
     usgs_df = usgs_df[usgs_df['index'].notna()]
-    # pd.to_numeric(usgs_df['index']) 
     usgs_df = usgs_df.set_index('index')
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.set_index('link')
@@ -293,10 +326,6 @@ def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
         usgs_df.insert(i+8, temp_name6, np.nan)
         usgs_df.insert(i+10, temp_name7, np.nan)
         usgs_df.insert(i+11, temp_name8, np.nan)
-
-        # usgs_df = usgs_df.astype(float)
-
-        
 
     usgs_df = usgs_df.interpolate(method='linear',  axis=1)
 
