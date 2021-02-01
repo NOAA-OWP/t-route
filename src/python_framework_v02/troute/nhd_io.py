@@ -7,6 +7,7 @@ import json
 import yaml
 import numpy as np
 import glob
+from compose import compose
 
 
 def read_netcdf(geo_file_path):
@@ -252,10 +253,23 @@ def read_netcdfs(files, dim, transform_func=None):
     return combined
 
 
-def add_time_dimension(ds):
-    t = [ds["queryTime"].values[0]]
-    time_da = xr.DataArray(t, [("time", t)])
-    return ds.drop_vars("time").expand_dims(time=time_da, axis=1)
+def preprocess_time_station_index(xd):
+    stationId_da_mask = list(
+        map(compose(bytes.isdigit, bytes.strip), xd.stationId.values)
+    )
+    stationId = xd.stationId[stationId_da_mask].values.astype(int)
+
+    unique_times_str = np.unique(xd.time.values).tolist()
+
+    unique_times = np.array(unique_times_str, dtype="str")
+
+    data_var_dict = {}
+    data_vars = ("discharge", "discharge_quality")
+    for v in data_vars:
+        data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
+    return xr.Dataset(
+        data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
+    )
 
 
 def get_usgs_from_wrf_hydro(
@@ -263,75 +277,35 @@ def get_usgs_from_wrf_hydro(
 ):
     usgs_files = glob.glob(usgs_timeslices_folder + data_assimilation_filter)
 
-    # with read_netcdfs(usgs_timeslices_folder + usgs_file_pattern_filter,'time',add_time_dimension) as ds3:
-    #     df3 = pd.DataFrame(ds3['discharge'].values,index=ds3['stationId'].values,columns=ds3.time.values)
-
-    with xr.open_mfdataset(
-        usgs_files, preprocess=add_time_dimension, combine="nested", concat_dim="time"
+    with read_netcdfs(
+        usgs_timeslices_folder + data_assimilation_filter,
+        "time",
+        preprocess_time_station_index,
     ) as ds2:
         df2 = pd.DataFrame(
-            ds2["discharge"].values,
+            ds2["discharge"].values.T,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
 
-    ds = xr.open_dataset(usgs_files[0])
-    t = [ds["queryTime"].values[0]]
-    time_da = xr.DataArray(t, [("time", t)])
-    stationId_da = ds.stationId
-    ds2 = ds.drop_vars("time").expand_dims(time=time_da, axis=1)
-    ds2 = ds2.drop_vars("stationId").expand_dims(stationId=stationId_da, axis=1)
-
     with xr.open_dataset(routelink_subset_file) as ds:
-        df = ds.to_dataframe()
-        df = df.reset_index()
-        df.drop(
-            df.columns.difference(["link", "to", "gages", "ascendingIndex"]),
-            1,
-            inplace=True,
-        )
-        df["gages"] = df["gages"].str.decode("utf-8")
-        nan_value = float("NaN")
-        df["gages"].replace("               ", nan_value, inplace=True)
-        df = df[df["gages"].notna()]
-        df.dropna(subset=["gages"], inplace=True)
-        df = df.set_index("gages")
+        gage_list = list(map(bytes.strip, ds.gages.values))
+        gage_mask = list(map(bytes.isdigit, gage_list))
 
-    with xr.open_mfdataset(
-        usgs_files, combine="nested", concat_dim="stationIdInd"
-    ) as ds:
-        df2 = ds.to_dataframe()
-        df2["stationId"] = df2["stationId"].str.decode("utf-8")
-        df2["time"] = df2["time"].str.decode("utf-8")
-        df2 = df2.reset_index()
-        df2.drop(
-            df2.columns.difference(
-                ["stationId", "time", "discharge", "discharge_quality"]
-            ),
-            1,
-            inplace=True,
-        )
-        df2.reset_index()
-        df2.set_index("stationId", inplace=True)
+        gage_da = ds.gages[gage_mask].values.astype(int)
 
-    usgs_df = df2.join(df)
+        data_var_dict = {}
+        data_vars = ("link", "to", "ascendingIndex")
+        for v in data_vars:
+            data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
+        ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
+    df = ds.to_dataframe()
+
+    usgs_df = df.join(df2)
     usgs_df = usgs_df.reset_index()
-    usgs_df = usgs_df[usgs_df["index"].notna()]
-    nan_value = float("NaN")
-    usgs_df["index"].replace(
-        ["               ", "            N/A", "           NONE"],
-        nan_value,
-        inplace=True,
-    )
-    usgs_df = usgs_df[usgs_df["index"].notna()]
-    usgs_df = usgs_df.set_index("index")
-    usgs_df = usgs_df.reset_index()
+    usgs_df = usgs_df.rename(columns={"index": "gages"})
     usgs_df = usgs_df.set_index("link")
-
-    usgs_df = usgs_df.pivot_table(
-        values="discharge", index=usgs_df.index, columns="time", aggfunc="first"
-    )
-    usgs_df.index = usgs_df.index.astype("int")
+    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
 
     for i in range(0, (len(columns_list) * 3) - 12, 12):
