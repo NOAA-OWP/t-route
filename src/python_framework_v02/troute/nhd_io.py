@@ -256,12 +256,11 @@ def add_time_dimension(ds):
     time_da = xr.DataArray(t,[('time',t)])
     return ds.drop_vars('time').expand_dims(time=time_da,axis=1)
 
-def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder):
-    usgs_file_pattern_filter = "2020-03-21*.usgsTimeSlice.ncdf"
-    usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
+def get_usgs_from_wrf_hydro(routelink_subset_file,usgs_timeslices_folder,data_assimilation_filter):
+    usgs_files = glob.glob(usgs_timeslices_folder + data_assimilation_filter)
 
-    with read_netcdfs(usgs_timeslices_folder + usgs_file_pattern_filter,'time',add_time_dimension) as ds3:
-        df3 = pd.DataFrame(ds3['discharge'].values,index=ds3['stationId'].values,columns=ds3.time.values)
+    # with read_netcdfs(usgs_timeslices_folder + usgs_file_pattern_filter,'time',add_time_dimension) as ds3:
+    #     df3 = pd.DataFrame(ds3['discharge'].values,index=ds3['stationId'].values,columns=ds3.time.values)
         
     with xr.open_mfdataset(usgs_files,preprocess=add_time_dimension, combine= "nested", concat_dim='time') as ds2:
         df2 = pd.DataFrame(ds2['discharge'].values,index=ds2['stationId'].values,columns=ds2.time.values)

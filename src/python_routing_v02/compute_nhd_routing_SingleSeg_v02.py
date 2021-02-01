@@ -257,6 +257,12 @@ def _handle_args():
         dest="data_assimilation_parameters_file",
         default=None,
     )
+    parser.add_argument(
+        "--data_assimilation_filter",
+        help="Provide a pattern filter for ncdf files (2020-03-21*.usgsTimeSlice.ncdf)",
+        dest="data_assimilation_filter",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -727,6 +733,7 @@ def _input_handler():
             ] = args.break_network_at_waterbodies
             output_parameters["csv_output_folder"] = args.csv_output_folder
             data_assimilation_parameters["data_assimilation_parameters_file"] = args.data_assimilation_parameters_file
+            data_assimilation_filter["data_assimilation_filter"] = args.data_assimilation_filter
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -873,8 +880,9 @@ def main():
 
         usgs_df = nhd_io.get_usgs_from_wrf_hydro(data_assimilation_parameters["data_assimilation_parameters_file"],
         usgs_timeslices_folder,
+        data_assimilation_parameters['data_assimilation_filter'],
         )
-        print(usgs_df)
+        # print(usgs_df)
     else:
         usgs_df = pd.DataFrame()
     # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
