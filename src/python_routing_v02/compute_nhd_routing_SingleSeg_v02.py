@@ -250,7 +250,7 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
-    
+
     parser.add_argument(
         "--data_assimilation_file_path",
         help="Provide a path to a data assimilation routelink file folder",
@@ -586,7 +586,7 @@ def compute_nhd_routing_v02(
                     segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
                 qlat_sub = qlats.loc[segs].sort_index()
-                usgs_df_sub  = usgs_df.loc[segs].sort_index()
+                usgs_df_sub = usgs_df.loc[segs].sort_index()
                 q0_sub = q0.loc[segs].sort_index()
                 jobs.append(
                     delayed(compute_func)(
@@ -611,21 +611,26 @@ def compute_nhd_routing_v02(
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
-                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-                ].sort_index()
+                segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+            ].sort_index()
             if not usgs_df.empty:
                 s = list(usgs_df.index)
                 nudging_positions_list = []
                 param_df_positions = param_df_sub.reset_index()
-                param_df_positions.index = param_df_positions.index.set_names(['position'])
-                param_df_positions = param_df_positions.drop(columns=['dt','bw','tw','twcc','dx','n','ncc','cs','s0'])
+                param_df_positions.index = param_df_positions.index.set_names(
+                    ["position"]
+                )
+                param_df_positions = param_df_positions.drop(
+                    columns=["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                )
                 param_df_positions = param_df_positions.reset_index()
-                param_df_positions = param_df_positions.set_index(['link'])
+                param_df_positions = param_df_positions.set_index(["link"])
 
                 # TODO: make this a generator or at least a list comprehension
                 for gage in usgs_df.index:
-                    if gage in param_df_positions.index: nudging_positions_list.append(int(param_df_positions.loc[gage]))
-                usgs_df_sub  = usgs_df.loc[s].sort_index()
+                    if gage in param_df_positions.index:
+                        nudging_positions_list.append(int(param_df_positions.loc[gage]))
+                usgs_df_sub = usgs_df.loc[s].sort_index()
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = None
@@ -633,9 +638,7 @@ def compute_nhd_routing_v02(
             print(q0)
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
-            
-            
-        
+
             # print(nudging_positions_list)
             # print(usgs_df_sub)
             results.append(
@@ -653,13 +656,10 @@ def compute_nhd_routing_v02(
                     nudging_positions_list,
                     {},
                     assume_short_ts,
-                    
                 )
             )
-        
-        
+
     return results
-   
 
 
 def _input_handler():
@@ -697,7 +697,7 @@ def _input_handler():
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
-        
+
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
 
@@ -732,8 +732,12 @@ def _input_handler():
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
             output_parameters["csv_output_folder"] = args.csv_output_folder
-            data_assimilation_parameters["data_assimilation_parameters_file"] = args.data_assimilation_parameters_file
-            data_assimilation_filter["data_assimilation_filter"] = args.data_assimilation_filter
+            data_assimilation_parameters[
+                "data_assimilation_parameters_file"
+            ] = args.data_assimilation_parameters_file
+            data_assimilation_filter[
+                "data_assimilation_filter"
+            ] = args.data_assimilation_filter
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -839,7 +843,7 @@ def main():
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
-    
+
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -859,12 +863,11 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    #STEP 6
+    # STEP 6
 
     if data_assimilation_parameters["data_assimilation_parameters_file"] != None:
         usgs_timeslices_folder = os.path.join(
-            root,
-            "test/input/geo/nudgingTimeSliceObs/",
+            root, "test/input/geo/nudgingTimeSliceObs/",
         )
         # routelink_subset_folder = os.path.join(
         #     root,
@@ -878,9 +881,10 @@ def main():
         # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
         # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
 
-        usgs_df = nhd_io.get_usgs_from_wrf_hydro(data_assimilation_parameters["data_assimilation_parameters_file"],
-        usgs_timeslices_folder,
-        data_assimilation_parameters['data_assimilation_filter'],
+        usgs_df = nhd_io.get_usgs_from_wrf_hydro(
+            data_assimilation_parameters["data_assimilation_parameters_file"],
+            usgs_timeslices_folder,
+            data_assimilation_parameters["data_assimilation_filter"],
         )
         # print(usgs_df)
     else:
@@ -939,7 +943,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-
     if "parity_check_input_folder" in parity_parameters:
 
         if verbose:
@@ -950,7 +953,7 @@ def main():
         build_tests.parity_check(
             parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
         )
- 
+
 
 if __name__ == "__main__":
     main()
