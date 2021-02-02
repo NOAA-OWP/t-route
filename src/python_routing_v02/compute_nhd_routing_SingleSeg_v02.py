@@ -617,23 +617,9 @@ def compute_nhd_routing_v02(
                 segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             if not usgs_df.empty:
-                s = list(usgs_df.index)
-                nudging_positions_list = []
-                param_df_positions = param_df_sub.reset_index()
-                param_df_positions.index = param_df_positions.index.set_names(
-                    ["position"]
-                )
-                param_df_positions = param_df_positions.drop(
-                    columns=["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-                )
-                param_df_positions = param_df_positions.reset_index()
-                param_df_positions = param_df_positions.set_index(["link"])
-
-                # TODO: make this a generator or at least a list comprehension
-                for gage in usgs_df.index:
-                    if gage in param_df_positions.index:
-                        nudging_positions_list.append(int(param_df_positions.loc[gage]))
-                usgs_df_sub = usgs_df.loc[s].sort_index()
+                usgs_segs = sorted(usgs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                usgs_df_sub = usgs_df.loc[usgs_segs]
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = None
