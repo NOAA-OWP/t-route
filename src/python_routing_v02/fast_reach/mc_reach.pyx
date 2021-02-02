@@ -187,7 +187,8 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef bint nudging_flag = True if len(nudging_positions_list) > 0 else False
+    cdef bint gages_size = len(usgs_positions_list)
+    cdef int gage_i, usgs_position_i
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -393,10 +394,10 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-                if nudging_flag:
-                    with gil:
-                        for gage_loc, values in enumerate(nudging_values):
-                            flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]
+                if gages_size:
+                    for gage_i in range(gages_size):
+                        usgs_position_i = usgs_positions_list[gage_i]
+                        #flowveldepth[usgs_position_i][timestep] = usgs_values[timestep]
     
             timestep += 1
 
