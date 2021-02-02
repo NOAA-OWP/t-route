@@ -867,7 +867,7 @@ def main():
 
     # STEP 6
 
-    if data_assimilation_parameters["data_assimilation_parameters_file"] != None:
+    if data_assimilation_parameters:
         usgs_timeslices_folder = os.path.join(
             root, "test/input/geo/nudgingTimeSliceObs/",
         )
