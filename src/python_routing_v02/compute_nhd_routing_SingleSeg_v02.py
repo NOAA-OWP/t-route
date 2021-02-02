@@ -866,6 +866,10 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print("creating usgs time_slice data array ...")
 
     if data_assimilation_parameters:
         usgs_timeslices_folder = os.path.join(
@@ -892,6 +896,12 @@ def main():
     else:
         usgs_df = pd.DataFrame()
     # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
+
+    if verbose:
+        print("usgs array complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         main_start_time = time.time()
