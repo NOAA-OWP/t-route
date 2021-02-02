@@ -612,10 +612,10 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            segs = list(chain.from_iterable(reach_list))
+            segs = sorted(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-            ].sort_index()
+            ]
             if not usgs_df.empty:
                 usgs_segs = sorted(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
@@ -624,8 +624,8 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
-            qlat_sub = qlats.loc[segs].sort_index()
-            q0_sub = q0.loc[segs].sort_index()
+            qlat_sub = qlats.loc[segs]
+            q0_sub = q0.loc[segs]
 
             # print(nudging_positions_list)
             # print(usgs_df_sub)
