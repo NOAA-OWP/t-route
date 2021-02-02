@@ -7,7 +7,7 @@ import json
 import yaml
 import numpy as np
 import glob
-from compose import compose
+from toolz import compose
 
 
 def read_netcdf(geo_file_path):
@@ -44,7 +44,6 @@ def read_mask(path, layer_string=None):
 
 
 def read_custom_input(custom_input_file):
-    # import pdb; pdb.set_trace()
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
@@ -183,7 +182,6 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
-    # import pdb; pdb.set_trace()
     filter_list = None
 
     with xr.open_mfdataset(
@@ -272,7 +270,7 @@ def preprocess_time_station_index(xd):
     )
 
 
-def get_usgs_from_wrf_hydro(
+def get_usgs_from_time_slices(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = glob.glob(usgs_timeslices_folder + data_assimilation_filter)

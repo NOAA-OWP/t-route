@@ -417,9 +417,10 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc5[segs].sort_index()
+                    q0_sub = q0.loc[segs].sort_index()
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
+
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -443,6 +444,7 @@ def compute_nhd_routing_v02(
                         )
                     )
                 results_subn[order] = parallel(jobs)
+
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
                     for ci, (cluster, clustered_subns) in enumerate(
@@ -462,6 +464,7 @@ def compute_nhd_routing_v02(
                             # what will it take to get just the tw FVD values into an array to pass to the next loop?
                             # There will be an empty array initialized at the top of the loop, then re-populated here.
                             # we don't have to bother with populating it after the last group
+
         results = []
         for order in subnetworks_only_ordered_jit:
             results.extend(results_subn[order])
@@ -634,8 +637,7 @@ def compute_nhd_routing_v02(
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = None
-            print(qlats)
-            print(q0)
+
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
 
@@ -881,7 +883,7 @@ def main():
         # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
         # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
 
-        usgs_df = nhd_io.get_usgs_from_wrf_hydro(
+        usgs_df = nhd_io.get_usgs_from_time_slices(
             data_assimilation_parameters["data_assimilation_parameters_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
