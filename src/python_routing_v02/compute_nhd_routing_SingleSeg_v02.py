@@ -622,7 +622,7 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = usgs_df.loc[usgs_segs]
             else:
                 usgs_df_sub = pd.DataFrame()
-                nudging_positions_list = None
+                nudging_positions_list = []
 
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
@@ -641,7 +641,7 @@ def compute_nhd_routing_v02(
                     q0_sub.values,
                     qlat_sub.values,
                     np.single(usgs_df_sub.values),
-                    nudging_positions_list,
+                    np.array(nudging_positions_list, dtype="int32"),
                     {},
                     assume_short_ts,
                 )
