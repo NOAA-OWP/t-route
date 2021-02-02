@@ -187,6 +187,8 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
+    cdef bint nudging_flag = True if len(nudging_positions_list) > 0 else False
+
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
         # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
@@ -391,14 +393,12 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-            with gil:
-                if nudging_positions_list:
-                    for gage_loc, values in enumerate(nudging_values):
-                        flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]  
+                if nudging_flag:
+                    with gil:
+                        for gage_loc, values in enumerate(nudging_values):
+                            flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]
     
-                    timestep += 1
-                else:
-                    timestep += 1
+                timestep += 1
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
