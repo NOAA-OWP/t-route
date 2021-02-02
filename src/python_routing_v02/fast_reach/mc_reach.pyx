@@ -398,7 +398,7 @@ cpdef object compute_network(
                         for gage_loc, values in enumerate(nudging_values):
                             flowveldepth[nudging_positions_list[gage_loc]][timestep] = values[timestep]
     
-                timestep += 1
+            timestep += 1
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
