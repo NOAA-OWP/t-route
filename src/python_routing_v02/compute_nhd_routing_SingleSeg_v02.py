@@ -626,7 +626,7 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlats.loc[segs]
             q0_sub = q0.loc[segs]
-            usgs_df_sub.insert(loc=0, column='A', value=usgs_df_sub['2020-03-19_18:00:00'].iloc[0])
+            usgs_df_sub.insert(loc=0, column='Adjustment_Column', value=usgs_df_sub.iloc[:, 0]) 
             results.append(
                 compute_func(
                     nts,
