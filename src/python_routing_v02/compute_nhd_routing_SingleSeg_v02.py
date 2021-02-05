@@ -620,13 +620,14 @@ def compute_nhd_routing_v02(
                 usgs_segs = sorted(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
+                usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
             qlat_sub = qlats.loc[segs]
             q0_sub = q0.loc[segs]
-            usgs_df_sub.insert(loc=0, column='Adjustment_Column', value=usgs_df_sub.iloc[:, 0]) 
+            print(np.single(usgs_df_sub.values))
             results.append(
                 compute_func(
                     nts,

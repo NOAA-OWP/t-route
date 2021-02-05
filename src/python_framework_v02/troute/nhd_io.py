@@ -305,7 +305,7 @@ def get_usgs_from_time_slices(
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
-
+    
     for i in range(0, (len(columns_list) * 3) - 12, 12):
         original_string = usgs_df.columns[i]
         original_string_shortened = original_string[:-5]
@@ -327,6 +327,7 @@ def get_usgs_from_time_slices(
         usgs_df.insert(i + 11, temp_name8, np.nan)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:,0] == -999999.000000].index , inplace=True)
 
     return usgs_df
 
