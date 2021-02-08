@@ -27,7 +27,9 @@ __Originally a Poster Presented at:__
 Under direction of the NOAA-NWS Office of Water Prediction (OWP) we have
 created **a new routing framework for the National Water Model
 (NWM).** This new framework permits use of advanced routing methods but
-implies additional compute burden.
+implies additional compute burden. Our challenge is to implement a parallel execution 
+method to permits efficient calculation of the advanced routing while still satisfying 
+the operational execution constrations for use with the National Water Model.
 
 ## The National Water Model (NWM) Channel Routing Network
 Based on the NHD+ V2.0 Medium Resolution data set, the National Water Model CONUS river network is composed of:
@@ -71,7 +73,7 @@ exiting to the ocean or to an inland sink.
 
 <img src=https://s3.amazonaws.com/ipostersessions-agu/d3725fe6-d7ae-40cb-aae2-93f3b29da588.png width="200">
 
-Caption: *Elementary components of the CONUS river network graph. The
+*Caption: Elementary components of the CONUS river network graph. The
 smallest elements, denoted by discrete colors, are individual stream
 segments. Linear combinations of segments between junctions form
 reaches. Junctions exist at the confluence of two or more reaches.*
@@ -86,7 +88,8 @@ the computational burden for each independent network.
 
 ### Independent Networks in the CONUS Dataset
 <img src=https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png height=200>
-*Figure: Distribution of the 213 independent networks in the CONUS NWM
+
+*Caption: Distribution of the 213 independent networks in the CONUS NWM
 dataset of river segments below all existing national weather service
 forecast points called the “Mainstem” network. Colors are used to
 indicate independent networks, each draining to unique tailwater
