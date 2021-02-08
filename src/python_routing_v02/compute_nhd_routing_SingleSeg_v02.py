@@ -416,10 +416,21 @@ def compute_nhd_routing_v02(
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-                    qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc[segs].sort_index()
+
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
+
+                    if not usgs_df.empty:
+                        usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                        usgs_df_sub = usgs_df.loc[usgs_segs]
+                        usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                    else:
+                        usgs_df_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
+                    qlat_sub = qlats.loc[param_df_sub.index]
+                    q0_sub = q0.loc[param_df_sub.index]
 
                     # results_subn[order].append(
                     #     compute_func(
@@ -432,9 +443,11 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            q0_sub.values,
-                            qlat_sub.values,
+                            np.single(q0_sub.values),
+                            np.single(qlat_sub.values),
+                            np.single(usgs_df_sub.values),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -531,8 +544,19 @@ def compute_nhd_routing_v02(
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-                    qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc[segs].sort_index()
+
+                    if not usgs_df.empty:
+                        usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                        usgs_df_sub = usgs_df.loc[usgs_segs]
+                        usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                    else:
+                        usgs_df_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
+                    qlat_sub = qlats.loc[param_df_sub.index]
+                    q0_sub = q0.loc[param_df_sub.index]
+  
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -542,9 +566,11 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            q0_sub.values,
-                            qlat_sub.values,
+                            np.single(q0_sub.values),
+                            np.single(qlat_sub.values),
+                            np.single(usgs_df_sub.values),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -588,9 +614,17 @@ def compute_nhd_routing_v02(
                 param_df_sub = param_df.loc[
                     segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
-                qlat_sub = qlats.loc[segs].sort_index()
-                usgs_df_sub = usgs_df.loc[segs].sort_index()
-                q0_sub = q0.loc[segs].sort_index()
+                if not usgs_df.empty:
+                    usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                    nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                    usgs_df_sub = usgs_df.loc[usgs_segs]
+                    usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                else:
+                    usgs_df_sub = pd.DataFrame()
+                    nudging_positions_list = []
+
+                qlat_sub = qlats.loc[param_df_sub.index]
+                q0_sub = q0.loc[param_df_sub.index]
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -600,9 +634,10 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
-                        q0_sub.values,
-                        qlat_sub.values,
+                        np.single(q0_sub.values),
+                        np.single(qlat_sub.values),
                         np.single(usgs_df_sub.values),
+                        np.array(nudging_positions_list, dtype="int32"),
                         {},
                         assume_short_ts,
                     )
@@ -612,12 +647,12 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            segs = sorted(chain.from_iterable(reach_list))
+            segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
-            ]
+            ].sort_index()
             if not usgs_df.empty:
-                usgs_segs = sorted(usgs_df.index.intersection(param_df_sub.index))
+                usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
                 usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
@@ -625,9 +660,9 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
-            qlat_sub = qlats.loc[segs]
-            q0_sub = q0.loc[segs]
-            print(np.single(usgs_df_sub.values))
+            qlat_sub = qlats.loc[param_df_sub.index]
+            q0_sub = q0.loc[param_df_sub.index]
+
             results.append(
                 compute_func(
                     nts,
