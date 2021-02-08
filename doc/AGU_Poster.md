@@ -61,7 +61,7 @@ Long Range | 8640 | 2,700,000 | 4 | 4 | 373,248,000,000
   |   |   |   | TOTAL | 603,612,000,000
 -->
 
-![](https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png height="200">
 
  
 ## Graph Representation of NWM Channels
@@ -85,7 +85,7 @@ the computational burden for each independent network.
 *Caption: Size distribution of river networks with greater than 2k junctions in the CONUS NWM dataset.*
 
 ### Independent Networks in the CONUS Dataset
-![](https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/658cf3ec-95dc-4fb5-a4c5-528c69917e67.png height=200>
 *Figure: Distribution of the 213 independent networks in the CONUS NWM
 dataset of river segments below all existing national weather service
 forecast points called the “Mainstem” network. Colors are used to
@@ -99,7 +99,7 @@ order 1, meaning that they define an independent network consisting of a
 single reach with no tributaries emptying directly into the ocean. Only
 the Mississippi outlet reaches order 10
 
-![](https://s3.amazonaws.com/ipostersessions-agu/90e08f09-c4d5-4ef9-bc1d-21185f9d2750.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/90e08f09-c4d5-4ef9-bc1d-21185f9d2750.png height=300>
 
 *Caption: Tabulation of orders represented in the 14k+ independent
 networks of the NWM channel dataset network. Distribution of the 213
@@ -127,7 +127,7 @@ Tests were conducted primarily on the subset of channels below existing
 National Weather Service forecast points, referred to as the
 “Mainstems”.
 
-![](https://s3.amazonaws.com/ipostersessions-agu/fac0a954-5cf6-48e7-baed-8a8d97bfaa84.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/fac0a954-5cf6-48e7-baed-8a8d97bfaa84.png height=200>
 
 *Caption: Performance improvement with additional parallel cores for
 Mainstems network domain. Note that the network-based performance is
@@ -170,7 +170,7 @@ array access efficiency (i.e. cache misses), etc.
 Two parallelization approaches, By-network, and Just-in-time (JIT)
 as detailed below, were tested in comparison to pure serial computation:
 
-![](https://s3.amazonaws.com/ipostersessions-agu/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif height=150>
 
 *Caption: Animation of Just-In-Time network traversal, with calculations
 on separate portions of the tree coalescing to finish simultaneously at
@@ -199,7 +199,7 @@ Just-In-Time parallelization
 -   Practical efficiencies are obtained by grouping the reaches into
     cascading orders of subnetworks.
 
-![](https://s3.amazonaws.com/ipostersessions-agu/110c901d-0bc5-499b-bcbf-75a2893255c6.png)
+<img src=https://s3.amazonaws.com/ipostersessions-agu/110c901d-0bc5-499b-bcbf-75a2893255c6.png height=400>
 
 *Caption: Grouping the reaches into subnetworks balances the practical
 impact of many parallel calls. An optimal subnetwork size is small
