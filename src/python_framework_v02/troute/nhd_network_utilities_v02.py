@@ -508,3 +508,21 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
         )
 
     return qlat_df
+
+
+def build_data_assimilation(root, data_assimilation_parameters):
+
+    if data_assimilation_parameters:
+        usgs_timeslices_folder = os.path.join(
+            root, "test/input/geo/nudgingTimeSliceObs/",
+        )
+
+        usgs_df = nhd_io.get_usgs_from_time_slices(
+            data_assimilation_parameters["data_assimilation_parameters_file"],
+            usgs_timeslices_folder,
+            data_assimilation_parameters["data_assimilation_filter"],
+        )
+
+    else:
+        usgs_df = pd.DataFrame()
+    return usgs_df

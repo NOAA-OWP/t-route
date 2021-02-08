@@ -620,7 +620,7 @@ def compute_nhd_routing_v02(
                 usgs_segs = sorted(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
@@ -851,36 +851,25 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
+    usgs_df = nnu.build_data_assimilation(root, data_assimilation_parameters)
     if showtiming:
         start_time = time.time()
     if verbose:
         print("creating usgs time_slice data array ...")
 
-    if data_assimilation_parameters:
-        usgs_timeslices_folder = os.path.join(
-            root, "test/input/geo/nudgingTimeSliceObs/",
-        )
-        # routelink_subset_folder = os.path.join(
-        #     root,
-        #     "test/input/geo/routelink/",
-        # )
-        # "../../test/input/geo/routelink/routeLink_subset.nc"
-        # routelink_subset_file = routelink_subset_folder+"routeLink_subset.nc"
-        # data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"] = routelink_subset_file
-        # usgs_file_pattern_filter = "*.usgsTimeSlice.ncdf"
+    # if data_assimilation_parameters:
+    #     usgs_timeslices_folder = os.path.join(
+    #         root, "test/input/geo/nudgingTimeSliceObs/",
+    #     )
 
-        # usgs_files = glob.glob(usgs_timeslices_folder + usgs_file_pattern_filter)
-        # file_name = "2020-03-19_18:00:00.15min.usgsTimeSlice.ncdf"
+    #     usgs_df = nhd_io.get_usgs_from_time_slices(
+    #         data_assimilation_parameters["data_assimilation_parameters_file"],
+    #         usgs_timeslices_folder,
+    #         data_assimilation_parameters["data_assimilation_filter"],
+    #     )
 
-        usgs_df = nhd_io.get_usgs_from_time_slices(
-            data_assimilation_parameters["data_assimilation_parameters_file"],
-            usgs_timeslices_folder,
-            data_assimilation_parameters["data_assimilation_filter"],
-        )
-        # print(usgs_df)
-    else:
-        usgs_df = pd.DataFrame()
-    # da = nnu.build_channel_initial_state(data_assimilation_parameters["wrf_hydro_channel_ID_routelink_file"], usgs_df.index)
+    # else:
+    #     usgs_df = pd.DataFrame()
 
     if verbose:
         print("usgs array complete")
