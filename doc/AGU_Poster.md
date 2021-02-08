@@ -41,7 +41,7 @@ Based on the NHD+ V2.0 Medium Resolution data set, the National Water Model CONU
 -   14,713 independent drainage basins (disjoint networks). 
 
 ### Key Challenges for CONUS-scale routing
-### Computation Volume
+#### Computation Volume
 Continental scale routing in the NWM is an enormous computational challenge. The NWM routing computation includes:
 -   multiple forecast realizations (analysis, short, medium-range
     deterministic, medium-range ensemble, and long-range ensemble),
@@ -65,7 +65,27 @@ Long Range | 8640 | 2,700,000 | 4 | 4 | 373,248,000,000
 
 <img src=https://s3.amazonaws.com/ipostersessions-agu/536eeae6-5b42-45ae-8f72-ff80fd3335bd.png height="200">
 
- 
+#### Topological dependencies
+OWP is developing the new framework to support diffusive- and
+dynamic-wave hydraulic routing simulations. These higher-order 
+routing methods require explicit topological tracking throughout 
+network. 
+
+Tracking the topological connectivity and enforcing dependence of the
+calculations permits use of these routing methods, but also adds an
+additional challenge to NWM routing. Instead of being
+completely embarrassingly parallel within each timestep, some calculations
+must wait for others to be completed. (The current
+method uses simplifying assumptions, incompatible with higher-order
+routing solutions, to allow for simplified, fully parallel routing
+execution within each timestep.)
+Our challenge was to introduce this topological dependency in the NWM
+routing framework while still managing the required hourly calculation
+volume. 
+Here, we present our new routing framework and a graph-based computing scheme 
+to drive rapid parallel computation while maintaining the topological dependence
+of the routing network. 
+
 ## Graph Representation of NWM Channels
 We represent the CONUS river network as a series of directed acyclic
 graphs, each consisting of a hydraulically independent drainage basin
@@ -108,6 +128,49 @@ the Mississippi outlet reaches order 10
 networks of the NWM channel dataset network. Distribution of the 213
 independent networks in the CONUS NWM dataset of river segments below
 all existing national weather service forecast points.*
+
+## Parallel Methods: Network-based or Just-in-Time?
+
+Two parallelization approaches, By-network, and Just-in-time (JIT)
+as detailed below, were tested in comparison to pure serial computation:
+
+<img src=https://s3.amazonaws.com/ipostersessions-agu/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif height=150>
+
+*Caption: Animation of Just-In-Time network traversal, with calculations
+on separate portions of the tree coalescing to finish simultaneously at
+the outlet. At any moment in the animation, red sparks highlight reaches
+of a common reverse network order that may be computed in parallel.*
+
+Serial computation 
+-   Starting upstream, proceeding downstream,
+-   One network at a time.
+-   Computationally inefficient, but a useful benchmark.
+
+Independent network parallelization
+-   Divide computation according to separate networks, e.g., the
+    Colorado River, Mississippi, etc. are computed independently. 
+-   Performance limited by the size of the largest basin, i.e., the
+    Mississippi. 
+
+Just-In-Time parallelization
+
+-   Calculate first the headwater reaches of edges of the longest
+    network...
+-   Followed by all reaches below headwaters, etc.
+-   Orchestrating the computation so each dependency is computed just
+    before it is needed downstream (hence "Just-in-time") provides best
+    theoretical potential speedup.
+-   Practical efficiencies are obtained by grouping the reaches into
+    cascading orders of subnetworks.
+
+<img src=https://s3.amazonaws.com/ipostersessions-agu/110c901d-0bc5-499b-bcbf-75a2893255c6.png height=400>
+
+*Caption: Grouping the reaches into subnetworks balances the practical
+impact of many parallel calls. An optimal subnetwork size is small
+enough to permit sufficient parallelism and large enough to ensure that
+parallel overhead is not burdensome. Colors denote subnetworks of common
+reverse network order. Higher order subnetworks are computed prior to
+lower order subnetworks in order to maintain topological dependencies.*
 
 ## Parallel scaling results
 
@@ -167,49 +230,6 @@ path from the furthest headwater to the outlet. 
 The actual speedup will be affected by numerous computational realities
 including: i/o overhead, parallel thread or process pool spin-up time,
 array access efficiency (i.e. cache misses), etc.
-
-### Network-based or Just-in-Time?
-
-Two parallelization approaches, By-network, and Just-in-time (JIT)
-as detailed below, were tested in comparison to pure serial computation:
-
-<img src=https://s3.amazonaws.com/ipostersessions-agu/1ae5ea14-48a9-4ee3-a6fd-7762207afa81.gif height=150>
-
-*Caption: Animation of Just-In-Time network traversal, with calculations
-on separate portions of the tree coalescing to finish simultaneously at
-the outlet. At any moment in the animation, red sparks highlight reaches
-of a common reverse network order that may be computed in parallel.*
-
-Serial computation 
--   Starting upstream, proceeding downstream,
--   One network at a time.
--   Computationally inefficient, but a useful benchmark.
-
-Independent network parallelization
--   Divide computation according to separate networks, e.g., the
-    Colorado River, Mississippi, etc. are computed independently. 
--   Performance limited by the size of the largest basin, i.e., the
-    Mississippi. 
-
-Just-In-Time parallelization
-
--   Calculate first the headwater reaches of edges of the longest
-    network...
--   Followed by all reaches below headwaters, etc.
--   Orchestrating the computation so each dependency is computed just
-    before it is needed downstream (hence "Just-in-time") provides best
-    theoretical potential speedup.
--   Practical efficiencies are obtained by grouping the reaches into
-    cascading orders of subnetworks.
-
-<img src=https://s3.amazonaws.com/ipostersessions-agu/110c901d-0bc5-499b-bcbf-75a2893255c6.png height=400>
-
-*Caption: Grouping the reaches into subnetworks balances the practical
-impact of many parallel calls. An optimal subnetwork size is small
-enough to permit sufficient parallelism and large enough to ensure that
-parallel overhead is not burdensome. Colors denote subnetworks of common
-reverse network order. Higher order subnetworks are computed prior to
-lower order subnetworks in order to maintain topological dependencies.*
 
 ---
 # Learn more: T-route on GitHub
