@@ -397,7 +397,7 @@ cpdef object compute_network(
                 if gages_size:
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
-                        flowveldepth[usgs_position_i][timestep * 3] = usgs_values[gage_i][timestep]
+                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
     
             timestep += 1
 
