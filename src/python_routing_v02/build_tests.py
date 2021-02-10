@@ -49,20 +49,20 @@ def build_test_parameters(
         print("running test case for Pocono_TEST1 domain - NO RESERVOIRS")
 
         # File path to WRF Hydro data
-        NWM_test_path = str(pathlib.Path(
+        NWM_test_path = pathlib.Path(
             root, "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/"
-        ).resolve())
+        ).resolve()
 
         # Simulation domain RouteLink file
-        routelink_file = str(pathlib.Path(
+        routelink_file = pathlib.Path(
             NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
-        ).resolve())
+        ).resolve()
 
         # Speficify WRF hydro restart file, name and destination
         time_string = "2017-12-31_06-00_DOMAIN1"
-        wrf_hydro_restart_file = str(pathlib.Path(
+        wrf_hydro_restart_file = pathlib.Path(
             NWM_test_path, "example_RESTART", "HYDRO_RST." + time_string
-        ).resolve())
+        ).resolve()
 
         # specify supernetwork parameters
         supernetwork_parameters = {
@@ -106,10 +106,10 @@ def build_test_parameters(
         restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"] = "hlink"
 
         # specify restart parameters
-        forcing_parameters["qlat_input_folder"] = str(pathlib.Path(
+        forcing_parameters["qlat_input_folder"] = pathlib.Path(
             root,
             "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
-        ).resolve())
+        ).resolve()
         forcing_parameters["qlat_file_pattern_filter"] = "/*.CHRTOUT_DOMAIN1"
         forcing_parameters["qlat_file_index_col"] = "feature_id"
         forcing_parameters["qlat_file_value_col"] = "q_lateral"
@@ -141,10 +141,10 @@ def build_test_parameters(
 
         run_parameters["assume_short_ts"] = True
 
-        parity_parameters["parity_check_input_folder"] = str(pathlib.Path(
+        parity_parameters["parity_check_input_folder"] = pathlib.Path(
             root,
             "test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/",
-        ).resolve())
+        ).resolve()
         parity_parameters["parity_check_file_pattern_filter"] = "/*.CHRTOUT_DOMAIN1"
         parity_parameters["parity_check_file_index_col"] = "feature_id"
         parity_parameters["parity_check_file_value_col"] = "streamflow"
