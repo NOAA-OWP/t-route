@@ -28,7 +28,7 @@ def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
 
 
 def read(geo_file_path, layer_string=None, driver_string=None):
-    if geo_file_path.endswith(".nc"):
+    if str(geo_file_path).endswith(".nc"):
         return read_netcdf(geo_file_path)
     else:
         return read_geopandas(
