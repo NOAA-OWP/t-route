@@ -886,25 +886,12 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
-    usgs_df = nnu.build_data_assimilation(root, data_assimilation_parameters)
     if showtiming:
         start_time = time.time()
     if verbose:
         print("creating usgs time_slice data array ...")
 
-    # if data_assimilation_parameters:
-    #     usgs_timeslices_folder = os.path.join(
-    #         root, "test/input/geo/nudgingTimeSliceObs/",
-    #     )
-
-    #     usgs_df = nhd_io.get_usgs_from_time_slices(
-    #         data_assimilation_parameters["data_assimilation_parameters_file"],
-    #         usgs_timeslices_folder,
-    #         data_assimilation_parameters["data_assimilation_filter"],
-    #     )
-
-    # else:
-    #     usgs_df = pd.DataFrame()
+    usgs_df = nnu.build_data_assimilation(root, data_assimilation_parameters)
 
     if verbose:
         print("usgs array complete")
