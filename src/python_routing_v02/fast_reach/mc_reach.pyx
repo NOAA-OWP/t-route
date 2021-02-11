@@ -187,7 +187,7 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef bint gages_size = len(usgs_positions_list)
+    cdef int gages_size = len(usgs_positions_list)
     cdef int gage_i, usgs_position_i
 
     # Pseudocode: LOOP ON Upstream Inflowers
