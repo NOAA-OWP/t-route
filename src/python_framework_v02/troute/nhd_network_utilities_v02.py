@@ -521,6 +521,7 @@ def build_data_assimilation(root, data_assimilation_parameters):
             data_assimilation_parameters["data_assimilation_parameters_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
+            data_assimilation_parameters["data_assimilation_csv"]
         )
 
     else:

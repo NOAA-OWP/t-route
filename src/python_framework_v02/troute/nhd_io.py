@@ -271,20 +271,24 @@ def preprocess_time_station_index(xd):
 
 
 def get_usgs_from_time_slices(
-    routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
+    routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter,usgs_csv
 ):
-    usgs_files = glob.glob(usgs_timeslices_folder + data_assimilation_filter)
+    if usgs_csv:
+        df2 = pd.read_csv(usgs_csv,index_col=0)
+    else:
+        usgs_files = glob.glob(usgs_timeslices_folder + data_assimilation_filter)
 
-    with read_netcdfs(
-        usgs_timeslices_folder + data_assimilation_filter,
-        "time",
-        preprocess_time_station_index,
-    ) as ds2:
-        df2 = pd.DataFrame(
-            ds2["discharge"].values.T,
-            index=ds2["stationId"].values,
-            columns=ds2.time.values,
-        )
+        with read_netcdfs(
+            usgs_timeslices_folder + data_assimilation_filter,
+            "time",
+            preprocess_time_station_index,
+        ) as ds2:
+            df2 = pd.DataFrame(
+                ds2["discharge"].values.T,
+                index=ds2["stationId"].values,
+                columns=ds2.time.values,
+            )
+
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
