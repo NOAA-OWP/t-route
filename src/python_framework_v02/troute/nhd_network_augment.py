@@ -890,11 +890,11 @@ def main():
             geometry=gpd.points_from_xy(RouteLink_domain.lon, RouteLink_domain.lat),
         )
 
-        RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
+        #RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
         RouteLink_domain.to_file(pathlib.Path(dir_path, filename).resolve())
 
+        print("Number of segments in original RouteLink:", len(RouteLink_domain))
     print("Number of segments in modified RouteLink:", len(RouteLink_edit))
-    print("Number of segments in original RouteLink:", len(RouteLink_domain))
 
 
 if __name__ == "__main__":
