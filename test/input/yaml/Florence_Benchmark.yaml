@@ -8,6 +8,7 @@ run_parameters:
     assume_short_ts: true
     subnetwork_target_size: 100
     qts_subdivisions: 12
+    return_courant: true
     dt: 300
     nts: 8640
     cpu-pool: 12
