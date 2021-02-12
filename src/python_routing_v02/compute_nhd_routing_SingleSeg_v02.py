@@ -822,7 +822,12 @@ def main():
     if verbose:
         print("creating qlateral array ...")
 
-    qlats = nnu.build_qlateral_array(forcing_parameters, connections.keys(), nts)
+    qlats = nnu.build_qlateral_array(
+        forcing_parameters,
+        connections.keys(),
+        nts,
+        run_parameters.get("qts_subdivisions", 1),
+    )
 
     if verbose:
         print("qlateral array complete")

@@ -477,7 +477,7 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts):
+def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivisions=1):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
@@ -511,7 +511,12 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections_keys, columns=range(nts), dtype="float32",
+            qlat_const, index=connections_keys, columns=range(nts / qts_subdivisions), dtype="float32",
         )
+
+    # TODO: Make a more sophisticated date-based filter
+    max_col = 1 + nts // qts_subdivisions
+    if len(qlat_df.columns) > max_col:
+        qlat_df.drop(qlat_df.columns[max_col:],axis=1,inplace=True)
 
     return qlat_df
