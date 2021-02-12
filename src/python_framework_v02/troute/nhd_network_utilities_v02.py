@@ -55,6 +55,7 @@ def set_supernetwork_parameters(
                 "s0": "So",
                 "bw": "BtmWdth",
                 "waterbody": "NHDWaterbo",
+                "strahler_order": "order_",
                 "tw": "TopWdth",
                 "twcc": "TopWdthCC",
                 "musk": "MusK",
