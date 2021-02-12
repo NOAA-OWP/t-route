@@ -87,7 +87,7 @@ def get_network_data(network_name):
 
     # Load network meta data for the Cape Fear Basin
     supernetwork = network_name
-    network_data = nnu.set_supernetwork_data(
+    network_data = nnu.set_supernetwork_parameters(
         supernetwork=supernetwork, geo_input_folder=geo_input_folder
     )
 
@@ -100,7 +100,7 @@ def get_network_data(network_name):
     RouteLink = nhd_io.read(network_data["geo_file_path"])
 
     # select only the necessary columns of geospatial data, set the DataFrame index
-    cols = [v for c, v in network_data["columns"].items()]
+    cols = network_data["columns"].values()
     # GET THE STRAHLER ORDER DATA TOO!
     cols.append("order")
 
