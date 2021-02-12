@@ -102,7 +102,7 @@ def get_network_data(network_name):
     # select only the necessary columns of geospatial data, set the DataFrame index
     cols = network_data["columns"].values()
     # GET THE STRAHLER ORDER DATA TOO!
-    cols.append("order")
+    #cols.append("strahler_order")
 
     data = nhd_io.read(network_data["geo_file_path"])
     data = data[cols]
@@ -856,7 +856,7 @@ def main():
         pathlib.path.mkdir(dir_path)
 
     # save RouteLink data as shapefile
-    RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
+    # RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
     RouteLink_edit.to_file(pathlib.Path(dir_path, filename).resolve())
 
     # save cross walk as json
