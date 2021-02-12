@@ -852,8 +852,8 @@ def main():
     )
 
     dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
-    if not pathlib.path.isdir(dir_path):
-        pathlib.path.mkdir(dir_path)
+    if not pathlib.Path.is_dir(dir_path):
+        pathlib.Path.mkdir(dir_path)
 
     # save RouteLink data as shapefile
     # RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
@@ -881,8 +881,8 @@ def main():
         )
 
         dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
-        if not pathlib.path.isdir(dir_path):
-            pathlib.path.mkdir(dir_path)
+        if not pathlib.Path.is_dir(dir_path):
+            pathlib.Path.mkdir(dir_path)
 
         RouteLink_domain = RouteLink.loc[data.index.values]
         RouteLink_domain = gpd.GeoDataFrame(
