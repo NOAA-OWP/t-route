@@ -445,13 +445,20 @@ def organize_independent_networks(connections):
 
 def build_channel_initial_state(restart_parameters, channel_index=None):
 
+    channel_restart_file = restart_parameters.get(
+        "channel_restart_file", None
+    )
+
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
 
-    if wrf_hydro_channel_restart_file:
+    if channel_restart_file:
+        q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
 
-        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
+    elif wrf_hydro_channel_restart_file:
+
+        q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],

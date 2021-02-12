@@ -234,6 +234,26 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     return ql
 
 
+def get_channel_restart_from_csv(
+    channel_initial_states_file,
+    index_col=0,
+    default_us_flow_column="qu0",
+    default_ds_flow_column="qd0",
+    default_depth_column="h0",
+):
+    """
+    channel_initial_states_file: CSV standard restart file
+    index_col = 0: column/field in the input file with the segment/link id
+    NOT USED YET default_us_flow_column: name used in remainder of program to refer to this column of the dataset
+    NOT USED YET default_ds_flow_column: name used in remainder of program to refer to this column of the dataset
+    NOT USED YET default_depth_column: name used in remainder of program to refer to this column of the dataset
+    """
+    q0 = pd.read_csv(channel_initial_states_file, index_col=index_col)
+    q0.index = q0.index.astype(int)
+    q0 = q0.sort_index(axis="index")
+    return q0.astype("float32")
+
+
 def get_stream_restart_from_wrf_hydro(
     channel_initial_states_file,
     crosswalk_file,
