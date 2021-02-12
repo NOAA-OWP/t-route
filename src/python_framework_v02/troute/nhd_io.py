@@ -253,7 +253,7 @@ def get_channel_restart_from_csv(
     return q0.astype("float32")
 
 
-def get_stream_restart_from_wrf_hydro(
+def get_channel_restart_from_wrf_hydro(
     channel_initial_states_file,
     crosswalk_file,
     channel_ID_column,
