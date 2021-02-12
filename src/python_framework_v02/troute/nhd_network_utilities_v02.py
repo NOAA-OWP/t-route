@@ -4,7 +4,7 @@ import pandas as pd
 from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
-import pathlib 
+import pathlib
 
 
 def set_supernetwork_parameters(

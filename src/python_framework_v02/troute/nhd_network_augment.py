@@ -102,7 +102,7 @@ def get_network_data(network_name):
     # select only the necessary columns of geospatial data, set the DataFrame index
     cols = network_data["columns"].values()
     # GET THE STRAHLER ORDER DATA TOO!
-    #cols.append("strahler_order")
+    # cols.append("strahler_order")
 
     data = nhd_io.read(network_data["geo_file_path"])
     data = data[cols]
@@ -880,7 +880,9 @@ def main():
             pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
         )
 
-        dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
+        dir_path = pathlib.Path(
+            root, "test", "input", "geo", "Channels", dirname
+        ).resolve()
         if not pathlib.Path.is_dir(dir_path):
             pathlib.Path.mkdir(dir_path)
 
@@ -890,7 +892,7 @@ def main():
             geometry=gpd.points_from_xy(RouteLink_domain.lon, RouteLink_domain.lat),
         )
 
-        #RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
+        # RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
         RouteLink_domain.to_file(pathlib.Path(dir_path, filename).resolve())
 
         print("Number of segments in original RouteLink:", len(RouteLink_domain))
