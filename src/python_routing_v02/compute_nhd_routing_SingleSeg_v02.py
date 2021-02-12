@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
-# python compute_nhd_routing_SingleSeg_v02.py --test -t -v --debuglevel 1
-# python compute_nhd_routing_SingleSeg_v02.py --test-full-pocono -t -v --debuglevel 1
+# python compute_nhd_routing_SingleSeg_v02.py --test pocono1 -t -v --debuglevel 1
+# python compute_nhd_routing_SingleSeg_v02.py -f ../../test/input/yaml/CustomInput.yaml
+# python compute_nhd_routing_SingleSeg_v02.py -f ../../test/input/yaml/FlorenceBenchmark.yaml
 
 
 # -*- coding: utf-8 -*-
