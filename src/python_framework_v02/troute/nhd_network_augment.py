@@ -13,7 +13,7 @@ import time
 
 
 root = pathlib.Path("../../../").resolve()
-pathlib.Path(root, "src", "python_framework_v01").resolve()
+sys.path.append(str(pathlib.Path(root, "src", "python_framework_v01").resolve()))
 
 import nhd_network_utilities_v02 as nnu
 import nhd_network
