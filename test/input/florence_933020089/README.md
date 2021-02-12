@@ -29,6 +29,7 @@ $ cd t-route/src/python_routing_v02
 # and import the result modules into the python site-packages
 # for use in the script.
 $ bash compiler.sh
+
 # run the test with .yaml input
 $ python compute_nhd_routing_SingleSeg_v02.py -f ../../test/input/yaml/Florence_Benchmark.yaml
 
@@ -71,5 +72,5 @@ cubic meters per second and depth data are in units of meters.
 The `ChannelRestart*.csv` files contain only the flow
 and depth data needed to initialize a model simulation. The contents
 of `ChannelRestart*.csv` files are created by
-`nhd_io.get_channel_restart_from_wrf_hydro`, which natively i
+`nhd_io.get_channel_restart_from_wrf_hydro`, which natively
 reads-in the contents of a `HYDRO_RST.*` file.
