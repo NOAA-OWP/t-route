@@ -70,14 +70,15 @@ waterbody_parameters:
         level_pool_orifice_elevation: OrificeE
         level_pool_orifice_coefficient: OrificeC
         level_pool_orifice_area: OrificeA
-#WRF-Hydro output file 
+# Q-Lateral inputs from hydrology model
 forcing_parameters:
-    qlat_input_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceQlateral.csv"
-    #qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
-    #qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
-    #qlat_file_index_col: feature_id
-    #qlat_file_value_col: q_lateral
 #WRF-Hydro restart files
+    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral_wDates.csv"
+    # WRF-Hydro files in comments below for example
+    # qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+    # qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+    # qlat_file_index_col: feature_id
+    # qlat_file_value_col: q_lateral
 restart_parameters:
     ##WRF-Hydro channels restart file
     #wrf_hydro_channel_restart_file: "../../test/input/CONUS_benchmark/RESTART/RESTART.2018110100_DOMAIN1.znc"
