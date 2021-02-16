@@ -7,13 +7,11 @@ Test v02 routing on specific test cases
 
 """
 ## Parallel execution
-import os
 import sys
 import time
 import numpy as np
 import argparse
 import pathlib
-import glob
 import pandas as pd
 from functools import partial
 from joblib import delayed, Parallel
@@ -161,14 +159,11 @@ def build_test_parameters(
 
 def parity_check(parity_parameters, run_parameters, nts, dt, results):
     
-    if "parity_check_input_folder" in parity_parameters.keys():
+    if "parity_check_input_folder" in parity_parameters:
         
-        validation_files = glob.glob(
-            parity_parameters["parity_check_input_folder"]
-            + parity_parameters["parity_check_file_pattern_filter"],
-            recursive=True,
-        )
-            
+        validation_files = parity_parameters["parity_check_input_folder"].rglob(
+            parity_parameters["parity_check_file_pattern_filter"])
+
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
             validation_files,
@@ -177,7 +172,7 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
             # [compare_node],
         )
     
-    if "parity_check_file" in parity_parameters.keys():
+    if "parity_check_file" in parity_parameters:
         validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
