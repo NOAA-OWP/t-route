@@ -13,7 +13,7 @@ def read_netcdf(geo_file_path):
 
 
 def read_csv(geo_file_path, header="infer", layer_string=None):
-    if geo_file_path.endswith(".zip"):
+    if geo_file_path.suffix == ".zip":
         if layer_string is None:
             raise ValueError("layer_string is needed if reading from compressed csv")
         with zipfile.ZipFile(geo_file_path, "r") as zcsv:
@@ -28,7 +28,7 @@ def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
 
 
 def read(geo_file_path, layer_string=None, driver_string=None):
-    if geo_file_path.endswith(".nc"):
+    if geo_file_path.suffix == ".nc":
         return read_netcdf(geo_file_path)
     else:
         return read_geopandas(
