@@ -1,11 +1,9 @@
 import json
-import os
-
-import glob
 import pandas as pd
 from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
+import pathlib
 
 
 def set_supernetwork_parameters(
@@ -490,7 +488,8 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
-        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+        
+        qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
             index_col=qlat_file_index_col,
