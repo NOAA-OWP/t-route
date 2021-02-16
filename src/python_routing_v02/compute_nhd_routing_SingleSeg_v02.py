@@ -937,8 +937,8 @@ def main():
     )
     csv_output_folder = output_parameters.get("csv_output", None)
     if csv_output_folder:
+        csv_output_segments = csv_output_folder['csv_output_segments']
         csv_output_folder = csv_output_folder['csv_output_folder']
-        # csv_output_folder = csv_output_folder+'/'
     if (debuglevel <= -1) or csv_output_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -951,9 +951,9 @@ def main():
         if csv_output_folder:
             flowveldepth = flowveldepth.sort_index()
             output_path = pathlib.Path(csv_output_folder).resolve()
-            print(output_path)
             flowveldepth.to_csv(output_path.joinpath("supernetwork.csv"))
-            usgs_df.to_csv(output_path.joinpath('usgs_df.csv'))
+            usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            usgs_df_filtered.to_csv(output_path.joinpath('usgs_df.csv'))
 
         if debuglevel <= -1:
             print(flowveldepth)
