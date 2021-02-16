@@ -263,12 +263,6 @@ def _handle_args():
         dest="data_assimilation_filter",
         default=None,
     )
-    parser.add_argument(
-        "--data_assimilation_csv",
-        help="Provide a path to a data assimilation csv file folder",
-        dest="data_assimilation_csv",
-        default=None,
-    )
     return parser.parse_args()
 
 
@@ -763,12 +757,9 @@ def _input_handler():
             data_assimilation_parameters[
                 "data_assimilation_parameters_file"
             ] = args.data_assimilation_parameters_file
-            data_assimilation_parameters[
+            data_assimilation_filter[
                 "data_assimilation_filter"
             ] = args.data_assimilation_filter
-            data_assimilation_parameters[
-                "data_assimilation_csv"
-            ] = args.data_assimilation_csv
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -796,8 +787,9 @@ def _input_handler():
             ] = args.qlat_file_pattern_filter
             forcing_parameters["qlat_file_index_col"] = args.qlat_file_index_col
             forcing_parameters["qlat_file_value_col"] = args.qlat_file_value_col
-
+            
             supernetwork = args.supernetwork
+            
 
         # STEP 0.5: Obtain Supernetwork Parameters for test cases
         if not supernetwork_parameters:
@@ -838,7 +830,8 @@ def main():
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
-
+    data_assimilation_csv = data_assimilation_parameters.get("data_assimilation_csv", None)
+    data_assimilation_filter = data_assimilation_parameters.get("data_assimilation_filter", None)
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
@@ -900,7 +893,13 @@ def main():
     if verbose:
         print("creating usgs time_slice data array ...")
 
-    usgs_df = nnu.build_data_assimilation(root, data_assimilation_parameters)
+
+    if data_assimilation_csv:
+        usgs_df = nnu.build_data_assimilation_csv(data_assimilation_parameters)
+    elif data_assimilation_filter:
+        usgs_df = nnu.build_data_assimilation_folder(data_assimilation_parameters)
+    else:
+        usgs_df = pd.DataFrame()
 
     if verbose:
         print("usgs array complete")
