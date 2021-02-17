@@ -103,9 +103,9 @@ def set_supernetwork_parameters(
         return rv
 
         # return {
-        #'geo_file_path' : os.path.join(geo_input_folder
+        #'geo_file_path' : pathlib.Path(geo_input_folder
     # , r'PoconoSampleData2'
-    # , r'PoconoRouteLink_testsamp1_nwm_mc.shp')
+    # , r'PoconoRouteLink_testsamp1_nwm_mc.shp').resolve()
     # , 'key_col' : 18
     # , 'downstream_col' : 23
     # , 'length_col' : 5
