@@ -19,10 +19,14 @@ cdef void muskingcunge(float dt,
         float velp,
         float depthp,
         QVD *rv) nogil:
+    
     cdef:
         float qdc = 0.0
         float depthc = 0.0
         float velc = 0.0
+        float ck = 0.0
+        float cn = 0.0
+        float X = 0.0
 
     c_muskingcungenwm(
         &dt,
@@ -42,10 +46,19 @@ cdef void muskingcunge(float dt,
         &depthp,
         &qdc,
         &velc,
-        &depthc)
+        &depthc,
+        &ck,
+        &cn,
+        &X)
+    
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
+    
+    # to do: make these additional variable's conditional, somehow
+    rv.ck = ck
+    rv.cn = cn
+    rv.X = X
 
 cpdef dict compute_reach_kernel(float dt,
         float qup,

@@ -1558,7 +1558,7 @@ def main():
 
     if wrf_hydro_channel_restart_file:
 
-        channel_initial_states_df = nio.get_stream_restart_from_wrf_hydro(
+        channel_initial_states_df = nio.get_channel_restart_from_wrf_hydro(
             wrf_hydro_channel_restart_file,
             wrf_hydro_channel_ID_crosswalk_file,
             wrf_hydro_channel_ID_crosswalk_file_field_name,

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 # example usage: python compute_nhd_routing_SingleSeg.py -v -t -w -n Mainstems_CONUS
-# python compute_nhd_routing_SingleSeg_v02.py --test -t -v --debuglevel 1
-# python compute_nhd_routing_SingleSeg_v02.py --test-full-pocono -t -v --debuglevel 1
+# python compute_nhd_routing_SingleSeg_v02.py --test pocono1 -t -v --debuglevel 1
+# python compute_nhd_routing_SingleSeg_v02.py -f ../../test/input/yaml/CustomInput.yaml
+# python compute_nhd_routing_SingleSeg_v02.py -f ../../test/input/yaml/FlorenceBenchmark.yaml
 
 
 # -*- coding: utf-8 -*-
@@ -16,6 +17,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 import os
 import sys
 import time
+from datetime import datetime
 import numpy as np
 import argparse
 import pathlib
@@ -91,6 +93,13 @@ def _handle_args():
         "--assume-short-ts",
         help="Use the previous timestep value for upstream flow",
         dest="assume_short_ts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--courant",
+        "--return-courant-metrics",
+        help="Return Courant evaluation metrics for each segment/timestep",
+        dest="return_courant",
         action="store_true",
     )
     parser.add_argument(
@@ -297,6 +306,7 @@ def compute_nhd_routing_v02(
     qlats,
     q0,
     assume_short_ts,
+    return_courant,
 ):
 
     start_time = time.time()
@@ -427,6 +437,7 @@ def compute_nhd_routing_v02(
                                 if us in offnetwork_upstreams
                             },
                             assume_short_ts,
+                            return_courant,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -537,6 +548,7 @@ def compute_nhd_routing_v02(
                                 if us in offnetwork_upstreams
                             },
                             assume_short_ts,
+                            return_courant,
                         )
                     )
 
@@ -589,6 +601,7 @@ def compute_nhd_routing_v02(
                         q0_sub.values,
                         {},
                         assume_short_ts,
+                        return_courant,
                     )
                 )
             results = parallel(jobs)
@@ -615,6 +628,7 @@ def compute_nhd_routing_v02(
                     q0_sub.values,
                     {},
                     assume_short_ts,
+                    return_courant,
                 )
             )
 
@@ -648,6 +662,7 @@ def _input_handler():
 
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
+        run_parameters["return_courant"] = args.return_courant
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
         run_parameters["subnetwork_target_size"] = args.subnetwork_target_size
         run_parameters["cpu_pool"] = args.cpu_pool
@@ -655,6 +670,9 @@ def _input_handler():
 
         run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
         run_parameters["verbose"] = verbose = args.verbose
+
+        output_parameters["csv_output"] = {}
+        output_parameters["csv_output"]["csv_output_folder"] = args.csv_output_folder
 
         test_folder = pathlib.Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
@@ -690,7 +708,6 @@ def _input_handler():
             waterbody_parameters[
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
-            output_parameters["csv_output_folder"] = args.csv_output_folder
 
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
@@ -760,6 +777,9 @@ def main():
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
 
+    if showtiming:
+        main_start_time = time.time()
+
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
@@ -808,7 +828,12 @@ def main():
     if verbose:
         print("creating qlateral array ...")
 
-    qlats = nnu.build_qlateral_array(forcing_parameters, connections.keys(), nts)
+    qlats = nnu.build_qlateral_array(
+        forcing_parameters,
+        connections.keys(),
+        nts,
+        run_parameters.get("qts_subdivisions", 1),
+    )
 
     if verbose:
         print("qlateral array complete")
@@ -817,9 +842,14 @@ def main():
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
-        main_start_time = time.time()
+        start_time = time.time()
     if verbose:
-        print(f"executing routing computation ...")
+        if run_parameters.get("return_courant", False):
+            print(
+                f"executing routing computation, with Courant evaluation metrics returned"
+            )
+        else:
+            print(f"executing routing computation ...")
 
     if run_parameters.get("compute_method", None) == "standard cython compute network":
         compute_func = mc_reach.compute_network
@@ -842,41 +872,118 @@ def main():
         qlats,
         q0,
         run_parameters.get("assume_short_ts", False),
+        run_parameters.get("return_courant", False),
     )
-
-    csv_output_folder = output_parameters.get("csv_output_folder", None)
-    if (debuglevel <= -1) or csv_output_folder:
-        qvd_columns = pd.MultiIndex.from_product(
-            [range(nts), ["q", "v", "d"]]
-        ).to_flat_index()
-        flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
-            copy=False,
-        )
-
-        if csv_output_folder:
-            flowveldepth = flowveldepth.sort_index()
-            output_path = pathlib.Path(csv_output_folder).resolve()
-            flowveldepth.to_csv(output_path.joinpath(f"{args.supernetwork}.csv"))
-
-        if debuglevel <= -1:
-            print(flowveldepth)
 
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    if "parity_check_input_folder" in parity_parameters:
+
+    ################### Output Handling
+
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print(f"Handling output ...")
+
+    if output_parameters["csv_output"]:
+        csv_output_folder = output_parameters["csv_output"].get(
+            "csv_output_folder", None
+        )
+
+    if (debuglevel <= -1) or output_parameters["csv_output"]:
+
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+        if run_parameters.get("return_courant", False):
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
+                copy=False,
+            )
+        else:
+            flowveldepth = pd.concat(
+                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
+                copy=False,
+            )
+
+        if run_parameters.get("return_courant", False):
+            courant_columns = pd.MultiIndex.from_product(
+                [range(nts), ["cn", "ck", "X"]]
+            ).to_flat_index()
+            courant = pd.concat(
+                [
+                    pd.DataFrame(c, index=i, columns=courant_columns)
+                    for i, d, c in results
+                ],
+                copy=False,
+            )
+
+        if csv_output_folder:
+            # create filenames
+            # TO DO: create more descriptive filenames
+            if supernetwork_parameters.get("title_string", None):
+                filename_fvd = (
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                )
+                filename_courant = (
+                    "courant_" + supernetwork_parameters["title_string"] + ".csv"
+                )
+            else:
+                run_time_stamp = datetime.now().isoformat()
+                filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
+                filename_courant = "courant_" + run_time_stamp + ".csv"
+
+            output_path = pathlib.Path(csv_output_folder).resolve()
+            flowveldepth = flowveldepth.sort_index()
+            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+
+            if run_parameters.get("return_courant", False):
+                courant = courant.sort_index()
+                courant.to_csv(output_path.joinpath(filename_courant))
+
+        if debuglevel <= -1:
+            print(flowveldepth)
+
+    if verbose:
+        print("output complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+
+    ################### Parity Check
+
+    if (
+        "parity_check_input_folder" in parity_parameters
+        or "parity_check_file" in parity_parameters
+    ):
 
         if verbose:
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
             )
+        if showtiming:
+            start_time = time.time()
 
         build_tests.parity_check(
-            parity_parameters, run_parameters["nts"], run_parameters["dt"], results,
+            parity_parameters,
+            run_parameters,
+            run_parameters["nts"],
+            run_parameters["dt"],
+            results,
         )
+
+        if verbose:
+            print("parity check complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
+    if verbose:
+        print("process complete")
+    if showtiming:
+        print("%s seconds." % (time.time() - main_start_time))
 
 
 if __name__ == "__main__":
