@@ -56,7 +56,7 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts) nogil:
+cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
     """
     Kernel to compute reach.
     Input buffer is array matching following description:
@@ -108,11 +108,16 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     velp,
                     depthp,
                     out)
-
+        
 #        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
+        
+        if return_courant:
+            output_buf[i, 3] = out.cn
+            output_buf[i, 4] = out.ck
+            output_buf[i, 5] = out.X
 
         qup = qdp
 
@@ -161,6 +166,7 @@ cpdef object compute_network(
     # const float[:, :] wbody_vals,
     dict upstream_results={},
     bint assume_short_ts=False,
+    bint return_courant=False,
     ):
     """
     Compute network
@@ -190,6 +196,11 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    
+    # courant is a 2D float array that holds courant results
+    # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
+    # rows: indexed by data_idx
+    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -280,7 +291,11 @@ cpdef object compute_network(
 
     cdef int maxreachlen = max(reach_sizes)
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxreachlen, 3), dtype='float32')
+    
+    if return_courant:
+        out_buf = np.empty((maxreachlen, 6), dtype='float32')
+    else:
+        out_buf = np.empty((maxreachlen, 3), dtype='float32') 
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
@@ -375,11 +390,16 @@ cpdef object compute_network(
                 if assume_short_ts:
                     quc = qup
 
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts)
+                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
 
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+                    
+                # copy out_buf results back to courant
+                if return_courant:
+                    for i in range(3,6):
+                        fill_buffer_column(drows, i, srows, ts_offset + (i-3), out_view, courant)
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
@@ -390,7 +410,10 @@ cpdef object compute_network(
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
+    if return_courant:
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
+    else:
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#

@@ -1,0 +1,112 @@
+---
+# Initial input parameters
+run_parameters:
+    parallel_compute_method: by-subnetwork-jit-clustered
+    verbose: true
+    showtiming: true
+    debuglevel: 1
+    assume_short_ts: true
+    subnetwork_target_size: 100
+    qts_subdivisions: 12
+    return_courant: true
+    dt: 300
+    nts: 8640
+    cpu_pool: 12
+    #Use the parallel computation engine (omit flag for serial computation)
+    #Verbose output (leave blank for quiet output)
+    #Set the showtiming (omit flag for no timing information)
+    #Set the debuglevel
+    #Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)
+    #Use the previous timestep value for upstream flow
+    #number of simulation timesteps per qlateral timestep
+    #Set the default timestep length
+    #Set the default timestep length
+    #Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.
+# Output file parameters
+output_parameters:
+    #output location for csv file 
+    csv_output:
+        csv_output_folder: "../../test/output/text"
+        csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
+    #out location for nc file
+    nc_output_folder: "../../test/output/text"
+# Data column assignment inside supernetwork_parameters
+supernetwork_parameters:
+    title_string: Custom Input Example (using Florence-Event Cutout datafile)
+    geo_file_path: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
+    mask_layer_string: ""
+    mask_driver_string: "csv"
+    mask_key: 0
+    columns:
+        key: "link"
+        downstream: "to"
+        dx: "Length"
+        n: "n"  # TODO: rename to `manningn`
+        ncc: "nCC"  # TODO: rename to `mannningncc`
+        s0: "So"  # TODO: rename to `bedslope`
+        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+        waterbody: "NHDWaterbodyComID"
+        tw: "TopWdth"  # TODO: rename to `topwidth`
+        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+        musk: "MusK"
+        musx: "MusX"
+        cs: "ChSlp"  # TODO: rename to `sideslope`
+    waterbody_null_code: -9999
+    terminal_code: 0
+    driver_string: NetCDF
+    layer_string: 0
+# Waterbody parameters and assignments from lake parm file
+waterbody_parameters:
+    level_pool:
+        #WRF-Hydro lake parm file
+        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_id: lake_id
+        level_pool_waterbody_area: LkArea
+        level_pool_weir_elevation: WeirE
+        level_pool_waterbody_max_elevation: LkMxE
+        level_pool_outfall_weir_coefficient: WeirC
+        level_pool_outfall_weir_length: WeirL
+        level_pool_overall_dam_length: DamL
+        level_pool_orifice_elevation: OrificeE
+        level_pool_orifice_coefficient: OrificeC
+        level_pool_orifice_area: OrificeA
+# Q-Lateral inputs from hydrology model
+forcing_parameters:
+    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral_wDates.csv"
+    # WRF-Hydro files in comments below for example
+    # qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+    # qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+    # qlat_file_index_col: feature_id
+    # qlat_file_value_col: q_lateral
+# Warm state files from prior simulations
+restart_parameters:
+    channel_restart_file: "../../test/input/florence_933020089/RESTART/ChannelRestart_2018-09-01.csv"
+    # WRF-Hydro files in comments below for example
+    # wrf_hydro_channel_restart_file: "../../test/input/CONUS_benchmark/RESTART/RESTART.2018110100_DOMAIN1.znc"
+    # wrf_hydro_channel_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    # #WRF-Hydro channels ID crosswalk file
+    # #wrf_hydro_channel_ID_crosswalk_file: "../../test/input/CONUS_benchmark/DOMAIN/RouteLink_NWMv2.1z.nc"
+    # wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    # wrf_hydro_channel_ID_crosswalk_file_field_name: link
+    # wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+    # wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+    # wrf_hydro_channel_restart_depth_flow_field_name: hlink
+    # #WRF-Hydro waterbodies restart file
+    # wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    # #WRF-Hydro waterbody ID crosswalk file
+    # wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
+    # wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    # #WRF-Hydro waterbody crosswalk filter file
+    # wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    # wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+# Output files to check parity
+parity_parameters:
+    parity_check_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv" 
+    parity_check_compare_node: 8777701
+    # WRF-Hydro files in comments below for example
+    # parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+    # parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+    # parity_check_file_index_col: feature_id
+    # parity_check_file_value_col: streamflow
+

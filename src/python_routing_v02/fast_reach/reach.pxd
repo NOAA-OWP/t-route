@@ -2,6 +2,9 @@ cdef struct QVD:
     float qdc
     float velc
     float depthc
+    float cn
+    float ck
+    float X
 
 
 cdef void muskingcunge(float dt,

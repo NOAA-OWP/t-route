@@ -15,4 +15,8 @@ extern void c_muskingcungenwm(float *dt,
                               float *depthp,
                               float *qdc,
                               float *velc,
-                              float *depthc);
+                              float *depthc,
+                              float *ck,
+                              float *cn,
+                              float *X);
+
