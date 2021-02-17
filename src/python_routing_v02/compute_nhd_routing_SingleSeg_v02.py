@@ -872,6 +872,19 @@ def main():
         run_parameters.get("return_courant", False),
     )
 
+    if verbose:
+        print("ordered reach computation complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+
+    ################### Output Handling
+
+    if showtiming:
+        main_start_time = time.time()
+    if verbose:
+        print(f"Handling output ...")
+
     if output_parameters["csv_output"]:
         csv_output_folder = output_parameters["csv_output"].get(
             "csv_output_folder", None
@@ -932,9 +945,12 @@ def main():
             print(flowveldepth)
 
     if verbose:
-        print("ordered reach computation complete")
+        print("output complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+
+
+    ################### Parity Check
 
     if (
         "parity_check_input_folder" in parity_parameters
@@ -945,6 +961,8 @@ def main():
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
             )
+        if showtiming:
+            main_start_time = time.time()
 
         build_tests.parity_check(
             parity_parameters,
@@ -953,6 +971,12 @@ def main():
             run_parameters["dt"],
             results,
         )
+
+        if verbose:
+            print("parity check complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
 
 
 if __name__ == "__main__":
