@@ -777,6 +777,9 @@ def main():
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
 
+    if showtiming:
+        main_start_time = time.time()
+
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
@@ -839,7 +842,7 @@ def main():
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
-        main_start_time = time.time()
+        start_time = time.time()
     if verbose:
         if run_parameters.get("return_courant", False):
             print(
@@ -881,7 +884,7 @@ def main():
     ################### Output Handling
 
     if showtiming:
-        main_start_time = time.time()
+        start_time = time.time()
     if verbose:
         print(f"Handling output ...")
 
@@ -962,7 +965,7 @@ def main():
                 "conducting parity check, comparing WRF Hydro results against t-route results"
             )
         if showtiming:
-            main_start_time = time.time()
+            start_time = time.time()
 
         build_tests.parity_check(
             parity_parameters,
@@ -977,6 +980,10 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
+    if verbose:
+        print("process complete")
+    if showtiming:
+        print("%s seconds." % (time.time() - main_start_time))
 
 
 if __name__ == "__main__":
