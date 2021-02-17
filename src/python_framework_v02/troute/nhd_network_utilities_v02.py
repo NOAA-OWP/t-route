@@ -511,7 +511,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections_keys, columns=range(nts / qts_subdivisions), dtype="float32",
+            qlat_const, index=connections_keys, columns=range(nts // qts_subdivisions), dtype="float32",
         )
 
     # TODO: Make a more sophisticated date-based filter
