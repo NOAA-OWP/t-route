@@ -158,11 +158,13 @@ def build_test_parameters(
 
 
 def parity_check(parity_parameters, run_parameters, nts, dt, results):
+def parity_check(parity_parameters, run_parameters, nts, dt, results):
     
     if "parity_check_input_folder" in parity_parameters:
         
         validation_files = parity_parameters["parity_check_input_folder"].rglob(
-            parity_parameters["parity_check_file_pattern_filter"])
+            parity_parameters["parity_check_file_pattern_filter"]
+        )
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
