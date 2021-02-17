@@ -396,14 +396,14 @@ def build_connections(supernetwork_parameters, dt):
     # TODO: Remove the dependence on dt in this function
 
     cols = supernetwork_parameters["columns"]
-    param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
+    param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     param_df = param_df[list(cols.values())]
     param_df = param_df.set_index(cols["key"])
 
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
-            supernetwork_parameters["mask_file_path"],
+            pathlib.Path(supernetwork_parameters["mask_file_path"]),
             layer_string=supernetwork_parameters["mask_layer_string"],
         )
         param_df = param_df.filter(
@@ -481,6 +481,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
     if qlat_input_folder:
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
         qlat_file_pattern_filter = forcing_parameters.get(
             "qlat_file_pattern_filter", "*CHRT_OUT*"
         )
