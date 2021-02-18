@@ -422,9 +422,13 @@ def compute_nhd_routing_v02(
 
                     if not usgs_df.empty:
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            usgs_segs
+                        )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                        usgs_df_sub.drop(
+                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                        )
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
@@ -547,16 +551,20 @@ def compute_nhd_routing_v02(
 
                     if not usgs_df.empty:
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            usgs_segs
+                        )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                        usgs_df_sub.drop(
+                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                        )
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-  
+
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -618,7 +626,9 @@ def compute_nhd_routing_v02(
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                     usgs_df_sub = usgs_df.loc[usgs_segs]
-                    usgs_df_sub.drop(usgs_df_sub.columns[range(0,1)], axis=1, inplace=True)
+                    usgs_df_sub.drop(
+                        usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                    )
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
@@ -787,9 +797,8 @@ def _input_handler():
             ] = args.qlat_file_pattern_filter
             forcing_parameters["qlat_file_index_col"] = args.qlat_file_index_col
             forcing_parameters["qlat_file_value_col"] = args.qlat_file_value_col
-            
+
             supernetwork = args.supernetwork
-            
 
         # STEP 0.5: Obtain Supernetwork Parameters for test cases
         if not supernetwork_parameters:
@@ -830,8 +839,7 @@ def main():
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
-    data_assimilation_csv = data_assimilation_parameters.get("data_assimilation_csv", None)
-    data_assimilation_filter = data_assimilation_parameters.get("data_assimilation_filter", None)
+
     if verbose:
         print("creating supernetwork connections set")
     if showtiming:
@@ -888,23 +896,44 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("creating usgs time_slice data array ...")
+    data_assimilation_csv = data_assimilation_parameters.get(
+        "data_assimilation_csv", None
+    )
+    data_assimilation_filter = data_assimilation_parameters.get(
+        "data_assimilation_filter", None
+    )
+    if data_assimilation_csv or data_assimilation_filter:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("creating usgs time_slice data array ...")
 
+        usgs_df = nnu.build_data_assimilation(data_assimilation_parameters)
 
-    if data_assimilation_csv:
-        usgs_df = nnu.build_data_assimilation_csv(data_assimilation_parameters)
-    elif data_assimilation_filter:
-        usgs_df = nnu.build_data_assimilation_folder(data_assimilation_parameters)
+        if verbose:
+            print("usgs array complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
     else:
         usgs_df = pd.DataFrame()
 
-    if verbose:
-        print("usgs array complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+    # if showtiming:
+    #     start_time = time.time()
+    # if verbose:
+    #     print("creating usgs time_slice data array ...")
+
+    # if data_assimilation_csv:
+    #     usgs_df = nnu.build_data_assimilation_csv(data_assimilation_parameters)
+    # elif data_assimilation_filter:
+    #     usgs_df = nnu.build_data_assimilation_folder(data_assimilation_parameters)
+    # else:
+    #     usgs_df = pd.DataFrame()
+
+    # if verbose:
+    #     print("usgs array complete")
+    # if showtiming:
+    #     print("... in %s seconds." % (time.time() - start_time))
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -937,8 +966,8 @@ def main():
     )
     csv_output_folder = output_parameters.get("csv_output", None)
     if csv_output_folder:
-        csv_output_segments = csv_output_folder['csv_output_segments']
-        csv_output_folder = csv_output_folder['csv_output_folder']
+        csv_output_segments = csv_output_folder["csv_output_segments"]
+        csv_output_folder = csv_output_folder["csv_output_folder"]
     if (debuglevel <= -1) or csv_output_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -953,7 +982,7 @@ def main():
             output_path = pathlib.Path(csv_output_folder).resolve()
             flowveldepth.to_csv(output_path.joinpath("supernetwork.csv"))
             usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
-            usgs_df_filtered.to_csv(output_path.joinpath('usgs_df.csv'))
+            usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
