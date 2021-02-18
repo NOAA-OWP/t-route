@@ -1,6 +1,6 @@
 import json
 import os
-
+import pathlib
 import glob
 import pandas as pd
 from functools import partial
@@ -510,19 +510,41 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
     return qlat_df
 
 
-def build_data_assimilation(root, data_assimilation_parameters):
+def build_data_assimilation(data_assimilation_parameters):
+    data_assimilation_csv = data_assimilation_parameters.get(
+        "data_assimilation_csv", None
+    )
+    data_assimilation_filter = data_assimilation_parameters.get(
+        "data_assimilation_filter", None
+    )
+    if data_assimilation_csv:
+        usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
+    elif data_assimilation_filter:
+        usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
+    return usgs_df
+
+
+def build_data_assimilation_csv(data_assimilation_parameters):
+
+    usgs_df = nhd_io.get_usgs_from_time_slices_csv(
+        data_assimilation_parameters["data_assimilation_parameters_file"],
+        data_assimilation_parameters["data_assimilation_csv"],
+    )
+
+    return usgs_df
+
+
+def build_data_assimilation_folder(data_assimilation_parameters):
 
     if data_assimilation_parameters:
-        usgs_timeslices_folder = os.path.join(
-            root, "test/input/geo/nudgingTimeSliceObs/",
-        )
+        usgs_timeslices_folder = pathlib.Path(
+            "../../test/input/geo/nudgingTimeSliceObs/",
+        ).resolve()
 
-        usgs_df = nhd_io.get_usgs_from_time_slices(
+        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
             data_assimilation_parameters["data_assimilation_parameters_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
         )
 
-    else:
-        usgs_df = pd.DataFrame()
     return usgs_df
