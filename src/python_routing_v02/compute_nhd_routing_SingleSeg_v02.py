@@ -259,7 +259,7 @@ def _handle_args():
     )
     parser.add_argument(
         "--data_assimilation_filter",
-        help="Provide a pattern filter for ncdf files (2020-03-21*.usgsTimeSlice.ncdf)",
+        help="Provide a glob pattern filter for ncdf files (e.g., 2020-03-21*.usgsTimeSlice.ncdf)",
         dest="data_assimilation_filter",
         default=None,
     )
@@ -723,7 +723,6 @@ def _input_handler():
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["parallel_compute_method"] = args.parallel_compute_method
         run_parameters["subnetwork_target_size "] = args.subnetwork_target_size
-
         run_parameters["cpu_pool"] = args.cpu_pool
         run_parameters["showtiming"] = args.showtiming
 
