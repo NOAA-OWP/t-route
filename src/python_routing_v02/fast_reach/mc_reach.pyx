@@ -872,19 +872,19 @@ cpdef object compute_network_structured_obj(
             for i in range(r.num_segments):
               segment = r.segments[i]
               segment_ids.append(segment.id)
-              buf_view[i][0] = qlat_array[ segment.id, int(timestep/qlat_resample)]
-              buf_view[i][1] = segment.dt
-              buf_view[i][2] = segment.dx
-              buf_view[i][3] = segment.bw
-              buf_view[i][4] = segment.tw
-              buf_view[i][5] = segment.twcc
-              buf_view[i][6] = segment.n
-              buf_view[i][7] = segment.ncc
-              buf_view[i][8] = segment.cs
-              buf_view[i][9] = segment.s0
-              buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
-              buf_view[i][11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-              buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
+              buf_view[i, 0] = qlat_array[ segment.id, int(timestep/qlat_resample)]
+              buf_view[i, 1] = segment.dt
+              buf_view[i, 2] = segment.dx
+              buf_view[i, 3] = segment.bw
+              buf_view[i, 4] = segment.tw
+              buf_view[i, 5] = segment.twcc
+              buf_view[i, 6] = segment.n
+              buf_view[i, 7] = segment.ncc
+              buf_view[i, 8] = segment.cs
+              buf_view[i, 9] = segment.s0
+              buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
+              buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+              buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                  len(r.segments), buf_view,
@@ -1046,19 +1046,19 @@ cpdef object compute_network_structured(
               #for i, segment in enumerate(r.segments):
               for i in range(r._num_segments):
                 segment = r._segments[i]
-                buf_view[i][0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
-                buf_view[i][1] = segment.dt
-                buf_view[i][2] = segment.dx
-                buf_view[i][3] = segment.bw
-                buf_view[i][4] = segment.tw
-                buf_view[i][5] = segment.twcc
-                buf_view[i][6] = segment.n
-                buf_view[i][7] = segment.ncc
-                buf_view[i][8] = segment.cs
-                buf_view[i][9] = segment.s0
-                buf_view[i][10] = flowveldepth[segment.id, timestep-1, 0]
-                buf_view[i][11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                buf_view[i][12] = flowveldepth[segment.id, timestep-1, 2]
+                buf_view[i, 0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
+                buf_view[i, 1] = segment.dt
+                buf_view[i, 2] = segment.dx
+                buf_view[i, 3] = segment.bw
+                buf_view[i, 4] = segment.tw
+                buf_view[i, 5] = segment.twcc
+                buf_view[i, 6] = segment.n
+                buf_view[i, 7] = segment.ncc
+                buf_view[i, 8] = segment.cs
+                buf_view[i, 9] = segment.s0
+                buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
+                buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
               compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                    r._num_segments, buf_view,
