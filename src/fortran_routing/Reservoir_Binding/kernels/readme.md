@@ -6,7 +6,7 @@ be set if these libraries exist on that system:
 
 
 In order to set up the tests for all reservoir types:
-1. Activate a python3 virtual enviroment
+1. Activate a python3 virtual environment
 2. Type "pip install Cython"
 3. Type "pip install pytest"
 4. Type "pip install pytest-parallel"

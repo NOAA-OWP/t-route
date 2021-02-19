@@ -1,11 +1,12 @@
 ---
 #initial input parameters
 run_parameters:
-    parallel_compute: false
+    #parallel_compute_method: by-network
     verbose: true
     showtiming: true
     debuglevel: 1
-    break_network_at_waterbodies: true
+    #break_network_at_waterbodies: true
+    compute_method: V02-structured-obj
     assume_short_ts: true
     qts_subdivisions: 12
     dt: 300

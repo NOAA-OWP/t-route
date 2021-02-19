@@ -10,7 +10,8 @@ cimport cython
 from libc.stdlib cimport malloc, free
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from troute.network.reach cimport MC_Segment, MC_Reach, _MC_Segment, _MC_Reach
+from troute.network.reach cimport MC_Segment, MC_Reach, _MC_Segment, _MC_Reach, MC_Reservoir
+from compute_kernel_lp import lp_kernel
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -154,16 +155,15 @@ cpdef object column_mapper(object src_cols):
 cpdef object compute_network(
     int nsteps,
     int qts_subdivisions,
-    list reaches,
+    list reaches_wTypes,
     dict connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
     const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
-    # const float[:] wbody_idx,
-    # object[:] wbody_cols,
-    # const float[:, :] wbody_vals,
+    list lake_numbers_col,
+    const double[:,:] wbody_cols,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -242,6 +242,9 @@ cpdef object compute_network(
         Py_ssize_t ireach  # current reach index
         Py_ssize_t ireach_cache  # current index of reach cache
         Py_ssize_t iusreach_cache  # current index of upstream reach cache
+
+    # Extract only the reaches
+    cdef list reaches = [r for r, _ in reaches_wTypes]
 
     # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
@@ -675,16 +678,15 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 cpdef object compute_network_structured_obj(
     int nsteps,
     int qts_subdivisions,
-    list reaches,
+    list reaches, # a list of tuples
     dict connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
     const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
-    # const float[:] wbody_idx,
-    # object[:] wbody_cols,
-    # const float[:,:] wbody_vals,
+    list lake_numbers_col,
+    const double[:,:] wbody_cols,
     dict upstream_results={},
     bint assume_short_ts=False
     ):
@@ -717,6 +719,7 @@ cpdef object compute_network_structured_obj(
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
     ###### Declare/type variables #####
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -736,7 +739,8 @@ cpdef object compute_network_structured_obj(
     cdef float[:,:] out_buf
     cdef float[:] lateral_flows
     #reach iterator
-    cdef MC_Reach r
+    #Commenting r out below for now in order for r to be MC_Reach or MC_Reservoir
+    #cdef MC_Reach r 
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -747,30 +751,82 @@ cpdef object compute_network_structured_obj(
     cdef MC_Segment segment
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
-    for reach in reaches:
-      upstream_reach = connections.get(reach[0], ())
-      segment_ids = binary_find(data_idx, reach)
-      upstream_ids = binary_find(data_idx, upstream_reach)
 
-      #Set the initial condtions before running loop
-      flowveldepth[segment_ids, 0] = init_array[segment_ids]
-      segment_objects = []
-      #Find the max reach size, used to create buffer for compute_reach_kernel
-      if len(segment_ids) > max_buff_size:
-        max_buff_size=len(segment_ids)
+    wbody_index = 0
 
-      for sid in segment_ids:
-        #Initialize parameters  from the data_array, and set the initial initial_conditions
-        #These aren't actually used (the initial contions) in the kernel as they are extracted from the
-        #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
-        #it is inialized to 0.0
-        segment_objects.append(
-        MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
-        )
+    for reach, reach_type in reaches:
 
-      reach_objects.append(
-          MC_Reach(segment_objects, array('l',upstream_ids))
-          )
+        #Check if reach_type is 1 for reservoir
+        if (reach_type == 1):
+            
+            upstream_reach = connections.get(reach[0], ())
+            upstream_ids = binary_find(data_idx, upstream_reach)
+
+            #Extract waterbody parameters for given reservoir
+            lake_area = wbody_parameters[wbody_index,0]
+            weir_elevation = wbody_parameters[wbody_index,6]
+            weir_coefficient = wbody_parameters[wbody_index,5]
+            weir_length = wbody_parameters[wbody_index,7]
+
+            #TODO: Need new Lake Parm file, which now has dam_length
+            #dam_length = wbody_parameters[wbody_index,1]
+            #Setting default dam_length to 10
+            dam_length = 10.0
+
+            orifice_elevation = wbody_parameters[wbody_index,4]
+            orifice_coefficient = wbody_parameters[wbody_index,3]
+            orifice_area = wbody_parameters[wbody_index,2]
+            max_depth = wbody_parameters[wbody_index,1]
+            initial_fractional_depth  = wbody_parameters[wbody_index,8]
+
+            lake_number = lake_numbers_col[wbody_index]
+ 
+            #TODO: Read Water Elevation from Restart. Use below equation if no restart.
+            #Equation below is used in wrf-hydro
+            water_elevation = orifice_elevation + ((max_depth - orifice_elevation) * initial_fractional_depth) 
+
+            #Initialize level pool reservoir object
+            lp_reservoir = lp_kernel(0, 1,
+                water_elevation, lake_area,
+                weir_elevation, weir_coefficient, weir_length,
+                dam_length, orifice_elevation, orifice_coefficient,
+                orifice_area, max_depth, lake_number)
+
+            #Add level pool reservoir ojbect to reach_objects
+            reach_objects.append(
+                #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                (MC_Reservoir(array('l',upstream_ids)), reach_type, lp_reservoir)
+                )
+            
+            wbody_index += 1
+
+        else:
+       
+            upstream_reach = connections.get(reach[0], ())
+            segment_ids = binary_find(data_idx, reach)
+            upstream_ids = binary_find(data_idx, upstream_reach)
+
+            #Set the initial condtions before running loop
+            flowveldepth[segment_ids, 0] = init_array[segment_ids]
+            segment_objects = []
+            #Find the max reach size, used to create buffer for compute_reach_kernel
+            if len(segment_ids) > max_buff_size:
+                max_buff_size=len(segment_ids)
+
+            for sid in segment_ids:
+                #Initialize parameters  from the data_array, and set the initial initial_conditions
+                #These aren't actually used (the initial contions) in the kernel as they are extracted from the
+                #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
+                #it is inialized to 0.0
+                segment_objects.append(
+                MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
+            )
+
+            reach_objects.append(
+                #tuple of MC_Reach and reach_type
+                (MC_Reach(segment_objects, array('l',upstream_ids)), reach_type, None)
+                )
+
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
@@ -779,13 +835,34 @@ cpdef object compute_network_structured_obj(
 
     #Run time
     while timestep < nsteps:
-      for r in reach_objects:
-            #Need to get quc and qup
-            upstream_flows = 0.0
-            previous_upstream_flows = 0.0
-            for id in r.upstream_ids: #Explicit loop reduces some overhead
-              upstream_flows += flowveldepth[id, timestep, 0]
-              previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+      for r, reach_type, reservoir_object in reach_objects:
+    
+        #Need to get quc and qup
+        upstream_flows = 0.0
+        previous_upstream_flows = 0.0
+        for id in r.upstream_ids: #Explicit loop reduces some overhead
+          upstream_flows += flowveldepth[id, timestep, 0]
+          previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+
+        #Check if reach_type is 1 for reservoir/waterbody
+        if (reach_type == 1):
+
+            #TODO: Add if isintance of the reservoir type
+            #if isinstance(reservoir_object, lp_kernel):
+
+            #TODO: dt is currently held by the segment. Need to find better place to hold dt
+            routing_period = 300.0
+
+            reservoir_outflow = reservoir_object.run(upstream_flows, 0.0, routing_period) 
+
+            water_elevation = reservoir_object.get_water_elevation()
+
+            flowveldepth[id, timestep, 0] = reservoir_outflow
+            flowveldepth[id, timestep, 1] = 0.0
+            flowveldepth[id, timestep, 2] = water_elevation
+
+        else:
+
             #Index of segments required to process this reach
             segment_ids = []
 
@@ -838,8 +915,8 @@ cpdef object compute_network_structured(
     const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
     # const float[:] wbody_idx,
-    # object[:] wbody_cols,
-    # const float[:,:] wbody_vals,
+    object[:] wbody_cols,
+    const float[:,:] wbody_vals,
     dict upstream_results={},
     bint assume_short_ts=False):
     """

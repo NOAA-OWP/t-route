@@ -57,9 +57,44 @@ cdef class MC_Segment(Segment):
     self.velp = velp
     self.depthp = depthp
 
-cdef class MC_Reach():
+cdef class MC_Reach_Base_Class():
   """
-    A muskingcung reach
+    Base class to derive MC_Reach and MC_Reservoir
+  """
+
+  def __init__(self, long[::1] upstream_ids):
+    """
+      Construct the kernel based on passed parameters
+    """
+    self._num_upstream_ids = len(upstream_ids)
+    self.upstream_ids = np.asarray(upstream_ids)
+ 
+    self._reach._upstream_ids = <long*>malloc(sizeof(long)*self._num_upstream_ids)
+    self._reach._num_upstream_ids = self._num_upstream_ids
+    for i in range(self._num_upstream_ids):
+      self._reach._upstream_ids[i] = upstream_ids[i]
+
+cdef class MC_Reservoir(MC_Reach_Base_Class):
+  """
+    MC_Reservoir is a subclass of MC_Reach_Base_Class
+  """
+
+  def __init__(self, long[::1] upstream_ids):
+    """
+      Construct the kernel based on passed parameters,
+      which only constructs the parent class
+    """
+    super().__init__(upstream_ids)
+  
+  def __dealloc__(self):
+    """
+
+    """
+    free(self._reach._upstream_ids)
+
+cdef class MC_Reach(MC_Reach_Base_Class):
+  """
+    A muskingcung reach and subclass of MC_Reach_Base_Class
     TODO keep track of topology, subclass Reach
   """
   #TODO document these attributes. defined in pxd, commented here for reference
@@ -69,8 +104,12 @@ cdef class MC_Reach():
   #cdef readonly np.ndarray upstream_ids
 
   def __init__(self, segments, long[::1] upstream_ids):
+    """
+      Construct the kernel including its parent class based on passed parameters
+    """
+    super().__init__(upstream_ids)
+
     self._num_segments = len(segments)
-    self._num_upstream_ids = len(upstream_ids)
 
     self._segments = <_MC_Segment*> malloc(sizeof(_MC_Segment)*(self._num_segments))
     for i, segment in enumerate(segments):
@@ -89,15 +128,10 @@ cdef class MC_Reach():
       self._segments[i].depthp = segment.depthp
 
     self.segments = segments
-    self.upstream_ids = np.asarray(upstream_ids)
     #init the C struct
     self._reach._segments = self._segments
     self._reach._num_segments = self._num_segments
     self.num_segments = self._num_segments
-    self._reach._upstream_ids = <long*>malloc(sizeof(long)*self._num_upstream_ids)
-    self._reach._num_upstream_ids = self._num_upstream_ids
-    for i in range(self._num_upstream_ids):
-      self._reach._upstream_ids[i] = upstream_ids[i]
 
   def __dealloc__(self):
     """
