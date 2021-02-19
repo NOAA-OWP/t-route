@@ -6,7 +6,6 @@ import geopandas as gpd
 import json
 import yaml
 import numpy as np
-import glob
 from toolz import compose
 
 
