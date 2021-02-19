@@ -253,7 +253,7 @@ def _handle_args():
 
     parser.add_argument(
         "--data_assimilation_folder_path",
-        help="Provide a path to a data assimilation routelink file folder",
+        help="Provide a path to a folder containing the usgs time slice files",
         dest="data_assimilation_parameters_folder",
         default=None,
     )
@@ -265,7 +265,7 @@ def _handle_args():
     )
     parser.add_argument(
         "--data_assimilation_csv",
-        help="Provide a path to a csv file for data assimilation",
+        help="Provide a csv with the timeslices prepared for use",
         dest="data_assimilation_csv",
         default=None,
     )
@@ -928,23 +928,6 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
-
-    # if showtiming:
-    #     start_time = time.time()
-    # if verbose:
-    #     print("creating usgs time_slice data array ...")
-
-    # if data_assimilation_csv:
-    #     usgs_df = nnu.build_data_assimilation_csv(data_assimilation_parameters)
-    # elif data_assimilation_filter:
-    #     usgs_df = nnu.build_data_assimilation_folder(data_assimilation_parameters)
-    # else:
-    #     usgs_df = pd.DataFrame()
-
-    # if verbose:
-    #     print("usgs array complete")
-    # if showtiming:
-    #     print("... in %s seconds." % (time.time() - start_time))
 
     ################### Main Execution Loop across ordered networks
     if showtiming:

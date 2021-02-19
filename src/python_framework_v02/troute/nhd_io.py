@@ -245,7 +245,7 @@ def read_netcdfs(files, dim, transform_func=None):
             ds.load()
             return ds
 
-    paths = sorted(glob.glob(files))
+    paths = sorted(pathlib.glob(files))
     datasets = [process_one_path(p) for p in paths]
     combined = xr.concat(datasets, dim)
     return combined
@@ -323,7 +323,7 @@ def get_usgs_from_time_slices_csv(
 def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
-    usgs_files = glob.glob(str(usgs_timeslices_folder) + data_assimilation_filter)
+    usgs_files = pathlib.glob(str(usgs_timeslices_folder) + data_assimilation_filter)
 
     with read_netcdfs(
         str(usgs_timeslices_folder) + data_assimilation_filter,
