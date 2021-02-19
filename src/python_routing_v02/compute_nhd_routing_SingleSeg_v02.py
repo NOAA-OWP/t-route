@@ -675,6 +675,9 @@ def compute_nhd_routing_v02(
                 common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
 
+            reach_type_list = [1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list]
+            reaches_list_with_type = list(zip(reach_list,reach_type_list))
+            '''
             reaches_list_with_type = []
             
             for reaches in reach_list:
@@ -686,7 +689,7 @@ def compute_nhd_routing_v02(
                 reach_and_type_tuple = (reaches, reach_type)
 
                 reaches_list_with_type.append(reach_and_type_tuple)
-
+            '''
 
             qlat_sub = qlats.loc[common_segs].sort_index()
             q0_sub = q0.loc[common_segs].sort_index()
