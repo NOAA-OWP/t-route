@@ -155,7 +155,7 @@ cpdef object column_mapper(object src_cols):
 cpdef object compute_network(
     int nsteps,
     int qts_subdivisions,
-    list reaches_wTypes,
+    list reaches_wTypes, # a list of tuples
     dict connections,
     const long[:] data_idx,
     object[:] data_cols,
@@ -244,7 +244,7 @@ cpdef object compute_network(
         Py_ssize_t iusreach_cache  # current index of upstream reach cache
 
     # Extract only the reaches
-    cdef list reaches = [r for r, _ in reaches_wTypes]
+    cdef list reaches = [reach for reach, _ in reaches_wTypes]
 
     # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
@@ -907,18 +907,18 @@ cpdef object compute_network_structured_obj(
 cpdef object compute_network_structured(
     int nsteps,
     int qts_subdivisions,
-    list reaches,
+    list reaches_wTypes, # a list of tuples
     dict connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
     const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
-    # const float[:] wbody_idx,
-    object[:] wbody_cols,
-    const float[:,:] wbody_vals,
+    list lake_numbers_col,
+    const double[:,:] wbody_cols,
     dict upstream_results={},
-    bint assume_short_ts=False):
+    bint assume_short_ts=False
+    ):
     """
     Compute network
     Args:
@@ -976,6 +976,9 @@ cpdef object compute_network_structured(
     cdef _MC_Segment segment
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
+		# First, extract only the reaches
+    cdef list reaches = [reach for reach, _ in reaches_wTypes]
+
     for reach in reaches:
       upstream_reach = connections.get(reach[0], ())
       segment_ids = binary_find(data_idx, reach)
