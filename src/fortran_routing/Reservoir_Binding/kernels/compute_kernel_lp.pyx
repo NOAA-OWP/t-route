@@ -17,10 +17,7 @@ cdef extern void free_lp(void* handle);
 
 
 ############ Other Reservoir Interface ############
-
-#ctypedef enum compute_type: REACH, RESERVOIR_LP
 ctypedef enum compute_type: RESERVOIR_LP
-
 
 cdef class compute_kernel_lp:
   """
@@ -34,7 +31,6 @@ cdef class compute_kernel_lp:
   cdef float* inputs;
   cdef float* outputs;
 
-
   def __init__(self, num_inputs, num_outputs):
     """
       Allocate the input and output arrays
@@ -44,78 +40,10 @@ cdef class compute_kernel_lp:
     self.inputs = <float*> PyMem_Malloc(num_inputs * sizeof(float))
     self.outputs = <float*> PyMem_Malloc(num_outputs * sizeof(float))
 
-
-
   def __dealloc__(self):
     PyMem_Free(self.inputs)
     PyMem_Free(self.outputs)
 
-
-#David Mattern commenting out for now
-#  #Now the fun part, what do we ACTUALLY compute???
-#  cdef void compute(self):
-#    pass
-'''
-cdef class mc_kernel(compute_kernel):
-  #TODO document these attributes
-  cdef float dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-  #Hold the previous accumulated upstream flow
-  cdef float qup
-  cdef bint assume_short_ts
-
-  def __init__(dt, dx, tw, twcc, n, ncc, cs, s0, qdp, velp, dethp, qup=0, assume_short_ts=False):
-    """
-      construct the kernel based on passed parameters
-    """
-    self.dt = dt
-    self.dx = dx
-    self.tw = tw
-    self.twcc = twcc
-    self.n = n
-    self.ncc = ncc
-    self.cs = cs
-    self.s0 = s0
-    self.qdp = qdp
-    self.velp = velp
-    self.depthp = depthp
-    #Allow optional previous upstream (initial condition)
-    self.qup = qup
-    self.assume_short_ts = assume_short_ts
-
-  #FIXME return more than one value?
-  cpdef float run(float quc, float qlat) nogil:
-    """
-      run the muskingcung calculation
-    """
-    cdef reach.QVD rv
-    cdef reach.QVD *out = &rv
-
-    reach.muskingcunge(
-                self.dt,
-                self.qup,
-                quc,
-                self.qdp,
-                qlat,
-                self.dx,
-                self.bw,
-                self.tw,
-                self.twcc,
-                n,
-                ncc,
-                cs,
-                s0,
-                velp,
-                depthp,
-                out)
-    #Record quc as qup for next call
-    self.qup = out.qdc
-    cdef q_out = out.qdc
-    if self.assume_short_ts:
-      #Short timestep assumption means current and previous are the same
-      q_out = self.qup
-    #FIXME return other things???
-    return q_out
-'''
 cdef class lp_kernel(compute_kernel_lp):
   """
     Subclass for computing LevelPool reservoir
@@ -171,7 +99,16 @@ cdef class lp_kernel(compute_kernel_lp):
       #printf("outflow: %f\n", outflow)
       return outflow
 
-#David Mattern commenting out for now
-#  cdef void compute2(self) nogil:
-#      #run_lp(self.lp_handle)
-#      pass
+  cpdef float get_water_elevation(self):
+    cdef float water_elevation
+
+    with nogil:
+      water_elevation = self.water_elevation
+      return water_elevation
+
+  cpdef int get_lake_number(self):
+    cdef int lake_number
+
+    with nogil:
+      lake_number = self.lake_number
+      return lake_number

@@ -295,6 +295,7 @@ def constant_qlats(index_dataset, nsteps, qlat):
 def compute_nhd_routing_v02(
     connections,
     rconn,
+    wbodies,
     reaches_bytw,
     compute_func,
     parallel_compute_method,
@@ -308,6 +309,7 @@ def compute_nhd_routing_v02(
     q0,
     assume_short_ts,
     return_courant,
+    waterbodies_df,
 ):
 
     start_time = time.time()
@@ -431,6 +433,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
+                            wbodies,
+                            waterbodies_df,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
@@ -583,23 +587,59 @@ def compute_nhd_routing_v02(
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+                # The X_sub lines use SEGS...
+                # which is now invalid with the wbodies included.
+                # So we define "common_segs" to identify regular routing segments
+                # and wbodies_segs for the waterbody reaches/segments
                 segs = list(chain.from_iterable(reach_list))
+                common_segs = param_df.index.intersection(segs)
+                # Assumes everything else is a waterbody...
+                wbodies_segs = set(segs).symmetric_difference(common_segs)
+
+                #If waterbody parameters exist
+                if (not waterbodies_df.empty):
+
+                    lake_segs = list(waterbodies_df.index.intersection(segs))
+
+                    waterbodies_df_sub = waterbodies_df.loc[
+                        lake_segs, ["LkArea", "LkMxE", "OrificeA", "OrificeC", "OrificeE", "WeirC", "WeirE", "WeirL", "ifd"]]
+
+                else:
+                    lake_segs = []
+                    waterbodies_df_sub = pd.DataFrame()
+
                 param_df_sub = param_df.loc[
-                    segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                 ].sort_index()
-                qlat_sub = qlats.loc[segs].sort_index()
-                q0_sub = q0.loc[segs].sort_index()
+
+                reaches_list_with_type = []
+                
+                for reaches in reach_list:
+                    if (set(reaches) & wbodies_segs):
+                        reach_type = 1 # type 1 for waterbody/lake
+                    else:
+                        reach_type = 0 # type 0 for reach
+
+                    reach_and_type_tuple = (reaches, reach_type)
+
+                    reaches_list_with_type.append(reach_and_type_tuple)
+
+
+                qlat_sub = qlats.loc[common_segs].sort_index()
+                q0_sub = q0.loc[common_segs].sort_index()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
                         qts_subdivisions,
-                        reach_list,
+                        reaches_list_with_type,
                         independent_networks[tw],
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         qlat_sub.values,
                         q0_sub.values,
+                        lake_segs,
+                        waterbodies_df_sub.values,
                         {},
                         assume_short_ts,
                         return_courant,
@@ -618,22 +658,51 @@ def compute_nhd_routing_v02(
             common_segs = param_df.index.intersection(segs)
             # Assumes everything else is a waterbody...
             wbodies_segs = set(segs).symmetric_difference(common_segs)
+
+            #If waterbody parameters exist
+            if (not waterbodies_df.empty):
+
+                lake_segs = list(waterbodies_df.index.intersection(segs))
+
+                waterbodies_df_sub = waterbodies_df.loc[
+                    lake_segs, ["LkArea", "LkMxE", "OrificeA", "OrificeC", "OrificeE", "WeirC", "WeirE", "WeirL", "ifd"]]
+
+            else:
+                lake_segs = []
+                waterbodies_df_sub = pd.DataFrame()
+
             param_df_sub = param_df.loc[
                 common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
+
+            reaches_list_with_type = []
+            
+            for reaches in reach_list:
+                if (set(reaches) & wbodies_segs):
+                    reach_type = 1 # type 1 for waterbody/lake
+                else:
+                    reach_type = 0 # type 0 for reach
+
+                reach_and_type_tuple = (reaches, reach_type)
+
+                reaches_list_with_type.append(reach_and_type_tuple)
+
+
             qlat_sub = qlats.loc[common_segs].sort_index()
             q0_sub = q0.loc[common_segs].sort_index()
             results.append(
                 compute_func(
                     nts,
                     qts_subdivisions,
-                    reach_list,
+                    reaches_list_with_type,
                     independent_networks[tw],
                     param_df_sub.index.values,
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     qlat_sub.values,
                     q0_sub.values,
+                    lake_segs,
+                    waterbodies_df_sub.values,
                     {},
                     assume_short_ts,
                     return_courant,
@@ -808,6 +877,21 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
+    ################################
+    ## STEP 3a: Read waterbody parameter file
+    #waterbodies_values = supernetwork_values[12]
+    #waterbodies_segments = supernetwork_values[13]
+    #connections_tailwaters = supernetwork_values[4]
+
+    if break_network_at_waterbodies:
+        #Read waterbody parameters
+        waterbodies_df = nhd_io.read_waterbody_df(waterbody_parameters, {"level_pool":wbodies.values()})
+
+        #Remove duplicate lake_ids and rows
+        waterbodies_df_reduced = waterbodies_df.reset_index().drop_duplicates(subset='lake_id').set_index('lake_id')
+    else:
+        waterbodies_df_reduced = pd.DataFrame()
+
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
         start_time = time.time()
@@ -875,9 +959,13 @@ def main():
     else:
         compute_func = mc_reach.compute_network
 
+    #TODO: Remove below. --compute-method=V02-structured-obj did not work on command line 
+    #compute_func = mc_reach.compute_network_structured_obj
+
     results = compute_nhd_routing_v02(
         connections,
         rconn,
+        wbodies,
         reaches_bytw,
         compute_func,
         run_parameters.get("parallel_compute_method", None),
@@ -892,6 +980,7 @@ def main():
         q0,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
+        waterbodies_df_reduced,
     )
 
     if verbose:
