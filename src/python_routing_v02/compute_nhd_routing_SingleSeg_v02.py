@@ -263,6 +263,12 @@ def _handle_args():
         dest="data_assimilation_filter",
         default=None,
     )
+    parser.add_argument(
+        "--data_assimilation_csv",
+        help="Provide a path to a csv file for data assimilation",
+        dest="data_assimilation_csv",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -759,16 +765,22 @@ def _input_handler():
             run_parameters["nts"] = args.nts
             run_parameters["qts_subdivisions"] = args.qts_subdivisions
             run_parameters["compute_method"] = args.compute_method
+
             waterbody_parameters[
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
             output_parameters["csv_output_folder"] = args.csv_output_folder
+
             data_assimilation_parameters[
                 "data_assimilation_parameters_file"
             ] = args.data_assimilation_parameters_file
             data_assimilation_filter[
                 "data_assimilation_filter"
             ] = args.data_assimilation_filter
+            data_assimilation_parameters[
+                "data_assimilation_csv"
+            ] = args.data_assimilation_csv
+
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
