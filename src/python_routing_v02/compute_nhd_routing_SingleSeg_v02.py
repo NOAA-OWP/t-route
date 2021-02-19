@@ -651,7 +651,7 @@ def compute_nhd_routing_v02(
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
-            # which is now invalid with the wbodies included.
+            # which becomes invalid with the wbodies included.
             # So we define "common_segs" to identify regular routing segments
             # and wbodies_segs for the waterbody reaches/segments
             segs = list(chain.from_iterable(reach_list))
