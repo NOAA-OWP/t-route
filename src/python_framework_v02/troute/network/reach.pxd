@@ -31,15 +31,20 @@ cdef struct _MC_Reach:
   long* _upstream_ids
   int _num_upstream_ids
 
-cdef class MC_Reach():
+cdef class MC_Reach_Base_Class():
+  cdef int _num_upstream_ids
+  cdef _MC_Reach _reach
+  cdef readonly np.ndarray upstream_ids
+
+cdef class MC_Reservoir(MC_Reach_Base_Class):
+  pass
+
+cdef class MC_Reach(MC_Reach_Base_Class):
   """
     A muskingcung reach -> collection of ordered MC_Segments
   """
   cdef _MC_Segment* _segments
   cdef int _num_segments # C only accessible
   cdef readonly num_segments #Python accessible, readonly outside class
-  cdef int _num_upstream_ids
-  cdef _MC_Reach _reach
   cdef readonly list segments
-  cdef readonly np.ndarray upstream_ids
   cdef route(self)
