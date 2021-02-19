@@ -252,9 +252,9 @@ def _handle_args():
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
 
     parser.add_argument(
-        "--data_assimilation_file_path",
+        "--data_assimilation_folder_path",
         help="Provide a path to a data assimilation routelink file folder",
-        dest="data_assimilation_parameters_file",
+        dest="data_assimilation_parameters_folder",
         default=None,
     )
     parser.add_argument(
@@ -772,8 +772,8 @@ def _input_handler():
             output_parameters["csv_output_folder"] = args.csv_output_folder
 
             data_assimilation_parameters[
-                "data_assimilation_parameters_file"
-            ] = args.data_assimilation_parameters_file
+                "data_assimilation_parameters_folder"
+            ] = args.data_assimilation_parameters_folder
             data_assimilation_filter[
                 "data_assimilation_filter"
             ] = args.data_assimilation_filter
