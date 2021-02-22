@@ -525,6 +525,15 @@ def compute_nhd_routing_v02(
                     param_df_sub = param_df.loc[
                         segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
+
+                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
+                    # only produce a dummy list, but...
+                    # Eventually, the wiring for reservoir simulation needs to be added.
+                    subn_reach_type_list = [0 for reaches in subn_reach_list]
+                    subn_reach_list_with_type = list(
+                        zip(subn_reach_list, subn_reach_type_list)
+                    )
+
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
                             subn_tw_sortposition = param_df_sub.index.get_loc(
@@ -539,13 +548,17 @@ def compute_nhd_routing_v02(
                         delayed(compute_func)(
                             nts,
                             qts_subdivisions,
-                            subn_reach_list,
+                            subn_reach_list_with_type,
                             subnetworks[subn_tw],
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
+                            [],  # lake_segs
+                            np.empty(
+                                shape=(0, 0), dtype="float64"
+                            ),  # waterbodies_df_sub.values
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
