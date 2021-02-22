@@ -596,34 +596,46 @@ def compute_nhd_routing_v02(
                 # Assumes everything else is a waterbody...
                 wbodies_segs = set(segs).symmetric_difference(common_segs)
 
-                #If waterbody parameters exist
-                if (not waterbodies_df.empty):
+                # If waterbody parameters exist
+                if not waterbodies_df.empty:
 
                     lake_segs = list(waterbodies_df.index.intersection(segs))
 
                     waterbodies_df_sub = waterbodies_df.loc[
-                        lake_segs, ["LkArea", "LkMxE", "OrificeA", "OrificeC", "OrificeE", "WeirC", "WeirE", "WeirL", "ifd"]]
+                        lake_segs,
+                        [
+                            "LkArea",
+                            "LkMxE",
+                            "OrificeA",
+                            "OrificeC",
+                            "OrificeE",
+                            "WeirC",
+                            "WeirE",
+                            "WeirL",
+                            "ifd",
+                        ],
+                    ]
 
                 else:
                     lake_segs = []
                     waterbodies_df_sub = pd.DataFrame()
 
                 param_df_sub = param_df.loc[
-                    common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                    common_segs,
+                    ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"],
                 ].sort_index()
 
                 reaches_list_with_type = []
-                
+
                 for reaches in reach_list:
-                    if (set(reaches) & wbodies_segs):
-                        reach_type = 1 # type 1 for waterbody/lake
+                    if set(reaches) & wbodies_segs:
+                        reach_type = 1  # type 1 for waterbody/lake
                     else:
-                        reach_type = 0 # type 0 for reach
+                        reach_type = 0  # type 0 for reach
 
                     reach_and_type_tuple = (reaches, reach_type)
 
                     reaches_list_with_type.append(reach_and_type_tuple)
-
 
                 qlat_sub = qlats.loc[common_segs].sort_index()
                 q0_sub = q0.loc[common_segs].sort_index()
@@ -659,13 +671,25 @@ def compute_nhd_routing_v02(
             # Assumes everything else is a waterbody...
             wbodies_segs = set(segs).symmetric_difference(common_segs)
 
-            #If waterbody parameters exist
-            if (not waterbodies_df.empty):
+            # If waterbody parameters exist
+            if not waterbodies_df.empty:
 
                 lake_segs = list(waterbodies_df.index.intersection(segs))
 
                 waterbodies_df_sub = waterbodies_df.loc[
-                    lake_segs, ["LkArea", "LkMxE", "OrificeA", "OrificeC", "OrificeE", "WeirC", "WeirE", "WeirL", "ifd"]]
+                    lake_segs,
+                    [
+                        "LkArea",
+                        "LkMxE",
+                        "OrificeA",
+                        "OrificeC",
+                        "OrificeE",
+                        "WeirC",
+                        "WeirE",
+                        "WeirL",
+                        "ifd",
+                    ],
+                ]
 
             else:
                 lake_segs = []
@@ -675,9 +699,11 @@ def compute_nhd_routing_v02(
                 common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
 
-            reach_type_list = [1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list]
-            reaches_list_with_type = list(zip(reach_list,reach_type_list))
-            '''
+            reach_type_list = [
+                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+            ]
+            reaches_list_with_type = list(zip(reach_list, reach_type_list))
+            """
             reaches_list_with_type = []
             
             for reaches in reach_list:
@@ -689,7 +715,7 @@ def compute_nhd_routing_v02(
                 reach_and_type_tuple = (reaches, reach_type)
 
                 reaches_list_with_type.append(reach_and_type_tuple)
-            '''
+            """
 
             qlat_sub = qlats.loc[common_segs].sort_index()
             q0_sub = q0.loc[common_segs].sort_index()
@@ -870,7 +896,10 @@ def main():
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
+    connections, param_df = nnu.build_connections(
+        supernetwork_parameters,
+        dt,
+    )
     wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
@@ -882,16 +911,22 @@ def main():
 
     ################################
     ## STEP 3a: Read waterbody parameter file
-    #waterbodies_values = supernetwork_values[12]
-    #waterbodies_segments = supernetwork_values[13]
-    #connections_tailwaters = supernetwork_values[4]
+    # waterbodies_values = supernetwork_values[12]
+    # waterbodies_segments = supernetwork_values[13]
+    # connections_tailwaters = supernetwork_values[4]
 
     if break_network_at_waterbodies:
-        #Read waterbody parameters
-        waterbodies_df = nhd_io.read_waterbody_df(waterbody_parameters, {"level_pool":wbodies.values()})
+        # Read waterbody parameters
+        waterbodies_df = nhd_io.read_waterbody_df(
+            waterbody_parameters, {"level_pool": wbodies.values()}
+        )
 
-        #Remove duplicate lake_ids and rows
-        waterbodies_df_reduced = waterbodies_df.reset_index().drop_duplicates(subset='lake_id').set_index('lake_id')
+        # Remove duplicate lake_ids and rows
+        waterbodies_df_reduced = (
+            waterbodies_df.reset_index()
+            .drop_duplicates(subset="lake_id")
+            .set_index("lake_id")
+        )
     else:
         waterbodies_df_reduced = pd.DataFrame()
 
@@ -902,7 +937,8 @@ def main():
         print("organizing connections into reaches ...")
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections, wbodies if break_network_at_waterbodies else False,
+        connections,
+        wbodies if break_network_at_waterbodies else False,
     )
 
     if verbose:
@@ -962,8 +998,8 @@ def main():
     else:
         compute_func = mc_reach.compute_network
 
-    #TODO: Remove below. --compute-method=V02-structured-obj did not work on command line 
-    #compute_func = mc_reach.compute_network_structured_obj
+    # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
+    # compute_func = mc_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
         connections,
