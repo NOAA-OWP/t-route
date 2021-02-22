@@ -420,21 +420,32 @@ def compute_nhd_routing_v02(
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
+                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
+                    # only produce a dummy list, but...
+                    # Eventually, the wiring for reservoir simulation needs to be added.
+                    subn_reach_type_list = [0 for reaches in subn_reach_list]
+                    subn_reach_list_with_type = list(
+                        zip(subn_reach_list, subn_reach_type_list)
+                    )
+
+
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
                         delayed(compute_func)(
                             nts,
                             qts_subdivisions,
-                            subn_reach_list,
+                            subn_reach_list_with_type,
                             upstreams,
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
                             qlat_sub.values,
                             q0_sub.values,
-                            wbodies,
-                            waterbodies_df,
+                            [],  # lake_segs
+                            np.empty(
+                                shape=(0, 0), dtype="float64"
+                            ),  # waterbodies_df_sub.values
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
