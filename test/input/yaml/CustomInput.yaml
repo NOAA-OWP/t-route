@@ -1,12 +1,12 @@
 ---
 #initial input parameters
 run_parameters:
-    parallel_compute_method: by-network
+    parallel_compute_method: by-subnetwork-jit  # OPTIONS: empty (serial execution), "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
     verbose: true
     showtiming: true
     debuglevel: 1
-    break_network_at_waterbodies: true 
-    compute_method: V02-structured-obj
+    # break_network_at_waterbodies: true  # WARNING: will break unless compute_method is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
+    compute_method: V02-caching  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true
     qts_subdivisions: 12
     dt: 300
