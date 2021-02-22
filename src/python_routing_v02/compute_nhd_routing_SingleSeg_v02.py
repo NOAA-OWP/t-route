@@ -536,15 +536,6 @@ def compute_nhd_routing_v02(
                     param_df_sub = param_df.loc[
                         segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
                     ].sort_index()
-
-                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
-                    # only produce a dummy list, but...
-                    # Eventually, the wiring for reservoir simulation needs to be added.
-                    subn_reach_type_list = [0 for reaches in subn_reach_list]
-                    subn_reach_list_with_type = list(
-                        zip(subn_reach_list, subn_reach_type_list)
-                    )
-
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
                             subn_tw_sortposition = param_df_sub.index.get_loc(
@@ -555,6 +546,15 @@ def compute_nhd_routing_v02(
                             ] = subn_tw_sortposition
                     qlat_sub = qlats.loc[segs].sort_index()
                     q0_sub = q0.loc[segs].sort_index()
+
+                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
+                    # only produce a dummy list, but...
+                    # Eventually, the wiring for reservoir simulation needs to be added.
+                    subn_reach_type_list = [0 for reaches in subn_reach_list]
+                    subn_reach_list_with_type = list(
+                        zip(subn_reach_list, subn_reach_type_list)
+                    )
+
                     jobs.append(
                         delayed(compute_func)(
                             nts,
