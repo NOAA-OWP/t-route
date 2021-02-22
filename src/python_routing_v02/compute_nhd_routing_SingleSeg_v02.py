@@ -774,7 +774,7 @@ def _input_handler():
             data_assimilation_parameters[
                 "data_assimilation_parameters_folder"
             ] = args.data_assimilation_parameters_folder
-            data_assimilation_filter[
+            data_assimilation_parameters[
                 "data_assimilation_filter"
             ] = args.data_assimilation_filter
             data_assimilation_parameters[
