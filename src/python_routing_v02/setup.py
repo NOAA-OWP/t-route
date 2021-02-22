@@ -42,5 +42,6 @@ if USE_CYTHON:
     ext_modules = cythonize(ext_modules, compiler_directives={"language_level": 3})
 
 setup(
-    name="compute_network_mc", ext_modules=ext_modules,
+    name="compute_network_mc",
+    ext_modules=ext_modules,
 )
