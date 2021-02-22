@@ -22,3 +22,13 @@ cd python_routing_v01
 python3 compute_nhd_routing_SingleSeg_v01.py
 
 # /t-route/test/input/yaml (location of custom yaml files)
+
+#Troubleshooting
+If you receive the following error.
+FileNotFoundError: [Errno 2] No such file or directory: b'../../t-route/test/input/geo/Channels/RouteLink_NHDPLUS.nwm.v2.0.4.nc'
+
+Run the following command in ../../t-route/test/input/geo/Channels/
+wget https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/nwm.v2.0.4/parm/domain/RouteLink_NHDPLUS.nc
+
+Rename the downloaded file RouteLink_NHDPUS.nc to RouteLink_NHDPLUS.nwm.v2.0.4.nc
+
