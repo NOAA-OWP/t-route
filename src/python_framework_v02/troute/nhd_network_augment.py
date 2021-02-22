@@ -134,7 +134,7 @@ def network_connections(data, network_data):
         network_data (dict): network metadata
     Returns:
         conn (dict): downstream connections
-        rconn (dict): upstream connections 
+        rconn (dict): upstream connections
     """
 
     # extract downstream connections
@@ -257,29 +257,29 @@ def snap_junctions(data, threshold, network_data):
 
     """
     This function snaps junctions on oposite ends of a short reach
-    by forcing the lowest order upstream tributary to drain to the reach tail. 
+    by forcing the lowest order upstream tributary to drain to the reach tail.
     Short reaches are defined by a user-appointed threshold length.
 
     For example, consider a short reach (*) stranded between two junctions:
 
           \  /
            \/ | 4th
-       2nd  \ |  
-             \| / 
+       2nd  \ |
+             \| /
              *|/
               |
-              | 
+              |
 
-    The algoritm would select the lowest order tributary segment to the reach head, 
+    The algoritm would select the lowest order tributary segment to the reach head,
     which in this case is a second-order drainage, and change the downstream connection
     to the reach tail. This produces the following "snapped" network config:
 
-          \  / 
-           \/ |  
-            \ | / 
+          \  /
+           \/ |
+            \ | /
              \|/
               |
-              | 
+              |
 
     Inputs
     --------------

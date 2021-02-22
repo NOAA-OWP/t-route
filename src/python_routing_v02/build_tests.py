@@ -53,7 +53,10 @@ def build_test_parameters(
 
         # Simulation domain RouteLink file
         routelink_file = pathlib.Path(
-            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
+            NWM_test_path,
+            "primary_domain",
+            "DOMAIN",
+            "Route_Link.nc",
         ).resolve()
 
         # Speficify WRF hydro restart file, name and destination
