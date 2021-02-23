@@ -678,7 +678,7 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 cpdef object compute_network_structured_obj(
     int nsteps,
     int qts_subdivisions,
-    list reaches, # a list of tuples
+    list reaches_wTypes, # a list of tuples
     dict connections,
     const long[:] data_idx,
     object[:] data_cols,
@@ -695,7 +695,7 @@ cpdef object compute_network_structured_obj(
     Compute network
     Args:
         nsteps (int): number of time steps
-        reaches (list): List of reaches
+        reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
         connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
@@ -755,7 +755,7 @@ cpdef object compute_network_structured_obj(
 
     wbody_index = 0
 
-    for reach, reach_type in reaches:
+    for reach, reach_type in reaches_wTypes:
 
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
