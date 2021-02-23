@@ -688,7 +688,8 @@ cpdef object compute_network_structured_obj(
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict upstream_results={},
-    bint assume_short_ts=False
+    bint assume_short_ts=False,
+    bint return_courant=False,
     ):
     """
     Compute network
@@ -917,7 +918,8 @@ cpdef object compute_network_structured(
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict upstream_results={},
-    bint assume_short_ts=False
+    bint assume_short_ts=False,
+    bint return_courant=False,
     ):
     """
     Compute network
