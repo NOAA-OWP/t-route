@@ -19,7 +19,7 @@ Step 4 - Alternative v01 model (defaults can be overwritten with custom input ya
 - cd .. 
 - cd python_routing_v01
 - python3 compute_nhd_routing_SingleSeg_v01.py
-Note: /t-route/test/input/yaml (location of custom yaml files)
+* Note: /t-route/test/input/yaml (location of custom yaml files)
 
 Troubleshooting
 - If you receive the following error.
