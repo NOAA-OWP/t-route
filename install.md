@@ -22,10 +22,11 @@ python3 compute_nhd_routing_SingleSeg_v02.py
 ```
 
 Step 4 - Alternative v01 model (defaults can be overwritten with custom input yaml)
-``` cd ..
+``` 
+cd ..
 cd python_routing_v01
 python3 compute_nhd_routing_SingleSeg_v01.py 
-
+```
 Examples:
 ```
 python3 compute_nhd_routing_SingleSeg_v01.py -v -t
