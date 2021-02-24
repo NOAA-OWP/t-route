@@ -15,6 +15,7 @@ def find_module_new(self, fullname, package_path=None):
 
 finder.find_module = find_module_new.__get__(finder, pyximport.PyxImporter)
 """
+###FIXME NOT PORTED###
 import pytest
 
 from compute_kernel_lp import lp_kernel
