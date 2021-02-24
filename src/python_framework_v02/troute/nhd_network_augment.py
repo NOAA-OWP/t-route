@@ -98,8 +98,9 @@ def get_network_data(network_name):
     # read-in NHD data, retain copies for viz- and full network analysis purposes
     RouteLink = nhd_io.read(network_data["geo_file_path"])
 
-    # select only the necessary columns of geospatial data, set the DataFrame index
-    cols = [v for c, v in network_data["columns"].items()]
+    # select only the necessary columns of geospatial data, set the DataFrame index    
+    cols = list(network_data["columns"].values())
+    
     # GET THE STRAHLER ORDER DATA TOO!
     cols.append("order")
 
@@ -405,23 +406,43 @@ def merge_parameters(to_merge):
         replace (DataFrame): weighted average
     """
 
-    data_replace = to_merge.tail(1)
-    data_replace._is_copy = None
+#     data_replace = to_merge.tail(1)
+#     data_replace._is_copy = None
+    
+    data_replace = pd.DataFrame().reindex_like(to_merge.tail(1))
 
-    idx = to_merge.tail(1).index
+#     idx = to_merge.tail(1).index
+    idx = to_merge.index[-1]
 
-    data_replace.loc[idx, "Length"] = to_merge.Length.sum()
-    data_replace.loc[idx, "n"] = len_weighted_av(to_merge, "n", "Length")
-    data_replace.loc[idx, "nCC"] = len_weighted_av(to_merge, "nCC", "Length")
-    data_replace.loc[idx, "So"] = len_weighted_av(to_merge, "So", "Length")
-    data_replace.loc[idx, "BtmWdth"] = len_weighted_av(to_merge, "BtmWdth", "Length")
-    data_replace.loc[idx, "TopWdth"] = len_weighted_av(to_merge, "TopWdth", "Length")
-    data_replace.loc[idx, "TopWdthCC"] = len_weighted_av(
+    data_replace.loc[idx,"to"] = to_merge.loc[idx,"to"]
+    data_replace.loc[idx,"Length"] = to_merge.Length.sum()
+    data_replace.loc[idx,"n"] = len_weighted_av(to_merge, "n", "Length")
+    data_replace.loc[idx,"nCC"] = len_weighted_av(to_merge, "nCC", "Length")
+    data_replace.loc[idx,"So"] = len_weighted_av(to_merge, "So", "Length")
+    data_replace.loc[idx,"BtmWdth"] = len_weighted_av(to_merge, "BtmWdth", "Length")
+    data_replace.loc[idx,"TopWdth"] = len_weighted_av(to_merge, "TopWdth", "Length")
+    data_replace.loc[idx,"TopWdthCC"] = len_weighted_av(
         to_merge, "TopWdthCC", "Length"
     )
-    data_replace.loc[idx, "MusK"] = len_weighted_av(to_merge, "MusK", "Length")
-    data_replace.loc[idx, "MusX"] = len_weighted_av(to_merge, "MusX", "Length")
-    data_replace.loc[idx, "ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
+    data_replace.loc[idx,"NHDWaterbodyComID"] = to_merge.loc[idx,"NHDWaterbodyComID"]
+    data_replace.loc[idx,"MusK"] = to_merge.loc[idx,"MusK"]
+    data_replace.loc[idx,"MusX"] = to_merge.loc[idx,"MusX"]
+    data_replace.loc[idx,"ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
+    data_replace.loc[idx,"order"] = to_merge.loc[idx,"order"]
+    
+#     data_replace.loc[idx, "Length"] = to_merge.Length.sum()
+#     data_replace.loc[idx, "n"] = len_weighted_av(to_merge, "n", "Length")
+#     data_replace.loc[idx, "nCC"] = len_weighted_av(to_merge, "nCC", "Length")
+#     data_replace.loc[idx, "So"] = len_weighted_av(to_merge, "So", "Length")
+#     data_replace.loc[idx, "BtmWdth"] = len_weighted_av(to_merge, "BtmWdth", "Length")
+#     data_replace.loc[idx, "TopWdth"] = len_weighted_av(to_merge, "TopWdth", "Length")
+#     data_replace.loc[idx, "TopWdthCC"] = len_weighted_av(
+#         to_merge, "TopWdthCC", "Length"
+#     )
+#     data_replace.loc[idx, "MusK"] = len_weighted_av(to_merge, "MusK", "Length")
+#     data_replace.loc[idx, "MusX"] = len_weighted_av(to_merge, "MusX", "Length")
+#     data_replace.loc[idx, "ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
+    
 
     return data_replace
 
@@ -456,19 +477,21 @@ def upstream_merge(data_merged, chop):
     """
 
     # grab the two segments that need to be merged - simply the last two segments of the reach
-    to_merge = data_merged.tail(2)
+    to_merge = data_merged.iloc[-2:]
+    idx_us = to_merge.index[0]
+    idx_ds = to_merge.index[-1]
 
     # calculate new parameter values
     data_replace = merge_parameters(to_merge)
 
     # paste new parameters in to data_merged
-    data_merged.loc[to_merge.tail(1).index] = data_replace
+    data_merged.loc[idx_ds] = data_replace.iloc[0]
 
     # remove merged segments from data_merged
-    data_merged = data_merged.drop(to_merge.head(1).index)
+    data_merged = data_merged.drop(idx_us)
 
     # update "chop" list with merged-out segment IDs
-    chop.append(to_merge.head(1).index.values[0])
+    chop.append(idx_us)
 
     return data_merged, chop
 
@@ -487,8 +510,8 @@ def downstream_merge(data_merged, chop, thresh):
     """
 
     # find the upstream-most short segment and it's downstream connection
-    idx_us = data_merged.loc[data_merged.Length < thresh].head(1).index.values[0]
-
+    idx_us = data_merged.loc[data_merged.Length < thresh].index[0]
+    
     pos_idx_us = data_merged.index.get_loc(idx_us)
     idx_to = data_merged.iloc[pos_idx_us + 1].name
 
@@ -499,13 +522,13 @@ def downstream_merge(data_merged, chop, thresh):
     data_replace = merge_parameters(to_merge)
 
     # paste new parameters in to data_merged
-    data_merged.loc[to_merge.tail(1).index] = data_replace
-
+    data_merged.loc[idx_to] = data_replace.iloc[0]
+    
     # remove merged segments from data_merged
-    data_merged = data_merged.drop(to_merge.head(1).index)
+    data_merged = data_merged.drop(idx_us)
 
     # update "chop" list with merged-out segment IDs
-    chop.append(to_merge.head(1).index.values[0])
+    chop.append(idx_us)
 
     return data_merged, chop
 
@@ -641,14 +664,14 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
             # orphaned short single segment reaches
             ##################################################
             # if reach length is shorter than threshold and composed of a single segment
-            if rch_len < thresh and len(data.loc[rch]) == 1:
+            if rch_len < thresh and len(rch) == 1:
                 continue  # do nothing
 
             ##################################################
             # multi segment reaches - combine into a single segment reach
             ##################################################
             # if reach length is shorter than threshold and composed more than one segment
-            if rch_len < thresh and len(data.loc[rch]) > 1:
+            if rch_len < thresh and len(rch) > 1:
 
                 # merge ALL reach segments into one
                 chop = []
@@ -669,7 +692,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
             if rch_len > thresh and data.loc[rch].Length.min() < thresh:
 
                 # initialize data_merged - this DataFrame will be subsequently revised
-                reach_merged = data.loc[rch]
+                reach_merged = data.loc[rch].copy()
 
                 # initialize list of segments chopped from this reach
                 chop_reach = []
@@ -679,8 +702,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
                     # if shortest segment is the last segment in the reach - conduct an upstream merge.
                     if (
-                        reach_merged.Length.idxmin()
-                        == reach_merged.tail(1).index.values[0]
+                        reach_merged.Length.idxmin() == reach_merged.index[-1]
                         and reach_merged.Length.min() < thresh
                     ):
 
@@ -693,8 +715,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
 
                     # if shortest segment is NOT the last segment in the reach - conduct a downstream merge
                     if (
-                        reach_merged.Length.idxmin()
-                        != reach_merged.tail(1).index.values[0]
+                        reach_merged.Length.idxmin() != reach_merged.index[-1]
                         and reach_merged.Length.min() < thresh
                     ):
 
