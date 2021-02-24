@@ -1,4 +1,4 @@
-NETCDFINC       =       $(NETCDF_INC)
+NETCDFINC       :=       $(NETCDF_INC)
 NETCDFLIB       =       -L$(NETCDF_LIB) -lnetcdff -lnetcdf
 COMPILER90 = gfortran
 F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4
@@ -45,6 +45,11 @@ bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o 
 %.o: %.f90
 	$(COMPILER90) $(F90FLAGS) $(NETCDFLIB) -c -o $@ $<
 
+install: binding_lp.a bind_hybrid.a bind_rfc.a
+	echo $^
+	for lib in $^; do \
+		cp $$lib ../../../python_framework_v02/libs; \
+	done
 
 clean:
 	rm -f *.o
