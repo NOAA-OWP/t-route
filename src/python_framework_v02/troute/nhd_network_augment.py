@@ -491,7 +491,7 @@ def upstream_merge(data_merged, chop):
     data_merged = data_merged.drop(idx_us)
 
     # update "chop" list with merged-out segment IDs
-    chop.append(idx_us)
+    chop.add(idx_us)
 
     return data_merged, chop
 
@@ -528,7 +528,7 @@ def downstream_merge(data_merged, chop, thresh):
     data_merged = data_merged.drop(idx_us)
 
     # update "chop" list with merged-out segment IDs
-    chop.append(idx_us)
+    chop.add(idx_us)
 
     return data_merged, chop
 
@@ -603,10 +603,10 @@ def qlat_destination_compute(
 
     # build a list of all segments that need crosswalking
     if bool(list(pruned_segments)):
-        segments = merged_segments + list(pruned_segments)
+        segments = list(merged_segments) + list(pruned_segments)
 
     else:
-        segments = merged_segments
+        segments = list(merged_segments)
 
     # compute connections using native network data
     conn = nhd_network.extract_connections(
@@ -645,7 +645,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     data_merged = data.copy()
 
     # initialize list to store merged segment IDs
-    merged_segments = []
+    merged_segments = set()
 
     # build connections and reverse connections
     conn, rconn = network_connections(data, network_data)
@@ -674,7 +674,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
             if rch_len < thresh and len(rch) > 1:
 
                 # merge ALL reach segments into one
-                chop = []
+                chop = set()
                 reach_merged, chop = merge_all(rch, data, chop)
 
                 # update network with merged reach data
@@ -683,6 +683,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                 )
 
                 # update merged_segments list with merged-out segments
+                # TO DO: This will break if prune and snap are off
                 merged_segments.extend(chop)
 
             ##################################################
@@ -695,7 +696,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                 reach_merged = data.loc[rch].copy()
 
                 # initialize list of segments chopped from this reach
-                chop_reach = []
+                chop_reach = set()
 
                 # so long as the shortest segment is shorter than the threshold...
                 while reach_merged.Length.min() < thresh:
@@ -707,11 +708,11 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                     ):
 
                         # upstream merge
-                        chop = []
+                        chop = set()
                         reach_merged, chop = upstream_merge(reach_merged, chop)
 
                         # update chop_reach list with merged-out segments
-                        chop_reach.extend(chop)
+                        chop_reach.update(chop)
 
                     # if shortest segment is NOT the last segment in the reach - conduct a downstream merge
                     if (
@@ -720,13 +721,13 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                     ):
 
                         # downstream merge
-                        chop = []
+                        chop = set()
                         reach_merged, chop = downstream_merge(
                             reach_merged, chop, thresh
                         )
 
                         # update chop_reach list with merged-out segments
-                        chop_reach.extend(chop)
+                        chop_reach.update(chop)
 
                 # correct segment connections within reach
                 reach_merged = correct_reach_connections(reach_merged)
@@ -737,7 +738,7 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
                 )
 
                 # update merged_segments list with merged-out segments
-                merged_segments.extend(chop_reach)
+                merged_segments.update(chop_reach)
 
     # create a qlateral destinations dictionary
     qlat_destinations = qlat_destination_compute(
