@@ -22,11 +22,24 @@ reach = Extension(
     sources=["troute/network/reach.{}".format(ext)],
     include_dirs=[np.get_include()],
     extra_objects=[],
+    libraries=[],
     extra_compile_args=["-g"],
 )
 
-package_data = {"troute.network": ["reach.pxd"]}
-ext_modules = [reach]
+reservoirs = Extension(
+    "troute.network.reservoirs.levelpool",
+    sources=[#"troute/network/reach.{}".format(ext)],
+             "troute/network/reservoirs/levelpool/levelpool.{}".format(ext)],
+    include_dirs=[np.get_include()],
+    extra_objects=["./libs/binding_lp.a"],
+    libraries=["gfortran", "netcdff", "netcdf"],
+    extra_compile_args=["-g"],
+)
+
+package_data = {"troute.network": ["reach.pxd", "__init__.pxd"],
+                "troute.network.reservoirs":["__init__.pxd"],
+                "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd"] }
+ext_modules = [reach, reservoirs]
 
 if USE_CYTHON:
     from Cython.Build import cythonize
@@ -35,7 +48,8 @@ if USE_CYTHON:
 
 setup(
     name="Network",
-    packages=["troute", "troute.network"],
+    packages=["troute", "troute.network", "troute.network.reservoirs", "troute.network.reservoirs.levelpool"],
     ext_modules=ext_modules,
+    ext_package="",
     package_data=package_data,
 )
