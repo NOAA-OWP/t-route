@@ -1171,6 +1171,7 @@ def main():
             restart_parameters,
             output_parameters,
             run_parameters,
+            parity_parameters,
         ) = nio.read_custom_input(custom_input_file)
         
         break_network_at_waterbodies = run_parameters.get(
