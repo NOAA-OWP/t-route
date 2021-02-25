@@ -8,7 +8,7 @@ ARFLAGS = rc
 
 VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
 
-.PHONY: all
+.PHONY: all install install_lp
 
 all: binding_lp.a bind_hybrid.a bind_rfc.a
 
@@ -50,6 +50,9 @@ install: binding_lp.a bind_hybrid.a bind_rfc.a
 	for lib in $^; do \
 		cp $$lib ../../../python_framework_v02/libs; \
 	done
+
+install_lp: binding_lp.a
+	cp $< ../../../python_framework_v02/libs;
 
 clean:
 	rm -f *.o
