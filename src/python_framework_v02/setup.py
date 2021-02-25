@@ -19,7 +19,9 @@ ext = "pyx" if USE_CYTHON else "c"
 
 reach = Extension(
     "troute.network.reach",
-    sources=["troute/network/reach.{}".format(ext)],
+    sources=[
+            "troute/network/reach.{}".format(ext),
+            ],
     include_dirs=[np.get_include()],
     extra_objects=[],
     libraries=[],
@@ -27,9 +29,10 @@ reach = Extension(
 )
 
 reservoirs = Extension(
-    "troute.network.reservoirs.levelpool",
-    sources=[#"troute/network/reach.{}".format(ext)],
-             "troute/network/reservoirs/levelpool/levelpool.{}".format(ext)],
+    "troute.network.reservoirs.levelpool.levelpool",
+    sources=[
+             "troute/network/reservoirs/levelpool/levelpool.{}".format(ext),
+             ],
     include_dirs=[np.get_include()],
     extra_objects=["./libs/binding_lp.a"],
     libraries=["gfortran", "netcdff", "netcdf"],
@@ -38,7 +41,8 @@ reservoirs = Extension(
 
 package_data = {"troute.network": ["reach.pxd", "__init__.pxd"],
                 "troute.network.reservoirs":["__init__.pxd"],
-                "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd"] }
+                "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd"],
+                 }
 ext_modules = [reach, reservoirs]
 
 if USE_CYTHON:
