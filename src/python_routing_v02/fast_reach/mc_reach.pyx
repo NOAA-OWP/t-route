@@ -799,8 +799,8 @@ cpdef object compute_network_structured_obj(
 
     #Run time
     while timestep < nsteps:
-      for r, reach_type, reservoir_object in reach_objects:
-    
+      for r, reach_type in reach_objects:
+
         #Need to get quc and qup
         upstream_flows = 0.0
         previous_upstream_flows = 0.0
@@ -817,9 +817,7 @@ cpdef object compute_network_structured_obj(
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
             routing_period = 300.0
 
-            reservoir_outflow = reservoir_object.run(upstream_flows, 0.0, routing_period) 
-
-            water_elevation = reservoir_object.get_water_elevation()
+            reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
             flowveldepth[id, timestep, 0] = reservoir_outflow
             flowveldepth[id, timestep, 1] = 0.0
