@@ -756,57 +756,20 @@ cpdef object compute_network_structured_obj(
     wbody_index = 0
 
     for reach, reach_type in reaches_wTypes:
-
+        upstream_reach = connections.get(reach[0], ())
+        upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
-            
-            upstream_reach = connections.get(reach[0], ())
-            upstream_ids = binary_find(data_idx, upstream_reach)
-
-            #Extract waterbody parameters for given reservoir
-            lake_area = wbody_parameters[wbody_index,0]
-            weir_elevation = wbody_parameters[wbody_index,6]
-            weir_coefficient = wbody_parameters[wbody_index,5]
-            weir_length = wbody_parameters[wbody_index,7]
-
-            #TODO: Need new Lake Parm file, which now has dam_length
-            #dam_length = wbody_parameters[wbody_index,1]
-            #Setting default dam_length to 10
-            dam_length = 10.0
-
-            orifice_elevation = wbody_parameters[wbody_index,4]
-            orifice_coefficient = wbody_parameters[wbody_index,3]
-            orifice_area = wbody_parameters[wbody_index,2]
-            max_depth = wbody_parameters[wbody_index,1]
-            initial_fractional_depth  = wbody_parameters[wbody_index,8]
-
-            lake_number = lake_numbers_col[wbody_index]
- 
-            #TODO: Read Water Elevation from Restart. Use below equation if no restart.
-            #Equation below is used in wrf-hydro
-            water_elevation = orifice_elevation + ((max_depth - orifice_elevation) * initial_fractional_depth) 
-
-            #Initialize level pool reservoir object
-            lp_reservoir = lp_kernel(0, 1,
-                water_elevation, lake_area,
-                weir_elevation, weir_coefficient, weir_length,
-                dam_length, orifice_elevation, orifice_coefficient,
-                orifice_area, max_depth, lake_number)
-
             #Add level pool reservoir ojbect to reach_objects
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                (MC_Reservoir(array('l',upstream_ids)), reach_type, lp_reservoir)
+                (
+                  MC_Levelpool(lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
+                  reach_type)#lp_reservoir)
                 )
-            
             wbody_index += 1
-
         else:
-       
-            upstream_reach = connections.get(reach[0], ())
             segment_ids = binary_find(data_idx, reach)
-            upstream_ids = binary_find(data_idx, upstream_reach)
-
             #Set the initial condtions before running loop
             flowveldepth[segment_ids, 0] = init_array[segment_ids]
             segment_objects = []
@@ -825,7 +788,7 @@ cpdef object compute_network_structured_obj(
 
             reach_objects.append(
                 #tuple of MC_Reach and reach_type
-                (MC_Reach(segment_objects, array('l',upstream_ids)), reach_type, None)
+                (MC_Reach(segment_objects, array('l',upstream_ids)), reach_type)
                 )
 
 
