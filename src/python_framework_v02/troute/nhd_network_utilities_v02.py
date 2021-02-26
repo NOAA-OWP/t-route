@@ -475,7 +475,7 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivisions=1):
+def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator, qts_subdivisions=1):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
@@ -493,7 +493,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
         qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
-            ts_portion=4,
+            ts_portion=ts_iterator,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )

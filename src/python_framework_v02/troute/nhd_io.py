@@ -195,8 +195,8 @@ def get_ql_from_wrf_hydro_mf(qlat_files,ts_portion, index_col="feature_id", valu
             columns=ds.time.values,
             # dtype=float,
         )
-    print(len(ql.columns))
-    return ql.iloc[:,0:ts_portion]
+    # print(len(ql.columns))
+    return ql.iloc[:,ts_portion:ts_portion+4]
     # return ql
 
 def drop_all_coords(ds):

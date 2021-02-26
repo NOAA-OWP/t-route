@@ -758,9 +758,8 @@ def _input_handler():
         parity_parameters,
     )
 
-
+ts_iterator = 0
 def main():
-
     (
         supernetwork_parameters,
         waterbody_parameters,
@@ -776,7 +775,7 @@ def main():
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
-
+    global ts_iterator
     if showtiming:
         main_start_time = time.time()
 
@@ -827,14 +826,15 @@ def main():
         start_time = time.time()
     if verbose:
         print("creating qlateral array ...")
-
+    print(ts_iterator)
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         connections.keys(),
         nts,
+        ts_iterator,
         run_parameters.get("qts_subdivisions", 1),
     )
-
+    
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -980,10 +980,16 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-    if verbose:
-        print("process complete")
-    if showtiming:
-        print("%s seconds." % (time.time() - main_start_time))
+    if ts_iterator == 24 - 4:
+        if verbose:
+            print("process complete")
+        if showtiming:
+            print("%s seconds." % (time.time() - main_start_time))
+    else:
+        ts_iterator = ts_iterator + 4
+        main()
+
+
 
 
 if __name__ == "__main__":
