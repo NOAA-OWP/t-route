@@ -193,12 +193,20 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
         preprocess=drop_all_coords,
         # parallel=True,
     ) as ds:
-        ql = pd.DataFrame(
-            ds[value_col].values.T,
-            index=ds[index_col].values[0],
-            columns=ds.time.values,
-            # dtype=float,
-        )
+        try:
+            ql = pd.DataFrame(
+                ds[value_col].values.T,
+                index=ds[index_col].values[0],
+                columns=ds.time.values,
+                # dtype=float,
+            )
+        except:
+            ql = pd.DataFrame(
+                ds[value_col].values.T,
+                index=ds[index_col].values,
+                columns=ds.time.values,
+                # dtype=float,
+            )
 
     return ql
 
