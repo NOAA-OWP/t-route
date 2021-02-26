@@ -137,7 +137,7 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(qlat_files,ts_portion, index_col="feature_id", value_col="q_lateral"):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -195,9 +195,9 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
             columns=ds.time.values,
             # dtype=float,
         )
-
-    return ql
-
+    print(len(ql.columns))
+    return ql.iloc[:,0:ts_portion]
+    # return ql
 
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)

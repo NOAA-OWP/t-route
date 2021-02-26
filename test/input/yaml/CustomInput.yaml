@@ -4,7 +4,7 @@ run_parameters:
     parallel_compute: false
     verbose: true
     showtiming: true
-    debuglevel: 1
+    debuglevel: 0
     break_network_at_waterbodies: true
     assume_short_ts: true
     qts_subdivisions: 12

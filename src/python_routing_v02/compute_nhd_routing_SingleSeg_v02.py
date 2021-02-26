@@ -813,7 +813,7 @@ def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-
+    
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
 
     if verbose:
@@ -951,7 +951,7 @@ def main():
         print("output complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
+    
 
     ################### Parity Check
 

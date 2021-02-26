@@ -164,10 +164,11 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
         validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
             parity_parameters["parity_check_file_pattern_filter"]
         )
-
+        ts_portion = 4
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
             validation_files,
+            ts_portion,
             parity_parameters["parity_check_file_index_col"],
             parity_parameters["parity_check_file_value_col"],
             # [compare_node],

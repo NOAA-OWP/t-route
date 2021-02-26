@@ -493,6 +493,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
         qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
+            ts_portion=4,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
