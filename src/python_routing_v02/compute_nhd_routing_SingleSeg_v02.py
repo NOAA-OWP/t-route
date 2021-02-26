@@ -724,8 +724,8 @@ def compute_nhd_routing_v02(
 
                     reaches_list_with_type.append(reach_and_type_tuple)
 
-                #qlat_sub = qlats.loc[common_segs].sort_index()
-                #q0_sub = q0.loc[common_segs].sort_index()
+                # qlat_sub = qlats.loc[common_segs].sort_index()
+                # q0_sub = q0.loc[common_segs].sort_index()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
@@ -1169,7 +1169,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-
     ################### Output Handling
 
     if showtiming:
@@ -1183,7 +1182,7 @@ def main():
             csv_output_folder = output_parameters["csv_output"].get(
                 "csv_output_folder", None
             )
-            csv_output_segments = csv_output.get("csv_output_segments",None)
+            csv_output_segments = csv_output.get("csv_output_segments", None)
 
     if (debuglevel <= -1) or csv_output:
 
@@ -1247,7 +1246,6 @@ def main():
         print("output complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
 
     ################### Parity Check
 
