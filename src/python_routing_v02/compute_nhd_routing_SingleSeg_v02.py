@@ -1068,7 +1068,9 @@ def main():
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        wbodies if break_network_at_waterbodies else False,
+        list(waterbodies_df_reduced.index.values)
+        if break_network_at_waterbodies
+        else None,
     )
 
     if verbose:
