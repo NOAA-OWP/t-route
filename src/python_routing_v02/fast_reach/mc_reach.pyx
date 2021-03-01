@@ -755,9 +755,6 @@ cpdef object compute_network_structured_obj(
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
     cdef float[:] lateral_flows
-    #reach iterator
-    #Commenting r out below for now in order for r to be MC_Reach or MC_Reservoir
-    #cdef MC_Reach r 
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -765,7 +762,7 @@ cpdef object compute_network_structured_obj(
     cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
 
     cdef long sid
-    cdef MC_Segment segment
+    #cdef MC_Segment segment
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
@@ -834,7 +831,7 @@ cpdef object compute_network_structured_obj(
             routing_period = 300.0
 
             reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
-
+            #FIXME THIS ID IS NOT RIGHT!!!!!!!!!!
             flowveldepth[id, timestep, 0] = reservoir_outflow
             flowveldepth[id, timestep, 1] = 0.0
             flowveldepth[id, timestep, 2] = water_elevation
@@ -847,6 +844,7 @@ cpdef object compute_network_structured_obj(
             if assume_short_ts:
                 upstream_flows = previous_upstream_flows
             #Create compute reach kernel input buffer
+            """
             for i in range(r.num_segments):
               segment = r.segments[i]
               segment_ids.append(segment.id)
@@ -863,11 +861,28 @@ cpdef object compute_network_structured_obj(
               buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
               buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
               buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
-
+            """
+            for i, segment in enumerate(r):
+              segment_ids.append(segment['id'])
+              buf_view[i, 0] = qlat_array[ segment['id'], int(timestep/qlat_resample)]
+              buf_view[i, 1] = segment['dt']
+              buf_view[i, 2] = segment['dx']
+              buf_view[i, 3] = segment['bw']
+              buf_view[i, 4] = segment['tw']
+              buf_view[i, 5] = segment['twcc']
+              buf_view[i, 6] = segment['n']
+              buf_view[i, 7] = segment['ncc']
+              buf_view[i, 8] = segment['cs']
+              buf_view[i, 9] = segment['s0']
+              buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
+              buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+              buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                 len(r.segments), buf_view,
+                                 len(r), buf_view,
                                  out_buf,
-                                 assume_short_ts)
+                                 assume_short_ts)#,
+                                 #timestep,
+                                 #nsteps)
             #Copy the output out
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
