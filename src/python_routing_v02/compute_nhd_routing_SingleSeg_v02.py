@@ -760,6 +760,7 @@ def _input_handler():
     )
 
 ts_iterator = 0
+output_counter = 2
 def main():
     (
         supernetwork_parameters,
@@ -777,6 +778,7 @@ def main():
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
     global ts_iterator
+    global output_counter
     if showtiming:
         main_start_time = time.time()
 
@@ -926,11 +928,9 @@ def main():
         # print(flowveldepth)
         restart_flows = flowveldepth.iloc[:,-3:]
         restart_flows.index.name = 'link'
-# (287, 'q'), (287, 'v'), (287, 'd')
-        # qu0       qd0        h0
         restart_flows.columns = ['qu0', 'qd0', 'h0'] 
-        # restart_flows = restart_flows.rename(columns={0: 'qu0', 1: 'qd0',2: 'h0'})
-        print(restart_flows.columns)
+        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(output_counter) + ".csv"
+        restart_flows.to_csv(output_iteration)
         print(restart_flows)
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
@@ -1010,6 +1010,7 @@ def main():
             print("%s seconds." % (time.time() - main_start_time))
     else:
         ts_iterator = ts_iterator + 12
+        output_counter = output_counter + 1 
         main()
 
 
