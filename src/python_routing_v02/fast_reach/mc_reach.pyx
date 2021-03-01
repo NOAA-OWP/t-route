@@ -10,8 +10,10 @@ cimport cython
 from libc.stdlib cimport malloc, free
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from troute.network.reach cimport MC_Segment, MC_Reach, _MC_Segment, _MC_Reach
-from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool
+from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
+
+from troute.network.reach cimport Reach, _Reach, compute_type
+from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
