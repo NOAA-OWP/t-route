@@ -1069,22 +1069,6 @@ def main():
         if break_network_at_waterbodies
         else None,
     )
-    """
-    for k,v  in wbodies.items():
-        #print(k, v)
-        if k in  rconn.keys():
-            print("found wbodies key  in  reaches keys")
-        if k in rconn.values():
-            print("found wbodies key  in  reaches values")
-        if v in  rconn.keys():
-            print("found wbodies value  in  reaches keys")
-        if v in rconn.values():
-            print("found wbodies value  in  reaches values")
-        os._exit(1)
-    #print(wbodies)
-    #print(reaches_bytw)
-    os._exit(1)
-    """
     if verbose:
         print("reach organization complete")
     if showtiming:
