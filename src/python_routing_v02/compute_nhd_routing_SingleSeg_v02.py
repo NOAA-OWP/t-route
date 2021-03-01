@@ -815,8 +815,10 @@ def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-    
-    q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
+    if ts_iterator == 0:
+        q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
+    else:
+        q0 = pd.read_csv("../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(output_counter) + ".csv")
 
     if verbose:
         print("channel initial states complete")
@@ -883,21 +885,8 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
     
-    # ds = xr.open_dataset(results)
-    # print(results[3])
-    # df_results = pd.DataFrame(results[3])
-    # df_results = df_results.T
-    # df_results = df_results.set_index([0])
-    # df_results = df_results.rename_axis('link')
-    # df_results = df_results.iloc[:,-3:]
-    # # df_results.index.
-    # print(df_results)
     print(q0)
     
-    # print(len(results))
-    # print(len(reaches_bytw))
-    # print(q0)
-
     ################### Output Handling
 
     if showtiming:
