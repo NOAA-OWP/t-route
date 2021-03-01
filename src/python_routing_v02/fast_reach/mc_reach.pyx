@@ -944,6 +944,7 @@ cpdef object compute_network_structured(
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
+    cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
     ###### Declare/type variables #####
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -961,7 +962,7 @@ cpdef object compute_network_structured(
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
-    cdef float[:] lateral_flowsr
+    cdef float[:] lateral_flows
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -973,39 +974,44 @@ cpdef object compute_network_structured(
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 		# First, extract only the reaches
-    cdef list reaches = [reach for reach, _ in reaches_wTypes]
+    #cdef list reaches = [reach for reach, _ in reaches_wTypes]
 
-    for reach in reaches:
-      upstream_reach = connections.get(reach[0], ())
-      segment_ids = binary_find(data_idx, reach)
+    wbody_index = 0
 
-      if len(upstream_reach) > 0:
+    for reach, reach_type in reaches_wTypes:
+        upstream_reach = connections.get(reach[0], ())
         upstream_ids = binary_find(data_idx, upstream_reach)
-      else:
-        upstream_ids = []
+        #Check if reach_type is 1 for reservoir
+        if (reach_type == 1):
+            #Add level pool reservoir ojbect to reach_objects
+            reach_objects.append(
+                #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                  MC_Levelpool(lake_numbers_col[wbody_index],
+                               array('l',upstream_ids),
+                               wbody_parameters[wbody_index])
+                )
+            wbody_index += 1
+        else:
+            segment_ids = binary_find(data_idx, reach)
+            #Set the initial condtions before running loop
+            flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
+            segment_objects = []
+            #Find the max reach size, used to create buffer for compute_reach_kernel
+            if len(segment_ids) > max_buff_size:
+                max_buff_size=len(segment_ids)
 
-      #Set the initial condtions before running loop
-      flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
-      #Using the segment/reach classes essentially as factory methods to create the lower level C structs
-      #This loop isn't intensive, so the python list overhead is minimal
-      #Could move to more direct creation/use for fine tuned optimization
-      segment_objects = []
-      #Find the max reach size, used to create buffer for compute_reach_kernel
-      if len(segment_ids) > max_buff_size:
-        max_buff_size=len(segment_ids)
-
-      for sid in segment_ids:
-        #Initialize parameters  from the data_array, and set the initial initial_conditions
-        #These aren't actually used (the initial contions) in the kernel as they are extracted from the
-        #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
-        #it is inialized to 0.0
-        segment_objects.append(
-            MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
+            for sid in segment_ids:
+                #Initialize parameters  from the data_array, and set the initial initial_conditions
+                #These aren't actually used (the initial contions) in the kernel as they are extracted from the
+                #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
+                #it is inialized to 0.0
+                segment_objects.append(
+                MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
             )
-
-      reach_objects.append(
-          MC_Reach(segment_objects, array('l',upstream_ids))
-          )
+            reach_objects.append(
+                #tuple of MC_Reach and reach_type
+                MC_Reach(segment_objects, array('l',upstream_ids))
+                )
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
@@ -1014,15 +1020,17 @@ cpdef object compute_network_structured(
 
     cdef int num_reaches = len(reach_objects)
     #Dynamically allocate a C array of reach structs
-    cdef _MC_Reach* reach_structs = <_MC_Reach*>malloc(sizeof(_MC_Reach)*num_reaches)
+    cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
     #Populate the above array with the structs contained in each reach object
     for i in range(num_reaches):
-      reach_structs[i] = (<MC_Reach>reach_objects[i])._reach
+      reach_structs[i] = (<Reach>reach_objects[i])._reach
 
     #reach iterator
-    cdef _MC_Reach r
+    cdef _Reach r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
+    cdef float lp_outflow, lp_water_elevation
+    cdef int id = 0
     #Run time
     with nogil:
       while timestep < nsteps:
@@ -1032,42 +1040,61 @@ cpdef object compute_network_structured(
               #Need to get quc and qup
               upstream_flows = 0.0
               previous_upstream_flows = 0.0
+
               for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
                 id = r._upstream_ids[_i]
                 upstream_flows += flowveldepth[id, timestep, 0]
                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
-              #Index of segments required to process this reach
-              #segment_ids = []#[segment.id for segment in r._segments]
 
-              if assume_short_ts:
-                  upstream_flows = previous_upstream_flows
-              #Create compute reach kernel input buffer
-              #for i, segment in enumerate(r.segments):
-              for i in range(r._num_segments):
-                segment = r._segments[i]
-                buf_view[i, 0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
-                buf_view[i, 1] = segment.dt
-                buf_view[i, 2] = segment.dx
-                buf_view[i, 3] = segment.bw
-                buf_view[i, 4] = segment.tw
-                buf_view[i, 5] = segment.twcc
-                buf_view[i, 6] = segment.n
-                buf_view[i, 7] = segment.ncc
-                buf_view[i, 8] = segment.cs
-                buf_view[i, 9] = segment.s0
-                buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
-                buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
+              if r.type == compute_type.RESERVOIR_LP:
+                """
+                id = r.reach.lp.lake_number
+                with gil:
+                  print("id ", r.reach.lp)
+                  print("id ", id)
+                  printf("timestep %d\n",  timestep)
+                  exit(1)
+                """
+                run(&r, 300, upstream_flows, 0.0, &lp_outflow, &lp_water_elevation)
 
-              compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                   r._num_segments, buf_view,
-                                   out_buf,
-                                   assume_short_ts)
-              #Copy the output out
-              for i in range(r._num_segments):
-                flowveldepth[r._segments[i].id, timestep, 0] = out_buf[i, 0]
-                flowveldepth[r._segments[i].id, timestep, 1] = out_buf[i, 1]
-                flowveldepth[r._segments[i].id, timestep, 2] = out_buf[i, 2]
+
+                flowveldepth[id, timestep, 0] = lp_outflow
+                flowveldepth[id, timestep, 1] = 0.0
+                flowveldepth[id, timestep, 2] = lp_water_elevation
+              else:
+                if assume_short_ts:
+                    upstream_flows = previous_upstream_flows
+                #Create compute reach kernel input buffer
+                #for i, segment in enumerate(r.segments):
+                for i in range(r.reach.mc_reach.num_segments):
+                  segment = get_mc_segment(&r, i)#r._segments[i]
+                  buf_view[i, 0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
+                  buf_view[i, 1] = segment.dt
+                  buf_view[i, 2] = segment.dx
+                  buf_view[i, 3] = segment.bw
+                  buf_view[i, 4] = segment.tw
+                  buf_view[i, 5] = segment.twcc
+                  buf_view[i, 6] = segment.n
+                  buf_view[i, 7] = segment.ncc
+                  buf_view[i, 8] = segment.cs
+                  buf_view[i, 9] = segment.s0
+                  buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
+                  buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                  buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
+
+                compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                     r.reach.mc_reach.num_segments, buf_view,
+                                     out_buf,
+                                     assume_short_ts)#,
+                                     #timestep,
+                                     #nsteps)
+                #Copy the output out
+                for i in range(r.reach.mc_reach.num_segments):
+                  segment = get_mc_segment(&r, i)
+                  #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
+                  flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
+                  flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
+                  flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
 
         timestep += 1
     #copy t1 to t0 to be consistent
@@ -1076,4 +1103,5 @@ cpdef object compute_network_structured(
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
     free(reach_structs)
+    #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.reshape(flowveldepth.shape[0], -1), dtype='float32')
     return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
