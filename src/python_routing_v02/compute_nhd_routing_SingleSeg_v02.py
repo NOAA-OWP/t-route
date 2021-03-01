@@ -294,7 +294,7 @@ elif not ENV_IS_CL:
 
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
-import mc_reach
+import fast_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
@@ -823,7 +823,7 @@ def compute_nhd_routing_v02(
             reaches_list_with_type = list(zip(reach_list, reach_type_list))
             """
             reaches_list_with_type = []
-            
+
             for reaches in reach_list:
                 if (set(reaches) & wbodies_segs):
                     reach_type = 1 # type 1 for waterbody/lake
@@ -1072,7 +1072,6 @@ def main():
         if break_network_at_waterbodies
         else None,
     )
-
     if verbose:
         print("reach organization complete")
     if showtiming:
@@ -1145,16 +1144,16 @@ def main():
             print(f"executing routing computation ...")
 
     if run_parameters.get("compute_method", None) == "V02-caching":
-        compute_func = mc_reach.compute_network
+        compute_func = fast_reach.compute_network
     elif run_parameters.get("compute_method", None) == "V02-structured":
-        compute_func = mc_reach.compute_network_structured
+        compute_func = fast_reach.compute_network_structured
     elif run_parameters.get("compute_method", None) == "V02-structured-obj":
-        compute_func = mc_reach.compute_network_structured_obj
+        compute_func = fast_reach.compute_network_structured_obj
     else:
-        compute_func = mc_reach.compute_network
+        compute_func = fast_reach.compute_network
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
-    # compute_func = mc_reach.compute_network_structured_obj
+    # compute_func = fast_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
         connections,

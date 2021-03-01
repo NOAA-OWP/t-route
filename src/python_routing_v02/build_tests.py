@@ -21,7 +21,7 @@ from operator import itemgetter
 ## network and reach utilities
 import compute_nhd_routing_SingleSeg_v02 as nhd_compute
 import troute.nhd_network_utilities_v02 as nnu
-import mc_reach
+import fast_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 
@@ -161,9 +161,9 @@ def build_test_parameters(
 
 
 def parity_check(parity_parameters, run_parameters, nts, dt, results):
-    
+
     if "parity_check_input_folder" in parity_parameters:
-        
+
         validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
             parity_parameters["parity_check_file_pattern_filter"]
         )
@@ -175,13 +175,13 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
             parity_parameters["parity_check_file_value_col"],
             # [compare_node],
         )
-    
+
     if "parity_check_file" in parity_parameters:
         validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
-        
+
     compare_node = parity_parameters["parity_check_compare_node"]
 
     wrf_time = validation_data.columns.astype("datetime64[ns]")

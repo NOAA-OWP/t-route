@@ -25,7 +25,7 @@ reach = Extension(
 )
 
 mc_reach = Extension(
-    "mc_reach",
+    "fast_reach",
     sources=["fast_reach/mc_reach.{}".format(ext)],
     include_dirs=[np.get_include()],
     libraries=[],
