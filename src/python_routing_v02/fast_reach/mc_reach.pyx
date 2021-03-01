@@ -160,10 +160,15 @@ cpdef object compute_network(
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
-    const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
+    const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    const float[:,:] usgs_values,
+    const int[:] usgs_positions_list,
+    # const float[:] wbody_idx,
+    # object[:] wbody_cols,
+    # const float[:, :] wbody_vals,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -201,6 +206,9 @@ cpdef object compute_network(
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+
+    cdef int gages_size = len(usgs_positions_list)
+    cdef int gage_i, usgs_position_i
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -407,7 +415,11 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-
+                if gages_size:
+                    for gage_i in range(gages_size):
+                        usgs_position_i = usgs_positions_list[gage_i]
+                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+    
             timestep += 1
 
     # delete the duplicate results that shouldn't be passed along
@@ -683,10 +695,12 @@ cpdef object compute_network_structured_obj(
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
-    const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
+    const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    const float[:,:] usgs_values,
+    const int[:] usgs_positions_list,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -874,10 +888,12 @@ cpdef object compute_network_structured(
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
-    const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
+    const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    const float[:,:] usgs_values,
+    const int[:] usgs_positions_list,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,

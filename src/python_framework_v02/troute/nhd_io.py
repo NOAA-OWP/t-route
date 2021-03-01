@@ -5,6 +5,8 @@ import pandas as pd
 import geopandas as gpd
 import json
 import yaml
+import numpy as np
+from toolz import compose
 
 
 def read_netcdf(geo_file_path):
@@ -54,6 +56,7 @@ def read_custom_input(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
     parity_parameters = data.get("parity_parameters", {})
+    data_assimilation_parameters = data.get("data_assimilation_parameters", {})
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -63,6 +66,7 @@ def read_custom_input(custom_input_file):
         output_parameters,
         run_parameters,
         parity_parameters,
+        data_assimilation_parameters,
     )
 
 
@@ -189,12 +193,20 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
         preprocess=drop_all_coords,
         # parallel=True,
     ) as ds:
-        ql = pd.DataFrame(
-            ds[value_col].values.T,
-            index=ds[index_col].values,
-            columns=ds.time.values,
-            # dtype=float,
-        )
+        try:
+            ql = pd.DataFrame(
+                ds[value_col].values.T,
+                index=ds[index_col].values[0],
+                columns=ds.time.values,
+                # dtype=float,
+            )
+        except:
+            ql = pd.DataFrame(
+                ds[value_col].values.T,
+                index=ds[index_col].values,
+                columns=ds.time.values,
+                # dtype=float,
+            )
 
     return ql
 
@@ -229,6 +241,152 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     ql = mod.pivot(index=index_col, columns="time", values=value_col)
 
     return ql
+
+
+def read_netcdfs(paths, dim, transform_func=None):
+    def process_one_path(path):
+        with xr.open_dataset(path) as ds:
+            if transform_func is not None:
+                ds = transform_func(ds)
+            ds.load()
+            return ds
+
+    #paths = sorted(pathlib.glob(files))
+    datasets = [process_one_path(p) for p in paths]
+    combined = xr.concat(datasets, dim)
+    return combined
+
+
+def preprocess_time_station_index(xd):
+    stationId_da_mask = list(
+        map(compose(bytes.isdigit, bytes.strip), xd.stationId.values)
+    )
+    stationId = xd.stationId[stationId_da_mask].values.astype(int)
+
+    unique_times_str = np.unique(xd.time.values).tolist()
+
+    unique_times = np.array(unique_times_str, dtype="str")
+
+    data_var_dict = {}
+    data_vars = ("discharge", "discharge_quality")
+    for v in data_vars:
+        data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
+    return xr.Dataset(
+        data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
+    )
+
+def get_usgs_from_time_slices_csv(
+    routelink_subset_file,usgs_csv
+):
+    
+    df2 = pd.read_csv(usgs_csv,index_col=0)
+
+    with xr.open_dataset(routelink_subset_file) as ds:
+        gage_list = list(map(bytes.strip, ds.gages.values))
+        gage_mask = list(map(bytes.isdigit, gage_list))
+
+        gage_da = ds.gages[gage_mask].values.astype(int)
+
+        data_var_dict = {}
+        data_vars = ("link", "to", "ascendingIndex")
+        for v in data_vars:
+            data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
+        ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
+    df = ds.to_dataframe()
+
+    usgs_df = df.join(df2)
+    usgs_df = usgs_df.reset_index()
+    usgs_df = usgs_df.rename(columns={"index": "gages"})
+    usgs_df = usgs_df.set_index("link")
+    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
+    columns_list = usgs_df.columns
+    
+    for i in range(0, (len(columns_list) * 3) - 12, 12):
+        original_string = usgs_df.columns[i]
+        original_string_shortened = original_string[:-5]
+        temp_name1 = original_string_shortened + str("05:00")
+        temp_name2 = original_string_shortened + str("10:00")
+        temp_name3 = original_string_shortened + str("20:00")
+        temp_name4 = original_string_shortened + str("25:00")
+        temp_name5 = original_string_shortened + str("35:00")
+        temp_name6 = original_string_shortened + str("40:00")
+        temp_name7 = original_string_shortened + str("50:00")
+        temp_name8 = original_string_shortened + str("55:00")
+        usgs_df.insert(i + 1, temp_name1, np.nan)
+        usgs_df.insert(i + 2, temp_name2, np.nan)
+        usgs_df.insert(i + 4, temp_name3, np.nan)
+        usgs_df.insert(i + 5, temp_name4, np.nan)
+        usgs_df.insert(i + 7, temp_name5, np.nan)
+        usgs_df.insert(i + 8, temp_name6, np.nan)
+        usgs_df.insert(i + 10, temp_name7, np.nan)
+        usgs_df.insert(i + 11, temp_name8, np.nan)
+
+    usgs_df = usgs_df.interpolate(method="linear", axis=1)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:,0] == -999999.000000].index , inplace=True)
+
+    return usgs_df
+
+def get_usgs_from_time_slices_folder(
+    routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
+):
+    usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
+
+    with read_netcdfs(
+        usgs_files,
+        "time",
+        preprocess_time_station_index,
+    ) as ds2:
+        df2 = pd.DataFrame(
+            ds2["discharge"].values.T,
+            index=ds2["stationId"].values,
+            columns=ds2.time.values,
+        )
+
+
+    with xr.open_dataset(routelink_subset_file) as ds:
+        gage_list = list(map(bytes.strip, ds.gages.values))
+        gage_mask = list(map(bytes.isdigit, gage_list))
+
+        gage_da = ds.gages[gage_mask].values.astype(int)
+
+        data_var_dict = {}
+        data_vars = ("link", "to", "ascendingIndex")
+        for v in data_vars:
+            data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
+        ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
+    df = ds.to_dataframe()
+
+    usgs_df = df.join(df2)
+    usgs_df = usgs_df.reset_index()
+    usgs_df = usgs_df.rename(columns={"index": "gages"})
+    usgs_df = usgs_df.set_index("link")
+    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
+    columns_list = usgs_df.columns
+    
+    for i in range(0, (len(columns_list) * 3) - 12, 12):
+        original_string = usgs_df.columns[i]
+        original_string_shortened = original_string[:-5]
+        temp_name1 = original_string_shortened + str("05:00")
+        temp_name2 = original_string_shortened + str("10:00")
+        temp_name3 = original_string_shortened + str("20:00")
+        temp_name4 = original_string_shortened + str("25:00")
+        temp_name5 = original_string_shortened + str("35:00")
+        temp_name6 = original_string_shortened + str("40:00")
+        temp_name7 = original_string_shortened + str("50:00")
+        temp_name8 = original_string_shortened + str("55:00")
+        usgs_df.insert(i + 1, temp_name1, np.nan)
+        usgs_df.insert(i + 2, temp_name2, np.nan)
+        usgs_df.insert(i + 4, temp_name3, np.nan)
+        usgs_df.insert(i + 5, temp_name4, np.nan)
+        usgs_df.insert(i + 7, temp_name5, np.nan)
+        usgs_df.insert(i + 8, temp_name6, np.nan)
+        usgs_df.insert(i + 10, temp_name7, np.nan)
+        usgs_df.insert(i + 11, temp_name8, np.nan)
+
+    usgs_df = usgs_df.interpolate(method="linear", axis=1)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:,0] == -999999.000000].index , inplace=True)
+
+    return usgs_df
 
 
 def get_channel_restart_from_csv(
