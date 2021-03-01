@@ -729,6 +729,12 @@ def compute_nhd_routing_v02(
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
+                param_df_sub = param_df_sub.reindex(
+                    param_df_sub.index.tolist() + lake_segs
+                ).sort_index()
+                qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                q0_sub = q0_sub.reindex(param_df_sub.index)
+
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -804,6 +810,12 @@ def compute_nhd_routing_v02(
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
+
+            param_df_sub = param_df_sub.reindex(
+                param_df_sub.index.tolist() + lake_segs
+            ).sort_index()
+            qlat_sub = qlat_sub.reindex(param_df_sub.index)
+            q0_sub = q0_sub.reindex(param_df_sub.index)
 
             reach_type_list = [
                 1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
