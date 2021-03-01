@@ -28,6 +28,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
+import xarray as xr
 
 
 def _handle_args():
@@ -879,7 +880,21 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
+    
+    # ds = xr.open_dataset(results)
+    # print(results[3])
+    # df_results = pd.DataFrame(results[3])
+    # df_results = df_results.T
+    # df_results = df_results.set_index([0])
+    # df_results = df_results.rename_axis('link')
+    # df_results = df_results.iloc[:,-3:]
+    # # df_results.index.
+    # print(df_results)
+    print(q0)
+    
+    # print(len(results))
+    # print(len(reaches_bytw))
+    # print(q0)
 
     ################### Output Handling
 
@@ -908,7 +923,15 @@ def main():
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
                 copy=False,
             )
-
+        # print(flowveldepth)
+        restart_flows = flowveldepth.iloc[:,-3:]
+        restart_flows.index.name = 'link'
+# (287, 'q'), (287, 'v'), (287, 'd')
+        # qu0       qd0        h0
+        restart_flows.columns = ['qu0', 'qd0', 'h0'] 
+        # restart_flows = restart_flows.rename(columns={0: 'qu0', 1: 'qd0',2: 'h0'})
+        print(restart_flows.columns)
+        print(restart_flows)
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
@@ -980,13 +1003,13 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-    if ts_iterator == 24 - 4:
+    if ts_iterator == 24 - 12:
         if verbose:
             print("process complete")
         if showtiming:
             print("%s seconds." % (time.time() - main_start_time))
     else:
-        ts_iterator = ts_iterator + 4
+        ts_iterator = ts_iterator + 12
         main()
 
 
