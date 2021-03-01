@@ -2,21 +2,23 @@ cimport numpy as np
 """
 FIXME add some significant inline documentation
 """
-from troute.network.reach cimport MC_Reach_Base_Class
+from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
-ctypedef enum compute_type: RESERVOIR_LP
+cdef void run(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
 
-cdef class MC_Levelpool(MC_Reach_Base_Class):
+cdef extern from "levelpool_structs.h":
+  ctypedef struct _MC_Levelpool:
+    int lake_number
+    float dam_length, area, max_depth
+    float orifice_area, orifice_coefficient, orifice_elevation
+    float weir_coefficient, weir_elevation, weir_length
+    float initial_fractional_depth, water_elevation
+  ctypedef struct _Reach:
+    pass
+
+cdef class MC_Levelpool(Reach):
   """
 
   """
-  cdef int lake_number
-  cdef float dam_length, area, max_depth
-  cdef float orifice_area, orifice_coefficient, orifice_elevation
-  cdef float weir_coefficient, weir_elevation, weir_length
-  cdef float initial_fractional_depth, water_elevation
-  #Initialize level pool reservoir object
-  cdef void* lp_handle;
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)
-  cpdef float get_water_elevation(self)
