@@ -3,12 +3,13 @@
 
 void init_reach(_Reach* reach, long* upstream_ids, int num_upstream_ids, int reach_type)
 {
+  int i;
   if( reach != NULL){
     reach->type = reach_type;
     reach->_num_upstream_ids = num_upstream_ids;
     if(num_upstream_ids > 0 && upstream_ids != NULL){
       reach->_upstream_ids = (long*) malloc(sizeof(long)*(num_upstream_ids));
-      for(int i = 0; i < num_upstream_ids; i++){
+      for(i = 0; i < num_upstream_ids; i++){
         reach->_upstream_ids[i] = upstream_ids[i];
       }
     }
