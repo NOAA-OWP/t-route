@@ -2,22 +2,25 @@ cimport numpy as np
 import numpy as np
 from libc.stdlib cimport malloc, free
 
+from troute.network.reach cimport compute_type, _Reach
 """
 Externally defined symbols
 """
-############ Level Pool Reservoir Interface ############
-cdef extern void* get_lp_handle() nogil;
 
-cdef extern void init_lp(void* handle, float *water_elevation, float *lake_area, float *weir_elevation,
-                    float *weir_coefficient, float *weir_length, float *dam_length, float *orifice_elevation,
-                    float *orifice_coefficient, float *orifice_area, float *max_depth, int *lake_number) nogil;
+cdef extern from "levelpool_structs.c":
+  void init_levelpool_reach(_Reach* reach, int lake_number,
+                            float dam_length, float area, float max_depth,
+                            float orifice_area, float orifice_coefficient, float orifice_elevation,
+                            float weir_coefficient, float weir_elevation, float weir_length,
+                            float initial_fractional_depth, float water_elevation
+  )
+  void free_levelpool_reach(_Reach* reach)
+  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
 
-cdef extern void run_lp(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period) nogil;
+cdef void run(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil:
+    route(reach, routing_period, inflow, lateral_inflow, outflow, water_elevation)
 
-cdef extern void free_lp(void* handle);
-
-cdef class MC_Levelpool(MC_Reach_Base_Class):
+cdef class MC_Levelpool(Reach):
   """
     MC_Reservoir is a subclass of MC_Reach_Base_Class
   """
@@ -27,7 +30,15 @@ cdef class MC_Levelpool(MC_Reach_Base_Class):
       Construct the kernel based on passed parameters,
       which only constructs the parent class
     """
-    super().__init__(upstream_ids)
+    super().__init__(upstream_ids, compute_type.RESERVOIR_LP)
+    #init the backing struct, pass a dam_length of 10.0 for now
+    #pass a negative water elevation, which causes the init to use the wrf hydro equation
+    init_levelpool_reach(&self._reach, lake_number,
+                         10.0, args[0], args[1],
+                         args[2], args[3], args[4],
+                         args[5], args[6], args[7],
+                         args[8], -1)
+    """
     self.lake_number = lake_number
     #TODO: Need new Lake Parm file, which now has dam_length
     #dam_length = wbody_parameters[wbody_index,1]
@@ -45,6 +56,8 @@ cdef class MC_Levelpool(MC_Reach_Base_Class):
     #TODO: Read Water Elevation from Restart. Use below equation if no restart.
     #Equation below is used in wrf-hydro
     self.water_elevation = self.orifice_elevation + ((self.max_depth - self.orifice_elevation) * self.initial_fractional_depth)
+    """
+    """
     #Initialize level pool reservoir object
     with nogil:
       self.lp_handle = get_lp_handle()
@@ -53,24 +66,19 @@ cdef class MC_Levelpool(MC_Reach_Base_Class):
                    &self.dam_length, &self.orifice_elevation, &self.orifice_coefficient,
                    &self.orifice_area, &self.max_depth, &self.lake_number)
     #print(<int>self.lp_handle)
+    """
 
   def __dealloc__(self):
     """
 
     """
-    free(self._reach._upstream_ids)
-    free_lp(self.lp_handle)
+    free_levelpool_reach(&self._reach)
+    #free_lp(self.lp_handle)
 
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
     cdef float outflow = 0.0
+    cdef float water_elevation = 0.0
     with nogil:
-      run_lp(self.lp_handle, &inflow, &lateral_inflow, &self.water_elevation, &outflow, &routing_period)
+      route(&self._reach, routing_period, inflow, lateral_inflow, &outflow,  &water_elevation)
       #printf("outflow: %f\n", outflow)
-      return outflow, self.water_elevation#, self.water_elevation
-
-  cpdef float get_water_elevation(self):
-    #cdef float water_elevation
-
-    with nogil:
-      #water_elevation = self.water_elevation
-      return self.water_elevation
+      return outflow, water_elevation#, self.water_elevation
