@@ -1,0 +1,53 @@
+GFORTRAN module version '10' created from types.f90
+MD5:a348ec09445de125805c0ecc3c5b45b2 -- If you edit this, you'll get what you deserve.
+
+(() () () () () () () () () () () () () () () () () () () () () () () ()
+() () ())
+
+()
+
+(('dvector' 'types' 2) ('ivector' 'types' 3) ('zvector' 'types' 4))
+
+()
+
+()
+
+()
+
+(2 'Dvector' 'types' '' 1 ((DERIVED UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 POINTER_COMP) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ((5
+'vec' (REAL 8 0 0 0 REAL ()) (1 0 DEFERRED () ()) (UNKNOWN-FL
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 DIMENSION POINTER)
+UNKNOWN-ACCESS (NULL (UNKNOWN 0 0 0 0 UNKNOWN ()) 0))) PUBLIC (() () ()
+()) () 0 0 34265377)
+3 'Ivector' 'types' '' 1 ((DERIVED UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 POINTER_COMP) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ((6
+'vec' (INTEGER 4 0 0 0 INTEGER ()) (1 0 DEFERRED () ()) (UNKNOWN-FL
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 DIMENSION POINTER)
+UNKNOWN-ACCESS (NULL (UNKNOWN 0 0 0 0 UNKNOWN ()) 0))) PUBLIC (() () ()
+()) () 0 0 20085158)
+4 'Zvector' 'types' '' 1 ((DERIVED UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 POINTER_COMP) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ((7
+'vec' (COMPLEX 8 0 0 0 COMPLEX ()) (1 0 DEFERRED () ()) (UNKNOWN-FL
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 DIMENSION POINTER)
+UNKNOWN-ACCESS (NULL (UNKNOWN 0 0 0 0 UNKNOWN ()) 0))) PUBLIC (() () ()
+()) () 0 0 73885495)
+8 'dp' 'types' '' 1 ((PARAMETER UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+IMPLICIT-SAVE 0 0) (INTEGER 4 0 0 0 INTEGER ()) 0 0 () (CONSTANT (
+INTEGER 4 0 0 0 INTEGER ()) 0 '8') () 0 () () () 0 0)
+9 'dvector' 'types' '' 1 ((PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC DECL
+UNKNOWN 0 0 FUNCTION GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ()
+() () 0 0)
+10 'hp' 'types' '' 1 ((PARAMETER UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+IMPLICIT-SAVE 0 0) (INTEGER 4 0 0 0 INTEGER ()) 0 0 () (CONSTANT (
+INTEGER 4 0 0 0 INTEGER ()) 0 '8') () 0 () () () 0 0)
+11 'ivector' 'types' '' 1 ((PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC DECL
+UNKNOWN 0 0 FUNCTION GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ()
+() () 0 0)
+12 'zvector' 'types' '' 1 ((PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC DECL
+UNKNOWN 0 0 FUNCTION GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 ()
+() () 0 0)
+)
+
+('Dvector' 0 2 'Ivector' 0 3 'Zvector' 0 4 'dp' 0 8 'dvector' 0 9 'hp' 0
+10 'ivector' 0 11 'zvector' 0 12)
