@@ -260,6 +260,25 @@ def _handle_args():
         default="q_lateral",
     )
     parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
+
+    parser.add_argument(
+        "--data_assimilation_folder_path",
+        help="Provide a path to a folder containing the usgs time slice files",
+        dest="data_assimilation_parameters_folder",
+        default=None,
+    )
+    parser.add_argument(
+        "--data_assimilation_filter",
+        help="Provide a glob pattern filter for ncdf files (e.g., 2020-03-21*.usgsTimeSlice.ncdf)",
+        dest="data_assimilation_filter",
+        default=None,
+    )
+    parser.add_argument(
+        "--data_assimilation_csv",
+        help="Provide a csv with the timeslices prepared for use",
+        dest="data_assimilation_csv",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -305,8 +324,9 @@ def compute_nhd_routing_v02(
     qts_subdivisions,
     independent_networks,
     param_df,
-    qlats,
     q0,
+    qlats,
+    usgs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -415,10 +435,25 @@ def compute_nhd_routing_v02(
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-                    qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc[segs].sort_index()
+
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
+
+                    if not usgs_df.empty:
+                        usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            usgs_segs
+                        )
+                        usgs_df_sub = usgs_df.loc[usgs_segs]
+                        usgs_df_sub.drop(
+                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                        )
+                    else:
+                        usgs_df_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
+                    qlat_sub = qlats.loc[param_df_sub.index]
+                    q0_sub = q0.loc[param_df_sub.index]
 
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -427,7 +462,6 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-
 
                     # results_subn[order].append(
                     #     compute_func(
@@ -440,13 +474,15 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            qlat_sub.values,
-                            q0_sub.values,
+                            q0_sub.values.astype("float32"),
+                            qlat_sub.values.astype("float32"),
                             [],  # lake_segs
                             np.empty(
                                 shape=(0, 0), dtype="float64"
                             ),  # waterbodies_df_sub.values
+                            usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -544,8 +580,22 @@ def compute_nhd_routing_v02(
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-                    qlat_sub = qlats.loc[segs].sort_index()
-                    q0_sub = q0.loc[segs].sort_index()
+
+                    if not usgs_df.empty:
+                        usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            usgs_segs
+                        )
+                        usgs_df_sub = usgs_df.loc[usgs_segs]
+                        usgs_df_sub.drop(
+                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                        )
+                    else:
+                        usgs_df_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
+                    qlat_sub = qlats.loc[param_df_sub.index]
+                    q0_sub = q0.loc[param_df_sub.index]
 
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -564,13 +614,15 @@ def compute_nhd_routing_v02(
                             param_df_sub.index.values,
                             param_df_sub.columns.values,
                             param_df_sub.values,
-                            qlat_sub.values,
-                            q0_sub.values,
+                            q0_sub.values.astype("float32"),
+                            qlat_sub.values.astype("float32"),
                             [],  # lake_segs
                             np.empty(
                                 shape=(0, 0), dtype="float64"
                             ),  # waterbodies_df_sub.values
+                            usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -649,6 +701,17 @@ def compute_nhd_routing_v02(
                     ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"],
                 ].sort_index()
 
+                if not usgs_df.empty:
+                    usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                    nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                    usgs_df_sub = usgs_df.loc[usgs_segs]
+                    usgs_df_sub.drop(
+                        usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                    )
+                else:
+                    usgs_df_sub = pd.DataFrame()
+                    nudging_positions_list = []
+
                 reaches_list_with_type = []
 
                 for reaches in reach_list:
@@ -661,8 +724,11 @@ def compute_nhd_routing_v02(
 
                     reaches_list_with_type.append(reach_and_type_tuple)
 
-                qlat_sub = qlats.loc[common_segs].sort_index()
-                q0_sub = q0.loc[common_segs].sort_index()
+                # qlat_sub = qlats.loc[common_segs].sort_index()
+                # q0_sub = q0.loc[common_segs].sort_index()
+                qlat_sub = qlats.loc[param_df_sub.index]
+                q0_sub = q0.loc[param_df_sub.index]
+
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -672,10 +738,12 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.values,
                         param_df_sub.columns.values,
                         param_df_sub.values,
-                        qlat_sub.values,
-                        q0_sub.values,
+                        q0_sub.values.astype("float32"),
+                        qlat_sub.values.astype("float32"),
                         lake_segs,
                         waterbodies_df_sub.values,
+                        usgs_df_sub.values.astype("float32"),
+                        np.array(nudging_positions_list, dtype="int32"),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -723,6 +791,20 @@ def compute_nhd_routing_v02(
                 common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
 
+            if not usgs_df.empty:
+                usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                usgs_df_sub = usgs_df.loc[usgs_segs]
+                usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
+            else:
+                usgs_df_sub = pd.DataFrame()
+                nudging_positions_list = []
+
+            # qlat_sub = qlats.loc[common_segs].sort_index()
+            # q0_sub = q0.loc[common_segs].sort_index()
+            qlat_sub = qlats.loc[param_df_sub.index]
+            q0_sub = q0.loc[param_df_sub.index]
+
             reach_type_list = [
                 1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
             ]
@@ -741,8 +823,6 @@ def compute_nhd_routing_v02(
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
 
-            qlat_sub = qlats.loc[common_segs].sort_index()
-            q0_sub = q0.loc[common_segs].sort_index()
             results.append(
                 compute_func(
                     nts,
@@ -752,10 +832,12 @@ def compute_nhd_routing_v02(
                     param_df_sub.index.values,
                     param_df_sub.columns.values,
                     param_df_sub.values,
-                    qlat_sub.values,
-                    q0_sub.values,
+                    q0_sub.values.astype("float32"),
+                    qlat_sub.values.astype("float32"),
                     lake_segs,
                     waterbodies_df_sub.values,
+                    usgs_df_sub.values.astype("float32"),
+                    np.array(nudging_positions_list, dtype="int32"),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -777,6 +859,7 @@ def _input_handler():
     output_parameters = {}
     run_parameters = {}
     parity_parameters = {}
+    data_assimilation_parameters = {}
 
     if custom_input_file:
         (
@@ -787,9 +870,8 @@ def _input_handler():
             output_parameters,
             run_parameters,
             parity_parameters,
+            data_assimilation_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
-        run_parameters["debuglevel"] *= -1
-
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["return_courant"] = args.return_courant
@@ -840,6 +922,16 @@ def _input_handler():
                 "break_network_at_waterbodies"
             ] = args.break_network_at_waterbodies
 
+            data_assimilation_parameters[
+                "data_assimilation_parameters_folder"
+            ] = args.data_assimilation_parameters_folder
+            data_assimilation_parameters[
+                "data_assimilation_filter"
+            ] = args.data_assimilation_filter
+            data_assimilation_parameters[
+                "data_assimilation_csv"
+            ] = args.data_assimilation_csv
+
             restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ] = args.wrf_hydro_channel_restart_file
@@ -887,6 +979,7 @@ def _input_handler():
         output_parameters,
         run_parameters,
         parity_parameters,
+        data_assimilation_parameters,
     )
 
 
@@ -900,6 +993,7 @@ def main():
         output_parameters,
         run_parameters,
         parity_parameters,
+        data_assimilation_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1002,6 +1096,29 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
+    # STEP 6
+    data_assimilation_csv = data_assimilation_parameters.get(
+        "data_assimilation_csv", None
+    )
+    data_assimilation_filter = data_assimilation_parameters.get(
+        "data_assimilation_filter", None
+    )
+    if data_assimilation_csv or data_assimilation_filter:
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("creating usgs time_slice data array ...")
+
+        usgs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+
+        if verbose:
+            print("usgs array complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
+    else:
+        usgs_df = pd.DataFrame()
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
@@ -1039,8 +1156,9 @@ def main():
         run_parameters.get("qts_subdivisions", 1),
         independent_networks,
         param_df,
-        qlats,
         q0,
+        qlats,
+        usgs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,
@@ -1051,7 +1169,6 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-
     ################### Output Handling
 
     if showtiming:
@@ -1059,12 +1176,15 @@ def main():
     if verbose:
         print(f"Handling output ...")
 
-    if output_parameters["csv_output"]:
-        csv_output_folder = output_parameters["csv_output"].get(
-            "csv_output_folder", None
-        )
+    if output_parameters:
+        csv_output = output_parameters.get("csv_output", None)
+        if csv_output:
+            csv_output_folder = output_parameters["csv_output"].get(
+                "csv_output_folder", None
+            )
+            csv_output_segments = csv_output.get("csv_output_segments", None)
 
-    if (debuglevel <= -1) or output_parameters["csv_output"]:
+    if (debuglevel <= -1) or csv_output:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -1108,12 +1228,16 @@ def main():
                 filename_courant = "courant_" + run_time_stamp + ".csv"
 
             output_path = pathlib.Path(csv_output_folder).resolve()
+
             flowveldepth = flowveldepth.sort_index()
             flowveldepth.to_csv(output_path.joinpath(filename_fvd))
 
             if run_parameters.get("return_courant", False):
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
+
+            usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
@@ -1122,7 +1246,6 @@ def main():
         print("output complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-
 
     ################### Parity Check
 
