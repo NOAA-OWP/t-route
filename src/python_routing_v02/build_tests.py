@@ -21,7 +21,7 @@ from operator import itemgetter
 ## network and reach utilities
 import compute_nhd_routing_SingleSeg_v02 as nhd_compute
 import troute.nhd_network_utilities_v02 as nnu
-import mc_reach
+import fast_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 
@@ -157,15 +157,13 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, run_parameters, results):
-    nts = run_parameters["nts"]
-    dt = run_parameters["dt"]
+def parity_check(parity_parameters, run_parameters, nts, dt, results):
 
     if "parity_check_input_folder" in parity_parameters:
 
-        validation_files = pathlib.Path(
-            parity_parameters["parity_check_input_folder"]
-        ).rglob(parity_parameters["parity_check_file_pattern_filter"])
+        validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
+            parity_parameters["parity_check_file_pattern_filter"]
+        )
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
