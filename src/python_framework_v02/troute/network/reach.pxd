@@ -2,7 +2,27 @@ cimport numpy as np
 """
 FIXME add some significant inline documentation
 """
+cdef extern from "reach_structs.h":
+  ctypedef struct _MC_Levelpool:
+    int lake_number
+  ctypedef struct _MC_Reach:
+    int num_segments
+  ctypedef struct _MC_Levelpool:
+    pass
+  ctypedef union _ReachUnion:
+    _MC_Reach mc_reach;
+    _MC_Levelpool lp;
+  ctypedef struct _Reach:
+    _ReachUnion reach
+    int _num_segments;
+    long* _upstream_ids;
+    int _num_upstream_ids;
+    int type
 
+ctypedef enum compute_type:
+  MC_REACH, RESERVOIR_LP
+
+#TODO implement junction or make multiple upstreams
 cdef class Segment():
   """
     A Single routing segment
@@ -11,40 +31,11 @@ cdef class Segment():
   cdef long upstream_id
   cdef long downstream_id
 
-cdef class MC_Segment(Segment):
-  """
-    A muskingcung segment
-  """
-  #TODO document these attributes
-  cdef readonly float dt, dx, bw, tw, twcc, n, ncc, cs, s0
-  cdef readonly float qdp, velp, depthp
-
-cdef struct _MC_Segment:
-
-  long id
-  float dt, dx, bw, tw, twcc, n, ncc, cs, s0
-  float qdp, velp, depthp
-
-cdef struct _MC_Reach:
-  _MC_Segment* _segments
-  int _num_segments
-  long* _upstream_ids
-  int _num_upstream_ids
-
-cdef class MC_Reach_Base_Class():
+cdef class Reach():
+  cdef readonly int id;
+  #Keep a python list of ids only for pre/post processing and diagnostics
+  cdef readonly long[::1] to_ids
   cdef int _num_upstream_ids
-  cdef _MC_Reach _reach
-  cdef readonly np.ndarray upstream_ids
-
-cdef class MC_Reservoir(MC_Reach_Base_Class):
-  pass
-
-cdef class MC_Reach(MC_Reach_Base_Class):
-  """
-    A muskingcung reach -> collection of ordered MC_Segments
-  """
-  cdef _MC_Segment* _segments
-  cdef int _num_segments # C only accessible
-  cdef readonly num_segments #Python accessible, readonly outside class
-  cdef readonly list segments
-  cdef route(self)
+  cdef _Reach _reach
+  cdef compute_type _type
+  #cdef readonly np.ndarray upstream_ids
