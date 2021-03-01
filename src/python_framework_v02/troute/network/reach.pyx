@@ -2,20 +2,43 @@ cimport numpy as np
 import numpy as np
 from libc.stdlib cimport malloc, free
 
+cdef extern from "reach_structs.c":
+  void init_reach(_Reach* reach, long* upstream_ids, int num_upstream_ids, int reach_type)
+  void free_reach(_Reach* reach)
+  long* get_upstream_ids(_Reach* reach)
+
 cdef class Reach:
   """
     Encapsulation of basic reach properties and functionality
   """
-  cdef readonly int id;
-  #Keep a python list of ids only for pre/post processing and diagnostics
-  cdef readonly long[::1] to_ids
 
-  def __init__(self, int id, long[::1] to_ids):
+  def __init__(self, long[::1] upstream_ids, int reach_type):
     """
-      Initialize the base properties
+      Construct the kernel based on passed parameters
     """
-    self.id = id
-    self.to_ids = to_ids
+    self.id = -1
+    self.to_ids = np.ones(1, dtype=np.int64 )*-1
+    self._num_upstream_ids = len(upstream_ids)
+
+    if( len(upstream_ids) > 0 ):
+      init_reach(&self._reach, &upstream_ids[0], len(upstream_ids), reach_type)
+    else:
+      init_reach(&self._reach, NULL, 0, reach_type)
+
+  def __dealloc__(self):
+    """
+      deallocate memory used for reach
+    """
+    free_reach(&self._reach)
+
+  @property
+  def upstream_ids(self):
+    cdef long[::1] ids
+    if(self._num_upstream_ids == 0):
+      return []
+    else:
+      ids = <long[:self._num_upstream_ids]> get_upstream_ids(&self._reach)
+      return ids
 
 cdef class Segment():
   """
@@ -32,119 +55,3 @@ cdef class Segment():
     self.id = id
     self.upstream_id = upstream
     self.downstream_id = downstream
-
-cdef class MC_Segment(Segment):
-  """
-    A single segment that compes
-  """
-
-  def __init__(self, id, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp):
-    """
-      construct the kernel based on passed parameters
-      TODO record segement topology better (i.e. up/down stream id)
-    """
-    super().__init__(id, -1, -1)
-    self.dt = dt
-    self.dx = dx
-    self.bw = bw
-    self.tw = tw
-    self.twcc = twcc
-    self.n = n
-    self.ncc = ncc
-    self.cs = cs
-    self.s0 = s0
-    self.qdp = qdp
-    self.velp = velp
-    self.depthp = depthp
-
-cdef class MC_Reach_Base_Class():
-  """
-    Base class to derive MC_Reach and MC_Reservoir
-  """
-
-  def __init__(self, long[::1] upstream_ids):
-    """
-      Construct the kernel based on passed parameters
-    """
-    self._num_upstream_ids = len(upstream_ids)
-    self.upstream_ids = np.asarray(upstream_ids)
- 
-    self._reach._upstream_ids = <long*>malloc(sizeof(long)*self._num_upstream_ids)
-    self._reach._num_upstream_ids = self._num_upstream_ids
-    for i in range(self._num_upstream_ids):
-      self._reach._upstream_ids[i] = upstream_ids[i]
-
-cdef class MC_Reservoir(MC_Reach_Base_Class):
-  """
-    MC_Reservoir is a subclass of MC_Reach_Base_Class
-  """
-
-  def __init__(self, long[::1] upstream_ids):
-    """
-      Construct the kernel based on passed parameters,
-      which only constructs the parent class
-    """
-    super().__init__(upstream_ids)
-  
-  def __dealloc__(self):
-    """
-
-    """
-    free(self._reach._upstream_ids)
-
-cdef class MC_Reach(MC_Reach_Base_Class):
-  """
-    A muskingcung reach and subclass of MC_Reach_Base_Class
-    TODO keep track of topology, subclass Reach
-  """
-  #TODO document these attributes. defined in pxd, commented here for reference
-  #cdef readonly list segments
-  #upstream_ids are stored as an actual ndarray so they can be used as an indexer
-  #in other ndarrays.  This may need to change
-  #cdef readonly np.ndarray upstream_ids
-
-  def __init__(self, segments, long[::1] upstream_ids):
-    """
-      Construct the kernel including its parent class based on passed parameters
-    """
-    super().__init__(upstream_ids)
-
-    self._num_segments = len(segments)
-
-    self._segments = <_MC_Segment*> malloc(sizeof(_MC_Segment)*(self._num_segments))
-    for i, segment in enumerate(segments):
-      self._segments[i].id = segment.id
-      self._segments[i].dt = segment.dt
-      self._segments[i].dx = segment.dx
-      self._segments[i].bw = segment.bw
-      self._segments[i].tw = segment.tw
-      self._segments[i].twcc = segment.twcc
-      self._segments[i].n = segment.n
-      self._segments[i].ncc = segment.ncc
-      self._segments[i].cs = segment.cs
-      self._segments[i].s0 = segment.s0
-      self._segments[i].qdp = segment.qdp
-      self._segments[i].velp = segment.velp
-      self._segments[i].depthp = segment.depthp
-
-    self.segments = segments
-    #init the C struct
-    self._reach._segments = self._segments
-    self._reach._num_segments = self._num_segments
-    self.num_segments = self._num_segments
-
-  def __dealloc__(self):
-    """
-
-    """
-    free(self._segments)
-    free(self._reach._upstream_ids)
-
-  cdef route(self):
-    """
-      TODO implement?
-    """
-    #do a few things with gil
-    #with nogil:
-    #  pass
-    pass
