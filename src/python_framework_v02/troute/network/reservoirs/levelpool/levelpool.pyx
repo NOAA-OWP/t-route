@@ -25,14 +25,15 @@ cdef class MC_Levelpool(Reach):
     MC_Reservoir is a subclass of MC_Reach_Base_Class
   """
 
-  def __init__(self, lake_number, long[::1] upstream_ids, args):
+  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
     """
-    super().__init__(upstream_ids, compute_type.RESERVOIR_LP)
+    super().__init__(id, upstream_ids, compute_type.RESERVOIR_LP)
     #init the backing struct, pass a dam_length of 10.0 for now
     #pass a negative water elevation, which causes the init to use the wrf hydro equation
+    #TODO put in __calloc__
     init_levelpool_reach(&self._reach, lake_number,
                          10.0, args[0], args[1],
                          args[2], args[3], args[4],

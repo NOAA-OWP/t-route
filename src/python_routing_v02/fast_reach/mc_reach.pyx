@@ -773,11 +773,13 @@ cpdef object compute_network_structured_obj(
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
+            my_id = binary_find(data_idx, reach)
+            #Reservoirs should be singleton list reaches, TODO enforce that here?
             #Add level pool reservoir ojbect to reach_objects
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
                 (
-                  MC_Levelpool(lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
+                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
                   reach_type)#lp_reservoir)
                 )
             wbody_index += 1
@@ -832,9 +834,9 @@ cpdef object compute_network_structured_obj(
 
             reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
             #FIXME THIS ID IS NOT RIGHT!!!!!!!!!!
-            flowveldepth[id, timestep, 0] = reservoir_outflow
-            flowveldepth[id, timestep, 1] = 0.0
-            flowveldepth[id, timestep, 2] = water_elevation
+            flowveldepth[r.id, timestep, 0] = reservoir_outflow
+            flowveldepth[r.id, timestep, 1] = 0.0
+            flowveldepth[r.id, timestep, 2] = water_elevation
 
         else:
 
@@ -983,10 +985,12 @@ cpdef object compute_network_structured(
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
+            my_id = binary_find(data_idx, reach)
+            #Reservoirs should be singleton list reaches, TODO enforce that here?
             #Add level pool reservoir ojbect to reach_objects
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                  MC_Levelpool(lake_numbers_col[wbody_index],
+                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
                                array('l',upstream_ids),
                                wbody_parameters[wbody_index])
                 )
@@ -1058,9 +1062,9 @@ cpdef object compute_network_structured(
                 run(&r, 300, upstream_flows, 0.0, &lp_outflow, &lp_water_elevation)
 
 
-                flowveldepth[id, timestep, 0] = lp_outflow
-                flowveldepth[id, timestep, 1] = 0.0
-                flowveldepth[id, timestep, 2] = lp_water_elevation
+                flowveldepth[r.id, timestep, 0] = lp_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = lp_water_elevation
               else:
                 if assume_short_ts:
                     upstream_flows = previous_upstream_flows
