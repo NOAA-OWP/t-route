@@ -17,7 +17,8 @@ cdef extern from "reach_structs.h":
     int _num_segments;
     long* _upstream_ids;
     int _num_upstream_ids;
-    int type
+    int type;
+    long id;
 
 ctypedef enum compute_type:
   MC_REACH, RESERVOIR_LP
@@ -32,7 +33,6 @@ cdef class Segment():
   cdef long downstream_id
 
 cdef class Reach():
-  cdef readonly int id;
   #Keep a python list of ids only for pre/post processing and diagnostics
   cdef readonly long[::1] to_ids
   cdef int _num_upstream_ids

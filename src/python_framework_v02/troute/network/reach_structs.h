@@ -17,6 +17,7 @@ typedef struct {
   long* _upstream_ids;
   int _num_upstream_ids;
   int type;
+  long id;
 } _Reach;
 
 #endif //REACH_STRUCTS_H
