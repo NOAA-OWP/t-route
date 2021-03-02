@@ -51,7 +51,8 @@ cdef class MC_Reach(Reach):
     """
       segments: ORDERED list of segments that make up the reach
     """
-    super().__init__(upstream_ids, compute_type.MC_REACH)
+    #for now mc reaches aren't explicity identified, their segments are pass -1 for id
+    super().__init__(-1, upstream_ids, compute_type.MC_REACH)
 
     self._num_segments = len(segments)
     init_mc_reach(&self._reach, self._num_segments)
