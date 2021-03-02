@@ -83,6 +83,9 @@ cdef class MC_Reach(Reach):
     pass
 
   def __getitem__(self, index):
+    #TODO implement slicing, better errors
+    if(index < 0):
+      index = index + self._num_segments
     if(index > -1 and index <self._num_segments):
       return get_mc_segment(&self._reach, index)
     else:
