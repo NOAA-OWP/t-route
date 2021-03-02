@@ -12,11 +12,10 @@ cdef class Reach:
     Encapsulation of basic reach properties and functionality
   """
 
-  def __init__(self, long[::1] upstream_ids, int reach_type):
+  def __init__(self, long id, long[::1] upstream_ids, int reach_type):
     """
       Construct the kernel based on passed parameters
     """
-    self.id = -1
     self.to_ids = np.ones(1, dtype=np.int64 )*-1
     self._num_upstream_ids = len(upstream_ids)
 
@@ -24,12 +23,17 @@ cdef class Reach:
       init_reach(&self._reach, &upstream_ids[0], len(upstream_ids), reach_type)
     else:
       init_reach(&self._reach, NULL, 0, reach_type)
-
+    #(<_Reach>self._reach).id = id
+    self._reach.id = id
   def __dealloc__(self):
     """
       deallocate memory used for reach
     """
     free_reach(&self._reach)
+
+  @property
+  def id(self):
+    return self._reach.id
 
   @property
   def upstream_ids(self):
