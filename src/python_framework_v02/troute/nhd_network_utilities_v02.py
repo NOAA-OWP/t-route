@@ -483,8 +483,12 @@ def build_channel_initial_state(restart_parameters,supernetwork_parameters, chan
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator, qts_subdivisions=1):
+def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,file_run_size,supernetwork_parameters, qts_subdivisions=1):
     # TODO: set default/optional arguments
+    mask_file_path = supernetwork_parameters.get("mask_file_path",None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:,0].tolist()
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -501,7 +505,8 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,
         qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
-            ts_portion=ts_iterator,
+            ts_iterator=ts_iterator,
+            file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
@@ -528,4 +533,6 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:],axis=1,inplace=True)
 
+    qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]    
+    print(qlat_df)
     return qlat_df

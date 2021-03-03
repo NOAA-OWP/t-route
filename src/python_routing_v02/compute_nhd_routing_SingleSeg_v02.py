@@ -609,6 +609,7 @@ def compute_nhd_routing_v02(
 
     else:  # Execute in serial
         results = []
+
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
@@ -758,9 +759,11 @@ def _input_handler():
         run_parameters,
         parity_parameters,
     )
-
+total_timeslice_files = 24
+runs_to_be_completed = 3
 ts_iterator = 0
-output_counter = 2
+restart_file_number = 2
+file_run_size = int(total_timeslice_files/runs_to_be_completed)
 def main():
     (
         supernetwork_parameters,
@@ -778,7 +781,9 @@ def main():
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
     global ts_iterator
-    global output_counter
+    global restart_file_number
+    global runs_to_be_completed
+    global file_run_size
     if showtiming:
         main_start_time = time.time()
 
@@ -818,8 +823,9 @@ def main():
 
     if ts_iterator == 0:
         q0 = nnu.build_channel_initial_state(restart_parameters, supernetwork_parameters, param_df.index)
+
     else:
-        q0 = pd.read_csv("../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(output_counter) + ".csv")
+        q0 = pd.read_csv("../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(restart_file_number) + ".csv", index_col="link")
 
     if verbose:
         print("channel initial states complete")
@@ -832,15 +838,16 @@ def main():
         start_time = time.time()
     if verbose:
         print("creating qlateral array ...")
-    print(ts_iterator)
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         connections.keys(),
         nts,
         ts_iterator,
+        file_run_size,
+        supernetwork_parameters,
         run_parameters.get("qts_subdivisions", 1),
     )
-    
+    print(qlats)
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -861,7 +868,7 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-
+    # import pdb; pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -921,7 +928,7 @@ def main():
         restart_flows.index.name = 'link'
         restart_flows.columns = ['qu0', 'qd0', 'h0']
         # restart_flows["link"] = q0.index 
-        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(output_counter) + ".csv"
+        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(restart_file_number) + ".csv"
         restart_flows.to_csv(output_iteration)
         # import pdb; pdb.set_trace()
         print(restart_flows)
@@ -985,10 +992,13 @@ def main():
             )
         if showtiming:
             start_time = time.time()
-
+        print(supernetwork_parameters)
         build_tests.parity_check(
             parity_parameters,
             run_parameters,
+            ts_iterator,
+            file_run_size,
+            supernetwork_parameters,
             run_parameters["nts"],
             run_parameters["dt"],
             results,
@@ -999,14 +1009,15 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
     
-    if ts_iterator <= 0:
+    if ts_iterator == runs_to_be_completed-1:
         if verbose:
             print("process complete")
         if showtiming:
             print("%s seconds." % (time.time() - main_start_time))
     else:
-        ts_iterator = ts_iterator + 24
-        output_counter = output_counter + 1 
+        ts_iterator = ts_iterator + 1
+        restart_file_number = restart_file_number + 1 
+
         main()
 
 
