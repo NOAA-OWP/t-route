@@ -730,8 +730,8 @@ cpdef object compute_network_structured_obj(
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
-    #define an intialize the final output array
-    cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps, 3), dtype='float32')
+    #define an intialize the final output array +1 timestep for initial conditions
+    cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
@@ -813,7 +813,7 @@ cpdef object compute_network_structured_obj(
     out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
 
     #Run time
-    while timestep < nsteps:
+    while timestep < nsteps+1:
       for r, reach_type in reach_objects:
 
         #Need to get quc and qup
@@ -866,7 +866,7 @@ cpdef object compute_network_structured_obj(
             """
             for i, segment in enumerate(r):
               segment_ids.append(segment['id'])
-              buf_view[i, 0] = qlat_array[ segment['id'], int(timestep/qlat_resample)]
+              buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
               buf_view[i, 1] = segment['dt']
               buf_view[i, 2] = segment['dx']
               buf_view[i, 3] = segment['bw']
@@ -892,11 +892,12 @@ cpdef object compute_network_structured_obj(
               flowveldepth[id, timestep, 2] = out_buf[i, 2]
 
       timestep += 1
-    #copy t1 to t0 to be consistent
-    flowveldepth[:,0,:] = flowveldepth[:,1,:]
+
     #pr.disable()
     #pr.print_stats(sort='time')
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.reshape(flowveldepth.shape[0], -1), dtype='float32')
+    #slice off the initial condition timestep and return
+    output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
+    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
 
 
 cpdef object compute_network_structured(
@@ -940,8 +941,8 @@ cpdef object compute_network_structured(
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
-    #define an intialize the final output array
-    cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps, 3), dtype='float32')
+    #define an intialize the final output array, add one extra time step for initial conditions
+    cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
@@ -1037,7 +1038,7 @@ cpdef object compute_network_structured(
     cdef int id = 0
     #Run time
     with nogil:
-      while timestep < nsteps:
+      while timestep < nsteps+1:
         #for r in reach_objects:
         for i in range(num_reaches):
               r = reach_structs[i]
@@ -1072,7 +1073,7 @@ cpdef object compute_network_structured(
                 #for i, segment in enumerate(r.segments):
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(&r, i)#r._segments[i]
-                  buf_view[i, 0] = qlat_array[ segment.id, <int>(timestep/qlat_resample)]
+                  buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
                   buf_view[i, 1] = segment.dt
                   buf_view[i, 2] = segment.dx
                   buf_view[i, 3] = segment.bw
@@ -1101,11 +1102,11 @@ cpdef object compute_network_structured(
                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
 
         timestep += 1
-    #copy t1 to t0 to be consistent
-    flowveldepth[:,0,:] = flowveldepth[:,1,:]
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
     free(reach_structs)
-    #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
+    #slice off the initial condition timestep and return
+    output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
+    #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
+    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
