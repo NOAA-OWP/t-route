@@ -833,7 +833,7 @@ cpdef object compute_network_structured_obj(
             routing_period = 300.0
 
             reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
-            #FIXME THIS ID IS NOT RIGHT!!!!!!!!!!
+
             flowveldepth[r.id, timestep, 0] = reservoir_outflow
             flowveldepth[r.id, timestep, 1] = 0.0
             flowveldepth[r.id, timestep, 2] = water_elevation
