@@ -424,7 +424,7 @@ def build_connections(supernetwork_parameters, dt):
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
     param_df = param_df.astype("float32")
-
+    
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, wbodies, param_df
 
@@ -441,7 +441,7 @@ def organize_independent_networks(connections):
     return independent_networks, reaches_bytw, rconn
 
 
-def build_channel_initial_state(restart_parameters, channel_index=None):
+def build_channel_initial_state(restart_parameters,supernetwork_parameters, channel_index=None):
 
     channel_restart_file = restart_parameters.get(
         "channel_restart_file", None
@@ -450,6 +450,11 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
+
+    mask_file_path = supernetwork_parameters.get("mask_file_path",None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:,0].tolist()
 
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
@@ -471,6 +476,9 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
         q0 = pd.DataFrame(
             0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
+
+    q0 = q0[q0.index.isin(mask_file_path)]
+
 
     return q0
 
