@@ -300,10 +300,7 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Cape Fear River Basin, NC",  # overwrites other title...
                 "mask_file_path": pathlib.Path(
-                    geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "CapeFear_FULL_RES.txt",
+                    geo_input_folder, "Channels", "masks", "CapeFear_FULL_RES.txt",
                 ).resolve(),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -321,10 +318,7 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Hurricane Florence Domain, near Durham NC",  # overwrites other title...
                 "mask_file_path": pathlib.Path(
-                    geo_input_folder,
-                    "Channels",
-                    "masks",
-                    "Florence_FULL_RES.txt",
+                    geo_input_folder, "Channels", "masks", "Florence_FULL_RES.txt",
                 ).resolve(),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -469,15 +463,20 @@ def organize_independent_networks(connections, wbodies=None):
     return independent_networks, reaches_bytw, rconn
 
 
-def build_channel_initial_state(restart_parameters, channel_index=None):
+def build_channel_initial_state(
+    restart_parameters, supernetwork_parameters, channel_index=None
+):
 
-    channel_restart_file = restart_parameters.get(
-        "channel_restart_file", None
-    )
+    channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
+
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
 
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
@@ -497,11 +496,10 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
         # assume to be zero
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
-            0,
-            index=channel_index,
-            columns=["qu0", "qd0", "h0"],
-            dtype="float32",
+            0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
+
+    q0 = q0[q0.index.isin(mask_file_path)]
 
     return q0
 
@@ -551,7 +549,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
-        qlat_df.drop(qlat_df.columns[max_col:],axis=1,inplace=True)
+        qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
     return qlat_df
 
