@@ -1026,10 +1026,7 @@ def main():
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df = nnu.build_connections(
-        supernetwork_parameters,
-        dt,
-    )
+    connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
     wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
@@ -1084,7 +1081,9 @@ def main():
     if verbose:
         print("setting channel initial states ...")
 
-    q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
+    q0 = nnu.build_channel_initial_state(
+        restart_parameters, supernetwork_parameters, param_df.index
+    )
 
     if verbose:
         print("channel initial states complete")
