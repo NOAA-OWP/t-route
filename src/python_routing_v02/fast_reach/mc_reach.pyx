@@ -1031,7 +1031,7 @@ cpdef object compute_network_structured(
       reach_structs[i] = (<Reach>reach_objects[i])._reach
 
     #reach iterator
-    cdef _Reach r
+    cdef _Reach* r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
     cdef float lp_outflow, lp_water_elevation
@@ -1041,7 +1041,7 @@ cpdef object compute_network_structured(
       while timestep < nsteps+1:
         #for r in reach_objects:
         for i in range(num_reaches):
-              r = reach_structs[i]
+              r = &reach_structs[i]
               #Need to get quc and qup
               upstream_flows = 0.0
               previous_upstream_flows = 0.0
@@ -1060,9 +1060,9 @@ cpdef object compute_network_structured(
                   printf("timestep %d\n",  timestep)
                   exit(1)
                 """
-                run(&r, 300, upstream_flows, 0.0, &lp_outflow, &lp_water_elevation)
 
 
+                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
@@ -1072,7 +1072,7 @@ cpdef object compute_network_structured(
                 #Create compute reach kernel input buffer
                 #for i, segment in enumerate(r.segments):
                 for i in range(r.reach.mc_reach.num_segments):
-                  segment = get_mc_segment(&r, i)#r._segments[i]
+                  segment = get_mc_segment(r, i)#r._segments[i]
                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
                   buf_view[i, 1] = segment.dt
                   buf_view[i, 2] = segment.dx
@@ -1095,7 +1095,7 @@ cpdef object compute_network_structured(
                                      #nsteps)
                 #Copy the output out
                 for i in range(r.reach.mc_reach.num_segments):
-                  segment = get_mc_segment(&r, i)
+                  segment = get_mc_segment(r, i)
                   #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
