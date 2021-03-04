@@ -111,12 +111,12 @@ cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:
                     velp,
                     depthp,
                     out)
-        
+
 #        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
         output_buf[i, 0] = out.qdc
         output_buf[i, 1] = out.velc
         output_buf[i, 2] = out.depthc
-        
+
         if return_courant:
             output_buf[i, 3] = out.cn
             output_buf[i, 4] = out.ck
@@ -203,7 +203,7 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
-    
+
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
@@ -304,11 +304,11 @@ cpdef object compute_network(
 
     cdef int maxreachlen = max(reach_sizes)
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-    
+
     if return_courant:
         out_buf = np.empty((maxreachlen, 6), dtype='float32')
     else:
-        out_buf = np.empty((maxreachlen, 3), dtype='float32') 
+        out_buf = np.empty((maxreachlen, 3), dtype='float32')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
@@ -408,7 +408,7 @@ cpdef object compute_network(
                 # copy out_buf results back to flowdepthvel
                 for i in range(3):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
-                    
+
                 # copy out_buf results back to courant
                 if return_courant:
                     for i in range(3,6):
@@ -421,7 +421,7 @@ cpdef object compute_network(
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
                         flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-    
+
             timestep += 1
 
     # delete the duplicate results that shouldn't be passed along

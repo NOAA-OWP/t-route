@@ -689,6 +689,8 @@ def compute_nhd_routing_v02(
                             "WeirE",
                             "WeirL",
                             "ifd",
+                            "qd0",
+                            "h0",
                         ],
                     ]
 
@@ -786,6 +788,8 @@ def compute_nhd_routing_v02(
                         "WeirE",
                         "WeirL",
                         "ifd",
+                        "qd0",
+                        "h0",
                     ],
                 ]
 
@@ -1073,6 +1077,44 @@ def main():
         print("reach organization complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+
+    if break_network_at_waterbodies:
+        ## STEP 3c: Handle Waterbody Initial States
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("setting waterbody initial states ...")
+
+        if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
+            waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
+                restart_parameters["wrf_hydro_waterbody_restart_file"],
+                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
+                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
+                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
+                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"],
+            )
+        else:
+            # TODO: Consider adding option to read cold state from route-link file
+            waterbody_initial_ds_flow_const = 0.0
+            waterbody_initial_depth_const = 0.0
+            # Set initial states from cold-state
+            waterbody_initial_states_df = pd.DataFrame(
+                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+            )
+            # TODO: This assignment could probably by done in the above call
+            waterbodies_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
+            waterbodies_initial_states_df["h0"] = waterbody_initial_depth_const
+            waterbodies_initial_states_df["index"] = range(
+                len(waterbodies_initial_states_df)
+            )
+
+        waterbodies_df_reduced = pd.merge(waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id")
+
+        if verbose:
+            print("waterbody initial states complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
 
     # STEP 4: Handle Channel Initial States
     if showtiming:
