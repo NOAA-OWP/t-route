@@ -823,6 +823,9 @@ cpdef object compute_network_structured_obj(
           upstream_flows += flowveldepth[id, timestep, 0]
           previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
+        if assume_short_ts:
+          upstream_flows = previous_upstream_flows
+
         #Check if reach_type is 1 for reservoir/waterbody
         if (reach_type == 1):
 
@@ -843,8 +846,6 @@ cpdef object compute_network_structured_obj(
             #Index of segments required to process this reach
             segment_ids = []
 
-            if assume_short_ts:
-                upstream_flows = previous_upstream_flows
             #Create compute reach kernel input buffer
             """
             for i in range(r.num_segments):
@@ -1051,6 +1052,9 @@ cpdef object compute_network_structured(
                 upstream_flows += flowveldepth[id, timestep, 0]
                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
+              if assume_short_ts:
+                upstream_flows = previous_upstream_flows
+
               if r.type == compute_type.RESERVOIR_LP:
                 """
                 id = r.reach.lp.lake_number
@@ -1067,8 +1071,6 @@ cpdef object compute_network_structured(
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
               else:
-                if assume_short_ts:
-                    upstream_flows = previous_upstream_flows
                 #Create compute reach kernel input buffer
                 #for i, segment in enumerate(r.segments):
                 for i in range(r.reach.mc_reach.num_segments):
