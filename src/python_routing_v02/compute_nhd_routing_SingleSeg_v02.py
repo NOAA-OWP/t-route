@@ -847,7 +847,7 @@ def main():
         supernetwork_parameters,
         run_parameters.get("qts_subdivisions", 1),
     )
-    print(qlats)
+
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -868,7 +868,7 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -925,16 +925,13 @@ def main():
             )
         # print(flowveldepth)
         restart_flows = flowveldepth.iloc[:,-3:]
+        print(restart_flows)
         restart_flows.index.name = 'link'
         restart_flows.columns = ['qu0', 'qd0', 'h0']
-        # restart_flows["link"] = q0.index 
         output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(restart_file_number) + ".csv"
         restart_flows.to_csv(output_iteration)
-        # import pdb; pdb.set_trace()
-        print(restart_flows)
-        # print(flowveldepth)
-        # print(reaches_bytw)
-        # print(connections)
+
+
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
@@ -992,7 +989,6 @@ def main():
             )
         if showtiming:
             start_time = time.time()
-        print(supernetwork_parameters)
         build_tests.parity_check(
             parity_parameters,
             run_parameters,

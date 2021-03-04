@@ -195,9 +195,8 @@ def get_ql_from_wrf_hydro_mf(qlat_files,ts_iterator,file_run_size,index_col="fea
             columns=ds.time.values,
             # dtype=float,
         )
-    print(ql.iloc[:,int(ts_iterator*file_run_size):int((ts_iterator+1)*file_run_size)])
+
     return ql.iloc[:,int(ts_iterator*file_run_size):int((ts_iterator+1)*file_run_size)]
-    # return ql
 
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
