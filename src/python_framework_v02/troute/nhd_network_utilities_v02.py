@@ -503,7 +503,7 @@ def build_channel_initial_state(
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivisions=1):
+def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_parameters, nts, qts_subdivisions=1):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
@@ -549,6 +549,12 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, qts_subdivis
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
+
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
+        qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]
 
     return qlat_df
 

@@ -1100,6 +1100,7 @@ def main():
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         connections.keys(),
+        supernetwork_parameters,
         nts,
         run_parameters.get("qts_subdivisions", 1),
     )
