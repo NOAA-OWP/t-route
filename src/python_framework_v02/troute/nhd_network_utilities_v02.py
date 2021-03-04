@@ -493,7 +493,7 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
-    #If needed for performance improvement consider filtering mask file on read.
+    # TODO: If needed for performance improvement consider filtering mask file on read.
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
         mask_file_path = pd.read_csv(mask_file_path)
