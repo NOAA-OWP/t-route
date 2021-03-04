@@ -1080,6 +1080,7 @@ def main():
 
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
+        # TODO: move step 3c into function in nnu, like other functions wrapped in main()
         if showtiming:
             start_time = time.time()
         if verbose:
