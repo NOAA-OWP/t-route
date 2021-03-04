@@ -158,7 +158,7 @@ cpdef object compute_network(
     int nsteps,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
-    dict connections,
+    dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
@@ -180,7 +180,7 @@ cpdef object compute_network(
     Args:
         nsteps (int): number of time steps
         reaches (list): List of reaches
-        connections (dict): Network
+        upstream_connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
@@ -259,7 +259,7 @@ cpdef object compute_network(
     # Measure length of all the reaches
     cdef list reach_sizes = list(map(len, reaches))
     # For a given reach, get number of upstream nodes
-    cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
+    cdef list usreach_sizes = [len(upstream_connections.get(reach[0], ())) for reach in reaches]
 
     cdef:
         list reach  # Temporary variable
@@ -298,7 +298,7 @@ cpdef object compute_network(
         usreach_cache[iusreach_cache] = -usreachlen
         iusreach_cache += 1
         if usreachlen > 0:
-            for bidx in binary_find(data_idx, connections[reach[0]]):
+            for bidx in binary_find(data_idx, upstream_connections[reach[0]]):
                 usreach_cache[iusreach_cache] = bidx
                 iusreach_cache += 1
 
@@ -693,7 +693,7 @@ cpdef object compute_network_structured_obj(
     int nsteps,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
-    dict connections,
+    dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
@@ -712,7 +712,7 @@ cpdef object compute_network_structured_obj(
     Args:
         nsteps (int): number of time steps
         reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
-        connections (dict): Network
+        upstream_connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
@@ -769,7 +769,7 @@ cpdef object compute_network_structured_obj(
     wbody_index = 0
 
     for reach, reach_type in reaches_wTypes:
-        upstream_reach = connections.get(reach[0], ())
+        upstream_reach = upstream_connections.get(reach[0], ())
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
@@ -904,7 +904,7 @@ cpdef object compute_network_structured(
     int nsteps,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
-    dict connections,
+    dict upstream_connections,
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
@@ -923,7 +923,7 @@ cpdef object compute_network_structured(
     Args:
         nsteps (int): number of time steps
         reaches (list): List of reaches
-        connections (dict): Network
+        upstream_connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
         qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
@@ -982,7 +982,7 @@ cpdef object compute_network_structured(
     wbody_index = 0
 
     for reach, reach_type in reaches_wTypes:
-        upstream_reach = connections.get(reach[0], ())
+        upstream_reach = upstream_connections.get(reach[0], ())
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
