@@ -473,11 +473,6 @@ def build_channel_initial_state(
         "wrf_hydro_channel_restart_file", None
     )
 
-    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
-    if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path)
-        mask_file_path = mask_file_path.iloc[:, 0].tolist()
-
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
 
@@ -498,8 +493,12 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
-
-    q0 = q0[q0.index.isin(mask_file_path)]
+    #If needed for performance improvement consider filtering mask file on read.
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
+        q0 = q0[q0.index.isin(mask_file_path)]
 
     return q0
 
