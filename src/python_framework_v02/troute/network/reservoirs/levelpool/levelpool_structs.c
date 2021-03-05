@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "../../reach_structs.h"
-
+#include <stdio.h>
 /* Level Pool Reservoir Interface */
 extern void* get_lp_handle();
 
@@ -35,7 +35,12 @@ init_levelpool_reach(_Reach* reach, int lake_number,
     reach->reach.lp.initial_fractional_depth = initial_fractional_depth;
     if(water_elevation < 0){
       //Equation below is used in wrf-hydro
+      printf("WARNING: LEVELPOOL USING COLDSTART WATER ELEVATION\n");
+      fflush(stdout);
       reach->reach.lp.water_elevation = orifice_elevation + ((max_depth - orifice_elevation) * initial_fractional_depth);
+    }
+    else{
+      reach->reach.lp.water_elevation = water_elevation;
     }
 
     reach->reach.lp.handle = get_lp_handle();
