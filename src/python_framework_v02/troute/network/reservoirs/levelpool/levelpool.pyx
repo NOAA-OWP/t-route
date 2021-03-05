@@ -83,3 +83,47 @@ cdef class MC_Levelpool(Reach):
       route(&self._reach, inflow, lateral_inflow, routing_period, &outflow,  &water_elevation)
       #printf("outflow: %f\n", outflow)
       return outflow, water_elevation#, self.water_elevation
+
+  @property
+  def water_elevation(self):
+    return self._reach.reach.lp.water_elevation
+
+  @property
+  def lake_area(self):
+    return self._reach.reach.lp.area
+
+  @property
+  def weir_elevation(self):
+    return self._reach.reach.lp.weir_elevation
+
+  @property
+  def weir_coefficient(self):
+    return self._reach.reach.lp.weir_coefficient
+
+  @property
+  def weir_length(self):
+    return self._reach.reach.lp.weir_length
+
+  @property
+  def dam_length(self):
+    return self._reach.reach.lp.dam_length
+
+  @property
+  def orifice_elevation(self):
+    return self._reach.reach.lp.orifice_elevation
+
+  @property
+  def orifice_area(self):
+    return self._reach.reach.lp.orifice_area
+
+  @property
+  def max_depth(self):
+    return self._reach.reach.lp.max_depth
+
+  @property
+  def lake_number(self):
+    return self._reach.reach.lp.lake_number
+
+  @property
+  def initial_fractional_depth(self):
+    return self._reach.reach.lp.initial_fractional_depth
