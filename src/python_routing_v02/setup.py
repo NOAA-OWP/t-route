@@ -34,7 +34,17 @@ mc_reach = Extension(
     extra_compile_args=["-g"],
 )
 
-ext_modules = [reach, mc_reach]
+mc_kernel = Extension(
+    "mc_kernel",
+    sources=["fast_reach/mc_kernel.{}".format(ext)],
+    include_dirs=[np.get_include()],
+    libraries=[],
+    library_dirs=[],
+    extra_objects=[],
+    extra_compile_args=["-g"],
+)
+
+ext_modules = [reach, mc_reach, mc_kernel]
 
 if USE_CYTHON:
     from Cython.Build import cythonize

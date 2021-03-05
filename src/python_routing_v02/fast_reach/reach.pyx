@@ -1,24 +1,27 @@
 import cython
 
 from fortran_wrappers cimport c_muskingcungenwm
+from mc_kernel cimport cython_muskingcunge
 
 @cython.boundscheck(False)
-cdef void muskingcunge(float dt,
-        float qup,
-        float quc,
-        float qdp,
-        float ql,
-        float dx,
-        float bw,
-        float tw,
-        float twcc,
-        float n,
-        float ncc,
-        float cs,
-        float s0,
-        float velp,
-        float depthp,
-        QVD *rv) nogil:
+cdef void muskingcunge(
+    float dt,
+    float qup,
+    float quc,
+    float qdp,
+    float ql,
+    float dx,
+    float bw,
+    float tw,
+    float twcc,
+    float n,
+    float ncc,
+    float cs,
+    float s0,
+    float velp,
+    float depthp,
+    QVD *rv
+) nogil:
     
     cdef:
         float qdc = 0.0
@@ -28,37 +31,56 @@ cdef void muskingcunge(float dt,
         float cn = 0.0
         float X = 0.0
 
-    c_muskingcungenwm(
-        &dt,
-        &qup,
-        &quc,
-        &qdp,
-        &ql,
-        &dx,
-        &bw,
-        &tw,
-        &twcc,
-        &n,
-        &ncc,
-        &cs,
-        &s0,
-        &velp,
-        &depthp,
-        &qdc,
-        &velc,
-        &depthc,
-        &ck,
-        &cn,
-        &X)
+    cython_muskingcunge(
+        dt,
+        qup,
+        quc,
+        qdp,
+        ql,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n,
+        ncc,
+        cs,
+        s0,
+        velp,
+        depthp,
+        rv
+    )
+
+#     c_muskingcungenwm(
+#         &dt,
+#         &qup,
+#         &quc,
+#         &qdp,
+#         &ql,
+#         &dx,
+#         &bw,
+#         &tw,
+#         &twcc,
+#         &n,
+#         &ncc,
+#         &cs,
+#         &s0,
+#         &velp,
+#         &depthp,
+#         &qdc,
+#         &velc,
+#         &depthc,
+#         &ck,
+#         &cn,
+#         &X)
     
-    rv.qdc = qdc
-    rv.depthc = depthc
-    rv.velc = velc
-    
-    # to do: make these additional variable's conditional, somehow
-    rv.ck = ck
-    rv.cn = cn
-    rv.X = X
+#     rv.qdc = qdc
+#     rv.depthc = depthc
+#     rv.velc = velc
+
+#     # to do: make these additional variable's conditional, somehow
+#     rv.ck = ck
+#     rv.cn = cn
+#     rv.X = X
 
 cpdef dict compute_reach_kernel(float dt,
         float qup,
