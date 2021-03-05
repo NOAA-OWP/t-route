@@ -10,7 +10,7 @@ cdef extern from "mc_reach_structs.c":
       float dt, float dx, float bw, float tw, float twcc,
       float n, float ncc, float cs, float s0,
       float qdp, float velp, float depthp)
-  _MC_Segment get_mc_segment(_Reach* reach, int index)
+  _MC_Segment get_mc_segment(_Reach* reach, int index) nogil
 
 cdef class MC_Segment(Segment):
   """
