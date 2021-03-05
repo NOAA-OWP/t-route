@@ -1,35 +1,26 @@
 ---
 # Initial input parameters
 run_parameters:
-    parallel_compute_method: by-subnetwork-jit-clustered
+    parallel_compute_method: by-network
     verbose: true
     showtiming: true
     debuglevel: 1
+    break_network_at_waterbodies: true
+    compute_method: V02-structured
     assume_short_ts: true
-    subnetwork_target_size: 100
     qts_subdivisions: 12
-    return_courant: true
     dt: 300
     nts: 8640
     cpu_pool: 12
-    #Use the parallel computation engine (omit flag for serial computation)
-    #Verbose output (leave blank for quiet output)
-    #Set the showtiming (omit flag for no timing information)
-    #Set the debuglevel
-    #Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)
-    #Use the previous timestep value for upstream flow
-    #number of simulation timesteps per qlateral timestep
-    #Set the default timestep length
-    #Set the default timestep length
-    #Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.
+    return_courant: false  # WARNING: true will only work with compute_method "V02-caching", therefore not currently compatible with simulation for waterbodies.
 # Output file parameters
 output_parameters:
-    #output location for csv file 
-    csv_output:
-        csv_output_folder: "../../test/output/text"
-        csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
-    #out location for nc file
-    nc_output_folder: "../../test/output/text"
+#    #output location for csv file 
+   csv_output:
+#        csv_output_folder: "../../test/output/text"
+#        csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
+#    #out location for nc file
+#    nc_output_folder: "../../test/output/text"
 # Data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: Custom Input Example (using Florence-Event Cutout datafile)
@@ -93,17 +84,18 @@ restart_parameters:
     # wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
     # wrf_hydro_channel_restart_depth_flow_field_name: hlink
     # #WRF-Hydro waterbodies restart file
-    # wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
     # #WRF-Hydro waterbody ID crosswalk file
-    # wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
-    # wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
     # #WRF-Hydro waterbody crosswalk filter file
-    # wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    # wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 # Output files to check parity
 parity_parameters:
     parity_check_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv" 
-    parity_check_compare_node: 8777701
+    # parity_check_compare_node: 8777701
+    parity_check_compare_node: 933020089
     # WRF-Hydro files in comments below for example
     # parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
     # parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"

@@ -28,6 +28,17 @@ reach = Extension(
     extra_compile_args=["-g"],
 )
 
+musk = Extension(
+    "troute.network.musking.mc_reach",
+    sources=[
+            "troute/network/musking/mc_reach.{}".format(ext),
+            ],
+    include_dirs=[np.get_include()],
+    extra_objects=[],
+    libraries=[],
+    extra_compile_args=["-g"],
+)
+
 reservoirs = Extension(
     "troute.network.reservoirs.levelpool.levelpool",
     sources=[
@@ -40,10 +51,11 @@ reservoirs = Extension(
 )
 
 package_data = {"troute.network": ["reach.pxd", "__init__.pxd"],
+                "troute.network.musking": ["mc_reach.pxd", "__init__.pxd"],
                 "troute.network.reservoirs":["__init__.pxd"],
                 "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd"],
                  }
-ext_modules = [reach, reservoirs]
+ext_modules = [reach, reservoirs, musk]
 
 if USE_CYTHON:
     from Cython.Build import cythonize

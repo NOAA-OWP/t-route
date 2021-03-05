@@ -294,7 +294,7 @@ elif not ENV_IS_CL:
 
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
-import mc_reach
+import fast_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
@@ -689,6 +689,8 @@ def compute_nhd_routing_v02(
                             "WeirE",
                             "WeirL",
                             "ifd",
+                            "qd0",
+                            "h0",
                         ],
                     ]
 
@@ -786,6 +788,8 @@ def compute_nhd_routing_v02(
                         "WeirE",
                         "WeirL",
                         "ifd",
+                        "qd0",
+                        "h0",
                     ],
                 ]
 
@@ -823,7 +827,7 @@ def compute_nhd_routing_v02(
             reaches_list_with_type = list(zip(reach_list, reach_type_list))
             """
             reaches_list_with_type = []
-            
+
             for reaches in reach_list:
                 if (set(reaches) & wbodies_segs):
                     reach_type = 1 # type 1 for waterbody/lake
@@ -1069,11 +1073,49 @@ def main():
         if break_network_at_waterbodies
         else None,
     )
-
     if verbose:
         print("reach organization complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+
+    if break_network_at_waterbodies:
+        ## STEP 3c: Handle Waterbody Initial States
+        # TODO: move step 3c into function in nnu, like other functions wrapped in main()
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("setting waterbody initial states ...")
+
+        if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
+            waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
+                restart_parameters["wrf_hydro_waterbody_restart_file"],
+                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
+                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
+                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
+                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"],
+            )
+        else:
+            # TODO: Consider adding option to read cold state from route-link file
+            waterbody_initial_ds_flow_const = 0.0
+            waterbody_initial_depth_const = 0.0
+            # Set initial states from cold-state
+            waterbody_initial_states_df = pd.DataFrame(
+                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+            )
+            # TODO: This assignment could probably by done in the above call
+            waterbodies_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
+            waterbodies_initial_states_df["h0"] = waterbody_initial_depth_const
+            waterbodies_initial_states_df["index"] = range(
+                len(waterbodies_initial_states_df)
+            )
+
+        waterbodies_df_reduced = pd.merge(waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id")
+
+        if verbose:
+            print("waterbody initial states complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
 
     # STEP 4: Handle Channel Initial States
     if showtiming:
@@ -1144,16 +1186,16 @@ def main():
             print(f"executing routing computation ...")
 
     if run_parameters.get("compute_method", None) == "V02-caching":
-        compute_func = mc_reach.compute_network
+        compute_func = fast_reach.compute_network
     elif run_parameters.get("compute_method", None) == "V02-structured":
-        compute_func = mc_reach.compute_network_structured
+        compute_func = fast_reach.compute_network_structured
     elif run_parameters.get("compute_method", None) == "V02-structured-obj":
-        compute_func = mc_reach.compute_network_structured_obj
+        compute_func = fast_reach.compute_network_structured_obj
     else:
-        compute_func = mc_reach.compute_network
+        compute_func = fast_reach.compute_network
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
-    # compute_func = mc_reach.compute_network_structured_obj
+    # compute_func = fast_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
         connections,
