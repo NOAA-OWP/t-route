@@ -405,47 +405,24 @@ def merge_parameters(to_merge):
     Returns:
         replace (DataFrame): weighted average
     """
-
-#     data_replace = to_merge.tail(1)
-#     data_replace._is_copy = None
-    
-    data_replace = pd.DataFrame().reindex_like(to_merge.tail(1))
-
-#     idx = to_merge.tail(1).index
     idx = to_merge.index[-1]
-
-    data_replace.loc[idx,"to"] = to_merge.loc[idx,"to"]
-    data_replace.loc[idx,"Length"] = to_merge.Length.sum()
-    data_replace.loc[idx,"n"] = len_weighted_av(to_merge, "n", "Length")
-    data_replace.loc[idx,"nCC"] = len_weighted_av(to_merge, "nCC", "Length")
-    data_replace.loc[idx,"So"] = len_weighted_av(to_merge, "So", "Length")
-    data_replace.loc[idx,"BtmWdth"] = len_weighted_av(to_merge, "BtmWdth", "Length")
-    data_replace.loc[idx,"TopWdth"] = len_weighted_av(to_merge, "TopWdth", "Length")
-    data_replace.loc[idx,"TopWdthCC"] = len_weighted_av(
+    data_replace = to_merge.loc[idx].to_numpy()
+    
+    data_replace[1] = to_merge.Length.sum()
+    data_replace[2] = len_weighted_av(to_merge, "n", "Length")
+    data_replace[3] = len_weighted_av(to_merge, "nCC", "Length")
+    data_replace[4] = len_weighted_av(to_merge, "So", "Length")
+    data_replace[5] = len_weighted_av(to_merge, "BtmWdth", "Length")
+    data_replace[6] = len_weighted_av(to_merge, "TopWdth", "Length")
+    data_replace[7] = len_weighted_av(
         to_merge, "TopWdthCC", "Length"
     )
-    data_replace.loc[idx,"NHDWaterbodyComID"] = to_merge.loc[idx,"NHDWaterbodyComID"]
-    data_replace.loc[idx,"MusK"] = to_merge.loc[idx,"MusK"]
-    data_replace.loc[idx,"MusX"] = to_merge.loc[idx,"MusX"]
-    data_replace.loc[idx,"ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
-    data_replace.loc[idx,"order"] = to_merge.loc[idx,"order"]
-    
-#     data_replace.loc[idx, "Length"] = to_merge.Length.sum()
-#     data_replace.loc[idx, "n"] = len_weighted_av(to_merge, "n", "Length")
-#     data_replace.loc[idx, "nCC"] = len_weighted_av(to_merge, "nCC", "Length")
-#     data_replace.loc[idx, "So"] = len_weighted_av(to_merge, "So", "Length")
-#     data_replace.loc[idx, "BtmWdth"] = len_weighted_av(to_merge, "BtmWdth", "Length")
-#     data_replace.loc[idx, "TopWdth"] = len_weighted_av(to_merge, "TopWdth", "Length")
-#     data_replace.loc[idx, "TopWdthCC"] = len_weighted_av(
-#         to_merge, "TopWdthCC", "Length"
-#     )
-#     data_replace.loc[idx, "MusK"] = len_weighted_av(to_merge, "MusK", "Length")
-#     data_replace.loc[idx, "MusX"] = len_weighted_av(to_merge, "MusX", "Length")
-#     data_replace.loc[idx, "ChSlp"] = len_weighted_av(to_merge, "ChSlp", "Length")
-    
+    data_replace[11] = len_weighted_av(to_merge, "ChSlp", "Length")
 
-    return data_replace
-
+    data_replace_output = pd.DataFrame(data = np.reshape(data_replace, (-1, 13)), index = [idx], columns = to_merge.columns)
+    data_replace_output.index.names = ["link"]
+    
+    return data_replace_output
 
 def correct_reach_connections(data_merged):
 
@@ -531,7 +508,6 @@ def downstream_merge(data_merged, chop, thresh):
     chop.add(idx_us)
 
     return data_merged, chop
-
 
 def merge_all(rch, data, chop):
 
@@ -744,6 +720,9 @@ def segment_merge(data_native, data, network_data, thresh, pruned_segments):
     qlat_destinations = qlat_destination_compute(
         data_native, data_merged, merged_segments, pruned_segments, network_data
     )
+    
+    print(len(data))
+    print(len(merged_segments))
 
     return data_merged, qlat_destinations
 
@@ -768,6 +747,7 @@ def main():
     #-------------------------------
     # PRUNE - SNAP - MERGE
     #-------------------------------
+    t1 = time.time()
     if prune and snap:
         dirname = (
             "RouteLink_"
@@ -797,6 +777,8 @@ def main():
         data_merged, qlat_destinations = segment_merge(
             data, data_snapped, network_data, threshold, pruned_segs
         )
+    t2 = time.time()
+    print("The total process took:", np.round(t2-t1,3))
 
     #-------------------------------
     #      SNAP - MERGE
