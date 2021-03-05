@@ -5,7 +5,7 @@ FIXME add some significant inline documentation
 from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
-cdef void run(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+cdef void run(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil
 
 cdef extern from "levelpool_structs.h":
   ctypedef struct _MC_Levelpool:
