@@ -1,3 +1,5 @@
+# cython: language_level=3, cdivision=True
+
 cdef extern from "<math.h>" nogil:
     double fabs(double x)
     float fabsf(float)
@@ -82,30 +84,11 @@ cdef void cython_muskingcunge(
     cdef float rerror = 1.0
     cdef int it, tries = 0
 
-    cdef float z
-
-    if cs == 0:  # susceptible to float comparison error?
-        z = 1.0
-    else:
-        z = 1.0/cs
-
-    cdef float bfd
-
-    if bw > tw:
-        bfd = bw/0.00001
-    elif bw == tw:
-        bfd = bw/(2*z)
-    else:
-        bfd = (tw - bw)/(2*z)
-
-    cdef float qdc, velc, depthc, h, h_0
+    cdef float z, h, h_0
+    cdef float qdc, velc, depthc
     cdef float C_pdot_Q
-    cdef float R, twl 
-
-    depthc = max(depthp, 0)
-    h = (depthc * 1.33) + mindepth # 4/3 ?
-    h_0 = depthc * 0.67  # 2/3 ?
-
+    cdef float R, twl
+    cdef float bfd
     cdef QC qc_struct
     # initialize vars
     qc_struct.Qj_0 = 0.0
@@ -120,6 +103,22 @@ cdef void cython_muskingcunge(
     cdef float C1, C2, C3, C4
     cdef float Qj_0, Qj
 
+    if cs == 0:  # susceptible to float comparison error?
+        z = 1
+    else:
+        z = 1/cs
+
+    if bw > tw:
+        bfd = bw * (1/0.00001)
+    elif bw == tw:
+        bfd = bw/(2*z)
+    else:
+        bfd = (tw - bw)/(2*z)
+
+    depthc = fmaxf(depthp, 0)
+    h = (depthc * 1.33) + mindepth # 4/3 ?
+    h_0 = depthc * 0.67  # 2/3 ?
+
     if ql > 0 or quc > 0 or qup > 0 or qdp > 0:
 
         # These should not be carried between iterations --- see https://github.com/NCAR/wrf_hydro_nwm_public/pull/510
@@ -131,10 +130,10 @@ cdef void cython_muskingcunge(
         while rerror > 0.01 and aerror >= mindepth and it <= maxiter:
             secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, 
                       dx, qup, quc, qdp, ql, h_0,
-                      qc,)
+                      qc)
             secant_h(z, bw, bfd, twcc, s0, n, ncc, dt, 
                       dx, qup, quc, qdp, ql, h, 
-                      qc,)
+                      qc)
 
             Qj_0 = qc.Qj_0
             Qj = qc.Qj
@@ -153,7 +152,7 @@ cdef void cython_muskingcunge(
                 h_1 = h
 
             if h > 0:
-                rerror = fabsf((h_1 - h) / h)
+                rerror = fabsf((h_1 - h) * (1/h))
                 aerror = fabsf(h_1 - h)
             else:
                 rerror = 0
@@ -186,8 +185,8 @@ cdef void cython_muskingcunge(
                 qdc = max((C1 * qup) * (C2 * quc) + C4, (C1 * qup) + (C3 * qdp) + C4)
 
         twl = bw + (2 * z * h)
-        R = (h * (bw + twl) / 2.0) / (bw + 2.0 * sqrtf(powf(((twl - bw) / 2.0),2.0) + (h * h)))
-        velc = (1 / n) * (powf(R,(2.0 / 3.0))) * sqrtf(s0)
+        R = (0.5 * h * (bw + twl)) / (bw + 2.0 * sqrtf(powf(((twl - bw) * 0.5), 2.0) + (h * h)))
+        velc = (1 / n) * (powf(R, 2.0/3.0)) * sqrtf(s0)
         depthc = h
     else:
         qdc = 0
@@ -197,8 +196,6 @@ cdef void cython_muskingcunge(
     rv.qdc = qdc
     rv.velc = velc
     rv.depthc = depthc
-
-    return
 
 
 cdef inline void secant_h0(
@@ -228,6 +225,7 @@ cdef inline void secant_h0(
 
     cdef float sqr_s0 = sqrtf(s0)
     cdef float sqr_1z2 = sqrtf(1.0 + (z * z))
+    cdef float areasum
 
     if h_0 > bfd:
         # hydraulic radius, R
@@ -238,12 +236,13 @@ cdef inline void secant_h0(
         R = (AREA + AREAC)/(WP + WPC)
 
         # kinematic celerity, c
-        Ck = max(0.0, ((sqr_s0 / n) * ((5/3) * powf(R,(2 /3)) -
-                         ((2 / 3) * powf(R,(5 / 3)) * (2.0 * sqr_1z2 / (bw + 2.0 * bfd * z)))) * AREA
-                       + ((sqr_s0 / ncc) * (5 / 3) * powf((h_0 - bfd),(2 / 3))) * AREAC) / (AREA + AREAC))
+        areasum = (1/(AREA + AREAC))
+        Ck = fmaxf(0.0, ((sqr_s0 / n) * ((5./3.) * powf(R,(2./3.)) -
+                         ((2./3.) * powf(R,(5. / 3.)) * (2.0 * sqr_1z2 / (bw + 2.0 * bfd * z)))) * AREA
+                       + ((sqr_s0 / ncc) * (5. / 3.) * powf((h_0 - bfd),(2. / 3.))) * AREAC) * areasum)
 
         # MC parameter, X
-        X = min(0.5, max(0.0, 0.5 * (1 - (qc.Qj_0 / (2.0 * twcc * s0 * Ck * dx)))))
+        X = fminf(0.5, fmaxf(0.0, 0.5 * (1 - (0.5 * (qc.Qj_0 / (twcc * s0 * Ck * dx))))))
     else:
         # hydraulic radius, R
         AREA = (bw + h_0 * z) * h_0
@@ -257,21 +256,21 @@ cdef inline void secant_h0(
 
         # kinematic celerity, c
         if h_0 > 0:
-            Ck = max(0.0, (sqr_s0 / n) * ((5 / 3) * powf(R,(2 / 3)) -
-                                        ((2 / 3) * powf(R,(5 / 3)) * (
+            Ck = fmaxf(0.0, (sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
+                                        ((2. / 3.) * powf(R,(5. / 3.)) * (
                                                     2.0 * sqr_1z2 / (bw + 2.0 * h_0 * z)))))
-            X = min(0.5, max(0.0, 0.5 * (1 - (qc.Qj_0 / (2.0 * twl * s0 * Ck * dx)))))
+            X = fminf(0.5, fmaxf(0.0, 0.5 * (1 - (0.5 * (qc.Qj_0 / (twl * s0 * Ck * dx))))))
 
         else:
             Ck = 0
             X = 0.5
 
     if Ck > 0:
-        Km = max(dt, dx/Ck)
+        Km = fmaxf(dt, dx/Ck)
     else:
         Km = dt
 
-    D = (Km*(1.000 - X) + dt/2.0000)              # --seconds
+    D = (Km*(1.0 - X) + 0.5 * dt)              # --seconds
 
     qc.C1 = (Km*X + dt/2)/D
     qc.C2 = (dt/2 - Km*X)/D
@@ -284,9 +283,8 @@ cdef inline void secant_h0(
     if WP + WPC > 0:
         C_dot_Q = (qc.C1 * qup) + (qc.C2 * quc) + (qc.C3 * qdp) + qc.C4
         qc.Qj_0 = C_dot_Q - ((1 / (((WP * n) + (WPC * ncc)) / (WP + WPC))) *
-                                                              (AREA + AREAC) * (powf(R,(2 / 3))) * sqr_s0)
+                                                              (AREA + AREAC) * (powf(R,(2./ 3.))) * sqr_s0)
 
-    return
 
 
 cdef inline void secant_h(
@@ -307,6 +305,7 @@ cdef inline void secant_h(
     QC* qc,
 ) nogil:
     cdef float twl, AREA, AREAC, WP, WPC, R, Ck, X, Km, D
+    cdef float areasum
 
     twl = bw + 2.0 * z * h
 
@@ -321,12 +320,13 @@ cdef inline void secant_h(
         WPC = twcc + (2.0*(h-bfd))
         R = (AREA + AREAC)/(WP + WPC)
 
-        Ck = max(0.0, ((sqr_s0 / n) * ((5. / 3.) * powf(R,(2 / 3)) -
-                                         ((2. / 3) * powf(R,(5 / 3.)) * (
+        areasum = 1/(AREA+AREAC)
+        Ck = fmaxf(0.0, ((sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
+                                         ((2. / 3.) * powf(R,(5. / 3.)) * (
                                                      2.0 * sqr_1z2 / (bw + 2.0 * bfd * z)))) * AREA
-                       + ((sqr_s0 / (ncc)) * (5 / 3) * powf((h - bfd),(2 / 3))) * AREAC) / (AREA + AREAC))
+                       + ((sqr_s0 / (ncc)) * (5. / 3.) * powf((h - bfd),(2. / 3.))) * AREAC) *areasum)
 
-        X = min(0.5, max(0.25, 0.5 * (1 - (C_dot_Q / (2 * twcc * s0 * Ck * dx)))))
+        X = fminf(0.5, fmaxf(0.25, 0.5 * (1 - (C_dot_Q / (2 * twcc * s0 * Ck * dx)))))
 
     else:
         AREA = (bw + h * z ) * h
@@ -339,27 +339,27 @@ cdef inline void secant_h(
             R = 0
 
         if h > 0:
-            Ck = max(0.0, (sqr_s0 / n) * ((5 / 3) * powf(R,(2 / 3)) -
-                                            ((2 / 3) * powf(R,(5 / 3)) * (
+            Ck = fmaxf(0.0, (sqr_s0 / n) * ((5. / 3.) * powf(R,(2. / 3.)) -
+                                            ((2. / 3.) * powf(R,(5./ 3.)) * (
                                                         2.0 * sqr_1z2 / (bw + 2.0 * h * z)))))
         else:
             Ck = 0
 
         if Ck > 0:
-            X = min(0.5, max(0.25, 0.5 * (1 - (C_dot_Q / (2 * twl * s0 * Ck * dx)))))
+            X = fminf(0.5, fmaxf(0.25, 0.5 * (1 - (C_dot_Q / (2 * twl * s0 * Ck * dx)))))
         else:
             X = 0.5
 
     if Ck > 0:
-        Km = max(dt, dx/Ck)
+        Km = fmaxf(dt, dx/Ck)
     else:
         Km = dt
-    D = Km*(1-X) + dt/2
+    D = 1/(Km*(1-X) + 0.5*dt)
 
-    qc.C1 = (Km*X + dt/2.0)/D
-    qc.C2 = (dt/2.0 - Km*X)/D
-    qc.C3 = (Km*(1.0-X)-dt/2.0)/D
-    qc.C4 = (ql*dt)/D
+    qc.C1 = (Km*X + 0.5 *dt) * D
+    qc.C2 = (0.5 * dt - Km*X) * D
+    qc.C3 = (Km*(1.0-X)-0.5 * dt) * D
+    qc.C4 = (ql*dt) * D
 
 
     cdef float t
@@ -369,8 +369,5 @@ cdef inline void secant_h(
         qc.C4 = -t
 
     if WP + WPC > 0:
-        qc.Qj = (t + qc.C4) - ((1.0/(((WP*n)+(WPC*ncc))/(WP+WPC))) *
-                    (AREA+AREAC) * (pow(R,(2/3))) * sqr_s0)
-
-    return
-
+        qc.Qj = (t + qc.C4) - (((WP + WPC)/(((WP*n)+(WPC*ncc)))) *
+                    (AREA+AREAC) * (powf(R,(2./3.))) * sqr_s0)
