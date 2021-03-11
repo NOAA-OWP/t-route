@@ -609,14 +609,16 @@ def compute_nhd_routing_v02(
 
     else:  # Execute in serial
         results = []
-
+        # import pdb; pdb.set_trace()
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            
             segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
             ].sort_index()
             qlat_sub = qlats.loc[segs].sort_index()
             q0_sub = q0.loc[segs].sort_index()
+            # import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -784,6 +786,8 @@ def main():
     global restart_file_number
     global runs_to_be_completed
     global file_run_size
+    # import pdb; pdb.set_trace()
+    print(restart_file_number)
     if showtiming:
         main_start_time = time.time()
 
@@ -820,12 +824,16 @@ def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-
+    import pdb; pdb.set_trace()
     if ts_iterator == 0:
         q0 = nnu.build_channel_initial_state(restart_parameters, supernetwork_parameters, param_df.index)
-
+    
     else:
-        q0 = pd.read_csv("../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(restart_file_number) + ".csv", index_col="link")
+        q0_file_name = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(ts_iterator+1) + ".csv"
+        q0 = pd.read_csv(q0_file_name)
+        q0 = q0.set_index("link")
+        q0 = q0.loc[:,:].astype('float32')
+        q0.index = q0.index.astype(int)   
 
     if verbose:
         print("channel initial states complete")
@@ -868,7 +876,7 @@ def main():
         compute_func = mc_reach.compute_network
     else:
         compute_func = mc_reach.compute_network
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -892,10 +900,7 @@ def main():
         print("ordered reach computation complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-    # [2743398], [2743400], [2743396]]
 
-    # print(q0.iloc[2743396])
-    # print(reaches_bytw)
     ################### Output Handling
 
     if showtiming:
@@ -914,6 +919,7 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         if run_parameters.get("return_courant", False):
+            # import pdb; pdb.set_trace()
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
                 copy=False,
@@ -923,12 +929,11 @@ def main():
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
                 copy=False,
             )
-        # print(flowveldepth)
+        
         restart_flows = flowveldepth.iloc[:,-3:]
-        print(restart_flows)
         restart_flows.index.name = 'link'
         restart_flows.columns = ['qu0', 'qd0', 'h0']
-        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(restart_file_number) + ".csv"
+        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(ts_iterator+2) + ".csv"
         restart_flows.to_csv(output_iteration)
 
 
