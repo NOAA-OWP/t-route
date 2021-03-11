@@ -159,6 +159,8 @@ def build_test_parameters(
 
 def parity_check(parity_parameters, run_parameters, nts, dt, results):
 
+    compare_node = parity_parameters["parity_check_compare_node"]
+
     if "parity_check_input_folder" in parity_parameters:
 
         validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
@@ -173,19 +175,19 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
             # [compare_node],
         )
 
-    if "parity_check_file" in parity_parameters:
-        validation_data = pd.read_csv(
-            parity_parameters["parity_check_file"], index_col=0
-        )
+    elif "parity_check_file" in parity_parameters:
+        validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
 
-    compare_node = parity_parameters["parity_check_compare_node"]
 
-    wrf_time = validation_data.columns.astype("datetime64[ns]")
-    dt_wrf = wrf_time[1] - wrf_time[0]
-    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+    elif "parity_check_waterbody_file" in parity_parameters:
+        validation_data = pd.read_csv(parity_parameters["parity_check_waterbody_file"], index_col=0)
+        validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
+        validation_data = validation_data[[compare_node]]
+        validation_data.index = validation_data.index.astype("datetime64[ns]")
+        validation_data = validation_data.transpose()
 
     # construct a dataframe of simulated flows
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
@@ -207,6 +209,10 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
 
+    wrf_time = validation_data.columns.astype("datetime64[ns]")
+    dt_wrf = wrf_time[1] - wrf_time[0]
+    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+
     # specify simulation calendar time
     dt_routing = pd.Timedelta(str(dt) + "seconds")
     time_routing = pd.period_range(
@@ -214,22 +220,40 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     ).astype("datetime64[ns]")
     time_wrf = validation_data.columns.values
 
-    # construct comparable dataframes
-    trt = pd.DataFrame(
-        flows.loc[:, compare_node].values,
-        index=time_routing,
-        columns=["flow, t-route (cms)"],
-    )
-    wrf = pd.DataFrame(
-        validation_data.loc[compare_node, :].values,
-        index=time_wrf,
-        columns=["flow, wrf (cms)"],
-    )
+    if compare_node in validation_data.index:
 
-    # compare dataframes
-    compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
-    compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
-    compare["absdiff"] = np.abs(compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
+        #         # construct comparable waterbody dataframes
+        #         trt_wb = pd.DataFrame(
+        #             flows.loc[:, compare_node].values,
+        #             index=time_routing,
+        #             columns=["flow, t-route (cms)"],
+        #         )
+        #         wrf_wb = pd.DataFrame(
+        #             #TODO: Make generalizable to any given lake id
+        #             validation_data.loc[:, "outflow"].values,
+        #             index=validation_data.index,
+        #             columns=["flow, wrf (cms)"],
+        #         )
+        #
+        #        # compare dataframes
+        #        compare = pd.concat([wrf_wb, trt_wb], axis=1, sort=False, join="inner")
+        #        print(compare)
+        # construct comparable dataframes
+        trt = pd.DataFrame(
+            flows.loc[:, compare_node].values,
+            index=time_routing,
+            columns=["flow, t-route (cms)"],
+        )
+        wrf = pd.DataFrame(
+            validation_data.loc[compare_node, :].values,
+            index=time_wrf,
+            columns=["flow, wrf (cms)"],
+        )
 
-    print(compare)
-    print(compare.describe())
+        # compare dataframes
+        compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
+        compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        compare["absdiff"] = np.abs(compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
+
+        print(compare)
+        print(compare.describe())

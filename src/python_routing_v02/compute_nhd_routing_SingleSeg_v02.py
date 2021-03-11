@@ -1308,6 +1308,7 @@ def main():
     if (
         "parity_check_input_folder" in parity_parameters
         or "parity_check_file" in parity_parameters
+        or "parity_check_waterbody_file" in parity_parameters
     ):
 
         if verbose:
