@@ -96,3 +96,5 @@ parity_parameters:
     # parity_check_file_index_col: feature_id
     # parity_check_file_value_col: streamflow
     parity_check_compare_node: 6227150
+    # parity_check_compare_node: 6228110
+    # parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/croton_ny_nudge_off_waterbodies.csv"
