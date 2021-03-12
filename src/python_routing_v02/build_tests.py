@@ -53,10 +53,7 @@ def build_test_parameters(
 
         # Simulation domain RouteLink file
         routelink_file = pathlib.Path(
-            NWM_test_path,
-            "primary_domain",
-            "DOMAIN",
-            "Route_Link.nc",
+            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
         ).resolve()
 
         # Speficify WRF hydro restart file, name and destination
@@ -160,13 +157,15 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, run_parameters, nts, dt, results):
-    
+def parity_check(parity_parameters, run_parameters, results):
+    nts = run_parameters["nts"]
+    dt = run_parameters["dt"]
+
     if "parity_check_input_folder" in parity_parameters:
-        
-        validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
-            parity_parameters["parity_check_file_pattern_filter"]
-        )
+
+        validation_files = pathlib.Path(
+            parity_parameters["parity_check_input_folder"]
+        ).rglob(parity_parameters["parity_check_file_pattern_filter"])
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
@@ -175,13 +174,15 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
             parity_parameters["parity_check_file_value_col"],
             # [compare_node],
         )
-    
+
     if "parity_check_file" in parity_parameters:
-        validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
+        validation_data = pd.read_csv(
+            parity_parameters["parity_check_file"], index_col=0
+        )
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
-        
+
     compare_node = parity_parameters["parity_check_compare_node"]
 
     wrf_time = validation_data.columns.astype("datetime64[ns]")
@@ -192,11 +193,13 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
     if run_parameters.get("return_courant", False):
         flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d, c in results], copy=False
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d, c in results],
+            copy=False,
         )
     else:
         flowveldepth = pd.concat(
-            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results], copy=False
+            [pd.DataFrame(d, index=i, columns=fdv_columns) for i, d in results],
+            copy=False,
         )
     flowveldepth = flowveldepth.sort_index()
 
