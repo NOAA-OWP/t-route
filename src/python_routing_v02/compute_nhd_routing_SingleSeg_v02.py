@@ -824,16 +824,13 @@ def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-    import pdb; pdb.set_trace()
+
     if ts_iterator == 0:
         q0 = nnu.build_channel_initial_state(restart_parameters, supernetwork_parameters, param_df.index)
     
     else:
-        q0_file_name = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(ts_iterator+1) + ".csv"
-        q0 = pd.read_csv(q0_file_name)
-        q0 = q0.set_index("link")
-        q0 = q0.loc[:,:].astype('float32')
-        q0.index = q0.index.astype(int)   
+        q0_file_name = restart_parameters["wrf_hydro_channel_restart_file"][:-1] + str(ts_iterator+1) + ".csv" 
+        q0 = nnu.restart_file_csv(q0_file_name)
 
     if verbose:
         print("channel initial states complete")
@@ -919,7 +916,7 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         if run_parameters.get("return_courant", False):
-            # import pdb; pdb.set_trace()
+
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
                 copy=False,
@@ -929,11 +926,11 @@ def main():
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
                 copy=False,
             )
-        
+        # Output new restart CSV
         restart_flows = flowveldepth.iloc[:,-3:]
         restart_flows.index.name = 'link'
         restart_flows.columns = ['qu0', 'qd0', 'h0']
-        output_iteration = "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/HYDRO_RST.2017-12-31_06-00_DOMAIN" + str(ts_iterator+2) + ".csv"
+        output_iteration = restart_parameters["wrf_hydro_channel_restart_file"][:-1] + str(ts_iterator+2) + ".csv"
         restart_flows.to_csv(output_iteration)
 
 
@@ -1010,15 +1007,14 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
     
-    if ts_iterator == runs_to_be_completed-1:
+    if ts_iterator == (runs_to_be_completed-1):
         if verbose:
             print("process complete")
         if showtiming:
             print("%s seconds." % (time.time() - main_start_time))
     else:
-        ts_iterator = ts_iterator + 1
-        restart_file_number = restart_file_number + 1 
-
+        ts_iterator = (ts_iterator + 1)
+        restart_file_number = (restart_file_number + 1) 
         main()
 
 

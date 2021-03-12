@@ -536,3 +536,10 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,
     qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]    
     print(qlat_df)
     return qlat_df
+
+def restart_file_csv(q0_file_name):
+    q0 = pd.read_csv(q0_file_name)
+    q0 = q0.set_index("link")
+    q0 = q0.loc[:,:].astype('float32')
+    q0.index = q0.index.astype(int) 
+    return q0
