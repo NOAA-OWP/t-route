@@ -26,7 +26,7 @@ output_parameters:
 supernetwork_parameters:
     title_string: "Croton1"
     geo_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-    #mask_file_path: "../../test/input/geo/Channels/masks/Pocono_mask.csv"
+    #mask_file_path: ""
     #mask_layer_string: ""
     #mask_driver_string: "csv"
     #mask_key: 0
@@ -67,10 +67,6 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
-    # qlat_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/"
-    # qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
-    # qlat_file_index_col: feature_id
-    # qlat_file_value_col: q_lateral
 #WRF-Hydro restart files
 restart_parameters:
     #WRF-Hydro channels restart file
@@ -90,11 +86,9 @@ restart_parameters:
     wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 parity_parameters:
+    #Use two lines below for parity check on streamflow and leave the following two lines commented out
     parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
-    # parity_check_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/"
-    # parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
-    # parity_check_file_index_col: feature_id
-    # parity_check_file_value_col: streamflow
-    parity_check_compare_node: 6227150
-    # parity_check_compare_node: 6228110
-    # parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/croton_ny_nudge_off_waterbodies.csv"
+    parity_check_compare_node: 6227150 #Stream
+    #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
+    # parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_nudge_off.csv"
+    # parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
