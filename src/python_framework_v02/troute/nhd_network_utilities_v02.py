@@ -424,7 +424,7 @@ def build_connections(supernetwork_parameters, dt):
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
     param_df = param_df.astype("float32")
-    
+
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, wbodies, param_df
 
@@ -441,20 +441,20 @@ def organize_independent_networks(connections):
     return independent_networks, reaches_bytw, rconn
 
 
-def build_channel_initial_state(restart_parameters,supernetwork_parameters, channel_index=None):
+def build_channel_initial_state(
+    restart_parameters, supernetwork_parameters, channel_index=None
+):
 
-    channel_restart_file = restart_parameters.get(
-        "channel_restart_file", None
-    )
+    channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
 
-    mask_file_path = supernetwork_parameters.get("mask_file_path",None)
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
         mask_file_path = pd.read_csv(mask_file_path)
-        mask_file_path = mask_file_path.iloc[:,0].tolist()
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
 
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
@@ -479,16 +479,23 @@ def build_channel_initial_state(restart_parameters,supernetwork_parameters, chan
 
     q0 = q0[q0.index.isin(mask_file_path)]
 
-
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,file_run_size,supernetwork_parameters, qts_subdivisions=1):
+def build_qlateral_array(
+    forcing_parameters,
+    connections_keys,
+    nts,
+    ts_iterator,
+    file_run_size,
+    supernetwork_parameters,
+    qts_subdivisions=1,
+):
     # TODO: set default/optional arguments
-    mask_file_path = supernetwork_parameters.get("mask_file_path",None)
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
         mask_file_path = pd.read_csv(mask_file_path)
-        mask_file_path = mask_file_path.iloc[:,0].tolist()
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
@@ -525,21 +532,25 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts, ts_iterator,
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections_keys, columns=range(nts // qts_subdivisions), dtype="float32",
+            qlat_const,
+            index=connections_keys,
+            columns=range(nts // qts_subdivisions),
+            dtype="float32",
         )
 
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
-        qlat_df.drop(qlat_df.columns[max_col:],axis=1,inplace=True)
+        qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]    
+    qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]
     print(qlat_df)
     return qlat_df
+
 
 def restart_file_csv(q0_file_name):
     q0 = pd.read_csv(q0_file_name)
     q0 = q0.set_index("link")
-    q0 = q0.loc[:,:].astype('float32')
-    q0.index = q0.index.astype(int) 
+    q0 = q0.loc[:, :].astype("float32")
+    q0.index = q0.index.astype(int)
     return q0

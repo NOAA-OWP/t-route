@@ -611,7 +611,7 @@ def compute_nhd_routing_v02(
         results = []
         # import pdb; pdb.set_trace()
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
-            
+
             segs = list(chain.from_iterable(reach_list))
             param_df_sub = param_df.loc[
                 segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
@@ -761,11 +761,15 @@ def _input_handler():
         run_parameters,
         parity_parameters,
     )
+
+
 total_timeslice_files = 24
 runs_to_be_completed = 3
 ts_iterator = 0
 restart_file_number = 2
-file_run_size = int(total_timeslice_files/runs_to_be_completed)
+file_run_size = int(total_timeslice_files / runs_to_be_completed)
+
+
 def main():
     (
         supernetwork_parameters,
@@ -826,10 +830,16 @@ def main():
         print("setting channel initial states ...")
 
     if ts_iterator == 0:
-        q0 = nnu.build_channel_initial_state(restart_parameters, supernetwork_parameters, param_df.index)
-    
+        q0 = nnu.build_channel_initial_state(
+            restart_parameters, supernetwork_parameters, param_df.index
+        )
+
     else:
-        q0_file_name = restart_parameters["wrf_hydro_channel_restart_file"][:-1] + str(ts_iterator+1) + ".csv" 
+        q0_file_name = (
+            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
+            + str(ts_iterator + 1)
+            + ".csv"
+        )
         q0 = nnu.restart_file_csv(q0_file_name)
 
     if verbose:
@@ -927,12 +937,15 @@ def main():
                 copy=False,
             )
         # Output new restart CSV
-        restart_flows = flowveldepth.iloc[:,-3:]
-        restart_flows.index.name = 'link'
-        restart_flows.columns = ['qu0', 'qd0', 'h0']
-        output_iteration = restart_parameters["wrf_hydro_channel_restart_file"][:-1] + str(ts_iterator+2) + ".csv"
+        restart_flows = flowveldepth.iloc[:, -3:]
+        restart_flows.index.name = "link"
+        restart_flows.columns = ["qu0", "qd0", "h0"]
+        output_iteration = (
+            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
+            + str(ts_iterator + 2)
+            + ".csv"
+        )
         restart_flows.to_csv(output_iteration)
-
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
@@ -976,7 +989,6 @@ def main():
         print("output complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-    
 
     ################### Parity Check
 
@@ -1006,18 +1018,16 @@ def main():
             print("parity check complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
-    
-    if ts_iterator == (runs_to_be_completed-1):
+
+    if ts_iterator == (runs_to_be_completed - 1):
         if verbose:
             print("process complete")
         if showtiming:
             print("%s seconds." % (time.time() - main_start_time))
     else:
-        ts_iterator = (ts_iterator + 1)
-        restart_file_number = (restart_file_number + 1) 
+        ts_iterator = ts_iterator + 1
+        restart_file_number = restart_file_number + 1
         main()
-
-
 
 
 if __name__ == "__main__":
