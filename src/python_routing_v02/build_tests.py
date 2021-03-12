@@ -222,22 +222,6 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
 
     if compare_node in validation_data.index:
 
-        #         # construct comparable waterbody dataframes
-        #         trt_wb = pd.DataFrame(
-        #             flows.loc[:, compare_node].values,
-        #             index=time_routing,
-        #             columns=["flow, t-route (cms)"],
-        #         )
-        #         wrf_wb = pd.DataFrame(
-        #             #TODO: Make generalizable to any given lake id
-        #             validation_data.loc[:, "outflow"].values,
-        #             index=validation_data.index,
-        #             columns=["flow, wrf (cms)"],
-        #         )
-        #
-        #        # compare dataframes
-        #        compare = pd.concat([wrf_wb, trt_wb], axis=1, sort=False, join="inner")
-        #        print(compare)
         # construct comparable dataframes
         trt = pd.DataFrame(
             flows.loc[:, compare_node].values,
