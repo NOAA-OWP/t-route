@@ -1,4 +1,4 @@
-## testing: python nhd_network_augment.py CapeFear_FULL_RES -return_original -p -s
+## testing: python nhd_network_augment.py CapeFear_FULL_RES -p -s
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -529,7 +529,7 @@ def qlat_destination_compute(
             ds_idx = []
 
         # update the qlat destination dict
-        qlat_destinations[str(idx)] = str(ds_idx)
+        qlat_destinations[idx] = ds_idx[0]
 
     return qlat_destinations
 
@@ -819,7 +819,7 @@ def main():
         print("Error! - The merging process has created additional tailwaters (i.e. it broke the network)")
         raise ValueError
         
-    def crosswalk_check(data, data_merged):
+    def crosswalk_check(data, data_merged, qlat_destinations):
         
         # make sure all segments removed from the original network have a qlateral destination in the augmented network
         
@@ -830,15 +830,21 @@ def main():
         mask = np.in1d(idx_original, idx_augmented, invert = True)
         idx_dropped = idx_original[mask]
         
-        # check that all dropped ind
-        if idx_dropped 
+        # check that all dropped indices have a destination
+        for i in idx_dropped:
+            if i not in qlat_destinations.keys():
+                print("Error! - Segment",i,"has been dropped from the network and has no qlateral crosswalk destination") 
+                raise ValueError
+                
+        # check that all destinations exist in augmented network
+        for i in qlat_destinations.values():
+            if i not in idx_augmented:
+                print("Error! - Crosswalk destination segment",i,"does not exist in the augmented network")
+                raise ValueError
+            
+        print("Passed crosswalk test")
         
-        print(len(idx_dropped))
-        print(len(data))
-        print(len(qlat_destinations.keys()))
-        raise ValueError
-        
-    a = crosswalk_check(data,data_merged)
+    crosswalk_check(data,data_merged, qlat_destinations)
 
     #-------------------------------
     #      SNAP - MERGE
