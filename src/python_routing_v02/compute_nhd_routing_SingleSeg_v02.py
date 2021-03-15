@@ -1292,6 +1292,8 @@ def main():
     if showtiming:
         print("%s seconds." % (time.time() - main_start_time))
 
+    if data_assimilation_filter and data_assimilation_csv:
+        print("Please select data_assimilation_parameters_folder/data_assimilation_filter or data_assimilation_csv not both.")
 
 if __name__ == "__main__":
     main()
