@@ -28,6 +28,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
+import xarray as xr
 
 
 def _handle_args():
@@ -759,6 +760,7 @@ def compute_nhd_routing_v02(
 
     else:  # Execute in serial
         results = []
+        # import pdb; pdb.set_trace()
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
             # which becomes invalid with the wbodies included.
@@ -995,8 +997,14 @@ def _input_handler():
     )
 
 
-def main():
+total_timeslice_files = 24
+runs_to_be_completed = 3
+ts_iterator = 0
+restart_file_number = 2
+file_run_size = int(total_timeslice_files / runs_to_be_completed)
 
+
+def main():
     (
         supernetwork_parameters,
         waterbody_parameters,
@@ -1017,6 +1025,10 @@ def main():
         "break_network_at_waterbodies", False
     )
 
+    global ts_iterator
+    global restart_file_number
+    global runs_to_be_completed
+    global file_run_size
     if showtiming:
         main_start_time = time.time()
 
@@ -1081,9 +1093,18 @@ def main():
     if verbose:
         print("setting channel initial states ...")
 
-    q0 = nnu.build_channel_initial_state(
-        restart_parameters, supernetwork_parameters, param_df.index
-    )
+    if ts_iterator == 0:
+        q0 = nnu.build_channel_initial_state(
+            restart_parameters, supernetwork_parameters, param_df.index
+        )
+
+    else:
+        q0_file_name = (
+            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
+            + str(ts_iterator + 1)
+            + ".csv"
+        )
+        q0 = nnu.restart_file_csv(q0_file_name)
 
     if verbose:
         print("channel initial states complete")
@@ -1096,11 +1117,13 @@ def main():
         start_time = time.time()
     if verbose:
         print("creating qlateral array ...")
-
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         connections.keys(),
         nts,
+        ts_iterator,
+        file_run_size,
+        supernetwork_parameters,
         run_parameters.get("qts_subdivisions", 1),
     )
 
@@ -1203,6 +1226,9 @@ def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         if run_parameters.get("return_courant", False):
+            import pdb
+
+            pdb.set_trace()
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
                 copy=False,
@@ -1212,6 +1238,16 @@ def main():
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
                 copy=False,
             )
+        # Output new restart CSV
+        restart_flows = flowveldepth.iloc[:, -3:]
+        restart_flows.index.name = "link"
+        restart_flows.columns = ["qu0", "qd0", "h0"]
+        output_iteration = (
+            restart_parameters["wrf_hydro_channel_restart_file"][:-1]
+            + str(ts_iterator + 2)
+            + ".csv"
+        )
+        restart_flows.to_csv(output_iteration)
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
@@ -1273,9 +1309,13 @@ def main():
             )
         if showtiming:
             start_time = time.time()
-
         build_tests.parity_check(
-            parity_parameters, run_parameters, results,
+            parity_parameters,
+            run_parameters,
+            ts_iterator,
+            file_run_size,
+            supernetwork_parameters,
+            results,
         )
 
         if verbose:
@@ -1283,10 +1323,15 @@ def main():
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-    if verbose:
-        print("process complete")
-    if showtiming:
-        print("%s seconds." % (time.time() - main_start_time))
+    if ts_iterator == (runs_to_be_completed - 1):
+        if verbose:
+            print("process complete")
+        if showtiming:
+            print("%s seconds." % (time.time() - main_start_time))
+    else:
+        ts_iterator = ts_iterator + 1
+        restart_file_number = restart_file_number + 1
+        main()
 
 
 if __name__ == "__main__":

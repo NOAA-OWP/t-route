@@ -1,11 +1,11 @@
 ---
 #initial input parameters
 run_parameters:
-    parallel_compute_method: by-network  # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
+    parallel_compute_method: false  # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
     # subnetwork_target_size: 100  # by-subnetwork* requires a value here to identify the target subnetwork size.
     verbose: true  # verbose output (leave blank for quiet output.)
     showtiming: true  # set the showtiming (omit flag for no timing information.)
-    debuglevel: 1  # set the debuglevel for additional console output.
+    debuglevel: 0  # set the debuglevel for additional console output.
     break_network_at_waterbodies: true # replace waterbodies in the route-link dataset with segments representing the reservoir and calculate to divide the computation (leave blank for no splitting.)
                           # WARNING: `break_network_at_waterbodies: true` will only work if compute_method is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
     compute_method: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
