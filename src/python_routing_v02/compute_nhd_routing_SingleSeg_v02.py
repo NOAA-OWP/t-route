@@ -1275,11 +1275,7 @@ def main():
             start_time = time.time()
 
         build_tests.parity_check(
-            parity_parameters,
-            run_parameters,
-            run_parameters["nts"],
-            run_parameters["dt"],
-            results,
+            parity_parameters, run_parameters, results,
         )
 
         if verbose:
