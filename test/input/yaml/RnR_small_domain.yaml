@@ -97,4 +97,6 @@ parity_parameters:
 # data_assimilation_parameters:
 #     data_assimilation_parameters_file: "../../test/input/geo/wrf-hydro-run/DOMAIN/RouteLink.nc"
 #     data_assimilation_filter: "2020-03*.usgsTimeSlice.ncdf"
+    # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
+    # data_assimilation_timeslices_folder: "../../test/input/geo/nudgingTimeSliceObs/"
 
