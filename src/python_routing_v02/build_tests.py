@@ -185,6 +185,7 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     elif "parity_check_waterbody_file" in parity_parameters:
         validation_data = pd.read_csv(parity_parameters["parity_check_waterbody_file"], index_col=0)
         validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
+        #validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
         validation_data = validation_data[[compare_node]]
         validation_data.index = validation_data.index.astype("datetime64[ns]")
         validation_data = validation_data.transpose()
@@ -209,6 +210,12 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
 
+    depths = flowveldepth.loc[:, (slice(None), "d")]
+    depths = depths.T.reset_index(level=[0, 1])
+    depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
+    depths["Time (d)"] = ((depths.Timestep + 1) * dt) / (24 * 60 * 60)
+    depths = depths.set_index("Time (d)")
+
     wrf_time = validation_data.columns.astype("datetime64[ns]")
     dt_wrf = wrf_time[1] - wrf_time[0]
     sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
@@ -225,6 +232,7 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
         # construct comparable dataframes
         trt = pd.DataFrame(
             flows.loc[:, compare_node].values,
+            #depths.loc[:, compare_node].values,
             index=time_routing,
             columns=["flow, t-route (cms)"],
         )
