@@ -1044,18 +1044,19 @@ def main():
 
     if break_network_at_waterbodies:
         # Read waterbody parameters
-        waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbodies.values()}
-        )
+        if wbodies != {}:
+            waterbodies_df = nhd_io.read_waterbody_df(
+                waterbody_parameters, {"level_pool": wbodies.values()}
+            )
 
-        # Remove duplicate lake_ids and rows
-        waterbodies_df_reduced = (
-            waterbodies_df.reset_index()
-            .drop_duplicates(subset="lake_id")
-            .set_index("lake_id")
-        )
-    else:
-        waterbodies_df_reduced = pd.DataFrame()
+            # Remove duplicate lake_ids and rows
+            waterbodies_df_reduced = (
+                waterbodies_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+            )
+        else:
+            waterbodies_df_reduced = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
