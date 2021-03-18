@@ -228,7 +228,7 @@ cpdef object compute_network(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
-            flowveldepth[fill_index][idx] = val
+            flowveldepth[fill_index, idx] = val
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
