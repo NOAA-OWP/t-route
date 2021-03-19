@@ -34,7 +34,6 @@ init_levelpool_reach(_Reach* reach, int lake_number,
     reach->reach.lp.weir_length = weir_length;
     reach->reach.lp.initial_fractional_depth = initial_fractional_depth;
 
-    printf("water_elevation: %g", water_elevation);
     if(water_elevation < 0){
       //Equation below is used in wrf-hydro
       printf("WARNING: LEVELPOOL USING COLDSTART WATER ELEVATION\n");
