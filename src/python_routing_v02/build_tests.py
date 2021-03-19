@@ -185,6 +185,7 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     elif "parity_check_waterbody_file" in parity_parameters:
         validation_data = pd.read_csv(parity_parameters["parity_check_waterbody_file"], index_col=0)
         validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
+        #TODO: Add toggle option to compare water elevation
         #validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
         validation_data = validation_data[[compare_node]]
         validation_data.index = validation_data.index.astype("datetime64[ns]")
@@ -232,6 +233,7 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
         # construct comparable dataframes
         trt = pd.DataFrame(
             flows.loc[:, compare_node].values,
+            #TODO: Add toggle option to compare water elevation
             #depths.loc[:, compare_node].values,
             index=time_routing,
             columns=["flow, t-route (cms)"],
