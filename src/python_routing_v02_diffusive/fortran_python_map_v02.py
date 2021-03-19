@@ -9,6 +9,7 @@ def fp_network_map(mx_jorder_tw
             , ordered_reaches
             , rchbottom_reaches
             , nrch_g
+            , frnw_col
             , dbfksegID
             , pynw
             ):    
@@ -16,7 +17,7 @@ def fp_network_map(mx_jorder_tw
     #  Store headwater reach and upstream reaches above a junction
     #  as well as downstream reach after a junction
     #  into python-extension-fortran variables.     
-    frnw_g=np.zeros((nrch_g,8), dtype=int)
+    frnw_g=np.zeros((nrch_g,frnw_col), dtype=int)
     frj=-1
     for x in range(mx_jorder_tw,-1,-1): 
         for head_segment, reach in ordered_reaches[x]:                  

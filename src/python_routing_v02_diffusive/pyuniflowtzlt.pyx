@@ -19,8 +19,8 @@ cdef extern from "pyuniflowtzlt.h" nogil:
                        double* ufhlt_f_g, 
                        double* ufqlt_f_g, 
                        int* frnw_col, 
-                       long* frnw_g, 
-                       double* timesDepth_g)
+                       double* dfrnw_g, 
+                       double* timesdepth_g)
 
 def uniflow_lookuptable(int mxncomp_g, 
                         int nrch_g, 
@@ -32,13 +32,9 @@ def uniflow_lookuptable(int mxncomp_g,
                         manncc_ar_g, 
                         so_ar_g, 
                         int nhincr_m_g, 
-                        int nhincr_f_g, 
-                        #ufhlt_m_g, 
-                        #ufqlt_m_g, 
-                        #ufhlt_f_g, 
-                        #ufqlt_f_g, 
+                        int nhincr_f_g,
                         int frnw_col, 
-                        frnw_g, 
+                        dfrnw_g, 
                         double timesdepth_g): 
     cdef:
         ar[double,ndim=2] bo = bo_ar_g
@@ -48,7 +44,7 @@ def uniflow_lookuptable(int mxncomp_g,
         ar[double,ndim=2] mann = mann_ar_g
         ar[double,ndim=2] manncc = manncc_ar_g
         ar[double,ndim=2] so = so_ar_g
-        ar[long, ndim=2] frnw= frnw_g  
+        ar[double,ndim=2] dfrnw= dfrnw_g  
         ar[double,ndim=3] ufhlt_m_g = empty((mxncomp_g, nrch_g, nhincr_m_g), order='F')
         ar[double,ndim=3] ufqlt_m_g = empty((mxncomp_g, nrch_g, nhincr_m_g), order='F')
         ar[double,ndim=3] ufhlt_f_g = empty((mxncomp_g, nrch_g, nhincr_f_g), order='F')
@@ -71,7 +67,7 @@ def uniflow_lookuptable(int mxncomp_g,
                       <double*> ufhlt_f_g.data,
                       <double*> ufqlt_f_g.data,
                       &frnw_col,
-                      <long*> frnw.data,
+                      <double*> dfrnw.data,
                       &timesdepth_g)
     return ufhlt_m_g, ufqlt_m_g, ufhlt_f_g, ufqlt_f_g
 

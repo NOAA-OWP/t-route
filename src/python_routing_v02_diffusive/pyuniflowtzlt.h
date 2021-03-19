@@ -14,5 +14,5 @@ extern void c_uniflowtzlt(int* mxncomp_g,
                           double* ufhlt_f_g, 
                           double* ufqlt_f_g, 
                           int* frnw_col, 
-                          long* frnw_g, 
-                          double* timesDepth_g);
+                          double* dfrnw_g, 
+                          double* timesdepth_g);
