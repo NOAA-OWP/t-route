@@ -200,12 +200,34 @@ def get_ql_from_wrf_hydro_mf(
         # parallel=True,
     ) as ds:
         try:
-            ql = pd.DataFrame(ds[value_col].values.T[:][:,int(ts_iterator * file_run_size) : int((ts_iterator + 1) * file_run_size)],index=ds[index_col].values[0],columns=ds.time.values[int(ts_iterator * file_run_size) : int((ts_iterator + 1) * file_run_size)],)
+            ql = pd.DataFrame(
+                ds[value_col].values.T[:][
+                    :,
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    ),
+                ],
+                index=ds[index_col].values[0],
+                columns=ds.time.values[
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    )
+                ],
+            )
         except:
             ql = pd.DataFrame(
-                ds[value_col].values.T[:][:,int(ts_iterator * file_run_size) : int((ts_iterator + 1) * file_run_size)],
+                ds[value_col].values.T[:][
+                    :,
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    ),
+                ],
                 index=ds[index_col].values,
-                columns=ds.time.values[int(ts_iterator * file_run_size) : int((ts_iterator + 1) * file_run_size)],
+                columns=ds.time.values[
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    )
+                ],
                 # dtype=float,
             )
 
