@@ -1096,15 +1096,15 @@ def main():
             )
         else:
             # TODO: Consider adding option to read cold state from route-link file
-            waterbody_initial_ds_flow_const = 0.0
-            waterbody_initial_depth_const = 0.0
+            waterbodies_initial_ds_flow_const = 0.0
+            waterbodies_initial_depth_const = -1.0
             # Set initial states from cold-state
-            waterbody_initial_states_df = pd.DataFrame(
+            waterbodies_initial_states_df = pd.DataFrame(
                 0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
             )
             # TODO: This assignment could probably by done in the above call
-            waterbodies_initial_states_df["qd0"] = waterbody_initial_ds_flow_const
-            waterbodies_initial_states_df["h0"] = waterbody_initial_depth_const
+            waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
+            waterbodies_initial_states_df["h0"] = waterbodies_initial_depth_const
             waterbodies_initial_states_df["index"] = range(
                 len(waterbodies_initial_states_df)
             )
