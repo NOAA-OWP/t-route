@@ -16,18 +16,26 @@ contains
     subroutine uniflowtzlt(mxncomp_g, nrch_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
                                     mann_ar_g, manncc_ar_g, so_ar_g, &
                                     nhincr_m_g, nhincr_f_g, ufhlt_m_g, ufqlt_m_g, ufhlt_f_g, ufqlt_f_g,&
-                                    frnw_col, frnw_g, timesdepth_g)
+                                    frnw_col, dfrnw_g, timesdepth_g)
         implicit none
         integer, intent(in) :: mxncomp_g, nrch_g
         integer, intent(in) :: nhincr_m_g, nhincr_f_g, frnw_col
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, so_ar_g
-        integer(kind=8), dimension(nrch_g, frnw_col), intent(in) :: frnw_g 
+        double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g 
         double precision, intent(in) :: timesdepth_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(out) :: ufhlt_m_g,  ufqlt_m_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(out) :: ufhlt_f_g, ufqlt_f_g
         integer :: i, i1, ncomp,j
         double precision :: hbf_tz, hincr_m, hincr_f, hstep, ufQ, hmx, incr_m
+        integer, dimension(:,:), allocatable :: frnw_g
+        allocate(frnw_g(nrch_g, frnw_col))
+        frnw_g=int(dfrnw_g) 
+
+        !open(unit=401, file="./output/unifom flow LT m.txt", status="unknown")
+        !open(unit=402, file="./output/unifom flow LT f.txt", status="unknown")
+        !write(401,"(4A7, 2A15)") "ufLT_m","i","j","i1", "uf dsc_m", "nm depth_m"
+        !write(402,"(4A7, 2A15)") "ufLT_f","i","j","i1", "uf dsc_f", "nm depth_f"
 
         do j=1, nrch_g
             ncomp=frnw_g(j,1)
@@ -67,6 +75,11 @@ contains
                 ufhlt_m_g(i, j, i1)= hstep 
                 !* uniform discharge
                 ufqlt_m_g(i, j, i1)= ufQ 
+                        !*test
+                        !do i1=1, nhincr_m_g
+                        !    write(401,"(A7, 3I7, 2f15.3)") "ufLT_m", i, j, i1, ufqlt_m_g(i, j, i1), ufhlt_m_g(i, j, i1)
+                        !enddo
+                        !write(401,*)
                 !*-------------------------------------------
                 !* Lookup table for rectangular floodplain
 
@@ -91,9 +104,14 @@ contains
                  ufhlt_f_g(i, j, i1)= hstep 
                  !* uniform discharge
                  ufqlt_f_g(i, j, i1)= ufQ 
+                         !*test
+                        !do i1=1, nhincr_f_g
+                        !    write(402,"(A7, 3I7, 2f15.3)") "ufLT_f", i, j, i1, ufqlt_f_g(i, j, i1), ufhlt_f_g(i, j, i1)
+                        !enddo
+                        !write(402,*)
             enddo !*do i=1, ncomp
         enddo !*do j=1, nrch
-
+        deallocate(frnw_g) 
     end subroutine uniflowtzlt
 !*----------------------------------------------------------------------
 !*          Uniform flow discharge for trapz. main and rect. floodplain
