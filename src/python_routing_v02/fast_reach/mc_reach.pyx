@@ -730,7 +730,7 @@ cpdef object compute_network_structured_obj(
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
-    #define an intialize the final output array +1 timestep for initial conditions
+    #define and initialize the final output array +1 timestep for initial conditions
     cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
@@ -942,7 +942,7 @@ cpdef object compute_network_structured(
         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
-    #define an intialize the final output array, add one extra time step for initial conditions
+    #define and initialize the final output array, add one extra time step for initial conditions
     cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
     #Make ndarrays from the mem views for convience of indexing...may be a better method
     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
@@ -977,8 +977,6 @@ cpdef object compute_network_structured(
     cdef _MC_Segment segment
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
-		# First, extract only the reaches
-    #cdef list reaches = [reach for reach, _ in reaches_wTypes]
 
     wbody_index = 0
 
@@ -1040,7 +1038,6 @@ cpdef object compute_network_structured(
     #Run time
     with nogil:
       while timestep < nsteps+1:
-        #for r in reach_objects:
         for i in range(num_reaches):
               r = &reach_structs[i]
               #Need to get quc and qup
@@ -1056,16 +1053,6 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                """
-                id = r.reach.lp.lake_number
-                with gil:
-                  print("id ", r.reach.lp)
-                  print("id ", id)
-                  printf("timestep %d\n",  timestep)
-                  exit(1)
-                """
-
-
                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
