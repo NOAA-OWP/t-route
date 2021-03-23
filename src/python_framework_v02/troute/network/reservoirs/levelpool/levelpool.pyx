@@ -29,54 +29,61 @@ cdef class MC_Levelpool(Reach):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
+
+      Params:
+        id: long
+          unique identity of the reach this reservoir represents
+        lake_number: int TODO (long?)
+          WRF_Hydro lake number of this reservoir
+        upstream_ids: array[long]
+          buffer/array of upstream identifiers which contribute flow to this reservoir
+        args: list
+          the levelpool paramters ordered as follows:
+            area = args[0]
+            max_depth = args[1]
+            orifice_area = args[2]
+            orifice_coefficient = args[3]
+            orifice_elevation  =  args[4]
+            weir_coefficient = args[5]
+            weir_elevation = args[6]
+            weir_length = args[7]
+            initial_fractional_depth  = args[8]
     """
     super().__init__(id, upstream_ids, compute_type.RESERVOIR_LP)
-    #init the backing struct, pass a dam_length of 10.0 for now
-    #pass a negative water elevation, which causes the init to use the wrf hydro equation
-    #TODO put in __calloc__
+    # Note Some issues with __calloc__:
+    # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
+    # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
+    # init the backing struct, pass a dam_length of 10.0 for now
     init_levelpool_reach(&self._reach, lake_number,
                          10.0, args[0], args[1],
                          args[2], args[3], args[4],
                          args[5], args[6], args[7],
                          args[8], args[10])
-    """
-    self.lake_number = lake_number
-    #TODO: Need new Lake Parm file, which now has dam_length
-    #dam_length = wbody_parameters[wbody_index,1]
-    #Setting default dam_length to 10
-    self.dam_length = 10.0
-    self.area = args[0]
-    self.max_depth = args[1]
-    self.orifice_area = args[2]
-    self.orifice_coefficient = args[3]
-    self.orifice_elevation  =  args[4]
-    self.weir_coefficient = args[5]
-    self.weir_elevation = args[6]
-    self.weir_length = args[7]
-    self.initial_fractional_depth  = args[8]
-    #TODO: Read Water Elevation from Restart. Use below equation if no restart.
-    #Equation below is used in wrf-hydro
-    self.water_elevation = self.orifice_elevation + ((self.max_depth - self.orifice_elevation) * self.initial_fractional_depth)
-    """
-    """
-    #Initialize level pool reservoir object
-    with nogil:
-      self.lp_handle = get_lp_handle()
-      init_lp(self.lp_handle, &self.water_elevation, &self.area,
-                   &self.weir_elevation, &self.weir_coefficient, &self.weir_length,
-                   &self.dam_length, &self.orifice_elevation, &self.orifice_coefficient,
-                   &self.orifice_area, &self.max_depth, &self.lake_number)
-    #print(<int>self.lp_handle)
-    """
 
   def __dealloc__(self):
     """
-
+      Release pointers and resources used to construct a levelpool reach
     """
     free_levelpool_reach(&self._reach)
-    #free_lp(self.lp_handle)
 
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
+    """
+      Run the levelpool routing function
+
+      Params:
+        inflow: float
+          inflow into the reservoir
+        lateral_inflow: float
+          lateral flows into the reservoir
+        routing_period: float
+          amount of time to simulatie reservoir operation for, outflow if valid until this time
+
+      Return:
+        outflow: float
+          flow rate out of the reservoir valid for routing_period seconds
+        water_elevation:
+          reservoir water surface elevation after routing_period seconds
+    """
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
@@ -86,44 +93,78 @@ cdef class MC_Levelpool(Reach):
 
   @property
   def water_elevation(self):
+    """
+      Reservoir water surface elevation
+    """
     return self._reach.reach.lp.water_elevation
 
   @property
   def lake_area(self):
+    """
+      Surface area of the reservoir
+    """
     return self._reach.reach.lp.area
 
   @property
   def weir_elevation(self):
+    """
+      Elevation, in meters, of the bottom of the weir
+    """
     return self._reach.reach.lp.weir_elevation
 
   @property
   def weir_coefficient(self):
+    """
+
+    """
     return self._reach.reach.lp.weir_coefficient
 
   @property
   def weir_length(self):
+    """
+      Length of the weir, in meters
+    """
     return self._reach.reach.lp.weir_length
 
   @property
   def dam_length(self):
+    """
+      Length of the dam, in meters
+    """
     return self._reach.reach.lp.dam_length
 
   @property
   def orifice_elevation(self):
+    """
+      Elevation, in meters, of the orifice flow component
+    """
     return self._reach.reach.lp.orifice_elevation
 
   @property
   def orifice_area(self):
+    """
+      Area of the orifice flow component, in meters
+    """
     return self._reach.reach.lp.orifice_area
 
   @property
   def max_depth(self):
+    """
+      Maximum water elevaiton, in meters, before overflow occurs
+    """
     return self._reach.reach.lp.max_depth
 
   @property
   def lake_number(self):
+    """
+      WRF Hydro lake identifier
+    """
     return self._reach.reach.lp.lake_number
 
   @property
   def initial_fractional_depth(self):
+    """
+      Initial water surface elevation, as a percentage of total capacity,
+      to use if initial water elevation is unknown.
+    """
     return self._reach.reach.lp.initial_fractional_depth
