@@ -25,6 +25,7 @@ cdef class Reach:
       init_reach(&self._reach, NULL, 0, reach_type)
     #(<_Reach>self._reach).id = id
     self._reach.id = id
+
   def __dealloc__(self):
     """
       deallocate memory used for reach
@@ -33,10 +34,17 @@ cdef class Reach:
 
   @property
   def id(self):
+    """
+      A unique integer identifier of the reach, implies order (ids < self.id) are upstream reaches,
+      (ids > self.id) are downstream reaches
+    """
     return self._reach.id
 
   @property
   def upstream_ids(self):
+    """
+      List of upstream segment identifiers which contribute flow to this reach
+    """
     cdef long[::1] ids
     if(self._num_upstream_ids == 0):
       return []
@@ -48,9 +56,6 @@ cdef class Segment():
   """
     A Single routing segment
   """
-  #cdef long id
-  #cdef long upstream_id
-  #cdef long downstream_id
 
   def __init__(self, id, upstream, downstream):
     """
