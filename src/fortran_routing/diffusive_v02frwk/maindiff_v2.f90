@@ -23,7 +23,7 @@ contains
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
                         mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, &
                         nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g, &
-                        frnw_col, frnw_g, qlat_g, ubcd_g, dbcd_g, &
+                        frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
                         cfl_g, theta_g, tzeq_flag_g, y_opt_g, so_llm_g, &
                         ntss_ev_g, q_ev_g, elv_ev_g)
 
@@ -37,10 +37,10 @@ contains
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
-        integer, dimension(nrch_g, frnw_col), intent(in) :: frnw_g !* set frnw_col=8
+        double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g !* set frnw_col=8
         double precision, dimension(nts_ql_g, mxncomp_g, nrch_g), intent(in) :: qlat_g
         double precision, dimension(nts_ub_g, nrch_g), intent(in) :: ubcd_g
-        double precision, dimension(nts_db_g), intent(in) :: dbcd_g
+        double precision, dimension(nts_db_g), intent(in) :: dbcd_g 
 
         double precision, intent(in) :: cfl_g, theta_g, so_llm_g
         integer, intent(in) :: tzeq_flag_g !* 0 for lookup tabale; 1 for using procedures to compute trapz.ch.geo.
@@ -64,6 +64,9 @@ contains
         double precision :: sumqlatdx, sumqlatx_m, sumqlatdx_m, qlatf_m, x_o, sumx1_m, sumx2_m, u_o
         double precision :: so_us, c_us, so_ds, c_ds, adjso, initval
         integer :: frj, iseg
+        integer, dimension(:,:), allocatable :: frnw_g
+        allocate(frnw_g(nrch_g, frnw_col))
+        frnw_g=int(dfrnw_g) 
 
 !*Py        nrch_g=737
 !*Py         mxncomp_g=7
@@ -476,6 +479,7 @@ contains
         deallocate(tarr_ub, varr_ub)
         deallocate(tarr_db, varr_db)
         deallocate(cel_av_g)
+	deallocate(frnw_g)
 
     endsubroutine diffnw
 
