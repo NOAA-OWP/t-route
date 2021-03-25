@@ -1,0 +1,6 @@
+import pathlib
+import xarray as xr
+
+
+old_path = pathlib.Path(
+'/glade/work/jamesmcc/domains/private/florence_v21/NWM/DOMAIN

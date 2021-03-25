@@ -1,0 +1,52 @@
+{
+    "base": {
+	"hydro_nlist": {
+	    "aggfactrt": 4,
+	    "dxrt": 250.0, 
+	    "geo_finegrid_flnm": "./NWM/DOMAIN/Fulldom_hires.nc", 
+	    "geo_static_flnm": "./NWM/DOMAIN/geo_em.d0x.nc", 
+	    "gwbuckparm_file": "./NWM/DOMAIN/GWBUCKPARM.nc", 
+	    "hydrotbl_f": "./NWM/DOMAIN/hydro2dtbl.nc", 
+	    "land_spatial_meta_flnm": "./NWM/DOMAIN/GEOGRID_LDASOUT_Spatial_Metadata.nc", 
+	    "restart_file": "./NWM/RESTART_open-loop/HYDRO_RST.2018-08-01_00:00_DOMAIN1", 
+	    "route_lake_f": "./NWM/DOMAIN/LAKEPARM.nc", 
+	    "route_link_f": "./NWM/DOMAIN/Route_Link.nc", 
+	    "udmap_file": "./NWM/DOMAIN/spatialweights.nc"
+	}, 
+	"nudging_nlist": {
+	    "nudgingparamfile": "./NWM/DOMAIN/nudgingParams.nc", 
+	    "nudginglastobsfile": "",
+	    "timeslicepath": "./NWM/nudgingTimeSliceObs/"
+	}
+    },
+    
+    "nwm_ana": {
+        "hydro_nlist": {},
+        "nudging_nlist": {}
+    },
+    
+    "ops_nwm_ana_channel-only": {
+        "hydro_nlist": {},
+        "nudging_nlist": {}
+    },
+
+    "dart_nwm_channel-only": {
+	"hydro_nlist": {},
+	"nudging_nlist": {
+	    "nudgingparamfile": "", 
+	    "nudginglastobsfile": "",
+	    "timeslicepath": ""
+	}
+    },
+
+    "dart_nwm_channel-bucket-only": {
+	"hydro_nlist": {},
+	"nudging_nlist": {
+	    "nudgingparamfile": "", 
+	    "nudginglastobsfile": "",
+	    "timeslicepath": ""
+	}
+    }
+
+    
+}

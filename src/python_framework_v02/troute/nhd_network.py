@@ -64,10 +64,9 @@ def extract_connections(rows, target_col, terminal_code=0):
 
 
 def extract_waterbodies(rows, target_col, waterbody_null=-9999):
-    """Extract waterbody mapping from dataframe."""
-    return (
-        rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
-    )
+    """Extract waterbody mapping from dataframe.
+    """
+    return rows.loc[rows[target_col] != waterbody_null, target_col].to_dict()
 
 
 def reverse_surjective_mapping(d):
@@ -182,30 +181,30 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
 def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
     """
     Decompose network into lists of simply connected nodes
-    For the routing problem, these sets of nodes are segments
+    For the routing problem, these sets of nodes are segments 
     in a reach terminated by a junction, headwater, or tailwater.
-
-    The function also identfies the network depth, by reach,
-    of each reach and the output of the function is a list of tuples
+    
+    The function also identfies the network depth, by reach, 
+    of each reach and the output of the function is a list of tuples 
     in the form: (network depth, [reach list]).
-    The order of these reaches are suitable to be parallelized as
-    we guarantee that
+    The order of these reaches are suitable to be parallelized as 
+    we guarantee that 
       1) for any segment withn a reach, the predecessor segments
       appear before it in the reach; and
-      2) for any reach, the predecessor reaches appear before it
+      2) for any reach, the predecessor reaches appear before it 
       in the main list.
-    This is accomplished by a depth first search on the reversed
-    graph. The depth first search function logs the path from
-    each node to any network break defined by the `path_func`.
+    This is accomplished by a depth first search on the reversed 
+    graph. The depth first search function logs the path from 
+    each node to any network break defined by the `path_func`. 
     The network depth is counted as the number of successive breaks.
     Arguments:
         N (Dict[obj: List[obj]]): The graph
         path_func: partial function defining the Network breaking function
         source_nodes: starting points (default use the top of the network,
-        which, for the reversed network passed to this function,
+        which, for the reversed network passed to this function, 
         is the set of tailwaters...)
     Returns:
-        [List(tuple)]: List of tuples of (depth, path) to be processed
+        [List(tuple)]: List of tuples of (depth, path) to be processed 
         in order.
     """
     if source_nodes is None:
@@ -249,9 +248,9 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
 
 def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
     """
-    Append data values from a set of tuples of form (key, data)
+    Append data values from a set of tuples of form (key, data) 
     into a dictionary of the form {key: [list of data values]}.
-    Arguments:
+    Arguments: 
         tuple_list
         key_idx
         val_idx
@@ -432,7 +431,7 @@ def replace_waterbodies_connections(connections, waterbodies):
 def build_subnetworks(connections, rconn, min_size, sources=None):
     """
     Construct subnetworks using a truncated breadth-first-search
-
+    
     Arguments:
         connections
         rconn

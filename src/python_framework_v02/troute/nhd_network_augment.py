@@ -4,6 +4,7 @@ import geopandas as gpd
 import xarray as xr
 from functools import partial
 from itertools import chain
+import os
 import sys
 import pathlib
 import argparse
@@ -11,9 +12,10 @@ import json
 from tqdm import tqdm
 import time
 
-
 root = pathlib.Path("../../../").resolve()
-sys.path.append(str(pathlib.Path(root, "src", "python_framework_v01").resolve()))
+#root = pathlib.Path("../../").resolve()
+print(f"root:{root}")
+sys.path.append(os.path.join(root, "src", "python_framework_v02","troute"))
 
 import nhd_network_utilities_v02 as nnu
 import nhd_network
@@ -82,18 +84,21 @@ def _handle_args():
 def get_network_data(network_name):
 
     # Create directory path variable for test/input/geo, where NHD data and masks are stored
-    test_folder = pathlib.Path(root, r"test").resolve()
-    geo_input_folder = pathlib.Path(test_folder, r"input", r"geo").resolve()
+    test_folder = os.path.join(root, r"test")
+    geo_input_folder = os.path.join(test_folder, r"input", r"geo")
 
     # Load network meta data for the Cape Fear Basin
     supernetwork = network_name
-    network_data = nnu.set_supernetwork_data(
+    #network_data = nnu.set_supernetwork_data(
+    #    supernetwork=supernetwork, geo_input_folder=geo_input_folder
+    #)
+    network_data = nnu.set_supernetwork_parameters(
         supernetwork=supernetwork, geo_input_folder=geo_input_folder
     )
 
     # if the NHDPlus RouteLink file does not exist, download it.
-    if not network_data["geo_file_path"].is_file:
-        filename = network_data["geo_file_path"].name
+    if not os.path.exists(network_data["geo_file_path"]):
+        filename = os.path.basename(network_data["geo_file_path"])
         network_dl.download(network_data["geo_file_path"], network_data["data_link"])
 
     # read-in NHD data, retain copies for viz- and full network analysis purposes
@@ -134,7 +139,7 @@ def network_connections(data, network_data):
         network_data (dict): network metadata
     Returns:
         conn (dict): downstream connections
-        rconn (dict): upstream connections
+        rconn (dict): upstream connections 
     """
 
     # extract downstream connections
@@ -257,29 +262,29 @@ def snap_junctions(data, threshold, network_data):
 
     """
     This function snaps junctions on oposite ends of a short reach
-    by forcing the lowest order upstream tributary to drain to the reach tail.
+    by forcing the lowest order upstream tributary to drain to the reach tail. 
     Short reaches are defined by a user-appointed threshold length.
 
     For example, consider a short reach (*) stranded between two junctions:
 
           \  /
            \/ | 4th
-       2nd  \ |
-             \| /
+       2nd  \ |  
+             \| / 
              *|/
               |
-              |
+              | 
 
-    The algoritm would select the lowest order tributary segment to the reach head,
+    The algoritm would select the lowest order tributary segment to the reach head, 
     which in this case is a second-order drainage, and change the downstream connection
     to the reach tail. This produces the following "snapped" network config:
 
-          \  /
-           \/ |
-            \ | /
+          \  / 
+           \/ |  
+            \ | / 
              \|/
               |
-              |
+              | 
 
     Inputs
     --------------
@@ -848,25 +853,25 @@ def main():
         "exporting RouteLink file:",
         filename,
         "to",
-        pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
+        os.path.join(root, "test", "input", "geo", "Channels"),
     )
 
-    dir_path = pathlib.Path(root, "test", "input", "geo", "Channels", dirname).resolve()
-    if not pathlib.Path.is_dir(dir_path):
-        pathlib.Path.mkdir(dir_path)
+    dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+    if not os.path.isdir(dir_path):
+        os.mkdir(dir_path)
 
     # save RouteLink data as shapefile
     RouteLink_edit = RouteLink_edit.drop(columns=["time", "gages"])
-    RouteLink_edit.to_file(pathlib.Path(dir_path, filename).resolve())
+    RouteLink_edit.to_file(os.path.join(dir_path, filename))
 
     # save cross walk as json
     print(
         "exporting CrossWalk file:",
         filename_cw,
         "to",
-        pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
+        os.path.join(root, "test", "input", "geo", "Channels"),
     )
-    with open(pathlib.Path(dir_path, filename_cw).resolve(), "w") as outfile:
+    with open(os.path.join(dir_path, filename_cw), "w") as outfile:
         json.dump(qlat_destinations, outfile)
 
     # export original data
@@ -877,14 +882,12 @@ def main():
             "exporting unmodified RouteLink file:",
             filename,
             "to",
-            pathlib.Path(root, "test", "input", "geo", "Channels").resolve(),
+            os.path.join(root, "test", "input", "geo", "Channels"),
         )
 
-        dir_path = pathlib.Path(
-            root, "test", "input", "geo", "Channels", dirname
-        ).resolve()
-        if not pathlib.Path.is_dir(dir_path):
-            pathlib.Path.mkdir(dir_path)
+        dir_path = os.path.join(root, "test", "input", "geo", "Channels", dirname)
+        if not os.path.isdir(dir_path):
+            os.mkdir(dir_path)
 
         RouteLink_domain = RouteLink.loc[data.index.values]
         RouteLink_domain = gpd.GeoDataFrame(
@@ -893,10 +896,10 @@ def main():
         )
 
         RouteLink_domain = RouteLink_domain.drop(columns=["time", "gages"])
-        RouteLink_domain.to_file(pathlib.Path(dir_path, filename).resolve())
+        RouteLink_domain.to_file(os.path.join(dir_path, filename))
 
-        print("Number of segments in original RouteLink:", len(RouteLink_domain))
     print("Number of segments in modified RouteLink:", len(RouteLink_edit))
+    print("Number of segments in original RouteLink:", len(RouteLink_domain))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,23 @@
+import pathlib
+import xarray as xr
+
+
+domain_dir_old = pathlib.Path(
+    '/glade/work/jamesmcc/domains/private/florence_933020089/NWM/DOMAIN')
+domain_dir_new = pathlib.Path(
+    '/glade/work/jamesmcc/domains/private/florence_cutout_v21/NWM/DOMAIN')
+
+rl_file_old = domain_dir_old / 'Route_Link.nc'
+rl_file_new = domain_dir_new / 'Route_Link.nc'
+
+rl_ds_old = xr.open_dataset(rl_file_old)
+rl_ds_new = xr.open_dataset(rl_file_new)
+
+for var in rl_ds_new.variables:
+    print(var)
+
+for var in rl_ds_new.variables:
+    if not rl_ds_old[var].equals(rl_ds_new[var]):
+        print(var)
+
+adf

@@ -1,0 +1,62 @@
+{
+    "base": {            
+        "noahlsm_offline": {
+            "hrldas_setup_file": "./NWM/DOMAIN/wrfinput_d0x.nc",
+            "indir": "./FORCING_AnA_cutout",
+            "forcing_timestep": 3600,
+            "spatial_filename": "./NWM/DOMAIN/soil_properties.nc",
+            "restart_filename_requested": "./NWM/RESTART_open-loop/RESTART.2018080100_DOMAIN1",
+            "start_year": 2018,
+            "start_month": 8,
+            "start_day": 1,
+            "start_hour": 0,
+            "start_min": 0
+        },
+        "wrf_hydro_offline": {
+            "forc_typ": 2
+        }
+    },
+    
+    "nwm_ana": {
+        "noahlsm_offline": {},
+        "wrf_hydro_offline": {}
+    },
+    
+    "nwm_channel-only": {
+        "noahlsm_offline": {
+            "indir": "./FORCING_AnA_channel-only"
+        },
+        "wrf_hydro_offline": {
+            "forc_typ": 9
+        }
+    },
+    
+    "ops_nwm_ana_channel-only": {
+        "noahlsm_offline": {
+            "indir": "./FORCING_AnA_channel-only"
+        },
+        "wrf_hydro_offline": {
+            "forc_typ": 9
+        }
+    },
+
+    "dart_nwm_channel-only" : {
+        "noahlsm_offline": {
+            "indir": "./FORCING_AnA_channel-only"
+        },
+        "wrf_hydro_offline": {
+            "forc_typ": 9
+        }
+    },
+
+    "dart_nwm_channel-bucket-only" : {
+        "noahlsm_offline": {
+            "indir": "./FORCING_AnA_channel-only"
+        },
+        "wrf_hydro_offline": {
+            "forc_typ": 10
+        }
+    }
+
+    
+}

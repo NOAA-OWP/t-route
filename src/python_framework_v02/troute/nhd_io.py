@@ -13,7 +13,7 @@ def read_netcdf(geo_file_path):
 
 
 def read_csv(geo_file_path, header="infer", layer_string=None):
-    if geo_file_path.suffix == ".zip":
+    if geo_file_path.endswith(".zip"):
         if layer_string is None:
             raise ValueError("layer_string is needed if reading from compressed csv")
         with zipfile.ZipFile(geo_file_path, "r") as zcsv:
@@ -28,7 +28,7 @@ def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
 
 
 def read(geo_file_path, layer_string=None, driver_string=None):
-    if geo_file_path.suffix == ".nc":
+    if geo_file_path.endswith(".nc"):
         return read_netcdf(geo_file_path)
     else:
         return read_geopandas(
@@ -54,6 +54,7 @@ def read_custom_input(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     run_parameters = data.get("run_parameters", {})
     parity_parameters = data.get("parity_parameters", {})
+    diffusive_parameters= data.get("diffusive_parameters",{})
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -63,6 +64,7 @@ def read_custom_input(custom_input_file):
         output_parameters,
         run_parameters,
         parity_parameters,
+        diffusive_parameters,
     )
 
 
@@ -126,6 +128,7 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     """
     ql = pd.read_csv(qlat_input_file, index_col=index_col)
     ql.index = ql.index.astype(int)
+    ql.columns = ql.columns.astype(int)
     ql = ql.sort_index(axis="index")
     return ql.astype("float32")
 
@@ -137,7 +140,9 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(
+    qlat_files, index_col="feature_id", value_col="q_lateral"
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -231,27 +236,7 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     return ql
 
 
-def get_channel_restart_from_csv(
-    channel_initial_states_file,
-    index_col=0,
-    default_us_flow_column="qu0",
-    default_ds_flow_column="qd0",
-    default_depth_column="h0",
-):
-    """
-    channel_initial_states_file: CSV standard restart file
-    index_col = 0: column/field in the input file with the segment/link id
-    NOT USED YET default_us_flow_column: name used in remainder of program to refer to this column of the dataset
-    NOT USED YET default_ds_flow_column: name used in remainder of program to refer to this column of the dataset
-    NOT USED YET default_depth_column: name used in remainder of program to refer to this column of the dataset
-    """
-    q0 = pd.read_csv(channel_initial_states_file, index_col=index_col)
-    q0.index = q0.index.astype(int)
-    q0 = q0.sort_index(axis="index")
-    return q0.astype("float32")
-
-
-def get_channel_restart_from_wrf_hydro(
+def get_stream_restart_from_wrf_hydro(
     channel_initial_states_file,
     crosswalk_file,
     channel_ID_column,
