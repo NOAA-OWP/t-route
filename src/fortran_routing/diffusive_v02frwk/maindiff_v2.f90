@@ -10,7 +10,9 @@ module mdiffv2
     double precision, dimension(:), allocatable :: qlatj_m_g
     double precision, dimension(:), allocatable :: eei_m_g, ffi_m_g, exi_m_g, fxi_m_g
     double precision, dimension(:), allocatable :: dx_ar_m_g
+    double precision, dimension(:,:,:), allocatable :: bfuf_g    
     double precision:: z_g, bo_g, traps_g, tw_g, twcc_g, So_g, mann_g, manncc_g
+
 
 contains
     !*--------------------------------------------------------------------------------
@@ -148,6 +150,11 @@ contains
         !++-----------------------------------------------------------------------------------+
 !*Py         timesDepth_g=5.0
 !*Py         call uniflowLT_tz_alrch
+        allocate( bfuf_g(mxncomp_g, nrch_g,2) )
+        call bfdep_ufQ(mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g,&
+                        mann_ar_g, manncc_ar_g, dx_ar_g, so_ar_g, frnw_col, frnw_g)
+
+
         !++-------------------------------------------+
         !+              Lateral inflow
         !+
@@ -635,6 +642,7 @@ contains
         double precision, allocatable ::  co(:)
         double precision :: dsc, hnm
         double precision, dimension(:), allocatable ::  harr_m, qarr_m, harr_f, qarr_f
+        double precision ::  hbf, ufQbf
         allocate(co(ncomp))
         allocate(harr_m(nhincr_m_g), qarr_m(nhincr_m_g), harr_f(nhincr_f_g), qarr_f(nhincr_f_g))
         !*-------------------------------------------------------------------------------
@@ -654,21 +662,32 @@ contains
 !                    elv_g(i,j)= intp_y(nel_g, qarr, elvarr, dsc)
                 elseif (tzeq_flag_g==1) then
                 !* lookup table created from x-section equations for trap.main & rect.floodplains
-                    if (dsc<= ufqlt_m_g(i, j, nhincr_m_g)) then
+                    !if (dsc<= ufqlt_m_g(i, j, nhincr_m_g)) then
                     !* inbank flow
-                        do i1=1,nhincr_m_g
-                            qarr_m(i1)= ufqlt_m_g(i, j, i1)
-                            harr_m(i1)= ufhlt_m_g(i, j, i1)
-                        enddo
-                        hnm= intp_y(nhincr_m_g, qarr_m, harr_m, dsc)
-                    else
+                        !do i1=1,nhincr_m_g
+                        !    qarr_m(i1)= ufqlt_m_g(i, j, i1)
+                        !    harr_m(i1)= ufhlt_m_g(i, j, i1)
+                        !enddo
+                        !hnm= intp_y(nhincr_m_g, qarr_m, harr_m, dsc)
+                     !else
                         !* overbank flow
-                        do i1=1,nhincr_f_g
-                            qarr_f(i1)= ufqlt_f_g(i, j, i1)
-                            harr_f(i1)= ufhlt_f_g(i, j, i1)
-                        enddo
-                        hnm= intp_y(nhincr_f_g, qarr_f, harr_f, dsc)
-                    endif
+                        !do i1=1,nhincr_f_g
+                        !    qarr_f(i1)= ufqlt_f_g(i, j, i1)
+                        !    harr_f(i1)= ufhlt_f_g(i, j, i1)
+                        !enddo
+                        !hnm= intp_y(nhincr_f_g, qarr_f, harr_f, dsc)
+                    !endif
+                    z_g= z_ar_g(i,j)
+                    bo_g= bo_ar_g(i,j)
+                    traps_g= traps_ar_g(i,j)
+                    tw_g= tw_ar_g(i,j)
+                    twcc_g= twcc_ar_g(i,j)
+                    mann_g= mann_ar_g(i,j)  !1.0/sk(i,j)
+                    manncc_g= manncc_ar_g(i,j) ! 1.0/skCC1(i,j)
+                    hbf= bfuf_g(i,j,1)      !* bankfull water depth
+                    ufQbf= bfuf_g(i,j,2)    !* bankfull uniform flow
+
+                    call bsec_nmdep(dsc, hbf, ufQbf, hnm)
                     elv_g(i,j)= hnm + z_ar_g(i,j)
                 endif
             enddo !* do i= ncomp-1, 1, -1
@@ -1234,6 +1253,195 @@ contains
         emann_tmrf= (nom/tlP)**(2.0/3.0)
 
     end function emann_tmrf
+!*-----------------------------------------------------------*!
+
+
+
+
+
+
+!**          Normal depth Calculation Tools             **!
+
+
+
+
+
+
+!*-----------------------------------------------------------*!
+!*-----------------------------------------------------------------------
+!*              Bankfull depth-uniform bankfull discharge
+!*                       for trapezoidal main channel
+!*------------------------------------------------------------------------
+    subroutine bfdep_ufQ(mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g,&
+                        mann_ar_g, manncc_ar_g, dx_ar_g, so_ar_g, frnw_col, frnw_g)
+
+        implicit none
+
+        integer, intent(in) :: mxncomp_g, nrch_g, frnw_col
+        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
+        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, so_ar_g
+        integer, dimension(nrch_g, frnw_col), intent(in) :: frnw_g
+
+        integer :: i, ncomp,j
+        double precision :: hbf_tz, Axs, WP, hydR, ufQbf
+
+        do j=1, nrch_g
+            ncomp=frnw_g(j,1)
+            do i=1, ncomp
+                bo_g= bo_ar_g(i,j)
+                traps_g= traps_ar_g(i,j)
+                tw_g= tw_ar_g(i,j)
+                mann_g= mann_ar_g(i,j)
+                so_g= so_ar_g(i,j)
+
+                !* bankfull depth
+                hbf_tz= (tw_g - bo_g)/(2.0*traps_g)
+                !* bankfull uniform discharge
+                Axs=(bo_g  + traps_g*hbf_tz)*hbf_tz
+                WP= bo_g + 2.0*hbf_tz*((1.0+(traps_g**2.0))**0.5)
+                hydR=Axs/WP
+                ufQbf= (1.0/mann_g)*Axs*(hydR**(2.0/3.0))*(so_g**0.5)
+
+                bfuf_g(i,j,1)= hbf_tz
+                bfuf_g(i,j,2)= ufQbf
+            enddo
+        enddo
+
+    endsubroutine bfdep_ufQ
+!*-----------------------------------------------------------------------
+!*           Bisection method to compute normal depth using
+!*            computed discharge for trapezoidal main channel, p4-1 & 5-1,RM5
+!*------------------------------------------------------------------------
+    subroutine bsec_nmdep(dsc, hbf, ufQbf, nmdep)
+
+        implicit none
+
+        double precision, intent(in) :: dsc, hbf, ufQbf
+        double precision, intent(out) :: nmdep
+        integer :: bs_flag, flrgm_flag
+        double precision :: dscp, h, h0, h1, h2, h_dst0, h_dst, ufQ, ufQ1, ufQ2, dfQ0, dfQ1, dfQ2
+        double precision :: cvrt, tolrt
+
+!        open(unit=401, file="./output/bsec_nmdep.txt")
+
+        tolrt=0.01
+        dscp=abs(dsc)
+
+        if (dscp.le.ufQbf) then
+        !** Bisection for main channel
+            h1=0.0
+            h2=hbf
+            flrgm_flag=1 !* indicate main channel flow
+        else
+        !** Bisection for flood plain
+            !* first, find ufQ that is larger than dscp
+            ufQ= ufQbf
+            h= hbf
+            do while (ufQ<dscp)
+                h= h+hbf
+                ufQ= ufQf(h, hbf)
+            end do
+            h1= hbf
+            h2= h
+            flrgm_flag=2 !* indicate flood plain flow
+        endif
+
+!            write(401,"(A10, 5A12, 2A20)") "inival:", "dsc", "hbf", "ufQbf",  "h1", "h2", "dfQ1", "dfQ2"
+!                !* test only
+!                if (flrgm_flag==1) then
+!                !* main channel flow
+!                    ufQ1= ufQm(h1)
+!                    ufQ2= ufQm(h2)
+!                elseif (flrgm_flag==2) then
+!                !* floodplain flow
+!                    ufQ1= ufQf(h1, hbf)
+!                    ufQ2= ufQf(h2, hbf)
+!                endif
+!                dfQ1= ufQ1 -  dscp
+!                dfQ2= ufQ2 -  dscp
+!            write(401,"(A10, 5F12.6, 2F20.8)") "inival:", dsc, hbf, ufQbf,  h1, h2, dfQ1, dfQ2
+!            write(401,"(A10, 5A12, 2A20, A12)") "bisec:", "dsc", "hbf", "ufQbf", "h1", "h2", "dfQ1", "dfQ2", "nmdep"
+
+        h_dst0= h2-h1
+        bs_flag=0
+        do while (bs_flag==0)
+            h0= 0.5*(h1+h2)
+            if (flrgm_flag==1) then
+                ufQ= ufQm(h0)
+            elseif (flrgm_flag==2) then
+                ufQ= ufQf(h0, hbf)
+            endif
+
+            dfQ0= ufQ -  dscp
+            cvrt= abs(dfQ0)/ufQ
+
+            if (cvrt.le.tolrt) then
+                nmdep= h0
+                bs_flag=1
+                exit
+            elseif (dfQ0.lt.0.0) then
+                h1=h0
+            elseif (dfQ0.gt.0.0) then
+                h2=h0
+            endif
+
+            h_dst= h2-h1
+            if (h_dst<0.05*h_dst0) then
+            !* linear interpolation is used to wrap up the bisection
+                if (flrgm_flag==1) then
+                !* main channel flow
+                    ufQ1= ufQm(h1)
+                    ufQ2= ufQm(h2)
+                elseif (flrgm_flag==2) then
+                !* floodplain flow
+                    ufQ1= ufQf(h1, hbf)
+                    ufQ2= ufQf(h2, hbf)
+                endif
+
+                dfQ1= ufQ1 -  dscp
+                dfQ2= ufQ2 -  dscp
+                nmdep= -dfQ2*(h2-h1)/(dfQ2-dfQ1) + h2
+                bs_flag=1
+                !write(401,"(A10, 5F12.6, 2F20.8, F12.6)") "bisec:", dsc, hbf, ufQbf, h1, h2, dfQ1, dfQ2, nmdep
+            end if
+        enddo
+    end subroutine bsec_nmdep
+!*-----------------------------------------------------------------------
+!*          Uniform main channel discharge for a given depth hxs
+!*------------------------------------------------------------------------
+    doubleprecision function ufQm(hxs)
+        implicit none
+        double precision, intent(in) :: hxs
+        double precision :: Axs, WP, hydR
+
+        !* trapezoidal channel inbank flow
+        Axs=(bo_g + traps_g*hxs)*hxs
+        WP= bo_g + 2.0*hxs*((1.0+(traps_g**2.0))**0.5)
+        hydR=Axs/WP
+        ufQm= (1.0/mann_g)*Axs*(hydR**(2.0/3.0))*(so_g**0.5)
+    end function ufQm
+!*-----------------------------------------------------------------------
+!*          Uniform floodplain discharge for a given depth hxs
+!*------------------------------------------------------------------------
+    doubleprecision function ufQf(hxs, hbf)
+        implicit none
+        double precision, intent(in) :: hxs, hbf
+        double precision :: Axs, WP, hydR, ufQ1, ufQ2, ufQ3
+
+        !* subsection 1 and 3, p102,RM4
+        Axs= (hxs-hbf)*(twcc_g-tw_g)/2.0
+        WP= (twcc_g - tw_g)/2.0 + (hxs-hbf)
+        hydR= Axs/WP
+        ufQ1= (1.0/manncc_g)*Axs*(hydR**(2.0/3.0))*(so_g**0.5)
+        ufQ3= ufQ1
+        !* subsection 2, p102,RM4
+        Axs= (bo_g + traps_g*hbf)*hbf + (hxs-hbf)*tw_g
+        WP= bo_g + 2.0*hbf*((1.0 + traps_g**2.0)**0.5)
+        hydR= Axs/WP
+        ufQ2= (1.0/mann_g)*Axs*(hydR**(2.0/3.0))*(so_g**0.5)
+
+        ufQf= ufQ1+ufQ2+ufQ3
+    end function ufQf
 
 endmodule mdiffv2
 
