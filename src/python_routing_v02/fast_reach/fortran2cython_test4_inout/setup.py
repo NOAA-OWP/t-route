@@ -17,32 +17,15 @@ else:
 
 ext = "pyx" if USE_CYTHON else "c"
 
-reach = Extension(
-    "reach",
-    sources=["fast_reach/reach.{}".format(ext)],
-    extra_objects=["fast_reach/mc_single_seg.o", "fast_reach/pymc_single_seg.o"],
-    extra_compile_args=["-g"],
-)
-
-mc_reach = Extension(
-    "mc_reach",
-    sources=["fast_reach/mc_reach.{}".format(ext)],
-    include_dirs=[np.get_include()],
-    libraries=[],
-    library_dirs=[],
-    extra_objects=[],
-    extra_compile_args=["-g"],
-)
-
 diffusive = Extension(
     "diffusive",
-    sources=["fast_reach/diffusive.{}".format(ext)],
-    extra_objects=["fast_reach/diffusive.o", "fast_reach/pydiffusive.o"],
+    sources=["diffusive.{}".format(ext)],
+    extra_objects=["diffusive.o", "pydiffusive.o"],
     extra_compile_args=["-g"],
     libraries = ['gfortran'],
 )
 
-ext_modules = [reach, mc_reach, diffusive]
+ext_modules = [diffusive]
 
 if USE_CYTHON:
     from Cython.Build import cythonize
@@ -50,6 +33,6 @@ if USE_CYTHON:
     ext_modules = cythonize(ext_modules, compiler_directives={"language_level": 3})
 
 setup(
-    name="compute_network_mc",
+    name="compute_diffusive",
     ext_modules=ext_modules,
 )

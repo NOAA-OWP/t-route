@@ -33,8 +33,8 @@ output_parameters:
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: Hurricante Florence cutout
-    geo_file_path: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/Route_Link.nc"
-    mask_file_path: "../../test/input/yaml/933020089_mask_dh.csv"
+    geo_file_path:  "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -62,7 +62,7 @@ supernetwork_parameters:
 waterbody_parameters:
     level_pool:
         #WRF-Hydro lake parm file
-        level_pool_waterbody_parameter_file_path: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
         level_pool_waterbody_id: lake_id
         level_pool_waterbody_area: LkArea
         level_pool_weir_elevation: WeirE
@@ -75,34 +75,36 @@ waterbody_parameters:
         level_pool_orifice_area: OrificeA
 #WRF-Hydro output file 
 forcing_parameters:
-    qlat_input_folder: "../../test/input/private/florence_cutout_v21/FORCING_AnA_channel-only/"
-    qlat_file_pattern_filter: "/20180901*.CHRTOUT_DOMAIN1"
-    qlat_file_index_col: feature_id
-    qlat_file_value_col: q_lateral
+    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral_wDates.csv"
+#     qlat_input_folder: "../../test/input/private/florence_cutout_v21/FORCING_AnA_channel-only/"
+#     qlat_file_pattern_filter: "/20180901*.CHRTOUT_DOMAIN1"
+#     qlat_file_index_col: feature_id
+#     qlat_file_value_col: q_lateral
 #WRF-Hydro restart files
 restart_parameters:
     #WRF-Hydro channels restart file
-    wrf_hydro_channel_restart_file: "../../test/input/private/florence_cutout_v21/NWM/RESTART_open-loop/HYDRO_RST.2018-09-11_00:00_DOMAIN1" 
-    #WRF-Hydro channels ID crosswalk file
-    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/Route_Link.nc"
-    wrf_hydro_channel_ID_crosswalk_file_field_name: link
-    wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
-    wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
-    wrf_hydro_channel_restart_depth_flow_field_name: hlink
-    #WRF-Hydro waterbodies restart file
-    wrf_hydro_waterbody_restart_file: "../../test/input/private/florence_cutout_v21/NWM/RESTART_open-loop/HYDRO_RST.2018-09-11_00:00_DOMAIN1"
-    #WRF-Hydro waterbody ID crosswalk file
-    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/LAKEPARM.nc"
-    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
-    #WRF-Hydro waterbody crosswalk filter file
-#    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+    channel_restart_file: "../../test/input/florence_933020089/RESTART/ChannelRestart_2018-09-01.csv"
+#     wrf_hydro_channel_restart_file: "../../test/input/private/florence_cutout_v21/NWM/RESTART_open-loop/HYDRO_RST.2018-09-11_00:00_DOMAIN1" 
+#     #WRF-Hydro channels ID crosswalk file
+#     wrf_hydro_channel_ID_crosswalk_file: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/Route_Link.nc"
+#     wrf_hydro_channel_ID_crosswalk_file_field_name: link
+#     wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+#     wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+#     wrf_hydro_channel_restart_depth_flow_field_name: hlink
+#     #WRF-Hydro waterbodies restart file
+#     wrf_hydro_waterbody_restart_file: "../../test/input/private/florence_cutout_v21/NWM/RESTART_open-loop/HYDRO_RST.2018-09-11_00:00_DOMAIN1"
+#     #WRF-Hydro waterbody ID crosswalk file
+#     wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/private/florence_cutout_v21/NWM/DOMAIN/LAKEPARM.nc"
+#     wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+#     #WRF-Hydro waterbody crosswalk filter file
+# #    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+#     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 parity_parameters:
-    parity_check_input_folder: somepath here
-    parity_check_file_pattern_filter: "/*.CHRTOUT_DOMAIN1"
-    parity_check_file_index_col: feature_id
-    parity_check_file_value_col: streamflow
-    parity_check_compare_node: 4186169
+    parity_check_input_folder: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv"
+#     parity_check_file_pattern_filter: "/*.CHRTOUT_DOMAIN1"
+#     parity_check_file_index_col: feature_id
+#     parity_check_file_value_col: streamflow
+    parity_check_compare_node: 8777701
 diffusive_parameters:
     # the link among usgsID, link2usgsID, and paramterCd is based on integer position in the list.    
     usgsID: [02087182] # TODO: id with multiple leading zeros are not read correctly.
