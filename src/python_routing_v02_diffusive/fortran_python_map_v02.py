@@ -183,7 +183,7 @@ def fp_dbcd_map(usgsID2tw
     
     # ** 1) downstream stage (here, lake elevation) boundary condition
     #from nwis_client.iv import IVDataService
-    from iv import IVDataService
+    from evaluation_tools.nwis_client.iv import IVDataService
     # Retrieve streamflow and stage data from two sites
         # Note: 1. Retrieved data all are based on UTC time zone (UTC is 4 hours ahead of Eastern Time during
         #          daylight saving time and 5 hours ahead during standard time) 
