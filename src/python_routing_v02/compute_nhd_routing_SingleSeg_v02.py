@@ -777,6 +777,7 @@ def _input_handler():
     output_parameters = {}
     run_parameters = {}
     parity_parameters = {}
+    diffusive_parameters = {}
 
     if custom_input_file:
         (
@@ -787,6 +788,7 @@ def _input_handler():
             output_parameters,
             run_parameters,
             parity_parameters,
+            diffusive_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
         run_parameters["debuglevel"] *= -1
 
