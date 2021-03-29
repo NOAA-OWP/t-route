@@ -1,11 +1,10 @@
 import json
-import os
-
+import pathlib
 import glob
 import pandas as pd
 from functools import partial
-import nhd_io as nhd_io
-import nhd_network as nhd_network
+import troute.nhd_io as nhd_io
+import troute.nhd_network as nhd_network
 import xarray as xr
 
 
@@ -386,27 +385,25 @@ def set_supernetwork_parameters(
             return json.load(json_file)
             # TODO: add error trapping for potentially missing files
 
-
 def reverse_dict(d):
     """
     Reverse a 1-1 mapping
     Values must be hashable!
     """
     return {v: k for k, v in d.items()}
-
-
+            
 def build_connections(supernetwork_parameters, dt):
     # TODO: Remove the dependence on dt in this function
 
     cols = supernetwork_parameters["columns"]
-    param_df = nhd_io.read(supernetwork_parameters["geo_file_path"])
+    param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     param_df = param_df[list(cols.values())]
     param_df = param_df.set_index(cols["key"])
 
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
-            supernetwork_parameters["mask_file_path"],
+            pathlib.Path(supernetwork_parameters["mask_file_path"]),
             layer_string=supernetwork_parameters["mask_layer_string"],
         )
         param_df = param_df.filter(
@@ -417,28 +414,48 @@ def build_connections(supernetwork_parameters, dt):
     param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
     connections = nhd_network.extract_connections(param_df, cols["downstream"])
-    # TODO: reorganize this so the wbodies object doesn't use the par-final param_df
-    # This could mean doing something different to get the final param_df,
-    # or changing the wbodies call to use the final param_df as it stands.
-    wbodies = nhd_network.extract_waterbodies(
-        param_df, cols["waterbody"], supernetwork_parameters["waterbody_null_code"]
-    )
 
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, wbodies, param_df
+    return connections, param_df
 
+def build_waterbodies(
+    segment_reservoir_df,
+    supernetwork_parameters,
+    waterbody_crosswalk_column="waterbody",
+):
+    """
+    segment_reservoir_list
+    supernetwork_parameters
+    waterbody_crosswalk_column
+    """
+    wbodies = nhd_network.extract_waterbodies(
+        segment_reservoir_df,
+        waterbody_crosswalk_column,
+        supernetwork_parameters["waterbody_null_code"],
+    )
 
-def organize_independent_networks(connections):
+    # TODO: Add function to read LAKEPARM.nc here
+    # TODO: return the lakeparam_df
+
+    return wbodies
+
+def organize_independent_networks(connections, wbodies=None):
 
     rconn = nhd_network.reverse_network(connections)
     independent_networks = nhd_network.reachable_network(rconn)
     reaches_bytw = {}
     for tw, net in independent_networks.items():
-        path_func = partial(nhd_network.split_at_junction, net)
+        if wbodies:
+            path_func = partial(
+                nhd_network.split_at_waterbodies_and_junctions, wbodies, net
+            )
+        else:
+            path_func = partial(nhd_network.split_at_junction, net)
+
         reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     return independent_networks, reaches_bytw, rconn
@@ -471,12 +488,13 @@ def build_channel_initial_state(restart_parameters, channel_index=None):
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, nts):
+def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_parameters, nts, qts_subdivisions=1):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
     if qlat_input_folder:
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
         qlat_file_pattern_filter = forcing_parameters.get(
             "qlat_file_pattern_filter", "*CHRT_OUT*"
         )
@@ -484,7 +502,8 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
-        qlat_files = glob.glob(qlat_input_folder + qlat_file_pattern_filter)
+
+        qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
             index_col=qlat_file_index_col,
@@ -505,8 +524,21 @@ def build_qlateral_array(forcing_parameters, connections_keys, nts):
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
-            qlat_const, index=connections_keys, columns=range(nts), dtype="float32",
+            qlat_const,
+            index=connections_keys,
+            columns=range(nts // qts_subdivisions),
+            dtype="float32",
         )
+
+    # TODO: Make a more sophisticated date-based filter
+    max_col = 1 + nts // qts_subdivisions
+    if len(qlat_df.columns) > max_col:
+        qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
+
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path,index_col=0)
+        qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
 
     return qlat_df
 
