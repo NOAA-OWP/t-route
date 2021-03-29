@@ -1013,14 +1013,18 @@ def main():
         if verbose:
             print("building input data for diffusive wave model ...")
 
-        # call utility script to build diffusive inputs
+        data = diff_utils.diffusive_input_data_v02(connections
+                            , rconn
+                            , reaches_bytw
+                            , diffusive_parameters
+                            , param_df
+                            , qlats
+                            )
 
         if verbose:
             print("diffusive input construction complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
-            
-    raise ValueError
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
