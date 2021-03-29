@@ -279,7 +279,7 @@ import mc_reach
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-
+import diffusive_utils as diff_utils
 
 def writetoFile(file, writeString):
     file.write(writeString)
@@ -290,7 +290,6 @@ def constant_qlats(index_dataset, nsteps, qlat):
     q = np.full((len(index_dataset.index), nsteps), qlat, dtype="float32")
     ql = pd.DataFrame(q, index=index_dataset.index, columns=range(nsteps))
     return ql
-
 
 def compute_nhd_routing_v02(
     connections,
@@ -889,6 +888,7 @@ def _input_handler():
         output_parameters,
         run_parameters,
         parity_parameters,
+        diffusive_parameters
     )
 
 
@@ -902,6 +902,7 @@ def main():
         output_parameters,
         run_parameters,
         parity_parameters,
+        diffusive_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1004,6 +1005,22 @@ def main():
         print("qlateral array complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
+        
+    # STEP 6: Build diffusive input data
+    if diffusive_parameters: 
+        if showtiming:
+            start_time = time.time()
+        if verbose:
+            print("building input data for diffusive wave model ...")
+
+        # call utility script to build diffusive inputs
+
+        if verbose:
+            print("diffusive input construction complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+            
+    raise ValueError
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
