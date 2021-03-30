@@ -17,7 +17,7 @@ module mdiffv2
 contains
     !*--------------------------------------------------------------------------------
     !*       Route network by using Python-to-Fortran network traversal map together
-    !*          with diffusive routing engines
+    !*          with diffusive routing engines( test )
     !
     !*--------------------------------------------------------------------------------
     subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
@@ -67,6 +67,8 @@ contains
         double precision :: so_us, c_us, so_ds, c_ds, adjso, initval
         integer :: frj, iseg
         integer, dimension(:,:), allocatable :: frnw_g
+        double precision :: dsc, hbf, ufqbf, hnm
+
         allocate(frnw_g(nrch_g, frnw_col))
         frnw_g=int(dfrnw_g) 
 
@@ -442,13 +444,34 @@ contains
 
                  ncomp= frnw_g(j,1)  !ncomp= nx1(j)
                 !* downstream boundary condition for elv at ts+1
-                if (frnw_g(j,2)<0.0) then
-                !* downstream boundary node
-                    do n=1,nts_db_g
-                        varr_db(n)= dbcd_g(n)
-                    enddo
-                    tf0= tc+dtini_g/60.0
-                    elv_g(ncomp,j)= intp_y(nts_db_g, tarr_db, varr_db, tf0)
+                if (frnw_g(j,2)<0.0) then             
+                    !* downstream boundary node at TW
+                !** Assuming alt of Route_Link.nc is always a positive value.
+                    if (dbcd_g(1)>0.0) then
+                    !* measured or equivalent data available at TW node
+                        do n=1,nts_db_g
+                            varr_db(n)= dbcd_g(n)
+                        enddo
+                        tf0= tc+dtini_g/60.0
+                        elv_g(ncomp,j)= intp_y(nts_db_g, tarr_db, varr_db, tf0)
+                    else
+                    !* when no measured data avail, use normal depth instead
+                        dsc=abs(q_g(ncomp,j))
+                        z_g= z_ar_g(ncomp,j)
+                        bo_g= bo_ar_g(ncomp,j)
+                        traps_g= traps_ar_g(ncomp,j)
+                        So_g= so_ar_g(ncomp,j)
+                        tw_g= tw_ar_g(ncomp,j)
+                        twcc_g= twcc_ar_g(ncomp,j)
+                        mann_g= mann_ar_g(ncomp,j)  !1.0/sk(i,j)
+                        manncc_g= manncc_ar_g(ncomp,j) ! 1.0/skCC1(i,j)
+                        hbf= bfuf_g(ncomp,j,1)      !* bankfull water depth
+                        ufQbf= bfuf_g(ncomp,j,2)    !* bankfull uniform flow
+
+                        call bsec_nmdep(dsc, hbf, ufQbf, hnm)
+
+                        elv_g(ncomp,j)=  hnm + z_ar_g(ncomp,j)
+                    endif
                 else
                 !* downstream end node of a reach at a junction
                     dsrchj= frnw_g(j,2)    !* reach j's downstream reach index
@@ -457,7 +480,7 @@ contains
                 !** Compute elevation, celerity, and diffusivity.
                 call elv_calc(ts, ncomp, j, tzeq_flag_g, y_opt_g, &
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g,&
-                        mann_ar_g, manncc_ar_g, dx_ar_g, &
+                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, &
                         nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g)
             enddo !* j=nrch_g, 1, -1
 
@@ -623,7 +646,7 @@ contains
 !*--------------------------------------------------------------------------------
     subroutine elv_calc(ts, ncomp, j, tzeq_flag_g, y_opt_g, &
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g,&
-                        mann_ar_g, manncc_ar_g, dx_ar_g, &
+                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, &
                         nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g)
 
         implicit none
@@ -632,7 +655,7 @@ contains
         integer, intent(in) :: tzeq_flag_g, y_opt_g
         integer, intent(in) :: nhincr_m_g, nhincr_f_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
-        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g
+        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
 
@@ -684,6 +707,7 @@ contains
                     twcc_g= twcc_ar_g(i,j)
                     mann_g= mann_ar_g(i,j)  !1.0/sk(i,j)
                     manncc_g= manncc_ar_g(i,j) ! 1.0/skCC1(i,j)
+                    So_g= so_ar_g(i,j)
                     hbf= bfuf_g(i,j,1)      !* bankfull water depth
                     ufQbf= bfuf_g(i,j,2)    !* bankfull uniform flow
 
@@ -712,6 +736,7 @@ contains
             twcc_g= twcc_ar_g(i,j)
             mann_g= mann_ar_g(i,j)  !1.0/sk(i,j)
             manncc_g= manncc_ar_g(i,j) ! 1.0/skCC1(i,j)
+            So_g= so_ar_g(i,j)
             hbf_tz= (tw_g - bo_g)/(2.0*traps_g) !* bankfull depth
 
             if (tzeq_flag_g==0) then
@@ -736,6 +761,9 @@ contains
             endif
 
             sfi = ( q_g(i,j) / co(i) ) ** 2.0
+            !* test
+            sfi=So_g
+
             ybf_tz= hbf_tz + z_g  !* bankfull depth/elevation for trapezoidal main channel
             if (xt.le.ybf_tz) then
             !* use Manning's N for main channel
