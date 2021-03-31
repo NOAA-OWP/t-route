@@ -113,13 +113,16 @@ def fp_chgeo_map(mx_jorder_tw
     return z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g 
      
 
-#----------------------------------------------------------
+#------------------------------------------------------------------------------
 # lateral inflow mapping between Python and Fortran
 #
-#----------------------------------------------------------
+#  **IMPORTANT: qlateral flow from qlat_tw has a unit of m^3/sec while
+#               diffusive model need to have m^2/sec.
+#------------------------------------------------------------------------------
 def fp_qlat_map(mx_jorder_tw
             , ordered_reaches
             , nts_ql_g
+            , ch_geo_data_tw
             , qlat_tw            
             , qlat_g
             ):   
@@ -131,12 +134,14 @@ def fp_qlat_map(mx_jorder_tw
             ncomp= reach['number_segments']          
             frj= frj+1     
             for seg in range(0,ncomp):                               
-                segID= seg_list[seg]
+                segID= seg_list[seg]                
                 for tsi in range (0,nts_ql_g):
                     if seg<ncomp-1:        
-                        qlat_g[tsi,seg,frj]= qlat_tw.loc[segID][tsi]
+                        tlf= qlat_tw.loc[segID][tsi]  # [m^3/sec]
+                        dx=  ch_geo_data_tw.loc[segID]["dx"] # [meter]
+                        qlat_g[tsi,seg,frj]= tlf/dx   #[m^2/sec]
                     else:
-                        qlat_g[tsi,seg,frj]= 0.0 #seg=ncomp is actually for bottom node in Fotran code.
+                        qlat_g[tsi,seg,frj]= 0.0 # seg=ncomp is actually for bottom node in Fotran code.
                                                      #And, lateral flow enters between adjacent nodes.
        
     return 
@@ -151,7 +156,6 @@ def fp_ubcd_map(frnw_g
             , pynw
             , nts_ub_g
             , nrch_g
-            , ch_geo_data_tw
             , qlat_tw
             , qlat_g
             ):   
@@ -162,9 +166,8 @@ def fp_ubcd_map(frnw_g
         if frnw_g[frj,2]==0: # the number of upstream reaches is zero.
             head_segment=pynw[frj]
             for tsi in range(0,nts_ub_g):
-                dx=  ch_geo_data_tw.loc[head_segment]["dx"] # [meter]
-                tlf= qlat_tw.loc[head_segment][tsi] # [m^2/s]
-                ubcd_g[tsi, frj]= tlf*dx # [m^3/s]
+                #tlf= qlat_tw.loc[head_segment][tsi] # [m^3/s]
+                ubcd_g[tsi, frj]= qlat_tw.loc[head_segment][tsi] # [m^3/s]
                 qlat_g[tsi,0,frj]=0.0                   
     
     return ubcd_g 
@@ -182,8 +185,8 @@ def fp_dbcd_map(usgsID2tw
    
     
     # ** 1) downstream stage (here, lake elevation) boundary condition
-    #from nwis_client.iv import IVDataService
-    from evaluation_tools.nwis_client.iv import IVDataService
+    from nwis_client.iv import IVDataService
+    #from evaluation_tools.nwis_client.iv import IVDataService
     # Retrieve streamflow and stage data from two sites
         # Note: 1. Retrieved data all are based on UTC time zone (UTC is 4 hours ahead of Eastern Time during
         #          daylight saving time and 5 hours ahead during standard time) 
