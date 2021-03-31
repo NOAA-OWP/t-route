@@ -4,7 +4,7 @@ import pandas as pd
 from functools import partial
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
-
+import glob
 
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
@@ -473,19 +473,32 @@ def build_channel_initial_state(
         "wrf_hydro_channel_restart_file", None
     )
 
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
+
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
 
-    elif wrf_hydro_channel_restart_file:
-
-        q0 = nhd_io.get_channel_restart_from_wrf_hydro(
-            restart_parameters["wrf_hydro_channel_restart_file"],
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"],
-        )
+    # elif wrf_hydro_channel_restart_file:
+    #     pattern = restart_parameters["wrf_hydro_channel_restart_file"]+"*"
+    #     files = glob.glob(pattern)
+    #     dataframes = []
+    #     for files in files:
+    #         df = pd.read_csv(files)
+    #         dataframes.append(df)
+    #     q0 = pd.concat(dataframes)
+    #     q0 = q0.set_index('link')
+        
+        # q0 = nhd_io.get_channel_restart_from_wrf_hydro(
+        #     restart_parameters["wrf_hydro_channel_restart_file"],
+        #     restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+        #     restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
+        #     restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"],
+        #     restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"],
+        #     restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"],
+        # )
     else:
         # Set cold initial state
         # assume to be zero
@@ -496,17 +509,33 @@ def build_channel_initial_state(
     # TODO: If needed for performance improvement consider filtering mask file on read.
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0)
-        q0 = q0[q0.index.isin(mask_file_path.index)]
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
+        q0 = q0[q0.index.isin(mask_file_path)]
+
+    q0 = q0[q0.index.isin(mask_file_path)]
 
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_parameters, nts, qts_subdivisions=1):
+def build_qlateral_array(
+    forcing_parameters,
+    connections_keys,
+    nts,
+    ts_iterator,
+    file_run_size,
+    supernetwork_parameters,
+    qts_subdivisions=1,
+):
     # TODO: set default/optional arguments
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         qlat_file_pattern_filter = forcing_parameters.get(
@@ -516,10 +545,11 @@ def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_para
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
-
         qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
+            ts_iterator=ts_iterator,
+            file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
@@ -549,11 +579,8 @@ def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_para
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
-    if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0)
-        qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
-
+    qlat_df = qlat_df[qlat_df.index.isin(mask_file_path)]
+    # print(qlat_df)
     return qlat_df
 
 
@@ -595,3 +622,11 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         )
 
     return usgs_df
+
+
+def restart_file_csv(q0_file_name):
+    q0 = pd.read_csv(q0_file_name)
+    q0 = q0.set_index("link")
+    q0 = q0.loc[:, :].astype("float32")
+    q0.index = q0.index.astype(int)
+    return q0

@@ -157,39 +157,52 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, run_parameters, nts, dt, results):
-
-    compare_node = parity_parameters["parity_check_compare_node"]
+def parity_check(
+    parity_parameters,
+    run_parameters,
+    ts_iterator,
+    file_run_size,
+    supernetwork_parameters,
+    results,
+):
+    nts = run_parameters["nts"]
+    dt = run_parameters["dt"]
+    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
+    if mask_file_path:
+        mask_file_path = pd.read_csv(mask_file_path)
+        mask_file_path = mask_file_path.iloc[:, 0].tolist()
 
     if "parity_check_input_folder" in parity_parameters:
 
-        validation_files = pathlib.Path(parity_parameters["parity_check_input_folder"]).rglob(
-            parity_parameters["parity_check_file_pattern_filter"]
-        )
+        validation_files = pathlib.Path(
+            parity_parameters["parity_check_input_folder"]
+        ).rglob(parity_parameters["parity_check_file_pattern_filter"])
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
             validation_files,
+            ts_iterator,
+            file_run_size,
             parity_parameters["parity_check_file_index_col"],
             parity_parameters["parity_check_file_value_col"],
             # [compare_node],
         )
 
-    elif "parity_check_file" in parity_parameters:
-        validation_data = pd.read_csv(parity_parameters["parity_check_file"], index_col=0)
+        validation_data = validation_data[validation_data.index.isin(mask_file_path)]
+
+    if "parity_check_file" in parity_parameters:
+        validation_data = pd.read_csv(
+            parity_parameters["parity_check_file"], index_col=0
+        )
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
 
+    compare_node = parity_parameters["parity_check_compare_node"]
 
-    elif "parity_check_waterbody_file" in parity_parameters:
-        validation_data = pd.read_csv(parity_parameters["parity_check_waterbody_file"], index_col=0)
-        validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
-        #TODO: Add toggle option to compare water elevation
-        #validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
-        validation_data = validation_data[[compare_node]]
-        validation_data.index = validation_data.index.astype("datetime64[ns]")
-        validation_data = validation_data.transpose()
+    wrf_time = validation_data.columns.astype("datetime64[ns]")
+    dt_wrf = wrf_time[1] - wrf_time[0]
+    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
 
     # construct a dataframe of simulated flows
     fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
@@ -211,16 +224,6 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
 
-    depths = flowveldepth.loc[:, (slice(None), "d")]
-    depths = depths.T.reset_index(level=[0, 1])
-    depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
-    depths["Time (d)"] = ((depths.Timestep + 1) * dt) / (24 * 60 * 60)
-    depths = depths.set_index("Time (d)")
-
-    wrf_time = validation_data.columns.astype("datetime64[ns]")
-    dt_wrf = wrf_time[1] - wrf_time[0]
-    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
-
     # specify simulation calendar time
     dt_routing = pd.Timedelta(str(dt) + "seconds")
     time_routing = pd.period_range(
@@ -228,26 +231,18 @@ def parity_check(parity_parameters, run_parameters, nts, dt, results):
     ).astype("datetime64[ns]")
     time_wrf = validation_data.columns.values
 
-    if compare_node in validation_data.index:
+    # construct comparable dataframes
+    trt = pd.DataFrame(
+        flows.loc[:, compare_node].values,
+        index=time_routing,
+        columns=["flow, t-route (cms)"],
+    )
+    wrf = pd.DataFrame(
+        validation_data.loc[compare_node, :].values,
+        index=time_wrf,
+        columns=["flow, wrf (cms)"],
+    )
 
-        # construct comparable dataframes
-        trt = pd.DataFrame(
-            flows.loc[:, compare_node].values,
-            #TODO: Add toggle option to compare water elevation
-            #depths.loc[:, compare_node].values,
-            index=time_routing,
-            columns=["flow, t-route (cms)"],
-        )
-        wrf = pd.DataFrame(
-            validation_data.loc[compare_node, :].values,
-            index=time_wrf,
-            columns=["flow, wrf (cms)"],
-        )
-
-        # compare dataframes
-        compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
-        compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
-        compare["absdiff"] = np.abs(compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
-
-        print(compare)
-        print(compare.describe())
+    # compare dataframes
+    compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
+    print(compare)

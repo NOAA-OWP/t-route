@@ -141,7 +141,13 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(
+    qlat_files,
+    ts_iterator,
+    file_run_size,
+    index_col="feature_id",
+    value_col="q_lateral",
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -181,7 +187,7 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     ```
     """
     filter_list = None
-
+    
     with xr.open_mfdataset(
         qlat_files,
         combine="by_coords",
@@ -195,16 +201,33 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     ) as ds:
         try:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][
+                    :,
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    ),
+                ],
                 index=ds[index_col].values[0],
-                columns=ds.time.values,
-                # dtype=float,
+                columns=ds.time.values[
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    )
+                ],
             )
         except:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][
+                    :,
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    ),
+                ],
                 index=ds[index_col].values,
-                columns=ds.time.values,
+                columns=ds.time.values[
+                    int(ts_iterator * file_run_size) : int(
+                        (ts_iterator + 1) * file_run_size
+                    )
+                ],
                 # dtype=float,
             )
 
@@ -251,7 +274,7 @@ def read_netcdfs(paths, dim, transform_func=None):
             ds.load()
             return ds
 
-    #paths = sorted(pathlib.glob(files))
+    # paths = sorted(pathlib.glob(files))
     datasets = [process_one_path(p) for p in paths]
     combined = xr.concat(datasets, dim)
     return combined
@@ -275,11 +298,10 @@ def preprocess_time_station_index(xd):
         data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
     )
 
-def get_usgs_from_time_slices_csv(
-    routelink_subset_file,usgs_csv
-):
-    
-    df2 = pd.read_csv(usgs_csv,index_col=0)
+
+def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
+
+    df2 = pd.read_csv(usgs_csv, index_col=0)
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
@@ -300,7 +322,7 @@ def get_usgs_from_time_slices_csv(
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
-    
+
     for i in range(0, (len(columns_list) * 3) - 12, 12):
         original_string = usgs_df.columns[i]
         original_string_shortened = original_string[:-5]
@@ -322,26 +344,22 @@ def get_usgs_from_time_slices_csv(
         usgs_df.insert(i + 11, temp_name8, np.nan)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    usgs_df.drop(usgs_df[usgs_df.iloc[:,0] == -999999.000000].index , inplace=True)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df
+
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
 
-    with read_netcdfs(
-        usgs_files,
-        "time",
-        preprocess_time_station_index,
-    ) as ds2:
+    with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
-
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
@@ -362,7 +380,7 @@ def get_usgs_from_time_slices_folder(
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
-    
+
     for i in range(0, (len(columns_list) * 3) - 12, 12):
         original_string = usgs_df.columns[i]
         original_string_shortened = original_string[:-5]
@@ -384,7 +402,7 @@ def get_usgs_from_time_slices_folder(
         usgs_df.insert(i + 11, temp_name8, np.nan)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    usgs_df.drop(usgs_df[usgs_df.iloc[:,0] == -999999.000000].index , inplace=True)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df
 
