@@ -163,6 +163,7 @@ def fp_chgeo_map(mx_jorder_tw
 def fp_qlat_map(mx_jorder_tw
             , ordered_reaches
             , nts_ql_g
+            , ch_geo_data_tw
             , qlat_tw            
             , qlat_g
             ):   
@@ -174,12 +175,14 @@ def fp_qlat_map(mx_jorder_tw
             ncomp= reach['number_segments']          
             frj= frj+1     
             for seg in range(0,ncomp):                               
-                segID= seg_list[seg]
+                segID= seg_list[seg]                
                 for tsi in range (0,nts_ql_g):
                     if seg<ncomp-1:        
-                        qlat_g[tsi,seg,frj]= qlat_tw.loc[segID][tsi]
+                        tlf= qlat_tw.loc[segID][tsi]  # [m^3/sec]
+                        dx=  ch_geo_data_tw.loc[segID]["dx"] # [meter]
+                        qlat_g[tsi,seg,frj]= tlf/dx   #[m^2/sec]
                     else:
-                        qlat_g[tsi,seg,frj]= 0.0 #seg=ncomp is actually for bottom node in Fotran code.
+                        qlat_g[tsi,seg,frj]= 0.0 # seg=ncomp is actually for bottom node in Fotran code.
                                                      #And, lateral flow enters between adjacent nodes.
        
     return 
@@ -194,7 +197,6 @@ def fp_ubcd_map(frnw_g
             , pynw
             , nts_ub_g
             , nrch_g
-            , ch_geo_data_tw
             , qlat_tw
             , qlat_g
             ):   
@@ -205,9 +207,8 @@ def fp_ubcd_map(frnw_g
         if frnw_g[frj,2]==0: # the number of upstream reaches is zero.
             head_segment=pynw[frj]
             for tsi in range(0,nts_ub_g):
-                dx=  ch_geo_data_tw.loc[head_segment]["dx"] # [meter]
-                tlf= qlat_tw.loc[head_segment][tsi] # [m^2/s]
-                ubcd_g[tsi, frj]= tlf*dx # [m^3/s]
+                #tlf= qlat_tw.loc[head_segment][tsi] # [m^3/s]
+                ubcd_g[tsi, frj]= qlat_tw.loc[head_segment][tsi] # [m^3/s]
                 qlat_g[tsi,0,frj]=0.0                   
     
     return ubcd_g 
@@ -287,6 +288,8 @@ def diffusive_input_data_v02(connections
                             , param_df
                             , qlats
                             ):
+    
+    
 
     usgs_retrievaltool_path= diffusive_parameters.get("usgs_retrievaltool_path",None)
     sys.path.append(usgs_retrievaltool_path)
@@ -366,7 +369,7 @@ def diffusive_input_data_v02(connections
                                                          "segments_list":i[1]}})
                 # for channel altitude adjustment
                 z_all.update({seg:{'adj.alt':np.zeros(1)}
-                                            for seg in i[1]})
+                                            for seg in i[1]})            
             # cahnnel geometry data
             ch_geo_data_tw = param_df.loc[
             flat_list, ["bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"]]
@@ -389,11 +392,14 @@ def diffusive_input_data_v02(connections
         #     Make Fortran-Python channel network mapping variables.
         #--------------------------------------------------------------------------------------   
             pynw={}
+            pynw_order = {}
             frj=-1
             for x in range(mx_jorder_tw,-1,-1): 
                 for head_segment, reach in ordered_reaches[x]:
                     frj= frj+1
                     pynw[frj]=head_segment
+                    pynw_order[frj]=x
+                    
 
             #frnw_col=8
             frnw_col= diffusive_parameters.get("fortran_nework_map_col_number",None)
@@ -405,6 +411,8 @@ def diffusive_input_data_v02(connections
                     , dbfksegID
                     , pynw
                     )  
+
+            
             #covert data type from integer to float for frnw
             dfrnw_g=np.zeros((nrch_g,frnw_col), dtype=float)
             for j in range(0,nrch_g):
@@ -433,13 +441,15 @@ def diffusive_input_data_v02(connections
             nts_ql_g= int((tfin_g-t0_g)*3600.0/dt_ql_g)+1 # the number of the entire time steps of lateral flow data 
 
             qlat_g=np.zeros((nts_ql_g, mxncomp_g, nrch_g)) 
-
+            
             fp_qlat_map(mx_jorder_tw
                 , ordered_reaches
                 , nts_ql_g
+                , ch_geo_data_tw
                 , qlat_tw            
                 , qlat_g
                 ) 
+            
         #---------------------------------------------------------------------------------
         #                              Step 0-7
 
@@ -450,7 +460,6 @@ def diffusive_input_data_v02(connections
                                     , pynw
                                     , nts_ub_g
                                     , nrch_g
-                                    , ch_geo_data_tw
                                     , qlat_tw
                                     , qlat_g
                                     )
@@ -551,10 +560,13 @@ def diffusive_input_data_v02(connections
             diff_ins["y_opt_g"] = y_opt_g
             diff_ins["so_llm_g"] = so_llm_g
             diff_ins["ntss_ev_g"] = ntss_ev_g
+            diff_ins["pynw"] = pynw
+            diff_ins["pynw_order"] = pynw_order
+            diff_ins["ordered_reaches"] = ordered_reaches
             
-#             # save input data as yaml
-#             import yaml
-#             with open('diff_inputs.yml', 'w') as outfile:
-#                 yaml.dump(diff_ins, outfile, default_flow_style=False)
+            # save input data as yaml
+            import yaml
+            with open('diff_inputs.yml', 'w') as outfile:
+                yaml.dump(diff_ins, outfile, default_flow_style=False)
 
     return diff_ins
