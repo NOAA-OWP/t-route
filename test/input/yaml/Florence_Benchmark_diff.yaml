@@ -2,7 +2,7 @@
 # Initial input parameters
 run_parameters:
     compute_kernel: "diffusive"
-    parallel_compute_method: by-subnetwork-jit-clustered
+    parallel_compute_method: None
     verbose: true
     showtiming: true
     debuglevel: 1
