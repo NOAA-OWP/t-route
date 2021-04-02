@@ -276,6 +276,7 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
 import mc_reach
+import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
@@ -1013,7 +1014,7 @@ def main():
         if verbose:
             print("building input data for diffusive wave model ...")
 
-        data = diff_utils.diffusive_input_data_v02(connections
+        diff_inputs = diff_utils.diffusive_input_data_v02(connections
                             , rconn
                             , reaches_bytw
                             , diffusive_parameters
@@ -1037,38 +1038,42 @@ def main():
         else:
             print(f"executing routing computation ...")
 
-    if run_parameters.get("compute_method", None) == "V02-caching":
-        compute_func = mc_reach.compute_network
-    elif run_parameters.get("compute_method", None) == "V02-structured":
-        compute_func = mc_reach.compute_network_structured
-    elif run_parameters.get("compute_method", None) == "V02-structured-obj":
-        compute_func = mc_reach.compute_network_structured_obj
+    if run_parameters.get("compute_kernel", None) == "diffusive":
+        compute_func = diffusive.compute_diffusive
+        raise ValueError
     else:
-        compute_func = mc_reach.compute_network
+        if run_parameters.get("compute_method", None) == "V02-caching":
+            compute_func = mc_reach.compute_network
+        elif run_parameters.get("compute_method", None) == "V02-structured":
+            compute_func = mc_reach.compute_network_structured
+        elif run_parameters.get("compute_method", None) == "V02-structured-obj":
+            compute_func = mc_reach.compute_network_structured_obj
+        else:
+            compute_func = mc_reach.compute_network
 
-    # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
-    # compute_func = mc_reach.compute_network_structured_obj
+        # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
+        # compute_func = mc_reach.compute_network_structured_obj
 
-    results = compute_nhd_routing_v02(
-        connections,
-        rconn,
-        wbodies,
-        reaches_bytw,
-        compute_func,
-        run_parameters.get("parallel_compute_method", None),
-        run_parameters.get("subnetwork_target_size", 1),
-        # The default here might be the whole network or some percentage...
-        run_parameters.get("cpu_pool", None),
-        run_parameters.get("nts", 1),
-        run_parameters.get("qts_subdivisions", 1),
-        independent_networks,
-        param_df,
-        qlats,
-        q0,
-        run_parameters.get("assume_short_ts", False),
-        run_parameters.get("return_courant", False),
-        waterbodies_df_reduced,
-    )
+        results = compute_nhd_routing_v02(
+            connections,
+            rconn,
+            wbodies,
+            reaches_bytw,
+            compute_func,
+            run_parameters.get("parallel_compute_method", None),
+            run_parameters.get("subnetwork_target_size", 1),
+            # The default here might be the whole network or some percentage...
+            run_parameters.get("cpu_pool", None),
+            run_parameters.get("nts", 1),
+            run_parameters.get("qts_subdivisions", 1),
+            independent_networks,
+            param_df,
+            qlats,
+            q0,
+            run_parameters.get("assume_short_ts", False),
+            run_parameters.get("return_courant", False),
+            waterbodies_df_reduced,
+        )
 
     if verbose:
         print("ordered reach computation complete")
