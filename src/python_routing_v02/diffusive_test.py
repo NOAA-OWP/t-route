@@ -91,6 +91,7 @@ for o in ordered_reaches.keys():
         i+=1
 
 tsteps = range(0, len(out_q[:,0,0]))
+print(out_q)
 print(pd.DataFrame(dat_q, columns = rch_list, index = tsteps))
         
         
