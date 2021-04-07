@@ -310,6 +310,7 @@ def compute_nhd_routing_v02(
     assume_short_ts,
     return_courant,
     waterbodies_df,
+    diffusive_parameters = None
 ):
 
     start_time = time.time()
@@ -686,6 +687,7 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            
             # The X_sub lines use SEGS...
             # which becomes invalid with the wbodies included.
             # So we define "common_segs" to identify regular routing segments
@@ -743,25 +745,98 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlats.loc[common_segs].sort_index()
             q0_sub = q0.loc[common_segs].sort_index()
-            results.append(
-                compute_func(
-                    nts,
-                    qts_subdivisions,
-                    reaches_list_with_type,
-                    independent_networks[tw],
-                    param_df_sub.index.values,
-                    param_df_sub.columns.values,
-                    param_df_sub.values,
-                    qlat_sub.values,
-                    q0_sub.values,
-                    lake_segs,
-                    waterbodies_df_sub.values,
-                    {},
-                    assume_short_ts,
-                    return_courant,
+            if compute_func == mc_reach.compute_network:
+                results.append(
+                    compute_func(
+                        nts,
+                        qts_subdivisions,
+                        reaches_list_with_type,
+                        independent_networks[tw],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        q0_sub.values,
+                        lake_segs,
+                        waterbodies_df_sub.values,
+                        {},
+                        assume_short_ts,
+                        return_courant,
+                    )
                 )
-            )
-
+                
+            else:
+                
+                # build model parameter inputs
+                rconn_tw = {k: rconn[k] for k in segs if k in rconn}
+                connections_tw = {k: connections[k] for k in segs if k in connections}
+                param_df_tw = param_df.loc[
+                    common_segs, ["dt", "bw", "tw", "twcc",
+                                  "dx", "n", "ncc", "cs", "s0", "alt"]].sort_index()
+                diff_inputs = diff_utils.diffusive_input_data_v02(tw
+                    , connections_tw
+                    , rconn_tw
+                    , reach_list
+                    , diffusive_parameters
+                    , param_df_tw.columns.values
+                    , param_df_tw.index.values
+                    , param_df_tw.values
+                    , qlats
+                    )
+                
+                # call diffusive wave model
+                out_q, out_elv = compute_func(
+                                        diff_inputs["dtini_g"],
+                                        diff_inputs["t0_g"],
+                                        diff_inputs["tfin_g"],
+                                        diff_inputs["saveinterval_g"],
+                                        diff_inputs["saveinterval_ev_g"],
+                                        diff_inputs["dt_ql_g"],
+                                        diff_inputs["dt_ub_g"],
+                                        diff_inputs["dt_db_g"],
+                                        diff_inputs["nts_ql_g"],
+                                        diff_inputs["nts_ub_g"],
+                                        diff_inputs["nts_db_g"],
+                                        diff_inputs["mxncomp_g"],
+                                        diff_inputs["nrch_g"],
+                                        np.asfortranarray(diff_inputs["z_ar_g"]),
+                                        np.asfortranarray(diff_inputs["bo_ar_g"]),
+                                        np.asfortranarray(diff_inputs["traps_ar_g"]),
+                                        np.asfortranarray(diff_inputs["tw_ar_g"]),
+                                        np.asfortranarray(diff_inputs["twcc_ar_g"]),
+                                        np.asfortranarray(diff_inputs["mann_ar_g"]),
+                                        np.asfortranarray(diff_inputs["manncc_ar_g"]),
+                                        np.asfortranarray(diff_inputs["so_ar_g"]),
+                                        np.asfortranarray(diff_inputs["dx_ar_g"]),
+                                        diff_inputs["nhincr_m_g"],
+                                        diff_inputs["nhincr_f_g"],
+                                        np.asfortranarray(diff_inputs["ufhlt_m_g"]),
+                                        np.asfortranarray(diff_inputs["ufqlt_m_g"]),
+                                        np.asfortranarray(diff_inputs["ufhlt_f_g"]),
+                                        np.asfortranarray(diff_inputs["ufqlt_f_g"]),
+                                        diff_inputs["frnw_col"],
+                                        np.asfortranarray(diff_inputs["frnw_g"].astype('double')),
+                                        np.asfortranarray(diff_inputs["qlat_g"]),
+                                        np.asfortranarray(diff_inputs["ubcd_g"]),
+                                        np.asfortranarray(diff_inputs["dbcd_g"]),
+                                        diff_inputs["cfl_g"],
+                                        diff_inputs["theta_g"],
+                                        diff_inputs["tzeq_flag_g"],
+                                        diff_inputs["y_opt_g"],
+                                        diff_inputs["so_llm_g"],
+                                        diff_inputs["ntss_ev_g"],
+                                )
+                
+                # unpack outputs to Pandas dataframe
+                dat_q_df = diff_utils.unpack_output(
+                                            diff_inputs["pynw"], 
+                                            diff_inputs["ordered_reaches"], 
+                                            out_q, 
+                                            out_elv
+                                            )
+                
+                raise ValueError
+                
     return results
 
 
@@ -1007,25 +1082,28 @@ def main():
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
         
-    # STEP 6: Build diffusive input data
-    if diffusive_parameters: 
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print("building input data for diffusive wave model ...")
+#     # STEP 6: Build diffusive input data
+#     if diffusive_parameters: 
+#         if showtiming:
+#             start_time = time.time()
+#         if verbose:
+#             print("building input data for diffusive wave model ...")
 
-        diff_inputs = diff_utils.diffusive_input_data_v02(connections
-                            , rconn
-                            , reaches_bytw
-                            , diffusive_parameters
-                            , param_df
-                            , qlats
-                            )
+#         diff_inputs = diff_utils.diffusive_input_data_v02(connections
+#                             , rconn
+#                             , reaches_bytw
+#                             , diffusive_parameters
+#                             , param_df
+#                             , qlats
+#                             )
 
-        if verbose:
-            print("diffusive input construction complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
+#         if verbose:
+#             print("diffusive input construction complete")
+#         if showtiming:
+#             print("... in %s seconds." % (time.time() - start_time))
+            
+#     else:
+#         diff_inputs = None
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1040,7 +1118,6 @@ def main():
 
     if run_parameters.get("compute_kernel", None) == "diffusive":
         compute_func = diffusive.compute_diffusive
-        raise ValueError
     else:
         if run_parameters.get("compute_method", None) == "V02-caching":
             compute_func = mc_reach.compute_network
@@ -1051,29 +1128,30 @@ def main():
         else:
             compute_func = mc_reach.compute_network
 
-        # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
-        # compute_func = mc_reach.compute_network_structured_obj
+    # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
+    # compute_func = mc_reach.compute_network_structured_obj
 
-        results = compute_nhd_routing_v02(
-            connections,
-            rconn,
-            wbodies,
-            reaches_bytw,
-            compute_func,
-            run_parameters.get("parallel_compute_method", None),
-            run_parameters.get("subnetwork_target_size", 1),
-            # The default here might be the whole network or some percentage...
-            run_parameters.get("cpu_pool", None),
-            run_parameters.get("nts", 1),
-            run_parameters.get("qts_subdivisions", 1),
-            independent_networks,
-            param_df,
-            qlats,
-            q0,
-            run_parameters.get("assume_short_ts", False),
-            run_parameters.get("return_courant", False),
-            waterbodies_df_reduced,
-        )
+    results = compute_nhd_routing_v02(
+        connections,
+        rconn,
+        wbodies,
+        reaches_bytw,
+        compute_func,
+        run_parameters.get("parallel_compute_method", None),
+        run_parameters.get("subnetwork_target_size", 1),
+        # The default here might be the whole network or some percentage...
+        run_parameters.get("cpu_pool", None),
+        run_parameters.get("nts", 1),
+        run_parameters.get("qts_subdivisions", 1),
+        independent_networks,
+        param_df,
+        qlats,
+        q0,
+        run_parameters.get("assume_short_ts", False),
+        run_parameters.get("return_courant", False),
+        waterbodies_df_reduced,
+        diffusive_parameters,
+    )
 
     if verbose:
         print("ordered reach computation complete")
