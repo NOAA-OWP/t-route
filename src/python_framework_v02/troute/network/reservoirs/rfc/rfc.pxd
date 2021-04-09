@@ -15,9 +15,9 @@ cdef extern from "rfc_structs.h":
     float weir_coefficient, weir_elevation, weir_length
     float initial_fractional_depth, water_elevation
     int reservoir_type
-    bytes reservoir_parameter_file
-    bytes start_date
-    bytes time_series_path
+    char* reservoir_parameter_file
+    char* start_date
+    char* time_series_path
     int forecast_lookback_hours
   ctypedef struct _Reach:
     pass

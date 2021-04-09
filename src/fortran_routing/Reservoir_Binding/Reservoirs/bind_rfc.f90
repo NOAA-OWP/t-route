@@ -21,7 +21,7 @@ contains
             !TYPE(LP_Example), POINTER :: lp_ptr
             TYPE(rfc_forecasts), POINTER :: rfc_ptr
             CALL C_F_POINTER(handle, rfc_ptr)
-            !DEALLOCATE(rfc_ptr)
+            DEALLOCATE(rfc_ptr)
         END SUBROUTINE free_rfc
 
         SUBROUTINE init_rfc(handle,  water_elevation,  &

@@ -13,8 +13,8 @@ cdef extern from "hybrid_structs.c":
                             float orifice_area, float orifice_coefficient, float orifice_elevation,
                             float weir_coefficient, float weir_elevation, float weir_length,
                             float initial_fractional_depth, float water_elevation,
-                            int reservoir_type, char reservoir_parameter_file, char start_date,
-                            char usgs_timeslice_path, char usace_timeslice_path,
+                            int reservoir_type, char *reservoir_parameter_file, char *start_date,
+                            char *usgs_timeslice_path, char *usace_timeslice_path,
                             int observation_lookback_hours,
                             int observation_update_time_interval_seconds
   )
@@ -33,65 +33,103 @@ cdef class MC_Hybrid(Reach):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
+
+      Params:
+        id: long
+          unique identity of the reach this reservoir represents
+        lake_number: int TODO (long?)
+          WRF_Hydro lake number of this reservoir
+        upstream_ids: array[long]
+          buffer/array of upstream identifiers which contribute flow to this reservoir
+        args: list
+          the levelpool paramters ordered as follows:
+            area = args[0]
+            max_depth = args[1]
+            orifice_area = args[2]
+            orifice_coefficient = args[3]
+            orifice_elevation  =  args[4]
+            weir_coefficient = args[5]
+            weir_elevation = args[6]
+            weir_length = args[7]
+            initial_fractional_depth  = args[8]
+            reservoir_type =  args[11]
+            reservoir_parameter_file = args[12]
+            start_date = args[13]
+            usgs_timeslice_path = args[14]
+            usace_timeslice_path = args[15]
+            observation_lookback_hours = args[16]
+            observation_update_time_interval_seconds = args[17]
     """
     super().__init__(id, upstream_ids, compute_type.RESERVOIR_HYBRID)
-    #init the backing struct, pass a dam_length of 10.0 for now
-    #pass a negative water elevation, which causes the init to use the wrf hydro equation
-    #TODO put in __calloc__
+    # Note Some issues with __calloc__:
+    # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
+    # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
+    # init the backing struct, pass a dam_length of 10.0 for now
+    #init_hybrid_reach(&self._reach, lake_number,
+    #                     10.0, args[0], args[1],
+    #                     args[2], args[3], args[4],
+    #                     args[5], args[6], args[7],
+    #                     args[8], args[10], args[11],
+    #                     args[12], args[13], args[14],
+    #                     args[15], args[16], args[17])
+
+    #Setting default dam_length to 10
+    dam_length = 10.0
+    area = args[0]
+    max_depth = args[1]
+    orifice_area = args[2]
+    orifice_coefficient = args[3]
+    orifice_elevation  =  args[4]
+    weir_coefficient = args[5]
+    weir_elevation = args[6]
+    weir_length = args[7]
+    initial_fractional_depth  = args[8]
+    reservoir_type =  args[11]
+    reservoir_parameter_file = args[12]
+    start_date = args[13] 
+    usgs_timeslice_path = args[14] 
+    usace_timeslice_path = args[15]
+    observation_lookback_hours = args[16]
+    observation_update_time_interval_seconds = args[17]
+
+    #Check lengths of input strings to ensure that they do not exceed buffer size
+    if (reservoir_parameter_file > 256):
+       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
+   
+    # Note Some issues with __calloc__:
+    # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
+    # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
+    # init the backing struct, pass a dam_length of 10.0 for now
     init_hybrid_reach(&self._reach, lake_number,
                          10.0, args[0], args[1],
                          args[2], args[3], args[4],
                          args[5], args[6], args[7],
-                         args[8], args[10], args[11]
-                         args[12], args[13], args[14]
+                         args[8], args[10], args[11],
+                         args[12], args[13], args[14],
                          args[15], args[16], args[17])
-    """
-    self.lake_number = lake_number
-    #TODO: Need new Lake Parm file, which now has dam_length
-    #dam_length = wbody_parameters[wbody_index,1]
-    #Setting default dam_length to 10
-    self.dam_length = 10.0
-    self.area = args[0]
-    self.max_depth = args[1]
-    self.orifice_area = args[2]
-    self.orifice_coefficient = args[3]
-    self.orifice_elevation  =  args[4]
-    self.weir_coefficient = args[5]
-    self.weir_elevation = args[6]
-    self.weir_length = args[7]
-    self.initial_fractional_depth  = args[8]
-    self.reservoir_type =  args[11]
-    self.reservoir_parameter_file = args[12]
-    self.start_date = args[13] 
-    self.usgs_timeslice_path = args[14] 
-    self.usace_timeslice_path = args[15]
-    self.observation_lookback_hours = args[16]
-    self.observation_update_time_interval_seconds = args[17]
-    #TODO: Read Water Elevation from Restart. Use below equation if no restart.
-    #Equation below is used in wrf-hydro
-    self.water_elevation = self.orifice_elevation + ((self.max_depth - self.orifice_elevation) * self.initial_fractional_depth)
-    """
-    """
-    #Initialize hybrid reservoir object
-    with nogil:
-      self.hybrid_handle = get_hybrid_handle()
-      init_hybrid(self.hybrid_handle, &self.water_elevation, &self.area,
-                   &self.weir_elevation, &self.weir_coefficient, &self.weir_length,
-                   &self.dam_length, &self.orifice_elevation, &self.orifice_coefficient,
-                   &self.orifice_area, &self.max_depth, &self.lake_number,
-                   &self.reservoir_type, &self.reservoir_parameter_file, &self.start_date, 
-                   &self.usgs_timeslice_path, &self.usace_timeslice_path, &self.observation_lookback_hours,
-                   &self.observation_update_time_interval_seconds)
-    #print(<int>self.hybrid_handle)
-    """
+
 
   def __dealloc__(self):
     """
     """
     free_hybrid_reach(&self._reach)
-    #free_hybrid(self.hybrid_handle)
 
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
+    """
+      Run the hybrid routing function
+      Params:
+        inflow: float
+          inflow into the reservoir
+        lateral_inflow: float
+          lateral flows into the reservoir
+        routing_period: float
+          amount of time to simulatie reservoir operation for, outflow if valid until this time
+      Return:
+        outflow: float
+          flow rate out of the reservoir valid for routing_period seconds
+        water_elevation:
+          reservoir water surface elevation after routing_period seconds
+    """
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
@@ -142,3 +180,31 @@ cdef class MC_Hybrid(Reach):
   @property
   def initial_fractional_depth(self):
     return self._reach.reach.hybrid.initial_fractional_depth
+
+  @property
+  def reservoir_type(self):
+    return self._reach.reach.hybrid.reservoir_type
+
+  @property
+  def reservoir_parameter_file(self):
+    return self._reach.reach.hybrid.reservoir_parameter_file
+
+  @property
+  def start_date(self):
+    return self._reach.reach.hybrid.start_date
+
+  @property
+  def usgs_timeslice_path(self):
+    return self._reach.reach.hybrid.usgs_timeslice_path
+
+  @property
+  def usace_timeslice_path(self):
+    return self._reach.reach.hybrid.usace_timeslice_path
+
+  @property
+  def observation_lookback_hours(self):
+    return self._reach.reach.hybrid.observation_lookback_hours
+
+  @property
+  def observation_update_time_interval_seconds(self):
+    return self._reach.reach.hybrid.observation_update_time_interval_seconds
