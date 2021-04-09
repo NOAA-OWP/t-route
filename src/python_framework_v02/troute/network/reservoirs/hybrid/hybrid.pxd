@@ -15,10 +15,10 @@ cdef extern from "hybrid_structs.h":
     float weir_coefficient, weir_elevation, weir_length
     float initial_fractional_depth, water_elevation
     int reservoir_type
-    bytes reservoir_parameter_file
-    bytes start_date
-    bytes usgs_timeslice_path
-    bytes usace_timeslice_path
+    char* reservoir_parameter_file
+    char* start_date
+    char* usgs_timeslice_path
+    char* usace_timeslice_path
     int observation_lookback_hours
     int observation_update_time_interval_seconds
   ctypedef struct _Reach:

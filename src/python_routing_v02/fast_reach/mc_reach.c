@@ -15,8 +15,8 @@
             "-g"
         ],
         "include_dirs": [
-            "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/reservoirs/levelpool",
             "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network",
+            "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/reservoirs/levelpool",
             "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/musking",
             "/glade/work/dmattern/python_envs/t-route-env/lib/python3.6/site-packages/numpy/core/include"
         ],
@@ -1255,16 +1255,18 @@ typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
  */
 typedef npy_cdouble __pyx_t_5numpy_complex_t;
 
-/* "troute/network/reach.pxd":27
+/* "troute/network/reach.pxd":57
  *     long id;
  * 
  * ctypedef enum compute_type:             # <<<<<<<<<<<<<<
- *   MC_REACH, RESERVOIR_LP
+ *   MC_REACH, RESERVOIR_LP, RESERVOIR_HYBRID, RESERVOIR_RFC
  * 
  */
 enum __pyx_t_6troute_7network_5reach_compute_type {
   __pyx_e_6troute_7network_5reach_MC_REACH,
-  __pyx_e_6troute_7network_5reach_RESERVOIR_LP
+  __pyx_e_6troute_7network_5reach_RESERVOIR_LP,
+  __pyx_e_6troute_7network_5reach_RESERVOIR_HYBRID,
+  __pyx_e_6troute_7network_5reach_RESERVOIR_RFC
 };
 typedef enum __pyx_t_6troute_7network_5reach_compute_type __pyx_t_6troute_7network_5reach_compute_type;
 struct __pyx_ctuple_float__and_float;
@@ -1366,7 +1368,7 @@ struct __pyx_opt_args_10fast_reach_compute_network_structured {
   int return_courant;
 };
 
-/* "troute/network/reach.pxd":31
+/* "troute/network/reach.pxd":61
  * 
  * #TODO implement junction or make multiple upstreams
  * cdef class Segment():             # <<<<<<<<<<<<<<
@@ -1381,7 +1383,7 @@ struct __pyx_obj_6troute_7network_5reach_Segment {
 };
 
 
-/* "troute/network/reach.pxd":39
+/* "troute/network/reach.pxd":69
  *   cdef long downstream_id
  * 
  * cdef class Reach():             # <<<<<<<<<<<<<<
@@ -10891,7 +10893,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured_obj(int __pyx_v
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:             # <<<<<<<<<<<<<<
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array +1 timestep for initial conditions
+ *     #define and initialize the final output array +1 timestep for initial conditions
  */
   __pyx_t_6 = (((__pyx_v_data_values.shape[0]) != (__pyx_v_data_idx.shape[0])) != 0);
   if (!__pyx_t_6) {
@@ -10908,7 +10910,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured_obj(int __pyx_v
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
  *         raise ValueError(f"data_values shape mismatch")             # <<<<<<<<<<<<<<
- *     #define an intialize the final output array +1 timestep for initial conditions
+ *     #define and initialize the final output array +1 timestep for initial conditions
  *     cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
  */
     __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 732, __pyx_L1_error)
@@ -10922,13 +10924,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured_obj(int __pyx_v
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:             # <<<<<<<<<<<<<<
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array +1 timestep for initial conditions
+ *     #define and initialize the final output array +1 timestep for initial conditions
  */
   }
 
   /* "fast_reach/mc_reach.pyx":734
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array +1 timestep for initial conditions
+ *     #define and initialize the final output array +1 timestep for initial conditions
  *     cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')             # <<<<<<<<<<<<<<
  *     #Make ndarrays from the mem views for convience of indexing...may be a better method
  *     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
@@ -13902,7 +13904,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:             # <<<<<<<<<<<<<<
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array, add one extra time step for initial conditions
+ *     #define and initialize the final output array, add one extra time step for initial conditions
  */
   __pyx_t_6 = (((__pyx_v_data_values.shape[0]) != (__pyx_v_data_idx.shape[0])) != 0);
   if (!__pyx_t_6) {
@@ -13919,7 +13921,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
  *         raise ValueError(f"data_values shape mismatch")             # <<<<<<<<<<<<<<
- *     #define an intialize the final output array, add one extra time step for initial conditions
+ *     #define and initialize the final output array, add one extra time step for initial conditions
  *     cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
  */
     __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 944, __pyx_L1_error)
@@ -13933,13 +13935,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  *         raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
  *     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:             # <<<<<<<<<<<<<<
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array, add one extra time step for initial conditions
+ *     #define and initialize the final output array, add one extra time step for initial conditions
  */
   }
 
   /* "fast_reach/mc_reach.pyx":946
  *         raise ValueError(f"data_values shape mismatch")
- *     #define an intialize the final output array, add one extra time step for initial conditions
+ *     #define and initialize the final output array, add one extra time step for initial conditions
  *     cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')             # <<<<<<<<<<<<<<
  *     #Make ndarrays from the mem views for convience of indexing...may be a better method
  *     cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
@@ -14252,8 +14254,8 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   }
   __pyx_v_qlat_resample = (((double)__pyx_v_nsteps) / ((double)(__pyx_v_qlat_values.shape[1])));
 
-  /* "fast_reach/mc_reach.pyx":983
- *     #cdef list reaches = [reach for reach, _ in reaches_wTypes]
+  /* "fast_reach/mc_reach.pyx":981
+ *     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
  * 
  *     wbody_index = 0             # <<<<<<<<<<<<<<
  * 
@@ -14262,7 +14264,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   __Pyx_INCREF(__pyx_int_0);
   __pyx_v_wbody_index = __pyx_int_0;
 
-  /* "fast_reach/mc_reach.pyx":985
+  /* "fast_reach/mc_reach.pyx":983
  *     wbody_index = 0
  * 
  *     for reach, reach_type in reaches_wTypes:             # <<<<<<<<<<<<<<
@@ -14271,15 +14273,15 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
   if (unlikely(__pyx_v_reaches_wTypes == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 985, __pyx_L1_error)
+    __PYX_ERR(0, 983, __pyx_L1_error)
   }
   __pyx_t_14 = __pyx_v_reaches_wTypes; __Pyx_INCREF(__pyx_t_14); __pyx_t_3 = 0;
   for (;;) {
     if (__pyx_t_3 >= PyList_GET_SIZE(__pyx_t_14)) break;
     #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-    __pyx_t_7 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_3); __Pyx_INCREF(__pyx_t_7); __pyx_t_3++; if (unlikely(0 < 0)) __PYX_ERR(0, 985, __pyx_L1_error)
+    __pyx_t_7 = PyList_GET_ITEM(__pyx_t_14, __pyx_t_3); __Pyx_INCREF(__pyx_t_7); __pyx_t_3++; if (unlikely(0 < 0)) __PYX_ERR(0, 983, __pyx_L1_error)
     #else
-    __pyx_t_7 = PySequence_ITEM(__pyx_t_14, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 985, __pyx_L1_error)
+    __pyx_t_7 = PySequence_ITEM(__pyx_t_14, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 983, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     #endif
     if ((likely(PyTuple_CheckExact(__pyx_t_7))) || (PyList_CheckExact(__pyx_t_7))) {
@@ -14288,7 +14290,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       if (unlikely(size != 2)) {
         if (size > 2) __Pyx_RaiseTooManyValuesError(2);
         else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        __PYX_ERR(0, 985, __pyx_L1_error)
+        __PYX_ERR(0, 983, __pyx_L1_error)
       }
       #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
       if (likely(PyTuple_CheckExact(sequence))) {
@@ -14301,15 +14303,15 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __Pyx_INCREF(__pyx_t_2);
       __Pyx_INCREF(__pyx_t_8);
       #else
-      __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 985, __pyx_L1_error)
+      __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 983, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
-      __pyx_t_8 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 985, __pyx_L1_error)
+      __pyx_t_8 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 983, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       #endif
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_5 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 985, __pyx_L1_error)
+      __pyx_t_5 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 983, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __pyx_t_16 = Py_TYPE(__pyx_t_5)->tp_iternext;
@@ -14317,7 +14319,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __Pyx_GOTREF(__pyx_t_2);
       index = 1; __pyx_t_8 = __pyx_t_16(__pyx_t_5); if (unlikely(!__pyx_t_8)) goto __pyx_L10_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_8);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_16(__pyx_t_5), 2) < 0) __PYX_ERR(0, 985, __pyx_L1_error)
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_16(__pyx_t_5), 2) < 0) __PYX_ERR(0, 983, __pyx_L1_error)
       __pyx_t_16 = NULL;
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       goto __pyx_L11_unpacking_done;
@@ -14325,16 +14327,16 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_16 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      __PYX_ERR(0, 985, __pyx_L1_error)
+      __PYX_ERR(0, 983, __pyx_L1_error)
       __pyx_L11_unpacking_done:;
     }
-    if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 985, __pyx_L1_error)
+    if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_2)->tp_name), 0))) __PYX_ERR(0, 983, __pyx_L1_error)
     __Pyx_XDECREF_SET(__pyx_v_reach, ((PyObject*)__pyx_t_2));
     __pyx_t_2 = 0;
     __Pyx_XDECREF_SET(__pyx_v_reach_type, __pyx_t_8);
     __pyx_t_8 = 0;
 
-    /* "fast_reach/mc_reach.pyx":986
+    /* "fast_reach/mc_reach.pyx":984
  * 
  *     for reach, reach_type in reaches_wTypes:
  *         upstream_reach = upstream_connections.get(reach[0], ())             # <<<<<<<<<<<<<<
@@ -14343,89 +14345,89 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
     if (unlikely(__pyx_v_upstream_connections == Py_None)) {
       PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "get");
-      __PYX_ERR(0, 986, __pyx_L1_error)
+      __PYX_ERR(0, 984, __pyx_L1_error)
     }
     if (unlikely(__pyx_v_reach == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      __PYX_ERR(0, 986, __pyx_L1_error)
+      __PYX_ERR(0, 984, __pyx_L1_error)
     }
-    __pyx_t_7 = __Pyx_GetItemInt_List(__pyx_v_reach, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 986, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_GetItemInt_List(__pyx_v_reach, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 984, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_8 = __Pyx_PyDict_GetItemDefault(__pyx_v_upstream_connections, __pyx_t_7, __pyx_empty_tuple); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 986, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyDict_GetItemDefault(__pyx_v_upstream_connections, __pyx_t_7, __pyx_empty_tuple); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 984, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    if (!(likely(PyList_CheckExact(__pyx_t_8))||((__pyx_t_8) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_8)->tp_name), 0))) __PYX_ERR(0, 986, __pyx_L1_error)
+    if (!(likely(PyList_CheckExact(__pyx_t_8))||((__pyx_t_8) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_8)->tp_name), 0))) __PYX_ERR(0, 984, __pyx_L1_error)
     __Pyx_XDECREF_SET(__pyx_v_upstream_reach, ((PyObject*)__pyx_t_8));
     __pyx_t_8 = 0;
 
-    /* "fast_reach/mc_reach.pyx":987
+    /* "fast_reach/mc_reach.pyx":985
  *     for reach, reach_type in reaches_wTypes:
  *         upstream_reach = upstream_connections.get(reach[0], ())
  *         upstream_ids = binary_find(data_idx, upstream_reach)             # <<<<<<<<<<<<<<
  *         #Check if reach_type is 1 for reservoir
  *         if (reach_type == 1):
  */
-    __pyx_t_8 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 987, __pyx_L1_error)
+    __pyx_t_8 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 985, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    __pyx_t_7 = __pyx_f_10fast_reach_binary_find(__pyx_t_8, __pyx_v_upstream_reach, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 987, __pyx_L1_error)
+    __pyx_t_7 = __pyx_f_10fast_reach_binary_find(__pyx_t_8, __pyx_v_upstream_reach, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 985, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (!(likely(PyList_CheckExact(__pyx_t_7))||((__pyx_t_7) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_7)->tp_name), 0))) __PYX_ERR(0, 987, __pyx_L1_error)
+    if (!(likely(PyList_CheckExact(__pyx_t_7))||((__pyx_t_7) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_7)->tp_name), 0))) __PYX_ERR(0, 985, __pyx_L1_error)
     __Pyx_XDECREF_SET(__pyx_v_upstream_ids, ((PyObject*)__pyx_t_7));
     __pyx_t_7 = 0;
 
-    /* "fast_reach/mc_reach.pyx":989
+    /* "fast_reach/mc_reach.pyx":987
  *         upstream_ids = binary_find(data_idx, upstream_reach)
  *         #Check if reach_type is 1 for reservoir
  *         if (reach_type == 1):             # <<<<<<<<<<<<<<
  *             my_id = binary_find(data_idx, reach)
  *             #Reservoirs should be singleton list reaches, TODO enforce that here?
  */
-    __pyx_t_7 = __Pyx_PyInt_EqObjC(__pyx_v_reach_type, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 989, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyInt_EqObjC(__pyx_v_reach_type, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 987, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 989, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 987, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     if (__pyx_t_1) {
 
-      /* "fast_reach/mc_reach.pyx":990
+      /* "fast_reach/mc_reach.pyx":988
  *         #Check if reach_type is 1 for reservoir
  *         if (reach_type == 1):
  *             my_id = binary_find(data_idx, reach)             # <<<<<<<<<<<<<<
  *             #Reservoirs should be singleton list reaches, TODO enforce that here?
  *             #Add level pool reservoir ojbect to reach_objects
  */
-      __pyx_t_7 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 990, __pyx_L1_error)
+      __pyx_t_7 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 988, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
-      __pyx_t_8 = __pyx_f_10fast_reach_binary_find(__pyx_t_7, __pyx_v_reach, 0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 990, __pyx_L1_error)
+      __pyx_t_8 = __pyx_f_10fast_reach_binary_find(__pyx_t_7, __pyx_v_reach, 0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 988, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __Pyx_XDECREF_SET(__pyx_v_my_id, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "fast_reach/mc_reach.pyx":995
+      /* "fast_reach/mc_reach.pyx":993
  *             reach_objects.append(
  *                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
  *                   MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],             # <<<<<<<<<<<<<<
  *                                array('l',upstream_ids),
  *                                wbody_parameters[wbody_index])
  */
-      __pyx_t_8 = __Pyx_GetItemInt(__pyx_v_my_id, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 995, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_GetItemInt(__pyx_v_my_id, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 993, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (unlikely(__pyx_v_lake_numbers_col == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        __PYX_ERR(0, 995, __pyx_L1_error)
+        __PYX_ERR(0, 993, __pyx_L1_error)
       }
-      __pyx_t_7 = __Pyx_PyObject_GetItem(__pyx_v_lake_numbers_col, __pyx_v_wbody_index); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 995, __pyx_L1_error)
+      __pyx_t_7 = __Pyx_PyObject_GetItem(__pyx_v_lake_numbers_col, __pyx_v_wbody_index); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 993, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
 
-      /* "fast_reach/mc_reach.pyx":996
+      /* "fast_reach/mc_reach.pyx":994
  *                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
  *                   MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
  *                                array('l',upstream_ids),             # <<<<<<<<<<<<<<
  *                                wbody_parameters[wbody_index])
  *                 )
  */
-      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_array); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 996, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_array); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 994, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __pyx_t_17 = NULL;
       __pyx_t_18 = 0;
@@ -14442,7 +14444,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[3] = {__pyx_t_17, __pyx_n_u_l, __pyx_v_upstream_ids};
-        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 996, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 994, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
         __Pyx_GOTREF(__pyx_t_2);
       } else
@@ -14450,13 +14452,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[3] = {__pyx_t_17, __pyx_n_u_l, __pyx_v_upstream_ids};
-        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 996, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 994, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
         __Pyx_GOTREF(__pyx_t_2);
       } else
       #endif
       {
-        __pyx_t_19 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 996, __pyx_L1_error)
+        __pyx_t_19 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 994, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_19);
         if (__pyx_t_17) {
           __Pyx_GIVEREF(__pyx_t_17); PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_17); __pyx_t_17 = NULL;
@@ -14467,30 +14469,30 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         __Pyx_INCREF(__pyx_v_upstream_ids);
         __Pyx_GIVEREF(__pyx_v_upstream_ids);
         PyTuple_SET_ITEM(__pyx_t_19, 1+__pyx_t_18, __pyx_v_upstream_ids);
-        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_19, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 996, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_19, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 994, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
       }
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-      /* "fast_reach/mc_reach.pyx":997
+      /* "fast_reach/mc_reach.pyx":995
  *                   MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
  *                                array('l',upstream_ids),
  *                                wbody_parameters[wbody_index])             # <<<<<<<<<<<<<<
  *                 )
  *             wbody_index += 1
  */
-      __pyx_t_5 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_wbody_parameters), __pyx_v_wbody_index); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 997, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_wbody_parameters), __pyx_v_wbody_index); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 995, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
 
-      /* "fast_reach/mc_reach.pyx":995
+      /* "fast_reach/mc_reach.pyx":993
  *             reach_objects.append(
  *                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
  *                   MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],             # <<<<<<<<<<<<<<
  *                                array('l',upstream_ids),
  *                                wbody_parameters[wbody_index])
  */
-      __pyx_t_19 = PyTuple_New(4); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 995, __pyx_L1_error)
+      __pyx_t_19 = PyTuple_New(4); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 993, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_19);
       __Pyx_GIVEREF(__pyx_t_8);
       PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_8);
@@ -14504,33 +14506,33 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __pyx_t_7 = 0;
       __pyx_t_2 = 0;
       __pyx_t_5 = 0;
-      __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_10reservoirs_9levelpool_9levelpool_MC_Levelpool), __pyx_t_19, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 995, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_10reservoirs_9levelpool_9levelpool_MC_Levelpool), __pyx_t_19, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 993, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
 
-      /* "fast_reach/mc_reach.pyx":993
+      /* "fast_reach/mc_reach.pyx":991
  *             #Reservoirs should be singleton list reaches, TODO enforce that here?
  *             #Add level pool reservoir ojbect to reach_objects
  *             reach_objects.append(             # <<<<<<<<<<<<<<
  *                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
  *                   MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
  */
-      __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_reach_objects, __pyx_t_5); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 993, __pyx_L1_error)
+      __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_reach_objects, __pyx_t_5); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 991, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-      /* "fast_reach/mc_reach.pyx":999
+      /* "fast_reach/mc_reach.pyx":997
  *                                wbody_parameters[wbody_index])
  *                 )
  *             wbody_index += 1             # <<<<<<<<<<<<<<
  *         else:
  *             segment_ids = binary_find(data_idx, reach)
  */
-      __pyx_t_5 = __Pyx_PyInt_AddObjC(__pyx_v_wbody_index, __pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 999, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyInt_AddObjC(__pyx_v_wbody_index, __pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 997, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF_SET(__pyx_v_wbody_index, __pyx_t_5);
       __pyx_t_5 = 0;
 
-      /* "fast_reach/mc_reach.pyx":989
+      /* "fast_reach/mc_reach.pyx":987
  *         upstream_ids = binary_find(data_idx, upstream_reach)
  *         #Check if reach_type is 1 for reservoir
  *         if (reach_type == 1):             # <<<<<<<<<<<<<<
@@ -14540,7 +14542,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       goto __pyx_L12;
     }
 
-    /* "fast_reach/mc_reach.pyx":1001
+    /* "fast_reach/mc_reach.pyx":999
  *             wbody_index += 1
  *         else:
  *             segment_ids = binary_find(data_idx, reach)             # <<<<<<<<<<<<<<
@@ -14548,25 +14550,25 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  *             flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
  */
     /*else*/ {
-      __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1001, __pyx_L1_error)
+      __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 999, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_19 = __pyx_f_10fast_reach_binary_find(__pyx_t_5, __pyx_v_reach, 0); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1001, __pyx_L1_error)
+      __pyx_t_19 = __pyx_f_10fast_reach_binary_find(__pyx_t_5, __pyx_v_reach, 0); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 999, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_19);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-      if (!(likely(PyList_CheckExact(__pyx_t_19))||((__pyx_t_19) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_19)->tp_name), 0))) __PYX_ERR(0, 1001, __pyx_L1_error)
+      if (!(likely(PyList_CheckExact(__pyx_t_19))||((__pyx_t_19) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_t_19)->tp_name), 0))) __PYX_ERR(0, 999, __pyx_L1_error)
       __Pyx_XDECREF_SET(__pyx_v_segment_ids, ((PyObject*)__pyx_t_19));
       __pyx_t_19 = 0;
 
-      /* "fast_reach/mc_reach.pyx":1003
+      /* "fast_reach/mc_reach.pyx":1001
  *             segment_ids = binary_find(data_idx, reach)
  *             #Set the initial condtions before running loop
  *             flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]             # <<<<<<<<<<<<<<
  *             segment_objects = []
  *             #Find the max reach size, used to create buffer for compute_reach_kernel
  */
-      __pyx_t_19 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_init_array), __pyx_v_segment_ids); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1003, __pyx_L1_error)
+      __pyx_t_19 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_init_array), __pyx_v_segment_ids); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1001, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_19);
-      __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1003, __pyx_L1_error)
+      __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1001, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_INCREF(__pyx_v_segment_ids);
       __Pyx_GIVEREF(__pyx_v_segment_ids);
@@ -14574,23 +14576,23 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __Pyx_INCREF(__pyx_int_0);
       __Pyx_GIVEREF(__pyx_int_0);
       PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_int_0);
-      if (unlikely(PyObject_SetItem(((PyObject *)__pyx_v_flowveldepth_nd), __pyx_t_5, __pyx_t_19) < 0)) __PYX_ERR(0, 1003, __pyx_L1_error)
+      if (unlikely(PyObject_SetItem(((PyObject *)__pyx_v_flowveldepth_nd), __pyx_t_5, __pyx_t_19) < 0)) __PYX_ERR(0, 1001, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
 
-      /* "fast_reach/mc_reach.pyx":1004
+      /* "fast_reach/mc_reach.pyx":1002
  *             #Set the initial condtions before running loop
  *             flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
  *             segment_objects = []             # <<<<<<<<<<<<<<
  *             #Find the max reach size, used to create buffer for compute_reach_kernel
  *             if len(segment_ids) > max_buff_size:
  */
-      __pyx_t_19 = PyList_New(0); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1004, __pyx_L1_error)
+      __pyx_t_19 = PyList_New(0); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1002, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_19);
       __Pyx_XDECREF_SET(__pyx_v_segment_objects, ((PyObject*)__pyx_t_19));
       __pyx_t_19 = 0;
 
-      /* "fast_reach/mc_reach.pyx":1006
+      /* "fast_reach/mc_reach.pyx":1004
  *             segment_objects = []
  *             #Find the max reach size, used to create buffer for compute_reach_kernel
  *             if len(segment_ids) > max_buff_size:             # <<<<<<<<<<<<<<
@@ -14599,13 +14601,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
       if (unlikely(__pyx_v_segment_ids == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-        __PYX_ERR(0, 1006, __pyx_L1_error)
+        __PYX_ERR(0, 1004, __pyx_L1_error)
       }
-      __pyx_t_21 = PyList_GET_SIZE(__pyx_v_segment_ids); if (unlikely(__pyx_t_21 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1006, __pyx_L1_error)
+      __pyx_t_21 = PyList_GET_SIZE(__pyx_v_segment_ids); if (unlikely(__pyx_t_21 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1004, __pyx_L1_error)
       __pyx_t_1 = ((__pyx_t_21 > __pyx_v_max_buff_size) != 0);
       if (__pyx_t_1) {
 
-        /* "fast_reach/mc_reach.pyx":1007
+        /* "fast_reach/mc_reach.pyx":1005
  *             #Find the max reach size, used to create buffer for compute_reach_kernel
  *             if len(segment_ids) > max_buff_size:
  *                 max_buff_size=len(segment_ids)             # <<<<<<<<<<<<<<
@@ -14614,12 +14616,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
         if (unlikely(__pyx_v_segment_ids == Py_None)) {
           PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-          __PYX_ERR(0, 1007, __pyx_L1_error)
+          __PYX_ERR(0, 1005, __pyx_L1_error)
         }
-        __pyx_t_21 = PyList_GET_SIZE(__pyx_v_segment_ids); if (unlikely(__pyx_t_21 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1007, __pyx_L1_error)
+        __pyx_t_21 = PyList_GET_SIZE(__pyx_v_segment_ids); if (unlikely(__pyx_t_21 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1005, __pyx_L1_error)
         __pyx_v_max_buff_size = __pyx_t_21;
 
-        /* "fast_reach/mc_reach.pyx":1006
+        /* "fast_reach/mc_reach.pyx":1004
  *             segment_objects = []
  *             #Find the max reach size, used to create buffer for compute_reach_kernel
  *             if len(segment_ids) > max_buff_size:             # <<<<<<<<<<<<<<
@@ -14628,7 +14630,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
       }
 
-      /* "fast_reach/mc_reach.pyx":1009
+      /* "fast_reach/mc_reach.pyx":1007
  *                 max_buff_size=len(segment_ids)
  * 
  *             for sid in segment_ids:             # <<<<<<<<<<<<<<
@@ -14637,40 +14639,40 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
       if (unlikely(__pyx_v_segment_ids == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-        __PYX_ERR(0, 1009, __pyx_L1_error)
+        __PYX_ERR(0, 1007, __pyx_L1_error)
       }
       __pyx_t_19 = __pyx_v_segment_ids; __Pyx_INCREF(__pyx_t_19); __pyx_t_21 = 0;
       for (;;) {
         if (__pyx_t_21 >= PyList_GET_SIZE(__pyx_t_19)) break;
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_19, __pyx_t_21); __Pyx_INCREF(__pyx_t_5); __pyx_t_21++; if (unlikely(0 < 0)) __PYX_ERR(0, 1009, __pyx_L1_error)
+        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_19, __pyx_t_21); __Pyx_INCREF(__pyx_t_5); __pyx_t_21++; if (unlikely(0 < 0)) __PYX_ERR(0, 1007, __pyx_L1_error)
         #else
-        __pyx_t_5 = PySequence_ITEM(__pyx_t_19, __pyx_t_21); __pyx_t_21++; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1009, __pyx_L1_error)
+        __pyx_t_5 = PySequence_ITEM(__pyx_t_19, __pyx_t_21); __pyx_t_21++; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1007, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         #endif
-        __pyx_t_22 = __Pyx_PyInt_As_long(__pyx_t_5); if (unlikely((__pyx_t_22 == (long)-1) && PyErr_Occurred())) __PYX_ERR(0, 1009, __pyx_L1_error)
+        __pyx_t_22 = __Pyx_PyInt_As_long(__pyx_t_5); if (unlikely((__pyx_t_22 == (long)-1) && PyErr_Occurred())) __PYX_ERR(0, 1007, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         __pyx_v_sid = __pyx_t_22;
 
-        /* "fast_reach/mc_reach.pyx":1015
+        /* "fast_reach/mc_reach.pyx":1013
  *                 #it is inialized to 0.0
  *                 segment_objects.append(
  *                 MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])             # <<<<<<<<<<<<<<
  *             )
  *             reach_objects.append(
  */
-        __pyx_t_5 = __Pyx_PyInt_From_long(__pyx_v_sid); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyInt_From_long(__pyx_v_sid); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
-        __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_GIVEREF(__pyx_t_5);
         PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_5);
         __pyx_t_5 = 0;
-        __pyx_t_5 = __Pyx_PyInt_From_long(__pyx_v_sid); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyInt_From_long(__pyx_v_sid); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
-        __pyx_t_7 = __pyx_memoryview_fromslice(__pyx_v_scols, 1, (PyObject *(*)(char *)) __pyx_memview_get_Py_ssize_t, (int (*)(char *, PyObject *)) __pyx_memview_set_Py_ssize_t, 0);; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_7 = __pyx_memoryview_fromslice(__pyx_v_scols, 1, (PyObject *(*)(char *)) __pyx_memview_get_Py_ssize_t, (int (*)(char *, PyObject *)) __pyx_memview_set_Py_ssize_t, 0);; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
-        __pyx_t_8 = PyTuple_New(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_8 = PyTuple_New(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_GIVEREF(__pyx_t_5);
         PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_5);
@@ -14678,13 +14680,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_7);
         __pyx_t_5 = 0;
         __pyx_t_7 = 0;
-        __pyx_t_7 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_data_array), __pyx_t_8); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_7 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_data_array), __pyx_t_8); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_8 = __Pyx_PySequence_Tuple(__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_8 = __Pyx_PySequence_Tuple(__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-        __pyx_t_7 = PyNumber_Add(__pyx_t_2, __pyx_t_8); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_7 = PyNumber_Add(__pyx_t_2, __pyx_t_8); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
@@ -14699,9 +14701,9 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         } else if (unlikely(__pyx_t_24 >= __pyx_pybuffernd_init_array.diminfo[1].shape)) __pyx_t_18 = 1;
         if (unlikely(__pyx_t_18 != -1)) {
           __Pyx_RaiseBufferIndexError(__pyx_t_18);
-          __PYX_ERR(0, 1015, __pyx_L1_error)
+          __PYX_ERR(0, 1013, __pyx_L1_error)
         }
-        __pyx_t_8 = PyFloat_FromDouble((*__Pyx_BufPtrStrided2d(float *, __pyx_pybuffernd_init_array.rcbuffer->pybuffer.buf, __pyx_t_23, __pyx_pybuffernd_init_array.diminfo[0].strides, __pyx_t_24, __pyx_pybuffernd_init_array.diminfo[1].strides))); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_8 = PyFloat_FromDouble((*__Pyx_BufPtrStrided2d(float *, __pyx_pybuffernd_init_array.rcbuffer->pybuffer.buf, __pyx_t_23, __pyx_pybuffernd_init_array.diminfo[0].strides, __pyx_t_24, __pyx_pybuffernd_init_array.diminfo[1].strides))); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         __pyx_t_24 = __pyx_v_sid;
         __pyx_t_23 = 2;
@@ -14714,11 +14716,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         } else if (unlikely(__pyx_t_23 >= __pyx_pybuffernd_init_array.diminfo[1].shape)) __pyx_t_18 = 1;
         if (unlikely(__pyx_t_18 != -1)) {
           __Pyx_RaiseBufferIndexError(__pyx_t_18);
-          __PYX_ERR(0, 1015, __pyx_L1_error)
+          __PYX_ERR(0, 1013, __pyx_L1_error)
         }
-        __pyx_t_2 = PyFloat_FromDouble((*__Pyx_BufPtrStrided2d(float *, __pyx_pybuffernd_init_array.rcbuffer->pybuffer.buf, __pyx_t_24, __pyx_pybuffernd_init_array.diminfo[0].strides, __pyx_t_23, __pyx_pybuffernd_init_array.diminfo[1].strides))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_2 = PyFloat_FromDouble((*__Pyx_BufPtrStrided2d(float *, __pyx_pybuffernd_init_array.rcbuffer->pybuffer.buf, __pyx_t_24, __pyx_pybuffernd_init_array.diminfo[0].strides, __pyx_t_23, __pyx_pybuffernd_init_array.diminfo[1].strides))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
-        __pyx_t_5 = PyTuple_New(3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_New(3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_GIVEREF(__pyx_t_8);
         PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_8);
@@ -14729,25 +14731,25 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         PyTuple_SET_ITEM(__pyx_t_5, 2, __pyx_t_2);
         __pyx_t_8 = 0;
         __pyx_t_2 = 0;
-        __pyx_t_2 = PyNumber_Add(__pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_2 = PyNumber_Add(__pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-        __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_7musking_8mc_reach_MC_Segment), __pyx_t_2, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1015, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_7musking_8mc_reach_MC_Segment), __pyx_t_2, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1013, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-        /* "fast_reach/mc_reach.pyx":1014
+        /* "fast_reach/mc_reach.pyx":1012
  *                 #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
  *                 #it is inialized to 0.0
  *                 segment_objects.append(             # <<<<<<<<<<<<<<
  *                 MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
  *             )
  */
-        __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_segment_objects, __pyx_t_5); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 1014, __pyx_L1_error)
+        __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_segment_objects, __pyx_t_5); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 1012, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-        /* "fast_reach/mc_reach.pyx":1009
+        /* "fast_reach/mc_reach.pyx":1007
  *                 max_buff_size=len(segment_ids)
  * 
  *             for sid in segment_ids:             # <<<<<<<<<<<<<<
@@ -14757,14 +14759,14 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       }
       __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
 
-      /* "fast_reach/mc_reach.pyx":1019
+      /* "fast_reach/mc_reach.pyx":1017
  *             reach_objects.append(
  *                 #tuple of MC_Reach and reach_type
  *                 MC_Reach(segment_objects, array('l',upstream_ids))             # <<<<<<<<<<<<<<
  *                 )
  * 
  */
-      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_array); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1019, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_array); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1017, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __pyx_t_2 = NULL;
       __pyx_t_18 = 0;
@@ -14781,7 +14783,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_n_u_l, __pyx_v_upstream_ids};
-        __pyx_t_19 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1019, __pyx_L1_error)
+        __pyx_t_19 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1017, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
         __Pyx_GOTREF(__pyx_t_19);
       } else
@@ -14789,13 +14791,13 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[3] = {__pyx_t_2, __pyx_n_u_l, __pyx_v_upstream_ids};
-        __pyx_t_19 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1019, __pyx_L1_error)
+        __pyx_t_19 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1017, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
         __Pyx_GOTREF(__pyx_t_19);
       } else
       #endif
       {
-        __pyx_t_7 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1019, __pyx_L1_error)
+        __pyx_t_7 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1017, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         if (__pyx_t_2) {
           __Pyx_GIVEREF(__pyx_t_2); PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_2); __pyx_t_2 = NULL;
@@ -14806,12 +14808,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         __Pyx_INCREF(__pyx_v_upstream_ids);
         __Pyx_GIVEREF(__pyx_v_upstream_ids);
         PyTuple_SET_ITEM(__pyx_t_7, 1+__pyx_t_18, __pyx_v_upstream_ids);
-        __pyx_t_19 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_7, NULL); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1019, __pyx_L1_error)
+        __pyx_t_19 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_7, NULL); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1017, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_19);
         __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       }
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-      __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1019, __pyx_L1_error)
+      __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1017, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_INCREF(__pyx_v_segment_objects);
       __Pyx_GIVEREF(__pyx_v_segment_objects);
@@ -14819,23 +14821,23 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       __Pyx_GIVEREF(__pyx_t_19);
       PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_t_19);
       __pyx_t_19 = 0;
-      __pyx_t_19 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_7musking_8mc_reach_MC_Reach), __pyx_t_5, NULL); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1019, __pyx_L1_error)
+      __pyx_t_19 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_6troute_7network_7musking_8mc_reach_MC_Reach), __pyx_t_5, NULL); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1017, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_19);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-      /* "fast_reach/mc_reach.pyx":1017
+      /* "fast_reach/mc_reach.pyx":1015
  *                 MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
  *             )
  *             reach_objects.append(             # <<<<<<<<<<<<<<
  *                 #tuple of MC_Reach and reach_type
  *                 MC_Reach(segment_objects, array('l',upstream_ids))
  */
-      __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_reach_objects, __pyx_t_19); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 1017, __pyx_L1_error)
+      __pyx_t_20 = __Pyx_PyList_Append(__pyx_v_reach_objects, __pyx_t_19); if (unlikely(__pyx_t_20 == ((int)-1))) __PYX_ERR(0, 1015, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
     }
     __pyx_L12:;
 
-    /* "fast_reach/mc_reach.pyx":985
+    /* "fast_reach/mc_reach.pyx":983
  *     wbody_index = 0
  * 
  *     for reach, reach_type in reaches_wTypes:             # <<<<<<<<<<<<<<
@@ -14845,54 +14847,54 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   }
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
 
-  /* "fast_reach/mc_reach.pyx":1023
+  /* "fast_reach/mc_reach.pyx":1021
  * 
  *     #Init buffers
  *     lateral_flows = np.zeros( max_buff_size, dtype='float32' )             # <<<<<<<<<<<<<<
  *     buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
  *     out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_14, __pyx_n_s_np); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_14, __pyx_n_s_np); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  __pyx_t_19 = __Pyx_PyObject_GetAttrStr(__pyx_t_14, __pyx_n_s_zeros); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_19 = __Pyx_PyObject_GetAttrStr(__pyx_t_14, __pyx_n_s_zeros); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-  __pyx_t_14 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_14 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_14);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_14);
   __pyx_t_14 = 0;
-  __pyx_t_14 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  if (PyDict_SetItem(__pyx_t_14, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1023, __pyx_L1_error)
-  __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_19, __pyx_t_5, __pyx_t_14); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_14, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1021, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_19, __pyx_t_5, __pyx_t_14); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
-  __pyx_t_25 = __Pyx_PyObject_to_MemoryviewSlice_ds_float(__pyx_t_7, PyBUF_WRITABLE); if (unlikely(!__pyx_t_25.memview)) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_25 = __Pyx_PyObject_to_MemoryviewSlice_ds_float(__pyx_t_7, PyBUF_WRITABLE); if (unlikely(!__pyx_t_25.memview)) __PYX_ERR(0, 1021, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __pyx_v_lateral_flows = __pyx_t_25;
   __pyx_t_25.memview = NULL;
   __pyx_t_25.data = NULL;
 
-  /* "fast_reach/mc_reach.pyx":1024
+  /* "fast_reach/mc_reach.pyx":1022
  *     #Init buffers
  *     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
  *     buf_view = np.zeros( (max_buff_size, 13), dtype='float32')             # <<<<<<<<<<<<<<
  *     out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
  * 
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_n_s_np); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_n_s_np); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_zeros); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_zeros); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __pyx_t_7 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_7 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_7);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_7);
@@ -14900,40 +14902,40 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   __Pyx_GIVEREF(__pyx_int_13);
   PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_int_13);
   __pyx_t_7 = 0;
-  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_5);
   PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_5);
   __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1024, __pyx_L1_error)
-  __pyx_t_19 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1022, __pyx_L1_error)
+  __pyx_t_19 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_26 = __Pyx_PyObject_to_MemoryviewSlice_dsds_float(__pyx_t_19, PyBUF_WRITABLE); if (unlikely(!__pyx_t_26.memview)) __PYX_ERR(0, 1024, __pyx_L1_error)
+  __pyx_t_26 = __Pyx_PyObject_to_MemoryviewSlice_dsds_float(__pyx_t_19, PyBUF_WRITABLE); if (unlikely(!__pyx_t_26.memview)) __PYX_ERR(0, 1022, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
   __pyx_v_buf_view = __pyx_t_26;
   __pyx_t_26.memview = NULL;
   __pyx_t_26.data = NULL;
 
-  /* "fast_reach/mc_reach.pyx":1025
+  /* "fast_reach/mc_reach.pyx":1023
  *     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
  *     buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
  *     out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')             # <<<<<<<<<<<<<<
  * 
  *     cdef int num_reaches = len(reach_objects)
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_19, __pyx_n_s_np); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_19, __pyx_n_s_np); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_19, __pyx_n_s_full); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_19, __pyx_n_s_full); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
-  __pyx_t_19 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_19 = PyInt_FromSsize_t(__pyx_v_max_buff_size); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
-  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_19);
   PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_19);
@@ -14941,7 +14943,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   __Pyx_GIVEREF(__pyx_int_3);
   PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_int_3);
   __pyx_t_19 = 0;
-  __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_GIVEREF(__pyx_t_7);
   PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_7);
@@ -14949,31 +14951,31 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   __Pyx_GIVEREF(__pyx_int_neg_1);
   PyTuple_SET_ITEM(__pyx_t_19, 1, __pyx_int_neg_1);
   __pyx_t_7 = 0;
-  __pyx_t_7 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1025, __pyx_L1_error)
-  __pyx_t_14 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_19, __pyx_t_7); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1023, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_19, __pyx_t_7); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __pyx_t_26 = __Pyx_PyObject_to_MemoryviewSlice_dsds_float(__pyx_t_14, PyBUF_WRITABLE); if (unlikely(!__pyx_t_26.memview)) __PYX_ERR(0, 1025, __pyx_L1_error)
+  __pyx_t_26 = __Pyx_PyObject_to_MemoryviewSlice_dsds_float(__pyx_t_14, PyBUF_WRITABLE); if (unlikely(!__pyx_t_26.memview)) __PYX_ERR(0, 1023, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
   __pyx_v_out_buf = __pyx_t_26;
   __pyx_t_26.memview = NULL;
   __pyx_t_26.data = NULL;
 
-  /* "fast_reach/mc_reach.pyx":1027
+  /* "fast_reach/mc_reach.pyx":1025
  *     out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
  * 
  *     cdef int num_reaches = len(reach_objects)             # <<<<<<<<<<<<<<
  *     #Dynamically allocate a C array of reach structs
  *     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
  */
-  __pyx_t_3 = PyList_GET_SIZE(__pyx_v_reach_objects); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1027, __pyx_L1_error)
+  __pyx_t_3 = PyList_GET_SIZE(__pyx_v_reach_objects); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 1025, __pyx_L1_error)
   __pyx_v_num_reaches = __pyx_t_3;
 
-  /* "fast_reach/mc_reach.pyx":1029
+  /* "fast_reach/mc_reach.pyx":1027
  *     cdef int num_reaches = len(reach_objects)
  *     #Dynamically allocate a C array of reach structs
  *     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)             # <<<<<<<<<<<<<<
@@ -14982,7 +14984,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
   __pyx_v_reach_structs = ((_Reach *)malloc(((sizeof(_Reach)) * __pyx_v_num_reaches)));
 
-  /* "fast_reach/mc_reach.pyx":1031
+  /* "fast_reach/mc_reach.pyx":1029
  *     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
  *     #Populate the above array with the structs contained in each reach object
  *     for i in range(num_reaches):             # <<<<<<<<<<<<<<
@@ -14994,33 +14996,33 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
   for (__pyx_t_28 = 0; __pyx_t_28 < __pyx_t_27; __pyx_t_28+=1) {
     __pyx_v_i = __pyx_t_28;
 
-    /* "fast_reach/mc_reach.pyx":1032
+    /* "fast_reach/mc_reach.pyx":1030
  *     #Populate the above array with the structs contained in each reach object
  *     for i in range(num_reaches):
  *       reach_structs[i] = (<Reach>reach_objects[i])._reach             # <<<<<<<<<<<<<<
  * 
  *     #reach iterator
  */
-    __pyx_t_14 = __Pyx_GetItemInt_List(__pyx_v_reach_objects, __pyx_v_i, int, 1, __Pyx_PyInt_From_int, 1, 0, 1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1032, __pyx_L1_error)
+    __pyx_t_14 = __Pyx_GetItemInt_List(__pyx_v_reach_objects, __pyx_v_i, int, 1, __Pyx_PyInt_From_int, 1, 0, 1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1030, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_14);
     __pyx_t_29 = ((struct __pyx_obj_6troute_7network_5reach_Reach *)__pyx_t_14)->_reach;
     __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
     (__pyx_v_reach_structs[__pyx_v_i]) = __pyx_t_29;
   }
 
-  /* "fast_reach/mc_reach.pyx":1037
+  /* "fast_reach/mc_reach.pyx":1035
  *     cdef _Reach* r
  *     #create a memory view of the ndarray
  *     cdef float[:,:,::1] flowveldepth = flowveldepth_nd             # <<<<<<<<<<<<<<
  *     cdef float lp_outflow, lp_water_elevation
  *     cdef int id = 0
  */
-  __pyx_t_30 = __Pyx_PyObject_to_MemoryviewSlice_d_d_dc_float(((PyObject *)__pyx_v_flowveldepth_nd), PyBUF_WRITABLE); if (unlikely(!__pyx_t_30.memview)) __PYX_ERR(0, 1037, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_PyObject_to_MemoryviewSlice_d_d_dc_float(((PyObject *)__pyx_v_flowveldepth_nd), PyBUF_WRITABLE); if (unlikely(!__pyx_t_30.memview)) __PYX_ERR(0, 1035, __pyx_L1_error)
   __pyx_v_flowveldepth = __pyx_t_30;
   __pyx_t_30.memview = NULL;
   __pyx_t_30.data = NULL;
 
-  /* "fast_reach/mc_reach.pyx":1039
+  /* "fast_reach/mc_reach.pyx":1037
  *     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
  *     cdef float lp_outflow, lp_water_elevation
  *     cdef int id = 0             # <<<<<<<<<<<<<<
@@ -15029,12 +15031,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
   __pyx_v_id = 0;
 
-  /* "fast_reach/mc_reach.pyx":1041
+  /* "fast_reach/mc_reach.pyx":1039
  *     cdef int id = 0
  *     #Run time
  *     with nogil:             # <<<<<<<<<<<<<<
  *       while timestep < nsteps+1:
- *         #for r in reach_objects:
+ *         for i in range(num_reaches):
  */
   {
       #ifdef WITH_THREAD
@@ -15044,20 +15046,20 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       #endif
       /*try:*/ {
 
-        /* "fast_reach/mc_reach.pyx":1042
+        /* "fast_reach/mc_reach.pyx":1040
  *     #Run time
  *     with nogil:
  *       while timestep < nsteps+1:             # <<<<<<<<<<<<<<
- *         #for r in reach_objects:
  *         for i in range(num_reaches):
+ *               r = &reach_structs[i]
  */
         while (1) {
           __pyx_t_1 = ((__pyx_v_timestep < (__pyx_v_nsteps + 1)) != 0);
           if (!__pyx_t_1) break;
 
-          /* "fast_reach/mc_reach.pyx":1044
+          /* "fast_reach/mc_reach.pyx":1041
+ *     with nogil:
  *       while timestep < nsteps+1:
- *         #for r in reach_objects:
  *         for i in range(num_reaches):             # <<<<<<<<<<<<<<
  *               r = &reach_structs[i]
  *               #Need to get quc and qup
@@ -15067,8 +15069,8 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
           for (__pyx_t_28 = 0; __pyx_t_28 < __pyx_t_27; __pyx_t_28+=1) {
             __pyx_v_i = __pyx_t_28;
 
-            /* "fast_reach/mc_reach.pyx":1045
- *         #for r in reach_objects:
+            /* "fast_reach/mc_reach.pyx":1042
+ *       while timestep < nsteps+1:
  *         for i in range(num_reaches):
  *               r = &reach_structs[i]             # <<<<<<<<<<<<<<
  *               #Need to get quc and qup
@@ -15076,7 +15078,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
             __pyx_v_r = (&(__pyx_v_reach_structs[__pyx_v_i]));
 
-            /* "fast_reach/mc_reach.pyx":1047
+            /* "fast_reach/mc_reach.pyx":1044
  *               r = &reach_structs[i]
  *               #Need to get quc and qup
  *               upstream_flows = 0.0             # <<<<<<<<<<<<<<
@@ -15085,7 +15087,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
             __pyx_v_upstream_flows = 0.0;
 
-            /* "fast_reach/mc_reach.pyx":1048
+            /* "fast_reach/mc_reach.pyx":1045
  *               #Need to get quc and qup
  *               upstream_flows = 0.0
  *               previous_upstream_flows = 0.0             # <<<<<<<<<<<<<<
@@ -15094,7 +15096,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
             __pyx_v_previous_upstream_flows = 0.0;
 
-            /* "fast_reach/mc_reach.pyx":1050
+            /* "fast_reach/mc_reach.pyx":1047
  *               previous_upstream_flows = 0.0
  * 
  *               for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead             # <<<<<<<<<<<<<<
@@ -15106,7 +15108,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
             for (__pyx_t_33 = 0; __pyx_t_33 < __pyx_t_32; __pyx_t_33+=1) {
               __pyx_v__i = __pyx_t_33;
 
-              /* "fast_reach/mc_reach.pyx":1051
+              /* "fast_reach/mc_reach.pyx":1048
  * 
  *               for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
  *                 id = r._upstream_ids[_i]             # <<<<<<<<<<<<<<
@@ -15115,7 +15117,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
               __pyx_v_id = (__pyx_v_r->_upstream_ids[__pyx_v__i]);
 
-              /* "fast_reach/mc_reach.pyx":1052
+              /* "fast_reach/mc_reach.pyx":1049
  *               for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
  *                 id = r._upstream_ids[_i]
  *                 upstream_flows += flowveldepth[id, timestep, 0]             # <<<<<<<<<<<<<<
@@ -15137,11 +15139,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               } else if (unlikely(__pyx_t_34 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
               if (unlikely(__pyx_t_35 != -1)) {
                 __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                __PYX_ERR(0, 1052, __pyx_L19_error)
+                __PYX_ERR(0, 1049, __pyx_L19_error)
               }
               __pyx_v_upstream_flows = (__pyx_v_upstream_flows + (*((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_23 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_34)) ))));
 
-              /* "fast_reach/mc_reach.pyx":1053
+              /* "fast_reach/mc_reach.pyx":1050
  *                 id = r._upstream_ids[_i]
  *                 upstream_flows += flowveldepth[id, timestep, 0]
  *                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]             # <<<<<<<<<<<<<<
@@ -15163,12 +15165,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               } else if (unlikely(__pyx_t_23 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
               if (unlikely(__pyx_t_35 != -1)) {
                 __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                __PYX_ERR(0, 1053, __pyx_L19_error)
+                __PYX_ERR(0, 1050, __pyx_L19_error)
               }
               __pyx_v_previous_upstream_flows = (__pyx_v_previous_upstream_flows + (*((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_34 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_23)) ))));
             }
 
-            /* "fast_reach/mc_reach.pyx":1055
+            /* "fast_reach/mc_reach.pyx":1052
  *                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
  * 
  *               if assume_short_ts:             # <<<<<<<<<<<<<<
@@ -15178,7 +15180,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
             __pyx_t_1 = (__pyx_v_assume_short_ts != 0);
             if (__pyx_t_1) {
 
-              /* "fast_reach/mc_reach.pyx":1056
+              /* "fast_reach/mc_reach.pyx":1053
  * 
  *               if assume_short_ts:
  *                 upstream_flows = previous_upstream_flows             # <<<<<<<<<<<<<<
@@ -15187,7 +15189,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
               __pyx_v_upstream_flows = __pyx_v_previous_upstream_flows;
 
-              /* "fast_reach/mc_reach.pyx":1055
+              /* "fast_reach/mc_reach.pyx":1052
  *                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
  * 
  *               if assume_short_ts:             # <<<<<<<<<<<<<<
@@ -15196,27 +15198,27 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
             }
 
-            /* "fast_reach/mc_reach.pyx":1058
+            /* "fast_reach/mc_reach.pyx":1055
  *                 upstream_flows = previous_upstream_flows
  * 
  *               if r.type == compute_type.RESERVOIR_LP:             # <<<<<<<<<<<<<<
- *                 """
- *                 id = r.reach.lp.lake_number
+ *                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
+ *                 flowveldepth[r.id, timestep, 0] = lp_outflow
  */
             __pyx_t_1 = ((__pyx_v_r->type == __pyx_e_6troute_7network_5reach_RESERVOIR_LP) != 0);
             if (__pyx_t_1) {
 
-              /* "fast_reach/mc_reach.pyx":1069
+              /* "fast_reach/mc_reach.pyx":1056
  * 
- * 
+ *               if r.type == compute_type.RESERVOIR_LP:
  *                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)             # <<<<<<<<<<<<<<
  *                 flowveldepth[r.id, timestep, 0] = lp_outflow
  *                 flowveldepth[r.id, timestep, 1] = 0.0
  */
               __pyx_f_6troute_7network_10reservoirs_9levelpool_9levelpool_run(__pyx_v_r, __pyx_v_upstream_flows, 0.0, 300.0, (&__pyx_v_lp_outflow), (&__pyx_v_lp_water_elevation));
 
-              /* "fast_reach/mc_reach.pyx":1070
- * 
+              /* "fast_reach/mc_reach.pyx":1057
+ *               if r.type == compute_type.RESERVOIR_LP:
  *                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
  *                 flowveldepth[r.id, timestep, 0] = lp_outflow             # <<<<<<<<<<<<<<
  *                 flowveldepth[r.id, timestep, 1] = 0.0
@@ -15237,11 +15239,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               } else if (unlikely(__pyx_t_34 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_31 = 2;
               if (unlikely(__pyx_t_31 != -1)) {
                 __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_31);
-                __PYX_ERR(0, 1070, __pyx_L19_error)
+                __PYX_ERR(0, 1057, __pyx_L19_error)
               }
               *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_23 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_34)) )) = __pyx_v_lp_outflow;
 
-              /* "fast_reach/mc_reach.pyx":1071
+              /* "fast_reach/mc_reach.pyx":1058
  *                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
  *                 flowveldepth[r.id, timestep, 0] = lp_outflow
  *                 flowveldepth[r.id, timestep, 1] = 0.0             # <<<<<<<<<<<<<<
@@ -15263,11 +15265,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               } else if (unlikely(__pyx_t_23 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_31 = 2;
               if (unlikely(__pyx_t_31 != -1)) {
                 __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_31);
-                __PYX_ERR(0, 1071, __pyx_L19_error)
+                __PYX_ERR(0, 1058, __pyx_L19_error)
               }
               *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_34 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_23)) )) = 0.0;
 
-              /* "fast_reach/mc_reach.pyx":1072
+              /* "fast_reach/mc_reach.pyx":1059
  *                 flowveldepth[r.id, timestep, 0] = lp_outflow
  *                 flowveldepth[r.id, timestep, 1] = 0.0
  *                 flowveldepth[r.id, timestep, 2] = lp_water_elevation             # <<<<<<<<<<<<<<
@@ -15289,21 +15291,21 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               } else if (unlikely(__pyx_t_34 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_31 = 2;
               if (unlikely(__pyx_t_31 != -1)) {
                 __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_31);
-                __PYX_ERR(0, 1072, __pyx_L19_error)
+                __PYX_ERR(0, 1059, __pyx_L19_error)
               }
               *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_23 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_34)) )) = __pyx_v_lp_water_elevation;
 
-              /* "fast_reach/mc_reach.pyx":1058
+              /* "fast_reach/mc_reach.pyx":1055
  *                 upstream_flows = previous_upstream_flows
  * 
  *               if r.type == compute_type.RESERVOIR_LP:             # <<<<<<<<<<<<<<
- *                 """
- *                 id = r.reach.lp.lake_number
+ *                 run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
+ *                 flowveldepth[r.id, timestep, 0] = lp_outflow
  */
               goto __pyx_L28;
             }
 
-            /* "fast_reach/mc_reach.pyx":1076
+            /* "fast_reach/mc_reach.pyx":1063
  *                 #Create compute reach kernel input buffer
  *                 #for i, segment in enumerate(r.segments):
  *                 for i in range(r.reach.mc_reach.num_segments):             # <<<<<<<<<<<<<<
@@ -15316,7 +15318,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               for (__pyx_t_33 = 0; __pyx_t_33 < __pyx_t_32; __pyx_t_33+=1) {
                 __pyx_v_i = __pyx_t_33;
 
-                /* "fast_reach/mc_reach.pyx":1077
+                /* "fast_reach/mc_reach.pyx":1064
  *                 #for i, segment in enumerate(r.segments):
  *                 for i in range(r.reach.mc_reach.num_segments):
  *                   segment = get_mc_segment(r, i)#r._segments[i]             # <<<<<<<<<<<<<<
@@ -15325,7 +15327,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
                 __pyx_v_segment = get_mc_segment(__pyx_v_r, __pyx_v_i);
 
-                /* "fast_reach/mc_reach.pyx":1078
+                /* "fast_reach/mc_reach.pyx":1065
  *                 for i in range(r.reach.mc_reach.num_segments):
  *                   segment = get_mc_segment(r, i)#r._segments[i]
  *                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]             # <<<<<<<<<<<<<<
@@ -15341,7 +15343,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                   #ifdef WITH_THREAD
                   __Pyx_PyGILState_Release(__pyx_gilstate_save);
                   #endif
-                  __PYX_ERR(0, 1078, __pyx_L19_error)
+                  __PYX_ERR(0, 1065, __pyx_L19_error)
                 }
                 __pyx_t_34 = __pyx_v_segment.id;
                 __pyx_t_24 = ((int)(((double)__pyx_t_22) / __pyx_v_qlat_resample));
@@ -15354,7 +15356,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_pybuffernd_qlat_array.diminfo[1].shape)) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1078, __pyx_L19_error)
+                  __PYX_ERR(0, 1065, __pyx_L19_error)
                 }
                 __pyx_t_23 = __pyx_v_i;
                 __pyx_t_36 = 0;
@@ -15367,11 +15369,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_36 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1078, __pyx_L19_error)
+                  __PYX_ERR(0, 1065, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_23 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_36 * __pyx_v_buf_view.strides[1]) )) = (*__Pyx_BufPtrStrided2d(float *, __pyx_pybuffernd_qlat_array.rcbuffer->pybuffer.buf, __pyx_t_34, __pyx_pybuffernd_qlat_array.diminfo[0].strides, __pyx_t_24, __pyx_pybuffernd_qlat_array.diminfo[1].strides));
 
-                /* "fast_reach/mc_reach.pyx":1079
+                /* "fast_reach/mc_reach.pyx":1066
  *                   segment = get_mc_segment(r, i)#r._segments[i]
  *                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
  *                   buf_view[i, 1] = segment.dt             # <<<<<<<<<<<<<<
@@ -15390,11 +15392,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1079, __pyx_L19_error)
+                  __PYX_ERR(0, 1066, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_24 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_34 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1080
+                /* "fast_reach/mc_reach.pyx":1067
  *                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
  *                   buf_view[i, 1] = segment.dt
  *                   buf_view[i, 2] = segment.dx             # <<<<<<<<<<<<<<
@@ -15413,11 +15415,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1080, __pyx_L19_error)
+                  __PYX_ERR(0, 1067, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_34 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_24 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1081
+                /* "fast_reach/mc_reach.pyx":1068
  *                   buf_view[i, 1] = segment.dt
  *                   buf_view[i, 2] = segment.dx
  *                   buf_view[i, 3] = segment.bw             # <<<<<<<<<<<<<<
@@ -15436,11 +15438,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1081, __pyx_L19_error)
+                  __PYX_ERR(0, 1068, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_24 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_34 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1082
+                /* "fast_reach/mc_reach.pyx":1069
  *                   buf_view[i, 2] = segment.dx
  *                   buf_view[i, 3] = segment.bw
  *                   buf_view[i, 4] = segment.tw             # <<<<<<<<<<<<<<
@@ -15459,11 +15461,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1082, __pyx_L19_error)
+                  __PYX_ERR(0, 1069, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_34 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_24 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1083
+                /* "fast_reach/mc_reach.pyx":1070
  *                   buf_view[i, 3] = segment.bw
  *                   buf_view[i, 4] = segment.tw
  *                   buf_view[i, 5] = segment.twcc             # <<<<<<<<<<<<<<
@@ -15482,11 +15484,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1083, __pyx_L19_error)
+                  __PYX_ERR(0, 1070, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_24 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_34 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1084
+                /* "fast_reach/mc_reach.pyx":1071
  *                   buf_view[i, 4] = segment.tw
  *                   buf_view[i, 5] = segment.twcc
  *                   buf_view[i, 6] = segment.n             # <<<<<<<<<<<<<<
@@ -15505,11 +15507,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1084, __pyx_L19_error)
+                  __PYX_ERR(0, 1071, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_34 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_24 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1085
+                /* "fast_reach/mc_reach.pyx":1072
  *                   buf_view[i, 5] = segment.twcc
  *                   buf_view[i, 6] = segment.n
  *                   buf_view[i, 7] = segment.ncc             # <<<<<<<<<<<<<<
@@ -15528,11 +15530,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1085, __pyx_L19_error)
+                  __PYX_ERR(0, 1072, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_24 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_34 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1086
+                /* "fast_reach/mc_reach.pyx":1073
  *                   buf_view[i, 6] = segment.n
  *                   buf_view[i, 7] = segment.ncc
  *                   buf_view[i, 8] = segment.cs             # <<<<<<<<<<<<<<
@@ -15551,11 +15553,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1086, __pyx_L19_error)
+                  __PYX_ERR(0, 1073, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_34 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_24 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1087
+                /* "fast_reach/mc_reach.pyx":1074
  *                   buf_view[i, 7] = segment.ncc
  *                   buf_view[i, 8] = segment.cs
  *                   buf_view[i, 9] = segment.s0             # <<<<<<<<<<<<<<
@@ -15574,11 +15576,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1087, __pyx_L19_error)
+                  __PYX_ERR(0, 1074, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_24 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_34 * __pyx_v_buf_view.strides[1]) )) = __pyx_t_37;
 
-                /* "fast_reach/mc_reach.pyx":1088
+                /* "fast_reach/mc_reach.pyx":1075
  *                   buf_view[i, 8] = segment.cs
  *                   buf_view[i, 9] = segment.s0
  *                   buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]             # <<<<<<<<<<<<<<
@@ -15600,7 +15602,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_36 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1088, __pyx_L19_error)
+                  __PYX_ERR(0, 1075, __pyx_L19_error)
                 }
                 __pyx_t_23 = __pyx_v_i;
                 __pyx_t_38 = 10;
@@ -15613,11 +15615,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_38 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1088, __pyx_L19_error)
+                  __PYX_ERR(0, 1075, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_23 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_38 * __pyx_v_buf_view.strides[1]) )) = (*((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_34 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_24 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_36)) )));
 
-                /* "fast_reach/mc_reach.pyx":1089
+                /* "fast_reach/mc_reach.pyx":1076
  *                   buf_view[i, 9] = segment.s0
  *                   buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
  *                   buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]             # <<<<<<<<<<<<<<
@@ -15635,11 +15637,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1089, __pyx_L19_error)
+                  __PYX_ERR(0, 1076, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_36 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_24 * __pyx_v_buf_view.strides[1]) )) = 0.0;
 
-                /* "fast_reach/mc_reach.pyx":1090
+                /* "fast_reach/mc_reach.pyx":1077
  *                   buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
  *                   buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
  *                   buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]             # <<<<<<<<<<<<<<
@@ -15661,7 +15663,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1090, __pyx_L19_error)
+                  __PYX_ERR(0, 1077, __pyx_L19_error)
                 }
                 __pyx_t_38 = __pyx_v_i;
                 __pyx_t_23 = 12;
@@ -15674,12 +15676,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_23 >= __pyx_v_buf_view.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1090, __pyx_L19_error)
+                  __PYX_ERR(0, 1077, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_buf_view.data + __pyx_t_38 * __pyx_v_buf_view.strides[0]) ) + __pyx_t_23 * __pyx_v_buf_view.strides[1]) )) = (*((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_24 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_36 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_34)) )));
               }
 
-              /* "fast_reach/mc_reach.pyx":1092
+              /* "fast_reach/mc_reach.pyx":1079
  *                   buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
  * 
  *                 compute_reach_kernel(previous_upstream_flows, upstream_flows,             # <<<<<<<<<<<<<<
@@ -15688,7 +15690,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
               __pyx_f_10fast_reach_compute_reach_kernel(__pyx_v_previous_upstream_flows, __pyx_v_upstream_flows, __pyx_v_r->reach.mc_reach.num_segments, __pyx_v_buf_view, __pyx_v_out_buf, __pyx_v_assume_short_ts, NULL);
 
-              /* "fast_reach/mc_reach.pyx":1099
+              /* "fast_reach/mc_reach.pyx":1086
  *                                      #nsteps)
  *                 #Copy the output out
  *                 for i in range(r.reach.mc_reach.num_segments):             # <<<<<<<<<<<<<<
@@ -15700,7 +15702,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
               for (__pyx_t_33 = 0; __pyx_t_33 < __pyx_t_32; __pyx_t_33+=1) {
                 __pyx_v_i = __pyx_t_33;
 
-                /* "fast_reach/mc_reach.pyx":1100
+                /* "fast_reach/mc_reach.pyx":1087
  *                 #Copy the output out
  *                 for i in range(r.reach.mc_reach.num_segments):
  *                   segment = get_mc_segment(r, i)             # <<<<<<<<<<<<<<
@@ -15709,7 +15711,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
                 __pyx_v_segment = get_mc_segment(__pyx_v_r, __pyx_v_i);
 
-                /* "fast_reach/mc_reach.pyx":1102
+                /* "fast_reach/mc_reach.pyx":1089
  *                   segment = get_mc_segment(r, i)
  *                   #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
  *                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]             # <<<<<<<<<<<<<<
@@ -15727,7 +15729,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_36 >= __pyx_v_out_buf.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1102, __pyx_L19_error)
+                  __PYX_ERR(0, 1089, __pyx_L19_error)
                 }
                 __pyx_t_24 = __pyx_v_segment.id;
                 __pyx_t_23 = __pyx_v_timestep;
@@ -15744,11 +15746,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_38 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1102, __pyx_L19_error)
+                  __PYX_ERR(0, 1089, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_24 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_23 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_38)) )) = (*((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_out_buf.data + __pyx_t_34 * __pyx_v_out_buf.strides[0]) ) + __pyx_t_36 * __pyx_v_out_buf.strides[1]) )));
 
-                /* "fast_reach/mc_reach.pyx":1103
+                /* "fast_reach/mc_reach.pyx":1090
  *                   #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
  *                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
  *                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]             # <<<<<<<<<<<<<<
@@ -15766,7 +15768,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_34 >= __pyx_v_out_buf.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1103, __pyx_L19_error)
+                  __PYX_ERR(0, 1090, __pyx_L19_error)
                 }
                 __pyx_t_38 = __pyx_v_segment.id;
                 __pyx_t_23 = __pyx_v_timestep;
@@ -15783,11 +15785,11 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_24 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1103, __pyx_L19_error)
+                  __PYX_ERR(0, 1090, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_38 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_23 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_24)) )) = (*((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_out_buf.data + __pyx_t_36 * __pyx_v_out_buf.strides[0]) ) + __pyx_t_34 * __pyx_v_out_buf.strides[1]) )));
 
-                /* "fast_reach/mc_reach.pyx":1104
+                /* "fast_reach/mc_reach.pyx":1091
  *                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
  *                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
  *                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]             # <<<<<<<<<<<<<<
@@ -15805,7 +15807,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_36 >= __pyx_v_out_buf.shape[1])) __pyx_t_35 = 1;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1104, __pyx_L19_error)
+                  __PYX_ERR(0, 1091, __pyx_L19_error)
                 }
                 __pyx_t_24 = __pyx_v_segment.id;
                 __pyx_t_23 = __pyx_v_timestep;
@@ -15822,7 +15824,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
                 } else if (unlikely(__pyx_t_38 >= __pyx_v_flowveldepth.shape[2])) __pyx_t_35 = 2;
                 if (unlikely(__pyx_t_35 != -1)) {
                   __Pyx_RaiseBufferIndexErrorNogil(__pyx_t_35);
-                  __PYX_ERR(0, 1104, __pyx_L19_error)
+                  __PYX_ERR(0, 1091, __pyx_L19_error)
                 }
                 *((float *) ( /* dim=2 */ ((char *) (((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_flowveldepth.data + __pyx_t_24 * __pyx_v_flowveldepth.strides[0]) ) + __pyx_t_23 * __pyx_v_flowveldepth.strides[1]) )) + __pyx_t_38)) )) = (*((float *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_out_buf.data + __pyx_t_34 * __pyx_v_out_buf.strides[0]) ) + __pyx_t_36 * __pyx_v_out_buf.strides[1]) )));
               }
@@ -15830,7 +15832,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
             __pyx_L28:;
           }
 
-          /* "fast_reach/mc_reach.pyx":1106
+          /* "fast_reach/mc_reach.pyx":1093
  *                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
  * 
  *         timestep += 1             # <<<<<<<<<<<<<<
@@ -15841,12 +15843,12 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
         }
       }
 
-      /* "fast_reach/mc_reach.pyx":1041
+      /* "fast_reach/mc_reach.pyx":1039
  *     cdef int id = 0
  *     #Run time
  *     with nogil:             # <<<<<<<<<<<<<<
  *       while timestep < nsteps+1:
- *         #for r in reach_objects:
+ *         for i in range(num_reaches):
  */
       /*finally:*/ {
         /*normal exit:*/{
@@ -15867,7 +15869,7 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
       }
   }
 
-  /* "fast_reach/mc_reach.pyx":1110
+  /* "fast_reach/mc_reach.pyx":1097
  *     #pr.print_stats(sort='time')
  *     #IMPORTANT, free the dynamic array created
  *     free(reach_structs)             # <<<<<<<<<<<<<<
@@ -15876,16 +15878,16 @@ static PyObject *__pyx_f_10fast_reach_compute_network_structured(int __pyx_v_nst
  */
   free(__pyx_v_reach_structs);
 
-  /* "fast_reach/mc_reach.pyx":1112
+  /* "fast_reach/mc_reach.pyx":1099
  *     free(reach_structs)
  *     #slice off the initial condition timestep and return
  *     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')             # <<<<<<<<<<<<<<
  *     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
  *     return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_14, __pyx_n_s_np); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1112, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_14, __pyx_n_s_np); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_14, __pyx_n_s_asarray); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1112, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_14, __pyx_n_s_asarray); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
   __pyx_t_30.data = __pyx_v_flowveldepth.data;
@@ -15910,27 +15912,27 @@ __pyx_t_18 = -1;
     0,
     1) < 0))
 {
-    __PYX_ERR(0, 1112, __pyx_L1_error)
+    __PYX_ERR(0, 1099, __pyx_L1_error)
 }
 
 __pyx_t_30.shape[2] = __pyx_v_flowveldepth.shape[2];
 __pyx_t_30.strides[2] = __pyx_v_flowveldepth.strides[2];
     __pyx_t_30.suboffsets[2] = -1;
 
-__pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) __pyx_memview_get_float, (int (*)(char *, PyObject *)) __pyx_memview_set_float, 0);; if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1112, __pyx_L1_error)
+__pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) __pyx_memview_get_float, (int (*)(char *, PyObject *)) __pyx_memview_set_float, 0);; if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
   __PYX_XDEC_MEMVIEW(&__pyx_t_30, 1);
   __pyx_t_30.memview = NULL;
   __pyx_t_30.data = NULL;
-  __pyx_t_19 = PyTuple_New(1); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1112, __pyx_L1_error)
+  __pyx_t_19 = PyTuple_New(1); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_GIVEREF(__pyx_t_14);
   PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_14);
   __pyx_t_14 = 0;
-  __pyx_t_14 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1112, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  if (PyDict_SetItem(__pyx_t_14, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1112, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_19, __pyx_t_14); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1112, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_14, __pyx_n_s_dtype, __pyx_n_u_float32) < 0) __PYX_ERR(0, 1099, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_19, __pyx_t_14); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1099, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
@@ -15938,43 +15940,43 @@ __pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) _
   __pyx_v_output = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "fast_reach/mc_reach.pyx":1114
+  /* "fast_reach/mc_reach.pyx":1101
  *     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
  *     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
  *     return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_asarray); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_asarray); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_v_data_idx, 1, (PyObject *(*)(char *)) __pyx_memview_get_long__const__, (int (*)(char *, PyObject *)) NULL, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_19 = PyTuple_New(1); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_19 = PyTuple_New(1); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_GIVEREF(__pyx_t_5);
   PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_5);
   __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_n_s_np); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_n_s_np); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_intp); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_intp); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_t_2) < 0) __PYX_ERR(0, 1114, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_t_2) < 0) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_19, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_19, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_19 = __Pyx_PyObject_GetAttrStr(__pyx_v_output, __pyx_n_s_reshape); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_19 = __Pyx_PyObject_GetAttrStr(__pyx_v_output, __pyx_n_s_reshape); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
-  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_v_output, __pyx_n_s_shape); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_14 = __Pyx_PyObject_GetAttrStr(__pyx_v_output, __pyx_n_s_shape); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_14);
-  __pyx_t_7 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_GetItemInt(__pyx_t_14, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
   __pyx_t_14 = NULL;
@@ -15992,7 +15994,7 @@ __pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) _
   #if CYTHON_FAST_PYCALL
   if (PyFunction_Check(__pyx_t_19)) {
     PyObject *__pyx_temp[3] = {__pyx_t_14, __pyx_t_7, __pyx_int_neg_1};
-    __pyx_t_5 = __Pyx_PyFunction_FastCall(__pyx_t_19, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyFunction_FastCall(__pyx_t_19, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
     __Pyx_XDECREF(__pyx_t_14); __pyx_t_14 = 0;
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
@@ -16001,14 +16003,14 @@ __pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) _
   #if CYTHON_FAST_PYCCALL
   if (__Pyx_PyFastCFunction_Check(__pyx_t_19)) {
     PyObject *__pyx_temp[3] = {__pyx_t_14, __pyx_t_7, __pyx_int_neg_1};
-    __pyx_t_5 = __Pyx_PyCFunction_FastCall(__pyx_t_19, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyCFunction_FastCall(__pyx_t_19, __pyx_temp+1-__pyx_t_18, 2+__pyx_t_18); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
     __Pyx_XDECREF(__pyx_t_14); __pyx_t_14 = 0;
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   } else
   #endif
   {
-    __pyx_t_8 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1114, __pyx_L1_error)
+    __pyx_t_8 = PyTuple_New(2+__pyx_t_18); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 1101, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     if (__pyx_t_14) {
       __Pyx_GIVEREF(__pyx_t_14); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_14); __pyx_t_14 = NULL;
@@ -16019,12 +16021,12 @@ __pyx_t_14 = __pyx_memoryview_fromslice(__pyx_t_30, 3, (PyObject *(*)(char *)) _
     __Pyx_GIVEREF(__pyx_int_neg_1);
     PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_18, __pyx_int_neg_1);
     __pyx_t_7 = 0;
-    __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_19, __pyx_t_8, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1114, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_19, __pyx_t_8, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 1101, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
   }
   __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
-  __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1114, __pyx_L1_error)
+  __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 1101, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_2);
@@ -32154,12 +32156,12 @@ static int __Pyx_modinit_type_import_code(void) {
   __pyx_ptype_5numpy_ufunc = __Pyx_ImportType(__pyx_t_1, "numpy", "ufunc", sizeof(PyUFuncObject), __Pyx_ImportType_CheckSize_Ignore);
    if (!__pyx_ptype_5numpy_ufunc) __PYX_ERR(1, 764, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyImport_ImportModule("troute.network.reach"); if (unlikely(!__pyx_t_1)) __PYX_ERR(4, 31, __pyx_L1_error)
+  __pyx_t_1 = PyImport_ImportModule("troute.network.reach"); if (unlikely(!__pyx_t_1)) __PYX_ERR(4, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_ptype_6troute_7network_5reach_Segment = __Pyx_ImportType(__pyx_t_1, "troute.network.reach", "Segment", sizeof(struct __pyx_obj_6troute_7network_5reach_Segment), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_6troute_7network_5reach_Segment) __PYX_ERR(4, 31, __pyx_L1_error)
+   if (!__pyx_ptype_6troute_7network_5reach_Segment) __PYX_ERR(4, 61, __pyx_L1_error)
   __pyx_ptype_6troute_7network_5reach_Reach = __Pyx_ImportType(__pyx_t_1, "troute.network.reach", "Reach", sizeof(struct __pyx_obj_6troute_7network_5reach_Reach), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_6troute_7network_5reach_Reach) __PYX_ERR(4, 39, __pyx_L1_error)
+   if (!__pyx_ptype_6troute_7network_5reach_Reach) __PYX_ERR(4, 69, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = PyImport_ImportModule("troute.network.musking.mc_reach"); if (unlikely(!__pyx_t_1)) __PYX_ERR(5, 19, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
