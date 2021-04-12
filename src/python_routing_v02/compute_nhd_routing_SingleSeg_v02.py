@@ -722,7 +722,7 @@ def compute_nhd_routing_v02(
                 waterbodies_df_sub = pd.DataFrame()
 
             param_df_sub = param_df.loc[
-                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0","alt"]
             ].sort_index()
 
             reach_type_list = [
@@ -767,73 +767,91 @@ def compute_nhd_routing_v02(
                 
             else:
                 
-                # build model parameter inputs
-                rconn_tw = {k: rconn[k] for k in segs if k in rconn}
-                connections_tw = {k: connections[k] for k in segs if k in connections}
-                param_df_tw = param_df.loc[
-                    common_segs, ["dt", "bw", "tw", "twcc",
-                                  "dx", "n", "ncc", "cs", "s0", "alt"]].sort_index()
-                diff_inputs = diff_utils.diffusive_input_data_v02(tw
-                    , connections_tw
-                    , rconn_tw
-                    , reach_list
-                    , diffusive_parameters
-                    , param_df_tw.columns.values
-                    , param_df_tw.index.values
-                    , param_df_tw.values
-                    , qlats
-                    )
-                
-                # call diffusive wave model
                 out_q, out_elv = compute_func(
-                                        diff_inputs["dtini_g"],
-                                        diff_inputs["t0_g"],
-                                        diff_inputs["tfin_g"],
-                                        diff_inputs["saveinterval_g"],
-                                        diff_inputs["saveinterval_ev_g"],
-                                        diff_inputs["dt_ql_g"],
-                                        diff_inputs["dt_ub_g"],
-                                        diff_inputs["dt_db_g"],
-                                        diff_inputs["nts_ql_g"],
-                                        diff_inputs["nts_ub_g"],
-                                        diff_inputs["nts_db_g"],
-                                        diff_inputs["mxncomp_g"],
-                                        diff_inputs["nrch_g"],
-                                        np.asfortranarray(diff_inputs["z_ar_g"]),
-                                        np.asfortranarray(diff_inputs["bo_ar_g"]),
-                                        np.asfortranarray(diff_inputs["traps_ar_g"]),
-                                        np.asfortranarray(diff_inputs["tw_ar_g"]),
-                                        np.asfortranarray(diff_inputs["twcc_ar_g"]),
-                                        np.asfortranarray(diff_inputs["mann_ar_g"]),
-                                        np.asfortranarray(diff_inputs["manncc_ar_g"]),
-                                        np.asfortranarray(diff_inputs["so_ar_g"]),
-                                        np.asfortranarray(diff_inputs["dx_ar_g"]),
-                                        diff_inputs["nhincr_m_g"],
-                                        diff_inputs["nhincr_f_g"],
-                                        np.asfortranarray(diff_inputs["ufhlt_m_g"]),
-                                        np.asfortranarray(diff_inputs["ufqlt_m_g"]),
-                                        np.asfortranarray(diff_inputs["ufhlt_f_g"]),
-                                        np.asfortranarray(diff_inputs["ufqlt_f_g"]),
-                                        diff_inputs["frnw_col"],
-                                        np.asfortranarray(diff_inputs["frnw_g"].astype('double')),
-                                        np.asfortranarray(diff_inputs["qlat_g"]),
-                                        np.asfortranarray(diff_inputs["ubcd_g"]),
-                                        np.asfortranarray(diff_inputs["dbcd_g"]),
-                                        diff_inputs["cfl_g"],
-                                        diff_inputs["theta_g"],
-                                        diff_inputs["tzeq_flag_g"],
-                                        diff_inputs["y_opt_g"],
-                                        diff_inputs["so_llm_g"],
-                                        diff_inputs["ntss_ev_g"],
-                                )
+                        nts,
+                        qts_subdivisions,
+                        reaches_list_with_type,
+                        independent_networks[tw],
+                        param_df_sub.index.values,
+                        param_df_sub.columns.values,
+                        param_df_sub.values,
+                        qlat_sub.values,
+                        q0_sub.values,
+                        lake_segs,
+                        waterbodies_df_sub.values,
+                        {},
+                        assume_short_ts,
+                        return_courant,
+                        diffusive_parameters)
                 
-                # unpack outputs to Pandas dataframe
-                dat_q_df = diff_utils.unpack_output(
-                                            diff_inputs["pynw"], 
-                                            diff_inputs["ordered_reaches"], 
-                                            out_q, 
-                                            out_elv
-                                            )
+                
+#                 # build model parameter inputs
+#                 rconn_tw = {k: rconn[k] for k in segs if k in rconn}
+#                 connections_tw = {k: connections[k] for k in segs if k in connections}
+#                 param_df_tw = param_df.loc[
+#                     common_segs, ["dt", "bw", "tw", "twcc",
+#                                   "dx", "n", "ncc", "cs", "s0", "alt"]].sort_index()
+#                 diff_inputs = diff_utils.diffusive_input_data_v02(tw
+#                     , connections_tw
+#                     , rconn_tw
+#                     , reach_list
+#                     , diffusive_parameters
+#                     , param_df_tw.columns.values
+#                     , param_df_tw.index.values
+#                     , param_df_tw.values
+#                     , qlats
+#                     )
+                
+#                 # call diffusive wave model
+#                 out_q, out_elv = compute_func(
+#                                         diff_inputs["dtini_g"],
+#                                         diff_inputs["t0_g"],
+#                                         diff_inputs["tfin_g"],
+#                                         diff_inputs["saveinterval_g"],
+#                                         diff_inputs["saveinterval_ev_g"],
+#                                         diff_inputs["dt_ql_g"],
+#                                         diff_inputs["dt_ub_g"],
+#                                         diff_inputs["dt_db_g"],
+#                                         diff_inputs["nts_ql_g"],
+#                                         diff_inputs["nts_ub_g"],
+#                                         diff_inputs["nts_db_g"],
+#                                         diff_inputs["mxncomp_g"],
+#                                         diff_inputs["nrch_g"],
+#                                         np.asfortranarray(diff_inputs["z_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["bo_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["traps_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["tw_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["twcc_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["mann_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["manncc_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["so_ar_g"]),
+#                                         np.asfortranarray(diff_inputs["dx_ar_g"]),
+#                                         diff_inputs["nhincr_m_g"],
+#                                         diff_inputs["nhincr_f_g"],
+#                                         np.asfortranarray(diff_inputs["ufhlt_m_g"]),
+#                                         np.asfortranarray(diff_inputs["ufqlt_m_g"]),
+#                                         np.asfortranarray(diff_inputs["ufhlt_f_g"]),
+#                                         np.asfortranarray(diff_inputs["ufqlt_f_g"]),
+#                                         diff_inputs["frnw_col"],
+#                                         np.asfortranarray(diff_inputs["frnw_g"].astype('double')),
+#                                         np.asfortranarray(diff_inputs["qlat_g"]),
+#                                         np.asfortranarray(diff_inputs["ubcd_g"]),
+#                                         np.asfortranarray(diff_inputs["dbcd_g"]),
+#                                         diff_inputs["cfl_g"],
+#                                         diff_inputs["theta_g"],
+#                                         diff_inputs["tzeq_flag_g"],
+#                                         diff_inputs["y_opt_g"],
+#                                         diff_inputs["so_llm_g"],
+#                                         diff_inputs["ntss_ev_g"],
+#                                 )
+                
+#                 # unpack outputs to Pandas dataframe
+#                 dat_q_df = diff_utils.unpack_output(
+#                                             diff_inputs["pynw"], 
+#                                             diff_inputs["ordered_reaches"], 
+#                                             out_q, 
+#                                             out_elv
+#                                             )
                 
                 raise ValueError
                 
@@ -1117,7 +1135,7 @@ def main():
             print(f"executing routing computation ...")
 
     if run_parameters.get("compute_kernel", None) == "diffusive":
-        compute_func = diffusive.compute_diffusive
+        compute_func = diffusive.compute_diffusive_tst
     else:
         if run_parameters.get("compute_method", None) == "V02-caching":
             compute_func = mc_reach.compute_network
