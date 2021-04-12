@@ -195,8 +195,10 @@ def fp_chgeo_map(mx_jorder_tw
 def fp_qlat_map(mx_jorder_tw
             , ordered_reaches
             , nts_ql_g
-            , ch_geo_data_tw
-            , qlat_tw            
+            , geo_cols
+            , geo_index
+            , geo_data
+            , qlat_data            
             , qlat_g
             ):   
     
@@ -210,9 +212,14 @@ def fp_qlat_map(mx_jorder_tw
                 segID= seg_list[seg]                
                 for tsi in range (0,nts_ql_g):
                     if seg<ncomp-1:        
-                        tlf= qlat_tw.loc[segID][tsi]  # [m^3/sec]
-                        dx=  ch_geo_data_tw.loc[segID]["dx"] # [meter]
+                        
+                        idx_segID = np.where(geo_index == segID)
+                        idx_par = np.where(geo_cols == "dx")
+                        
+                        tlf= qlat_data[idx_segID,tsi]  # [m^3/sec]
+                        dx=  geo_data[idx_segID,idx_par] # [meter]
                         qlat_g[tsi,seg,frj]= tlf/dx   #[m^2/sec]
+                        
                     else:
                         qlat_g[tsi,seg,frj]= 0.0 # seg=ncomp is actually for bottom node in Fotran code.
                                                      #And, lateral flow enters between adjacent nodes.
@@ -229,7 +236,8 @@ def fp_ubcd_map(frnw_g
             , pynw
             , nts_ub_g
             , nrch_g
-            , qlat_tw
+            , geo_index
+            , qlat_data
             , qlat_g
             ):   
     
@@ -239,8 +247,10 @@ def fp_ubcd_map(frnw_g
         if frnw_g[frj,2]==0: # the number of upstream reaches is zero.
             head_segment=pynw[frj]
             for tsi in range(0,nts_ub_g):
-                #tlf= qlat_tw.loc[head_segment][tsi] # [m^3/s]
-                ubcd_g[tsi, frj]= qlat_tw.loc[head_segment][tsi] # [m^3/s]
+                
+                idx_segID = np.where(geo_index == head_segment)
+                
+                ubcd_g[tsi, frj]= qlat_data[idx_segID,tsi] # [m^3/s]
                 qlat_g[tsi,0,frj]=0.0                   
     
     return ubcd_g 
@@ -321,7 +331,7 @@ def diffusive_input_data_v02(tw
                             , geo_cols
                             , geo_index
                             , geo_data
-                            , qlats
+                            , qlat_data
                             ):
     
     """
@@ -476,26 +486,24 @@ def diffusive_input_data_v02(tw
                 , nrch_g                    
                 )   
     
-    raise ValueError
     #---------------------------------------------------------------------------------
     #                              Step 0-6
 
     #                  Prepare lateral inflow data           
     #---------------------------------------------------------------------------------
-    segs = list(chain.from_iterable(reach_list))
-    qlat_tw = qlats.loc[segs]    
-    #tfin_g=len(qlat_tw.columns)-1 #entire simulation period in hrs
     nts_ql_g= int((tfin_g-t0_g)*3600.0/dt_ql_g)+1 # the number of the entire time steps of lateral flow data 
 
     qlat_g=np.zeros((nts_ql_g, mxncomp_g, nrch_g)) 
-
+    
     fp_qlat_map(mx_jorder
-        , ordered_reaches
-        , nts_ql_g
-        , ch_geo_data
-        , qlat_tw            
-        , qlat_g
-        ) 
+            , ordered_reaches
+            , nts_ql_g
+            , geo_cols
+            , geo_index
+            , geo_data
+            , qlat_data            
+            , qlat_g
+            )  
 
     #---------------------------------------------------------------------------------
     #                              Step 0-7
@@ -507,7 +515,8 @@ def diffusive_input_data_v02(tw
                             , pynw
                             , nts_ub_g
                             , nrch_g
-                            , qlat_tw
+                            , geo_index
+                            , qlat_data
                             , qlat_g
                             )
     #---------------------------------------------------------------------------------
