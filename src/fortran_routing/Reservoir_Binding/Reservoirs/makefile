@@ -1,9 +1,8 @@
-NETCDFINC       :=       $(NETCDF_INC)
-NETCDFLIB       =       -L$(NETCDF_LIB) -lnetcdff -lnetcdf
-COMPILER90 = gfortran
+NETCDFINC := $(shell nc-config --fflags)
+NETCDFLIB := $(shell nc-config --flibs)
+COMPILER90 = $(F90)
 F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4
-F90FLAGS := -g $(F90FLAGS) -I$(NETCDFINC) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
-AR = ar
+F90FLAGS := -g $(F90FLAGS) $(NETCDFINC) $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
 ARFLAGS = rc
 
 VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts

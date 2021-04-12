@@ -1,5 +1,5 @@
 # compiler
-FC := gfortran
+FC := $(F90)
 
 # compile flags
 #FCFLAGS = -c -fdefault-real-8 -fno-align-commons -fbounds-check --free-form
