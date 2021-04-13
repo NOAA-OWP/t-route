@@ -619,6 +619,7 @@ def diffusive_input_data_v02(tw
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
     
     reach_heads = list(pynw.values())
+    nts = len(out_q[:,0,0])
 
     i = 1
     rch_list = []
@@ -631,15 +632,23 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
             j  = reach_heads.index(rch[0])
 
             if i == 1:
-                dat_q = np.array(out_q[:,0:len(rch_segs),j])
-                dat_elv = np.array(out_elv[:,0:len(rch_segs),j])
+                dat_all = np.empty((len(rch_segs),nts*3)) 
+                dat_all[:] = np.nan
+                # flow result
+                dat_all[:,::3] = np.transpose(np.array(out_q[:,0:len(rch_segs),j]))
+                # elevation result
+                dat_all[:,2::3] = np.transpose(np.array(out_elv[:,0:len(rch_segs),j]))
+
             else:
-                dat_q = np.concatenate((dat_q,np.array(out_q[:,0:len(rch_segs),j])), axis = 1)
-                dat_elv = np.concatenate((dat_elv,np.array(out_elv[:,0:len(rch_segs),j])), axis = 1)
-                
+                dat_all_c = np.empty((len(rch_segs),nts*3)) 
+                dat_all_c[:] = np.nan
+                # flow result
+                dat_all_c[:,::3] = np.transpose(np.array(out_q[:,0:len(rch_segs),j]))
+                # elevation result
+                dat_all_c[:,2::3] = np.transpose(np.array(out_elv[:,0:len(rch_segs),j]))
+                # concatenate
+                dat_all = np.concatenate((dat_all, dat_all_c))
+
             i+=1
     
-    tsteps = range(0, len(out_q[:,0,0]))
-    dat_q_df = pd.DataFrame(dat_q, columns = rch_list, index = tsteps)
-
-    return dat_q_df
+    return np.asarray(rch_list, dtype=np.intp), np.asarray(dat_all, dtype = 'float32')
