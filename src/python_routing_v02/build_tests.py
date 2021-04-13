@@ -157,7 +157,10 @@ def build_test_parameters(
     )
 
 
-def parity_check(parity_parameters, run_parameters, nts, dt, results):
+def parity_check(parity_parameters, run_parameters, results):
+
+    nts = run_parameters["nts"]
+    dt = run_parameters["dt"]
 
     compare_node = parity_parameters["parity_check_compare_node"]
 
