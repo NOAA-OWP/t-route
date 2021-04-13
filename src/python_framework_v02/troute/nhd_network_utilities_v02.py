@@ -469,7 +469,7 @@ def build_channel_initial_state(
 
     if wrf_hydro_channel_restart_file:
 
-        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
+        q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],

@@ -491,6 +491,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            diffusive_parameters,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -631,6 +632,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            diffusive_parameters,
                         )
                     )
 
@@ -744,7 +746,7 @@ def compute_nhd_routing_v02(
                         qts_subdivisions,
                         reaches_list_with_type,
                         independent_networks[tw],
-                        param_df_sub.index.values,
+                        param_df_sub.index.values.astype("int64"),
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         q0_sub.values.astype("float32"),
@@ -756,6 +758,7 @@ def compute_nhd_routing_v02(
                         {},
                         assume_short_ts,
                         return_courant,
+                        diffusive_parameters,
                     )
                 )
             results = parallel(jobs)
@@ -847,7 +850,7 @@ def compute_nhd_routing_v02(
                     qts_subdivisions,
                     reaches_list_with_type,
                     independent_networks[tw],
-                    param_df_sub.index.values,
+                    param_df_sub.index.values.astype("int64"),
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     q0_sub.values.astype("float32"),

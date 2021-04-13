@@ -112,10 +112,12 @@ cpdef object compute_diffusive_tst(
     const long[:] data_idx,
     object[:] data_cols,
     const float[:,:] data_values,
-    const float[:,:] qlat_values,
     const float[:,:] initial_conditions,
+    const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    const float[:,:] usgs_values,
+    const int[:] usgs_positions_list,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -242,5 +244,4 @@ cpdef object compute_diffusive_tst(
                                 )
     
     return index_array, flowvelelv
-    
-    
+
