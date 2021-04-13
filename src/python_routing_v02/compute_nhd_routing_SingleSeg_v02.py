@@ -745,44 +745,47 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlats.loc[common_segs].sort_index()
             q0_sub = q0.loc[common_segs].sort_index()
-            if compute_func == mc_reach.compute_network:
-                results.append(
-                    compute_func(
-                        nts,
-                        qts_subdivisions,
-                        reaches_list_with_type,
-                        independent_networks[tw],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
-                        qlat_sub.values,
-                        q0_sub.values,
-                        lake_segs,
-                        waterbodies_df_sub.values,
-                        {},
-                        assume_short_ts,
-                        return_courant,
-                    )
+            results.append(
+                compute_func(
+                    nts,
+                    qts_subdivisions,
+                    reaches_list_with_type,
+                    independent_networks[tw],
+                    param_df_sub.index.values,
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
+                    qlat_sub.values,
+                    q0_sub.values,
+                    lake_segs,
+                    waterbodies_df_sub.values,
+                    {},
+                    assume_short_ts,
+                    return_courant,
+                    diffusive_parameters,
                 )
+            )
                 
-            else:
+#             else:
                 
-                out_q, out_elv = compute_func(
-                        nts,
-                        qts_subdivisions,
-                        reaches_list_with_type,
-                        independent_networks[tw],
-                        param_df_sub.index.values,
-                        param_df_sub.columns.values,
-                        param_df_sub.values,
-                        qlat_sub.values,
-                        q0_sub.values,
-                        lake_segs,
-                        waterbodies_df_sub.values,
-                        {},
-                        assume_short_ts,
-                        return_courant,
-                        diffusive_parameters)
+#                 results.append(
+#                     compute_func(
+#                         nts,
+#                         qts_subdivisions,
+#                         reaches_list_with_type,
+#                         independent_networks[tw],
+#                         param_df_sub.index.values,
+#                         param_df_sub.columns.values,
+#                         param_df_sub.values,
+#                         qlat_sub.values,
+#                         q0_sub.values,
+#                         lake_segs,
+#                         waterbodies_df_sub.values,
+#                         {},
+#                         assume_short_ts,
+#                         return_courant,
+#                         diffusive_parameters
+#                     )
+#                 )
                 
                 
 #                 # build model parameter inputs
@@ -853,8 +856,8 @@ def compute_nhd_routing_v02(
 #                                             out_elv
 #                                             )
                 
-                raise ValueError
-                
+    print(results)
+    raise ValueError
     return results
 
 
@@ -1099,29 +1102,6 @@ def main():
         print("qlateral array complete")
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
-        
-#     # STEP 6: Build diffusive input data
-#     if diffusive_parameters: 
-#         if showtiming:
-#             start_time = time.time()
-#         if verbose:
-#             print("building input data for diffusive wave model ...")
-
-#         diff_inputs = diff_utils.diffusive_input_data_v02(connections
-#                             , rconn
-#                             , reaches_bytw
-#                             , diffusive_parameters
-#                             , param_df
-#                             , qlats
-#                             )
-
-#         if verbose:
-#             print("diffusive input construction complete")
-#         if showtiming:
-#             print("... in %s seconds." % (time.time() - start_time))
-            
-#     else:
-#         diff_inputs = None
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
