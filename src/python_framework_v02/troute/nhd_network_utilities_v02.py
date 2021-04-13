@@ -88,12 +88,12 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "Pocono Test 2 Example",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder,
                     "Channels",
                     "masks",
                     "PoconoRouteLink_TEST2_nwm_mc.txt",
-                ).resolve(),
+                ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
                 "mask_key": 0,
@@ -103,9 +103,9 @@ def set_supernetwork_parameters(
         return rv
 
         # return {
-        #'geo_file_path' : pathlib.Path(geo_input_folder
+        #'geo_file_path' : os.path.join(geo_input_folder
     # , r'PoconoSampleData2'
-    # , r'PoconoRouteLink_testsamp1_nwm_mc.shp').resolve()
+    # , r'PoconoRouteLink_testsamp1_nwm_mc.shp')
     # , 'key_col' : 18
     # , 'downstream_col' : 23
     # , 'length_col' : 5
@@ -131,12 +131,12 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "NHD 2.0 Conchos Basin of the LowerColorado River",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder,
                     "Channels",
                     "masks",
                     "LowerColorado_Conchos_FULL_RES.txt",
-                ).resolve(),
+                ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
                 "mask_key": 0,
@@ -147,9 +147,9 @@ def set_supernetwork_parameters(
 
     elif supernetwork == "Brazos_LowerColorado_ge5":
         return {
-            "geo_file_path": pathlib.Path(
+            "geo_file_path": os.path.join(
                 geo_input_folder, "Channels", "NHD_BrazosLowerColorado_Channels.shp"
-            ).resolve(),
+            ),
             "columns": {
                 "key": "featureID",
                 "downstream": "to",
@@ -176,12 +176,12 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "NHD 2.0 Brazos and LowerColorado Basins",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder,
                     "Channels",
                     "masks",
                     "Brazos_LowerColorado_FULL_RES.txt",
-                ).resolve(),
+                ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
                 "mask_key": 0,
@@ -197,12 +197,12 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "NHD 2.0 GNIS labeled streams in the Brazos and LowerColorado Basins",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder,
                     "Channels",
                     "masks",
                     "Brazos_LowerColorado_Named_Streams.csv",
-                ).resolve(),
+                ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
                 "mask_key": 0,
@@ -218,9 +218,9 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "NHD CONUS Order 5 and Greater",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder, "Channels", "masks", "CONUS_ge5.txt"
-                ).resolve(),
+                ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
                 "mask_key": 0,
@@ -236,9 +236,9 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "CONUS 'Mainstems' (Channels below gages and AHPS prediction points)",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder, r"Channels", r"masks", r"conus_Mainstem_links.txt"
-                ).resolve(),
+                ),
                 "mask_driver_string": r"csv",
                 "mask_layer_string": r"",
                 "mask_key": 0,
@@ -248,9 +248,9 @@ def set_supernetwork_parameters(
         return rv
 
         # return {
-        #     "geo_file_path": pathlib.Path(
+        #     "geo_file_path": os.path.join(
         #         geo_input_folder, r"Channels", r"conus_routeLink_subset.nc"
-        #     ).resolve(),
+        #     ),
         #     "key_col": 0,
         #     "downstream_col": 2,
         #     "length_col": 10,
@@ -278,12 +278,12 @@ def set_supernetwork_parameters(
         rv.update(
             {
                 "title_string": "CONUS NWM v2.0 only GNIS labeled streams",  # overwrites other title...
-                "mask_file_path": pathlib.Path(
+                "mask_file_path": os.path.join(
                     geo_input_folder,
                     "Channels",
                     "masks",
                     "nwm_reaches_conus_v21_wgnis_name.csv",
-                ).resolve(),
+                ),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
                 "mask_key": 0,
@@ -336,9 +336,9 @@ def set_supernetwork_parameters(
         sep = "."
 
         return {
-            "geo_file_path": pathlib.Path(
+            "geo_file_path": os.path.join(
                 geo_input_folder, "Channels", sep.join([ROUTELINK, ModelVer, ext])
-            ).resolve(),
+            ),
             "data_link": f"https://www.nco.ncep.noaa.gov/pmb/codes/nwprod/{ModelVer}/parm/domain/{ROUTELINK}{sep}{ext}",
             "columns": {
                 "key": "link",
@@ -356,9 +356,9 @@ def set_supernetwork_parameters(
                 "cs": "ChSlp",
             },
             "waterbody_parameter_file_type": "Level_Pool",
-            "waterbody_parameter_file_path": pathlib.Path(
+            "waterbody_parameter_file_path": os.path.join(
                 geo_input_folder, "NWM_2.1_Sample_Datasets", "LAKEPARM_CONUS.nc"
-            ).resolve(),
+            ),
             "waterbody_parameter_columns": {
                 "waterbody_area": "LkArea",
                 "weir_elevation": "WeirE",
@@ -378,11 +378,10 @@ def set_supernetwork_parameters(
         }
 
     elif supernetwork == "custom":
-        custominput = pathlib.Path(geo_input_folder).resolve()
+        custominput = os.path.join(geo_input_folder)
         with open(custominput, "r") as json_file:
             return json.load(json_file)
             # TODO: add error trapping for potentially missing files
-
 
 def reverse_dict(d):
     """
@@ -390,8 +389,7 @@ def reverse_dict(d):
     Values must be hashable!
     """
     return {v: k for k, v in d.items()}
-
-
+            
 def build_connections(supernetwork_parameters, dt):
     # TODO: Remove the dependence on dt in this function
 
@@ -422,7 +420,6 @@ def build_connections(supernetwork_parameters, dt):
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df
 
-
 def build_waterbodies(
     segment_reservoir_df,
     supernetwork_parameters,
@@ -443,7 +440,6 @@ def build_waterbodies(
     # TODO: return the lakeparam_df
 
     return wbodies
-
 
 def organize_independent_networks(connections, wbodies=None):
 
@@ -467,18 +463,13 @@ def build_channel_initial_state(
     restart_parameters, supernetwork_parameters, channel_index=None
 ):
 
-    channel_restart_file = restart_parameters.get("channel_restart_file", None)
-
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
 
-    if channel_restart_file:
-        q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
+    if wrf_hydro_channel_restart_file:
 
-    elif wrf_hydro_channel_restart_file:
-
-        q0 = nhd_io.get_channel_restart_from_wrf_hydro(
+        q0 = nhd_io.get_stream_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
@@ -551,7 +542,7 @@ def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_para
 
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0)
+        mask_file_path = pd.read_csv(mask_file_path,index_col=0, header = None)
         qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
 
     return qlat_df

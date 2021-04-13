@@ -13,7 +13,6 @@ def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
-
 def read_csv(geo_file_path, header="infer", layer_string=None):
     if geo_file_path.suffix == ".zip":
         if layer_string is None:
@@ -22,7 +21,7 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
             with zcsv.open(layer_string) as csv:
                 return pd.read_csv(csv, header=header)
     else:
-        return pd.read_csv(geo_file_path)
+        return pd.read_csv(geo_file_path, header=header)
 
 
 def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
@@ -57,6 +56,8 @@ def read_custom_input(custom_input_file):
     run_parameters = data.get("run_parameters", {})
     parity_parameters = data.get("parity_parameters", {})
     data_assimilation_parameters = data.get("data_assimilation_parameters", {})
+    diffusive_parameters = data.get("diffusive_parameters",{})
+    
     # TODO: add error trapping for potentially missing files
     return (
         supernetwork_parameters,
@@ -67,6 +68,7 @@ def read_custom_input(custom_input_file):
         run_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        diffusive_parameters,
     )
 
 
@@ -141,7 +143,9 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(
+    qlat_files, index_col="feature_id", value_col="q_lateral"
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id

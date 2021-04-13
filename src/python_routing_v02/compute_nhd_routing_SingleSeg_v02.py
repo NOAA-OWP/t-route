@@ -295,10 +295,11 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
 import fast_reach
+import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-
+import diffusive_utils as diff_utils
 
 def writetoFile(file, writeString):
     file.write(writeString)
@@ -309,7 +310,6 @@ def constant_qlats(index_dataset, nsteps, qlat):
     q = np.full((len(index_dataset.index), nsteps), qlat, dtype="float32")
     ql = pd.DataFrame(q, index=index_dataset.index, columns=range(nsteps))
     return ql
-
 
 def compute_nhd_routing_v02(
     connections,
@@ -330,6 +330,7 @@ def compute_nhd_routing_v02(
     assume_short_ts,
     return_courant,
     waterbodies_df,
+    diffusive_parameters = None
 ):
 
     start_time = time.time()
@@ -762,6 +763,7 @@ def compute_nhd_routing_v02(
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            
             # The X_sub lines use SEGS...
             # which becomes invalid with the wbodies included.
             # So we define "common_segs" to identify regular routing segments
@@ -798,7 +800,7 @@ def compute_nhd_routing_v02(
                 waterbodies_df_sub = pd.DataFrame()
 
             param_df_sub = param_df.loc[
-                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0","alt"]
             ].sort_index()
 
             if not usgs_df.empty:
@@ -857,9 +859,10 @@ def compute_nhd_routing_v02(
                     {},
                     assume_short_ts,
                     return_courant,
+                    diffusive_parameters,
                 )
             )
-
+                
     return results
 
 
@@ -876,6 +879,7 @@ def _input_handler():
     run_parameters = {}
     parity_parameters = {}
     data_assimilation_parameters = {}
+    diffusive_parameters = {}
 
     if custom_input_file:
         (
@@ -887,7 +891,9 @@ def _input_handler():
             run_parameters,
             parity_parameters,
             data_assimilation_parameters,
+            diffusive_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
+
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["return_courant"] = args.return_courant
@@ -996,6 +1002,7 @@ def _input_handler():
         run_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        diffusive_parameters
     )
 
 
@@ -1010,6 +1017,7 @@ def main():
         run_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        diffusive_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1186,7 +1194,9 @@ def main():
         else:
             print(f"executing routing computation ...")
 
-    if run_parameters.get("compute_method", None) == "V02-caching":
+    if run_parameters.get("compute_kernel", None) == "diffusive":
+        compute_func = diffusive.compute_diffusive_tst
+    elif run_parameters.get("compute_method", None) == "V02-caching":
         compute_func = fast_reach.compute_network
     elif run_parameters.get("compute_method", None) == "V02-structured":
         compute_func = fast_reach.compute_network_structured
@@ -1218,6 +1228,7 @@ def main():
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,
+        diffusive_parameters,
     )
 
     if verbose:
@@ -1245,6 +1256,7 @@ def main():
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
+        
         if run_parameters.get("return_courant", False):
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
@@ -1310,7 +1322,7 @@ def main():
         or "parity_check_file" in parity_parameters
         or "parity_check_waterbody_file" in parity_parameters
     ):
-
+        
         if verbose:
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
