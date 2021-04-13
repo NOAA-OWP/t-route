@@ -9,9 +9,9 @@ run_parameters:
     assume_short_ts: true
     subnetwork_target_size: 100
     qts_subdivisions: 12
-    return_courant: true
+    return_courant: false
     dt: 300
-    nts: 8640
+    nts: 25
     cpu_pool: 12
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
@@ -27,10 +27,10 @@ run_parameters:
 output_parameters:
     #output location for csv file 
     csv_output:
-        csv_output_folder: "../../test/output/text"
-        csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
+#         csv_output_folder: None
+        csv_output_segments: None
     #out location for nc file
-    nc_output_folder: "../../test/output/text"
+    nc_output_folder: None
 # Data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: Custom Input Example (using Florence-Event Cutout datafile)
@@ -104,8 +104,8 @@ restart_parameters:
     # wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 # Output files to check parity
 parity_parameters:
-    parity_check_file: "../../test/input/florence_933020089/OUTPUT/SeptemberFlorenceStreamflow_wDates.csv" 
-    parity_check_compare_node: 8777701
+#     parity_check_file: None
+    parity_check_compare_node: None
     # WRF-Hydro files in comments below for example
     # parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
     # parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
