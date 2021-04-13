@@ -765,8 +765,6 @@ def compute_nhd_routing_v02(
                 )
             )
                 
-    print(results)
-    raise ValueError
     return results
 
 
@@ -1025,15 +1023,14 @@ def main():
 
     if run_parameters.get("compute_kernel", None) == "diffusive":
         compute_func = diffusive.compute_diffusive_tst
+    elif run_parameters.get("compute_method", None) == "V02-caching":
+        compute_func = mc_reach.compute_network
+    elif run_parameters.get("compute_method", None) == "V02-structured":
+        compute_func = mc_reach.compute_network_structured
+    elif run_parameters.get("compute_method", None) == "V02-structured-obj":
+        compute_func = mc_reach.compute_network_structured_obj
     else:
-        if run_parameters.get("compute_method", None) == "V02-caching":
-            compute_func = mc_reach.compute_network
-        elif run_parameters.get("compute_method", None) == "V02-structured":
-            compute_func = mc_reach.compute_network_structured
-        elif run_parameters.get("compute_method", None) == "V02-structured-obj":
-            compute_func = mc_reach.compute_network_structured_obj
-        else:
-            compute_func = mc_reach.compute_network
+        compute_func = mc_reach.compute_network
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = mc_reach.compute_network_structured_obj
@@ -1083,6 +1080,7 @@ def main():
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
+        
         if run_parameters.get("return_courant", False):
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
@@ -1141,10 +1139,10 @@ def main():
     ################### Parity Check
 
     if (
-        "parity_check_input_folder" in parity_parameters
-        or "parity_check_file" in parity_parameters
+        parity_parameters.get("parity_check_file", None) 
+        and parity_parameters.get("parity_check_input_folder", None)
     ):
-
+        
         if verbose:
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
