@@ -167,6 +167,7 @@ cpdef object compute_network(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
+    dict diffusive_parameters=False,
     ):
     """
     Compute network
@@ -690,6 +691,7 @@ cpdef object compute_network_structured_obj(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
+    dict diffusive_parameters=False,
     ):
     """
     Compute network
@@ -881,6 +883,7 @@ cpdef object compute_network_structured(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
+    dict diffusive_parameters=False,
     ):
     """
     Compute network
