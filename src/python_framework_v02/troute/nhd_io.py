@@ -22,7 +22,7 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
             with zcsv.open(layer_string) as csv:
                 return pd.read_csv(csv, header=header)
     else:
-        return pd.read_csv(geo_file_path)
+        return pd.read_csv(geo_file_path, header=header)
 
 
 def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
