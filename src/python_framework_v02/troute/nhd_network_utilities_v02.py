@@ -502,7 +502,13 @@ def build_channel_initial_state(
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_parameters, nts, qts_subdivisions=1):
+def build_qlateral_array(
+    forcing_parameters,
+    connections_keys,
+    supernetwork_parameters,
+    nts,
+    qts_subdivisions=1,
+):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)

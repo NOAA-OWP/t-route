@@ -295,9 +295,11 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
 import fast_reach
+import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
+import diffusive_utils as diff_utils
 
 
 def writetoFile(file, writeString):
@@ -330,6 +332,7 @@ def compute_nhd_routing_v02(
     assume_short_ts,
     return_courant,
     waterbodies_df,
+    diffusive_parameters=None,
 ):
 
     start_time = time.time()
@@ -490,6 +493,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            diffusive_parameters,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -630,6 +634,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            diffusive_parameters,
                         )
                     )
 
@@ -743,7 +748,7 @@ def compute_nhd_routing_v02(
                         qts_subdivisions,
                         reaches_list_with_type,
                         independent_networks[tw],
-                        param_df_sub.index.values,
+                        param_df_sub.index.values.astype("int64"),
                         param_df_sub.columns.values,
                         param_df_sub.values,
                         q0_sub.values.astype("float32"),
@@ -755,6 +760,7 @@ def compute_nhd_routing_v02(
                         {},
                         assume_short_ts,
                         return_courant,
+                        diffusive_parameters,
                     )
                 )
             results = parallel(jobs)
@@ -798,7 +804,8 @@ def compute_nhd_routing_v02(
                 waterbodies_df_sub = pd.DataFrame()
 
             param_df_sub = param_df.loc[
-                common_segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                common_segs,
+                ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
 
             if not usgs_df.empty:
@@ -845,7 +852,7 @@ def compute_nhd_routing_v02(
                     qts_subdivisions,
                     reaches_list_with_type,
                     independent_networks[tw],
-                    param_df_sub.index.values,
+                    param_df_sub.index.values.astype("int64"),
                     param_df_sub.columns.values,
                     param_df_sub.values,
                     q0_sub.values.astype("float32"),
@@ -857,6 +864,7 @@ def compute_nhd_routing_v02(
                     {},
                     assume_short_ts,
                     return_courant,
+                    diffusive_parameters,
                 )
             )
 
@@ -876,6 +884,7 @@ def _input_handler():
     run_parameters = {}
     parity_parameters = {}
     data_assimilation_parameters = {}
+    diffusive_parameters = {}
 
     if custom_input_file:
         (
@@ -887,7 +896,9 @@ def _input_handler():
             run_parameters,
             parity_parameters,
             data_assimilation_parameters,
+            diffusive_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
+
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["return_courant"] = args.return_courant
@@ -996,6 +1007,7 @@ def _input_handler():
         run_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        diffusive_parameters,
     )
 
 
@@ -1010,6 +1022,7 @@ def main():
         run_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        diffusive_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1092,7 +1105,9 @@ def main():
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
                 restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"],
+                restart_parameters[
+                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
+                ],
             )
         else:
             # TODO: Consider adding option to read cold state from route-link file
@@ -1109,7 +1124,9 @@ def main():
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id")
+        waterbodies_df_reduced = pd.merge(
+            waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id"
+        )
 
         if verbose:
             print("waterbody initial states complete")
@@ -1186,7 +1203,9 @@ def main():
         else:
             print(f"executing routing computation ...")
 
-    if run_parameters.get("compute_method", None) == "V02-caching":
+    if run_parameters.get("compute_kernel", None) == "diffusive":
+        compute_func = diffusive.compute_diffusive_tst
+    elif run_parameters.get("compute_method", None) == "V02-caching":
         compute_func = fast_reach.compute_network
     elif run_parameters.get("compute_method", None) == "V02-structured":
         compute_func = fast_reach.compute_network_structured
@@ -1218,6 +1237,7 @@ def main():
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,
+        diffusive_parameters,
     )
 
     if verbose:
@@ -1245,6 +1265,7 @@ def main():
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
+
         if run_parameters.get("return_courant", False):
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
