@@ -2,7 +2,6 @@
 
 module reservoir_to_c_hybrid
     use module_persistence_levelpool_hybrid
-
     implicit none
 
 contains
@@ -18,16 +17,16 @@ contains
         SUBROUTINE free_hybrid(handle) BIND(C, NAME='free_hybrid')
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
-            !TYPE(LP_Example), POINTER :: lp_ptr
             TYPE(persistence_levelpool_hybrid), POINTER :: hybrid_ptr
             CALL C_F_POINTER(handle, hybrid_ptr)
-            DEALLOCATE(hybrid_ptr)
+            !DEALLOCATE(hybrid_ptr)
         END SUBROUTINE free_hybrid
 
         SUBROUTINE init_hybrid(handle,  water_elevation,  &
         lake_area, weir_elevation, weir_coeffecient, &
         weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-        orifice_area, lake_max_water_elevation, initial_fractional_depth, lake_number, reservoir_type, reservoir_parameter_file, start_date, &
+        orifice_area, lake_max_water_elevation, initial_fractional_depth, &
+        lake_number, reservoir_type, reservoir_parameter_file, start_date, &
         usgs_timeslice_path, usace_timeslice_path, observation_lookback_hours, &
         observation_update_time_interval_seconds) BIND(C, NAME='init_hybrid')
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER, C_CHAR, c_null_char
@@ -101,6 +100,13 @@ contains
             nchars_usace_timeslice_path = char_index - 1  ! Exclude null character from Fortran string
 
             CALL C_F_POINTER(handle, hybrid_ptr)
+
+            print *, "water elevation bind: ", water_elevation
+            print *, "lake_max_water_elevation bind: ", lake_max_water_elevation
+            print *, "initial_fractional_depth: ", initial_fractional_depth
+            print *, "lake_number bind: ", lake_number
+            print *, "reservoir_type bind: ", reservoir_type
+
 
             call hybrid_ptr%init(water_elevation,  &
                                  lake_area, weir_elevation, weir_coeffecient, &

@@ -20,7 +20,7 @@ typedef struct {
   char* time_series_path;
   int forecast_lookback_hours;
 
-  //Handle to operate hybrid res
+  //Handle to operate rfc res
   void* handle;
 } _MC_RFC;
 
