@@ -1,15 +1,8 @@
-import os
-import sys
 import numpy as np
-import pandas as pd
-from itertools import chain, islice
-import itertools
 from functools import partial, reduce
-
 import troute.nhd_network as nhd_network
-#from pyuniflowtzlt import uniflow_lookuptable
 
-def adj_alt1(mx_jorder_tw
+def adj_alt1(mx_jorder
         , ordered_reaches
         , geo_cols
         , geo_index
@@ -17,11 +10,23 @@ def adj_alt1(mx_jorder_tw
         , dbfksegID
         , z_all   
         ):  
+    """
+    Adjust reach altitude data so that altitude of last node in reach is equal to that of the head segment of
+    the neighboring downstream reach. 
+    
+    Keyword arguments:
+    mx_jorder -- (int) maximum network reach order
+    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
+    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
+    geo_data --(ndarray of float32s) geomorphic parameters data arra
+    dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary 
+    z_all -- (dict) adjusted altitude dictionary with placeholder values to be replaced
+    
+    returns:
+    z_all -- (dict) adjusted altitude dictionary
+    """
 
-    # Adjust altitude so that altitude of the last node (=fake segment) of a reach is equal to that of
-    # the first segment of its downstream reach right after their common junction.
-
-    for x in range(mx_jorder_tw,-1,-1): 
+    for x in range(mx_jorder,-1,-1): 
         for head_segment, reach in ordered_reaches[x]:                  
             seg_list= reach['segments_list']
             ncomp= reach['number_segments']
@@ -56,25 +61,36 @@ def adj_alt1(mx_jorder_tw
     
     return z_all
 
-#-----------------------------------------------------
-# Channel Network mapping between Python and Fortran
-#
-#-----------------------------------------------------
-def fp_network_map(mx_jorder_tw
+def fp_network_map(mx_jorder
             , ordered_reaches
             , rchbottom_reaches
             , nrch_g
             , frnw_col
             , dbfksegID
             , pynw
-            ):    
+            ):
+    """
+    Channel network mapping between Python and Fortran
     
+    Keyword arguments:
+    mx_jorder -- (int) maximum network reach order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    rchbottom_reaches -- (dict) reaches and reach metadata keyed by reach tail segment
+    nrch_g -- (int) number of reaches in the network
+    frnw_col -- (int) number of columns in the fortran network map
+    dbfskegID -- (str) segment ID of fake (ghost) node at network downstream boundary 
+    pynw -- (dict) ordered reach head segments
+    
+    returns:
+    frnw_g -- (nparray of int) Fortran-Python network mapping array
+    """
+
     #  Store headwater reach and upstream reaches above a junction
     #  as well as downstream reach after a junction
     #  into python-extension-fortran variables.     
     frnw_g=np.zeros((nrch_g,frnw_col), dtype=int)
     frj=-1
-    for x in range(mx_jorder_tw,-1,-1): 
+    for x in range(mx_jorder,-1,-1): 
         for head_segment, reach in ordered_reaches[x]:                  
             seg_list= reach['segments_list']
             ncomp= reach['number_segments']            
@@ -118,14 +134,9 @@ def fp_network_map(mx_jorder_tw
             for i in range(0, nusrch):
                 frnw_g[frj,3+i]= frnw_g[frj,3+i]+1 # upstream reach indicds for frj reach  
     
-    
     return frnw_g
 
-#----------------------------------------------------------
-# Channel geometry data mapping between Python and Fortran
-#
-#----------------------------------------------------------
-def fp_chgeo_map(mx_jorder_tw
+def fp_chgeo_map(mx_jorder
             , ordered_reaches
             , geo_cols
             , geo_index
@@ -133,7 +144,31 @@ def fp_chgeo_map(mx_jorder_tw
             , z_all
             , mxncomp_g     
             , nrch_g
-            ):     
+            ):
+    """
+    Channel geometry data mapping between Python and Fortran
+    
+    Keyword arguments:
+    mx_jorder -- (int) maximum network reach order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
+    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
+    geo_data --(ndarray of float32s) geomorphic parameters data array
+    z_all -- (dict) adjusted altitude dictionary
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    
+    returns:
+    z_ar_g -- (numpy of float64s) altitude (meters)
+    bo_ar_g -- (numpy of float64s) bottom width (meters)
+    traps_ar_g -- (numpy of float64s) sideslope (m/m)
+    tw_ar_g -- (numpy of float64s) top width (meters)
+    twcc_ar_g -- (numpy of float64s) top width of compound channel (meters)
+    mann_ar_g -- (numpy of float64s) manning's roughness (seconds/meters^1/3)
+    mancc_ar_g -- (numpy of float64s) manning's roughness compound channel (seconds/meters^(1/3))
+    so_ar_g -- (numpy of float64s) bottom slope (m/m)
+    dx_ar_g -- (numpy of float64s) segment length (meters)
+    """
         
     z_ar_g=np.zeros((mxncomp_g, nrch_g))
     bo_ar_g=np.zeros((mxncomp_g, nrch_g))
@@ -145,7 +180,7 @@ def fp_chgeo_map(mx_jorder_tw
     so_ar_g=np.zeros((mxncomp_g, nrch_g))
     dx_ar_g=np.zeros((mxncomp_g, nrch_g))
     frj=-1
-    for x in range(mx_jorder_tw,-1,-1):
+    for x in range(mx_jorder,-1,-1):
         for head_segment, reach in ordered_reaches[x]:                  
             seg_list= reach['segments_list']
             ncomp= reach['number_segments'] 
@@ -184,15 +219,10 @@ def fp_chgeo_map(mx_jorder_tw
                 
                 segID1= seg_list[seg] 
                 z_ar_g[seg, frj]= z_all[segID1]['adj.alt'][0]             
-            
+       
     return z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g 
      
-
-#----------------------------------------------------------
-# lateral inflow mapping between Python and Fortran
-#
-#----------------------------------------------------------
-def fp_qlat_map(mx_jorder_tw
+def fp_qlat_map(mx_jorder
             , ordered_reaches
             , nts_ql_g
             , geo_cols
@@ -200,10 +230,27 @@ def fp_qlat_map(mx_jorder_tw
             , geo_data
             , qlat_data            
             , qlat_g
-            ):   
+            ):
+    """
+    lateral inflow mapping between Python and Fortran
+    
+    Keyword arguments:
+    mx_jorder -- (int) maximum network reach order
+    nts_ql_g -- (int) numer of qlateral timesteps
+    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
+    geo_index -- (ndarray of int64) row indices for geomorphic parameters data array (geo_data)
+    geo_data -- (ndarray of float32) geomorphic parameters data array
+    qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    qlat_g -- (ndarray of float32) empty qlateral array to be filled
+    
+    returns:
+    qlat_g -- (ndarray of float32) qlateral array (m3/sec/m)
+    
+    ** NOTE data inm qlat_g are normalized by segment length 
+    """
     
     frj= -1
-    for x in range(mx_jorder_tw,-1,-1):
+    for x in range(mx_jorder,-1,-1):
         for head_segment, reach in ordered_reaches[x]:                  
             seg_list= reach['segments_list']
             ncomp= reach['number_segments']          
@@ -224,7 +271,7 @@ def fp_qlat_map(mx_jorder_tw
                         qlat_g[tsi,seg,frj]= 0.0 # seg=ncomp is actually for bottom node in Fotran code.
                                                      #And, lateral flow enters between adjacent nodes.
        
-    return 
+    return qlat_g
 
 #------------------------------------------------------------------------------------------
 # upstream boundary condition mapping between Python and Fortran
@@ -238,8 +285,22 @@ def fp_ubcd_map(frnw_g
             , nrch_g
             , geo_index
             , qlat_data
-            , qlat_g
-            ):   
+            , qlat_g 
+            ):
+    """
+    Upstream boundary condition mapping between Python and Fortran
+    
+    Keyword arguments:
+    frnw_g -- (nparray of int) Fortran-Python network mapping array
+    pynw -- (dict) ordered reach head segments
+    nrch_g -- (int) number of reaches in the network
+    geo_index -- (ndarray of int64) row indices for geomorphic parameters data array (geo_data)
+    qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    qlat_g -- (ndarray of float32) qlateral array (m3/sec/m) 
+    
+    returns:
+    ubcd_g -- (ndarray of float32) upstream boundary data (m3/sec)
+    """
     
     ubcd_g=np.zeros((nts_ub_g, nrch_g)) 
     frj= -1
@@ -254,19 +315,26 @@ def fp_ubcd_map(frnw_g
                 qlat_g[tsi,0,frj]=0.0                   
     
     return ubcd_g 
-                        
-#------------------------------------------------------------------------------------------
-#       downstream boundary condition mapping between Python and Fortran
-# 
-#   ** In this mapping, USGS observed stage data at TW is used.
-#------------------------------------------------------------------------------------------
+
 def fp_dbcd_map(usgsID2tw
                 , usgssDT
                 , usgseDT
                 , usgspCd
                 ):
-   
+    """
+    Downststream boundary condition mapping between Python and Fortran using USGS stage observations
     
+    Keywork arguments:
+    usgsID2tw -- (str) usgs site ID
+    usgssDT -- (str) start data request date (yyyy-mm-dd) 
+    usgseDT -- (str) end data request date (yyyy-mm-dd) 
+    usgspCd --  (list of str) usgs parameter code 
+    
+    returns:
+    nts_db_g -- (int) number of timesteps in downstream boundary data
+    dbcd_g -- (ndarray of float64) downstream boundary data (meters)
+    """
+
     # ** 1) downstream stage (here, lake elevation) boundary condition
     #from nwis_client.iv import IVDataService
     from hydrotools.nwis_client.iv import IVDataService
@@ -300,15 +368,6 @@ def fp_dbcd_map(usgsID2tw
                                             #parameterCd='62614'
                                             parameterCd=usgspCd)  
     nts_db_g=len(observations_data)-4
-    #print(f"nts_db_g:{nts_db_g}")
-    #test
-    #for tsi in range(0,nts_db_g):
-    #    print(f"observatons_data date:{observations_data.iloc[tsi,0]} value:{observations_data.iloc[tsi,4]}")        
-    #for tsi in range(0,nts_db_g):
-    #    i=tsi+4
-    #    print(f"observatons_data shifted date:{observations_data.iloc[i,0]} value:{observations_data.iloc[i,4]}")
-    
-
     # ** 4 is added to make data used here has its date time as from startDT 00:00 to (endDT-1day) 23:00, UTC 
     # ** usgs data at this site uses NGVD1929 feet datum while 'alt' of RouteLink uses NAD88 meter datum.
     #  -> Has to convert accordingly !!!!
@@ -321,7 +380,6 @@ def fp_dbcd_map(usgsID2tw
         dmy= observations_data.iloc[i,4]   
         dbcd_g[tsi]= 0.3048*(dmy+3.6)  # accuracy with +-0.5feet for 95 percent of USGS study area. 
                                                           # 0.3048 to covert ft to meter. [meter]
-    
     return nts_db_g, dbcd_g
 
 def diffusive_input_data_v02(tw 
@@ -336,21 +394,22 @@ def diffusive_input_data_v02(tw
                             ):
     
     """
-    diffusive_input_data_v02: Builds input data objects for diffusive wave model
+    Build input data objects for diffusive wave model
     
-    Args:
-        tw (int): Tailwater segment ID
-        connections (dict): donwstream connections for each segment in the network
-        rconn (dict): upstream connections for each segment in the network
-        reach_list (list of lists): lists of segments comprising different reaches in the network
-        diffusive_parametters (dict): Diffusive wave model parameters
-        ch_geo_dat (pandas DataFrame): geometry parameters for all segments in the network
-        qlats (pandas DatFrame): lateral inflow data for all segments in the network
-        
+    Keyword arguments:
+    tw -- (int) Tailwater segment ID
+    connections -- (dict) donwstream connections for each segment in the network
+    rconn -- (dict) upstream connections for each segment in the network
+    reach_list -- (list of lists) lists of segments comprising different reaches in the network
+    diffusive_parametters -- (dict) Diffusive wave model parameters
+    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
+    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
+    geo_data --(ndarray of float32s) geomorphic parameters data array
+    qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    
+    returns:
+    diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-    
-    #usgs_retrievaltool_path = diffusive_parameters.get("usgs_retrievaltool_path",None)
-    #sys.path.append(usgs_retrievaltool_path)
 
     # diffusive time steps info.
     dt_ql_g=diffusive_parameters.get("dt_qlat",None) # time step of lateral flow
@@ -466,7 +525,6 @@ def diffusive_input_data_v02(tw
             , pynw
             )  
 
-
     #covert data type from integer to float for frnw
     dfrnw_g=np.zeros((nrch_g,frnw_col), dtype=float)
     for j in range(0,nrch_g):
@@ -525,7 +583,6 @@ def diffusive_input_data_v02(tw
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data            
     #---------------------------------------------------------------------------------        
-    #import pdb; pdb.set_trace()
     if tw in seg2usgsID:
         ipos= seg2usgsID.index(tw)
         usgsID2tw= usgsID[ipos]         
@@ -609,16 +666,24 @@ def diffusive_input_data_v02(tw
     diff_ins["pynw"] = pynw
     diff_ins["ordered_reaches"] = ordered_reaches
     
-#     # save input data as yaml
-#     import yaml
-#     with open('diff_inputs.yml', 'w') as outfile:
-#         yaml.dump(diff_ins, outfile, default_flow_style=False)
-    
     return diff_ins
     
-
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
     
+    """
+    Unpack diffusive wave output arrays
+    
+    Keyword arguments:
+    pynw -- (dict) ordered reach head segments
+    ordered_reaches -- 
+    out_q -- (diffusive._memoryviewslice of float64) diffusive wave model flow output (m3/sec)
+    out_elv -- (diffusive._memoryviewslice of float64) diffusive wave model water surface elevation output (meters)
+    
+    returns:
+    np.asarray(rch_list, dtype=np.intp) - segment indices 
+    np.asarray(dat_all, dtype = 'float32') - flow, velocity, elevation array
+    """
+
     reach_heads = list(pynw.values())
     nts = len(out_q[:,0,0])
 
