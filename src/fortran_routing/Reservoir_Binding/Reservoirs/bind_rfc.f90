@@ -18,21 +18,21 @@ contains
         SUBROUTINE free_rfc(handle) BIND(C, NAME='free_rfc')
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
-            !TYPE(LP_Example), POINTER :: lp_ptr
             TYPE(rfc_forecasts), POINTER :: rfc_ptr
             CALL C_F_POINTER(handle, rfc_ptr)
-            DEALLOCATE(rfc_ptr)
+            !DEALLOCATE(rfc_ptr)
         END SUBROUTINE free_rfc
 
         SUBROUTINE init_rfc(handle,  water_elevation,  &
         lake_area, weir_elevation, weir_coeffecient, &
         weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-        orifice_area, lake_max_water_elevation, initial_fractional_depth, lake_number, reservoir_type, reservoir_parameter_file, start_date, &
+        orifice_area, lake_max_water_elevation, initial_fractional_depth, &
+        lake_number, reservoir_type, reservoir_parameter_file, start_date, &
         time_series_path, forecast_lookback_hours) BIND(C, NAME='init_rfc')
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER, C_CHAR, c_null_char
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
             real,    intent(inout) :: water_elevation           ! meters AMSL
-            real,    intent(in)    :: lake_area      		    ! area of lake (km^2)
+            real,    intent(in)    :: lake_area                 ! area of lake (km^2)
             real,    intent(in)    :: weir_elevation            ! bottom of weir elevation (meters AMSL)
             real,    intent(in)    :: weir_coeffecient          ! weir coefficient
             real,    intent(in)    :: weir_length               ! weir length (meters)

@@ -83,8 +83,9 @@ cdef class MC_Hybrid(Reach):
     weir_coefficient = args[5]
     weir_elevation = args[6]
     weir_length = args[7]
-    initial_fractional_depth  = args[8]
-    reservoir_type =  args[11]
+    initial_fractional_depth = args[8]
+    water_elevation = args[10]
+    reservoir_type = args[11]
     reservoir_parameter_file = args[12]
     start_date = args[13] 
     usgs_timeslice_path = args[14] 
@@ -93,21 +94,44 @@ cdef class MC_Hybrid(Reach):
     observation_update_time_interval_seconds = args[17]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
-    if (reservoir_parameter_file > 256):
-       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
+    if (len(reservoir_parameter_file) > 255):
+       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 255 characters.")
    
+    if (len(start_date) > 20):
+       raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
+
+    if (len(usgs_timeslice_path) > 255):
+       raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 255 characters.")
+   
+    if (len(usace_timeslice_path) > 255):
+       raise ValueError("rusace_timeslice_path is too large. Length must be less than or equal to 255 characters.")
+   
+
+
     # Note Some issues with __calloc__:
     # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
     # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
     # init the backing struct, pass a dam_length of 10.0 for now
-    init_hybrid_reach(&self._reach, lake_number,
-                         10.0, args[0], args[1],
-                         args[2], args[3], args[4],
-                         args[5], args[6], args[7],
-                         args[8], args[10], args[11],
-                         args[12], args[13], args[14],
-                         args[15], args[16], args[17])
+    #init_hybrid_reach(&self._reach, lake_number,
+    #                     10.0, args[0], args[1],
+    #                     args[2], args[3], args[4],
+    #                     args[5], args[6], args[7],
+    #                     args[8], args[10], args[11],
+    #                     args[12], args[13], args[14],
+    #                     args[15], args[16], args[17])
 
+
+    init_hybrid_reach(&self._reach, lake_number,
+                         10.0, area, max_depth, orifice_area,
+                         orifice_coefficient, orifice_elevation,
+                         weir_coefficient, weir_elevation,
+                         weir_length, initial_fractional_depth,
+                         water_elevation, reservoir_type,
+                         reservoir_parameter_file, start_date,
+                         usgs_timeslice_path, usace_timeslice_path,
+                         observation_lookback_hours,
+                         observation_update_time_interval_seconds)
+                         
 
   def __dealloc__(self):
     """

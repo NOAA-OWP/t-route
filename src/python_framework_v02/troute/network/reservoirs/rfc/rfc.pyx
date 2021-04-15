@@ -87,7 +87,7 @@ cdef class MC_RFC(Reach):
     forecast_lookback_hours = args[15]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
-    if (reservoir_parameter_file > 256):
+    if (len(reservoir_parameter_file) > 256):
        raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
 
     # Note Some issues with __calloc__:
