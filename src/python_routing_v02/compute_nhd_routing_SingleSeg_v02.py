@@ -299,8 +299,6 @@ import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-import diffusive_utils as diff_utils
-
 
 def writetoFile(file, writeString):
     file.write(writeString)
