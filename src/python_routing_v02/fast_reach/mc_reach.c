@@ -16,8 +16,8 @@
         ],
         "include_dirs": [
             "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network",
-            "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/reservoirs/levelpool",
             "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/musking",
+            "/glade/work/dmattern/t-route/src/python_framework_v02/troute/network/reservoirs/levelpool",
             "/glade/work/dmattern/python_envs/t-route-env/lib/python3.6/site-packages/numpy/core/include"
         ],
         "name": "fast_reach",
@@ -1273,7 +1273,7 @@ struct __pyx_ctuple_float__and_float;
 typedef struct __pyx_ctuple_float__and_float __pyx_ctuple_float__and_float;
 
 /* "troute/network/reservoirs/levelpool/levelpool.pxd":24
- * 
+ *   C type for MC_Levelpool which is a resevoir subclass of a Reach
  *   """
  *   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)             # <<<<<<<<<<<<<<
  */
@@ -1445,7 +1445,7 @@ struct __pyx_obj_6troute_7network_7musking_8mc_reach_MC_Reach {
  * 
  * cdef class MC_Levelpool(Reach):             # <<<<<<<<<<<<<<
  *   """
- * 
+ *   C type for MC_Levelpool which is a resevoir subclass of a Reach
  */
 struct __pyx_obj_6troute_7network_10reservoirs_9levelpool_9levelpool_MC_Levelpool {
   struct __pyx_obj_6troute_7network_5reach_Reach __pyx_base;
@@ -1550,7 +1550,7 @@ static struct __pyx_vtabstruct_6troute_7network_7musking_8mc_reach_MC_Reach *__p
  * 
  * cdef class MC_Levelpool(Reach):             # <<<<<<<<<<<<<<
  *   """
- * 
+ *   C type for MC_Levelpool which is a resevoir subclass of a Reach
  */
 
 struct __pyx_vtabstruct_6troute_7network_10reservoirs_9levelpool_9levelpool_MC_Levelpool {

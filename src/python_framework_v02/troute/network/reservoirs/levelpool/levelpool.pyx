@@ -38,7 +38,7 @@ cdef class MC_Levelpool(Reach):
         upstream_ids: array[long]
           buffer/array of upstream identifiers which contribute flow to this reservoir
         args: list
-          the levelpool paramters ordered as follows:
+          the levelpool parameters ordered as follows:
             area = args[0]
             max_depth = args[1]
             orifice_area = args[2]
@@ -48,17 +48,32 @@ cdef class MC_Levelpool(Reach):
             weir_elevation = args[6]
             weir_length = args[7]
             initial_fractional_depth  = args[8]
+            water_elevation = args[10]
     """
     super().__init__(id, upstream_ids, compute_type.RESERVOIR_LP)
     # Note Some issues with __calloc__:
     # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
     # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
     # init the backing struct, pass a dam_length of 10.0 for now
+
+    #Setting default dam_length to 10
+    dam_length = 10.0
+    area = args[0]
+    max_depth = args[1]
+    orifice_area = args[2]
+    orifice_coefficient = args[3]
+    orifice_elevation = args[4]
+    weir_coefficient = args[5]
+    weir_elevation = args[6]
+    weir_length = args[7]
+    initial_fractional_depth = args[8]
+    water_elevation = args[10]
+
     init_levelpool_reach(&self._reach, lake_number,
-                         10.0, args[0], args[1],
-                         args[2], args[3], args[4],
-                         args[5], args[6], args[7],
-                         args[8], args[10])
+                         dam_length, area, max_depth,
+                         orifice_area, orifice_coefficient, orifice_elevation,
+                         weir_coefficient, weir_elevation, weir_length,
+                         initial_fractional_depth, water_elevation)
 
   def __dealloc__(self):
     """
@@ -115,7 +130,7 @@ cdef class MC_Levelpool(Reach):
   @property
   def weir_coefficient(self):
     """
-
+      Weir coefficient
     """
     return self._reach.reach.lp.weir_coefficient
 
@@ -143,7 +158,7 @@ cdef class MC_Levelpool(Reach):
   @property
   def orifice_area(self):
     """
-      Area of the orifice flow component, in meters
+      Area of the orifice flow component, in square meters
     """
     return self._reach.reach.lp.orifice_area
 
