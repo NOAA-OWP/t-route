@@ -117,7 +117,7 @@ def hybrid_reservoir():
     """
     #print("hybrid test")
 
-    cwd_full = b"./reservoir_testing_files/"
+    cwd_full = "./reservoir_testing_files/"
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -133,9 +133,9 @@ def hybrid_reservoir():
     lake_number = 402142
     reservoir_type = 2
     reservoir_parameter_file = (
-        b"./reservoir_testing_files/reservoir_index_short_range.nc"
+        "./reservoir_testing_files/reservoir_index_short_range.nc"
     )
-    start_date = b"2010-10-01_07:00:00"
+    start_date = "2010-10-01_07:00:00"
     usgs_timeslice_path = cwd_full
     usace_timeslice_path = cwd_full
     observation_lookback_hours = 48
@@ -161,7 +161,7 @@ def rfc_reservoir():
     """
     #print("rfc test")
 
-    cwd_full = b"./reservoir_testing_files/"
+    cwd_full = "./reservoir_testing_files/"
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -177,9 +177,9 @@ def rfc_reservoir():
     lake_number = 17609317
     reservoir_type = 4
     reservoir_parameter_file = (
-        b"./reservoir_testing_files/reservoir_index_short_range.nc"
+        "./reservoir_testing_files/reservoir_index_short_range.nc"
     )
-    start_date = b"2019-08-18_09:00:00"
+    start_date = "2019-08-18_09:00:00"
     time_series_path = cwd_full
     forecast_lookback_hours = 24
 
@@ -196,7 +196,7 @@ def rfc_reservoir():
 
 def test_lp_construction(lp_reservoir):
     """
-
+    test construction of an lp reservoir 
     """
     water_elevation = 9.7373
     lake_area = 15.0949
@@ -225,7 +225,7 @@ def test_lp_construction(lp_reservoir):
 
 def test_lp_construction2(lp_reservoir2):
     """
-
+    test construction of an lp reservoir 
     """
     water_elevation = 9.70
     lake_area = 15.0949
@@ -255,7 +255,7 @@ def test_lp_construction2(lp_reservoir2):
 
 def test_lp_construction3(lp_reservoir3):
     """
-
+    test construction of an lp reservoir 
     """
     water_elevation = 496.25399574057275
     lake_area = 1.95502996444702
@@ -286,7 +286,7 @@ def test_lp_construction3(lp_reservoir3):
 
 def test_hybrid_construction(hybrid_reservoir):
     """
-
+    test construction of a hybrid reservoir 
     """
 
     cwd_full = b"./reservoir_testing_files/"
@@ -337,7 +337,7 @@ def test_hybrid_construction(hybrid_reservoir):
 
 def test_rfc_construction(rfc_reservoir):
     """
-
+    test construction of a rfc reservoir 
     """
     cwd_full = b"./reservoir_testing_files/"
 

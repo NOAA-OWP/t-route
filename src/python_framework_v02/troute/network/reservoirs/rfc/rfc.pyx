@@ -40,7 +40,7 @@ cdef class MC_RFC(Reach):
         upstream_ids: array[long]
           buffer/array of upstream identifiers which contribute flow to this reservoir
         args: list
-          the levelpool paramters ordered as follows:
+          the rfc parameters ordered as follows:
             area = args[0]
             max_depth = args[1]
             orifice_area = args[2]
@@ -61,13 +61,6 @@ cdef class MC_RFC(Reach):
     # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
     # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
     # init the backing struct, pass a dam_length of 10.0 for now
-    #init_hybrid_reach(&self._reach, lake_number,
-    #                     10.0, args[0], args[1],
-    #                     args[2], args[3], args[4],
-    #                     args[5], args[6], args[7],
-    #                     args[8], args[10], args[11],
-    #                     args[12], args[13], args[14],
-    #                     args[15], args[16], args[17])
 
     #Setting default dam_length to 10
     dam_length = 10.0
@@ -80,6 +73,7 @@ cdef class MC_RFC(Reach):
     weir_elevation = args[6]
     weir_length = args[7]
     initial_fractional_depth  = args[8]
+    water_elevation = args[10]
     reservoir_type =  args[11]
     reservoir_parameter_file = args[12]
     start_date = args[13]
@@ -87,20 +81,24 @@ cdef class MC_RFC(Reach):
     forecast_lookback_hours = args[15]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
-    if (len(reservoir_parameter_file) > 256):
-       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
+    if (len(reservoir_parameter_file) > 255):
+       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 255 characters.")
 
-    # Note Some issues with __calloc__:
-    # The python type isn't guaranteed to be properly constructed, so cannot depend on super class being constructured.
-    # Thus I don't think we can put these C init functions in __calloc__, at least not in all cases.
-    # init the backing struct, pass a dam_length of 10.0 for now
+    if (len(start_date) > 20):
+       raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
+
+    if (len(time_series_path) > 255):
+       raise ValueError("time_series_path is too large. Length must be less than or equal to 255 characters.")
+
     init_rfc_reach(&self._reach, lake_number,
-                         10.0, args[0], args[1],
-                         args[2], args[3], args[4],
-                         args[5], args[6], args[7],
-                         args[8], args[10], args[11],
-                         args[12], args[13], args[14],
-                         args[15])
+                         dam_length, area, max_depth,
+                         orifice_area, orifice_coefficient, orifice_elevation,
+                         weir_coefficient, weir_elevation, weir_length,
+                         initial_fractional_depth, water_elevation, reservoir_type,
+                         reservoir_parameter_file.encode('utf-8'), 
+                         start_date.encode('utf-8'), 
+                         time_series_path.encode('utf-8'),
+                         forecast_lookback_hours)
 
   def __dealloc__(self):
     """
@@ -132,64 +130,114 @@ cdef class MC_RFC(Reach):
 
   @property
   def water_elevation(self):
+    """
+      Reservoir water surface elevation
+    """
     return self._reach.reach.rfc.water_elevation
 
   @property
   def lake_area(self):
+    """
+      Surface area of the reservoir
+    """
     return self._reach.reach.rfc.area
 
   @property
   def weir_elevation(self):
+    """
+      Elevation, in meters, of the bottom of the weir
+    """
     return self._reach.reach.rfc.weir_elevation
 
   @property
   def weir_coefficient(self):
+    """
+      Weir coefficient
+    """
     return self._reach.reach.rfc.weir_coefficient
 
   @property
   def weir_length(self):
+    """
+      Length of the weir, in meters
+    """
     return self._reach.reach.rfc.weir_length
 
   @property
   def dam_length(self):
+    """
+      Length of the dam, in meters
+    """
     return self._reach.reach.rfc.dam_length
 
   @property
   def orifice_elevation(self):
+    """
+      Elevation, in meters, of the orifice flow component
+    """
     return self._reach.reach.rfc.orifice_elevation
 
   @property
   def orifice_area(self):
+    """
+      Area of the orifice flow component, in square meters
+    """
     return self._reach.reach.rfc.orifice_area
 
   @property
   def max_depth(self):
+    """
+      Maximum water elevaiton, in meters, before overflow occurs
+    """
     return self._reach.reach.rfc.max_depth
 
   @property
   def lake_number(self):
+    """
+      WRF Hydro lake identifier
+    """
     return self._reach.reach.rfc.lake_number
 
   @property
   def initial_fractional_depth(self):
+    """
+      Initial water surface elevation, as a percentage of total capacity,
+      to use if initial water elevation is unknown.
+    """
     return self._reach.reach.rfc.initial_fractional_depth
 
   @property
   def reservoir_type(self):
+    """
+      Reservoir Type as in 1 for Level Pool, 2 for Persistence-Hybrid-USGS,
+      3 for Persistence-Hybrid-USACE, or 4 for RFC
+    """
     return self._reach.reach.rfc.reservoir_type
 
   @property
   def reservoir_parameter_file(self):
+    """
+      Reservoir Parameter File with path
+    """
     return self._reach.reach.rfc.reservoir_parameter_file
 
   @property
   def start_date(self):
+    """
+      Start date and time of simulation
+    """
     return self._reach.reach.rfc.start_date
 
   @property
   def time_series_path(self):
+    """
+      Path for RFC time series files
+    """
     return self._reach.reach.rfc.time_series_path
 
   @property
   def forecast_lookback_hours(self):
+    """
+      Number of hours to look back in time for a RFC time series file
+    """
     return self._reach.reach.rfc.forecast_lookback_hours
