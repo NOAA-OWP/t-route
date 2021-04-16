@@ -4,10 +4,10 @@ FC := gfortran
 # compile flags
 FCFLAGS = -g -c -O2 -fPIC
 
-diffusive.o: maindiff.f90
+diffusive.o: diffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
 
-pydiffusive.o: pymaindiff.f90
+pydiffusive.o: pydiffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
 
 install:
