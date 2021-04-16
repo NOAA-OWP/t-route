@@ -58,7 +58,8 @@ contains
             character(len=256) :: usgs_timeslice_path_F
             character(len=256) :: usace_timeslice_path_F
 
-            integer :: char_index, nchars_reservoir_parameter_file, nchars_start_date, nchars_usgs_timeslice_path, nchars_usace_timeslice_path
+            integer :: char_index, nchars_reservoir_parameter_file 
+            integer :: nchars_start_date, nchars_usgs_timeslice_path, nchars_usace_timeslice_path
          
             ! Use fortran calls to go find certain things like null_char instead of using this loop every time
             ! Look up more about converting char array to string
@@ -100,13 +101,6 @@ contains
             nchars_usace_timeslice_path = char_index - 1  ! Exclude null character from Fortran string
 
             CALL C_F_POINTER(handle, hybrid_ptr)
-
-            print *, "water elevation bind: ", water_elevation
-            print *, "lake_max_water_elevation bind: ", lake_max_water_elevation
-            print *, "initial_fractional_depth: ", initial_fractional_depth
-            print *, "lake_number bind: ", lake_number
-            print *, "reservoir_type bind: ", reservoir_type
-
 
             call hybrid_ptr%init(water_elevation,  &
                                  lake_area, weir_elevation, weir_coeffecient, &
