@@ -1,6 +1,6 @@
 cimport numpy as np
 """
-FIXME add some significant inline documentation
+Declaring C types for Hybrid Class variables and functions
 """
 from troute.network.reach cimport Reach, compute_type
 
@@ -26,5 +26,6 @@ cdef extern from "hybrid_structs.h":
 
 cdef class MC_Hybrid(Reach):
   """
+  C type for MC_Hybrid which is a reservoir subclass of a Reach
   """
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)
