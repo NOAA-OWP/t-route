@@ -19,7 +19,7 @@ contains
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
             TYPE(persistence_levelpool_hybrid), POINTER :: hybrid_ptr
             CALL C_F_POINTER(handle, hybrid_ptr)
-            !DEALLOCATE(hybrid_ptr)
+            DEALLOCATE(hybrid_ptr)
         END SUBROUTINE free_hybrid
 
         SUBROUTINE init_hybrid(handle,  water_elevation,  &
