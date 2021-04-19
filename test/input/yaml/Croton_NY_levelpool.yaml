@@ -41,6 +41,7 @@ supernetwork_parameters:
         waterbody: "NHDWaterbodyComID"
         tw: "TopWdth"  # TODO: rename to `topwidth`
         twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+        alt: "alt"
         musk: "MusK"
         musx: "MusX"
         cs: "ChSlp"  # TODO: rename to `sideslope`
