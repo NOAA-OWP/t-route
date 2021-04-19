@@ -345,7 +345,15 @@ def fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd):
 
     # ** 1) downstream stage (here, lake elevation) boundary condition
     # from nwis_client.iv import IVDataService
-    from hydrotools.nwis_client.iv import IVDataService
+    # install via: pip install hydrotools.nwis_client
+    try:
+        from hydrotools.nwis_client.iv import IVDataService
+    except ImportError as err:
+        print(err, end="... ")
+        print(
+            "Please install hydrotools.nwis_client via: `pip install hydrotools.nwis_client`"
+        )
+        raise  # ensures program exit by re-raising the error.
 
     # from evaluation_tools.nwis_client.iv import IVDataService
     # Retrieve streamflow and stage data from two sites
