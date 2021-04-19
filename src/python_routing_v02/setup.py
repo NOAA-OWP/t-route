@@ -38,6 +38,7 @@ diffusive = Extension(
     "diffusive",
     sources=["fast_reach/diffusive.{}".format(ext)],
     extra_objects=["fast_reach/diffusive.o", "fast_reach/pydiffusive.o"],
+    include_dirs=[np.get_include()],
     extra_compile_args=["-g"],
     libraries=["gfortran"],
 )
