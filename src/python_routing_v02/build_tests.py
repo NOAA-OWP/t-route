@@ -72,6 +72,7 @@ def build_test_parameters(
                 "dx": "Length",
                 "n": "n",  # TODO: rename to `manningn`
                 "ncc": "nCC",  # TODO: rename to `mannningncc`
+                "alt": "alt",
                 "s0": "So",  # TODO: rename to `bedslope`
                 "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
                 "waterbody": "NHDWaterbodyComID",
@@ -167,6 +168,7 @@ def parity_check(
 ):
     nts = run_parameters["nts"]
     dt = run_parameters["dt"]
+    
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
         mask_file_path = pd.read_csv(mask_file_path)
@@ -200,6 +202,15 @@ def parity_check(
 
     compare_node = parity_parameters["parity_check_compare_node"]
 
+    elif "parity_check_waterbody_file" in parity_parameters:
+        validation_data = pd.read_csv(parity_parameters["parity_check_waterbody_file"], index_col=0)
+        validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
+        #TODO: Add toggle option to compare water elevation
+        #validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
+        validation_data = validation_data[[compare_node]]
+        validation_data.index = validation_data.index.astype("datetime64[ns]")
+        validation_data = validation_data.transpose()
+
     wrf_time = validation_data.columns.astype("datetime64[ns]")
     dt_wrf = wrf_time[1] - wrf_time[0]
     sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
@@ -224,6 +235,16 @@ def parity_check(
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
 
+    depths = flowveldepth.loc[:, (slice(None), "d")]
+    depths = depths.T.reset_index(level=[0, 1])
+    depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
+    depths["Time (d)"] = ((depths.Timestep + 1) * dt) / (24 * 60 * 60)
+    depths = depths.set_index("Time (d)")
+
+    wrf_time = validation_data.columns.astype("datetime64[ns]")
+    dt_wrf = wrf_time[1] - wrf_time[0]
+    sim_duration = (wrf_time[-1] + dt_wrf) - wrf_time[0]
+
     # specify simulation calendar time
     dt_routing = pd.Timedelta(str(dt) + "seconds")
     time_routing = pd.period_range(
@@ -232,17 +253,23 @@ def parity_check(
     time_wrf = validation_data.columns.values
 
     # construct comparable dataframes
-    trt = pd.DataFrame(
-        flows.loc[:, compare_node].values,
-        index=time_routing,
-        columns=["flow, t-route (cms)"],
-    )
-    wrf = pd.DataFrame(
-        validation_data.loc[compare_node, :].values,
-        index=time_wrf,
-        columns=["flow, wrf (cms)"],
-    )
+    if compare_node in validation_data.index:
 
-    # compare dataframes
-    compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
-    print(compare)
+        # construct comparable dataframes
+        trt = pd.DataFrame(
+            flows.loc[:, compare_node].values,
+            #TODO: Add toggle option to compare water elevation
+            #depths.loc[:, compare_node].values,
+            index=time_routing,
+            columns=["flow, t-route (cms)"],
+        )
+        wrf = pd.DataFrame(
+            validation_data.loc[compare_node, :].values,
+            index=time_wrf,
+            columns=["flow, wrf (cms)"],
+        )
+
+        # compare dataframes
+        compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
+        compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        compare["absdiff"] = np.abs(compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
