@@ -22,7 +22,7 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
             with zcsv.open(layer_string) as csv:
                 return pd.read_csv(csv, header=header)
     else:
-        return pd.read_csv(geo_file_path)
+        return pd.read_csv(geo_file_path,header=header)
 
 
 def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
@@ -87,6 +87,7 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
     """
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
+        # import pdb; pdb.set_trace()
         return read_level_pool_waterbody_df(
             wb_params["level_pool_waterbody_parameter_file_path"],
             wb_params["level_pool_waterbody_id"],
@@ -114,13 +115,24 @@ def read_level_pool_waterbody_df(
     else:
         return df1.loc[lake_id_mask]
     """
+    # import pdb; pdb.set_trace()
+    with xr.open_dataset(parm_file) as ds:
+        df1 = ds.to_dataframe()
+    df1 = df1.set_index(lake_index_field).sort_index(axis="index")
+    for i in df1.index:
+        print(i)
+    if lake_id_mask is None:
+        return df1
+    else:
+        return df1.loc[lake_id_mask]
 
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
-    with xr.open_dataset(parm_file) as ds:
-        ds = ds.swap_dims({"feature_id": lake_index_field})
-        df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
-    df1 = df1.sort_index(axis="index")
-    return df1
+    # import pdb; pdb.set_trace()
+    # with xr.open_dataset(parm_file) as ds:
+    #     ds = ds.swap_dims({"feature_id": lake_index_field})
+    #     df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+    # df1 = df1.sort_index(axis="index")
+    # return df1
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):
@@ -128,7 +140,7 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     qlat_input_file: comma delimted file with header giving timesteps, rows for each segment
     index_col = 0: column/field in the input file with the segment/link id
     """
-    ql = pd.read_csv(qlat_input_file, index_col=index_col)
+    ql = pd.read_csv(qlat_input_file, index_col=index_col,header=0)
     ql.index = ql.index.astype(int)
     ql = ql.sort_index(axis="index")
     return ql.astype("float32")
@@ -300,7 +312,7 @@ def preprocess_time_station_index(xd):
 
 
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
-
+    
     df2 = pd.read_csv(usgs_csv, index_col=0)
 
     with xr.open_dataset(routelink_subset_file) as ds:
@@ -323,25 +335,25 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
 
-    for i in range(0, (len(columns_list) * 3) - 12, 12):
-        original_string = usgs_df.columns[i]
-        original_string_shortened = original_string[:-5]
-        temp_name1 = original_string_shortened + str("05:00")
-        temp_name2 = original_string_shortened + str("10:00")
-        temp_name3 = original_string_shortened + str("20:00")
-        temp_name4 = original_string_shortened + str("25:00")
-        temp_name5 = original_string_shortened + str("35:00")
-        temp_name6 = original_string_shortened + str("40:00")
-        temp_name7 = original_string_shortened + str("50:00")
-        temp_name8 = original_string_shortened + str("55:00")
-        usgs_df.insert(i + 1, temp_name1, np.nan)
-        usgs_df.insert(i + 2, temp_name2, np.nan)
-        usgs_df.insert(i + 4, temp_name3, np.nan)
-        usgs_df.insert(i + 5, temp_name4, np.nan)
-        usgs_df.insert(i + 7, temp_name5, np.nan)
-        usgs_df.insert(i + 8, temp_name6, np.nan)
-        usgs_df.insert(i + 10, temp_name7, np.nan)
-        usgs_df.insert(i + 11, temp_name8, np.nan)
+    # for i in range(0, (len(columns_list) * 3) - 12, 12):
+    #     original_string = usgs_df.columns[i]
+    #     original_string_shortened = original_string[:-5]
+    #     temp_name1 = original_string_shortened + str("05:00")
+    #     temp_name2 = original_string_shortened + str("10:00")
+    #     temp_name3 = original_string_shortened + str("20:00")
+    #     temp_name4 = original_string_shortened + str("25:00")
+    #     temp_name5 = original_string_shortened + str("35:00")
+    #     temp_name6 = original_string_shortened + str("40:00")
+    #     temp_name7 = original_string_shortened + str("50:00")
+    #     temp_name8 = original_string_shortened + str("55:00")
+    #     usgs_df.insert(i + 1, temp_name1, np.nan)
+    #     usgs_df.insert(i + 2, temp_name2, np.nan)
+    #     usgs_df.insert(i + 4, temp_name3, np.nan)
+    #     usgs_df.insert(i + 5, temp_name4, np.nan)
+    #     usgs_df.insert(i + 7, temp_name5, np.nan)
+    #     usgs_df.insert(i + 8, temp_name6, np.nan)
+    #     usgs_df.insert(i + 10, temp_name7, np.nan)
+    #     usgs_df.insert(i + 11, temp_name8, np.nan)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
