@@ -56,6 +56,7 @@ def set_supernetwork_parameters(
                 "waterbody": "NHDWaterbo",
                 "tw": "TopWdth",
                 "twcc": "TopWdthCC",
+                "alt": "alt",
                 "musk": "MusK",
                 "musx": "MusX",
                 "cs": "ChSlp",
@@ -350,6 +351,7 @@ def set_supernetwork_parameters(
                 "bw": "BtmWdth",
                 "tw": "TopWdth",
                 "twcc": "TopWdthCC",
+                "alt": "alt",
                 "waterbody": "NHDWaterbodyComID",
                 "musk": "MusK",
                 "musx": "MusX",
@@ -502,7 +504,13 @@ def build_channel_initial_state(
     return q0
 
 
-def build_qlateral_array(forcing_parameters, connections_keys, supernetwork_parameters, nts, qts_subdivisions=1):
+def build_qlateral_array(
+    forcing_parameters,
+    connections_keys,
+    supernetwork_parameters,
+    nts,
+    qts_subdivisions=1,
+):
     # TODO: set default/optional arguments
 
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)

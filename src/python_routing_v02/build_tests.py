@@ -72,6 +72,7 @@ def build_test_parameters(
                 "dx": "Length",
                 "n": "n",  # TODO: rename to `manningn`
                 "ncc": "nCC",  # TODO: rename to `mannningncc`
+                "alt": "alt",
                 "s0": "So",  # TODO: rename to `bedslope`
                 "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
                 "waterbody": "NHDWaterbodyComID",
