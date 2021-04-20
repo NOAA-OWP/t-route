@@ -29,7 +29,7 @@ from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
 import xarray as xr
-
+import asyncio
 
 def _handle_args():
     parser = argparse.ArgumentParser(
@@ -709,6 +709,7 @@ def compute_nhd_routing_v02(
                     usgs_df_sub.drop(
                         usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
                     )
+                    
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
@@ -727,6 +728,8 @@ def compute_nhd_routing_v02(
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
+
+                # import pdb; pdb.set_trace()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
                 
@@ -1003,8 +1006,28 @@ ts_iterator = 0
 restart_file_number = 2
 file_run_size = int(total_timeslice_files / runs_to_be_completed)
 
+async def load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df):
+    if ts_iterator == 0:
+        q0 = nnu.build_channel_initial_state(
+            restart_parameters, supernetwork_parameters, param_df.index
+        )
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        return q0
+    else:
+        q0_file_name = (
+        restart_parameters["wrf_hydro_channel_restart_file"][:-15]
+        + str(ts_iterator + 1)
+        + ".csv"
+        ) 
+        q0 = pd.read_csv(q0_file_name)
+        q0 = q0.set_index("link")
+        q0 = q0.loc[:, :].astype("float32")
+        q0.index = q0.index.astype(int)
+        print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
+        return q0
 
-def main():
+
+async def main():
     (
         supernetwork_parameters,
         waterbody_parameters,
@@ -1092,19 +1115,7 @@ def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-    if ts_iterator == 0:
-        q0 = nnu.build_channel_initial_state(
-            restart_parameters, supernetwork_parameters, param_df.index
-        )
-        
-    else:
-        q0_file_name = (
-            restart_parameters["wrf_hydro_channel_restart_file"][:-15]
-            + str(ts_iterator + 1)
-            + ".csv"
-        )
-        q0 = nnu.restart_file_csv(q0_file_name)
-
+    
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -1125,7 +1136,9 @@ def main():
         supernetwork_parameters,
         run_parameters.get("qts_subdivisions", 1),
     )
-
+    # import pdb; pdb.set_trace()
+    q0 = load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df)
+    
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -1145,7 +1158,7 @@ def main():
             print("creating usgs time_slice data array ...")
 
         usgs_df = nnu.build_data_assimilation(data_assimilation_parameters)
-
+        
         if verbose:
             print("usgs array complete")
         if showtiming:
@@ -1227,7 +1240,6 @@ def main():
         if run_parameters.get("return_courant", False):
             import pdb
 
-            pdb.set_trace()
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
                 copy=False,
@@ -1287,8 +1299,8 @@ def main():
             usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
             usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
-        if debuglevel <= -1:
-            print(flowveldepth)
+        # if debuglevel <= -1:
+            # print(flowveldepth)
 
     if verbose:
         print("output complete")
@@ -1331,7 +1343,30 @@ def main():
         ts_iterator = ts_iterator + 1
         restart_file_number = restart_file_number + 1
         main()
-
+    
 
 if __name__ == "__main__":
-    main()
+    # main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()
+# #bring in restart file csv read 
+# async def restart_file_csv(q0_file_name):
+#     q0 = pd.read_csv(q0_file_name)
+#     q0 = q0.set_index("link")
+#     q0 = q0.loc[:, :].astype("float32")
+#     q0.index = q0.index.astype(int)
+#     return q0
+
+# async def main():
+#     q0_file_name = (
+#     restart_parameters["wrf_hydro_channel_restart_file"][:-15]
+#     + str(ts_iterator + 1)
+#     + ".csv"
+#     )
+#     q0 = await restart_file_csv(q0_file_name)
+#     print(q0)
+
+# loop = asyncio.get_event_loop()
+# loop.run_until_complete(print_sum(1, 2))
+# loop.close()
