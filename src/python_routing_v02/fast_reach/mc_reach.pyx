@@ -705,6 +705,7 @@ cpdef object compute_network_structured_obj(
     list lake_numbers_col,
     const double[:,:] wbody_cols,
     dict waterbody_parameters,
+    const int[:,:] reservoir_types,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     dict upstream_results={},
@@ -775,6 +776,8 @@ cpdef object compute_network_structured_obj(
 
     #print ("---------------")
     #print (waterbody_parameters)
+    #print ("reservoir_types in fast")
+    #print (reservoir_types)
     #print ("---------------")
 
 
@@ -786,13 +789,34 @@ cpdef object compute_network_structured_obj(
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
             #Add level pool reservoir ojbect to reach_objects
-            reach_objects.append(
-                #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                (
-                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
-                  reach_type)#lp_reservoir)
-                )
-            wbody_index += 1
+
+            #if (reservoir_types[1][wbody_index] == 1):
+            if (reservoir_types[wbody_index][0] == 1):
+                print ("Level Pool type")
+            
+                reach_objects.append(
+                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                    (
+                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], \
+                      array('l',upstream_ids), wbody_parameters[wbody_index]),
+                      reach_type)#lp_reservoir)
+                    )
+                wbody_index += 1
+
+            elif (reservoir_types[wbody_index][0] == 2):
+                print ("Hybrid USGS type")
+
+                reach_objects.append(
+                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                    (
+                      MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], \
+                      array('l',upstream_ids), wbody_parameters[wbody_index]),
+                      reach_type)#hybrid_reservoir)
+                    )
+                wbody_index += 1
+
+
+
         else:
             segment_ids = binary_find(data_idx, reach)
             #Set the initial condtions before running loop

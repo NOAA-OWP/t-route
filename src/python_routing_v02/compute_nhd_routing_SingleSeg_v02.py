@@ -332,6 +332,7 @@ def compute_nhd_routing_v02(
     waterbodies_df,
     diffusive_parameters=None,
     waterbody_parameters,
+    reservoir_types_df,
 ):
 
     start_time = time.time()
@@ -698,6 +699,22 @@ def compute_nhd_routing_v02(
                         ],
                     ]
 
+                    #If reservoir types other than Level Pool are active
+                    if not reservoir_types_df.empty:
+                        reservoir_types_df_sub = reservoir_types_df.loc[
+                            lake_segs,
+                            [
+                                "reservoir_type",
+                            ],
+                        ]
+
+                        print ("^^^^^^^^^^^^^^^^^^^^^")
+                        print ("reservoir_types_df_sub")
+                        print (reservoir_types_df_sub)
+                        print ("^^^^^^^^^^^^^^^^^^^^^")
+                        print (reservoir_types_df_sub.values)
+                        print ("^^^^^^^^^^^^^^^^^^^^^")
+
                 else:
                     lake_segs = []
                     waterbodies_df_sub = pd.DataFrame()
@@ -755,6 +772,7 @@ def compute_nhd_routing_v02(
                         lake_segs,
                         waterbodies_df_sub.values,
                         waterbody_parameters,
+                        reservoir_types_df_sub.values,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
                         {},
@@ -860,6 +878,7 @@ def compute_nhd_routing_v02(
                     lake_segs,
                     waterbodies_df_sub.values,
                     waterbody_parameters,
+                    reservoir_types_df.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
                     {},
@@ -1073,6 +1092,9 @@ def main():
             .set_index("lake_id")
         )
 
+        #Declare empty dataframe
+        reservoir_types_df = {}
+
         #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype="level_pool"
         wb_params = waterbody_parameters[wbtype]
@@ -1102,6 +1124,16 @@ def main():
             print ("=======Reading hybrid----------------")
             print (reservoir_types_df)
             print ("============")
+
+            # Remove duplicate lake_ids and rows
+            reservoir_types_df_reduced = (
+                reservoir_types_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+            )
+
+            print (reservoir_types_df_reduced)
+            print ("QQQQQQQQQQQQQQQQQQQQQ")
 
 
         else:
@@ -1162,9 +1194,13 @@ def main():
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(
-            waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id"
-        )
+        print ("1&&&&&&&&&&&&&&&&&&&&")
+        print (waterbodies_df_reduced)
+
+        waterbodies_df_reduced = pd.merge(waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id")
+        print ("2&&&&&&&&&&&&&&&&&&&&")
+        print (waterbodies_df_reduced)
+        print ("3&&&&&&&&&&&&&&&&&&&&")
 
         if verbose:
             print("waterbody initial states complete")
@@ -1277,6 +1313,7 @@ def main():
         waterbodies_df_reduced,
         diffusive_parameters,
         waterbody_parameters,
+        reservoir_types_df_reduced,
     )
 
     if verbose:
