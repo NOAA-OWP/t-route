@@ -65,6 +65,45 @@ waterbody_parameters:
         level_pool_orifice_elevation: OrificeE
         level_pool_orifice_coefficient: OrificeC
         level_pool_orifice_area: OrificeA
+
+        #hybrid:
+        # Specify the reservoir parameter file
+        reservoir_parameter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/reservoir_index_croton_ny.nc"
+        #reservoir_parameter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
+
+        # If using USGS persistence reservoirs, set to True. (default=.FALSE.)
+        reservoir_persistence_usgs: True
+
+        # Specify the path to the timeslice files to be used by USGS reservoirs
+        reservoir_usgs_timeslice_path: "./usgs_timeslices/"
+
+        # If using USACE persistence reservoirs, set to True. (default=.FALSE.)
+        reservoir_persistence_usace: False
+
+        # Specify the path to the timeslice files to be used by USACE reservoirs
+        reservoir_usace_timeslice_path: "./usace_timeslices/"
+
+        # Specify lookback hours to read reservoir observation data
+        reservoir_observation_lookback_hours: 24
+
+        # Specify update time interval in seconds to read new reservoir observation data
+        # The default is 86400 (seconds per day). Set to 3600 for standard and extended AnA simulations.
+        # Set to 1000000000 for short range and medium range forecasts.
+        reservoir_observation_update_time_interval_seconds: 3600
+
+        #rfc:
+        # Specify the reservoir parameter file
+        #reservoir_parameter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/reservoir_index_croton_ny.nc"
+        
+        # If using RFC forecast reservoirs, set to True. (default=.FALSE.)
+        reservoir_rfc_forecasts: False
+
+        # Specify the path to the RFC time series files to be used by reservoirs
+        reservoir_rfc_forecasts_time_series_path: "./rfc_timeseries/"
+
+        # Specify lookback hours to read reservoir RFC forecasts
+        reservoir_rfc_forecasts_lookback_hours: 28
+
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
@@ -88,8 +127,8 @@ restart_parameters:
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
 parity_parameters:
     #Use two lines below for parity check on streamflow and leave the following two lines commented out
-    parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
-    parity_check_compare_node: 6227150 #Stream
+    #parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
+    #parity_check_compare_node: 6227150 #Stream
     #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
-    # parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
-    # parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+    parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
+    parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain

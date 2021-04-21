@@ -334,6 +334,7 @@ def compute_nhd_routing_v02(
     return_courant,
     waterbodies_df,
     diffusive_parameters=None,
+    waterbody_parameters,
 ):
 
     param_df["dt"] = dt
@@ -769,6 +770,7 @@ def compute_nhd_routing_v02(
                         qlat_sub.values.astype("float32"),
                         lake_segs,
                         waterbodies_df_sub.values,
+                        waterbody_parameters,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
                         last_obs_sub.values.astype("float32"),
@@ -883,6 +885,7 @@ def compute_nhd_routing_v02(
                     qlat_sub.values.astype("float32"),
                     lake_segs,
                     waterbodies_df_sub.values,
+                    waterbody_parameters,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
                     last_obs_sub.values.astype("float32"),
@@ -1100,6 +1103,43 @@ def nwm_network_preprocess(
             .drop_duplicates(subset="lake_id")
             .set_index("lake_id")
         )
+
+        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype="level_pool"
+        wb_params = waterbody_parameters[wbtype]
+
+        if wb_params["reservoir_persistence_usgs"] or wb_params["reservoir_persistence_usace"] \
+        or wb_params["reservoir_rfc_forecasts"]:
+
+            #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
+            #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
+            
+            #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
+            #    wb_params["level_pool_waterbody_id"],) 
+
+            print ("wb_params[level_pool_waterbody_i]")
+            print (wb_params["level_pool_waterbody_id"])
+            print ({"level_pool": wbodies.values()})
+            print ("============")
+            print (wb_params["reservoir_parameter_file"])
+
+            #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"], \
+            #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
+            reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"], \
+                wb_params["level_pool_waterbody_id"], wbodies.values(),) 
+
+            #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"])
+
+            print ("=======Reading hybrid----------------")
+            print (reservoir_types_df)
+            print ("============")
+
+
+        else:
+            print ("========hybrid off -------------------------------")
+
+
+
     else:
         waterbodies_df = pd.DataFrame()
 
@@ -1378,6 +1418,7 @@ def nwm_route(
         compute_parameters.get("return_courant", False),
         waterbodies_df,
         diffusive_parameters,
+        waterbody_parameters,
     )
 
     with open("mainstems_conus.txt", "w") as filehandle:

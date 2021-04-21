@@ -15,9 +15,9 @@ from libc.stdlib cimport malloc, free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-#from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
-cimport troute.network.reservoirs.levelpool.levelpool as lp
-
+from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
+from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, run
+from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -722,6 +722,7 @@ cpdef object compute_network_structured_obj(
     const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    dict waterbody_parameters,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
@@ -790,6 +791,11 @@ cpdef object compute_network_structured_obj(
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
     wbody_index = 0
+
+    #print ("---------------")
+    #print (waterbody_parameters)
+    #print ("---------------")
+
 
     for reach, reach_type in reaches_wTypes:
         upstream_reach = upstream_connections.get(reach[0], ())
