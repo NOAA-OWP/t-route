@@ -11,6 +11,12 @@ build_reservoir_kernel=true
 build_framework=true
 build_routing=true
 
+if [ -z "$F90" ]
+then
+    export F90="gfortran"
+    echo "using F90='gfortran'"
+fi
+
 #if you have custom static library paths, uncomment below and export them
 #export LIBRARY_PATH=<paths>:$LIBRARY_PATH
 #if you have custom dynamic library paths, uncomment below and export them
