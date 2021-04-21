@@ -1013,7 +1013,7 @@ def load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df):
         q0 = nnu.build_channel_initial_state(
             restart_parameters, supernetwork_parameters, param_df.index
         )
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX - Initial File")
         return q0
     else:
         q0_file_name = (
@@ -1025,7 +1025,7 @@ def load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df):
         q0 = q0.set_index("link")
         q0 = q0.loc[:, :].astype("float32")
         q0.index = q0.index.astype(int)
-        print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
+        print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY - Restart File")
         return q0
 
 
@@ -1117,7 +1117,9 @@ async def main():
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
-    
+    # import pdb; pdb.set_trace()
+    q0 = await load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df)
+        
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -1138,9 +1140,7 @@ async def main():
         supernetwork_parameters,
         run_parameters.get("qts_subdivisions", 1),
     )
-    # import pdb; pdb.set_trace()
-    q0 = await load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df)
-    
+
     if verbose:
         print("qlateral array complete")
     if showtiming:
