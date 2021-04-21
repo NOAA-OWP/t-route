@@ -229,7 +229,8 @@ def read_reservoir_parameter_file(
         #print (items)
         #df1 = ds.sel(
         print ("%%%%%%%%%%%%%%%%%")
-        df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe().drop_duplicates()
+        df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        #df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe().drop_duplicates()
         print (df1)
         print ("$$$$$$$$$$$$$$$$$$$$")
     #return ds
