@@ -1006,27 +1006,20 @@ runs_to_be_completed = 3
 ts_iterator = 0
 restart_file_number = 2
 file_run_size = int(total_timeslice_files / runs_to_be_completed)
+q0 = None
 
-@asyncio.coroutine
-def load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df):
-    if ts_iterator == 0:
-        q0 = nnu.build_channel_initial_state(
-            restart_parameters, supernetwork_parameters, param_df.index
-        )
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX - Initial File")
-        return q0
-    else:
-        q0_file_name = (
-        restart_parameters["wrf_hydro_channel_restart_file"][:-15]
-        + str(ts_iterator + 1)
-        + ".csv"
-        ) 
-        q0 = pd.read_csv(q0_file_name)
-        q0 = q0.set_index("link")
-        q0 = q0.loc[:, :].astype("float32")
-        q0.index = q0.index.astype(int)
-        print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY - Restart File")
-        return q0
+async def load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df):
+    q0_file_name = (
+    restart_parameters["wrf_hydro_channel_restart_file"][:-15]
+    + str(ts_iterator + 1)
+    + ".csv"
+    ) 
+    q0 = pd.read_csv(q0_file_name)
+    q0 = q0.set_index("link")
+    q0 = q0.loc[:, :].astype("float32")
+    q0.index = q0.index.astype(int)
+    print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY - Restart File")
+    return q0
 
 
 async def main():
@@ -1054,6 +1047,8 @@ async def main():
     global restart_file_number
     global runs_to_be_completed
     global file_run_size
+    global q0
+
     if showtiming:
         main_start_time = time.time()
 
@@ -1118,8 +1113,14 @@ async def main():
     if verbose:
         print("setting channel initial states ...")
     # import pdb; pdb.set_trace()
-    q0 = await load_q0s(ts_iterator,restart_parameters,supernetwork_parameters,param_df)
+
+    if ts_iterator == 0:
+        q0 = nnu.build_channel_initial_state(
+            restart_parameters, supernetwork_parameters, param_df.index
+        )
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX - Initial File")
         
+
     if verbose:
         print("channel initial states complete")
     if showtiming:
@@ -1261,6 +1262,9 @@ async def main():
             + ".csv"
         )
         restart_flows.to_csv(output_iteration)
+
+        if ts_iterator != 0:
+            q0 = await load_q0s(ts_iterator+1,restart_parameters,supernetwork_parameters,param_df)
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
