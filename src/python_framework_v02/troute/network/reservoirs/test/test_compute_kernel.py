@@ -144,14 +144,14 @@ def hybrid_reservoir():
     args = [lake_area, max_depth, orifice_area,
             orifice_coefficient, orifice_elevation,
             weir_coefficient, weir_elevation, weir_length,
-            initial_fractional_depth, 0.0, water_elevation,
-            reservoir_type, reservoir_parameter_file, 
-            start_date, usgs_timeslice_path, 
-            usace_timeslice_path, observation_lookback_hours,
-            observation_update_time_interval_seconds]
+            initial_fractional_depth, 0.0, water_elevation]
 
     upstream_ids = array('l')
-    k = MC_Hybrid(0, lake_number, upstream_ids, args)
+    k = MC_Hybrid(0, lake_number, upstream_ids, args, 
+            reservoir_type, reservoir_parameter_file,
+            start_date, usgs_timeslice_path,
+            usace_timeslice_path, observation_lookback_hours,
+            observation_update_time_interval_seconds)
     yield k
 
 @pytest.fixture()
@@ -186,12 +186,12 @@ def rfc_reservoir():
     args = [lake_area, max_depth, orifice_area,
             orifice_coefficient, orifice_elevation,
             weir_coefficient, weir_elevation, weir_length,
-            initial_fractional_depth, 0.0, water_elevation,
-            reservoir_type, reservoir_parameter_file, 
-            start_date, time_series_path, forecast_lookback_hours]
+            initial_fractional_depth, 0.0, water_elevation]
 
     upstream_ids = array('l')
-    k = MC_RFC(0, lake_number, upstream_ids, args)
+    k = MC_RFC(0, lake_number, upstream_ids, args,
+               reservoir_type, reservoir_parameter_file,
+               start_date, time_series_path, forecast_lookback_hours)
     yield k
 
 def test_lp_construction(lp_reservoir):
