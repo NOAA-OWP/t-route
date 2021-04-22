@@ -1190,7 +1190,7 @@ async def main():
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
+    print(q0)
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -1260,8 +1260,8 @@ async def main():
         )
         restart_flows.to_csv(output_iteration)
 
-        if ts_iterator != 0:
-            q0 = await load_q0s(ts_iterator+1,restart_parameters,supernetwork_parameters,param_df)
+        
+        q0 = await load_q0s(ts_iterator+1,restart_parameters,supernetwork_parameters,param_df)
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
@@ -1356,23 +1356,3 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
     loop.close()
-# #bring in restart file csv read 
-# async def restart_file_csv(q0_file_name):
-#     q0 = pd.read_csv(q0_file_name)
-#     q0 = q0.set_index("link")
-#     q0 = q0.loc[:, :].astype("float32")
-#     q0.index = q0.index.astype(int)
-#     return q0
-
-# async def main():
-#     q0_file_name = (
-#     restart_parameters["wrf_hydro_channel_restart_file"][:-15]
-#     + str(ts_iterator + 1)
-#     + ".csv"
-#     )
-#     q0 = await restart_file_csv(q0_file_name)
-#     print(q0)
-
-# loop = asyncio.get_event_loop()
-# loop.run_until_complete(print_sum(1, 2))
-# loop.close()
