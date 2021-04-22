@@ -1,5 +1,3 @@
-# compiler
-FC := gfortran
 
 # compile flags
 FCFLAGS = -g -c -O2 -fPIC
