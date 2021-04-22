@@ -27,7 +27,8 @@ cdef class MC_RFC(Reach):
     MC_Reservoir is a subclass of MC_Reach_Base_Class
   """
 
-  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args):
+  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args, reservoir_type,
+               reservoir_parameter_file, start_date, time_series_path, forecast_lookback_hours):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
@@ -50,11 +51,12 @@ cdef class MC_RFC(Reach):
             weir_elevation = args[6]
             weir_length = args[7]
             initial_fractional_depth  = args[8]
-            reservoir_type =  args[11]
-            reservoir_parameter_file = args[12]
-            start_date = args[13]
-            time_series_path = args[14]
-            forecast_lookback_hours = args[15]
+            water_elevation = args[10]
+            reservoir_type
+            reservoir_parameter_file
+            start_date
+            time_series_path
+            forecast_lookback_hours
     """
     super().__init__(id, upstream_ids, compute_type.RESERVOIR_RFC)
     # Note Some issues with __calloc__:
@@ -74,11 +76,6 @@ cdef class MC_RFC(Reach):
     weir_length = args[7]
     initial_fractional_depth  = args[8]
     water_elevation = args[10]
-    reservoir_type =  args[11]
-    reservoir_parameter_file = args[12]
-    start_date = args[13]
-    time_series_path = args[14]
-    forecast_lookback_hours = args[15]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
     if (len(reservoir_parameter_file) > 255):

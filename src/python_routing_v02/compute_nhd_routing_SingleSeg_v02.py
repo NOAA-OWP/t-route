@@ -336,6 +336,7 @@ def compute_nhd_routing_v02(
     diffusive_parameters=None,
     waterbody_parameters,
     reservoir_types_df,
+    reservoir_type_specified,
 ):
 
     param_df["dt"] = dt
@@ -768,6 +769,20 @@ def compute_nhd_routing_v02(
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
+                print ("qlat_sub")
+                print (qlat_sub)
+                print ("q0_sub")
+                print (q0_sub)
+                print ("zzzzzzzzzzzzzzzz")
+
+                #model_start_time = qlat_sub.head()
+                model_start_time = list(qlat_sub)[0]
+
+                print ("model_start_time")
+                print (model_start_time)
+               
+                print ("22222222222zzzzzzzzzzzzzzzz")
+
                 param_df_sub = param_df_sub.reindex(
                     param_df_sub.index.tolist() + lake_segs
                 ).sort_index()
@@ -789,6 +804,8 @@ def compute_nhd_routing_v02(
                         waterbodies_df_sub.values,
                         waterbody_parameters,
                         reservoir_types_df_sub.values,
+                        reservoir_type_specified,
+                        model_start_time,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
                         last_obs_sub.values.astype("float32"),
@@ -1130,8 +1147,13 @@ def nwm_network_preprocess(
         wbtype="level_pool"
         wb_params = waterbody_parameters[wbtype]
 
+        reservoir_type_specified = False
+
         if wb_params["reservoir_persistence_usgs"] or wb_params["reservoir_persistence_usace"] \
         or wb_params["reservoir_rfc_forecasts"]:
+
+            
+            reservoir_type_specified = True
 
             #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
             #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
@@ -1329,6 +1351,9 @@ def nwm_forcing_preprocess(
         run, connections.keys(), supernetwork_parameters,
     )
 
+    print ("qlats")
+    print (qlats)
+
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -1454,6 +1479,7 @@ def nwm_route(
         diffusive_parameters,
         waterbody_parameters,
         reservoir_types_df_reduced,
+        reservoir_type_specified
     )
 
     with open("mainstems_conus.txt", "w") as filehandle:

@@ -724,6 +724,8 @@ cpdef object compute_network_structured_obj(
     const double[:,:] wbody_cols,
     dict waterbody_parameters,
     const int[:,:] reservoir_types,
+    bint reservoir_type_specified,
+    str model_start_time,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
@@ -799,6 +801,11 @@ cpdef object compute_network_structured_obj(
     #print (reservoir_types)
     #print ("---------------")
 
+    print ("model_start_time in fast")
+    print (model_start_time)
+    print (waterbody_parameters["level_pool"]["reservoir_parameter_file"])
+    print ("33333333333333333322222222222zzzzzzzzzzzzzzzz")
+
 
     for reach, reach_type in reaches_wTypes:
         upstream_reach = upstream_connections.get(reach[0], ())
@@ -809,30 +816,52 @@ cpdef object compute_network_structured_obj(
             #Reservoirs should be singleton list reaches, TODO enforce that here?
             #Add level pool reservoir ojbect to reach_objects
 
-            #if (reservoir_types[1][wbody_index] == 1):
-            if (reservoir_types[wbody_index][0] == 1):
+
+            if (not reservoir_type_specified):
                 print ("Level Pool type")
-            
+
                 reach_objects.append(
                     #tuple of MC_Reservoir, reach_type, and lp_reservoir
                     (
-                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], \
+                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
                       array('l',upstream_ids), wbody_parameters[wbody_index]),
                       reach_type)#lp_reservoir)
                     )
                 wbody_index += 1
+             
+            else:
 
-            elif (reservoir_types[wbody_index][0] == 2):
-                print ("Hybrid USGS type")
+                #if (reservoir_types[1][wbody_index] == 1):
+                if (reservoir_types[wbody_index][0] == 1):
+                    print ("Level Pool type")
+            
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                        (
+                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index]),
+                          reach_type)#lp_reservoir)
+                        )
+                    wbody_index += 1
 
-                reach_objects.append(
-                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                    (
-                      MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], \
-                      array('l',upstream_ids), wbody_parameters[wbody_index]),
-                      reach_type)#hybrid_reservoir)
-                    )
-                wbody_index += 1
+                elif (reservoir_types[wbody_index][0] == 2):
+                    print ("Hybrid USGS type")
+                    print ("!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@")
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                        (
+                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["level_pool"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["level_pool"]["reservoir_usgs_timeslice_path"],
+                          waterbody_parameters["level_pool"]["reservoir_usace_timeslice_path"],
+                          waterbody_parameters["level_pool"]["reservoir_observation_lookback_hours"],
+                          waterbody_parameters["level_pool"]["reservoir_observation_update_time_interval_seconds"]),
+                          reach_type)#hybrid_reservoir)
+                        )
+                    wbody_index += 1
 
         else:
             segment_ids = binary_find(data_idx, reach)
