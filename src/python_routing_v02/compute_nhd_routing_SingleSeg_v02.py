@@ -1239,7 +1239,6 @@ async def main():
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
         if run_parameters.get("return_courant", False):
-            import pdb
 
             flowveldepth = pd.concat(
                 [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
