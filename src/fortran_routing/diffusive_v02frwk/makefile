@@ -1,3 +1,4 @@
+FC := $(F90)
 
 # compile flags
 FCFLAGS = -g -c -O2 -fPIC
