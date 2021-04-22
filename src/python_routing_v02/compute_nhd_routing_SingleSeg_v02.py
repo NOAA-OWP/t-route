@@ -1260,8 +1260,8 @@ async def main():
         )
         restart_flows.to_csv(output_iteration)
 
-        
-        q0 = await load_q0s(ts_iterator+1,restart_parameters,supernetwork_parameters,param_df)
+        if ts_iterator < runs_to_be_completed:
+            q0 = await load_q0s(ts_iterator+1,restart_parameters,supernetwork_parameters,param_df)
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
