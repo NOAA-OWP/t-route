@@ -88,6 +88,7 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
     General waterbody dataframe reader. At present, only level-pool
     capability exists.
     """
+
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
         return read_level_pool_waterbody_df(
@@ -144,7 +145,7 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+def get_ql_from_wrf_hydro_mf(qlat_files, index_col, value_col="q_lateral"):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -183,8 +184,8 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
-    filter_list = None
 
+    filter_list = None
     with xr.open_mfdataset(
         qlat_files,
         combine="by_coords",
@@ -201,14 +202,12 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
                 ds[value_col].values.T,
                 index=ds[index_col].values[0],
                 columns=ds.time.values,
-                # dtype=float,
             )
         except:
             ql = pd.DataFrame(
                 ds[value_col].values.T,
                 index=ds[index_col].values,
                 columns=ds.time.values,
-                # dtype=float,
             )
 
     return ql
