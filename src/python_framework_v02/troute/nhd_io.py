@@ -7,7 +7,7 @@ import json
 import yaml
 import numpy as np
 from toolz import compose
-
+import dask.array as da
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -217,6 +217,51 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
+
+def write_to_chrtout(flowveldepth, chrtout_files, qts_subdivisions, index_col="feature_id"):
+    
+    # open chrtout files as a single xarray dataset
+    chrtout = xr.open_mfdataset(
+        chrtout_files,
+        combine="by_coords"
+    )
+    
+    # re-order index to match chrtout
+    flowveldepth = flowveldepth.reindex(chrtout.feature_id.values)
+    
+    # unpack, subset, and transpose t-route flow data
+    qtrt = flowveldepth.loc[:,::3].to_numpy().astype("float32")
+    qtrt = qtrt[:,::qts_subdivisions]
+    qtrt = np.transpose(qtrt)
+    
+    qtrt_DataArray = xr.DataArray(
+        data = da.from_array(qtrt),
+        dims = ["time","feature_id"],
+        coords = dict(
+            time = chrtout.time.values,
+            feature_id = chrtout.feature_id.values
+        ),
+        attrs = dict(
+            description = "River Flow, t-route",
+            units = "m3 s-1",
+        ),
+    )
+    
+    # add t-route flow variable to CHRTOUT stack
+    chrtout["streamflow_troute"] = qtrt_DataArray
+    
+    # build a list of datasets, 1 for each timestep
+    dataset_list = []
+    grp_object = list(chrtout.groupby("time"))
+    for i in range(len(grp_object)):
+        dataset_list.append(grp_object[i][1])
+        dataset_list[i] = dataset_list[i].expand_dims({"time": [grp_object[i][0]]})
+        
+    # save a new set of chrtout files to disk that contail t-route simulated flow
+    chrtout_files_new = []
+    chrtout_files_new[:] = [s + ".TRTE" for s in chrtout_files]
+    xr.save_mfdataset(dataset_list, paths = chrtout_files_new)
+    
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
