@@ -3,6 +3,12 @@ FC := $(F90)
 # compile flags
 FFLAGS += -g -c -O2 -fPIC
 
+.PHONY: all install diffusive
+
+all: diffusive
+
+diffusive: diffusive.o pydiffusive.o
+
 diffusive.o: diffusive.f90
 	$(FC) $(FFLAGS) -o $@ $<
 
