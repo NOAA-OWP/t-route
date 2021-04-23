@@ -1286,7 +1286,21 @@ def main():
                 ],
                 copy=False,
             )
+            
+        
+        # TO DO: better logic here linked to specific parameter signaling chrtout update
+        if forcing_parameters.get("qlat_file_pattern_filter", None):
 
+            qlat_input_folder = pathlib.Path(forcing_parameters.get("qlat_input_folder"))
+            chrtout_files = glob.glob(
+                    os.path.join(
+                        qlat_input_folder, 
+                        forcing_parameters["qlat_file_pattern_filter"]
+                    )
+                )
+            
+            nhd_io.write_to_chrtout(flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
+            
         if csv_output_folder:
             # create filenames
             # TO DO: create more descriptive filenames
