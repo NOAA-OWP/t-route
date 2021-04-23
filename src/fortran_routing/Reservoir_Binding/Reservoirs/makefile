@@ -1,8 +1,8 @@
 NETCDFINC := $(shell nc-config --fflags)
 NETCDFLIB := $(shell nc-config --flibs)
 FC = $(F90)
-FFLAGS := -g -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 $(NETCDFINC)
-LDFLAGS := $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
+FFLAGS += -g -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 $(NETCDFINC)
+LDFLAGS += $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
 ARFLAGS = rc
 
 VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts

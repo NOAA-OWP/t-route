@@ -1,13 +1,13 @@
 FC := $(F90)
 
 # compile flags
-FCFLAGS = -g -c -O2 -fPIC
+FFLAGS += -g -c -O2 -fPIC
 
 diffusive.o: diffusive.f90
-	$(FC) $(FCFLAGS) -o $@ $<
+	$(FC) $(FFLAGS) -o $@ $<
 
 pydiffusive.o: pydiffusive.f90
-	$(FC) $(FCFLAGS) -o $@ $<
+	$(FC) $(FFLAGS) -o $@ $<
 
 install:
 	cp *.o ../../../src/python_routing_v02/fast_reach
