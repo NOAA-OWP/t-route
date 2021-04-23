@@ -1,9 +1,9 @@
 NETCDFINC := $(shell nc-config --fflags)
 NETCDFLIB := $(shell nc-config --flibs)
-COMPILER90 = $(F90)
-F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4
-F90FLAGS := -g $(F90FLAGS) $(NETCDFINC) $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
-ARFLAGS = rc
+FC = $(F90)
+FFLAGS += -g -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 $(NETCDFINC)
+LDFLAGS += $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
+ARFLAGS := rc
 
 VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
 
@@ -12,10 +12,10 @@ VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
 all: binding_lp.a bind_hybrid.a bind_rfc.a
 
 test_main: test_main.o binding_lp.a bind_hybrid.a bind_rfc.a
-	gfortran -g -o $@ $^
+	$(FC) -g -o $@ $^
 
 test_main.o: test_binding.c
-	gcc -g -c -o $@ $<
+	$(CC) -g -c -o $@ $<
 
 module_levelpool.o: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o
 
@@ -39,10 +39,10 @@ bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o 
 	$(AR) $(ARFLAGS) $@ $^
 
 %.o: %.F
-	$(COMPILER90) $(F90FLAGS) $(NETCDFLIB) -c -o $@ $<
+	$(FC) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
 
 %.o: %.f90
-	$(COMPILER90) $(F90FLAGS) $(NETCDFLIB) -c -o $@ $<
+	$(FC) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
 
 install: binding_lp.a bind_hybrid.a bind_rfc.a
 	echo $^
