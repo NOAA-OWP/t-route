@@ -39,10 +39,10 @@ bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o 
 	$(AR) $(ARFLAGS) $@ $^
 
 %.o: %.F
-	$(FC) $(FFLAGS) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
+	$(FC) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
 
 %.o: %.f90
-	$(FC) $(FFLAGS) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
+	$(FC) $(FFLAGS) $(LDFLAGS) -c -o $@ $<
 
 install: binding_lp.a bind_hybrid.a bind_rfc.a
 	echo $^
