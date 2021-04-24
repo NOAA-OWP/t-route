@@ -16,7 +16,7 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 ## Parallel execution
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import argparse
 from pathlib import Path
@@ -337,6 +337,7 @@ def compute_nhd_routing_v02(
     waterbody_parameters,
     reservoir_types_df,
     reservoir_type_specified,
+    dt,
 ):
 
     param_df["dt"] = dt
@@ -776,7 +777,19 @@ def compute_nhd_routing_v02(
                 print ("zzzzzzzzzzzzzzzz")
 
                 #model_start_time = qlat_sub.head()
-                model_start_time = list(qlat_sub)[0]
+                #model_start_time = list(qlat_sub)[0]
+                qlat_start_time = list(qlat_sub)[0]
+
+                qlat_time_step_seconds = qts_subdivisions * dt
+
+                qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+
+                print('Date-time:', qlat_start_time_datetime_object)
+
+                model_start_time_datetime_object = qlat_start_time_datetime_object \
+                - timedelta(seconds=qlat_time_step_seconds)
+
+                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d %H:%M:%S')
 
                 print ("model_start_time")
                 print (model_start_time)
@@ -1479,7 +1492,8 @@ def nwm_route(
         diffusive_parameters,
         waterbody_parameters,
         reservoir_types_df_reduced,
-        reservoir_type_specified
+        reservoir_type_specified,
+        dt,
     )
 
     with open("mainstems_conus.txt", "w") as filehandle:
