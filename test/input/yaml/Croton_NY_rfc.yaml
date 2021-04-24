@@ -7,13 +7,13 @@ run_parameters:
     showtiming: true  # set the showtiming (omit flag for no timing information.)
     debuglevel: 1  # set the debuglevel for additional console output.
     break_network_at_waterbodies: true # replace waterbodies in the route-link dataset with segments representing the reservoir and calculate to divide the computation (leave blank for no splitting.)
-                          # WARNING: `break_network_at_waterbodies: true` will only work if compute_kernel is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
-    compute_kernel: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+                          # WARNING: `break_network_at_waterbodies: true` will only work if compute_method is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
+    compute_method: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
     nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-    return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
+    return_courant: false  # WARNING: true will only work with compute_method "V02-caching", therefore not currently compatible with simulation for waterbodies.
 #output file parameters
 output_parameters:
     #output location for csv file
@@ -41,7 +41,6 @@ supernetwork_parameters:
         waterbody: "NHDWaterbodyComID"
         tw: "TopWdth"  # TODO: rename to `topwidth`
         twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-        alt: "alt"
         musk: "MusK"
         musx: "MusX"
         cs: "ChSlp"  # TODO: rename to `sideslope`
@@ -68,7 +67,7 @@ waterbody_parameters:
 
     hybrid_and_rfc:
         # Specify the reservoir parameter file
-        reservoir_parameter_file: ""
+        reservoir_parameter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/reservoir_index_croton_ny_rfc.nc"
 
         # If using USGS persistence reservoirs, set to True. (default=.FALSE.)
         reservoir_persistence_usgs: False
@@ -91,7 +90,7 @@ waterbody_parameters:
         reservoir_observation_update_time_interval_seconds: 1000000000
         
         # If using RFC forecast reservoirs, set to True. (default=.FALSE.)
-        reservoir_rfc_forecasts: False
+        reservoir_rfc_forecasts: True
 
         # Specify the path to the RFC time series files to be used by reservoirs
         reservoir_rfc_forecasts_time_series_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/"
