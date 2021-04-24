@@ -844,11 +844,11 @@ cpdef object compute_network_structured_obj(
                         )
                     wbody_index += 1
 
-                elif (reservoir_types[wbody_index][0] == 2):
+                elif (reservoir_types[wbody_index][0] == 2 or (reservoir_types[wbody_index][0] == 3):
                     print ("Hybrid USGS type")
                     print ("!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@")
                     reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                        #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
                         (
                           MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
                           array('l',upstream_ids), wbody_parameters[wbody_index],
@@ -860,6 +860,23 @@ cpdef object compute_network_structured_obj(
                           waterbody_parameters["level_pool"]["reservoir_observation_lookback_hours"],
                           waterbody_parameters["level_pool"]["reservoir_observation_update_time_interval_seconds"]),
                           reach_type)#hybrid_reservoir)
+                        )
+                    wbody_index += 1
+
+                elif (reservoir_types[wbody_index][0] == 4):
+                    print ("RFC type")
+                    print ("!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@")
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and rfc_reservoir
+                        (
+                          MC_RFC(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["level_pool"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["level_pool"]["reservoir_rfc_forecasts_time_series_path"],
+                          waterbody_parameters["level_pool"]["reservoir_rfc_forecasts_lookback_hours"]),
+                          reach_type)#rfc_reservoir)
                         )
                     wbody_index += 1
 
