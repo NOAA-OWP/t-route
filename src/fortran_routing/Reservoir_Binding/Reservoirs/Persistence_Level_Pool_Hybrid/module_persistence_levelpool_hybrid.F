@@ -201,6 +201,8 @@ contains
             weir_elevation, weir_coeffecient, weir_length, dam_length, orifice_elevation, &
             orifice_coefficient, orifice_area, lake_max_water_elevation, lake_number)
 
+            print *, "DONE WITH HYBRID INIT IN RES MODULE ***********************"
+
         end if
     end subroutine hybrid_init
 
@@ -269,7 +271,7 @@ contains
         ! update time will call the function to read a new timeslice file, and these timeslice discharges will be held in
         ! memory for the subsequent reservoirs to use at that timestep.
         if (this%state%current_time >= this%state%timeslice_update_time) then
-
+            print *, "In update time ---------------------------------"
             ! Read new timeslice gage discharges
             call this%timeslice_data%setup_read_timeslice(this%properties%observation_update_time_interval_seconds, &
             this%state%current_time, this%properties%gage_id, gage_lookback_seconds, this%state%gage_discharge, &
@@ -445,6 +447,7 @@ contains
         levelpool_outflow, this%output%outflow)
 #endif
 
+        print *, "DONE WITH HYBRID RUN IN RES MODULE ***********************"
     end subroutine run_hybrid_reservoir
 
 end module module_persistence_levelpool_hybrid

@@ -779,7 +779,7 @@ def compute_nhd_routing_v02(
                 model_start_time_datetime_object = qlat_start_time_datetime_object \
                 - timedelta(seconds=qlat_time_step_seconds)
 
-                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d %H:%M:%S')
+                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
 
                 print ("model_start_time")
                 print (model_start_time)
@@ -1132,13 +1132,17 @@ def main():
         reservoir_types_df = {}
 
         #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype="hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters[wbtype]
+
         wbtype="level_pool"
-        wb_params = waterbody_parameters[wbtype]
+        wb_params_level_pool = waterbody_parameters[wbtype]
 
         reservoir_type_specified = False
 
-        if wb_params["reservoir_persistence_usgs"] or wb_params["reservoir_persistence_usace"] \
-        or wb_params["reservoir_rfc_forecasts"]:
+        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
+        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
+        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
 
             
             reservoir_type_specified = True
@@ -1149,16 +1153,16 @@ def main():
             #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
             #    wb_params["level_pool_waterbody_id"],) 
 
-            print ("wb_params[level_pool_waterbody_i]")
-            print (wb_params["level_pool_waterbody_id"])
-            print ({"level_pool": wbodies.values()})
-            print ("============")
-            print (wb_params["reservoir_parameter_file"])
+            #print ("wb_params[level_pool_waterbody_i]")
+            #print (wb_params["level_pool_waterbody_id"])
+            #print ({"level_pool": wbodies.values()})
+            #print ("============")
+            #print (wwb_params_hybrid_and_rfc["reservoir_parameter_file"])
 
             #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"], \
             #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
-            reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"], \
-                wb_params["level_pool_waterbody_id"], wbodies.values(),) 
+            reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
+                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
 
             #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"])
 

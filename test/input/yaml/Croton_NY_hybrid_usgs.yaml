@@ -41,7 +41,6 @@ supernetwork_parameters:
         waterbody: "NHDWaterbodyComID"
         tw: "TopWdth"  # TODO: rename to `topwidth`
         twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-        alt: "alt"
         musk: "MusK"
         musx: "MusX"
         cs: "ChSlp"  # TODO: rename to `sideslope`
@@ -68,10 +67,10 @@ waterbody_parameters:
 
     hybrid_and_rfc:
         # Specify the reservoir parameter file
-        reservoir_parameter_file: ""
+        reservoir_parameter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/reservoir_index_croton_ny_hybrid_usgs.nc"
 
         # If using USGS persistence reservoirs, set to True. (default=.FALSE.)
-        reservoir_persistence_usgs: False
+        reservoir_persistence_usgs: True
 
         # Specify the path to the timeslice files to be used by USGS reservoirs
         reservoir_usgs_timeslice_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/"

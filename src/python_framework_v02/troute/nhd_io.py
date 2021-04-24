@@ -103,12 +103,6 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
 
     wb_params = waterbody_parameters[wbtype]
 
-    if wb_params["reservoir_persistence_usgs"] or wb_params["reservoir_persistence_usace"]:
-       print ("Reading hybrid----------------")
-
-    else:
-       print ("hybrid off -------------------------------")
-
     #wb_params = waterbody_parameters[wbtype]
     return read_level_pool_waterbody_df(
         wb_params["level_pool_waterbody_parameter_file_path"],
