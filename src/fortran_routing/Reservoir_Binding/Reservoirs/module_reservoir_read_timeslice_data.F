@@ -86,7 +86,7 @@ contains
         integer                                          :: gage_id_integer
         integer                                          :: char_index, number_counter, temp_val
         character(len=1)                                 :: temp_char
-        print *, "In timeslice init ------------------------------"
+        
         ! Return from subroutine if this singleton is already initialized
         if (this%initialized) return
         this%initialized = .true.
@@ -176,11 +176,10 @@ contains
         integer :: total_timeslice_time_periods, timeslice_file_index, reservoir_subset_index, lake_index
         integer :: observation_minute, observation_resolution_seconds
         logical :: file_exists
-        print *, "IN SETUP READ=====================================1"
 
         ! This check ensures that the timeslice is read only once for each processor at each timeslice update time
         if (current_reservoir_time_seconds .ne. this%last_update_time_seconds) then
-            print *, "IN SETUP READ=====================================2"
+            
             ! Checks if not the first timestep, then update date.
             if (this%last_update_time_seconds .ne. -999) then
                 call geth_newdate(this%current_date, this%current_date, update_interval_seconds)
@@ -237,8 +236,6 @@ contains
 
                     ! Add path to timeslice filename
                     timeslice_file_name_full = trim(this%timeslice_path) // "/" // ADJUSTL(trim(timeslice_file_name))
-                    print *, "timeslice_file_name_full @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)))))))))))))"
-                    print *, timeslice_file_name_full
                     ! Check if file exists
                     inquire(FILE = timeslice_file_name_full, EXIST = file_exists)
                     if (file_exists) then
