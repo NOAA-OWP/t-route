@@ -124,5 +124,5 @@ parity_parameters:
     #parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
     #parity_check_compare_node: 6227150 #Stream
     #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
-    parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
+    parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_rfc_nudge_off.csv"
     parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain

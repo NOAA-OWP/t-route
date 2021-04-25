@@ -693,6 +693,9 @@ def compute_nhd_routing_v02(
                 # Assumes everything else is a waterbody...
                 wbodies_segs = set(segs).symmetric_difference(common_segs)
 
+                #Declare empty dataframe
+                reservoir_types_df_sub = pd.DataFrame()
+
                 # If waterbody parameters exist
                 if not waterbodies_df.empty:
 
@@ -816,7 +819,7 @@ def compute_nhd_routing_v02(
                         lake_segs,
                         waterbodies_df_sub.values,
                         waterbody_parameters,
-                        reservoir_types_df_sub.values,
+                        reservoir_types_df_sub.values.astype("int32"),
                         reservoir_type_specified,
                         model_start_time,
                         usgs_df_sub.values.astype("float32"),
@@ -1140,6 +1143,11 @@ def nwm_network_preprocess(
     # waterbodies_segments = supernetwork_values[13]
     # connections_tailwaters = supernetwork_values[4]
 
+    reservoir_type_specified = False
+
+    #Declare empty dataframe
+    reservoir_types_df_reduced = pd.DataFrame()
+
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -1154,7 +1162,8 @@ def nwm_network_preprocess(
         )
 
         #Declare empty dataframe
-        reservoir_types_df = {}
+        reservoir_types_df = pd.DataFrame()
+        reservoir_types_df_reduced = pd.DataFrame()
 
         #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype="hybrid_and_rfc"
@@ -1207,8 +1216,10 @@ def nwm_network_preprocess(
 
 
         else:
-            print ("========hybrid off -------------------------------")
+            reservoir_type_specified = False
 
+            #Declare empty dataframe
+            reservoir_types_df_reduced = pd.DataFrame()
 
 
     else:
