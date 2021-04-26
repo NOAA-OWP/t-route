@@ -88,10 +88,6 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
     General waterbody dataframe reader. At present, only level-pool
     capability exists.
     """
-    print ("Reading WB----------------")
-    print (waterbodies_values)   
-    print ("*************")
-    '''
     if wbtype == "level_pool":
         wb_params = waterbody_parameters[wbtype]
         return read_level_pool_waterbody_df(
@@ -99,16 +95,7 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
             wb_params["level_pool_waterbody_id"],
             waterbodies_values[wbtype],
         )
-    '''
 
-    wb_params = waterbody_parameters[wbtype]
-
-    #wb_params = waterbody_parameters[wbtype]
-    return read_level_pool_waterbody_df(
-        wb_params["level_pool_waterbody_parameter_file_path"],
-        wb_params["level_pool_waterbody_id"],
-        waterbodies_values[wbtype],
-    )
 
 def read_level_pool_waterbody_df(
     parm_file, lake_index_field="lake_id", lake_id_mask=None
@@ -131,12 +118,6 @@ def read_level_pool_waterbody_df(
         return df1.loc[lake_id_mask]
     """
 
-    print ("!!!!!!!!!!!!!!!!!!")
-    print (parm_file)
-    print (lake_index_field)
-    print (lake_id_mask)
-    print ("!!!!!!!!!!!!!!!!!!")
-
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
     with xr.open_dataset(parm_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
@@ -145,26 +126,18 @@ def read_level_pool_waterbody_df(
     return df1
 
 
-
 def read_reservoir_parameter_file(
     reservoir_parameter_file, lake_index_field="lake_id", lake_id_mask=None
 ):
-    print ("@@@@@@@@@@@@@@@@@@@@")
-    print (reservoir_parameter_file)
-    print (lake_index_field)
-    print (lake_id_mask)
-    print ("@@@@@@@@@@@@")
-    # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
+    """
+    Reads reservoir parameter file, which is separate from the LAKEPARM file.
+    This function is only called if Hybrid Persistence or RFC type reservoirs
+    are active.
+    """
     with xr.open_dataset(reservoir_parameter_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
-        #df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
-        print (ds)
-        print ("ITEMS: ------------------")
-        #items = ds.loc[lake_index_field, "reservoir_type"]
-        #items = ds.loc["reservoir_type"]
-        #items = ds.sel(indexers=lake_index_field, "reservoir_type")
-        #items = ds.sel(indexers=lake_index_field)
 
+        #TODO: Find better method to remove these other variables  
         ds = ds.drop('usgs_lake_id')
         ds = ds.drop('usgs_gage_id')
         ds = ds.drop('usgs_persistence_coefficients')
@@ -174,20 +147,10 @@ def read_reservoir_parameter_file(
         ds = ds.drop('rfc_gage_id')
         ds = ds.drop('rfc_lake_id')
         ds = ds.drop('rfc_forecast_persist')
-        print (ds)
-        #items = ds.sel({lake_index_field: list(lake_id_mask)})
-        #print (items)
-        #df1 = ds.sel(
-        print ("%%%%%%%%%%%%%%%%%")
+
         df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
-        #df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe().drop_duplicates()
-        print (df1)
-        print ("$$$$$$$$$$$$$$$$$$$$")
-    #return ds
-    #df1 = df1.sort_index(axis="index")
+
     return df1
-
-
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):
