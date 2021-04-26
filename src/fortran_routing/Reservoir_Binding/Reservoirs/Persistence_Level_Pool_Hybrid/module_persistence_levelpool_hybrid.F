@@ -269,7 +269,7 @@ contains
         ! update time will call the function to read a new timeslice file, and these timeslice discharges will be held in
         ! memory for the subsequent reservoirs to use at that timestep.
         if (this%state%current_time >= this%state%timeslice_update_time) then
-            
+
             ! Read new timeslice gage discharges
             call this%timeslice_data%setup_read_timeslice(this%properties%observation_update_time_interval_seconds, &
             this%state%current_time, this%properties%gage_id, gage_lookback_seconds, this%state%gage_discharge, &
