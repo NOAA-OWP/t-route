@@ -333,11 +333,11 @@ def compute_nhd_routing_v02(
     assume_short_ts,
     return_courant,
     waterbodies_df,
-    diffusive_parameters=None,
     waterbody_parameters,
     reservoir_types_df,
     reservoir_type_specified,
     dt,
+    diffusive_parameters=None,
 ):
 
     param_df["dt"] = dt
@@ -727,13 +727,6 @@ def compute_nhd_routing_v02(
                             ],
                         ]
 
-                        print ("^^^^^^^^^^^^^^^^^^^^^")
-                        print ("reservoir_types_df_sub")
-                        print (reservoir_types_df_sub)
-                        print ("^^^^^^^^^^^^^^^^^^^^^")
-                        print (reservoir_types_df_sub.values)
-                        print ("^^^^^^^^^^^^^^^^^^^^^")
-
                 else:
                     lake_segs = []
                     waterbodies_df_sub = pd.DataFrame()
@@ -773,31 +766,17 @@ def compute_nhd_routing_v02(
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
-                print ("qlat_sub")
-                print (qlat_sub)
-                print ("q0_sub")
-                print (q0_sub)
-                print ("zzzzzzzzzzzzzzzz")
-
-                #model_start_time = qlat_sub.head()
-                #model_start_time = list(qlat_sub)[0]
+                #Determine model_start_time from qlat_start_time
                 qlat_start_time = list(qlat_sub)[0]
 
                 qlat_time_step_seconds = qts_subdivisions * dt
 
                 qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
 
-                print('Date-time:', qlat_start_time_datetime_object)
-
                 model_start_time_datetime_object = qlat_start_time_datetime_object \
                 - timedelta(seconds=qlat_time_step_seconds)
 
                 model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
-                print ("model_start_time")
-                print (model_start_time)
-               
-                print ("22222222222zzzzzzzzzzzzzzzz")
 
                 param_df_sub = param_df_sub.reindex(
                     param_df_sub.index.tolist() + lake_segs
@@ -845,6 +824,9 @@ def compute_nhd_routing_v02(
             # Assumes everything else is a waterbody...
             wbodies_segs = set(segs).symmetric_difference(common_segs)
 
+            #Declare empty dataframe
+            reservoir_types_df_sub = pd.DataFrame()
+
             # If waterbody parameters exist
             if not waterbodies_df.empty:
 
@@ -866,6 +848,15 @@ def compute_nhd_routing_v02(
                         "h0",
                     ],
                 ]
+
+                #If reservoir types other than Level Pool are active
+                if not reservoir_types_df.empty:
+                    reservoir_types_df_sub = reservoir_types_df.loc[
+                        lake_segs,
+                        [
+                            "reservoir_type",
+                        ],
+                    ]
 
             else:
                 lake_segs = []
@@ -898,6 +889,18 @@ def compute_nhd_routing_v02(
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
+
+            #Determine model_start_time from qlat_start_time
+            qlat_start_time = list(qlat_sub)[0]
+
+            qlat_time_step_seconds = qts_subdivisions * dt
+
+            qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+
+            model_start_time_datetime_object = qlat_start_time_datetime_object \
+            - timedelta(seconds=qlat_time_step_seconds)
+
+            model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
 
             param_df_sub = param_df_sub.reindex(
                 param_df_sub.index.tolist() + lake_segs
@@ -937,7 +940,9 @@ def compute_nhd_routing_v02(
                     lake_segs,
                     waterbodies_df_sub.values,
                     waterbody_parameters,
-                    reservoir_types_df.values,
+                    reservoir_types_df_sub.values.astype("int32"),
+                    reservoir_type_specified,
+                    model_start_time,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
                     last_obs_sub.values.astype("float32"),
@@ -1178,31 +1183,10 @@ def nwm_network_preprocess(
         or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
         or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
 
-            
             reservoir_type_specified = True
 
-            #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
-            #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
-            
-            #reservoir_types_df = nhd_io.read_level_pool_waterbody_df(wb_params["reservoir_parameter_file"], \
-            #    wb_params["level_pool_waterbody_id"],) 
-
-            #print ("wb_params[level_pool_waterbody_i]")
-            #print (wb_params["level_pool_waterbody_id"])
-            #print ({"level_pool": wbodies.values()})
-            #print ("============")
-            #print (wwb_params_hybrid_and_rfc["reservoir_parameter_file"])
-
-            #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"], \
-            #    wb_params["level_pool_waterbody_id"], {"level_pool": wbodies.values()},) 
             reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
                 wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
-
-            #reservoir_types_df = nhd_io.read_reservoir_parameter_file(wb_params["reservoir_parameter_file"])
-
-            print ("=======Reading hybrid----------------")
-            print (reservoir_types_df)
-            print ("============")
 
             # Remove duplicate lake_ids and rows
             reservoir_types_df_reduced = (
@@ -1210,17 +1194,6 @@ def nwm_network_preprocess(
                 .drop_duplicates(subset="lake_id")
                 .set_index("lake_id")
             )
-
-            print (reservoir_types_df_reduced)
-            print ("QQQQQQQQQQQQQQQQQQQQQ")
-
-
-        else:
-            reservoir_type_specified = False
-
-            #Declare empty dataframe
-            reservoir_types_df_reduced = pd.DataFrame()
-
 
     else:
         waterbodies_df = pd.DataFrame()
@@ -1302,8 +1275,6 @@ def nwm_initial_warmstate_preprocess(
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id")
-        
         if verbose:
             print("waterbody initial states complete")
         if showtiming:
@@ -1378,9 +1349,6 @@ def nwm_forcing_preprocess(
     qlats_df = nnu.build_qlateral_array(
         run, connections.keys(), supernetwork_parameters,
     )
-
-    print ("qlats")
-    print (qlats)
 
     if verbose:
         print("qlateral array complete")
@@ -1509,6 +1477,7 @@ def nwm_route(
         reservoir_types_df_reduced,
         reservoir_type_specified,
         dt,
+        diffusive_parameters,
     )
 
     with open("mainstems_conus.txt", "w") as filehandle:
