@@ -92,6 +92,5 @@ void route(_Reach* reach, float inflow, float lateral_inflow, float routing_peri
            float* outflow,  float* water_elevation)
 {
   run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, &reach->reach.hybrid.water_elevation, outflow, &routing_period);
-  printf("RUNNING HYBRID STRUCTS $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
   *water_elevation = reach->reach.hybrid.water_elevation;
 }
