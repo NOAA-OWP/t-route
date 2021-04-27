@@ -27,7 +27,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
-
+import pickle
 
 def _handle_args():
     parser = argparse.ArgumentParser(
@@ -663,7 +663,7 @@ def compute_nhd_routing_v02(
 
         if 1 == 1:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
-
+    
     elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
@@ -1240,6 +1240,10 @@ def main():
         diffusive_parameters,
     )
 
+    with open('mainstems_conus.txt', 'w') as filehandle:
+        for listitem in reaches_bytw.keys():
+            filehandle.write('%s\n' % listitem)
+    import pdb;pdb.set_trace()
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
