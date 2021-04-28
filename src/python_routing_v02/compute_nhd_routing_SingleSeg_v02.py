@@ -279,6 +279,7 @@ def _handle_args():
         dest="data_assimilation_csv",
         default=None,
     )
+
     return parser.parse_args()
 
 
@@ -883,6 +884,7 @@ def _input_handler():
     parity_parameters = {}
     data_assimilation_parameters = {}
     diffusive_parameters = {}
+    coastal_parameters = {}
 
     if custom_input_file:
         (
@@ -895,8 +897,9 @@ def _input_handler():
             parity_parameters,
             data_assimilation_parameters,
             diffusive_parameters,
+            coastal_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
-
+    
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["return_courant"] = args.return_courant
@@ -1006,6 +1009,7 @@ def _input_handler():
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     )
 
 
@@ -1021,6 +1025,7 @@ def main():
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1189,7 +1194,16 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
+    
+    # STEP 7
+    coastal_output = coastal_parameters.get(
+        "coastal_output_data", None
+    )
 
+    if coastal_output:
+        print("creating coastal dataframe ...")
+        coastal_df = nnu.build_coastal_dataframe(coastal_output)
+        import pdb; pdb.set_trace()
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
@@ -1241,7 +1255,7 @@ def main():
     with open('mainstems_conus.txt', 'w') as filehandle:
         for listitem in reaches_bytw.keys():
             filehandle.write('%s\n' % listitem)
-    import pdb;pdb.set_trace()
+
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
