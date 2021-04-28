@@ -603,3 +603,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         )
 
     return usgs_df
+
+def build_coastal_dataframe(coastal_output):
+    coastal_df = pd.read_csv(coastal_output, sep="  ",header=None)
+    return coastal_df

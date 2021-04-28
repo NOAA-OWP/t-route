@@ -103,3 +103,6 @@ parity_parameters:
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     parity_check_compare_node: 4186169
+coastal_parameters:
+    coastal_output_data: "../../test/input/geo/coastal_inputs/staout_1"
+

@@ -59,6 +59,7 @@ def read_custom_input(custom_input_file):
     parity_parameters = data.get("parity_parameters", {})
     data_assimilation_parameters = data.get("data_assimilation_parameters", {})
     diffusive_parameters = data.get("diffusive_parameters", {})
+    coastal_parameters = data.get("coastal_parameters", {})
 
     # TODO: add error trapping for potentially missing files
     return (
@@ -71,6 +72,7 @@ def read_custom_input(custom_input_file):
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     )
 
 
