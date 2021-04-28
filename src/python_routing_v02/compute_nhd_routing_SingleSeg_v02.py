@@ -1201,11 +1201,19 @@ def main():
     coastal_output = coastal_parameters.get(
         "coastal_output_data", None
     )
+    coastal_ncdf = coastal_parameters.get(
+        "coastal_ncdf", None
+    )
 
     if coastal_output:
         print("creating coastal dataframe ...")
         coastal_df = nnu.build_coastal_dataframe(coastal_output)
-        import pdb; pdb.set_trace()
+ 
+    if coastal_ncdf:
+        print("creating coastal ncdf dataframe ...")
+        coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
+
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
