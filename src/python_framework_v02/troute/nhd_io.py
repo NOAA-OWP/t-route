@@ -137,6 +137,7 @@ def read_reservoir_parameter_file(
     with xr.open_dataset(reservoir_parameter_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
 
+        '''
         #TODO: Find better method to remove these other variables  
         ds = ds.drop('usgs_lake_id')
         ds = ds.drop('usgs_gage_id')
@@ -147,10 +148,62 @@ def read_reservoir_parameter_file(
         ds = ds.drop('rfc_gage_id')
         ds = ds.drop('rfc_lake_id')
         ds = ds.drop('rfc_forecast_persist')
+        '''
+        ds_dict = ds.to_dict()
 
-        df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        #print ("ds_dict")
+        #print (ds_dict)
+        #pretty(ds_dict)
+
+
+        coords_dict = ds_dict['coords']
+        attrs_dict = ds_dict['attrs']
+        dims_dict = ds_dict['dims']
+        data_vars_dict = ds_dict['data_vars']
+
+        print ("coords_dict")
+        pretty (coords_dict)
+
+        reservoir_type_dict = data_vars_dict['reservoir_type']
+
+        #clear out dictionary
+        data_vars_dict.clear()
+     
+        #reconstruct dictionary with only reservoir_type key
+        data_vars_dict['reservoir_type'] = reservoir_type_dict
+
+        #reconstruct overall dictionary
+        ds_dict_new = {
+             "coords": coords_dict, 
+             "attrs": attrs_dict, 
+             "dims": dims_dict, 
+             "data_vars": data_vars_dict
+        }
+        print ("ds_dict_new")
+        #print (ds_dict)
+        pretty(ds_dict_new)
+
+        #convert from dictionary back to dataset
+        ds_new = xr.Dataset.from_dict(ds_dict_new) 
+
+
+        #df1 = ds.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        #df1 = ds.sel({lake_index_field: list(lake_id_mask)})
+        #print ("df1: ---------------------------------")
+        #print (df1)
+
+       
+        df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
 
     return df1
+
+def pretty(d, indent=0):
+   for key, value in d.items():
+      print('\t' * indent + str(key))
+      if isinstance(value, dict):
+         pretty(value, indent+1)
+      else:
+         print('\t' * (indent+1) + str(value))
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):
