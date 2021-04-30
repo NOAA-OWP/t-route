@@ -603,3 +603,4 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         )
 
     return usgs_df
+

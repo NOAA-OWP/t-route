@@ -1190,6 +1190,11 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    # STEP 7 Last obs ids and data excluding NaN
+    import pdb;pdb.set_trace()
+    last_obs_df = nhd_io.build_last_obs_df(restart_parameters["wrf_hydro_last_obs_file"])
+    print(last_obs_df)
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
