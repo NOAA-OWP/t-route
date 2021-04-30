@@ -22,6 +22,7 @@ output_parameters:
         csv_output_segments: [4185713, 2743396, 4153198, 4186293, 4186169]
     #out location for nc file
     nc_output_folder: "../../test/output/text"
+    write_chrtout: True
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Pocono1"
