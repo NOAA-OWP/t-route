@@ -57,8 +57,8 @@ void free_levelpool_reach(_Reach* reach)
   free_lp(reach->reach.lp.handle);
 }
 
-void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow,  float* water_elevation)
+void route_lp(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
+           float* outflow, float* water_elevation)
 {
   run_lp(reach->reach.lp.handle, &inflow, &lateral_inflow, &reach->reach.lp.water_elevation, outflow, &routing_period);
   *water_elevation = reach->reach.lp.water_elevation;

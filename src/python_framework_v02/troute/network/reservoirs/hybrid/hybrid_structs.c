@@ -88,7 +88,7 @@ void free_hybrid_reach(_Reach* reach)
   free(reach->reach.hybrid.usace_timeslice_path);
 }
 
-void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
+void route_hybrid(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
            float* outflow,  float* water_elevation)
 {
   run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, &reach->reach.hybrid.water_elevation, outflow, &routing_period);
