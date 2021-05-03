@@ -8,6 +8,7 @@ import yaml
 import numpy as np
 from toolz import compose
 import dask.array as da
+import time as time
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -218,61 +219,60 @@ def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
 
-def write_q_to_wrf_hydro(results, flowveldepth, chrtout_files, qts_subdivisions, index_col="feature_id"):
+def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
+    """
+    Write t-route simulated flows to WRF-Hydro CHRTOUT files. 
     
+    Arguments:
+        flowveldepth (pandas Data Frame): t-route simulated flow, velocity and depth
+        chrtout_files (list): chrtout filepaths
+        qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps 
+    """
+        
     # open chrtout files as a single xarray dataset
-    chrtout = xr.open_mfdataset(
+    with xr.open_mfdataset(
         chrtout_files,
         combine="by_coords"
-    )
-        
-#     idx = np.concatenate([np.stack(i) for i, d in results])
-#     fvd = np.concatenate([np.stack(d) for i, d in results])
-            
-#     idx_sorter = np.argsort(idx)
-#     idx_search = np.searchsorted(idx, chrtout.feature_id.values, sorter = idx_sorter)
-    
-#     qtrt_np = fvd[idx_sorter,:][idx_search,::3][:,::qts_subdivisions]
-#     qtrt_np = np.transpose(qtrt_np)
+    ) as chrtout:
 
-    # re-order index to match chrtout
-    # !! note: if indices exist in chrtout that are not found in flowveldepth, 
-    # they will be inserted with nans for flow, velocity and depth
-    flowveldepth = flowveldepth.reindex(chrtout.feature_id.values)
-    
-    # unpack, subset, and transpose t-route flow data
-    qtrt = flowveldepth.loc[:,::3].to_numpy().astype("float32")
-    qtrt = qtrt[:,::qts_subdivisions]
-    qtrt = np.transpose(qtrt)
-    
-    qtrt_DataArray = xr.DataArray(
-        data = da.from_array(qtrt),
-        dims = ["time","feature_id"],
-        coords = dict(
-            time = chrtout.time.values,
-            feature_id = chrtout.feature_id.values
-        ),
-        attrs = dict(
-            description = "River Flow, t-route",
-            units = "m3 s-1",
-        ),
-    )
-    
-    # add t-route flow variable to CHRTOUT stack
-    chrtout["streamflow_troute"] = qtrt_DataArray
-    
-    # build a list of datasets, 1 for each timestep
-    dataset_list = []
-    grp_object = list(chrtout.groupby("time"))
+        # !!NOTE: If break_at_waterbodies == T, segment feature_ids coincident with water bodies do
+        # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
+        # populates columns with NaN values. 
+        flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
+
+        # unpack, subset, and transpose t-route flow data
+        qtrt = flowveldepth_reindex.loc[:,::3].to_numpy().astype("float32")
+        qtrt = qtrt[:,::qts_subdivisions]
+        qtrt = np.transpose(qtrt)
+
+        qtrt_DataArray = xr.DataArray(
+            data = da.from_array(qtrt),
+            dims = ["time","feature_id"],
+            coords = dict(
+                time = chrtout.time.values,
+                feature_id = chrtout.feature_id.values
+            ),
+            attrs = dict(
+                description = "River Flow, t-route",
+                units = "m3 s-1",
+            ),
+        )
+
+        # add t-route flow variable to CHRTOUT stack
+        chrtout["streamflow_troute"] = qtrt_DataArray
+
+        # build a list of datasets, 1 for each timestep
+        dataset_list = []
+        grp_object = list(chrtout.groupby("time"))
+        
     for i in range(len(grp_object)):
         dataset_list.append(grp_object[i][1])
         dataset_list[i] = dataset_list[i].expand_dims({"time": [grp_object[i][0]]})
-        
+
     # save a new set of chrtout files to disk that contail t-route simulated flow
     chrtout_files_new = []
     chrtout_files_new[:] = [s + ".TRTE" for s in chrtout_files]
     xr.save_mfdataset(dataset_list, paths = chrtout_files_new)
-    
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
