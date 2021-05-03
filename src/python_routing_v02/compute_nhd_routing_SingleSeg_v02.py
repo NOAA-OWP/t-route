@@ -1299,7 +1299,7 @@ def main():
                         )
                     )
 
-                nhd_io.write_q_to_wrf_hydro(results, flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
+                nhd_io.write_q_to_wrf_hydro(flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
                 
         if csv_output_folder:
             # create filenames
