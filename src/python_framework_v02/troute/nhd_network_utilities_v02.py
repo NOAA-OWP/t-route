@@ -498,7 +498,7 @@ def build_channel_initial_state(
     # TODO: If needed for performance improvement consider filtering mask file on read.
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0, header=None)
+        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
         q0 = q0[q0.index.isin(mask_file_path.index)]
 
     return q0
@@ -559,7 +559,7 @@ def build_qlateral_array(
 
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0, header=None)
+        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
         qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
 
     return qlat_df
@@ -604,11 +604,13 @@ def build_data_assimilation_folder(data_assimilation_parameters):
 
     return usgs_df
 
+
 def build_coastal_dataframe(coastal_output):
-    coastal_df = pd.read_csv(coastal_output, sep="  ",header=None)
+    coastal_df = pd.read_csv(coastal_output, sep="  ", header=None)
     return coastal_df
+
 
 def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
-        coastal_ncdf_df = ds[['elev','depth']]
+        coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
