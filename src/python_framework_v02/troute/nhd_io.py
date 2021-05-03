@@ -218,15 +218,26 @@ def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
 
-def write_to_chrtout(flowveldepth, chrtout_files, qts_subdivisions, index_col="feature_id"):
+def write_q_to_wrf_hydro(results, flowveldepth, chrtout_files, qts_subdivisions, index_col="feature_id"):
     
     # open chrtout files as a single xarray dataset
     chrtout = xr.open_mfdataset(
         chrtout_files,
         combine="by_coords"
     )
+        
+#     idx = np.concatenate([np.stack(i) for i, d in results])
+#     fvd = np.concatenate([np.stack(d) for i, d in results])
+            
+#     idx_sorter = np.argsort(idx)
+#     idx_search = np.searchsorted(idx, chrtout.feature_id.values, sorter = idx_sorter)
     
+#     qtrt_np = fvd[idx_sorter,:][idx_search,::3][:,::qts_subdivisions]
+#     qtrt_np = np.transpose(qtrt_np)
+
     # re-order index to match chrtout
+    # !! note: if indices exist in chrtout that are not found in flowveldepth, 
+    # they will be inserted with nans for flow, velocity and depth
     flowveldepth = flowveldepth.reindex(chrtout.feature_id.values)
     
     # unpack, subset, and transpose t-route flow data
