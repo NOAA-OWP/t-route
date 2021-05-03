@@ -1252,6 +1252,7 @@ def main():
 
     if output_parameters:
         csv_output = output_parameters.get("csv_output", None)
+        
         if csv_output:
             csv_output_folder = output_parameters["csv_output"].get(
                 "csv_output_folder", None
@@ -1286,7 +1287,7 @@ def main():
                 ],
                 copy=False,
             )
-              
+        
         if output_parameters.get("write_chrtout", None):
             if forcing_parameters.get("qlat_input_folder", None):
 
@@ -1298,8 +1299,11 @@ def main():
                         )
                     )
 
-                nhd_io.write_to_chrtout(flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
-            
+                idx = np.concatenate([np.stack(i) for i, d in results])
+                fvd = np.concatenate([np.stack(d) for i, d in results])
+
+                nhd_io.write_q_to_wrf_hydro(results, flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
+                
         if csv_output_folder:
             # create filenames
             # TO DO: create more descriptive filenames
