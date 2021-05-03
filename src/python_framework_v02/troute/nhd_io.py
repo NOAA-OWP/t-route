@@ -8,7 +8,6 @@ import yaml
 import numpy as np
 from toolz import compose
 import dask.array as da
-import time as time
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
