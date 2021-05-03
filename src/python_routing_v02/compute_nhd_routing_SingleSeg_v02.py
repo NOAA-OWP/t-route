@@ -1210,7 +1210,9 @@ def main():
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
     # STEP 7 Last obs ids and data excluding NaN
-    last_obs_df = nhd_io.build_last_obs_df(restart_parameters["wrf_hydro_last_obs_file"])
+    last_obs_df = nhd_io.build_last_obs_df(
+        restart_parameters["wrf_hydro_last_obs_file"]
+    )
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
