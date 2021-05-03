@@ -20,7 +20,7 @@ typedef struct {
   char* time_series_path;
   int forecast_lookback_hours;
 
-  //Handle to operate rfc res
+  //Handle to operate rfc reservoir
   void* handle;
 } _MC_RFC;
 

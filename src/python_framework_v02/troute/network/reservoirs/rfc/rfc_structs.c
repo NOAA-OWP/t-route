@@ -80,7 +80,7 @@ void free_rfc_reach(_Reach* reach)
   free(reach->reach.rfc.time_series_path);
 }
 
-void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
+void route_rfc(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
            float* outflow,  float* water_elevation)
 {
   run_rfc(reach->reach.rfc.handle, &inflow, &lateral_inflow, &reach->reach.rfc.water_elevation, outflow, &routing_period);
