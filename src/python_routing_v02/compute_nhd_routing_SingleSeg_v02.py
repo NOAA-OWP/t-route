@@ -1251,8 +1251,7 @@ def main():
         print(f"Handling output ...")
 
     if output_parameters:
-        csv_output = output_parameters.get("csv_output", None)
-        
+        csv_output = output_parameters.get("csv_output", None)    
         if csv_output:
             csv_output_folder = output_parameters["csv_output"].get(
                 "csv_output_folder", None
