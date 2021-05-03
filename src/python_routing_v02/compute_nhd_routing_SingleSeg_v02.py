@@ -1299,9 +1299,6 @@ def main():
                         )
                     )
 
-                idx = np.concatenate([np.stack(i) for i, d in results])
-                fvd = np.concatenate([np.stack(d) for i, d in results])
-
                 nhd_io.write_q_to_wrf_hydro(results, flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
                 
         if csv_output_folder:
