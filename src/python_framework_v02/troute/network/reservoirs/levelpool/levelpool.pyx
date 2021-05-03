@@ -15,10 +15,6 @@ cdef extern from "levelpool_structs.c":
                             float initial_fractional_depth, float water_elevation
   )
   void free_levelpool_reach(_Reach* reach)
-  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
-
-cdef void run(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
-    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
 
 cdef class MC_Levelpool(Reach):
   """
@@ -102,9 +98,9 @@ cdef class MC_Levelpool(Reach):
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
-      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow,  &water_elevation)
+      route_lp(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)
-      return outflow, water_elevation#, self.water_elevation
+      return outflow, water_elevation
 
   @property
   def water_elevation(self):

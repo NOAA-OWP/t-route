@@ -10,7 +10,8 @@ typedef struct {
   float orifice_area, orifice_coefficient, orifice_elevation;
   float weir_coefficient, weir_elevation, weir_length;
   float initial_fractional_depth, water_elevation;
-  //Handle to operate levelpool res
+
+  //Handle to operate levelpool reservoir
   void* handle;
 } _MC_Levelpool;
 

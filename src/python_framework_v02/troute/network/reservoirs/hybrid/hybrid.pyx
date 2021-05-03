@@ -19,10 +19,6 @@ cdef extern from "hybrid_structs.c":
                             int observation_update_time_interval_seconds
   )
   void free_hybrid_reach(_Reach* reach)
-  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
-
-cdef void run(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
-    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
 
 cdef class MC_Hybrid(Reach):
   """
@@ -87,11 +83,11 @@ cdef class MC_Hybrid(Reach):
     if (len(reservoir_parameter_file) > 255):
        raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 255 characters.")
    
-    if (len(start_date) > 20):
+    if (len(start_date) > 19):
        raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
 
-    if (len(usgs_timeslice_path) > 255):
-       raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 255 characters.")
+    if (len(usgs_timeslice_path) > 256):
+       raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
    
     if (len(usace_timeslice_path) > 255):
        raise ValueError("rusace_timeslice_path is too large. Length must be less than or equal to 255 characters.")
@@ -134,9 +130,9 @@ cdef class MC_Hybrid(Reach):
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
-      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow,  &water_elevation)
+      route_hybrid(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)
-      return outflow, water_elevation#, self.water_elevation
+      return outflow, water_elevation
 
   @property
   def water_elevation(self):
