@@ -705,18 +705,22 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
 def build_last_obs_df(routlink_file):
 
     with xr.open_dataset(routlink_file) as ds:
-        print(ds)
         df_model_discharges = ds["model_discharge"].to_dataframe()
-        discharge_last_ts = df_model_discharges[
+        df_discharges = ds["discharge"].to_dataframe()
+        model_discharge_last_ts = df_model_discharges[
             df_model_discharges.index.get_level_values("timeInd") == 479
+        ]
+        discharge_last_ts = df_discharges[
+            df_discharges.index.get_level_values("timeInd") == 479
         ]
         df1 = ds["stationId"].to_dataframe()
         df1 = df1.astype(int)
-        discharge_last_ts = discharge_last_ts.join(df1)
-        discharge_last_ts = discharge_last_ts.loc[
-            discharge_last_ts["model_discharge"] != -9999.0
+        model_discharge_last_ts = model_discharge_last_ts.join(df1)
+        model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
+        model_discharge_last_ts = model_discharge_last_ts.loc[
+            model_discharge_last_ts["model_discharge"] != -9999.0
         ]
-        discharge_last_ts = discharge_last_ts.reset_index().set_index("stationId")
-        discharge_last_ts = discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
+        model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
+        model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
 
-    return discharge_last_ts
+    return model_discharge_last_ts
