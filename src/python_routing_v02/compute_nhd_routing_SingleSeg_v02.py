@@ -27,7 +27,7 @@ from functools import partial
 from joblib import delayed, Parallel
 from itertools import chain, islice
 from operator import itemgetter
-import pickle
+
 
 def _handle_args():
     parser = argparse.ArgumentParser(
@@ -664,7 +664,7 @@ def compute_nhd_routing_v02(
 
         if 1 == 1:
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
-    
+
     elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
             jobs = []
@@ -901,7 +901,7 @@ def _input_handler():
             diffusive_parameters,
             coastal_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
-    
+
     else:
         run_parameters["assume_short_ts"] = args.assume_short_ts
         run_parameters["return_courant"] = args.return_courant
@@ -1196,23 +1196,18 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
-    
+
     # STEP 7
-    coastal_output = coastal_parameters.get(
-        "coastal_output_data", None
-    )
-    coastal_ncdf = coastal_parameters.get(
-        "coastal_ncdf", None
-    )
+    coastal_output = coastal_parameters.get("coastal_output_data", None)
+    coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
 
     if coastal_output:
         print("creating coastal dataframe ...")
         coastal_df = nnu.build_coastal_dataframe(coastal_output)
- 
+
     if coastal_ncdf:
         print("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
-
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1262,9 +1257,9 @@ def main():
         diffusive_parameters,
     )
 
-    with open('mainstems_conus.txt', 'w') as filehandle:
+    with open("mainstems_conus.txt", "w") as filehandle:
         for listitem in reaches_bytw.keys():
-            filehandle.write('%s\n' % listitem)
+            filehandle.write("%s\n" % listitem)
 
     if verbose:
         print("ordered reach computation complete")
