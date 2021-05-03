@@ -300,6 +300,7 @@ import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
 
+
 def writetoFile(file, writeString):
     file.write(writeString)
     file.write("\n")
@@ -426,7 +427,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -572,7 +574,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -1191,8 +1194,10 @@ def main():
         usgs_df = pd.DataFrame()
 
     # STEP 7 Last obs ids and data excluding NaN
-    import pdb;pdb.set_trace()
-    last_obs_df = nhd_io.build_last_obs_df(restart_parameters["wrf_hydro_last_obs_file"])
+
+    last_obs_df = nhd_io.build_last_obs_df(
+        restart_parameters["wrf_hydro_last_obs_file"]
+    )
     print(last_obs_df)
 
     ################### Main Execution Loop across ordered networks
