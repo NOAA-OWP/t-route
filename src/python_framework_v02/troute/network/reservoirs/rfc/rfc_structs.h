@@ -5,8 +5,8 @@
 */
 #include "../../reach_structs.h"
 
-#define MAX_PATH_LENGTH 256
-#define MAX_START_DATE_LENGTH 20
+#define RFC_MAX_PATH_LENGTH 256
+#define RFC_MAX_START_DATE_LENGTH 20
 
 typedef struct {
   int lake_number;
