@@ -80,8 +80,8 @@ cdef class MC_Hybrid(Reach):
     water_elevation = args[10]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
-    if (len(reservoir_parameter_file) > 255):
-       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 255 characters.")
+    if (len(reservoir_parameter_file) > 256):
+       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
    
     if (len(start_date) > 19):
        raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
@@ -89,8 +89,8 @@ cdef class MC_Hybrid(Reach):
     if (len(usgs_timeslice_path) > 256):
        raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
    
-    if (len(usace_timeslice_path) > 255):
-       raise ValueError("rusace_timeslice_path is too large. Length must be less than or equal to 255 characters.")
+    if (len(usace_timeslice_path) > 256):
+       raise ValueError("rusace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
 
     init_hybrid_reach(&self._reach, lake_number,
                          dam_length, area, max_depth, orifice_area,
