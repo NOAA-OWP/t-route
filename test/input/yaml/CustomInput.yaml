@@ -23,6 +23,10 @@ output_parameters:
     #out location for nc file
     nc_output_folder: "../../test/output/text"
     write_chrtout: True
+    # Write t-route data to WRF-Hydro restart files?
+    write_wrf_hydro_channel_restart: True
+    # Directory containing WRF-Hydro restart files
+    wrf_hydro_channel_restart_directory: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Pocono1"
