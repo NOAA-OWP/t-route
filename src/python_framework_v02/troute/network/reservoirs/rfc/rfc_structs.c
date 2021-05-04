@@ -40,11 +40,11 @@ init_rfc_reach(_Reach* reach, int lake_number,
     reach->reach.rfc.initial_fractional_depth = initial_fractional_depth;
     reach->reach.rfc.reservoir_type = reservoir_type;
 
-    reach->reach.rfc.reservoir_parameter_file = (char*) malloc(sizeof(char)*MAX_PATH_LENGTH);
+    reach->reach.rfc.reservoir_parameter_file = (char*) malloc(sizeof(char)*RFC_MAX_PATH_LENGTH);
     strcpy(reach->reach.rfc.reservoir_parameter_file, reservoir_parameter_file_ptr);
-    reach->reach.rfc.start_date = (char*) malloc(sizeof(char)*MAX_START_DATE_LENGTH);
+    reach->reach.rfc.start_date = (char*) malloc(sizeof(char)*RFC_MAX_START_DATE_LENGTH);
     strcpy(reach->reach.rfc.start_date, start_date_ptr);
-    reach->reach.rfc.time_series_path = (char*) malloc(sizeof(char)*MAX_PATH_LENGTH);
+    reach->reach.rfc.time_series_path = (char*) malloc(sizeof(char)*RFC_MAX_PATH_LENGTH);
     strcpy(reach->reach.rfc.time_series_path, time_series_path_ptr);
 
     reach->reach.rfc.forecast_lookback_hours = forecast_lookback_hours;

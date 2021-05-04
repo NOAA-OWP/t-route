@@ -43,13 +43,13 @@ init_hybrid_reach(_Reach* reach, int lake_number,
     reach->reach.hybrid.initial_fractional_depth = initial_fractional_depth;
     reach->reach.hybrid.reservoir_type = reservoir_type;
 
-    reach->reach.hybrid.reservoir_parameter_file = (char*) malloc(sizeof(char)*MAX_PATH_LENGTH);
+    reach->reach.hybrid.reservoir_parameter_file = (char*) malloc(sizeof(char)*HYBRID_MAX_PATH_LENGTH);
     strcpy(reach->reach.hybrid.reservoir_parameter_file, reservoir_parameter_file_ptr);
-    reach->reach.hybrid.start_date = (char*) malloc(sizeof(char)*MAX_START_DATE_LENGTH);
+    reach->reach.hybrid.start_date = (char*) malloc(sizeof(char)*HYBRID_MAX_START_DATE_LENGTH);
     strcpy(reach->reach.hybrid.start_date, start_date_ptr);
-    reach->reach.hybrid.usgs_timeslice_path = (char*) malloc(sizeof(char)*MAX_PATH_LENGTH);
+    reach->reach.hybrid.usgs_timeslice_path = (char*) malloc(sizeof(char)*HYBRID_MAX_PATH_LENGTH);
     strcpy(reach->reach.hybrid.usgs_timeslice_path, usgs_timeslice_path_ptr);
-    reach->reach.hybrid.usace_timeslice_path = (char*) malloc(sizeof(char)*MAX_PATH_LENGTH);
+    reach->reach.hybrid.usace_timeslice_path = (char*) malloc(sizeof(char)*HYBRID_MAX_PATH_LENGTH);
     strcpy(reach->reach.hybrid.usace_timeslice_path, usace_timeslice_path_ptr);
 
     reach->reach.hybrid.observation_lookback_hours = observation_lookback_hours;

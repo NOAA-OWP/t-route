@@ -74,14 +74,14 @@ cdef class MC_RFC(Reach):
     water_elevation = args[10]
 
     #Check lengths of input strings to ensure that they do not exceed buffer size
-    if (len(reservoir_parameter_file) > 255):
-       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 255 characters.")
+    if (len(reservoir_parameter_file) > 256):
+       raise ValueError("reservoir_parameter_file path is too large. Length must be less than or equal to 256 characters.")
 
-    if (len(start_date) > 20):
+    if (len(start_date) > 19):
        raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
 
-    if (len(time_series_path) > 255):
-       raise ValueError("time_series_path is too large. Length must be less than or equal to 255 characters.")
+    if (len(time_series_path) > 256):
+       raise ValueError("time_series_path is too large. Length must be less than or equal to 256 characters.")
 
     init_rfc_reach(&self._reach, lake_number,
                          dam_length, area, max_depth,
