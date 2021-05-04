@@ -19,6 +19,10 @@ cdef extern from "hybrid_structs.c":
                             int observation_update_time_interval_seconds
   )
   void free_hybrid_reach(_Reach* reach)
+  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+
+cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow, float* water_elevation) nogil:
+    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
 
 cdef class MC_Hybrid(Reach):
   """
@@ -130,7 +134,7 @@ cdef class MC_Hybrid(Reach):
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
-      route_hybrid(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
+      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)
       return outflow, water_elevation
 
