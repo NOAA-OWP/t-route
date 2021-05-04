@@ -1286,6 +1286,82 @@ def main():
                 ],
                 copy=False,
             )
+            
+        if output_parameters.get("write_wrf_hydro_channel_restart", None):
+            # directory containing WRF Hydro restart files
+            restart_dir = output_parameters.get("wrf_hydro_channel_restart_directory",None)
+ 
+            # list of WRF Hydro restart files
+            restart_files = glob.glob(
+                os.path.join(
+                    restart_dir, 
+                    output_parameters["wrf_hydro_channel_restart_pattern_filter"]
+                )
+            )
+            
+            try:
+                if not pathlib.Path(restart_dir).exists() or len(restart_files) == 0:
+                    raise AssertionError
+            except AssertionError:
+                print('WRF Hydro restart files not found - Aborting restart write sequence')
+            else:
+                
+                # TODO Package this into an nhd_io function
+                def split_by_chunks(dataset):
+                    import itertools
+                    chunk_slices = {}
+                    for dim, chunks in dataset.chunks.items():
+                        slices = []
+                        start = 0
+                        for chunk in chunks:
+                            if start >= dataset.sizes[dim]:
+                                break
+                            stop = start + chunk
+                            slices.append(slice(start, stop))
+                            start = stop
+                        chunk_slices[dim] = slices
+                    for slices in itertools.product(*chunk_slices.values()):
+                        selection = dict(zip(chunk_slices.keys(), slices))
+                        yield dataset[selection]
+                            
+                # open restart files
+                import xarray as xr
+                with xr.open_mfdataset(
+                    restart_files,
+                    combine="by_coords"
+                ) as restart:
+                           
+                    # extrat individual restart datasets
+                    datasets = split_by_chunks(restart)
+                    
+                # get restart timestamps
+                timestamps = []
+                for sets in iter(datasets):
+                    t = sets.Restart_Time.replace('_', ' ')
+                    timestamps.append(t)  
+                timestamps = np.array(timestamps,dtype = np.datetime64)
+                    
+                # get troute simulation start time
+                simulation_restart = xr.open_dataset(
+                    restart_parameters.get("wrf_hydro_channel_restart_file")
+                )
+                t0 = simulation_restart.Restart_Time.replace('_', ' ')
+                t0 = np.array(t0,dtype = np.datetime64)
+                
+                # t-route simulation timestamps
+                troute_dt = np.timedelta64(run_parameters.get("dt"), 's')
+                troute_timestamps = t0 + np.arange(run_parameters.get("nts")) * troute_dt
+                
+                # find t-route timestamps that align with restart file timestamps
+                troute_time_idx = []
+                for t in timestamps:
+                    a = np.where(troute_timestamps == t)[0].tolist()
+                    if len(a) > 0:
+                        troute_time_idx.append(a[0])
+                    
+                # flows at restart times
+                
+            raise ValueError   
 
         if output_parameters.get("write_chrtout", None):
             if forcing_parameters.get("qlat_input_folder", None):
