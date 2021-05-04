@@ -13,12 +13,9 @@ from libc.stdlib cimport malloc, free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-#from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, route_lp
-#from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, route_hybrid
-#from troute.network.reservoirs.rfc.rfc cimport MC_RFC, route_rfc
-from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool
-from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid
-from troute.network.reservoirs.rfc.rfc cimport MC_RFC
+from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c
+from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, run_hybrid_c
+from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -1179,19 +1176,19 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                route_lp(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
               elif r.type == compute_type.RESERVOIR_HYBRID:
-                route_hybrid(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
               elif r.type == compute_type.RESERVOIR_RFC:
-                route_rfc(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation

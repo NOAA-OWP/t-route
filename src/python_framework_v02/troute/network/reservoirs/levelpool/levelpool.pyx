@@ -16,6 +16,11 @@ cdef extern from "levelpool_structs.c":
   )
   void free_levelpool_reach(_Reach* reach)
 
+  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+
+cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
+    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
+
 cdef class MC_Levelpool(Reach):
   """
     MC_Reservoir is a subclass of MC_Reach_Base_Class
@@ -98,7 +103,7 @@ cdef class MC_Levelpool(Reach):
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
     with nogil:
-      route_lp(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
+      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)
       return outflow, water_elevation
 
