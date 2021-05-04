@@ -228,22 +228,25 @@ def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
         qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps 
     """
         
-    # open chrtout files as a single xarray dataset
+    # open all CHRTOUT files as a single xarray dataset
     with xr.open_mfdataset(
         chrtout_files,
         combine="by_coords"
     ) as chrtout:
 
-        # !!NOTE: If break_at_waterbodies == T, segment feature_ids coincident with water bodies do
+        # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
         # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
         # populates columns with NaN values. 
         flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
 
         # unpack, subset, and transpose t-route flow data
-        qtrt = flowveldepth_reindex.loc[:,::3].to_numpy().astype("float32")
+        qtrt = flowveldepth_reindex.loc[:,::3]
+            .to_numpy()
+            .astype("float32")
         qtrt = qtrt[:,::qts_subdivisions]
         qtrt = np.transpose(qtrt)
 
+        # construct DataArray for t-route flows, dims, coords, and attrs consistent with CHRTOUT
         qtrt_DataArray = xr.DataArray(
             data = da.from_array(qtrt),
             dims = ["time","feature_id"],
@@ -257,21 +260,27 @@ def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
             ),
         )
 
-        # add t-route flow variable to CHRTOUT stack
+        # add t-route DataArray to CHRTOUT dataset
         chrtout["streamflow_troute"] = qtrt_DataArray
 
-        # build a list of datasets, 1 for each timestep
-        dataset_list = []
-        grp_object = list(chrtout.groupby("time"))
+        # group by time
+        grp_object = chrtout.groupby("time")
         
-    for i in range(len(grp_object)):
-        dataset_list.append(grp_object[i][1])
-        dataset_list[i] = dataset_list[i].expand_dims({"time": [grp_object[i][0]]})
+    # build a list of datasets, one for each timestep
+    dataset_list = []
+    for grp, vals in iter(grp_object):
+        dataset_list.append(vals)
 
     # save a new set of chrtout files to disk that contail t-route simulated flow
     chrtout_files_new = []
     chrtout_files_new[:] = [s + ".TRTE" for s in chrtout_files]
+    
+    # mfdataset solution - can theoretically be parallelised via dask.distributed
     xr.save_mfdataset(dataset_list, paths = chrtout_files_new)
+    
+#     # pure serial solution - saving for timing tests against mfdataset
+#     for i, dat in enumerate(dataset_list):
+#         dat.to_netcdf(chrtout_files_new[i])
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
