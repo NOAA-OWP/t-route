@@ -5,6 +5,8 @@ Declaring C types for Hybrid Class variables and functions
 from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
+cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow, float* water_elevation) nogil
+
 cdef extern from "hybrid_structs.h":
   ctypedef struct _MC_Hybrid:
     int lake_number
@@ -21,10 +23,6 @@ cdef extern from "hybrid_structs.h":
     int observation_update_time_interval_seconds
   ctypedef struct _Reach:
     pass
-
-cdef extern from "hybrid_structs.c":
-  void route_hybrid(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow, float* water_elevation) nogil
 
 cdef class MC_Hybrid(Reach):
   """

@@ -5,6 +5,8 @@ Declaring C types for Level Pool Class variables and functions
 from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
+cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil
+
 cdef extern from "levelpool_structs.h":
   ctypedef struct _MC_Levelpool:
     int lake_number
@@ -14,10 +16,6 @@ cdef extern from "levelpool_structs.h":
     float initial_fractional_depth, water_elevation
   ctypedef struct _Reach:
     pass
-
-cdef extern from "levelpool_structs.c":
-  void route_lp(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow, float* water_elevation) nogil
 
 cdef class MC_Levelpool(Reach):
   """

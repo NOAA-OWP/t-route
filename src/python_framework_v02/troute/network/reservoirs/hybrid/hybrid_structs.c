@@ -57,7 +57,7 @@ init_hybrid_reach(_Reach* reach, int lake_number,
 
     if(water_elevation < 0){
       //Equation below is used in wrf-hydro
-      printf("WARNING: LEVELPOOL USING COLDSTART WATER ELEVATION\n");
+      printf("WARNING: HYBRID PERSISTENCE RESERVOIR USING COLDSTART WATER ELEVATION\n");
       fflush(stdout);
       reach->reach.hybrid.water_elevation = orifice_elevation + ((max_depth - orifice_elevation) * initial_fractional_depth);
     }
@@ -88,7 +88,7 @@ void free_hybrid_reach(_Reach* reach)
   free(reach->reach.hybrid.usace_timeslice_path);
 }
 
-void route_hybrid(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
+void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
            float* outflow,  float* water_elevation)
 {
   run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, &reach->reach.hybrid.water_elevation, outflow, &routing_period);
