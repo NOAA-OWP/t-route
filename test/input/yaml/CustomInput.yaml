@@ -27,6 +27,7 @@ output_parameters:
     write_wrf_hydro_channel_restart: True
     # Directory containing WRF-Hydro restart files
     wrf_hydro_channel_restart_directory: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/"
+    wrf_hydro_channel_restart_pattern_filter: "HYDRO_RST.*"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Pocono1"
