@@ -550,4 +550,18 @@ def build_last_obs_df(routlink_file,):
         model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
         model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
 
-    return model_discharge_last_ts
+        model_discharge_last_ts['delta'] = model_discharge_last_ts['discharge'] - model_discharge_last_ts['model_discharge']
+        model_predictions = pd.DataFrame()
+        model_predictions['delta'] = model_discharge_last_ts['delta']
+        
+
+        prediction_df = pd.DataFrame(index=model_predictions.index)
+        for i in range(1,100,1):
+            if (model_predictions/i>1).any().delta == True:
+                prediction_df[str(i)] = (model_predictions/i)
+            elif (model_predictions/i<-1).any().delta == True:
+                prediction_df[str(i)] = (model_predictions/i)
+            else:
+                pass
+        
+    return prediction_df
