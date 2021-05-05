@@ -723,18 +723,38 @@ def build_last_obs_df(routlink_file):
         model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
         model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
 
-        model_discharge_last_ts['delta'] = model_discharge_last_ts['discharge'] - model_discharge_last_ts['model_discharge']
-        model_predictions = pd.DataFrame()
-        model_predictions['delta'] = model_discharge_last_ts['delta']
-        
+        model_discharge_last_ts['last_nudge'] = model_discharge_last_ts['discharge'] - model_discharge_last_ts['model_discharge']
 
-        prediction_df = pd.DataFrame(index=model_predictions.index)
-        for i in range(1,100,1):
-            if (model_predictions/i>1).any().delta == True:
-                prediction_df[str(i)] = (model_predictions/i)
-            elif (model_predictions/i<-1).any().delta == True:
-                prediction_df[str(i)] = (model_predictions/i)
+        a = 120
+        prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
+
+        for time in range(0,720,5):
+            weight = np.exp(time/-120)
+            delta = pd.DataFrame(model_discharge_last_ts['last_nudge']/np.exp(time/-120))
+            if time == 0:
+                prediction_df[str(time)] = model_discharge_last_ts['last_nudge']
+                weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
             else:
-                pass
+                if (weight>.1) == True:
+                    prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
+                elif (weight<-.1) == True:
+                    prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
+        prediction_df['0'] = model_discharge_last_ts['model_discharge']
+        return prediction_df
         
-    return prediction_df
+        # simple test case - can be deleted when above code is ready for integration 
+        # prediction_df = pd.DataFrame(index=model_predictions.index)
+        # for i in range(1,100,1):
+        #     if (model_predictions/i>1).any().delta == True:
+        #         prediction_df[str(i)] = (model_predictions/i)
+        #     elif (model_predictions/i<-1).any().delta == True:
+        #         prediction_df[str(i)] = (model_predictions/i)
+        #     else:
+        #         pass
+        
+    # return prediction_df
+
+# time = 0 to 360 by 5s
+# weight = np.exp(time/-120)
+# delta = weight*lastnudge
+# final solution = q_model + delta
