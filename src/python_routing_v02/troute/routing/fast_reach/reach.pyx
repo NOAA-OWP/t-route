@@ -1,6 +1,6 @@
 import cython
 
-from fortran_wrappers cimport c_muskingcungenwm
+from .fortran_wrappers cimport c_muskingcungenwm
 
 @cython.boundscheck(False)
 cdef void muskingcunge(float dt,
@@ -19,7 +19,7 @@ cdef void muskingcunge(float dt,
         float velp,
         float depthp,
         QVD *rv) nogil:
-    
+
     cdef:
         float qdc = 0.0
         float depthc = 0.0
@@ -50,11 +50,11 @@ cdef void muskingcunge(float dt,
         &ck,
         &cn,
         &X)
-    
+
     rv.qdc = qdc
     rv.depthc = depthc
     rv.velc = velc
-    
+
     # to do: make these additional variable's conditional, somehow
     rv.ck = ck
     rv.cn = cn
@@ -139,7 +139,7 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
     # check that previous state, parameter_inputs and output_buffer all have same axis 0
     if size > 0:
         rows = size
-        if (parameter_inputs.shape[0] < rows 
+        if (parameter_inputs.shape[0] < rows
                 or output_buffer.shape[0] < rows
                 or previous_state.shape[0] < rows):
             raise ValueError(f"axis 0 is not long enough for {size}")
@@ -201,4 +201,3 @@ cpdef float[:,:] compute_reach(const float[:] boundary,
 
         qup = qdp
     return output_buffer
-
