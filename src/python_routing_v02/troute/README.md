@@ -7,3 +7,5 @@ Framework and Routing are too dependent to really use two differnt pacakges, eve
 It would make sense to refactor the framework so that routing is a subpackage.  Then perhaps implement a subpackage which allows plugging in different network types and routing types?  Some mix of namespace package (for the framework) with plugin like utility.
 
 https://packaging.python.org/guides/creating-and-discovering-plugins/
+
+Should probably move build_tests.py under this routing package...
