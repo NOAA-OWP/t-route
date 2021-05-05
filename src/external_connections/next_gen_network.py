@@ -43,6 +43,7 @@ def _handle_args():
     return parser.parse_args()
 
 root = pathlib.Path('.').resolve()
+#FIXME remove these eventually
 sys.path.append(r"../python_framework_v02")
 sys.path.append(r"../python_routing_v02")
 sys.path.append(r"../../test/input/next_gen")

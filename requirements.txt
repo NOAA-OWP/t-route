@@ -1,0 +1,9 @@
+numpy
+Cython
+pandas
+geopandas
+xarray
+netcdf4
+pyyaml
+toolz
+joblib

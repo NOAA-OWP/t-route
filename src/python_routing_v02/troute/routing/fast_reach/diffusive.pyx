@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 cimport numpy as np
 
-from fortran_wrappers cimport c_diffnw
-import diffusive_utils as diff_utils
+from .fortran_wrappers cimport c_diffnw
+from .. import diffusive_utils as diff_utils
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 
@@ -52,11 +52,11 @@ cdef void diffnw(double dtini_g,
              int ntss_ev_g,
              double[:,:,:] out_q,
              double[:,:,:] out_elv):
-        
+
     cdef:
-        double[::1,:,:] q_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F') 
-        double[::1,:,:] elv_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F') 
-    
+        double[::1,:,:] q_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
+        double[::1,:,:] elv_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
+
     c_diffnw(
             &dtini_g,
             &t0_g,
@@ -99,11 +99,11 @@ cdef void diffnw(double dtini_g,
             &ntss_ev_g,
             &q_ev_g[0,0,0],
             &elv_ev_g[0,0,0])
-    
+
     # copy data from Fortran to Python memory view
     out_q[:,:,:] = q_ev_g[::1,:,:]
     out_elv[:,:,:] = elv_ev_g[::1,:,:]
-    
+
 cpdef object compute_diffusive_tst(
     int nsteps,
     int qts_subdivisions,
@@ -123,18 +123,18 @@ cpdef object compute_diffusive_tst(
     bint return_courant=False,
     dict diffusive_parameters=False
     ):
-    
+
     # segment connections dictionary
     connections = nhd_network.reverse_network(rconn)
-    
+
     # network tailwater
     tw = list(nhd_network.headwaters(rconn))[0]
- 
+
     # network reaches
     reach_list = []
     for i in reaches_wTypes:
         reach_list.append(i[0])
-    
+
     # generate diffusive inputs
     diff_inputs = diff_utils.diffusive_input_data_v02(
         tw,
@@ -147,7 +147,7 @@ cpdef object compute_diffusive_tst(
         np.asarray(data_values),
         np.asarray(qlat_values)
         )
-    
+
     # unpack/declare diffusive input variables
     cdef:
         double dtini_g = diff_inputs["dtini_g"]
@@ -191,7 +191,7 @@ cpdef object compute_diffusive_tst(
         int ntss_ev_g = diff_inputs["ntss_ev_g"]
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
-        
+
     # call diffusive compute kernel
     diffnw(dtini_g,
      t0_g,
@@ -234,14 +234,13 @@ cpdef object compute_diffusive_tst(
      ntss_ev_g,
      out_q,
      out_elv)
-    
+
     # re-format outputs
     index_array, flowvelelv = diff_utils.unpack_output(
-                                diff_inputs["pynw"], 
-                                diff_inputs["ordered_reaches"], 
-                                out_q, 
+                                diff_inputs["pynw"],
+                                diff_inputs["ordered_reaches"],
+                                out_q,
                                 out_elv
                                 )
-    
-    return index_array, flowvelelv
 
+    return index_array, flowvelelv

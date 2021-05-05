@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 from distutils.extension import Extension
 import sys
 import numpy as np
@@ -33,7 +33,7 @@ musk = Extension(
     sources=[
             "troute/network/musking/mc_reach.{}".format(ext),
             ],
-    include_dirs=[np.get_include()],
+    include_dirs=[np.get_include(), "troute/network/"],
     extra_objects=[],
     libraries=[],
     extra_compile_args=["-g"],
@@ -44,7 +44,7 @@ reservoirs = Extension(
     sources=[
              "troute/network/reservoirs/levelpool/levelpool.{}".format(ext),
              ],
-    include_dirs=[np.get_include()],
+    include_dirs=[np.get_include(),  "troute/network/"],
     extra_objects=["./libs/binding_lp.a"],
     libraries=["gfortran", "netcdff", "netcdf"],
     extra_compile_args=["-g"],
@@ -63,8 +63,9 @@ if USE_CYTHON:
     ext_modules = cythonize(ext_modules, compiler_directives={"language_level": 3})
 
 setup(
-    name="Network",
-    packages=["troute", "troute.network", "troute.network.reservoirs", "troute.network.reservoirs.levelpool"],
+    name="troute.network",
+    namespace_packages=["troute"],
+    packages=find_namespace_packages(include=["troute.*"]),#["troute.network", "troute.network.reservoirs", "troute.network.reservoirs.levelpool"],
     ext_modules=ext_modules,
     ext_package="",
     package_data=package_data,

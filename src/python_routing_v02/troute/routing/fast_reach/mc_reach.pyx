@@ -22,7 +22,7 @@ from cython.parallel import prange
 #if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
 #____pyx_f_5reach_muskingcunge
 #from reach cimport muskingcunge, QVD
-cimport reach
+cimport troute.fast_reach.reach as reach
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -830,10 +830,6 @@ cpdef object compute_network_structured_obj(
 
         #Check if reach_type is 1 for reservoir/waterbody
         if (reach_type == 1):
-
-            #TODO: Add if isintance of the reservoir type
-            #if isinstance(reservoir_object, lp_kernel):
-
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
             routing_period = 300.0
 
@@ -849,24 +845,6 @@ cpdef object compute_network_structured_obj(
             segment_ids = []
 
             #Create compute reach kernel input buffer
-            """
-            for i in range(r.num_segments):
-              segment = r.segments[i]
-              segment_ids.append(segment.id)
-              buf_view[i, 0] = qlat_array[ segment.id, int(timestep/qlat_resample)]
-              buf_view[i, 1] = segment.dt
-              buf_view[i, 2] = segment.dx
-              buf_view[i, 3] = segment.bw
-              buf_view[i, 4] = segment.tw
-              buf_view[i, 5] = segment.twcc
-              buf_view[i, 6] = segment.n
-              buf_view[i, 7] = segment.ncc
-              buf_view[i, 8] = segment.cs
-              buf_view[i, 9] = segment.s0
-              buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
-              buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-              buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
-            """
             for i, segment in enumerate(r):
               segment_ids.append(segment['id'])
               buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
@@ -882,12 +860,12 @@ cpdef object compute_network_structured_obj(
               buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
               buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
               buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
+
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                  len(r), buf_view,
                                  out_buf,
-                                 assume_short_ts)#,
-                                 #timestep,
-                                 #nsteps)
+                                 assume_short_ts)
+
             #Copy the output out
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
@@ -1062,7 +1040,6 @@ cpdef object compute_network_structured(
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
               else:
                 #Create compute reach kernel input buffer
-                #for i, segment in enumerate(r.segments):
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(r, i)#r._segments[i]
                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
@@ -1082,13 +1059,11 @@ cpdef object compute_network_structured(
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
-                                     assume_short_ts)#,
-                                     #timestep,
-                                     #nsteps)
+                                     assume_short_ts)
+
                 #Copy the output out
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(r, i)
-                  #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
