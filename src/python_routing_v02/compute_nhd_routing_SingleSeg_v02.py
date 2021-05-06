@@ -1209,10 +1209,6 @@ def main():
         print("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
-    # STEP 7 Last obs ids and data excluding NaN
-    last_obs_df = nhd_io.build_last_obs_df(
-        restart_parameters["wrf_hydro_last_obs_file"]
-    )
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1398,6 +1394,21 @@ def main():
 
         if debuglevel <= -1:
             print(flowveldepth)
+
+    
+    # STEP 7 Last obs ids and data excluding NaN
+
+
+    fvd_df = flowveldepth.iloc[ :, -1:]
+    # import pdb; pdb.set_trace()
+    last_obs_df = nhd_io.build_last_obs_df(
+        restart_parameters["wrf_hydro_last_obs_file"],
+        restart_parameters["wrf_last_obs_flag"],
+        fvd_df,
+    )
+    print(last_obs_df)
+    import pdb; pdb.set_trace()
+
 
     if verbose:
         print("output complete")
