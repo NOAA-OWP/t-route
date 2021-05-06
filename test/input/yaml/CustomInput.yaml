@@ -90,6 +90,7 @@ restart_parameters:
     wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
     wrf_hydro_last_obs_file: "../../test/input/geo/last_obs/nudgingLastObs.2018-08-02_00_00_00.nc"
+    wrf_last_obs_flag: False
 parity_parameters:
     parity_check_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
     parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
