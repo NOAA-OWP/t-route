@@ -1286,7 +1286,37 @@ def main():
                 ],
                 copy=False,
             )
-
+            
+        if output_parameters.get("write_wrf_hydro_channel_restart", None):
+            # directory containing WRF Hydro restart files
+            restart_dir = output_parameters.get("wrf_hydro_channel_restart_directory",None)
+ 
+            # list of WRF Hydro restart files
+            restart_files = glob.glob(
+                os.path.join(
+                    restart_dir, 
+                    output_parameters["wrf_hydro_channel_restart_pattern_filter"] + "[!.TROUTE]"
+                )
+            )  
+            
+            try:
+                if not pathlib.Path(restart_dir).exists() or len(restart_files) == 0:
+                    raise AssertionError
+            except AssertionError:
+                print('WRF Hydro restart files not found - Aborting restart write sequence')
+            else:
+                
+                nhd_io.write_channel_restart_to_wrf_hydro(
+                    flowveldepth,
+                    restart_files,
+                    restart_parameters.get("wrf_hydro_channel_restart_file"),
+                    run_parameters.get("dt"),
+                    run_parameters.get("nts"),
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name"),
+                )
+                
+                
         if csv_output_folder:
             # create filenames
             # TO DO: create more descriptive filenames
