@@ -1406,8 +1406,9 @@ def main():
         restart_parameters["wrf_last_obs_flag"],
         fvd_df,
     )
-    print(last_obs_df)
-
+    if verbose:
+        print(last_obs_df)
+        print("last observation DA decay dataframe")
     if verbose:
         print("output complete")
     if showtiming:
