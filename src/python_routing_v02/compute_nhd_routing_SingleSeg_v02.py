@@ -1333,8 +1333,6 @@ def main():
         fvd_df,
     )
     print(last_obs_df)
-    import pdb; pdb.set_trace()
-
 
     if verbose:
         print("output complete")
