@@ -525,7 +525,98 @@ def get_channel_restart_from_wrf_hydro(
 
     return q_initial_states
 
+def write_channel_restart_to_wrf_hydro(
+    data,
+    restart_files,
+    channel_initial_states_file,
+    dt_troute,
+    nts_troute,
+    crosswalk_file,
+    channel_ID_column,
+    restart_file_dimension_var = 'links',
+    troute_us_flow_var_name = 'qlink1_troute',
+    troute_ds_flow_var_name = 'qlink2_troute',
+    troute_depth_var_name = 'hlink_troute',
+):
+    """
+    Write t-route flow and depth data to WRF-Hydro restart files. New WRF-Hydro restart
+    files are created that contain all of the data in the original files, plus t-route
+    flow and depth data. 
+    
+    Agruments
+    ---------
+        data (Data Frame): t-route simulated flow, velocity and depth data
+        restart_files (list): globbed list of WRF-Hydro restart files
+        channel_initial_states_file (str): WRF-HYDRO standard restart file used to initiate t-route simulation
+        dt_troute (int): timestep of t-route simulation (seconds)
+        nts_troute (int): number of t-route simulation timesteps
+        crosswalk_file (str): File containing reservoir IDs IN THE ORDER of the Restart File
+        channel_ID_column (str): field in the crosswalk file to assign as the index of the restart values
+        restart_file_dimension_var (str): name of flow and depth data dimension in the Restart File
+        troute_us_flow_var_name (str):
+        troute_ds_flow_var_name (str):
+        troute_depth_var_name (str):
+        
+    Returns
+    -------
+    """
+    # create t-route simulation timestamp array
+    with xr.open_dataset(channel_initial_states_file) as ds:
+        t0 = ds.Restart_Time.replace('_', ' ')
+    t0 = np.array(t0,dtype = np.datetime64)
+    troute_dt = np.timedelta64(dt_troute, 's')
+    troute_timestamps = t0 + np.arange(nts_troute) * troute_dt
 
+    # extract ordered feature_ids from crosswalk file
+    with xr.open_dataset(crosswalk_file) as xds:
+        xdf = xds[channel_ID_column].to_dataframe()
+    xdf = xdf.reset_index()
+    xdf = xdf[[channel_ID_column]]
+
+    # reindex flowvedl depth array
+    flowveldepth_reindex = data.reindex(xdf.link)
+
+    # get restart timestamps - revise do this one at a time
+    for f in restart_files:
+        with xr.open_dataset(f) as ds:
+
+            # get timestamp from restart file
+            t = np.array(
+                ds.Restart_Time.replace('_', ' '), 
+                dtype = np.datetime64)
+
+            # find index troute_timestamp value that matches restart file timestamp
+            a = np.where(troute_timestamps == t)[0].tolist()
+
+            # if the restart timestamp exists in the t-route simulatuion
+            if len(a) > 0:
+
+                # pull flow data from flowveldepth array, package into DataArray
+                # !! TO DO - is there a more percise way to slice flowveldepth array?
+                qtrt = flowveldepth_reindex.iloc[:,::3].iloc[:,a].to_numpy().astype("float32")
+                qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
+                qtrt_DataArray = xr.DataArray(
+                    data = qtrt,
+                    dims = [restart_file_dimension_var],
+                )
+
+                # pull depth data from flowveldepth array, package into DataArray
+                # !! TO DO - is there a more percise way to slice flowveldepth array?
+                htrt = flowveldepth_reindex.iloc[:,2::3].iloc[:,a].to_numpy().astype("float32")
+                htrt = htrt.reshape((len(flowveldepth_reindex,)))
+                htrt_DataArray = xr.DataArray(
+                    data = htrt,
+                    dims = [restart_file_dimension_var],
+                )
+
+                # insert troute data into restart dataset
+                ds[troute_us_flow_var_name] = qtrt_DataArray
+                ds[troute_ds_flow_var_name] = qtrt_DataArray
+                ds[troute_depth_var_name] = htrt_DataArray
+
+                # write edited to disk with new filename
+                ds.to_netcdf(f + ".TROUTE")
+                
 def get_reservoir_restart_from_wrf_hydro(
     waterbody_intial_states_file,
     crosswalk_file,

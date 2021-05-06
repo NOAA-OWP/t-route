@@ -1306,80 +1306,16 @@ def main():
                 print('WRF Hydro restart files not found - Aborting restart write sequence')
             else:
                 
-                # --vvvvvvvvvv EVERYTHING HERE TO GO TO FUNCTION IN nhd_io.py vvvvvvvvvvv
-                #---------------------------------------------------------------------------------------------
+                nhd_io.write_channel_restart_to_wrf_hydro(
+                    flowveldepth,
+                    restart_files,
+                    restart_parameters.get("wrf_hydro_channel_restart_file"),
+                    run_parameters.get("dt"),
+                    run_parameters.get("nts"),
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name"),
+                )
                 
-                '''
-                Inputs
-                ------
-                restart_files
-                restart_parameters
-                run_parameters
-                '''
-                
-                import xarray as xr
-                import dask.array as da
-                
-                # create t-route simulation timestamp array
-                with xr.open_dataset(restart_parameters.get("wrf_hydro_channel_restart_file")) as ds:
-                    t0 = ds.Restart_Time.replace('_', ' ')
-                t0 = np.array(t0,dtype = np.datetime64)
-                troute_dt = np.timedelta64(run_parameters.get("dt"), 's')
-                troute_timestamps = t0 + np.arange(run_parameters.get("nts")) * troute_dt
-                
-                # extract ordered feature_ids from crosswalk file
-                crosswalk_file = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file")
-                channel_ID_column = restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name")
-                
-                with xr.open_dataset(crosswalk_file) as xds:
-                    xdf = xds[channel_ID_column].to_dataframe()
-                xdf = xdf.reset_index()
-                xdf = xdf[[channel_ID_column]]
-                
-                # reindex flowvedl depth array
-                flowveldepth_reindex = flowveldepth.reindex(xdf.link)
-                
-                # get restart timestamps - revise do this one at a time
-                timestamps = []
-                for f in restart_files:
-                    with xr.open_dataset(f) as ds:
-                        
-                        # get timestamp from restart file
-                        t = np.array(
-                            ds.Restart_Time.replace('_', ' '), 
-                            dtype = np.datetime64)
-                        
-                        # find index troute_timestamp value that matches restart file timestamp
-                        a = np.where(troute_timestamps == t)[0].tolist()
-                        
-                        # if the restart timestamp exists in the t-route simulatuion
-                        if len(a) > 0:
- 
-                            # pull flow data from flowveldepth array, package into DataArray
-                            qtrt = flowveldepth_reindex.iloc[:,::3].iloc[:,a].to_numpy().astype("float32")
-                            qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
-                            qtrt_DataArray = xr.DataArray(
-                                data = qtrt,
-                                dims = ["links"],
-                            )
-                            
-                            # pull depth data from flowveldepth array, package into DataArray
-                            htrt = flowveldepth_reindex.iloc[:,2::3].iloc[:,a].to_numpy().astype("float32")
-                            htrt = htrt.reshape((len(flowveldepth_reindex,)))
-                            htrt_DataArray = xr.DataArray(
-                                data = htrt,
-                                dims = ["links"],
-                            )
-                            
-                            # insert troute data into restart dataset
-                            ds['qlink1_troute'] = qtrt_DataArray
-                            ds['qlink2_troute'] = qtrt_DataArray
-                            ds['hlink_troute'] = htrt_DataArray
-                            # write to disk
-                            ds.to_netcdf(f + ".TROUTE")
-                            
-                #---------------------------------------------------------------------------------------------
-                # --^^^^^^^^^ EVERYTHING HERE TO GO TO FUNCTION IN nhd_io.py ^^^^^^^^^^
                 
         if output_parameters.get("write_chrtout", None):
             if forcing_parameters.get("qlat_input_folder", None):
