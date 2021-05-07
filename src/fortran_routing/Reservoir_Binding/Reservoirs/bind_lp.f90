@@ -41,7 +41,7 @@ contains
             integer, intent(in) :: lake_number               ! lake number
             type (levelpool), POINTER :: levelpool_ptr ! ptr to LP object
             CALL C_F_POINTER(handle, levelpool_ptr)
-            
+ 
             call levelpool_ptr%init(water_elevation,  &
                                                    lake_area, weir_elevation, weir_coeffecient, &
                                                    weir_length, dam_length, orifice_elevation, orifice_coefficient, &

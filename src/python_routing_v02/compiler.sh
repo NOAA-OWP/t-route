@@ -44,8 +44,10 @@ if [[ "$build_reservoir_kernel" == true ]]; then
   cd $REPOROOT/src/fortran_routing/Reservoir_Binding/Reservoirs
   make clean
   #make NETCDFINC=`nc-config --includedir` || exit
-  make binding_lp.a
-  make install_lp || exit
+  #make binding_lp.a
+  #make install_lp || exit
+  make
+  make install || exit
 
 fi
 

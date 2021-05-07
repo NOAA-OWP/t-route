@@ -19,8 +19,8 @@ finder.find_module = find_module_new.__get__(finder, pyximport.PyxImporter)
 import pytest
 from array import array
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
-#from compute_kernel_hybrid import hybrid_kernel
-#from compute_kernel_rfc import rfc_kernel
+from troute.network.reservoirs.hybrid.hybrid import MC_Hybrid
+from troute.network.reservoirs.rfc.rfc import MC_RFC
 
 
 @pytest.fixture()
@@ -41,7 +41,7 @@ def lp_reservoir():
     orifice_area = 1.0
     max_depth = 9.96
     lake_number = 16944276
-    initial_fractional_depth = 0
+    initial_fractional_depth = 0.9
     args = [lake_area, max_depth, orifice_area,
             orifice_coefficient, orifice_elevation,
             weir_coefficient, weir_elevation, weir_length,
@@ -70,7 +70,7 @@ def lp_reservoir2():
     orifice_area = 1.0
     max_depth = 9.96
     lake_number = 16944277
-    initial_fractional_depth = 0
+    initial_fractional_depth = 0.9
     args = [lake_area, max_depth, orifice_area,
             orifice_coefficient, orifice_elevation,
             weir_coefficient, weir_elevation, weir_length,
@@ -100,7 +100,7 @@ def lp_reservoir3():
     orifice_area = 1.0
     max_depth = 496.369995117188
     lake_number = 4185105
-    initial_fractional_depth = 0
+    initial_fractional_depth = 0.9
     args = [lake_area, max_depth, orifice_area,
             orifice_coefficient, orifice_elevation,
             weir_coefficient, weir_elevation, weir_length,
@@ -110,13 +110,184 @@ def lp_reservoir3():
     k = MC_Levelpool(0, lake_number, upstream_ids, args)
     yield k
 
-'''
 @pytest.fixture()
 def hybrid_reservoir():
     """
-    an lp compute kernel to put under test
+    a hybrid compute kernel to put under test
     """
     #print("hybrid test")
+
+    cwd_full = "./reservoir_testing_files/"
+
+    water_elevation = 1331.18005
+    lake_area = 209.632
+    weir_elevation = 1332.074
+    weir_coefficient = 0.4
+    weir_length = 10.0
+    dam_length = 10.0
+    orifice_elevation = 1314.473
+    orifice_coefficient = 0.1
+    orifice_area = 1.0
+    max_depth = 1335.180
+    initial_fractional_depth = 0.9
+    lake_number = 402142
+    reservoir_type = 2
+    reservoir_parameter_file = (
+        "./reservoir_testing_files/reservoir_index_short_range.nc"
+    )
+    start_date = "2010-10-01_07:00:00"
+    usgs_timeslice_path = cwd_full
+    usace_timeslice_path = cwd_full
+    observation_lookback_hours = 48
+    observation_update_time_interval_seconds = 1000000000
+
+    args = [lake_area, max_depth, orifice_area,
+            orifice_coefficient, orifice_elevation,
+            weir_coefficient, weir_elevation, weir_length,
+            initial_fractional_depth, 0.0, water_elevation]
+
+    upstream_ids = array('l')
+    k = MC_Hybrid(0, lake_number, upstream_ids, args, 
+            reservoir_type, reservoir_parameter_file,
+            start_date, usgs_timeslice_path,
+            usace_timeslice_path, observation_lookback_hours,
+            observation_update_time_interval_seconds)
+    yield k
+
+@pytest.fixture()
+def rfc_reservoir():
+    """
+    an lp compute kernel to put under test
+    """
+    #print("rfc test")
+
+    cwd_full = "./reservoir_testing_files/"
+
+    water_elevation = 1331.18005
+    lake_area = 209.632
+    weir_elevation = 1332.074
+    weir_coefficient = 0.4
+    weir_length = 10.0
+    dam_length = 10.0
+    orifice_elevation = 1314.473
+    orifice_coefficient = 0.1
+    orifice_area = 1.0
+    max_depth = 1335.180
+    initial_fractional_depth = 0.9
+    lake_number = 17609317
+    reservoir_type = 4
+    reservoir_parameter_file = (
+        "./reservoir_testing_files/reservoir_index_short_range.nc"
+    )
+    start_date = "2019-08-18_09:00:00"
+    time_series_path = cwd_full
+    forecast_lookback_hours = 24
+
+    args = [lake_area, max_depth, orifice_area,
+            orifice_coefficient, orifice_elevation,
+            weir_coefficient, weir_elevation, weir_length,
+            initial_fractional_depth, 0.0, water_elevation]
+
+    upstream_ids = array('l')
+    k = MC_RFC(0, lake_number, upstream_ids, args,
+               reservoir_type, reservoir_parameter_file,
+               start_date, time_series_path, forecast_lookback_hours)
+    yield k
+
+def test_lp_construction(lp_reservoir):
+    """
+    test construction of an lp reservoir 
+    """
+    water_elevation = 9.7373
+    lake_area = 15.0949
+    weir_elevation = 9.626
+    weir_coefficient = 0.4
+    weir_length = 10.0
+    dam_length = 10.0
+    orifice_elevation = 7.733
+    orifice_coefficient = 0.1
+    orifice_area = 1.0
+    max_depth = 9.96
+    lake_number = 16944276
+    initial_fractional_depth = 0.9
+
+    assert(lp_reservoir.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
+    assert(lp_reservoir.lake_area == pytest.approx(lake_area, rel=1e-7) )
+    assert(lp_reservoir.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
+    assert(lp_reservoir.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
+    assert(lp_reservoir.weir_length == pytest.approx(weir_length, rel=1e-7) )
+    assert(lp_reservoir.dam_length == pytest.approx(dam_length, rel=1e-7) )
+    assert(lp_reservoir.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
+    assert(lp_reservoir.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
+    assert(lp_reservoir.max_depth == pytest.approx(max_depth, rel=1e-7) )
+    assert(lp_reservoir.lake_number == lake_number )
+    assert(lp_reservoir.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+
+def test_lp_construction2(lp_reservoir2):
+    """
+    test construction of an lp reservoir 
+    """
+    water_elevation = 9.70
+    lake_area = 15.0949
+    weir_elevation = 9.626
+    weir_coefficient = 0.4
+    weir_length = 10.0
+    dam_length = 10.0
+    orifice_elevation = 7.733
+    orifice_coefficient = 0.1
+    orifice_area = 1.0
+    max_depth = 9.96
+    lake_number = 16944277
+    initial_fractional_depth = 0.9
+
+    assert(lp_reservoir2.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
+
+    assert(lp_reservoir2.lake_area == pytest.approx(lake_area, rel=1e-7) )
+    assert(lp_reservoir2.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
+    assert(lp_reservoir2.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
+    assert(lp_reservoir2.weir_length == pytest.approx(weir_length, rel=1e-7) )
+    assert(lp_reservoir2.dam_length == pytest.approx(dam_length, rel=1e-7) )
+    assert(lp_reservoir2.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
+    assert(lp_reservoir2.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
+    assert(lp_reservoir2.max_depth == pytest.approx(max_depth, rel=1e-7) )
+    assert(lp_reservoir2.lake_number == lake_number )
+    assert(lp_reservoir2.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+
+def test_lp_construction3(lp_reservoir3):
+    """
+    test construction of an lp reservoir 
+    """
+    water_elevation = 496.25399574057275
+    lake_area = 1.95502996444702
+    weir_elevation = 496.19599609375
+    weir_coefficient = 0.4
+    weir_length = 10.0
+    dam_length = 10.0
+    orifice_elevation = 495.210001627604
+    orifice_coefficient = 0.1
+    orifice_area = 1.0
+    max_depth = 496.369995117188
+    lake_number = 4185105
+    initial_fractional_depth = 0.9
+
+    assert(lp_reservoir3.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
+
+    assert(lp_reservoir3.lake_area == pytest.approx(lake_area, rel=1e-7) )
+    assert(lp_reservoir3.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
+    assert(lp_reservoir3.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
+    assert(lp_reservoir3.weir_length == pytest.approx(weir_length, rel=1e-7) )
+    assert(lp_reservoir3.dam_length == pytest.approx(dam_length, rel=1e-7) )
+    assert(lp_reservoir3.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
+    assert(lp_reservoir3.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
+    assert(lp_reservoir3.max_depth == pytest.approx(max_depth, rel=1e-7) )
+    assert(lp_reservoir3.lake_number == lake_number )
+    assert(lp_reservoir3.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+
+
+def test_hybrid_construction(hybrid_reservoir):
+    """
+    test construction of a hybrid reservoir 
+    """
 
     cwd_full = b"./reservoir_testing_files/"
 
@@ -142,38 +313,32 @@ def hybrid_reservoir():
     observation_lookback_hours = 48
     observation_update_time_interval_seconds = 1000000000
 
-    k = hybrid_kernel(
-        0,
-        1,
-        water_elevation,
-        lake_area,
-        weir_elevation,
-        weir_coefficient,
-        weir_length,
-        dam_length,
-        orifice_elevation,
-        orifice_coefficient,
-        orifice_area,
-        max_depth,
-        initial_fractional_depth,
-        lake_number,
-        reservoir_type,
-        reservoir_parameter_file,
-        start_date,
-        usgs_timeslice_path,
-        usace_timeslice_path,
-        observation_lookback_hours,
-        observation_update_time_interval_seconds,
-    )
-    yield k
 
-@pytest.fixture()
-def rfc_reservoir():
-    """
-    an lp compute kernel to put under test
-    """
-    #print("rfc test")
+    assert(hybrid_reservoir.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
 
+    assert(hybrid_reservoir.lake_area == pytest.approx(lake_area, rel=1e-7) )
+    assert(hybrid_reservoir.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
+    assert(hybrid_reservoir.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
+    assert(hybrid_reservoir.weir_length == pytest.approx(weir_length, rel=1e-7) )
+    assert(hybrid_reservoir.dam_length == pytest.approx(dam_length, rel=1e-7) )
+    assert(hybrid_reservoir.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
+    assert(hybrid_reservoir.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
+    assert(hybrid_reservoir.max_depth == pytest.approx(max_depth, rel=1e-7) )
+    assert(hybrid_reservoir.lake_number == lake_number )
+    assert(hybrid_reservoir.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+    assert(hybrid_reservoir.reservoir_type == reservoir_type )
+    assert(hybrid_reservoir.reservoir_parameter_file == reservoir_parameter_file )
+    assert(hybrid_reservoir.start_date == start_date )
+    assert(hybrid_reservoir.usgs_timeslice_path == usgs_timeslice_path )
+    assert(hybrid_reservoir.usace_timeslice_path == usace_timeslice_path )
+    assert(hybrid_reservoir.observation_lookback_hours == observation_lookback_hours )
+    assert(hybrid_reservoir.observation_update_time_interval_seconds == observation_update_time_interval_seconds )
+
+
+def test_rfc_construction(rfc_reservoir):
+    """
+    test construction of a rfc reservoir 
+    """
     cwd_full = b"./reservoir_testing_files/"
 
     water_elevation = 1331.18005
@@ -196,119 +361,23 @@ def rfc_reservoir():
     time_series_path = cwd_full
     forecast_lookback_hours = 24
 
-    k = rfc_kernel(
-        0,
-        1,
-        water_elevation,
-        lake_area,
-        weir_elevation,
-        weir_coefficient,
-        weir_length,
-        dam_length,
-        orifice_elevation,
-        orifice_coefficient,
-        orifice_area,
-        max_depth,
-        initial_fractional_depth,
-        lake_number,
-        reservoir_type,
-        reservoir_parameter_file,
-        start_date,
-        time_series_path,
-        forecast_lookback_hours,
-    )
-    yield k
-'''
+    assert(rfc_reservoir.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
 
-def test_lp_construction(lp_reservoir):
-    """
-
-    """
-    water_elevation = 9.7373
-    lake_area = 15.0949
-    weir_elevation = 9.626
-    weir_coefficient = 0.4
-    weir_length = 10.0
-    dam_length = 10.0
-    orifice_elevation = 7.733
-    orifice_coefficient = 0.1
-    orifice_area = 1.0
-    max_depth = 9.96
-    lake_number = 16944276
-    initial_fractional_depth = 0.0
-
-    assert(lp_reservoir.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
-
-    assert(lp_reservoir.lake_area == pytest.approx(lake_area, rel=1e-7) )
-    assert(lp_reservoir.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
-    assert(lp_reservoir.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
-    assert(lp_reservoir.weir_length == pytest.approx(weir_length, rel=1e-7) )
-    assert(lp_reservoir.dam_length == pytest.approx(dam_length, rel=1e-7) )
-    assert(lp_reservoir.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
-    assert(lp_reservoir.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
-    assert(lp_reservoir.max_depth == pytest.approx(max_depth, rel=1e-7) )
-    assert(lp_reservoir.lake_number == lake_number )
-    assert(lp_reservoir.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
-
-def test_lp_construction2(lp_reservoir2):
-    """
-
-    """
-    water_elevation = 9.70
-    lake_area = 15.0949
-    weir_elevation = 9.626
-    weir_coefficient = 0.4
-    weir_length = 10.0
-    dam_length = 10.0
-    orifice_elevation = 7.733
-    orifice_coefficient = 0.1
-    orifice_area = 1.0
-    max_depth = 9.96
-    lake_number = 16944277
-    initial_fractional_depth = 0
-
-    assert(lp_reservoir2.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
-
-    assert(lp_reservoir2.lake_area == pytest.approx(lake_area, rel=1e-7) )
-    assert(lp_reservoir2.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
-    assert(lp_reservoir2.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
-    assert(lp_reservoir2.weir_length == pytest.approx(weir_length, rel=1e-7) )
-    assert(lp_reservoir2.dam_length == pytest.approx(dam_length, rel=1e-7) )
-    assert(lp_reservoir2.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
-    assert(lp_reservoir2.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
-    assert(lp_reservoir2.max_depth == pytest.approx(max_depth, rel=1e-7) )
-    assert(lp_reservoir2.lake_number == lake_number )
-    assert(lp_reservoir2.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
-
-def test_lp_construction3(lp_reservoir3):
-    """
-
-    """
-    water_elevation = 496.25399574057275
-    lake_area = 1.95502996444702
-    weir_elevation = 496.19599609375
-    weir_coefficient = 0.4
-    weir_length = 10.0
-    dam_length = 10.0
-    orifice_elevation = 495.210001627604
-    orifice_coefficient = 0.1
-    orifice_area = 1.0
-    max_depth = 496.369995117188
-    lake_number = 4185105
-    initial_fractional_depth = 0
-
-    assert(lp_reservoir3.water_elevation == pytest.approx(water_elevation, rel=1e-7) )
-
-    assert(lp_reservoir3.lake_area == pytest.approx(lake_area, rel=1e-7) )
-    assert(lp_reservoir3.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
-    assert(lp_reservoir3.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
-    assert(lp_reservoir3.weir_length == pytest.approx(weir_length, rel=1e-7) )
-    assert(lp_reservoir3.dam_length == pytest.approx(dam_length, rel=1e-7) )
-    assert(lp_reservoir3.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
-    assert(lp_reservoir3.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
-    assert(lp_reservoir3.max_depth == pytest.approx(max_depth, rel=1e-7) )
-    assert(lp_reservoir3.lake_number == lake_number )
-    assert(lp_reservoir3.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+    assert(rfc_reservoir.lake_area == pytest.approx(lake_area, rel=1e-7) )
+    assert(rfc_reservoir.weir_elevation == pytest.approx(weir_elevation, rel=1e-7) )
+    assert(rfc_reservoir.weir_coefficient == pytest.approx(weir_coefficient, rel=1e-7) )
+    assert(rfc_reservoir.weir_length == pytest.approx(weir_length, rel=1e-7) )
+    assert(rfc_reservoir.dam_length == pytest.approx(dam_length, rel=1e-7) )
+    assert(rfc_reservoir.orifice_elevation == pytest.approx(orifice_elevation, rel=1e-7) )
+    assert(rfc_reservoir.orifice_area == pytest.approx(orifice_area, rel=1e-7) )
+    assert(rfc_reservoir.max_depth == pytest.approx(max_depth, rel=1e-7) )
+    assert(rfc_reservoir.lake_number == lake_number )
+    assert(rfc_reservoir.initial_fractional_depth == pytest.approx(initial_fractional_depth, rel=1e-7) )
+    assert(rfc_reservoir.reservoir_type == reservoir_type )
+    assert(rfc_reservoir.reservoir_parameter_file == reservoir_parameter_file )
+    assert(rfc_reservoir.start_date == start_date )
+    assert(rfc_reservoir.time_series_path == time_series_path )
+    assert(rfc_reservoir.forecast_lookback_hours == forecast_lookback_hours )
 
 
 def test_lp_run(lp_reservoir):
@@ -886,7 +955,6 @@ def test_lp3_run(lp_reservoir3):
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
 
-'''
 def test_compute_hybrid_run(hybrid_reservoir):
     """
     test running a hybrid reservoir
@@ -1018,14 +1086,16 @@ def test_compute_hybrid_run(hybrid_reservoir):
     routing_period = 300.0
 
     for inflow in inflow_list:
-        out = hybrid_reservoir.run(inflow, 0.0, routing_period)
+        out, water_elevation = hybrid_reservoir.run(inflow, 0.0, routing_period)
         #print(out)
+        #print(water_elevation)
 
     expected_final_outflow = 13.73367
+    expected_final_water_elevation = 1331.2092285
 
     assert hybrid_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
-
+    assert expected_final_water_elevation == pytest.approx(water_elevation)
 
 def test_compute_rfc_run(rfc_reservoir):
     """
@@ -1118,11 +1188,13 @@ def test_compute_rfc_run(rfc_reservoir):
     routing_period = 3600.0
 
     for inflow in inflow_list:
-        out = rfc_reservoir.run(inflow, 0.0, routing_period)
+        out, water_elevation = rfc_reservoir.run(inflow, 0.0, routing_period)
         #print(out)
+        #print(water_elevation)
 
     expected_final_outflow = 3.6
+    expected_final_water_elevation = 1331.430786
 
     assert rfc_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
-'''
+    assert expected_final_water_elevation == pytest.approx(water_elevation)
