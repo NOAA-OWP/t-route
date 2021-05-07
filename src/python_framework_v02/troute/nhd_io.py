@@ -705,104 +705,54 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
 
 
 def build_last_obs_df(routlink_file,wrf_last_obs_flag,fvd_df):
-    if wrf_last_obs_flag:
-        with xr.open_dataset(routlink_file) as ds:
-            df_model_discharges = ds["model_discharge"].to_dataframe()
-            df_discharges = ds["discharge"].to_dataframe()
-            model_discharge_last_ts = df_model_discharges[
-                df_model_discharges.index.get_level_values("timeInd") == 479
-            ]
-            discharge_last_ts = df_discharges[
-                df_discharges.index.get_level_values("timeInd") == 479
-            ]
-            df1 = ds["stationId"].to_dataframe()
-            df1 = df1.astype(int)
-            model_discharge_last_ts = model_discharge_last_ts.join(df1)
-            model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
-            model_discharge_last_ts = model_discharge_last_ts.loc[
-                model_discharge_last_ts["model_discharge"] != -9999.0
-            ]
-            model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
-            model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
-
+    #open routelink_file and extract discharges
+    with xr.open_dataset(routlink_file) as ds:
+        df_model_discharges = ds["model_discharge"].to_dataframe()
+        df_discharges = ds["discharge"].to_dataframe()
+        model_discharge_last_ts = df_model_discharges[
+            df_model_discharges.index.get_level_values("timeInd") == 479
+        ]
+        discharge_last_ts = df_discharges[
+            df_discharges.index.get_level_values("timeInd") == 479
+        ]
+        df1 = ds["stationId"].to_dataframe()
+        df1 = df1.astype(int)
+        model_discharge_last_ts = model_discharge_last_ts.join(df1)
+        model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
+        model_discharge_last_ts = model_discharge_last_ts.loc[
+            model_discharge_last_ts["model_discharge"] != -9999.0
+        ]
+        model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
+        model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
+        #If predict from last_obs file use last obs file results
+        if wrf_last_obs_flag == True:
             model_discharge_last_ts['last_nudge'] = model_discharge_last_ts['discharge'] - model_discharge_last_ts['model_discharge']
-            
-            a = 120
-            prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
-
-            for time in range(0,720,5):
-                weight = np.exp(time/-120)
-                delta = pd.DataFrame(model_discharge_last_ts['last_nudge']/np.exp(time/-120))
-                if time == 0:
-                    prediction_df[str(time)] = model_discharge_last_ts['last_nudge']
-                    weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
-                else:
-                    if (weight>.1) == True:
-                        prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
-                    elif (weight<-.1) == True:
-                        prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
-            prediction_df['0'] = model_discharge_last_ts['model_discharge']
-            return prediction_df
-        
-    else:
-        fvd_df = fvd_df
-        with xr.open_dataset(routlink_file) as ds:
-            df_model_discharges = ds["model_discharge"].to_dataframe()
-            df_discharges = ds["discharge"].to_dataframe()
-            model_discharge_last_ts = df_model_discharges[
-                df_model_discharges.index.get_level_values("timeInd") == 479
-            ]
-            discharge_last_ts = df_discharges[
-                df_discharges.index.get_level_values("timeInd") == 479
-            ]
-            df1 = ds["stationId"].to_dataframe()
-            df1 = df1.astype(int)
-            model_discharge_last_ts = model_discharge_last_ts.join(df1)
-            model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
-            model_discharge_last_ts = model_discharge_last_ts.loc[
-                model_discharge_last_ts["model_discharge"] != -9999.0
-            ]
-            model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index("stationId")
-            model_discharge_last_ts = model_discharge_last_ts.drop(["stationIdInd", "timeInd"], axis=1)
-
+        #Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
+        else:
+            fvd_df = fvd_df
             if len(model_discharge_last_ts.index) == len(fvd_df.index):
                 model_discharge_last_ts['last_nudge'] = model_discharge_last_ts['discharge'] - fvd_df[fvd_df.columns[0]]
-                
-                a = 120
-                prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
-
-                for time in range(0,720,5):
-                    weight = np.exp(time/-120)
-                    delta = pd.DataFrame(model_discharge_last_ts['last_nudge']/np.exp(time/-120))
-                    if time == 0:
-                        prediction_df[str(time)] = model_discharge_last_ts['last_nudge']
-                        weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
-                    else:
-                        if (weight>.1) == True:
-                            prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
-                        elif (weight<-.1) == True:
-                            prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
-                prediction_df['0'] = model_discharge_last_ts['model_discharge']
-                return prediction_df
             else:
                 print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
                 sys.exit()
+        #Predictions created with continuously decreasing deltas until near 0 difference
+        a = 120
+        prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
 
+        for time in range(0,720,5):
+            weight = np.exp(time/-120)
+            delta = pd.DataFrame(model_discharge_last_ts['last_nudge']/np.exp(time/-120))
+            if time == 0:
+                prediction_df[str(time)] = model_discharge_last_ts['last_nudge']
+                weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
+            else:
+                if (weight>.1) == True:
+                    prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
+                elif (weight<-.1) == True:
+                    prediction_df[str(time)] = (delta['last_nudge']+model_discharge_last_ts['model_discharge'])
+        prediction_df['0'] = model_discharge_last_ts['model_discharge']
+        return prediction_df
+
+     
                 
-        
-        # simple test case - can be deleted when above code is ready for integration 
-        # prediction_df = pd.DataFrame(index=model_predictions.index)
-        # for i in range(1,100,1):
-        #     if (model_predictions/i>1).any().delta == True:
-        #         prediction_df[str(i)] = (model_predictions/i)
-        #     elif (model_predictions/i<-1).any().delta == True:
-        #         prediction_df[str(i)] = (model_predictions/i)
-        #     else:
-        #         pass
-        
-    # return prediction_df
-
-# time = 0 to 360 by 5s
-# weight = np.exp(time/-120)
-# delta = weight*lastnudge
-# final solution = q_model + delta
+     
