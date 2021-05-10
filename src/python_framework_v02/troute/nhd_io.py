@@ -9,7 +9,7 @@ import numpy as np
 from toolz import compose
 import dask.array as da
 import sys
-
+import math
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -729,7 +729,7 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
             ["stationIdInd", "timeInd"], axis=1
         )
         # If predict from last_obs file use last obs file results
-        if wrf_last_obs_flag == True:
+        if wrf_last_obs_flag:
             model_discharge_last_ts["last_nudge"] = (
                 model_discharge_last_ts["discharge"]
                 - model_discharge_last_ts["model_discharge"]
@@ -749,19 +749,19 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
         prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
 
         for time in range(0, 720, 5):
-            weight = np.exp(time / -120)
+            weight = math.exp(time / -120)
             delta = pd.DataFrame(
-                model_discharge_last_ts["last_nudge"] / np.exp(time / -120)
+                model_discharge_last_ts["last_nudge"] / weight)
             )
             if time == 0:
                 prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
                 weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
             else:
-                if (weight > 0.1) == True:
+                if weight > 0.1:
                     prediction_df[str(time)] = (
                         delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
                     )
-                elif (weight < -0.1) == True:
+                elif weight < -0.1:
                     prediction_df[str(time)] = (
                         delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
                     )
