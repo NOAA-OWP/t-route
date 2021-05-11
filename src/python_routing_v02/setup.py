@@ -17,21 +17,23 @@ else:
 
 ext = "pyx" if USE_CYTHON else "c"
 
+extra_compile_args = ["-g"]
+
 reach = Extension(
     "reach",
     sources=["fast_reach/reach.{}".format(ext)],
     extra_objects=["fast_reach/mc_single_seg.o", "fast_reach/pymc_single_seg.o"],
-    extra_compile_args=["-g"],
+    extra_compile_args=extra_compile_args,
 )
 
 mc_reach = Extension(
     "fast_reach",
-    sources=["fast_reach/mc_reach.{}".format(ext)],
+    sources=["fast_reach/mc_reach.{}".format(ext), "fast_reach/muskingumcunge.c"],
     include_dirs=[np.get_include()],
     libraries=[],
     library_dirs=[],
     extra_objects=[],
-    extra_compile_args=["-g"],
+    extra_compile_args=extra_compile_args,
 )
 
 diffusive = Extension(
@@ -39,7 +41,7 @@ diffusive = Extension(
     sources=["fast_reach/diffusive.{}".format(ext)],
     extra_objects=["fast_reach/diffusive.o", "fast_reach/pydiffusive.o"],
     include_dirs=[np.get_include()],
-    extra_compile_args=["-g"],
+    extra_compile_args=extra_compile_args,
     libraries=["gfortran"],
 )
 
