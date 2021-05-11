@@ -1287,6 +1287,19 @@ def main():
                 copy=False,
             )
 
+        if output_parameters.get("write_chrtout", None):
+            if forcing_parameters.get("qlat_input_folder", None):
+
+                qlat_input_folder = pathlib.Path(forcing_parameters.get("qlat_input_folder"))
+                chrtout_files = glob.glob(
+                        os.path.join(
+                            qlat_input_folder,
+                            forcing_parameters["qlat_file_pattern_filter"]
+                        )
+                    )
+
+                nhd_io.write_q_to_wrf_hydro(flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
+
         if csv_output_folder:
             # create filenames
             # TO DO: create more descriptive filenames
