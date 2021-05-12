@@ -1,6 +1,7 @@
 # cython: language_level=3, boundscheck=True, wraparound=False, profile=True
 
 import numpy as np
+import math
 from itertools import chain
 from operator import itemgetter
 from numpy cimport ndarray
@@ -889,8 +890,14 @@ cpdef object compute_network_structured_obj(
                                  #timestep,
                                  #nsteps)
             #Copy the output out
+            a = 120
+            weight = math.exp(timestep/-a)
+            lastobs = 1
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
+              lasterror = flowveldepth[id, timestep, 0] - lastobs
+              delta = weight * lasterror
+              flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
               flowveldepth[id, timestep, 1] = out_buf[i, 1]
               flowveldepth[id, timestep, 2] = out_buf[i, 2]
 

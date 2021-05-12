@@ -1324,7 +1324,7 @@ def main():
     
     # STEP 7 Last obs ids and data excluding NaN
 
-
+    print(flowveldepth)
     fvd_df = flowveldepth.iloc[ :, -1:]
     # import pdb; pdb.set_trace()
     last_obs_df = nhd_io.build_last_obs_df(

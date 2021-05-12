@@ -579,7 +579,7 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
             weight = math.exp(time / -a)
             delta = pd.DataFrame(
                 model_discharge_last_ts["last_nudge"] / weight)
-            )
+            
             if time == 0:
                 prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
                 weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
