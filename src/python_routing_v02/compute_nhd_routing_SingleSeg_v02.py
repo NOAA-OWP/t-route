@@ -809,12 +809,11 @@ def compute_nhd_routing_v02(
                 common_segs,
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                lastobs_sub = last_obs_df.loc[usgs_segs]
                 usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
             else:
                 usgs_df_sub = pd.DataFrame()
@@ -848,7 +847,7 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-
+            # import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -864,7 +863,8 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
-                    lastobs_sub.values.astype("float32"),
+                    last_obs_df.values.astype("float32"),
+                    last_obs_df.index.values.astype("int64"),
                     {},
                     assume_short_ts,
                     return_courant,

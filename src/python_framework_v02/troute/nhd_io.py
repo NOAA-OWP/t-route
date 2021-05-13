@@ -334,7 +334,6 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
-
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,

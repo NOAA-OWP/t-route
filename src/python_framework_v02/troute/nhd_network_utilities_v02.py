@@ -590,7 +590,7 @@ def build_data_assimilation_csv(data_assimilation_parameters):
 
 
 def build_data_assimilation_folder(data_assimilation_parameters):
-
+    # import pdb; pdb.set_trace()
     if data_assimilation_parameters:
         usgs_timeslices_folder = pathlib.Path(
             data_assimilation_parameters["data_assimilation_timeslices_folder"],
