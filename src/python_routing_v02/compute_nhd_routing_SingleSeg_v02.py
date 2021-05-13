@@ -328,6 +328,7 @@ def compute_nhd_routing_v02(
     q0,
     qlats,
     usgs_df,
+    last_obs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -808,11 +809,12 @@ def compute_nhd_routing_v02(
                 common_segs,
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
-
+            import pdb; pdb.set_trace()
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
+                lastobs_sub = last_obs_df.loc[usgs_segs]
                 usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
             else:
                 usgs_df_sub = pd.DataFrame()
@@ -862,6 +864,7 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
+                    lastobs_sub.values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -1193,6 +1196,12 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    last_obs_df = nhd_io.build_last_obs_df(
+        restart_parameters["wrf_hydro_last_obs_file"],
+        restart_parameters["wrf_last_obs_flag"],
+    )
+    
+
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1236,6 +1245,7 @@ def main():
         q0,
         qlats,
         usgs_df,
+        last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,
@@ -1327,11 +1337,11 @@ def main():
     print(flowveldepth)
     fvd_df = flowveldepth.iloc[ :, -1:]
     # import pdb; pdb.set_trace()
-    last_obs_df = nhd_io.build_last_obs_df(
-        restart_parameters["wrf_hydro_last_obs_file"],
-        restart_parameters["wrf_last_obs_flag"],
-        fvd_df,
-    )
+    # last_obs_df = nhd_io.build_last_obs_df(
+    #     restart_parameters["wrf_hydro_last_obs_file"],
+    #     restart_parameters["wrf_last_obs_flag"],
+    #     fvd_df,
+    # )
     if verbose:
         print(last_obs_df)
         print("last observation DA decay dataframe")

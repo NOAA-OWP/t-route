@@ -530,7 +530,7 @@ def get_reservoir_restart_from_wrf_hydro(
     return init_waterbody_states
 
 
-def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
+def build_last_obs_df(routlink_file, wrf_last_obs_flag):
     # open routelink_file and extract discharges
     with xr.open_dataset(routlink_file) as ds:
         df_model_discharges = ds["model_discharge"].to_dataframe()
@@ -562,35 +562,35 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
                 - model_discharge_last_ts["model_discharge"]
             )
         # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
-        else:
-            fvd_df = fvd_df
-            if len(model_discharge_last_ts.index) == len(fvd_df.index):
-                model_discharge_last_ts["last_nudge"] = (
-                    model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
-                )
-            else:
-                print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
-                sys.exit()
-        # Predictions created with continuously decreasing deltas until near 0 difference
-        a = 120
-        prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
+        # else:
+        #     fvd_df = fvd_df
+        #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
+        #         model_discharge_last_ts["last_nudge"] = (
+        #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
+        #         )
+        #     else:
+        #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
+        #         sys.exit()
+        # # Predictions created with continuously decreasing deltas until near 0 difference
+        # a = 120
+        # prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
 
-        for time in range(0, 720, 5):
-            weight = math.exp(time / -a)
-            delta = pd.DataFrame(
-                model_discharge_last_ts["last_nudge"] / weight)
+        # for time in range(0, 720, 5):
+        #     weight = math.exp(time / -a)
+        #     delta = pd.DataFrame(
+        #         model_discharge_last_ts["last_nudge"] / weight)
             
-            if time == 0:
-                prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
-                weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
-            else:
-                if weight > 0.1:
-                    prediction_df[str(time)] = (
-                        delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
-                    )
-                elif weight < -0.1:
-                    prediction_df[str(time)] = (
-                        delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
-                    )
-        prediction_df["0"] = model_discharge_last_ts["model_discharge"]
-        return prediction_df
+        #     if time == 0:
+        #         prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
+        #         weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
+        #     else:
+        #         if weight > 0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        #         elif weight < -0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
+        return model_discharge_last_ts["discharge"]
