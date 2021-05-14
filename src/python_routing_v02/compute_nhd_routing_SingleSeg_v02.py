@@ -818,6 +818,14 @@ def compute_nhd_routing_v02(
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
+            
+            if not last_obs_df.empty:
+                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                last_obs_sub = last_obs_df.loc[lastobs_segs]
+            else:
+                last_obs_sub = pd.DataFrame()
+                nudging_positions_list = []      
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
@@ -847,7 +855,7 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-            # import pdb; pdb.set_trace()
+            
             results.append(
                 compute_func(
                     nts,
@@ -864,7 +872,6 @@ def compute_nhd_routing_v02(
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
                     last_obs_df.values.astype("float32"),
-                    last_obs_df.index.values.astype("int64"),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -1198,6 +1205,7 @@ def main():
 
     last_obs_df = nhd_io.build_last_obs_df(
         restart_parameters["wrf_hydro_last_obs_file"],
+        restart_parameters['wrf_hydro_channel_ID_crosswalk_file'],
         restart_parameters["wrf_last_obs_flag"],
     )
     
@@ -1227,7 +1235,7 @@ def main():
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
+    
     results = compute_nhd_routing_v02(
         connections,
         rconn,

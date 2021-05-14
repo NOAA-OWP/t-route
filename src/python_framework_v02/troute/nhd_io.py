@@ -334,6 +334,7 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
+    # import pdb; pdb.set_trace()
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,
@@ -529,9 +530,18 @@ def get_reservoir_restart_from_wrf_hydro(
     return init_waterbody_states
 
 
-def build_last_obs_df(routlink_file, wrf_last_obs_flag):
+def build_last_obs_df(lastobsfile,routelink,wrf_last_obs_flag):
     # open routelink_file and extract discharges
-    with xr.open_dataset(routlink_file) as ds:
+    
+    ds1 = xr.open_dataset(routelink) 
+    df = ds1.to_dataframe()
+    df2 = df.loc[df['gages'] != b'               ']
+    df2['gages'] = df2['gages'].astype("int")
+    df2 = df2[["gages",'to']]
+    df2 = df2.reset_index()
+    df2 = df2.set_index('gages')
+
+    with xr.open_dataset(lastobsfile) as ds:
         df_model_discharges = ds["model_discharge"].to_dataframe()
         df_discharges = ds["discharge"].to_dataframe()
         last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
@@ -554,12 +564,19 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag):
         model_discharge_last_ts = model_discharge_last_ts.drop(
             ["stationIdInd", "timeInd"], axis=1
         )
+        model_discharge_last_ts["discharge"] = model_discharge_last_ts["discharge"].to_frame()
         # If predict from last_obs file use last obs file results
         if wrf_last_obs_flag:
             model_discharge_last_ts["last_nudge"] = (
                 model_discharge_last_ts["discharge"]
                 - model_discharge_last_ts["model_discharge"]
             )
+        final_df = df2.join(model_discharge_last_ts["discharge"])
+        final_df = final_df.reset_index()
+        final_df = final_df.set_index('to')
+        final_df = final_df.drop(['feature_id','gages'], axis=1)
+        final_df = final_df.dropna()
+
         # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
         # else:
         #     fvd_df = fvd_df
@@ -592,4 +609,4 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag):
         #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
         #             )
         # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
-        return model_discharge_last_ts["discharge"]
+        return final_df

@@ -25,8 +25,8 @@ output_parameters:
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Pocono1"
-    geo_file_path: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    mask_file_path: "../../test/input/geo/Channels/masks/Florence_FULL_RES.txt"
+    geo_file_path: "../../notebooks/chrtoutfiles/NWM/DOMAIN/Route_Link.nc"
+    # mask_file_path: "../../test/input/geo/Channels/masks/Florence_FULL_RES.txt"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -67,7 +67,7 @@ supernetwork_parameters:
 #         level_pool_orifice_area: OrificeA
 #WRF-Hydro output file
 forcing_parameters:
-    qlat_input_folder: "../../notebooks/chrtoutfiles/chrtout/"
+    qlat_input_folder: "../../notebooks/chrtoutfiles/FORCING_AnA_channel-only/"
     qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
     qlat_file_index_col: feature_id
     qlat_file_value_col: q_lateral
@@ -76,7 +76,7 @@ restart_parameters:
     #WRF-Hydro channels restart file
     wrf_hydro_channel_restart_file: "../../notebooks/chrtoutfiles/HYDRO_RST.2018-12-01_00:00_DOMAIN1"
     #WRF-Hydro channels ID crosswalk file
-    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    wrf_hydro_channel_ID_crosswalk_file: "../../notebooks/chrtoutfiles/NWM/DOMAIN/Route_Link.nc"
     wrf_hydro_channel_ID_crosswalk_file_field_name: link
     wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
     wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
@@ -101,4 +101,4 @@ parity_parameters:
 #     data_assimilation_parameters_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
 #     data_assimilation_filter: "nudgingLastObs.2018-12-01_00:00:00.nc"
 #     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
-#     data_assimilation_timeslices_folder: "../../notebooks/chrtoutfiles/"
+#     data_assimilation_timeslices_folder: "../../notebooks/chrtoutfiles/chrtout/"

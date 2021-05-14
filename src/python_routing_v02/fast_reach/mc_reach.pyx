@@ -2,6 +2,7 @@
 
 import numpy as np
 import math
+import sys
 from itertools import chain
 from operator import itemgetter
 from numpy cimport ndarray
@@ -169,6 +170,7 @@ cpdef object compute_network(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -418,11 +420,17 @@ cpdef object compute_network(
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
-                iusreach_cache += usreachlen        
-                if gages_size:
-                    for gage_i in range(gages_size):
-                        usgs_position_i = usgs_positions_list[gage_i]
-                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                iusreach_cache += usreachlen
+                with gil:
+                    a = 120
+                    weight = math.exp(timestep/-a)  
+                    if gages_size:
+                        for gage_i in range(gages_size):
+                            usgs_position_i = usgs_positions_list[gage_i]
+                            flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                            lasterror = flowveldepth[usgs_position_i, timestep * 3] - lastobs_values[usgs_position_i]
+                            delta = weight * lasterror
+                            flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + delta
 
             timestep += 1
 
@@ -705,8 +713,7 @@ cpdef object compute_network_structured_obj(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
-    const float[:] lastobs_values,
-    const long[:] lastobs_ids,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -892,16 +899,16 @@ cpdef object compute_network_structured_obj(
                                  #timestep,
                                  #nsteps)
             #Copy the output out
-            a = 120
-            weight = math.exp(timestep/-a)
-            lastobs = 1
+            #a = 120
+            #weight = math.exp(timestep/-a)
+            #lastobs = 1
             for i, id in enumerate(segment_ids):
                 flowveldepth[id, timestep, 0] = out_buf[i, 0]
-                for pos, loid in enumerate(lastobs_ids):
-                    if loid == id:
-                        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
-                        delta = weight * lasterror
-                        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
+                #for pos, loid in enumerate(lastobs_ids):
+                #    if loid == id:
+                #        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
+                #        delta = weight * lasterror
+                #        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
                 flowveldepth[id, timestep, 1] = out_buf[i, 1]
                 flowveldepth[id, timestep, 2] = out_buf[i, 2]
 
@@ -928,8 +935,6 @@ cpdef object compute_network_structured(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
-    const float[:] lastobs_values,
-    const long[:] lastobs_ids,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
