@@ -219,7 +219,9 @@ def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
 
-def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
+def write_q_to_wrf_hydro(
+    flowveldepth, chrtout_files, qts_subdivisions, new_extension="TRTE"
+):
     """
     Write t-route simulated flows to WRF-Hydro CHRTOUT files.
 
@@ -262,7 +264,9 @@ def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
         dataset_list.append(vals)
 
     # save a new set of chrtout files to disk that contail t-route simulated flow
-    chrtout_files_new = [s.parent / (s.name + ".TRTE") for s in chrtout_files]
+    chrtout_files_new = [
+        s.parent / (s.name + "." + new_extension) for s in chrtout_files
+    ]
 
     # mfdataset solution - can theoretically be parallelised via dask.distributed
     xr.save_mfdataset(dataset_list, paths=chrtout_files_new)
@@ -532,6 +536,7 @@ def write_channel_restart_to_wrf_hydro(
     nts_troute,
     crosswalk_file,
     channel_ID_column,
+    new_extension,
     restart_file_dimension_var="links",
     troute_us_flow_var_name="qlink1_troute",
     troute_ds_flow_var_name="qlink2_troute",
@@ -620,7 +625,7 @@ def write_channel_restart_to_wrf_hydro(
                 ds[troute_depth_var_name] = htrt_DataArray
 
                 # write edited to disk with new filename
-                ds.to_netcdf(f.parent / (f.name + ".TROUTE"))
+                ds.to_netcdf(f.parent / (f.name + "." + new_extension))
 
 
 def get_reservoir_restart_from_wrf_hydro(

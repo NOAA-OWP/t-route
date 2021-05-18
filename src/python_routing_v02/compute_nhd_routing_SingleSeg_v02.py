@@ -1293,13 +1293,18 @@ def main():
         wrf_hydro_restart_dir = output_parameters.get(
             "wrf_hydro_channel_restart_directory", None
         )
+        wrf_hydro_channel_restart_new_extension = output_parameters.get(
+            "wrf_hydro_channel_restart_new_extension", "TRTE"
+        )
         if wrf_hydro_restart_dir:
 
             # list of WRF Hydro restart files
             wrf_hydro_restart_files = list(
                 Path(wrf_hydro_restart_dir).glob(
                     output_parameters["wrf_hydro_channel_restart_pattern_filter"]
-                    + "[!.TROUTE]"
+                    + "[!"
+                    + wrf_hydro_channel_restart_new_extension
+                    + "]"
                 )
             )
 
@@ -1314,6 +1319,7 @@ def main():
                     restart_parameters.get(
                         "wrf_hydro_channel_ID_crosswalk_file_field_name"
                     ),
+                    wrf_hydro_channel_restart_new_extension,
                 )
             else:
                 # print error and/or raise exception
@@ -1322,8 +1328,9 @@ def main():
                 )
                 raise AssertionError
 
-        chrtout_folder = Path(
-            output_parameters.get("wrf_hydro_channel_output_folder", None)
+        chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
+        wrf_hydro_channel_output_new_extension = output_parameters.get(
+            "wrf_hydro_channel_output_new_extension", "TRTE"
         )
         if chrtout_folder:
             chrtout_files = list(
