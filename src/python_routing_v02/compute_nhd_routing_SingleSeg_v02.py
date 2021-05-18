@@ -1293,10 +1293,11 @@ def main():
         wrf_hydro_restart_dir = output_parameters.get(
             "wrf_hydro_channel_restart_directory", None
         )
-        wrf_hydro_channel_restart_new_extension = output_parameters.get(
-            "wrf_hydro_channel_restart_new_extension", "TRTE"
-        )
         if wrf_hydro_restart_dir:
+
+            wrf_hydro_channel_restart_new_extension = output_parameters.get(
+                "wrf_hydro_channel_restart_new_extension", "TRTE"
+            )
 
             # list of WRF Hydro restart files
             wrf_hydro_restart_files = list(
@@ -1329,10 +1330,10 @@ def main():
                 raise AssertionError
 
         chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
-        wrf_hydro_channel_output_new_extension = output_parameters.get(
-            "wrf_hydro_channel_output_new_extension", "TRTE"
-        )
         if chrtout_folder:
+            wrf_hydro_channel_output_new_extension = output_parameters.get(
+                "wrf_hydro_channel_output_new_extension", "TRTE"
+            )
             chrtout_files = list(
                 Path(chrtout_folder).glob(
                     output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
