@@ -14,13 +14,12 @@ A demonstration version of this code is stored in this Colaboratory notebook:
 
 """
 ## Parallel execution
-import os
 import sys
 import time
 from datetime import datetime
 import numpy as np
 import argparse
-import pathlib
+from pathlib import Path
 import glob
 import pandas as pd
 from collections import defaultdict
@@ -284,9 +283,9 @@ def _handle_args():
 
 ENV_IS_CL = False
 if ENV_IS_CL:
-    root = pathlib.Path("/", "content", "t-route")
+    root = Path("/", "content", "t-route")
 elif not ENV_IS_CL:
-    root = pathlib.Path("../..").resolve()
+    root = Path("../..").resolve()
     # sys.path.append(r"../python_framework_v02")
 
     # TODO: automate compile for the package scripts
@@ -299,6 +298,7 @@ import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
+
 
 def writetoFile(file, writeString):
     file.write(writeString)
@@ -426,7 +426,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -572,7 +573,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -912,7 +914,7 @@ def _input_handler():
         output_parameters["csv_output"] = {}
         output_parameters["csv_output"]["csv_output_folder"] = args.csv_output_folder
 
-        test_folder = pathlib.Path(root, "test")
+        test_folder = Path(root, "test")
         geo_input_folder = test_folder.joinpath("input", "geo")
 
         test_case = args.test_case
@@ -1287,18 +1289,59 @@ def main():
                 copy=False,
             )
 
-        if output_parameters.get("write_chrtout", None):
-            if forcing_parameters.get("qlat_input_folder", None):
+        # directory containing WRF Hydro restart files
+        wrf_hydro_restart_dir = output_parameters.get(
+            "wrf_hydro_channel_restart_directory", None
+        )
+        if wrf_hydro_restart_dir:
 
-                qlat_input_folder = pathlib.Path(forcing_parameters.get("qlat_input_folder"))
-                chrtout_files = glob.glob(
-                        os.path.join(
-                            qlat_input_folder,
-                            forcing_parameters["qlat_file_pattern_filter"]
-                        )
-                    )
+            wrf_hydro_channel_restart_new_extension = output_parameters.get(
+                "wrf_hydro_channel_restart_new_extension", "TRTE"
+            )
 
-                nhd_io.write_q_to_wrf_hydro(flowveldepth, chrtout_files, run_parameters["qts_subdivisions"])
+            # list of WRF Hydro restart files
+            wrf_hydro_restart_files = list(
+                Path(wrf_hydro_restart_dir).glob(
+                    output_parameters["wrf_hydro_channel_restart_pattern_filter"]
+                    + "[!"
+                    + wrf_hydro_channel_restart_new_extension
+                    + "]"
+                )
+            )
+
+            if len(wrf_hydro_restart_files) > 0:
+                nhd_io.write_channel_restart_to_wrf_hydro(
+                    flowveldepth,
+                    wrf_hydro_restart_files,
+                    restart_parameters.get("wrf_hydro_channel_restart_file"),
+                    run_parameters.get("dt"),
+                    run_parameters.get("nts"),
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                    restart_parameters.get(
+                        "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                    ),
+                    wrf_hydro_channel_restart_new_extension,
+                )
+            else:
+                # print error and/or raise exception
+                print(
+                    "WRF Hydro restart files not found - Aborting restart write sequence"
+                )
+                raise AssertionError
+
+        chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
+        if chrtout_folder:
+            wrf_hydro_channel_output_new_extension = output_parameters.get(
+                "wrf_hydro_channel_output_new_extension", "TRTE"
+            )
+            chrtout_files = list(
+                Path(chrtout_folder).glob(
+                    output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
+                )
+            )
+            nhd_io.write_q_to_wrf_hydro(
+                flowveldepth, chrtout_files, run_parameters["qts_subdivisions"]
+            )
 
         if csv_output_folder:
             # create filenames
@@ -1315,7 +1358,7 @@ def main():
                 filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
                 filename_courant = "courant_" + run_time_stamp + ".csv"
 
-            output_path = pathlib.Path(csv_output_folder).resolve()
+            output_path = Path(csv_output_folder).resolve()
 
             flowveldepth = flowveldepth.sort_index()
             flowveldepth.to_csv(output_path.joinpath(filename_fvd))
