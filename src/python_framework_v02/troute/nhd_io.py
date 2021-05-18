@@ -262,8 +262,7 @@ def write_q_to_wrf_hydro(flowveldepth, chrtout_files, qts_subdivisions):
         dataset_list.append(vals)
 
     # save a new set of chrtout files to disk that contail t-route simulated flow
-    chrtout_files_new = []
-    chrtout_files_new[:] = [s + ".TRTE" for s in chrtout_files]
+    chrtout_files_new = [s.parent / (s.name + ".TRTE") for s in chrtout_files]
 
     # mfdataset solution - can theoretically be parallelised via dask.distributed
     xr.save_mfdataset(dataset_list, paths=chrtout_files_new)
@@ -310,7 +309,6 @@ def read_netcdfs(paths, dim, transform_func=None):
             ds.load()
             return ds
 
-    # paths = sorted(pathlib.glob(files))
     datasets = [process_one_path(p) for p in paths]
     combined = xr.concat(datasets, dim)
     return combined
@@ -525,6 +523,7 @@ def get_channel_restart_from_wrf_hydro(
 
     return q_initial_states
 
+
 def write_channel_restart_to_wrf_hydro(
     data,
     restart_files,
@@ -533,10 +532,10 @@ def write_channel_restart_to_wrf_hydro(
     nts_troute,
     crosswalk_file,
     channel_ID_column,
-    restart_file_dimension_var = 'links',
-    troute_us_flow_var_name = 'qlink1_troute',
-    troute_ds_flow_var_name = 'qlink2_troute',
-    troute_depth_var_name = 'hlink_troute',
+    restart_file_dimension_var="links",
+    troute_us_flow_var_name="qlink1_troute",
+    troute_ds_flow_var_name="qlink2_troute",
+    troute_depth_var_name="hlink_troute",
 ):
     """
     Write t-route flow and depth data to WRF-Hydro restart files. New WRF-Hydro restart
@@ -562,9 +561,9 @@ def write_channel_restart_to_wrf_hydro(
     """
     # create t-route simulation timestamp array
     with xr.open_dataset(channel_initial_states_file) as ds:
-        t0 = ds.Restart_Time.replace('_', ' ')
-    t0 = np.array(t0,dtype = np.datetime64)
-    troute_dt = np.timedelta64(dt_troute, 's')
+        t0 = ds.Restart_Time.replace("_", " ")
+    t0 = np.array(t0, dtype=np.datetime64)
+    troute_dt = np.timedelta64(dt_troute, "s")
     troute_timestamps = t0 + np.arange(nts_troute) * troute_dt
 
     # extract ordered feature_ids from crosswalk file
@@ -581,9 +580,7 @@ def write_channel_restart_to_wrf_hydro(
         with xr.open_dataset(f) as ds:
 
             # get timestamp from restart file
-            t = np.array(
-                ds.Restart_Time.replace('_', ' '), 
-                dtype = np.datetime64)
+            t = np.array(ds.Restart_Time.replace("_", " "), dtype=np.datetime64)
 
             # find index troute_timestamp value that matches restart file timestamp
             a = np.where(troute_timestamps == t)[0].tolist()
@@ -593,20 +590,28 @@ def write_channel_restart_to_wrf_hydro(
 
                 # pull flow data from flowveldepth array, package into DataArray
                 # !! TO DO - is there a more percise way to slice flowveldepth array?
-                qtrt = flowveldepth_reindex.iloc[:,::3].iloc[:,a].to_numpy().astype("float32")
+                qtrt = (
+                    flowveldepth_reindex.iloc[:, ::3]
+                    .iloc[:, a]
+                    .to_numpy()
+                    .astype("float32")
+                )
                 qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
                 qtrt_DataArray = xr.DataArray(
-                    data = qtrt,
-                    dims = [restart_file_dimension_var],
+                    data=qtrt, dims=[restart_file_dimension_var],
                 )
 
                 # pull depth data from flowveldepth array, package into DataArray
                 # !! TO DO - is there a more percise way to slice flowveldepth array?
-                htrt = flowveldepth_reindex.iloc[:,2::3].iloc[:,a].to_numpy().astype("float32")
+                htrt = (
+                    flowveldepth_reindex.iloc[:, 2::3]
+                    .iloc[:, a]
+                    .to_numpy()
+                    .astype("float32")
+                )
                 htrt = htrt.reshape((len(flowveldepth_reindex,)))
                 htrt_DataArray = xr.DataArray(
-                    data = htrt,
-                    dims = [restart_file_dimension_var],
+                    data=htrt, dims=[restart_file_dimension_var],
                 )
 
                 # insert troute data into restart dataset
@@ -615,8 +620,9 @@ def write_channel_restart_to_wrf_hydro(
                 ds[troute_depth_var_name] = htrt_DataArray
 
                 # write edited to disk with new filename
-                ds.to_netcdf(f + ".TROUTE")
-                
+                ds.to_netcdf(f.parent / (f.name + ".TROUTE"))
+
+
 def get_reservoir_restart_from_wrf_hydro(
     waterbody_intial_states_file,
     crosswalk_file,
