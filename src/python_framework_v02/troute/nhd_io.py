@@ -273,6 +273,7 @@ def preprocess_time_station_index(xd):
 
     data_var_dict = {}
     data_vars = ("discharge", "discharge_quality")
+    import pdb; pdb.set_trace()
     for v in data_vars:
         data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
     return xr.Dataset(

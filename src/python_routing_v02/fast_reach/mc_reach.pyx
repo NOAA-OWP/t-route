@@ -1,5 +1,5 @@
 # cython: language_level=3, boundscheck=True, wraparound=False, profile=True
-
+from libc.stdio cimport printf
 import numpy as np
 import math
 import sys
@@ -208,6 +208,8 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
+    
+
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
@@ -235,6 +237,7 @@ cpdef object compute_network(
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
             flowveldepth[fill_index][idx] = val
+    
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -424,15 +427,16 @@ cpdef object compute_network(
                 with gil:
                     a = 120
                     weight = math.exp(timestep/-a)  
-                    if gages_size:
+                    if gages_size > 0:
                         for gage_i in range(gages_size):
                             usgs_position_i = usgs_positions_list[gage_i]
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-                            lasterror = flowveldepth[usgs_position_i, timestep * 3] - lastobs_values[usgs_position_i]
-                            delta = weight * lasterror
-                            flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + delta
+
 
             timestep += 1
+    printf("%f\n", flowveldepth)
+    printf("%f\n", data_idx.shape[0])
+    printf("%f\n", nsteps * 3)
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches

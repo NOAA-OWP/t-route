@@ -827,6 +827,7 @@ def compute_nhd_routing_v02(
                 last_obs_sub = pd.DataFrame()
                 nudging_positions_list = []      
 
+            
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
@@ -855,7 +856,11 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-            
+            # print(lastobs_segs)
+            # print(nudging_positions_list)
+            print(last_obs_sub)
+            if not last_obs_sub.empty:
+                import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -871,7 +876,7 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
-                    last_obs_df.values.astype("float32"),
+                    last_obs_sub.values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
