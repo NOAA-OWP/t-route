@@ -1198,12 +1198,12 @@ def main():
         usgs_df = pd.DataFrame()
 
     # STEP 7
-    coastal_output = coastal_parameters.get("coastal_output_data", None)
+    coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
     coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
 
-    if coastal_output:
+    if coastal_boundary_elev:
         print("creating coastal dataframe ...")
-        coastal_df = nnu.build_coastal_dataframe(coastal_output)
+        coastal_df = nhd_io.build_coastal_dataframe(coastal_boundary_elev)
 
     if coastal_ncdf:
         print("creating coastal ncdf dataframe ...")
