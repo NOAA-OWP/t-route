@@ -698,4 +698,3 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
-
