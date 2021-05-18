@@ -9,6 +9,7 @@ import numpy as np
 from toolz import compose
 import sys
 import math
+from datetime import datetime, timedelta
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -273,7 +274,7 @@ def preprocess_time_station_index(xd):
 
     data_var_dict = {}
     data_vars = ("discharge", "discharge_quality")
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     for v in data_vars:
         data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
     return xr.Dataset(
@@ -304,7 +305,7 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
-
+    
     for i in range(0, (len(columns_list) * 3) - 12, 12):
         original_string = usgs_df.columns[i]
         original_string_shortened = original_string[:-5]
@@ -355,33 +356,53 @@ def get_usgs_from_time_slices_folder(
             data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
-
+    # import pdb; pdb.set_trace()  
     usgs_df = df.join(df2)
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.rename(columns={"index": "gages"})
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
+    # import pdb; pdb.set_trace()
 
-    for i in range(0, (len(columns_list) * 3) - 12, 12):
-        original_string = usgs_df.columns[i]
-        original_string_shortened = original_string[:-5]
-        temp_name1 = original_string_shortened + str("05:00")
-        temp_name2 = original_string_shortened + str("10:00")
-        temp_name3 = original_string_shortened + str("20:00")
-        temp_name4 = original_string_shortened + str("25:00")
-        temp_name5 = original_string_shortened + str("35:00")
-        temp_name6 = original_string_shortened + str("40:00")
-        temp_name7 = original_string_shortened + str("50:00")
-        temp_name8 = original_string_shortened + str("55:00")
-        usgs_df.insert(i + 1, temp_name1, np.nan)
-        usgs_df.insert(i + 2, temp_name2, np.nan)
-        usgs_df.insert(i + 4, temp_name3, np.nan)
-        usgs_df.insert(i + 5, temp_name4, np.nan)
-        usgs_df.insert(i + 7, temp_name5, np.nan)
-        usgs_df.insert(i + 8, temp_name6, np.nan)
-        usgs_df.insert(i + 10, temp_name7, np.nan)
-        usgs_df.insert(i + 11, temp_name8, np.nan)
+    original_string_first = usgs_df.columns[0]
+    date_time_str = original_string_first[:10] + " " + original_string_first[11:]
+    date_time_obj_start = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S')
+
+    original_string_last = usgs_df.columns[-1]
+    date_time_str = original_string_last[:10] + " " + original_string_last[11:]
+    date_time_obj_end = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S')
+    def daterange(start_date, end_date):
+        for n in range(int((end_date - start_date).days),15):
+            yield start_date + timedelta(n)
+
+    for i in daterange(date_time_obj_start, date_time_obj_end ):
+        # import pdb; pdb.set_trace()  
+        print(i)
+        # original_string = usgs_df.columns[i]
+        import pdb; pdb.set_trace()
+        # date_time_str = original_string[:10] + " " + original_string[11:]
+        # date_time_obj = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S')
+        # newtime = date_time_obj + timedelta(minutes=15)
+        # original_string_shortened = original_string[:-5]
+
+        # temp_name1 = original_string_shortened + str("05:00")
+        # # temp_name2 = original_string_shortened + str("10:00")
+        # temp_name3 = original_string_shortened + str("20:00")
+        # # temp_name4 = original_string_shortened + str("25:00")
+        # temp_name5 = original_string_shortened + str("35:00")
+        # # temp_name6 = original_string_shortened + str("40:00")
+        # temp_name7 = original_string_shortened + str("50:00")
+        # # temp_name8 = original_string_shortened + str("55:00")
+        # usgs_df.insert(i + 1, temp_name1, np.nan)
+        # # usgs_df.insert(i + 2, temp_name2, np.nan)
+        # usgs_df.insert(i + 4, temp_name3, np.nan)
+        # # usgs_df.insert(i + 5, temp_name4, np.nan)
+        # usgs_df.insert(i + 7, temp_name5, np.nan)
+        # # usgs_df.insert(i + 8, temp_name6, np.nan)
+        # usgs_df.insert(i + 10, temp_name7, np.nan)
+        # # usgs_df.insert(i + 11, temp_name8, np.nan)
+        print(usgs_df)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)

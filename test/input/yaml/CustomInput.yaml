@@ -99,6 +99,6 @@ parity_parameters:
     parity_check_compare_node: 2102000
 data_assimilation_parameters:
     data_assimilation_parameters_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    data_assimilation_filter: "nudgingLastObs.2018-12-01_00:00:00.nc"
+    data_assimilation_filter: "*.usgsTimeSlice.ncdf"
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
-    data_assimilation_timeslices_folder: "../../notebooks/chrtoutfiles/chrtout/"
+    data_assimilation_timeslices_folder: "/home/jacob.hreha/github/fresh_start/t-route/notebooks/chrtoutfiles/FORCING_AnA_channel-only/24timeslices/"

@@ -31,7 +31,7 @@ if  [[ "$build_mc_kernel" == true ]]; then
   make install || exit
 fi
 
-if  [[ "$build_diffusive_kernel" == false ]]; then
+if  [[ "$build_diffusive_kernel" == true ]]; then
   #building reach and resevoir kernel files .o  
   cd $REPOROOT/src/fortran_routing/diffusive_v02frwk/
   make clean
@@ -40,7 +40,7 @@ if  [[ "$build_diffusive_kernel" == false ]]; then
   make install || exit
 fi
 
-if [[ "$build_reservoir_kernel" == false ]]; then
+if [[ "$build_reservoir_kernel" == true ]]; then
   cd $REPOROOT/src/fortran_routing/Reservoir_Binding/Reservoirs
   make clean
   #make NETCDFINC=`nc-config --includedir` || exit
@@ -49,7 +49,7 @@ if [[ "$build_reservoir_kernel" == false ]]; then
 
 fi
 
-if [[ "$build_framework" == false ]]; then
+if [[ "$build_framework" == true ]]; then
   #creates troute package
   cd $REPOROOT/src/python_framework_v02
   rm -rf build
