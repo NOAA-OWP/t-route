@@ -25,6 +25,7 @@ output_parameters:
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Pocono1"
+    # florence_testcase/florence_933020089/DOMAIN
     geo_file_path: "../../notebooks/chrtoutfiles/NWM/DOMAIN/Route_Link.nc"
     # mask_file_path: "../../test/input/geo/Channels/masks/Florence_FULL_RES.txt"
     mask_layer_string: ""
@@ -67,6 +68,7 @@ supernetwork_parameters:
 #         level_pool_orifice_area: OrificeA
 #WRF-Hydro output file
 forcing_parameters:
+    # florence_testcase/florenceNudgingChannelOnly/FORCING_AnA_channel-only/24hours/
     qlat_input_folder: "../../notebooks/chrtoutfiles/FORCING_AnA_channel-only/24hours/"
     qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
     qlat_file_index_col: feature_id
@@ -76,6 +78,7 @@ restart_parameters:
     #WRF-Hydro channels restart file
     wrf_hydro_channel_restart_file: "../../notebooks/chrtoutfiles/HYDRO_RST.2018-12-01_00:00_DOMAIN1"
     #WRF-Hydro channels ID crosswalk file
+    # florence_testcase/florence_933020089/DOMAIN
     wrf_hydro_channel_ID_crosswalk_file: "../../notebooks/chrtoutfiles/NWM/DOMAIN/Route_Link.nc"
     wrf_hydro_channel_ID_crosswalk_file_field_name: link
     wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
@@ -89,16 +92,20 @@ restart_parameters:
     # #WRF-Hydro waterbody crosswalk filter file
     # wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     # wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+    # florence_testcase/florenceNudgingChannelOnly/nudgingLastObs
     wrf_hydro_last_obs_file: "../../notebooks/chrtoutfiles/nudgingLastObs.2018-12-01_00:00:00.nc"
     wrf_last_obs_flag: True
 parity_parameters:
+    # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
     parity_check_input_folder: "../../notebooks/chrtoutfiles/chrtout/"
     parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     parity_check_compare_node: 2102000
 data_assimilation_parameters:
+    # florence_testcase/florence_933020089/DOMAIN
     data_assimilation_parameters_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     data_assimilation_filter: "*.usgsTimeSlice.ncdf"
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
+    # florence_testcase/florenceNudgingChannelOnly/FORCING_AnA_channel-only/24timeslices
     data_assimilation_timeslices_folder: "/home/jacob.hreha/github/fresh_start/t-route/notebooks/chrtoutfiles/FORCING_AnA_channel-only/24timeslices/"

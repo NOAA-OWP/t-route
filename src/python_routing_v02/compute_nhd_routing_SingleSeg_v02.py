@@ -818,16 +818,15 @@ def compute_nhd_routing_v02(
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
-            
+
             if not last_obs_df.empty:
                 lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                 last_obs_sub = last_obs_df.loc[lastobs_segs]
             else:
                 last_obs_sub = pd.DataFrame()
-                nudging_positions_list = []      
+                nudging_positions_list = []
 
-            
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
@@ -858,9 +857,12 @@ def compute_nhd_routing_v02(
             """
             # print(lastobs_segs)
             # print(nudging_positions_list)
-            print(last_obs_sub)
+            # print(last_obs_sub)
             if not last_obs_sub.empty:
-                import pdb; pdb.set_trace()
+                print(usgs_df)
+                import pdb
+
+                pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -1210,11 +1212,9 @@ def main():
 
     last_obs_df = nhd_io.build_last_obs_df(
         restart_parameters["wrf_hydro_last_obs_file"],
-        restart_parameters['wrf_hydro_channel_ID_crosswalk_file'],
+        restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
         restart_parameters["wrf_last_obs_flag"],
     )
-    
-
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1240,7 +1240,7 @@ def main():
 
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-    
+
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -1344,11 +1344,10 @@ def main():
         if debuglevel <= -1:
             print(flowveldepth)
 
-    
     # STEP 7 Last obs ids and data excluding NaN
 
     print(flowveldepth)
-    fvd_df = flowveldepth.iloc[ :, -1:]
+    fvd_df = flowveldepth.iloc[:, -1:]
     # import pdb; pdb.set_trace()
     # last_obs_df = nhd_io.build_last_obs_df(
     #     restart_parameters["wrf_hydro_last_obs_file"],
