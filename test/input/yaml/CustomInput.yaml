@@ -106,7 +106,7 @@ parity_parameters:
     parity_check_file_value_col: streamflow
     parity_check_compare_node: 4186169
 #WRF-Hydro data assimilation files
-data_assimilation_parameters:
+data_assimilation_parameters: {}
 #SCHISM Coastal data boundary condition elevations
 coastal_parameters:
     coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
