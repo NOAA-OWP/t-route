@@ -363,7 +363,6 @@ def get_usgs_from_time_slices_folder(
     usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
-    # import pdb; pdb.set_trace()
 
     original_string_first = usgs_df.columns[0]
     date_time_str = original_string_first[:10] + " " + original_string_first[11:]
@@ -372,10 +371,6 @@ def get_usgs_from_time_slices_folder(
     original_string_last = usgs_df.columns[-1]
     date_time_str = original_string_last[:10] + " " + original_string_last[11:]
     date_time_obj_end = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S')
-    # def daterange(start_date, end_date):
-    #     for n in range(int((end_date - start_date).seconds),15*60):
-    #         print(start_date + timedelta(n)) #15mins = 60secs * 15
-    #         yield start_date + timedelta(n)
 
     def daterange(start, end, step=timedelta(1/288)):
         print(start,end)
@@ -394,47 +389,10 @@ def get_usgs_from_time_slices_folder(
             print(i,j)
             usgs_df.insert(i,str(j[:10]+"_"+j[11:]),np.nan)
 
-        
-
-        # import pdb; pdb.set_trace()  
-        # print(i)
-        # original_string = usgs_df.columns[i]
-        
-        # date_time_str = original_string[:10] + " " + original_string[11:]
-        # date_time_obj = datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S')
-        # newtime = date_time_obj + timedelta(minutes=15)
-        # original_string_shortened = original_string[:-5]
-
-        # temp_name1 = original_string_shortened + str("05:00")
-        # # temp_name2 = original_string_shortened + str("10:00")
-        # temp_name3 = original_string_shortened + str("20:00")
-        # # temp_name4 = original_string_shortened + str("25:00")
-        # temp_name5 = original_string_shortened + str("35:00")
-        # # temp_name6 = original_string_shortened + str("40:00")
-        # temp_name7 = original_string_shortened + str("50:00")
-        # # temp_name8 = original_string_shortened + str("55:00")
-
-        # j = str(j)
-        # usgs_df[i+1] = [str(j)]
-        # usgs_df.rename(columns={usgs_df.iloc[:, i+1].name:str(j[:10]+"_"+j[11:])}, inplace=True)
-        # usgs_df.insert(i+1,i, np.nan)
-        # usgs_df.insert(i + 1, temp_name1, np.nan)
-        # # usgs_df.insert(i + 2, temp_name2, np.nan)
-        # usgs_df.insert(i + 4, temp_name3, np.nan)
-        # # usgs_df.insert(i + 5, temp_name4, np.nan)
-        # usgs_df.insert(i + 7, temp_name5, np.nan)
-        # # usgs_df.insert(i + 8, temp_name6, np.nan)
-        # usgs_df.insert(i + 10, temp_name7, np.nan)
-        # # usgs_df.insert(i + 11, temp_name8, np.nan)
-        # import pdb; pdb.set_trace()
-    # print(usgs_df)
-        # import pdb; pdb.set_trace()
-
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1,limit_direction='backward')
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
     print(usgs_df)
-    # import pdb; pdb.set_trace()
     return usgs_df
 
 
