@@ -103,3 +103,7 @@ parity_parameters:
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     parity_check_compare_node: 4186169
+coastal_parameters:
+    coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
+    # coastal_ncdf: "../../test/input/geo/coastal_inputs/SandySample.nc"
+

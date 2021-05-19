@@ -278,6 +278,7 @@ def _handle_args():
         dest="data_assimilation_csv",
         default=None,
     )
+
     return parser.parse_args()
 
 
@@ -885,6 +886,7 @@ def _input_handler():
     parity_parameters = {}
     data_assimilation_parameters = {}
     diffusive_parameters = {}
+    coastal_parameters = {}
 
     if custom_input_file:
         (
@@ -897,6 +899,7 @@ def _input_handler():
             parity_parameters,
             data_assimilation_parameters,
             diffusive_parameters,
+            coastal_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
 
     else:
@@ -1008,6 +1011,7 @@ def _input_handler():
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     )
 
 
@@ -1023,6 +1027,7 @@ def main():
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     ) = _input_handler()
 
     dt = run_parameters.get("dt", None)
@@ -1192,6 +1197,18 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    # STEP 7
+    coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
+    coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
+
+    if coastal_boundary_elev:
+        print("creating coastal dataframe ...")
+        coastal_df = nhd_io.build_coastal_dataframe(coastal_boundary_elev)
+
+    if coastal_ncdf:
+        print("creating coastal ncdf dataframe ...")
+        coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
+
     ################### Main Execution Loop across ordered networks
     if showtiming:
         start_time = time.time()
@@ -1239,6 +1256,10 @@ def main():
         waterbodies_df_reduced,
         diffusive_parameters,
     )
+
+    with open("mainstems_conus.txt", "w") as filehandle:
+        for listitem in reaches_bytw.keys():
+            filehandle.write("%s\n" % listitem)
 
     if verbose:
         print("ordered reach computation complete")

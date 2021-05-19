@@ -59,6 +59,7 @@ def read_custom_input(custom_input_file):
     parity_parameters = data.get("parity_parameters", {})
     data_assimilation_parameters = data.get("data_assimilation_parameters", {})
     diffusive_parameters = data.get("diffusive_parameters", {})
+    coastal_parameters = data.get("coastal_parameters", {})
 
     # TODO: add error trapping for potentially missing files
     return (
@@ -71,6 +72,7 @@ def read_custom_input(custom_input_file):
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     )
 
 
@@ -685,3 +687,16 @@ def get_reservoir_restart_from_wrf_hydro(
     init_waterbody_states = mod
 
     return init_waterbody_states
+
+
+def build_coastal_dataframe(coastal_boundary_elev):
+    coastal_df = pd.read_csv(
+        coastal_boundary_elev, sep="  ", header=None, engine="python"
+    )
+    return coastal_df
+
+
+def build_coastal_ncdf_dataframe(coastal_ncdf):
+    with xr.open_dataset(coastal_ncdf) as ds:
+        coastal_ncdf_df = ds[["elev", "depth"]]
+        return coastal_ncdf_df.to_dataframe()

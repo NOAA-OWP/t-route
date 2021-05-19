@@ -498,7 +498,7 @@ def build_channel_initial_state(
     # TODO: If needed for performance improvement consider filtering mask file on read.
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0, header=None)
+        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
         q0 = q0[q0.index.isin(mask_file_path.index)]
 
     return q0
@@ -559,7 +559,7 @@ def build_qlateral_array(
 
     mask_file_path = supernetwork_parameters.get("mask_file_path", None)
     if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path,index_col=0, header=None)
+        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
         qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
 
     return qlat_df
