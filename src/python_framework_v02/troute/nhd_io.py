@@ -705,7 +705,7 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
 
 def build_last_obs_df(last_obs_file, wrf_last_obs_flag):  # , fvd_df):
     # open routelink_file and extract discharges
-    with xr.open_dataset(routlink_file) as ds:
+    with xr.open_dataset(last_obs_file) as ds:
         df_model_discharges = ds["model_discharge"].to_dataframe()
         df_discharges = ds["discharge"].to_dataframe()
         last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
