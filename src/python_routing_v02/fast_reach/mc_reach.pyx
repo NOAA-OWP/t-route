@@ -1,6 +1,8 @@
 # cython: language_level=3, boundscheck=True, wraparound=False, profile=True
-
+from libc.stdio cimport printf
 import numpy as np
+import math
+import sys
 from itertools import chain
 from operator import itemgetter
 from numpy cimport ndarray
@@ -168,6 +170,7 @@ cpdef object compute_network(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -205,6 +208,8 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
+    
+
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
@@ -231,7 +236,12 @@ cpdef object compute_network(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
+<<<<<<< HEAD
             flowveldepth[fill_index, idx] = val
+=======
+            flowveldepth[fill_index][idx] = val
+    
+>>>>>>> da_decay_ncar
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -418,12 +428,19 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-                if gages_size:
-                    for gage_i in range(gages_size):
-                        usgs_position_i = usgs_positions_list[gage_i]
-                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                with gil:
+                    a = 120
+                    weight = math.exp(timestep/-a)  
+                    if gages_size > 0:
+                        for gage_i in range(gages_size):
+                            usgs_position_i = usgs_positions_list[gage_i]
+                            flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+
 
             timestep += 1
+    printf("%f\n", flowveldepth)
+    printf("%f\n", data_idx.shape[0])
+    printf("%f\n", nsteps * 3)
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches
@@ -704,6 +721,7 @@ cpdef object compute_network_structured_obj(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -889,10 +907,18 @@ cpdef object compute_network_structured_obj(
                                  #timestep,
                                  #nsteps)
             #Copy the output out
+            #a = 120
+            #weight = math.exp(timestep/-a)
+            #lastobs = 1
             for i, id in enumerate(segment_ids):
-              flowveldepth[id, timestep, 0] = out_buf[i, 0]
-              flowveldepth[id, timestep, 1] = out_buf[i, 1]
-              flowveldepth[id, timestep, 2] = out_buf[i, 2]
+                flowveldepth[id, timestep, 0] = out_buf[i, 0]
+                #for pos, loid in enumerate(lastobs_ids):
+                #    if loid == id:
+                #        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
+                #        delta = weight * lasterror
+                #        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
+                flowveldepth[id, timestep, 1] = out_buf[i, 1]
+                flowveldepth[id, timestep, 2] = out_buf[i, 2]
 
       timestep += 1
 
