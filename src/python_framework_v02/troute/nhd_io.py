@@ -11,6 +11,7 @@ import dask.array as da
 import sys
 import math
 
+
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
@@ -752,9 +753,7 @@ def build_last_obs_df(last_obs_file, wrf_last_obs_flag):  # , fvd_df):
 
         for time in range(0, 720, 5):
             weight = math.exp(time / -a)
-            delta = pd.DataFrame(
-                model_discharge_last_ts["last_nudge"] / weight
-            )
+            delta = pd.DataFrame(model_discharge_last_ts["last_nudge"] / weight)
             if time == 0:
                 prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
                 weight_diff = prediction_df[str(time)] - prediction_df[str(time)]

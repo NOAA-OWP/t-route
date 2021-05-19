@@ -1197,12 +1197,8 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
-    last_obs_flag = data_assimilation_parameters.get(
-        "wrf_last_obs_flag", None
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_flag = data_assimilation_parameters.get("wrf_last_obs_flag", None)
     if last_obs_file:
         # fvd_df = flowveldepth.iloc[ :, -1:]
         last_obs_df = nhd_io.build_last_obs_df(
@@ -1213,7 +1209,6 @@ def main():
 
         if verbose:
             print("last observation DA decay dataframe")
-
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
@@ -1226,7 +1221,6 @@ def main():
     if coastal_ncdf:
         print("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
-
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1413,7 +1407,6 @@ def main():
         if debuglevel <= -1:
             print(flowveldepth)
 
-    
     if verbose:
         print("output complete")
     if showtiming:
