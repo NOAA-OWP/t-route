@@ -7,13 +7,10 @@ import json
 import yaml
 import numpy as np
 from toolz import compose
-<<<<<<< HEAD
 import dask.array as da
-=======
 import sys
 import math
 from datetime import *
->>>>>>> da_decay_ncar
 
 
 def read_netcdf(geo_file_path):
