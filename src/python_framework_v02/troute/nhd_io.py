@@ -690,7 +690,9 @@ def get_reservoir_restart_from_wrf_hydro(
 
 
 def build_coastal_dataframe(coastal_boundary_elev):
-    coastal_df = pd.read_csv(coastal_boundary_elev, sep="  ", header=None)
+    coastal_df = pd.read_csv(
+        coastal_boundary_elev, sep="  ", header=None, engine="python"
+    )
     return coastal_df
 
 
