@@ -1197,6 +1197,24 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    last_obs_file = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_file", None
+    )
+    last_obs_flag = data_assimilation_parameters.get(
+        "wrf_last_obs_flag", None
+    )
+    if last_obs_file:
+        # fvd_df = flowveldepth.iloc[ :, -1:]
+        last_obs_df = nhd_io.build_last_obs_df(
+            data_assimilation_parameters.get("wrf_hydro_last_obs_file", None),
+            data_assimilation_parameters.get("wrf_last_obs_flag", None),
+            # fvd_df,
+        )
+
+        if verbose:
+            print("last observation DA decay dataframe")
+
+
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
     coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
@@ -1396,19 +1414,6 @@ def main():
             print(flowveldepth)
 
     
-    # STEP 7 Last obs ids and data excluding NaN
-
-
-    fvd_df = flowveldepth.iloc[ :, -1:]
-    # import pdb; pdb.set_trace()
-    last_obs_df = nhd_io.build_last_obs_df(
-        restart_parameters["wrf_hydro_last_obs_file"],
-        restart_parameters["wrf_last_obs_flag"],
-        fvd_df,
-    )
-    if verbose:
-        print(last_obs_df)
-        print("last observation DA decay dataframe")
     if verbose:
         print("output complete")
     if showtiming:

@@ -703,7 +703,7 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
         return coastal_ncdf_df.to_dataframe()
 
 
-def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
+def build_last_obs_df(last_obs_file, wrf_last_obs_flag):  # , fvd_df):
     # open routelink_file and extract discharges
     with xr.open_dataset(routlink_file) as ds:
         df_model_discharges = ds["model_discharge"].to_dataframe()
@@ -730,20 +730,22 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
         )
         # If predict from last_obs file use last obs file results
         if wrf_last_obs_flag:
+            print("WRF_FLAG")
             model_discharge_last_ts["last_nudge"] = (
                 model_discharge_last_ts["discharge"]
                 - model_discharge_last_ts["model_discharge"]
             )
-        # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
-        else:
-            fvd_df = fvd_df
-            if len(model_discharge_last_ts.index) == len(fvd_df.index):
-                model_discharge_last_ts["last_nudge"] = (
-                    model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
-                )
-            else:
-                print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
-                sys.exit()
+        # # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
+        # else:
+        #     print("NO WRF_FLAG")
+        #     fvd_df = fvd_df
+        #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
+        #         model_discharge_last_ts["last_nudge"] = (
+        #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
+        #         )
+        #     else:
+        #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
+        #         sys.exit()
         # Predictions created with continuously decreasing deltas until near 0 difference
         a = 120
         prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
@@ -751,7 +753,7 @@ def build_last_obs_df(routlink_file, wrf_last_obs_flag, fvd_df):
         for time in range(0, 720, 5):
             weight = math.exp(time / -a)
             delta = pd.DataFrame(
-                model_discharge_last_ts["last_nudge"] / weight)
+                model_discharge_last_ts["last_nudge"] / weight
             )
             if time == 0:
                 prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
