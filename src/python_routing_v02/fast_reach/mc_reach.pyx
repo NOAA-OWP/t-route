@@ -900,7 +900,6 @@ cpdef object compute_network_structured_obj(
                                  #timestep,
                                  #nsteps)
 
-            # #Copy the output out
             # #a = 120
             # #weight = math.exp(timestep/-a)
             # #lastobs = 1
@@ -914,6 +913,7 @@ cpdef object compute_network_structured_obj(
             #     flowveldepth[id, timestep, 1] = out_buf[i, 1]
             #     flowveldepth[id, timestep, 2] = out_buf[i, 2]
 
+            #Copy the output out
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
               flowveldepth[id, timestep, 1] = out_buf[i, 1]
