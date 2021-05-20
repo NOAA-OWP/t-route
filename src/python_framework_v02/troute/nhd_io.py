@@ -335,7 +335,6 @@ def preprocess_time_station_index(xd):
 
     data_var_dict = {}
     data_vars = ("discharge", "discharge_quality")
-    # import pdb; pdb.set_trace()
     for v in data_vars:
         data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
     return xr.Dataset(
@@ -397,7 +396,6 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
-    # import pdb; pdb.set_trace()
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,
@@ -417,7 +415,6 @@ def get_usgs_from_time_slices_folder(
             data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
-    # import pdb; pdb.set_trace()
     usgs_df = df.join(df2)
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.rename(columns={"index": "gages"})

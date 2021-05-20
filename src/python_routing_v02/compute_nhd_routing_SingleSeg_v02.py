@@ -295,7 +295,7 @@ elif not ENV_IS_CL:
 ## network and reach utilities
 import troute.nhd_network_utilities_v02 as nnu
 import fast_reach
-# import diffusive
+import diffusive
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
@@ -809,7 +809,6 @@ def compute_nhd_routing_v02(
                 common_segs,
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
-            # import pdb; pdb.set_trace()
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
@@ -860,9 +859,6 @@ def compute_nhd_routing_v02(
             # print(last_obs_sub)
             if not last_obs_sub.empty:
                 print(usgs_df)
-                import pdb
-
-                pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -1214,6 +1210,12 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
+    last_obs_df = nhd_io.build_last_obs_df(
+        restart_parameters["wrf_hydro_last_obs_file"],
+        restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+        restart_parameters["wrf_last_obs_flag"],
+    )
+
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
     coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
@@ -1226,11 +1228,6 @@ def main():
         print("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
         
-    last_obs_df = nhd_io.build_last_obs_df(
-        restart_parameters["wrf_hydro_last_obs_file"],
-        restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-        restart_parameters["wrf_last_obs_flag"],
-    )
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -1418,19 +1415,6 @@ def main():
         if debuglevel <= -1:
             print(flowveldepth)
 
-    # STEP 7 Last obs ids and data excluding NaN
-
-    print(flowveldepth)
-    fvd_df = flowveldepth.iloc[:, -1:]
-    # import pdb; pdb.set_trace()
-    # last_obs_df = nhd_io.build_last_obs_df(
-    #     restart_parameters["wrf_hydro_last_obs_file"],
-    #     restart_parameters["wrf_last_obs_flag"],
-    #     fvd_df,
-    # )
-    if verbose:
-        print(last_obs_df)
-        print("last observation DA decay dataframe")
     if verbose:
         print("output complete")
     if showtiming:
