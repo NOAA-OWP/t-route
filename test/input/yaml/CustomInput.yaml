@@ -109,10 +109,7 @@ parity_parameters:
     parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
-    parity_check_compare_node: 2102000
-coastal_parameters:
-    coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
-    # coastal_ncdf: "../../test/input/geo/coastal_inputs/SandySample.nc"
+#WRF-Hydro data assimilation files
 data_assimilation_parameters:
     # florence_testcase/florence_933020089/DOMAIN
     data_assimilation_parameters_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
@@ -120,3 +117,7 @@ data_assimilation_parameters:
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
     # florence_testcase/florenceNudgingChannelOnly/FORCING_AnA_channel-only/24timeslices
     data_assimilation_timeslices_folder: "/home/jacob.hreha/github/fresh_start/t-route/notebooks/chrtoutfiles/FORCING_AnA_channel-only/24timeslices/"
+#SCHISM Coastal data boundary condition elevations
+coastal_parameters:
+    coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
+    # coastal_ncdf: "../../test/input/geo/coastal_inputs/SandySample.nc"

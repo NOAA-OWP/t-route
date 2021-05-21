@@ -854,11 +854,6 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-            # print(lastobs_segs)
-            # print(nudging_positions_list)
-            # print(last_obs_sub)
-            if not last_obs_sub.empty:
-                print(usgs_df)
             results.append(
                 compute_func(
                     nts,
@@ -1210,11 +1205,23 @@ def main():
     else:
         usgs_df = pd.DataFrame()
 
-    last_obs_df = nhd_io.build_last_obs_df(
-        restart_parameters["wrf_hydro_last_obs_file"],
-        restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-        restart_parameters["wrf_last_obs_flag"],
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_flag = data_assimilation_parameters.get("wrf_last_obs_flag", None)
+    if last_obs_file:
+        # fvd_df = flowveldepth.iloc[ :, -1:]
+        last_obs_df = nhd_io.build_last_obs_df(
+            restart_parameters["wrf_hydro_last_obs_file"],
+            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+            restart_parameters["wrf_last_obs_flag"],
+        )
+        last_obs_df = nhd_io.build_last_obs_df(
+            data_assimilation_parameters.get("wrf_hydro_last_obs_file", None),
+            data_assimilation_parameters.get("wrf_last_obs_flag", None),
+            # fvd_df,
+        )
+
+        if verbose:
+            print("last observation DA decay dataframe")
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
