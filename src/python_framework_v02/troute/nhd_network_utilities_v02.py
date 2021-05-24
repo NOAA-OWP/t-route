@@ -569,12 +569,12 @@ def build_data_assimilation(data_assimilation_parameters):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_folder", None
     )
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
-    elif data_assimilation_filter:
+    elif data_assimilation_folder:
         usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
     return usgs_df
 
@@ -599,7 +599,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         usgs_df = nhd_io.get_usgs_from_time_slices_folder(
             data_assimilation_parameters["data_assimilation_parameters_file"],
             usgs_timeslices_folder,
-            data_assimilation_parameters["data_assimilation_filter"],
+            data_assimilation_parameters["data_assimilation_folder"],
         )
-
+  
     return usgs_df
