@@ -328,6 +328,7 @@ def compute_nhd_routing_v02(
     q0,
     qlats,
     usgs_df,
+    last_obs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -455,9 +456,18 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
+                    if not last_obs_df.empty:
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    else:
+                        last_obs_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
+                    # TODO: @Awlostowski -- can you fix this?
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
                     # Eventually, the wiring for reservoir simulation needs to be added.
@@ -486,6 +496,7 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -758,6 +769,7 @@ def compute_nhd_routing_v02(
                         waterbodies_df_sub.values,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
+                        last_obs_sub.values.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -818,6 +830,14 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
+            if not last_obs_df.empty:
+                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                last_obs_sub = last_obs_df.loc[lastobs_segs]
+            else:
+                last_obs_sub = pd.DataFrame()
+                nudging_positions_list = []
+
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
@@ -862,6 +882,7 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
+                    last_obs_sub.values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -1175,13 +1196,29 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
+    last_obs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_channel_ID_crosswalk_file", None)
+
+    if last_obs_file:
+        last_obs_df = nhd_io.build_last_obs_df(
+            last_obs_file,
+            last_obs_crosswalk_file,
+            last_obs_type,
+        )
+    else:
+        last_obs_df = pd.DataFrame()
+
+        if verbose:
+            print("last observation DA decay dataframe")
+
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_folder", None
     )
-    if data_assimilation_csv or data_assimilation_filter:
+    if data_assimilation_csv or data_assimilation_folder:
         if showtiming:
             start_time = time.time()
         if verbose:
@@ -1251,6 +1288,7 @@ def main():
         q0,
         qlats,
         usgs_df,
+        last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,

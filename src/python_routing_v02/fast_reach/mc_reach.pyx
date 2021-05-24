@@ -3,8 +3,9 @@
 import numpy as np
 from itertools import chain
 from operator import itemgetter
-from numpy cimport ndarray
 from array import array
+from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
+from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
@@ -168,6 +169,7 @@ cpdef object compute_network(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -314,6 +316,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
+    cdef float a, da_weight
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -418,6 +421,8 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
+                a = 120
+                da_weight = exp(timestep/-a)
                 if gages_size:
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
@@ -704,6 +709,7 @@ cpdef object compute_network_structured_obj(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -888,6 +894,20 @@ cpdef object compute_network_structured_obj(
                                  assume_short_ts)#,
                                  #timestep,
                                  #nsteps)
+
+            # #a = 120
+            # #weight = math.exp(timestep/-a)
+            # #lastobs = 1
+            # for i, id in enumerate(segment_ids):
+            #     flowveldepth[id, timestep, 0] = out_buf[i, 0]
+            #     #for pos, loid in enumerate(lastobs_ids):
+            #     #    if loid == id:
+            #     #        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
+            #     #        delta = weight * lasterror
+            #     #        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
+            #     flowveldepth[id, timestep, 1] = out_buf[i, 1]
+            #     flowveldepth[id, timestep, 2] = out_buf[i, 2]
+
             #Copy the output out
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
