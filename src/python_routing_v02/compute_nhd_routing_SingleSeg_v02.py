@@ -456,6 +456,14 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
+                    if not last_obs_df.empty:
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    else:
+                        last_obs_sub = pd.DataFrame()
+                        nudging_positions_list = []
+
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
@@ -488,6 +496,7 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -760,6 +769,7 @@ def compute_nhd_routing_v02(
                         waterbodies_df_sub.values,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
+                        last_obs_sub.values.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
