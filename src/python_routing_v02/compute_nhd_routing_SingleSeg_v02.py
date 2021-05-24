@@ -1198,35 +1198,22 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
-    last_obs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_channel_ID_crosswalk_file", None)
-
-    if last_obs_file:
-        last_obs_df = nhd_io.build_last_obs_df(
-            last_obs_file,
-            last_obs_crosswalk_file,
-            last_obs_type,
-        )
-    else:
-        last_obs_df = pd.DataFrame()
-
-        if verbose:
-            print("last observation DA decay dataframe")
-
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
     data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_folder", None
+        "data_assimilation_timeslices_folder", None
     )
-    if data_assimilation_csv or data_assimilation_folder:
+    last_obs_file = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_file", None
+    )
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+        usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
 
         if verbose:
             print("usgs array complete")
@@ -1235,6 +1222,8 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
+        last_obs_df = pd.DataFrame()
+
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
