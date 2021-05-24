@@ -1,5 +1,5 @@
 # cython: language_level=3, boundscheck=True, wraparound=False, profile=True
-from libc.stdio cimport printf
+
 import numpy as np
 from libc.math import exp
 from itertools import chain
@@ -206,8 +206,6 @@ cpdef object compute_network(
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
-
-    
 
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
@@ -429,11 +427,7 @@ cpdef object compute_network(
                         usgs_position_i = usgs_positions_list[gage_i]
                         flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
 
-
             timestep += 1
-    printf("%f\n", flowveldepth)
-    printf("%f\n", data_idx.shape[0])
-    printf("%f\n", nsteps * 3)
 
     # delete the duplicate results that shouldn't be passed along
     # The upstream keys have empty results because they are not part of any reaches

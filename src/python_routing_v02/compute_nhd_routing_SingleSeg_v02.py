@@ -809,6 +809,7 @@ def compute_nhd_routing_v02(
                 common_segs,
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
+
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
@@ -854,6 +855,7 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
+
             results.append(
                 compute_func(
                     nts,
@@ -1234,7 +1236,6 @@ def main():
     if coastal_ncdf:
         print("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
-        
 
     ################### Main Execution Loop across ordered networks
     if showtiming:

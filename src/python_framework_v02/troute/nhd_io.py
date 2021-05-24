@@ -396,6 +396,7 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
+
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,
@@ -415,6 +416,7 @@ def get_usgs_from_time_slices_folder(
             data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
+
     usgs_df = df.join(df2)
     usgs_df = usgs_df.reset_index()
     usgs_df = usgs_df.rename(columns={"index": "gages"})
@@ -450,7 +452,7 @@ def get_usgs_from_time_slices_folder(
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
-    print(usgs_df)
+
     return usgs_df
 
 
