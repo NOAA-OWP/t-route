@@ -542,6 +542,7 @@ def get_usgs_from_time_slices_folder(
     return usgs_df
 
 
+# TODO: Move channel restart above usgs to keep order with execution script
 def get_channel_restart_from_csv(
     channel_initial_states_file,
     index_col=0,
