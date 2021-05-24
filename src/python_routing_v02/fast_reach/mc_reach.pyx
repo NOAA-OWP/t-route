@@ -1,11 +1,11 @@
 # cython: language_level=3, boundscheck=True, wraparound=False, profile=True
 
 import numpy as np
-from libc.math import exp
 from itertools import chain
 from operator import itemgetter
-from numpy cimport ndarray
 from array import array
+from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
+from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
@@ -316,6 +316,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
+    cdef float a, da_weight
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -421,7 +422,7 @@ cpdef object compute_network(
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
                 a = 120
-                weight = exp(timestep/-a)
+                da_weight = exp(timestep/-a)
                 if gages_size:
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
