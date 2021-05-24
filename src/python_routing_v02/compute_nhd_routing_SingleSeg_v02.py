@@ -1196,13 +1196,29 @@ def main():
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
+    last_obs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_channel_ID_crosswalk_file", None)
+
+    if last_obs_file:
+        last_obs_df = nhd_io.build_last_obs_df(
+            last_obs_file,
+            last_obs_crosswalk_file,
+            last_obs_type,
+        )
+    else:
+        last_obs_df = pd.DataFrame()
+
+        if verbose:
+            print("last observation DA decay dataframe")
+
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_folder", None
     )
-    if data_assimilation_csv or data_assimilation_filter:
+    if data_assimilation_csv or data_assimilation_folder:
         if showtiming:
             start_time = time.time()
         if verbose:
@@ -1217,24 +1233,6 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
-
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    last_obs_flag = data_assimilation_parameters.get("wrf_last_obs_flag", None)
-    if last_obs_file:
-        # fvd_df = flowveldepth.iloc[ :, -1:]
-        last_obs_df = nhd_io.build_last_obs_df(
-            restart_parameters["wrf_hydro_last_obs_file"],
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-            restart_parameters["wrf_last_obs_flag"],
-        )
-        last_obs_df = nhd_io.build_last_obs_df(
-            data_assimilation_parameters.get("wrf_hydro_last_obs_file", None),
-            data_assimilation_parameters.get("wrf_last_obs_flag", None),
-            # fvd_df,
-        )
-
-        if verbose:
-            print("last observation DA decay dataframe")
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
