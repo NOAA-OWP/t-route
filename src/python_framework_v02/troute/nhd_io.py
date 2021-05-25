@@ -531,17 +531,6 @@ def get_usgs_from_time_slices_folder(
                 usgs_df.drop(usgs_df.columns[i], axis=1, inplace=True)
             usgs_df.insert(i, j, np.nan)
 
-        # try:
-        #     if usgs_df.iloc[:, i].name == dates[i]:
-        #         pass
-        #     else:
-        #         if usgs_df.iloc[:, i].name not in dates:
-        #             usgs_df.drop(usgs_df.columns[i], axis=1, inplace=True)
-        #         # print(i,j)
-        #         usgs_df.insert(i, j, np.nan)
-        # except:
-        #     usgs_df.insert(i, j, np.nan)
-
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
