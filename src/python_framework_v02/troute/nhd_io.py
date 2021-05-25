@@ -518,15 +518,9 @@ def get_usgs_from_time_slices_folder(
     date_time_str = original_string_last[:10] + " " + original_string_last[11:]
     date_time_obj_end = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
 
-    def daterange(start, end, step=timedelta(1 / 288)):
-        print(start, end)
-        curr = start
-        while curr < end:
-            yield curr
-            curr += step
-
     dates = []
-    for j in daterange(date_time_obj_start, date_time_obj_end):
+    # for j in pd.date_range(date_time_obj_start, date_time_obj_end + timedelta(1), freq="5min"):
+    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
         dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
 
     for i, j in enumerate(dates):
