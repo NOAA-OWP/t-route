@@ -525,15 +525,18 @@ def get_usgs_from_time_slices_folder(
             yield curr
             curr += step
 
-    for i, j in enumerate(daterange(date_time_obj_start, date_time_obj_end)):
-        j = str(j)
-        # print(i,str(j[:10]+"_"+j[11:]),"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        # print(usgs_df.iloc[:,i].name,"YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
-        if usgs_df.iloc[:, i].name == str(j[:10] + "_" + j[11:]):
+    dates = []
+    for j in daterange(date_time_obj_start, date_time_obj_end):
+        dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
+
+    for i, j in enumerate(dates):
+        if usgs_df.iloc[:, i].name == dates[i]:
             pass
         else:
+            if usgs_df.iloc[:, i].name not in dates:
+                usgs_df.drop(usgs_df.columns[i], axis=1, inplace=True)
             # print(i,j)
-            usgs_df.insert(i, str(j[:10] + "_" + j[11:]), np.nan)
+            usgs_df.insert(i, j, np.nan)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
