@@ -779,8 +779,6 @@ def compute_nhd_routing_v02(
             results = parallel(jobs)
     
     else:  # Execute in serial
-        print(usgs_df)
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
