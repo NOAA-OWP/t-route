@@ -1019,20 +1019,19 @@ cpdef object compute_network_structured(
                 MC_Reach(segment_objects, array('l',upstream_ids))
                 )
             
-    # TO DO place upstream flow vel and depth data into flowveldepth array to allow subnet parallel.
-#     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
-#     cdef Py_ssize_t fill_index
-#     cdef long upstream_tw_id
-#     cdef dict tmp
-#     cdef int idx
-#     cdef float val
+    cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef Py_ssize_t fill_index
+    cdef long upstream_tw_id
+    cdef dict tmp
+    cdef int idx
+    cdef float val
     
-#     for upstream_tw_id in upstream_results:
-#     tmp = upstream_results[upstream_tw_id]
-#     fill_index = tmp["position_index"]
-#     fill_index_mask[fill_index] = False
-#     for idx, val in enumerate(tmp["results"]):
-#         flowveldepth[fill_index, idx] = val
+    for upstream_tw_id in upstream_results:
+    tmp = upstream_results[upstream_tw_id]
+    fill_index = tmp["position_index"]
+    fill_index_mask[fill_index] = False
+    for idx, val in enumerate(tmp["results"]):
+        flowveldepth_nd[fill_index, (idx/3)+1] = val
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
@@ -1115,4 +1114,4 @@ cpdef object compute_network_structured(
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
+    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)[fill_index_mask]
