@@ -1020,6 +1020,13 @@ cpdef object compute_network_structured(
                 )
             
     # TO DO place upstream flow vel and depth data into flowveldepth array to allow subnet parallel.
+#     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
+#     cdef Py_ssize_t fill_index
+#     cdef long upstream_tw_id
+#     cdef dict tmp
+#     cdef int idx
+#     cdef float val
+    
 #     for upstream_tw_id in upstream_results:
 #     tmp = upstream_results[upstream_tw_id]
 #     fill_index = tmp["position_index"]
