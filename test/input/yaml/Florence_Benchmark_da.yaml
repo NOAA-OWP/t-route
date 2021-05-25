@@ -22,10 +22,11 @@ output_parameters: {}
 supernetwork_parameters:
     title_string: "Florence_FullRes"
     geo_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
-    # mask_file_path: "../../test/input/geo/Channels/masks/Florence_FULL_RES.txt"
-    # mask_layer_string: ""
-    # mask_driver_string: "csv"
-    # mask_key: 0
+    #mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
+    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
+    mask_layer_string: ""
+    mask_driver_string: "csv"
+    mask_key: 0
     columns:
         key: "link"
         downstream: "to"
@@ -108,4 +109,6 @@ parity_parameters:
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     # parity_check_compare_node: 933020089 # contains only Nan in WRF simulations including waterbodies
-    parity_check_compare_node: 8835386
+    # parity_check_compare_node: 8835386
+    parity_check_compare_node: 8777381
+    # parity_check_compare_node: 10975909
