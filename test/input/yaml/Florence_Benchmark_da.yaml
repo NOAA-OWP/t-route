@@ -13,8 +13,8 @@ run_parameters:
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
-    # nts: 97  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-    nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+    nts: 85  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+    # nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
     return_courant: false  # WARNING: true will only work with compute_method "V02-caching", therefore not currently compatible with simulation for waterbodies.
 #output file parameters
 output_parameters: {}
@@ -22,8 +22,8 @@ output_parameters: {}
 supernetwork_parameters:
     title_string: "Florence_FullRes"
     geo_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
-    #mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
-    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
+    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
+    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -65,7 +65,7 @@ supernetwork_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
-    qlat_file_pattern_filter: "20180918*.CHRTOUT_DOMAIN1"
+    qlat_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
     # qlat_input_file: "florence_qlat_test.csv.hourly"
     qlat_file_index_col: feature_id
     qlat_file_value_col: q_lateral
@@ -93,7 +93,7 @@ restart_parameters:
 data_assimilation_parameters:
     # florence_testcase/florence_933020089/DOMAIN
     data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
-    data_assimilation_filter: "2018-09-18*.usgsTimeSlice.ncdf"
+    data_assimilation_filter: "2018-09-18_0[2-9]*.usgsTimeSlice.ncdf"
     wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     # wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
     wrf_last_obs_type: "obs-based"
@@ -104,11 +104,14 @@ parity_parameters:
     # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
     parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
     #parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
-    parity_check_file_pattern_filter: "20180918*.CHRTOUT_DOMAIN1"
+    parity_check_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
     # parity_check_file: "florence_streamflow_test.csv.hourly"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     # parity_check_compare_node: 933020089 # contains only Nan in WRF simulations including waterbodies
     # parity_check_compare_node: 8835386
-    parity_check_compare_node: 8777381
-    # parity_check_compare_node: 10975909
+    parity_check_compare_node: 10975909
+    # parity_check_compare_node: 8777381  # At gage
+    #parity_check_compare_node: 8777275  # Just above gage
+    # parity_check_compare_node: 8778459  # Midwater
+    # parity_check_compare_node: 8778771  # Headwater
