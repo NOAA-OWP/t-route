@@ -808,7 +808,14 @@ cpdef object compute_network_structured_obj(
                 (MC_Reach(segment_objects, array('l',upstream_ids)), reach_type)
                 )
 
-
+# TO DO place upstream flow vel and depth data into flowveldepth array to allow subnet parallel.
+#     for upstream_tw_id in upstream_results:
+#     tmp = upstream_results[upstream_tw_id]
+#     fill_index = tmp["position_index"]
+#     fill_index_mask[fill_index] = False
+#     for idx, val in enumerate(tmp["results"]):
+#         flowveldepth[fill_index, idx] = val
+    
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
     buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
