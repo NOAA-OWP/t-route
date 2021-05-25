@@ -456,13 +456,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
-                    if not last_obs_df.empty:
-                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                    else:
-                        last_obs_sub = pd.DataFrame()
-                        nudging_positions_list = []
+                    last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
@@ -610,6 +604,8 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
+                    last_obs_sub = pd.DataFrame()
+
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
@@ -730,6 +726,8 @@ def compute_nhd_routing_v02(
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
+
+                last_obs_sub = pd.DataFrame()
 
                 reaches_list_with_type = []
 
