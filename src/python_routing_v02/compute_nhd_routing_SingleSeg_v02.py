@@ -831,12 +831,13 @@ def compute_nhd_routing_v02(
                 nudging_positions_list = []
 
             if not last_obs_df.empty:
-                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-                last_obs_sub = last_obs_df.loc[lastobs_segs]
+                pass
+            #     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+            #     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+            #     last_obs_sub = last_obs_df.loc[lastobs_segs]
             else:
                 last_obs_sub = pd.DataFrame()
-                nudging_positions_list = []
+            #     nudging_positions_list = []
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
