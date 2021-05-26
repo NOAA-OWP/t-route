@@ -522,13 +522,14 @@ def get_usgs_from_time_slices_folder(
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
         dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
 
-    for i, j in enumerate(dates):
-        if usgs_df.iloc[:, i].name == dates[i]:
-            pass
-        else:
-            if usgs_df.iloc[:, i].name not in dates:
-                usgs_df.drop(usgs_df.columns[i], axis=1, inplace=True)
-            usgs_df.insert(i, j, np.nan)
+    '''
+    # dates_to_drop = ~usgs_df.columns.isin(dates)
+    OR 
+    # dates_to_drop = usgs_df.columns.difference(dates)
+    # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
+    '''
+
+    usgs_df = usgs_df.reindex(columns = dates)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
