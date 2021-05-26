@@ -854,7 +854,7 @@ cpdef object compute_network_structured_obj(
             #if isinstance(reservoir_object, lp_kernel):
 
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
-            routing_period = 300.0
+            routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
 
             reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
@@ -1089,7 +1089,7 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
+                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
