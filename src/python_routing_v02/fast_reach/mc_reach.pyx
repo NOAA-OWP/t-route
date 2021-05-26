@@ -9,6 +9,7 @@ from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
+# from libc.stdio cimport printf
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
@@ -214,6 +215,7 @@ cpdef object compute_network(
 
     cdef int gages_size = usgs_positions_list.shape[0]
     cdef int gage_i, usgs_position_i
+    cdef int gage_maxtime = usgs_values.shape[1]
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -421,12 +423,23 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-                a = 120
-                da_weight = exp(timestep/-a)
-                if gages_size:
+
+                if gages_size:  # TODO: This loops over all gages for all reaches.
+                                # We should have a membership test at the reach loop level
+                                # so that we only enter this process for reaches where the
+                                # gage actually exists. We have the filter in place to
+                                # filter the gage list so that only relevant gages for a
+                                # particular network are present in the function call ---
+                                # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
-                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                        if timestep < gage_maxtime:
+                            flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                            # TODO: add/update lastobs_time
+                        else:
+                            a = 120
+                            da_weight = exp(timestep/-a)
+                            # printf("decaying from timestep: %d %d\t", timestep, gages_size)
 
             timestep += 1
 
