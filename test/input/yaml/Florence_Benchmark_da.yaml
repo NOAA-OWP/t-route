@@ -111,7 +111,11 @@ parity_parameters:
     # parity_check_compare_node: 933020089 # contains only Nan in WRF simulations including waterbodies
     # parity_check_compare_node: 8835386
     parity_check_compare_node: 10975909
-    # parity_check_compare_node: 8777381  # At gage
-    #parity_check_compare_node: 8777275  # Just above gage
-    # parity_check_compare_node: 8778459  # Midwater
     # parity_check_compare_node: 8778771  # Headwater
+    # parity_check_compare_node: 8778459  # Midwater
+    # parity_check_compare_node: 8777275  # Just above gage
+    # parity_check_compare_node: 8777381  # At gage
+    # parity_check_compare_node: 8777383  # Below gage
+    # parity_check_compare_node: 8777419  # Below gage
+    # parity_check_compare_node: 8777523  # Below gage
+    # parity_check_compare_node: 8777535  # Below gage
