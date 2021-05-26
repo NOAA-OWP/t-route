@@ -215,7 +215,7 @@ cpdef object compute_network(
 
     cdef int gages_size = usgs_positions_list.shape[0]
     cdef int gage_i, usgs_position_i
-    cdef int gage_maxtime = usgs_values.shape[1]
+    cdef int gage_maxtimestep = usgs_values.shape[1]
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -318,7 +318,9 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
-    cdef float a, da_weight
+    cdef float a, da_weight, da_decay_time
+    cdef int lastobs_timestep
+    cdef float dt = 300.0  # TODO: pull this value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -433,13 +435,16 @@ cpdef object compute_network(
                                 # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
-                        if timestep < gage_maxtime:
+                        if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-                            # TODO: add/update lastobs_time
+                            # TODO: add/update lastobs_timestep and/or decay_timestep
                         else:
-                            a = 120
-                            da_weight = exp(timestep/-a)
+                            a = 120  # TODO: pull this a value from the config file somehow
+                            da_decay_time = (timestep - lastobs_timestep) * dt
+                            da_weight = exp(da_decay_time/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                            # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             # printf("decaying from timestep: %d %d\t", timestep, gages_size)
+                            # flowveldepth[usgs_position_i, timestep * 3] = replacement_value 
 
             timestep += 1
 
