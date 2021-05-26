@@ -189,7 +189,6 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
-    filter_list = None
 
     with xr.open_mfdataset(
         qlat_files,
