@@ -22,8 +22,8 @@ output_parameters: {}
 supernetwork_parameters:
     title_string: "Florence_FullRes"
     geo_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
-    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
-    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
+    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
+    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -93,9 +93,9 @@ restart_parameters:
 data_assimilation_parameters:
     # florence_testcase/florence_933020089/DOMAIN
     data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
-    data_assimilation_filter: "2018-09-18_0[0-9]*.usgsTimeSlice.ncdf"
+    data_assimilation_filter: "2018-09-18_0[0-4]*.usgsTimeSlice.ncdf"
     wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    # wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
     wrf_last_obs_type: "obs-based"
     # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
@@ -110,11 +110,11 @@ parity_parameters:
     parity_check_file_value_col: streamflow
     # parity_check_compare_node: 933020089 # contains only Nan in WRF simulations including waterbodies
     # parity_check_compare_node: 8835386
-    parity_check_compare_node: 10975909
+    # parity_check_compare_node: 10975909
     # parity_check_compare_node: 8778771  # Headwater
     # parity_check_compare_node: 8778459  # Midwater
     # parity_check_compare_node: 8777275  # Just above gage
-    # parity_check_compare_node: 8777381  # At gage
+    parity_check_compare_node: 8777381  # At gage
     # parity_check_compare_node: 8777383  # Below gage
     # parity_check_compare_node: 8777419  # Below gage
     # parity_check_compare_node: 8777523  # Below gage
