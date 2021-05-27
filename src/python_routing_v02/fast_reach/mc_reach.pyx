@@ -171,6 +171,7 @@ cpdef object compute_network(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
+    int last_obs_start,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -442,14 +443,17 @@ cpdef object compute_network(
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
                             lastobs_values_stored = usgs_values[gage_i, timestep]
                             # TODO: add/update lastobs_timestep and/or decay_timestep
-                        elif timestep == gage_maxtimestep:
-                            printf("decaying from timestep: %d %f\t", decay_timestep,lastobs_values_stored)
+                        elif timestep == gage_maxtimestep and timestep != last_obs_start:
+                            printf("decaying from timestep: %d %d %f\t", timestep,decay_timestep,lastobs_values_stored)
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
                             decay_timestep += 1
-                            printf("equal to")
+                            printf("equal to maxtimestep")
+                        elif timestep == last_obs_start:
+                            flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
+                            decay_timestep = 2
+                            printf("equal to lastobsstart")
                         else:
-                            printf("greater than")
-                            printf("decaying from timestep: %d %f\t", decay_timestep, lastobs_values_stored)
+                            #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
                             a = 120  # TODO: pull this a value from the config file somehow
                             #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                             da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
@@ -458,7 +462,6 @@ cpdef object compute_network(
                             #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                             # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             # printf("decaying from timestep: %d %d\t", timestep, gages_size)
-                            # flowveldepth[usgs_position_i, timestep * 3] = replacement_value 
 
             timestep += 1
 
@@ -742,6 +745,7 @@ cpdef object compute_network_structured_obj(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
+    int last_obs_start,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,

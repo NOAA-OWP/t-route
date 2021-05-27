@@ -329,6 +329,7 @@ def compute_nhd_routing_v02(
     qlats,
     usgs_df,
     last_obs_df,
+    last_obs_start,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -455,9 +456,8 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
-
+                    
                     last_obs_sub = pd.DataFrame()
-
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
@@ -491,6 +491,7 @@ def compute_nhd_routing_v02(
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
                             last_obs_sub.values.astype("float32"),
+                            last_obs_start,
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -768,6 +769,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
                         last_obs_sub.values.astype("float32"),
+                        last_obs_start,
                         {},
                         assume_short_ts,
                         return_courant,
@@ -882,6 +884,7 @@ def compute_nhd_routing_v02(
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
                     last_obs_sub.values.astype("float32"),
+                    last_obs_start,
                     {},
                     assume_short_ts,
                     return_courant,
@@ -1210,7 +1213,7 @@ def main():
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
 
         if verbose:
             print("usgs array complete")
@@ -1220,7 +1223,9 @@ def main():
     else:
         usgs_df = pd.DataFrame()
         last_obs_df = pd.DataFrame()
+    # Get last obs timestep number
 
+    last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
@@ -1277,6 +1282,7 @@ def main():
         qlats,
         usgs_df,
         last_obs_df,
+        last_obs_start,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,

@@ -343,7 +343,7 @@ def preprocess_time_station_index(xd):
         
 def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
     # open routelink_file and extract discharges
-
+    last_obs_date = str(datetime.strptime(lastobsfile[-22:-3], "%Y-%m-%d_%H:%M:%S"))
     ds1 = xr.open_dataset(routelink)
     df = ds1.to_dataframe()
     df2 = df.loc[df["gages"] != b"               "]
@@ -424,7 +424,7 @@ def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
         #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
         #             )
         # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
-        return final_df
+        return final_df, last_obs_date
 
 
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
@@ -792,3 +792,12 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+def get_last_obs_location(qlats_df,last_obs_date):
+    dates = []
+    
+    for j in pd.date_range(qlats_df.columns[0], qlats_df.columns[-1], freq="5min"):
+        dates.append(j.strftime("%Y-%m-%d %H:%M:00"))
+    last_obs_start = dates.index(last_obs_date)
+
+    return last_obs_start
