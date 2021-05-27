@@ -444,6 +444,7 @@ cpdef object compute_network(
                         elif timestep == gage_maxtimestep:
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
                             lastobs_values_stored = lastobs_values[gage_i, timestep]
+                            decay_timestep += 1
                             printf("equal to")
                         else:
                             printf("greater than")
@@ -451,6 +452,7 @@ cpdef object compute_network(
                             #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                             da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                             flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]
+                            decay_timestep += 1 
                             #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                             # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             # printf("decaying from timestep: %d %d\t", timestep, gages_size)
