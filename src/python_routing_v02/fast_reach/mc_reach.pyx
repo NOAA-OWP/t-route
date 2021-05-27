@@ -224,6 +224,7 @@ cpdef object compute_network(
         usgs_position_i = usgs_positions_list[gage_i]
         flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
         # TODO: handle the instance where there are no values, only gage positions
+
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
         # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
@@ -293,6 +294,7 @@ cpdef object compute_network(
 
     ireach_cache = 0
     iusreach_cache = 0
+
     # copy reaches into an array
     for ireach in range(len(reaches)):
         reachlen = reach_sizes[ireach]
