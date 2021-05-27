@@ -326,7 +326,6 @@ cpdef object compute_network(
     cdef int ts_offset
     cdef int decay_timestep = 1
     cdef float lastobs_values_stored = 0 
-    cdef int lo_shape = lastobs_values.shape[0]
 
 # TODO: Split the compute network function so that the part where we set up
 # all the indices is separate from the call to loop through them.
@@ -429,6 +428,7 @@ cpdef object compute_network(
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
+
                 if gages_size:  # TODO: This loops over all gages for all reaches.
                                 # We should have a membership test at the reach loop level
                                 # so that we only enter this process for reaches where the
@@ -438,23 +438,18 @@ cpdef object compute_network(
                                 # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):                            
                         usgs_position_i = usgs_positions_list[gage_i]
-                        printf("decaying from timestep: %d", lo_shape)
-                        if lastobs_values.shape[0] == 0:
-                            lastobs_values_stored = usgs_values[gage_i, timestep]
-                        else:
-                            lastobs_values_stored = usgs_values[gage_i, timestep]
-                            #lastobs_values_stored = lastobs_values[:,:]
                         if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                            lastobs_values_stored = usgs_values[gage_i, timestep]
                             # TODO: add/update lastobs_timestep and/or decay_timestep
                         elif timestep == gage_maxtimestep:
-                            #printf("decaying from timestep: %d\t", lastobs_values)
+                            printf("decaying from timestep: %d %f\t", decay_timestep,lastobs_values_stored)
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
-                            #lastobs_values_stored = lastobs_values[gage_i]
                             decay_timestep += 1
-                            #printf("equal to")
+                            printf("equal to")
                         else:
-                            #printf("greater than")
+                            printf("greater than")
+                            printf("decaying from timestep: %d %f\t", decay_timestep, lastobs_values_stored)
                             a = 120  # TODO: pull this a value from the config file somehow
                             #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                             da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
@@ -463,10 +458,7 @@ cpdef object compute_network(
                             #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                             # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             # printf("decaying from timestep: %d %d\t", timestep, gages_size)
-                            # flowveldepth[usgs_position_i, timestep * 3] = replacement_value
-                
-
-
+                            # flowveldepth[usgs_position_i, timestep * 3] = replacement_value 
 
             timestep += 1
 
