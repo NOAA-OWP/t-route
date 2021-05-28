@@ -29,6 +29,7 @@ def compute_nhd_routing_v02(
     parallel_compute_method,
     subnetwork_target_size,
     cpu_pool,
+    dt,
     nts,
     qts_subdivisions,
     independent_networks,
@@ -36,11 +37,15 @@ def compute_nhd_routing_v02(
     q0,
     qlats,
     usgs_df,
+    last_obs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
     diffusive_parameters=None,
 ):
+
+    param_df["dt"] = dt
+    param_df = param_df.astype("float32")
 
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
@@ -136,7 +141,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -163,9 +169,12 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
+                    last_obs_sub = pd.DataFrame()
+
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
+                    # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
                     # Eventually, the wiring for reservoir simulation needs to be added.
@@ -194,6 +203,7 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -282,7 +292,8 @@ def compute_nhd_routing_v02(
 
                     segs.extend(offnetwork_upstreams)
                     param_df_sub = param_df.loc[
-                        segs, ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"]
+                        segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
@@ -305,6 +316,8 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+
+                    last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
@@ -413,7 +426,7 @@ def compute_nhd_routing_v02(
 
                 param_df_sub = param_df.loc[
                     common_segs,
-                    ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0"],
+                    ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                 ].sort_index()
 
                 if not usgs_df.empty:
@@ -426,6 +439,8 @@ def compute_nhd_routing_v02(
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
+
+                last_obs_sub = pd.DataFrame()
 
                 reaches_list_with_type = []
 
@@ -465,6 +480,7 @@ def compute_nhd_routing_v02(
                         waterbodies_df_sub.values,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
+                        last_obs_sub.values.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -525,6 +541,15 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
+            if not last_obs_df.empty:
+                pass
+            #     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+            #     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+            #     last_obs_sub = last_obs_df.loc[lastobs_segs]
+            else:
+                last_obs_sub = pd.DataFrame()
+            #     nudging_positions_list = []
+
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
@@ -569,6 +594,7 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
+                    last_obs_sub.values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,

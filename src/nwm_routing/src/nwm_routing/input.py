@@ -10,7 +10,56 @@ if ENV_IS_CL:
 elif not ENV_IS_CL:
     root = pathlib.Path("../../").resolve()
 
-def _input_handler(args):
+def _input_handler_v03(args):
+
+    custom_input_file = args.custom_input_file
+    log_parameters = {}
+    supernetwork_parameters = None
+    waterbody_parameters = {}
+    compute_parameters = {}
+    forcing_parameters = {}
+    restart_parameters = {}
+    output_parameters = {}
+    parity_parameters = {}
+    data_assimilation_parameters = {}
+    diffusive_parameters = {}
+    coastal_parameters = {}
+
+    if custom_input_file:
+        (
+            log_parameters,
+            supernetwork_parameters,
+            waterbody_parameters,
+            compute_parameters,
+            forcing_parameters,
+            restart_parameters,
+            diffusive_parameters,
+            coastal_parameters,
+            output_parameters,
+            parity_parameters,
+            data_assimilation_parameters,
+        ) = nhd_io.read_custom_input_new(custom_input_file)
+    else:
+        print("CLI input no longer supported")
+        raise RuntimeError
+
+
+    return (
+        log_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    )
+
+
+def _input_handler_v02(args):
 
     #args = _handle_args()
 
@@ -36,6 +85,7 @@ def _input_handler(args):
             parity_parameters,
             data_assimilation_parameters,
             diffusive_parameters,
+            coastal_parameters,
         ) = nhd_io.read_custom_input(custom_input_file)
 
     else:
@@ -147,4 +197,5 @@ def _input_handler(args):
         parity_parameters,
         data_assimilation_parameters,
         diffusive_parameters,
+        coastal_parameters,
     )

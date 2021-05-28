@@ -3,11 +3,13 @@
 import numpy as np
 from itertools import chain
 from operator import itemgetter
-from numpy cimport ndarray
 from array import array
+from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
+from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
+# from libc.stdio cimport printf
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
@@ -170,6 +172,7 @@ cpdef object compute_network(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -205,15 +208,24 @@ cpdef object compute_network(
     # flowveldepth is 2D float array that holds results
     # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
     # rows: indexed by data_idx
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef int qvd_ts_w = 3  # There are 3 values per timestep (corresponding to 3 columns per timestep)
+    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], (nsteps + 1) * qvd_ts_w), dtype='float32')
 
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
     cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef int gages_size = len(usgs_positions_list)
+    cdef int gages_size = usgs_positions_list.shape[0]
     cdef int gage_i, usgs_position_i
+    cdef int gage_maxtimestep = usgs_values.shape[1]
+
+    flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
+    flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
+    for gage_i in range(gages_size):
+        usgs_position_i = usgs_positions_list[gage_i]
+        flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
+        # TODO: handle the instance where there are no values, only gage positions
 
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
@@ -232,8 +244,8 @@ cpdef object compute_network(
         tmp = upstream_results[upstream_tw_id]
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
-        for idx, val in enumerate(tmp["results"]):
-            flowveldepth[fill_index][idx] = val
+        for idx, val in enumerate(tmp["results"], qvd_ts_w):
+            flowveldepth[fill_index, idx] = val
 
     cdef:
         Py_ssize_t[:] srows  # Source rows indexes
@@ -284,6 +296,7 @@ cpdef object compute_network(
 
     ireach_cache = 0
     iusreach_cache = 0
+
     # copy reaches into an array
     for ireach in range(len(reaches)):
         reachlen = reach_sizes[ireach]
@@ -309,13 +322,16 @@ cpdef object compute_network(
     buf = np.empty((maxreachlen, buf_cols), dtype='float32')
 
     if return_courant:
-        out_buf = np.empty((maxreachlen, 6), dtype='float32')
+        out_buf = np.empty((maxreachlen, qvd_ts_w + 3), dtype='float32')
     else:
-        out_buf = np.empty((maxreachlen, 3), dtype='float32')
+        out_buf = np.empty((maxreachlen, qvd_ts_w), dtype='float32')
 
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
+    cdef float a, da_weight, da_decay_time
+    cdef int lastobs_timestep
+    cdef float dt = 300.0  # TODO: pull this value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -331,7 +347,7 @@ cpdef object compute_network(
 
     with nogil:
         while timestep < nsteps:
-            ts_offset = timestep * 3
+            ts_offset = (timestep + 1) * qvd_ts_w
 
             ireach_cache = 0
             iusreach_cache = 0
@@ -360,11 +376,8 @@ cpdef object compute_network(
 
                     # upstream flow in the previous timestep is equal to the sum of flows
                     # in upstream segments, previous timestep
-                    if timestep > 0:
-                        qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
-                    else:
-                        # sum of qd0 (flow out of each segment) over all upstream reaches
-                        qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
+                    qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - qvd_ts_w]
+                    # Remember, we have filled the first position in flowveldepth with qd0
 
                 buf_view = buf[:reachlen, :]
                 out_view = out_buf[:reachlen, :]
@@ -388,20 +401,9 @@ cpdef object compute_network(
                         fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
 
                 # fill buffer with qdp, depthp, velp
-                if timestep > 0:
-                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
-                else:
-                    '''
-                    Changed made to accomodate initial conditions:
-                    when timestep == 0, qdp, and depthp are taken from the initial_conditions array,
-                    using srows to properly index
-                    '''
-                    for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],1] #qdp = qd0
-                        buf_view[drows[i], 11] = 0.0 # the velp argmument is never used, set to whatever
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],2] #hdp = h0
+                fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
+                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 1), drows, 11, flowveldepth, buf_view)
+                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 2), drows, 12, flowveldepth, buf_view)
 
                 if assume_short_ts:
                     quc = qup
@@ -409,21 +411,37 @@ cpdef object compute_network(
                 compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
 
                 # copy out_buf results back to flowdepthvel
-                for i in range(3):
+                for i in range(qvd_ts_w):
                     fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
 
                 # copy out_buf results back to courant
                 if return_courant:
-                    for i in range(3,6):
-                        fill_buffer_column(drows, i, srows, ts_offset + (i-3), out_view, courant)
+                    for i in range(qvd_ts_w,qvd_ts_w + 3):
+                        fill_buffer_column(drows, i, srows, ts_offset + (i-qvd_ts_w), out_view, courant)
 
                 # Update indexes to point to next reach
                 ireach_cache += reachlen
                 iusreach_cache += usreachlen
-                if gages_size:
+
+                if gages_size:  # TODO: This loops over all gages for all reaches.
+                                # We should have a membership test at the reach loop level
+                                # so that we only enter this process for reaches where the
+                                # gage actually exists. We have the filter in place to
+                                # filter the gage list so that only relevant gages for a
+                                # particular network are present in the function call ---
+                                # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):
                         usgs_position_i = usgs_positions_list[gage_i]
-                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                        if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
+                            flowveldepth[usgs_position_i, ts_offset] = usgs_values[gage_i, timestep]
+                            # TODO: add/update lastobs_timestep and/or decay_timestep
+                        else:
+                            a = 120  # TODO: pull this a value from the config file somehow
+                            da_decay_time = (timestep - lastobs_timestep) * dt
+                            da_weight = exp(da_decay_time/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                            # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+                            # printf("decaying from timestep: %d %d\t", timestep, gages_size)
+                            # flowveldepth[usgs_position_i, timestep * qvd_ts_w] = replacement_value
 
             timestep += 1
 
@@ -431,9 +449,9 @@ cpdef object compute_network(
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
     if return_courant:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
     else:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth, dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
 
 #---------------------------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------------------#
@@ -706,6 +724,7 @@ cpdef object compute_network_structured_obj(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -833,7 +852,7 @@ cpdef object compute_network_structured_obj(
         #Check if reach_type is 1 for reservoir/waterbody
         if (reach_type == 1):
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
-            routing_period = 300.0
+            routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
 
             reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
@@ -868,6 +887,19 @@ cpdef object compute_network_structured_obj(
                                  out_buf,
                                  assume_short_ts)
 
+            # #a = 120
+            # #weight = math.exp(timestep/-a)
+            # #lastobs = 1
+            # for i, id in enumerate(segment_ids):
+            #     flowveldepth[id, timestep, 0] = out_buf[i, 0]
+            #     #for pos, loid in enumerate(lastobs_ids):
+            #     #    if loid == id:
+            #     #        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
+            #     #        delta = weight * lasterror
+            #     #        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
+            #     flowveldepth[id, timestep, 1] = out_buf[i, 1]
+            #     flowveldepth[id, timestep, 2] = out_buf[i, 2]
+
             #Copy the output out
             for i, id in enumerate(segment_ids):
               flowveldepth[id, timestep, 0] = out_buf[i, 0]
@@ -897,6 +929,7 @@ cpdef object compute_network_structured(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1036,7 +1069,7 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                lp.run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
+                lp.run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
