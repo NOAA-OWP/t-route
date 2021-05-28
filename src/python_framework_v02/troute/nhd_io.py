@@ -340,7 +340,7 @@ def preprocess_time_station_index(xd):
         data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
     )
 
-        
+
 def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
     # open routelink_file and extract discharges
 
@@ -522,14 +522,14 @@ def get_usgs_from_time_slices_folder(
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
         dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
 
-    '''
+    """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
     OR 
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
-    '''
+    """
 
-    usgs_df = usgs_df.reindex(columns = dates)
+    usgs_df = usgs_df.reindex(columns=dates)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")

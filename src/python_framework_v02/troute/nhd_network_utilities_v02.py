@@ -422,7 +422,9 @@ def build_connections(supernetwork_parameters, dt):
 
     wbodies = {}
     if "waterbody" in cols:
-        wbodies = build_waterbodies(param_df[["waterbody"]], supernetwork_parameters, "waterbody")
+        wbodies = build_waterbodies(
+            param_df[["waterbody"]], supernetwork_parameters, "waterbody"
+        )
         param_df = param_df.drop("waterbody", axis=1)
 
     gages = {}
@@ -436,12 +438,10 @@ def build_connections(supernetwork_parameters, dt):
     return connections, param_df, wbodies, gages
 
 
-def build_gages(
-    segment_gage_df,
-):
+def build_gages(segment_gage_df,):
     gage_list = list(map(bytes.strip, segment_gage_df.gages.values))
     gage_mask = list(map(bytes.isdigit, gage_list))
-    gages = segment_gage_df.loc[gage_mask,"gages"].to_dict()
+    gages = segment_gage_df.loc[gage_mask, "gages"].to_dict()
 
     return gages
 
@@ -604,15 +604,15 @@ def build_data_assimilation(data_assimilation_parameters):
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
-    last_obs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_da_channel_ID_crosswalk_file", None)
+    last_obs_crosswalk_file = data_assimilation_parameters.get(
+        "wrf_hydro_da_channel_ID_crosswalk_file", None
+    )
 
     last_obs_df = pd.DataFrame()
 
     if last_obs_file:
         last_obs_df = nhd_io.build_last_obs_df(
-            last_obs_file,
-            last_obs_crosswalk_file,
-            last_obs_type,
+            last_obs_file, last_obs_crosswalk_file, last_obs_type,
         )
 
     if data_assimilation_csv:
@@ -644,5 +644,5 @@ def build_data_assimilation_folder(data_assimilation_parameters):
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
         )
-  
+
     return usgs_df

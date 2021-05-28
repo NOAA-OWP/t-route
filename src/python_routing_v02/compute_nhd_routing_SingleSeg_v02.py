@@ -775,7 +775,7 @@ def compute_nhd_routing_v02(
                     )
                 )
             results = parallel(jobs)
-    
+
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
@@ -865,7 +865,7 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-            
+
             results.append(
                 compute_func(
                     nts,
@@ -1058,9 +1058,7 @@ def main():
     break_network_at_waterbodies = run_parameters.get(
         "break_network_at_waterbodies", False
     )
-    break_network_at_gages = run_parameters.get(
-        "break_network_at_gages", False
-    )
+    break_network_at_gages = run_parameters.get("break_network_at_gages", False)
 
     if showtiming:
         main_start_time = time.time()
@@ -1070,9 +1068,11 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    # STEP 1: Build basic network connections graph, 
+    # STEP 1: Build basic network connections graph,
     # read network parameters, identify waterbodies and gages, if any.
-    connections, param_df, wbodies, gages = nnu.build_connections(supernetwork_parameters, dt,)
+    connections, param_df, wbodies, gages = nnu.build_connections(
+        supernetwork_parameters, dt,
+    )
     if not wbodies:
         break_network_at_waterbodies = False
 
@@ -1113,13 +1113,12 @@ def main():
 
     network_break_segments = set()
     if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbodies.values()) 
+        network_break_segments = network_break_segments.union(wbodies.values())
     if break_network_at_gages:
         network_break_segments = network_break_segments.union(gages.keys())
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections,
-        network_break_segments,
+        connections, network_break_segments,
     )
     if verbose:
         print("reach organization complete")
@@ -1211,9 +1210,7 @@ def main():
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
@@ -1230,7 +1227,6 @@ def main():
     else:
         usgs_df = pd.DataFrame()
         last_obs_df = pd.DataFrame()
-
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
