@@ -328,6 +328,7 @@ def compute_nhd_routing_v02(
     q0,
     qlats,
     usgs_df,
+    last_obs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -455,9 +456,12 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
+                    last_obs_sub = pd.DataFrame()
+
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
+                    # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
                     # Eventually, the wiring for reservoir simulation needs to be added.
@@ -486,6 +490,7 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -598,6 +603,8 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+
+                    last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
@@ -720,6 +727,8 @@ def compute_nhd_routing_v02(
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
 
+                last_obs_sub = pd.DataFrame()
+
                 reaches_list_with_type = []
 
                 for reaches in reach_list:
@@ -758,6 +767,7 @@ def compute_nhd_routing_v02(
                         waterbodies_df_sub.values,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
+                        last_obs_sub.values.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -818,6 +828,15 @@ def compute_nhd_routing_v02(
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
+            if not last_obs_df.empty:
+                pass
+            #     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+            #     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+            #     last_obs_sub = last_obs_df.loc[lastobs_segs]
+            else:
+                last_obs_sub = pd.DataFrame()
+            #     nudging_positions_list = []
+
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
             qlat_sub = qlats.loc[param_df_sub.index]
@@ -862,6 +881,7 @@ def compute_nhd_routing_v02(
                     waterbodies_df_sub.values,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
+                    last_obs_sub.values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -1038,6 +1058,7 @@ def main():
     break_network_at_waterbodies = run_parameters.get(
         "break_network_at_waterbodies", False
     )
+    break_network_at_gages = run_parameters.get("break_network_at_gages", False)
 
     if showtiming:
         main_start_time = time.time()
@@ -1047,9 +1068,14 @@ def main():
     if showtiming:
         start_time = time.time()
 
-    # STEP 1: Build basic network connections graph
-    connections, param_df = nnu.build_connections(supernetwork_parameters, dt,)
-    wbodies = nnu.build_waterbodies(param_df, supernetwork_parameters, "waterbody")
+    # STEP 1: Build basic network connections graph,
+    # read network parameters, identify waterbodies and gages, if any.
+    connections, param_df, wbodies, gages = nnu.build_connections(
+        supernetwork_parameters, dt,
+    )
+    if not wbodies:
+        break_network_at_waterbodies = False
+
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
 
@@ -1085,11 +1111,14 @@ def main():
     if verbose:
         print("organizing connections into reaches ...")
 
+    network_break_segments = set()
+    if break_network_at_waterbodies:
+        network_break_segments = network_break_segments.union(wbodies.values())
+    if break_network_at_gages:
+        network_break_segments = network_break_segments.union(gages.keys())
+
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections,
-        list(waterbodies_df_reduced.index.values)
-        if break_network_at_waterbodies
-        else None,
+        connections, network_break_segments,
     )
     if verbose:
         print("reach organization complete")
@@ -1178,16 +1207,17 @@ def main():
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_timeslices_folder", None
     )
-    if data_assimilation_csv or data_assimilation_filter:
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+        usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
 
         if verbose:
             print("usgs array complete")
@@ -1196,6 +1226,7 @@ def main():
 
     else:
         usgs_df = pd.DataFrame()
+        last_obs_df = pd.DataFrame()
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
@@ -1251,6 +1282,7 @@ def main():
         q0,
         qlats,
         usgs_df,
+        last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df_reduced,

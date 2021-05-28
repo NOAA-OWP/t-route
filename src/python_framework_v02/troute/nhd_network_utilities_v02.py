@@ -419,10 +419,31 @@ def build_connections(supernetwork_parameters, dt):
 
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
+
+    wbodies = {}
+    if "waterbody" in cols:
+        wbodies = build_waterbodies(
+            param_df[["waterbody"]], supernetwork_parameters, "waterbody"
+        )
+        param_df = param_df.drop("waterbody", axis=1)
+
+    gages = {}
+    if "gages" in cols:
+        gages = build_gages(param_df[["gages"]])
+        param_df = param_df.drop("gages", axis=1)
+
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df
+    return connections, param_df, wbodies, gages
+
+
+def build_gages(segment_gage_df,):
+    gage_list = list(map(bytes.strip, segment_gage_df.gages.values))
+    gage_mask = list(map(bytes.isdigit, gage_list))
+    gages = segment_gage_df.loc[gage_mask, "gages"].to_dict()
+
+    return gages
 
 
 def build_waterbodies(
@@ -569,20 +590,42 @@ def build_data_assimilation(data_assimilation_parameters):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_timeslices_folder", None
     )
+    # TODO: Fix the Logic here according to the following.
+
+    # If there are any observations for data assimilation, there
+    # needs to be a complete set in the first time set or else
+    # there must be a "LastObs". If there is a complete set in
+    # the first time step, the LastObs is optional. If there are
+    # no observations for assimilation, there can be a LastObs
+    # with an empty usgs dataframe.
+
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
+    last_obs_crosswalk_file = data_assimilation_parameters.get(
+        "wrf_hydro_da_channel_ID_crosswalk_file", None
+    )
+
+    last_obs_df = pd.DataFrame()
+
+    if last_obs_file:
+        last_obs_df = nhd_io.build_last_obs_df(
+            last_obs_file, last_obs_crosswalk_file, last_obs_type,
+        )
+
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
-    elif data_assimilation_filter:
+    elif data_assimilation_folder:
         usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
-    return usgs_df
+    return usgs_df, last_obs_df
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):
 
     usgs_df = nhd_io.get_usgs_from_time_slices_csv(
-        data_assimilation_parameters["data_assimilation_parameters_file"],
+        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
         data_assimilation_parameters["data_assimilation_csv"],
     )
 
@@ -597,7 +640,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         ).resolve()
 
         usgs_df = nhd_io.get_usgs_from_time_slices_folder(
-            data_assimilation_parameters["data_assimilation_parameters_file"],
+            data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
         )

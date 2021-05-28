@@ -118,6 +118,7 @@ cpdef object compute_diffusive_tst(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,

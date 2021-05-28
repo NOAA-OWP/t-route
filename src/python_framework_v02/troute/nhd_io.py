@@ -8,6 +8,9 @@ import yaml
 import numpy as np
 from toolz import compose
 import dask.array as da
+import sys
+import math
+from datetime import *
 
 
 def read_netcdf(geo_file_path):
@@ -186,7 +189,6 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     ```
     """
-    filter_list = None
 
     with xr.open_mfdataset(
         qlat_files,
@@ -339,6 +341,92 @@ def preprocess_time_station_index(xd):
     )
 
 
+def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
+    # open routelink_file and extract discharges
+
+    ds1 = xr.open_dataset(routelink)
+    df = ds1.to_dataframe()
+    df2 = df.loc[df["gages"] != b"               "]
+    df2["gages"] = df2["gages"].astype("int")
+    df2 = df2[["gages", "to"]]
+    df2 = df2.reset_index()
+    df2 = df2.set_index("gages")
+
+    with xr.open_dataset(lastobsfile) as ds:
+        df_model_discharges = ds["model_discharge"].to_dataframe()
+        df_discharges = ds["discharge"].to_dataframe()
+        last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
+        model_discharge_last_ts = df_model_discharges[
+            df_model_discharges.index.get_level_values("timeInd") == last_ts
+        ]
+        discharge_last_ts = df_discharges[
+            df_discharges.index.get_level_values("timeInd") == last_ts
+        ]
+        df1 = ds["stationId"].to_dataframe()
+        df1 = df1.astype(int)
+        model_discharge_last_ts = model_discharge_last_ts.join(df1)
+        model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
+        model_discharge_last_ts = model_discharge_last_ts.loc[
+            model_discharge_last_ts["model_discharge"] != -9999.0
+        ]
+        model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index(
+            "stationId"
+        )
+        model_discharge_last_ts = model_discharge_last_ts.drop(
+            ["stationIdInd", "timeInd"], axis=1
+        )
+        model_discharge_last_ts["discharge"] = model_discharge_last_ts[
+            "discharge"
+        ].to_frame()
+        # If predict from last_obs file use last obs file results
+        # if last_obs_file == "error-based":
+        # elif last_obs_file == "obs-based":  # the wrf-hydro default
+        if wrf_last_obs_flag:
+            model_discharge_last_ts["last_nudge"] = (
+                model_discharge_last_ts["discharge"]
+                - model_discharge_last_ts["model_discharge"]
+            )
+        final_df = df2.join(model_discharge_last_ts["discharge"])
+        final_df = final_df.reset_index()
+        final_df = final_df.set_index("to")
+        final_df = final_df.drop(["feature_id", "gages"], axis=1)
+        final_df = final_df.dropna()
+
+        # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
+        # else:
+        #     fvd_df = fvd_df
+        #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
+        #         model_discharge_last_ts["last_nudge"] = (
+        #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
+        #         )
+        #     else:
+        #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
+        #         sys.exit()
+        # # Predictions created with continuously decreasing deltas until near 0 difference
+        # a = 120
+        # prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
+
+        # for time in range(0, 720, 5):
+        #     weight = math.exp(time / -a)
+        #     delta = pd.DataFrame(
+        #         model_discharge_last_ts["last_nudge"] / weight)
+
+        #     if time == 0:
+        #         prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
+        #         weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
+        #     else:
+        #         if weight > 0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        #         elif weight < -0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
+        return final_df
+
+
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
     df2 = pd.read_csv(usgs_csv, index_col=0)
@@ -421,32 +509,36 @@ def get_usgs_from_time_slices_folder(
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
     columns_list = usgs_df.columns
 
-    for i in range(0, (len(columns_list) * 3) - 12, 12):
-        original_string = usgs_df.columns[i]
-        original_string_shortened = original_string[:-5]
-        temp_name1 = original_string_shortened + str("05:00")
-        temp_name2 = original_string_shortened + str("10:00")
-        temp_name3 = original_string_shortened + str("20:00")
-        temp_name4 = original_string_shortened + str("25:00")
-        temp_name5 = original_string_shortened + str("35:00")
-        temp_name6 = original_string_shortened + str("40:00")
-        temp_name7 = original_string_shortened + str("50:00")
-        temp_name8 = original_string_shortened + str("55:00")
-        usgs_df.insert(i + 1, temp_name1, np.nan)
-        usgs_df.insert(i + 2, temp_name2, np.nan)
-        usgs_df.insert(i + 4, temp_name3, np.nan)
-        usgs_df.insert(i + 5, temp_name4, np.nan)
-        usgs_df.insert(i + 7, temp_name5, np.nan)
-        usgs_df.insert(i + 8, temp_name6, np.nan)
-        usgs_df.insert(i + 10, temp_name7, np.nan)
-        usgs_df.insert(i + 11, temp_name8, np.nan)
+    original_string_first = usgs_df.columns[0]
+    date_time_str = original_string_first[:10] + " " + original_string_first[11:]
+    date_time_obj_start = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+
+    original_string_last = usgs_df.columns[-1]
+    date_time_str = original_string_last[:10] + " " + original_string_last[11:]
+    date_time_obj_end = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+
+    dates = []
+    # for j in pd.date_range(date_time_obj_start, date_time_obj_end + timedelta(1), freq="5min"):
+    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
+        dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
+
+    """
+    # dates_to_drop = ~usgs_df.columns.isin(dates)
+    OR 
+    # dates_to_drop = usgs_df.columns.difference(dates)
+    # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
+    """
+
+    usgs_df = usgs_df.reindex(columns=dates)
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
+    usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df
 
 
+# TODO: Move channel restart above usgs to keep order with execution script
 def get_channel_restart_from_csv(
     channel_initial_states_file,
     index_col=0,
