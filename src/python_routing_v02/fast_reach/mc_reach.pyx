@@ -327,6 +327,7 @@ cpdef object compute_network(
     cdef int ts_offset
     cdef int decay_timestep = 1
     cdef float lastobs_values_stored = 0 
+    cdef int found_last_obs = 0
 
 # TODO: Split the compute network function so that the part where we set up
 # all the indices is separate from the call to loop through them.
@@ -439,26 +440,28 @@ cpdef object compute_network(
                                 # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):                            
                         usgs_position_i = usgs_positions_list[gage_i]
-                        if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
+                        if timestep == last_obs_start and found_last_obs == 0:
+                            flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
+                            decay_timestep = 2
+                            found_last_obs = 1
+                            printf("equal to lastobsstart")
+                        elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
                             lastobs_values_stored = usgs_values[gage_i, timestep]
-                            # TODO: add/update lastobs_timestep and/or decay_timestep
-                        elif timestep == gage_maxtimestep and timestep != last_obs_start:
-                            printf("decaying from timestep: %d %d %f\t", timestep,decay_timestep,lastobs_values_stored)
+                            printf("last_obs_check <: %d\t", found_last_obs)
+                        elif timestep == gage_maxtimestep and found_last_obs != 1:
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
                             decay_timestep += 1
                             printf("equal to maxtimestep")
-                        elif timestep == last_obs_start:
-                            flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
-                            decay_timestep = 2
-                            printf("equal to lastobsstart")
+                            printf("last_obs_check =: %d\t", found_last_obs)
                         else:
-                            #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
+                            printf("last_obs_check >: %d\t", found_last_obs)
                             a = 120  # TODO: pull this a value from the config file somehow
-                            #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                             da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                             flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]
                             decay_timestep += 1 
+                            #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
+                            #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                             #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                             # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             # printf("decaying from timestep: %d %d\t", timestep, gages_size)
