@@ -13,7 +13,9 @@ from libc.stdlib cimport malloc, free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
+#from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
+cimport troute.network.reservoirs.levelpool.levelpool as lp
+
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -22,7 +24,7 @@ from cython.parallel import prange
 #if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
 #____pyx_f_5reach_muskingcunge
 #from reach cimport muskingcunge, QVD
-cimport troute.fast_reach.reach as reach
+cimport troute.routing.fast_reach.reach as reach
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -781,7 +783,7 @@ cpdef object compute_network_structured_obj(
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
                 (
-                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
+                  lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
                   reach_type)#lp_reservoir)
                 )
             wbody_index += 1
@@ -971,7 +973,7 @@ cpdef object compute_network_structured(
             #Add level pool reservoir ojbect to reach_objects
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
+                 lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
                                array('l',upstream_ids),
                                wbody_parameters[wbody_index])
                 )
@@ -1034,7 +1036,7 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
+                lp.run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
