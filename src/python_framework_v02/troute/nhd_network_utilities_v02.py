@@ -419,10 +419,31 @@ def build_connections(supernetwork_parameters, dt):
 
     param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
+
+    wbodies = {}
+    if "waterbody" in cols:
+        wbodies = build_waterbodies(param_df[["waterbody"]], supernetwork_parameters, "waterbody")
+        param_df = param_df.drop("waterbody", axis=1)
+
+    gages = {}
+    if "gages" in cols:
+        gages = build_gages(param_df[["gages"]])
+        param_df = param_df.drop("gages", axis=1)
+
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df
+    return connections, param_df, wbodies, gages
+
+
+def build_gages(
+    segment_gage_df,
+):
+    gage_list = list(map(bytes.strip, segment_gage_df.gages.values))
+    gage_mask = list(map(bytes.isdigit, gage_list))
+    gages = segment_gage_df.loc[gage_mask,"gages"].to_dict()
+
+    return gages
 
 
 def build_waterbodies(
