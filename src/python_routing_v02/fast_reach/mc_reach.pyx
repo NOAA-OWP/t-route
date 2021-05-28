@@ -444,18 +444,18 @@ cpdef object compute_network(
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
                             decay_timestep = 2
                             found_last_obs = 1
-                            printf("equal to lastobsstart")
+                            #printf("equal to lastobsstart")
                         elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
                             lastobs_values_stored = usgs_values[gage_i, timestep]
-                            printf("last_obs_check <: %d\t", found_last_obs)
+                            #printf("last_obs_check <: %d\t", found_last_obs)
                         elif timestep == gage_maxtimestep and found_last_obs != 1:
                             flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
                             decay_timestep += 1
-                            printf("equal to maxtimestep")
-                            printf("last_obs_check =: %d\t", found_last_obs)
+                            #printf("equal to maxtimestep")
+                            #printf("last_obs_check =: %d\t", found_last_obs)
                         else:
-                            printf("last_obs_check >: %d\t", found_last_obs)
+                            #printf("last_obs_check >: %d\t", found_last_obs)
                             a = 120  # TODO: pull this a value from the config file somehow
                             da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                             flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]

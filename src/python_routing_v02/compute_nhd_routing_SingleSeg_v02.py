@@ -470,8 +470,12 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-                    if not last_obs_df.empty:
-                        import pdb; pdb.set_trace()
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
                         lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
