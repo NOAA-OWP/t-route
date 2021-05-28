@@ -394,10 +394,10 @@ def reverse_dict(d):
     return {v: k for k, v in d.items()}
 
 
-def build_connections(supernetwork_parameters, dt):
-    # TODO: Remove the dependence on dt in this function
-
+def build_connections(supernetwork_parameters):
     cols = supernetwork_parameters["columns"]
+    terminal_code = supernetwork_parameters.get("terminal_code", 0)
+
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     param_df = param_df[list(cols.values())]
@@ -412,12 +412,25 @@ def build_connections(supernetwork_parameters, dt):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
+    param_df = param_df.rename(columns=reverse_dict(cols))
+    # Rename parameter columns to standard names: from route-link names
+    #        key: "link"
+    #        downstream: "to"
+    #        dx: "Length"
+    #        n: "n"  # TODO: rename to `manningn`
+    #        ncc: "nCC"  # TODO: rename to `mannningncc`
+    #        s0: "So"  # TODO: rename to `bedslope`
+    #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+    #        waterbody: "NHDWaterbodyComID"
+    #        gages: "gages"
+    #        tw: "TopWdth"  # TODO: rename to `topwidth`
+    #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+    #        alt: "alt"
+    #        musk: "MusK"
+    #        musx: "MusX"
+    #        cs: "ChSlp"  # TODO: rename to `sideslope`
     param_df = param_df.sort_index()
-    param_df = nhd_io.replace_downstreams(param_df, cols["downstream"], 0)
 
-    connections = nhd_network.extract_connections(param_df, cols["downstream"])
-
-    param_df["dt"] = dt
     param_df = param_df.rename(columns=reverse_dict(cols))
 
     wbodies = {}
@@ -432,6 +445,9 @@ def build_connections(supernetwork_parameters, dt):
         gages = build_gages(param_df[["gages"]])
         param_df = param_df.drop("gages", axis=1)
 
+    connections = nhd_network.extract_connections(param_df, "downstream")
+    param_df = param_df.drop("downstream", axis=1)
+    
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
@@ -529,26 +545,35 @@ def build_qlateral_array(
     forcing_parameters,
     connections_keys,
     supernetwork_parameters,
-    nts,
-    qts_subdivisions=1,
+    ts_iterator=None,
+    file_run_size=None,
 ):
     # TODO: set default/optional arguments
 
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
-        qlat_file_pattern_filter = forcing_parameters.get(
-            "qlat_file_pattern_filter", "*CHRT_OUT*"
-        )
+        if "qlat_files" in forcing_parameters:
+            qlat_files = forcing_parameters.get("qlat_files")
+            qlat_files = [qlat_input_folder.joinpath(f) for f in qlat_files]
+        elif "qlat_file_pattern_filter" in forcing_parameters:
+            qlat_file_pattern_filter = forcing_parameters.get(
+                "qlat_file_pattern_filter", "*CHRT_OUT*"
+            )
+            qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
+
         qlat_file_index_col = forcing_parameters.get(
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
 
-        qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
+            ts_iterator=ts_iterator,
+            file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )

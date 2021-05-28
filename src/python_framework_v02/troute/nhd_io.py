@@ -46,6 +46,46 @@ def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
 
+def read_custom_input_new(custom_input_file):
+    if custom_input_file[-4:] == "yaml":
+        with open(custom_input_file) as custom_file:
+            data = yaml.load(custom_file, Loader=yaml.SafeLoader)
+    else:
+        with open(custom_input_file) as custom_file:
+            data = json.load(custom_file)
+    log_parameters = data.get("log_parameters", {})
+    network_topology_parameters = data.get("network_topology_parameters", None)
+    supernetwork_parameters = network_topology_parameters.get(
+        "supernetwork_parameters", None
+    )
+    waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
+    compute_parameters = data.get("compute_parameters", {})
+    forcing_parameters = compute_parameters.get("forcing_parameters", {})
+    restart_parameters = compute_parameters.get("restart_parameters", {})
+    diffusive_parameters = compute_parameters.get("diffusive_parameters", {})
+    coastal_parameters = forcing_parameters.get("coastal_parameters", {})
+    data_assimilation_parameters = compute_parameters.get(
+        "data_assimilation_parameters", {}
+    )
+    output_parameters = data.get("output_parameters", {})
+    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
+
+    # TODO: add error trapping for potentially missing files
+    return (
+        log_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    )
+
+
 def read_custom_input(custom_input_file):
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
@@ -150,7 +190,14 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+# TODO: Generalize this name -- perhaps `read_wrf_hydro_chrt_mf()`
+def get_ql_from_wrf_hydro_mf(
+    qlat_files,
+    index_col="feature_id",
+    value_col="q_lateral",
+    file_run_size=None,
+    ts_iterator=None,
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -201,18 +248,25 @@ def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_la
         preprocess=drop_all_coords,
         # parallel=True,
     ) as ds:
+        glob_step = 1
+        if not file_run_size:
+            glob_slice = slice(None, None, glob_step)
+        else:
+            glob_slice_idx_0 = int(ts_iterator * file_run_size)
+            glob_slice_idx_1 = int(ts_iterator + 1) * file_run_size
+            glob_slice = slice(glob_slice_idx_0, glob_slice_idx_1, glob_step)
         try:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][:, glob_slice],
                 index=ds[index_col].values[0],
-                columns=ds.time.values,
+                columns=ds.time.values[glob_slice],
                 # dtype=float,
             )
         except:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds[value_col].values.T[:][:, glob_slice],
                 index=ds[index_col].values,
-                columns=ds.time.values,
+                columns=ds.time.values[glob_slice],
                 # dtype=float,
             )
 
