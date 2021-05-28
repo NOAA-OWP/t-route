@@ -19,7 +19,7 @@ from itertools import chain, islice
 from operator import itemgetter
 
 ## network and reach utilities
-import compute_nhd_routing_SingleSeg_v02 as nhd_compute
+import troute.routing.compute as nhd_compute
 import troute.nhd_network_utilities_v02 as nnu
 import fast_reach
 import troute.nhd_network as nhd_network
