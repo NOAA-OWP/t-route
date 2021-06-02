@@ -1,4 +1,5 @@
 import time
+import pandas as pd
 
 def nwm_output_generator(
     results,
@@ -10,6 +11,8 @@ def nwm_output_generator(
     verbose=False,
     debuglevel=0,
 ):
+
+    nts = len(results[1])
 
     parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
     parity_check_file_index_col = parity_parameters.get(

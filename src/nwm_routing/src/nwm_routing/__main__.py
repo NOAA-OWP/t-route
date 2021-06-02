@@ -15,6 +15,7 @@ import troute.routing.diffusive_utils as diff_utils
 
 from .input import _input_handler_v02, _input_handler_v03
 from .preprocess import nwm_network_preprocess, nwm_initial_warmstate_preprocess, nwm_forcing_preprocess
+from .output import nwm_output_generator
 
 from troute.routing.compute import compute_nhd_routing_v02
 
@@ -479,7 +480,7 @@ def main_v02():
         else:
             print(f"executing routing computation ...")
 
-    # TODO: aling compute_kernel and compute_method in run_parameters
+    # TODO: align compute_kernel and compute_method in run_parameters
     if run_parameters.get("compute_kernel", None):
         compute_func = run_parameters.get("compute_kernel", None)
     else:
@@ -635,6 +636,7 @@ def nwm_route(
     waterbodies_in_connections,
     reaches_bytw,
     parallel_compute_method,
+    compute_kernel,
     subnetwork_target_size,
     cpu_pool,
     dt,
@@ -659,33 +661,23 @@ def nwm_route(
     if showtiming:
         start_time = time.time()
     if verbose:
-        if compute_parameters.get("return_courant", False):
+        if return_courant:
             print(
                 f"executing routing computation, with Courant evaluation metrics returned"
             )
         else:
             print(f"executing routing computation ...")
 
-    if compute_parameters.get("compute_kernel", None) == "diffusive":
-        compute_func = diffusive.compute_diffusive_tst
-    elif compute_parameters.get("compute_kernel", None) == "V02-caching":
-        compute_func = fast_reach.compute_network
-    elif compute_parameters.get("compute_kernel", None) == "V02-structured":
-        compute_func = fast_reach.compute_network_structured
-    elif compute_parameters.get("compute_kernel", None) == "V02-structured-obj":
-        compute_func = fast_reach.compute_network_structured_obj
-    else:
-        compute_func = fast_reach.compute_network
 
     # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
-        connections,
-        rconn,
-        wbodies,
+        downstream_connections,
+        upstream_connections,
+        waterbodies_in_connections,
         reaches_bytw,
-        compute_func,
+        compute_kernel,
         parallel_compute_method,
         subnetwork_target_size,  # The default here might be the whole network or some percentage...
         cpu_pool,
@@ -698,8 +690,8 @@ def nwm_route(
         qlats,
         usgs_df,
         last_obs_df,
-        compute_parameters.get("assume_short_ts", False),
-        compute_parameters.get("return_courant", False),
+        assume_short_ts,
+        return_courant,
         waterbodies_df,
         diffusive_parameters,
     )
@@ -797,10 +789,13 @@ def main_v03():
     else:
         parity_sets = []
 
-    parallel_compute_method = (compute_parameters.get("parallel_compute_method", None),)
-    subnetwork_target_size = (compute_parameters.get("subnetwork_target_size", 1),)
-    cpu_pool = (compute_parameters.get("cpu_pool", None),)
+    parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
+    subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
+    cpu_pool = compute_parameters.get("cpu_pool", None)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
+    assume_short_ts = compute_parameters.get("assume_short_ts", False),
+    return_courant = compute_parameters.get("return_courant", False),
 
     qlats, usgs_df = nwm_forcing_preprocess(
         run_sets[0],
@@ -817,6 +812,7 @@ def main_v03():
 
         dt = run.get("dt")
         nts = run.get("nts")
+
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
@@ -827,6 +823,7 @@ def main_v03():
             wbodies,
             reaches_bytw,
             parallel_compute_method,
+            compute_kernel,
             subnetwork_target_size,
             cpu_pool,
             dt,
@@ -838,8 +835,8 @@ def main_v03():
             qlats,
             usgs_df,
             last_obs_df,
-            compute_parameters.get("assume_short_ts", False),
-            compute_parameters.get("return_courant", False),
+            assume_short_ts,
+            return_courant,
             waterbodies_df,
             diffusive_parameters,
             showtiming,

@@ -15,6 +15,7 @@ _compute_func_map = defaultdict(
         {
             "diffusive": diffusive.compute_diffusive_tst,
             "V02-caching": compute_network,
+            "V02-diffusive-dummy": compute_network,
             "V02-structured": compute_network_structured,
             "V02-structured-obj": compute_network_structured_obj
         }
