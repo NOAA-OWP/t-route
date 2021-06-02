@@ -1,18 +1,23 @@
 import time
+import numpy as np
 import pandas as pd
+from pathlib import Path
+import troute.nhd_io as nhd_io
+from build_tests import parity_check
+
 
 def nwm_output_generator(
     results,
+    supernetwork_parameters,
     output_parameters,
     parity_parameters,
     parity_set,
+    nts,
     return_courant,
     showtiming=False,
     verbose=False,
     debuglevel=0,
 ):
-
-    nts = len(results[1])
 
     parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
     parity_check_file_index_col = parity_parameters.get(
@@ -151,8 +156,8 @@ def nwm_output_generator(
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
 
-            usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
-            usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+            #usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            #usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
@@ -177,8 +182,8 @@ def nwm_output_generator(
         if showtiming:
             start_time = time.time()
 
-        build_tests.parity_check(
-            parity_set, run_results,
+        parity_check(
+            parity_set, results,
         )
 
         if verbose:

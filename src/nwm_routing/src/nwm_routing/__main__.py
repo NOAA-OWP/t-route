@@ -863,9 +863,11 @@ def main_v03():
 
         nwm_output_generator(
             run_results,
+            supernetwork_parameters,
             output_parameters,
             parity_parameters,
             parity_sets[run_set_iterator],
+            nts,
             compute_parameters.get("return_courant", False),
             showtiming,
             verbose,
