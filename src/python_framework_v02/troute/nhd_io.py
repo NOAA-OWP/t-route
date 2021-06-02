@@ -63,7 +63,6 @@ def read_custom_input_new(custom_input_file):
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
     restart_parameters = compute_parameters.get("restart_parameters", {})
     diffusive_parameters = compute_parameters.get("diffusive_parameters", {})
-    coastal_parameters = forcing_parameters.get("coastal_parameters", {})
     data_assimilation_parameters = compute_parameters.get(
         "data_assimilation_parameters", {}
     )
@@ -79,7 +78,6 @@ def read_custom_input_new(custom_input_file):
         forcing_parameters,
         restart_parameters,
         diffusive_parameters,
-        coastal_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,

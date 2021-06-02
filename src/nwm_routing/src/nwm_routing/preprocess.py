@@ -250,8 +250,8 @@ def nwm_forcing_preprocess(
         usgs_df = pd.DataFrame()
 
     # STEP 7
-    coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)
-    coastal_ncdf = coastal_parameters.get("coastal_ncdf", None)
+    coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
+    coastal_ncdf = forcing_parameters.get("coastal_ncdf", None)
 
     if coastal_boundary_elev:
         print("creating coastal dataframe ...")

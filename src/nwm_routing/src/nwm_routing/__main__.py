@@ -742,7 +742,6 @@ def main_v03():
         forcing_parameters,
         restart_parameters,
         diffusive_parameters,
-        coastal_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,

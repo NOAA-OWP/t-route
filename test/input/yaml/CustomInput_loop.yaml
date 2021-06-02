@@ -76,9 +76,8 @@ compute_parameters:
         wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
     #Qlateral forcing values
     forcing_parameters:
-        coastal_parameters:
-            coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
-            # coastal_ncdf: "../../test/input/geo/coastal_inputs/SandySample.nc"
+        coastal_boundary_elev_data: "../../test/input/geo/coastal_inputs/staout_1"
+        # coastal_ncdf: "../../test/input/geo/coastal_inputs/SandySample.nc"
         split_forcing: true
         qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
         dt: 300  # default timestep length, seconds
