@@ -599,7 +599,10 @@ def build_data_assimilation(data_assimilation_parameters):
     elif data_assimilation_folder:
         usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
     
-    return usgs_df, last_obs_df , last_obs_date
+    if last_obs_file:
+        return usgs_df, last_obs_df , last_obs_date
+    else:
+        return usgs_df, last_obs_df
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):

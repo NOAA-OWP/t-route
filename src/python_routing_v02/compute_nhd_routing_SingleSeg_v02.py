@@ -1218,13 +1218,18 @@ def main():
     last_obs_file = data_assimilation_parameters.get(
         "wrf_hydro_last_obs_file", None
     )
+    if last_obs_file:
+        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
+        last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
+    else:
+        usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+        last_obs_start = -1
+
     if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
-
-        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
 
         if verbose:
             print("usgs array complete")
@@ -1236,7 +1241,6 @@ def main():
         last_obs_df = pd.DataFrame()
     # Get last obs timestep number
 
-    last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)

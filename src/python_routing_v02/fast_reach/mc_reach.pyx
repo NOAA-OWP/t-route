@@ -449,11 +449,11 @@ cpdef object compute_network(
                             flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
                             lastobs_values_stored = usgs_values[gage_i, timestep]
                             #printf("last_obs_check <: %d\t", found_last_obs)
-                        elif timestep == gage_maxtimestep and found_last_obs != 1:
+                        #elif timestep == gage_maxtimestep and found_last_obs != 1:
                             #flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
-                            decay_timestep += 1
-                            flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-                            lastobs_values_stored = usgs_values[gage_i, timestep]
+                            #decay_timestep += 1
+                            #flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                            #lastobs_values_stored = usgs_values[gage_i, timestep]
                             #printf("equal to maxtimestep")
                             #printf("last_obs_check =: %d\t", found_last_obs)
                         else:
