@@ -14,6 +14,7 @@ import sys
 import troute.routing.diffusive_utils as diff_utils
 
 from .input import _input_handler_v02, _input_handler_v03
+from .preprocess import nwm_network_preprocess, nwm_initial_warmstate_preprocess, nwm_forcing_preprocess
 
 from troute.routing.compute import compute_nhd_routing_v02
 
@@ -21,7 +22,7 @@ def _handle_args_v03():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    supernetwork_arg_group.add_argument(
+    parser.add_argument(
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
@@ -411,7 +412,7 @@ def main_v02():
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(
-        restart_parameters, supernetwork_parameters, param_df.index
+        restart_parameters, param_df.index
     )
 
     if verbose:
@@ -430,8 +431,7 @@ def main_v02():
     forcing_parameters["nts"] = run_parameters["nts"]
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
-        connections.keys(),
-        supernetwork_parameters,
+        param_df.index,
         nts,
         run_parameters.get("qts_subdivisions", 1),
     )
@@ -775,7 +775,7 @@ def main_v03():
     waterbodies_df, q0, last_obs_df = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
-        param_df,
+        param_df.index,
         waterbodies_df,
         segment_list=None,
         wbodies_list=None,
@@ -804,11 +804,11 @@ def main_v03():
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
 
     qlats, usgs_df = nwm_forcing_preprocess(
-        connections,
-        break_network_at_waterbodies,
         run_sets[0],
         forcing_parameters,
         data_assimilation_parameters,
+        break_network_at_waterbodies,
+        param_df.index,
         showtiming,
         verbose,
         debuglevel,
@@ -852,11 +852,11 @@ def main_v03():
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
             qlats, usgs_df = nwm_forcing_preprocess(
-                connections,
-                break_network_at_waterbodies,
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 data_assimilation_parameters,
+                break_network_at_waterbodies,
+                param_df.index,
                 showtiming,
                 verbose,
                 debuglevel,
@@ -896,5 +896,6 @@ def main_v03():
             Loop has to wait for Sync2a+b+Sync3a, does not have to wait for Sync3b
                   if next forcing prepared
         """
+
 if __name__ == "__main__":
-    main_v02()
+    main_v03()

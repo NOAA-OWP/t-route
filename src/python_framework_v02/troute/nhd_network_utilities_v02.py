@@ -503,7 +503,7 @@ def organize_independent_networks(connections, wbodies=None):
 
 
 def build_channel_initial_state(
-    restart_parameters, supernetwork_parameters, channel_index=None
+    restart_parameters, segment_index=pd.DataFrame().index
 ):
 
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
@@ -530,21 +530,18 @@ def build_channel_initial_state(
         # assume to be zero
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
-            0, index=channel_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+            0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
     # TODO: If needed for performance improvement consider filtering mask file on read.
-    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
-    if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
-        q0 = q0[q0.index.isin(mask_file_path.index)]
+    if not segment_index.empty:
+        q0 = q0[q0.index.isin(segment_index)]
 
     return q0
 
 
 def build_qlateral_array(
     forcing_parameters,
-    connections_keys,
-    supernetwork_parameters,
+    segment_index=pd.DataFrame().index,
     ts_iterator=None,
     file_run_size=None,
 ):
@@ -578,7 +575,7 @@ def build_qlateral_array(
             value_col=qlat_file_value_col,
         )
 
-        qlat_df = qlat_df[qlat_df.index.isin(connections_keys)]
+        qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
 
     # TODO: These four lines seem extraneous
     #    df_length = len(qlat_df.columns)
@@ -593,7 +590,7 @@ def build_qlateral_array(
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
             qlat_const,
-            index=connections_keys,
+            index=segment_index,
             columns=range(nts // qts_subdivisions),
             dtype="float32",
         )
@@ -603,10 +600,8 @@ def build_qlateral_array(
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    mask_file_path = supernetwork_parameters.get("mask_file_path", None)
-    if mask_file_path:
-        mask_file_path = pd.read_csv(mask_file_path, index_col=0, header=None)
-        qlat_df = qlat_df[qlat_df.index.isin(mask_file_path.index)]
+    if not segment_index.empty:
+        qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
 
     return qlat_df
 

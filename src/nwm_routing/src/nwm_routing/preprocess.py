@@ -1,3 +1,5 @@
+import time
+import pandas as pd
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
@@ -95,7 +97,7 @@ def nwm_network_preprocess(
 def nwm_initial_warmstate_preprocess(
     break_network_at_waterbodies,
     restart_parameters,
-    param_df,
+    segment_index,
     waterbodies_df,
     segment_list=None,
     wbodies_list=None,
@@ -150,7 +152,7 @@ def nwm_initial_warmstate_preprocess(
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(
-        restart_parameters, supernetwork_parameters, param_df.index
+        restart_parameters, segment_index
     )
 
     if verbose:
@@ -163,7 +165,7 @@ def nwm_initial_warmstate_preprocess(
         waterbodies_df, waterbodies_initial_states_df, on="lake_id"
     )
 
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_file = restart_parameters.get("wrf_hydro_last_obs_file", None)
     last_obs_df = pd.DataFrame()
     
 
@@ -178,11 +180,11 @@ def nwm_initial_warmstate_preprocess(
 
 
 def nwm_forcing_preprocess(
-    connections,
-    break_network_at_waterbodies,
     run,
     forcing_parameters,
     data_assimilation_parameters,
+    break_network_at_waterbodies,
+    segment_index,
     showtiming=False,
     verbose=False,
     debuglevel=0,
@@ -210,7 +212,7 @@ def nwm_forcing_preprocess(
         print("creating qlateral array ...")
 
     qlats_df = nnu.build_qlateral_array(
-        run, connections.keys(), supernetwork_parameters,
+        run, segment_index, 
     )
 
     if verbose:
