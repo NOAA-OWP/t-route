@@ -110,7 +110,7 @@ def find_tw_for_node(reaches_bytw, node):
             if node in r:
                 return(tw)
 
-    return None  # Node not in reach set. 
+    raise AssertionError  # Node not in reach set. 
 
 
 def junctions(N):
