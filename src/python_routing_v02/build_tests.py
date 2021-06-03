@@ -158,8 +158,7 @@ def build_test_parameters(
 
 
 def parity_check(
-    parity_set,
-    results,
+    parity_set, results,
 ):
     nts = parity_set["nts"]
     dt = parity_set["dt"]
@@ -172,19 +171,19 @@ def parity_check(
         parity_check_input_folder = pathlib.Path(parity_check_input_folder)
         if "validation_files" in parity_set:
             validation_files = parity_set.get("validation_files")
-            validation_files = [parity_check_input_folder.joinpath(f) for f in validation_files]
+            validation_files = [
+                parity_check_input_folder.joinpath(f) for f in validation_files
+            ]
         elif "parity_check_file_pattern_filter" in parity_set:
-            validation_files = pathlib.Path(parity_set["parity_check_input_folder"]).rglob(
-                parity_set.get(
-                    "parity_check_file_pattern_filter", "*CHRT_OUT*"
-                )
-            )
+            validation_files = pathlib.Path(
+                parity_set["parity_check_input_folder"]
+            ).rglob(parity_set.get("parity_check_file_pattern_filter", "*CHRT_OUT*"))
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
             validation_files,
-            index_col = parity_set["parity_check_file_index_col"],
-            value_col = parity_set["parity_check_file_value_col"],
+            index_col=parity_set["parity_check_file_index_col"],
+            value_col=parity_set["parity_check_file_value_col"],
             # [compare_node],
         )
 
@@ -194,12 +193,13 @@ def parity_check(
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
 
-
     elif "parity_check_waterbody_file" in parity_set:
-        validation_data = pd.read_csv(parity_set["parity_check_waterbody_file"], index_col=0)
-        validation_data.rename(columns = {"outflow":compare_node}, inplace = True)
-        #TODO: Add toggle option to compare water elevation
-        #validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
+        validation_data = pd.read_csv(
+            parity_set["parity_check_waterbody_file"], index_col=0
+        )
+        validation_data.rename(columns={"outflow": compare_node}, inplace=True)
+        # TODO: Add toggle option to compare water elevation
+        # validation_data.rename(columns = {"water_sfc_elev":compare_node}, inplace = True)
         validation_data = validation_data[[compare_node]]
         validation_data.index = validation_data.index.astype("datetime64[ns]")
         validation_data = validation_data.transpose()
@@ -240,8 +240,8 @@ def parity_check(
         # construct comparable dataframes
         trt = pd.DataFrame(
             flows.loc[:, compare_node].values,
-            #TODO: Add toggle option to compare water elevation
-            #depths.loc[:, compare_node].values,
+            # TODO: Add toggle option to compare water elevation
+            # depths.loc[:, compare_node].values,
             index=time_routing,
             columns=["flow, t-route (cms)"],
         )
@@ -254,7 +254,9 @@ def parity_check(
         # compare dataframes
         compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
         compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
-        compare["absdiff"] = np.abs(compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
+        compare["absdiff"] = np.abs(
+            compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        )
 
         print(compare)
         print(compare.describe())

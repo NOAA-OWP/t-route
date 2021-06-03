@@ -1069,7 +1069,9 @@ def nwm_network_preprocess(
         "break_network_at_gages", False
     )
 
-    if not wbodies: # Turn off any further reservoir processing if the network contains no waterbodies
+    if (
+        not wbodies
+    ):  # Turn off any further reservoir processing if the network contains no waterbodies
         break_network_at_waterbodies = False
 
     if break_network_at_waterbodies:
@@ -1206,7 +1208,6 @@ def nwm_initial_warmstate_preprocess(
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     last_obs_df = pd.DataFrame()
-    
 
     return waterbodies_df, q0, last_obs_df
     # TODO: This returns a full dataframe (waterbodies_df) with the

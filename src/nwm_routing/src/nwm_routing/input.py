@@ -3,12 +3,13 @@ import pathlib
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_io as nhd_io
 
-#FIXME
+# FIXME
 ENV_IS_CL = False
 if ENV_IS_CL:
     root = pathlib.Path("/", "content", "t-route")
 elif not ENV_IS_CL:
     root = pathlib.Path("../../").resolve()
+
 
 def _input_handler_v03(args):
 
@@ -41,7 +42,6 @@ def _input_handler_v03(args):
         print("CLI input no longer supported")
         raise RuntimeError
 
-
     return (
         log_parameters,
         supernetwork_parameters,
@@ -58,7 +58,7 @@ def _input_handler_v03(args):
 
 def _input_handler_v02(args):
 
-    #args = _handle_args()
+    # args = _handle_args()
 
     custom_input_file = args.custom_input_file
     supernetwork_parameters = None

@@ -20,7 +20,10 @@ ext = "pyx" if USE_CYTHON else "c"
 reach = Extension(
     "troute.routing.fast_reach.reach",
     sources=["troute/routing/fast_reach/reach.{}".format(ext)],
-    extra_objects=["troute/routing/fast_reach/mc_single_seg.o", "troute/routing/fast_reach/pymc_single_seg.o"],
+    extra_objects=[
+        "troute/routing/fast_reach/mc_single_seg.o",
+        "troute/routing/fast_reach/pymc_single_seg.o",
+    ],
     extra_compile_args=["-g"],
 )
 
@@ -37,15 +40,16 @@ mc_reach = Extension(
 diffusive = Extension(
     "troute.routing.fast_reach.diffusive",
     sources=["troute/routing/fast_reach/diffusive.{}".format(ext)],
-    extra_objects=["troute/routing/fast_reach/diffusive.o", "troute/routing/fast_reach/pydiffusive.o"],
+    extra_objects=[
+        "troute/routing/fast_reach/diffusive.o",
+        "troute/routing/fast_reach/pydiffusive.o",
+    ],
     include_dirs=[np.get_include()],
     extra_compile_args=["-g"],
     libraries=["gfortran"],
 )
 
-package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]
-
-}
+package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
 ext_modules = [reach, mc_reach, diffusive]
 
 if USE_CYTHON:
@@ -56,7 +60,9 @@ if USE_CYTHON:
 setup(
     name="troute.routing",
     namespace_packages=["troute"],
-    packages=find_namespace_packages(include=["troute.*"]),#["troute.fast_reach", "troute.routing"],
+    packages=find_namespace_packages(
+        include=["troute.*"]
+    ),  # ["troute.fast_reach", "troute.routing"],
     ext_modules=ext_modules,
     ext_packages="",
     package_data=package_data,

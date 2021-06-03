@@ -156,8 +156,8 @@ def nwm_output_generator(
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
 
-            #usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
-            #usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+            # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
@@ -190,5 +190,3 @@ def nwm_output_generator(
             print("parity check complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
-
-

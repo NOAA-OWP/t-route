@@ -7,19 +7,24 @@ import pandas as pd
 import numpy as np
 
 import troute.nhd_network as nhd_network
-from troute.routing.fast_reach.mc_reach import compute_network, compute_network_structured, compute_network_structured_obj
+from troute.routing.fast_reach.mc_reach import (
+    compute_network,
+    compute_network_structured,
+    compute_network_structured_obj,
+)
 from troute.routing.fast_reach import diffusive
 
 _compute_func_map = defaultdict(
-        compute_network,
-        {
-            "diffusive": diffusive.compute_diffusive_tst,
-            "V02-caching": compute_network,
-            "V02-diffusive-dummy": compute_network,
-            "V02-structured": compute_network_structured,
-            "V02-structured-obj": compute_network_structured_obj
-        }
-    )
+    compute_network,
+    {
+        "diffusive": diffusive.compute_diffusive_tst,
+        "V02-caching": compute_network,
+        "V02-diffusive-dummy": compute_network,
+        "V02-structured": compute_network_structured,
+        "V02-structured-obj": compute_network_structured_obj,
+    },
+)
+
 
 def compute_nhd_routing_v02(
     connections,

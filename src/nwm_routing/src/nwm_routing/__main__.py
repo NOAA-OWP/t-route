@@ -14,10 +14,15 @@ import sys
 import troute.routing.diffusive_utils as diff_utils
 
 from .input import _input_handler_v02, _input_handler_v03
-from .preprocess import nwm_network_preprocess, nwm_initial_warmstate_preprocess, nwm_forcing_preprocess
+from .preprocess import (
+    nwm_network_preprocess,
+    nwm_initial_warmstate_preprocess,
+    nwm_forcing_preprocess,
+)
 from .output import nwm_output_generator
 
 from troute.routing.compute import compute_nhd_routing_v02
+
 
 def _handle_args_v03(argv):
     parser = argparse.ArgumentParser(
@@ -283,6 +288,7 @@ def _handle_args_v02(argv):
     )
     return parser.parse_args(argv)
 
+
 def main_v02(argv):
     args = _handle_args_v02(argv)
     (
@@ -316,7 +322,9 @@ def main_v02(argv):
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df, wbodies, gages = nnu.build_connections(supernetwork_parameters)
+    connections, param_df, wbodies, gages = nnu.build_connections(
+        supernetwork_parameters
+    )
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
 
@@ -412,9 +420,7 @@ def main_v02(argv):
     if verbose:
         print("setting channel initial states ...")
 
-    q0 = nnu.build_channel_initial_state(
-        restart_parameters, param_df.index
-    )
+    q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
 
     if verbose:
         print("channel initial states complete")
@@ -467,7 +473,6 @@ def main_v02(argv):
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     last_obs_df = pd.DataFrame()
-    
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -611,7 +616,7 @@ def main_v02(argv):
             )
         if showtiming:
             start_time = time.time()
-        
+
         parity_parameters["nts"] = nts
         parity_parameters["dt"] = dt
 
@@ -668,7 +673,6 @@ def nwm_route(
         else:
             print(f"executing routing computation ...")
 
-
     # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
 
@@ -721,7 +725,6 @@ def new_nwm_q0(run_results):
         ],
         copy=False,
     )
-
 
 
 def main_v03(argv):
@@ -895,6 +898,7 @@ def main_v03(argv):
                   if next forcing prepared
         """
 
+
 if __name__ == "__main__":
     v_parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -904,13 +908,13 @@ if __name__ == "__main__":
         "--input-version",
         default=3,
         nargs="?",
-        choices=[2,3],
+        choices=[2, 3],
         type=int,
         help="Use version 2 or 3 of the input format. Default 3",
     )
     v_args = v_parser.parse_known_args()
-    if( v_args[0].input_version == 3 ):
+    if v_args[0].input_version == 3:
         main_v03(v_args[1])
-    if( v_args[0].input_version == 2 ):
+    if v_args[0].input_version == 2:
         print("Running main v02")
         main_v02(v_args[1])

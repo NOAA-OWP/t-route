@@ -4,6 +4,7 @@ import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 
+
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
@@ -30,7 +31,9 @@ def nwm_network_preprocess(
         "break_network_at_gages", False
     )
 
-    if not wbodies: # Turn off any further reservoir processing if the network contains no waterbodies
+    if (
+        not wbodies
+    ):  # Turn off any further reservoir processing if the network contains no waterbodies
         break_network_at_waterbodies = False
 
     if break_network_at_waterbodies:
@@ -151,9 +154,7 @@ def nwm_initial_warmstate_preprocess(
     if verbose:
         print("setting channel initial states ...")
 
-    q0 = nnu.build_channel_initial_state(
-        restart_parameters, segment_index
-    )
+    q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
     if verbose:
         print("channel initial states complete")
@@ -167,7 +168,6 @@ def nwm_initial_warmstate_preprocess(
 
     last_obs_file = restart_parameters.get("wrf_hydro_last_obs_file", None)
     last_obs_df = pd.DataFrame()
-    
 
     return waterbodies_df, q0, last_obs_df
     # TODO: This returns a full dataframe (waterbodies_df) with the
@@ -211,9 +211,7 @@ def nwm_forcing_preprocess(
     if verbose:
         print("creating qlateral array ...")
 
-    qlats_df = nnu.build_qlateral_array(
-        run, segment_index, 
-    )
+    qlats_df = nnu.build_qlateral_array(run, segment_index,)
 
     if verbose:
         print("qlateral array complete")
@@ -263,5 +261,3 @@ def nwm_forcing_preprocess(
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
     return qlats_df, usgs_df
-
-
