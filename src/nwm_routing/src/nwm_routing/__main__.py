@@ -794,8 +794,8 @@ def main_v03():
     cpu_pool = compute_parameters.get("cpu_pool", None)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
-    assume_short_ts = compute_parameters.get("assume_short_ts", False),
-    return_courant = compute_parameters.get("return_courant", False),
+    assume_short_ts = compute_parameters.get("assume_short_ts", False)
+    return_courant = compute_parameters.get("return_courant", False)
 
     qlats, usgs_df = nwm_forcing_preprocess(
         run_sets[0],
