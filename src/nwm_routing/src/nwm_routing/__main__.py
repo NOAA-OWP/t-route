@@ -19,7 +19,7 @@ from .output import nwm_output_generator
 
 from troute.routing.compute import compute_nhd_routing_v02
 
-def _handle_args_v03():
+def _handle_args_v03(argv):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -29,10 +29,10 @@ def _handle_args_v03():
         dest="custom_input_file",
         help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def _handle_args_v02():
+def _handle_args_v02(argv):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -281,10 +281,10 @@ def _handle_args_v02():
         dest="data_assimilation_csv",
         default=None,
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
-def main_v02():
-    args = _handle_args_v02()
+def main_v02(argv):
+    args = _handle_args_v02(argv)
     (
         supernetwork_parameters,
         waterbody_parameters,
@@ -724,8 +724,8 @@ def new_nwm_q0(run_results):
 
 
 
-def main_v03():
-    args = _handle_args_v03()
+def main_v03(argv):
+    args = _handle_args_v03(argv)
     (
         log_parameters,
         supernetwork_parameters,
@@ -896,4 +896,21 @@ def main_v03():
         """
 
 if __name__ == "__main__":
-    main_v03()
+    v_parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    v_parser.add_argument(
+        "-V",
+        "--input-version",
+        default=3,
+        nargs="?",
+        choices=[2,3],
+        type=int,
+        help="Use version 2 or 3 of the input format. Default 3",
+    )
+    v_args = v_parser.parse_known_args()
+    if( v_args[0].input_version == 3 ):
+        main_v03(v_args[1])
+    if( v_args[0].input_version == 2 ):
+        print("Running main v02")
+        main_v02(v_args[1])
