@@ -503,7 +503,7 @@ def organize_independent_networks(connections, wbodies=None):
 
 
 def build_channel_initial_state(
-    restart_parameters, segment_index=pd.DataFrame().index
+    restart_parameters, segment_index=pd.Index([])
 ):
 
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
@@ -541,7 +541,7 @@ def build_channel_initial_state(
 
 def build_qlateral_array(
     forcing_parameters,
-    segment_index=pd.DataFrame().index,
+    segment_index=pd.Index([]),
     ts_iterator=None,
     file_run_size=None,
 ):
