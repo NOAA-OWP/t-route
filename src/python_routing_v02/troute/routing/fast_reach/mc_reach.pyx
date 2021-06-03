@@ -15,7 +15,9 @@ from libc.stdlib cimport malloc, free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
+#from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
+cimport troute.network.reservoirs.levelpool.levelpool as lp
+
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -24,7 +26,7 @@ from cython.parallel import prange
 #if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
 #____pyx_f_5reach_muskingcunge
 #from reach cimport muskingcunge, QVD
-cimport reach
+cimport troute.routing.fast_reach.reach as reach
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -135,7 +137,7 @@ cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
     const Py_ssize_t[:] drows,
     const Py_ssize_t dcol,
-    const float[:, :] src, float[:, ::1] out) nogil:
+    const float[:, :] src, float[:, ::1] out) nogil except *:
 
     cdef Py_ssize_t i
     for i in range(srows.shape[0]):
@@ -800,7 +802,7 @@ cpdef object compute_network_structured_obj(
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
                 (
-                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
+                  lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
                   reach_type)#lp_reservoir)
                 )
             wbody_index += 1
@@ -849,10 +851,6 @@ cpdef object compute_network_structured_obj(
 
         #Check if reach_type is 1 for reservoir/waterbody
         if (reach_type == 1):
-
-            #TODO: Add if isintance of the reservoir type
-            #if isinstance(reservoir_object, lp_kernel):
-
             #TODO: dt is currently held by the segment. Need to find better place to hold dt
             routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
 
@@ -868,24 +866,6 @@ cpdef object compute_network_structured_obj(
             segment_ids = []
 
             #Create compute reach kernel input buffer
-            """
-            for i in range(r.num_segments):
-              segment = r.segments[i]
-              segment_ids.append(segment.id)
-              buf_view[i, 0] = qlat_array[ segment.id, int(timestep/qlat_resample)]
-              buf_view[i, 1] = segment.dt
-              buf_view[i, 2] = segment.dx
-              buf_view[i, 3] = segment.bw
-              buf_view[i, 4] = segment.tw
-              buf_view[i, 5] = segment.twcc
-              buf_view[i, 6] = segment.n
-              buf_view[i, 7] = segment.ncc
-              buf_view[i, 8] = segment.cs
-              buf_view[i, 9] = segment.s0
-              buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
-              buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-              buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
-            """
             for i, segment in enumerate(r):
               segment_ids.append(segment['id'])
               buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
@@ -901,12 +881,11 @@ cpdef object compute_network_structured_obj(
               buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
               buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
               buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
+
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                  len(r), buf_view,
                                  out_buf,
-                                 assume_short_ts)#,
-                                 #timestep,
-                                 #nsteps)
+                                 assume_short_ts)
 
             # #a = 120
             # #weight = math.exp(timestep/-a)
@@ -950,6 +929,7 @@ cpdef object compute_network_structured(
     const double[:,:] wbody_cols,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
+    const float[:,:] lastobs_values,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1026,7 +1006,7 @@ cpdef object compute_network_structured(
             #Add level pool reservoir ojbect to reach_objects
             reach_objects.append(
                 #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                  MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
+                 lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
                                array('l',upstream_ids),
                                wbody_parameters[wbody_index])
                 )
@@ -1089,13 +1069,12 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
+                lp.run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
                 flowveldepth[r.id, timestep, 0] = lp_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = lp_water_elevation
               else:
                 #Create compute reach kernel input buffer
-                #for i, segment in enumerate(r.segments):
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(r, i)#r._segments[i]
                   buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
@@ -1115,13 +1094,11 @@ cpdef object compute_network_structured(
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
-                                     assume_short_ts)#,
-                                     #timestep,
-                                     #nsteps)
+                                     assume_short_ts)
+
                 #Copy the output out
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(r, i)
-                  #printf("out_buf[%d]: %f\n", i, out_buf[i, 0])
                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]

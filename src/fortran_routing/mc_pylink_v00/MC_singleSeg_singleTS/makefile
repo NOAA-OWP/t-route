@@ -25,7 +25,7 @@ precis.mod: varPrecision.f90
 	$(FC) $(FCFLAGS) $<
 
 install:
-	cp *.o ../../../../src/python_routing_v02/fast_reach
+	cp *.o ../../../../src/python_routing_v02/troute/routing/fast_reach
 
 %.o: %.F
 	$(FC) $(FCFLAGS) -o $@ $<

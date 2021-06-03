@@ -11,7 +11,7 @@ pydiffusive.o: pydiffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
 
 install:
-	cp *.o ../../../src/python_routing_v02/fast_reach
+	cp *.o ../../../src/python_routing_v02/troute/routing/fast_reach
 
 clean:
 	rm -f *.o *.mod
