@@ -646,7 +646,7 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-
+                    import pdb;pdb.set_trace()
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -664,9 +664,9 @@ def compute_nhd_routing_v02(
                             ),  # waterbodies_df_sub.values
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
                             last_obs_sub.values.astype("float32"),
                             last_obs_start,
-                            np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
