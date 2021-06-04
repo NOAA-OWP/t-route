@@ -461,7 +461,16 @@ def compute_nhd_routing_v02(
                     last_obs_sub = pd.DataFrame()
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-
+                    
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
                     # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -615,12 +624,21 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
-
+                    
+                    
                     last_obs_sub = pd.DataFrame()
-
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-
+                    
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
                     # Eventually, the wiring for reservoir simulation needs to be added.
@@ -646,6 +664,8 @@ def compute_nhd_routing_v02(
                             ),  # waterbodies_df_sub.values
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            last_obs_sub.values.astype("float32"),
+                            last_obs_start,
                             np.array(nudging_positions_list, dtype="int32"),
                             {
                                 us: fvd
@@ -730,7 +750,9 @@ def compute_nhd_routing_v02(
 
                 if not usgs_df.empty:
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                    nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                    nudging_positions_list = param_df_sub.index.get_indexer(
+                        usgs_segs
+                    )
                     usgs_df_sub = usgs_df.loc[usgs_segs]
                     usgs_df_sub.drop(
                         usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
@@ -738,8 +760,21 @@ def compute_nhd_routing_v02(
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
-
+                
+                
                 last_obs_sub = pd.DataFrame()
+                qlat_sub = qlats.loc[param_df_sub.index]
+                q0_sub = q0.loc[param_df_sub.index]
+                
+                if not last_obs_df.empty and not usgs_df.empty:
+                    # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                    last_obs_df['usgs_index'] = usgs_df.index
+                    last_obs_df = last_obs_df.reset_index()
+                    last_obs_df = last_obs_df.set_index("usgs_index")
+                    last_obs_df = last_obs_df.drop(['to'],axis=1)
+                    lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                    nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                    last_obs_sub = last_obs_df.loc[lastobs_segs]
 
                 reaches_list_with_type = []
 
@@ -834,20 +869,31 @@ def compute_nhd_routing_v02(
 
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                nudging_positions_list = param_df_sub.index.get_indexer(
+                    usgs_segs
+                )
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
+                usgs_df_sub.drop(
+                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                )
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
-
-            if not last_obs_df.empty:
-                pass
-            #     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-            #     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-            #     last_obs_sub = last_obs_df.loc[lastobs_segs]
-            else:
-                last_obs_sub = pd.DataFrame()
+            
+            
+            last_obs_sub = pd.DataFrame()
+            qlat_sub = qlats.loc[param_df_sub.index]
+            q0_sub = q0.loc[param_df_sub.index]
+            
+            if not last_obs_df.empty and not usgs_df.empty:
+                # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                last_obs_df['usgs_index'] = usgs_df.index
+                last_obs_df = last_obs_df.reset_index()
+                last_obs_df = last_obs_df.set_index("usgs_index")
+                last_obs_df = last_obs_df.drop(['to'],axis=1)
+                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                last_obs_sub = last_obs_df.loc[lastobs_segs]
             #     nudging_positions_list = []
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
