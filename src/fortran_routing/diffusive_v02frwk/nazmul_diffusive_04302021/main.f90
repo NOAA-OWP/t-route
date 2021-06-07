@@ -40,26 +40,26 @@ program mesh
 !**
 !* START: v02 routing framework input data
 !**
-    nrch_g=735             !* # of total reaches TW:933020089  USGS:02086624
+    nrch_g=735  !29   !735             !* # of total reaches TW:933020089  USGS:02086624
     dtini_g= 10.0         !* initial time interval in [sec]
     t0_g= 0.0             !* simulation starting time in [hr]
-    tfin_g= 718.0       !*simulation ending time in [hr] TW:933020161 USGS:02086849
+    tfin_g= 718 !408 !718.0       !*simulation ending time in [hr] TW:933020161 USGS:02086849
     tfin_qlat_g=718.0   !*added as qlat data time period is generally not the same as dsbd data. TW:933020161 USGS:02086849.
     saveInterval_g=dtini_g    !* output publishing time interval in [sec]
     cfl_g= 0.99            !* max. allowable Courant number
     dt_ql_g= 3600.0  !* instead of dtinput #time interval of qlateral input data from wrf-hydro [sec]
     dt_ub_g= dt_ql_g  !* time interval of input data for upstream boundary condition  [sec]
     dt_db_g=  900.0 !* time interval of input data for downstream boundary condition  [sec]
-    saveInterval_ev_g= 7200 !saveInterval_g !for evaluation later [sec]
-    nl_ubcd_ar_g=266749  !* # of total rows of ubcd_ar.txt TW:933020089  USGS:02086624
+    saveInterval_ev_g= 1800 !7200 !saveInterval_g !for evaluation later [sec]
+    nl_ubcd_ar_g=266749 !10785  !266749  !* # of total rows of ubcd_ar.txt TW:933020089  USGS:02086624
 
     ntss_ev_g= int((tfin_g - t0_g)*3600.0/saveInterval_ev_g, KIND(ntss_ev_g))+4 !*# of timesteps for publishing final outputs
     nts_ql_g= int( (tfin_qlat_g - t0_g)*3600.0/dt_ql_g+1, KIND(nts_ql_g) ) !* # of timesteps of lateral inflow input data
     nts_ub_g= nts_ql_g  !* # of timesteps of upstream boundary input data
     nts_db_g= int( (tfin_g - t0_g)*3600.0/dt_db_g+1, KIND(nts_db_g) ) !* # of timesteps of downstream boundary input data
 
-    timesdepth_g=3.0 !* water depth multiplier used in readXsection
-    nel_g=80         !* # of sub-Xsection used to construct hydraulic lookup table.
+    timesdepth_g=4.0 !* water depth multiplier used in readXsection
+    nel_g=501         !* # of sub-Xsection used to construct hydraulic lookup table.    ! change Nazmul 20210601
 
     open(unit=21, file="./input/frnw_ar.txt")
     open(unit=22, file="./input/z_bo_traps_tw_twcc_m_mcc_so_dx.txt")
@@ -74,8 +74,8 @@ program mesh
     open(unit=30, file="./input/dx_ar.txt")
     open(unit=31, file="./input/qlat_ar.txt")
     open(unit=32, file="./input/ubcd_ar.txt")
-    open(unit=33, file="./input/dbcd_ar.txt")
-    open(unit=33, file="./input/dbcd_ar.txt")
+    !open(unit=33, file="./input/dbcd_ar.txt")
+    open(unit=33, file="./input/dbcd_ar_datumCorrected.txt")    ! change Nazmul 20210601    !! The previous d/s boundary was not datum corrected
     open(unit=34, file="./input/pynw_ar.txt")
     open(unit=101, file="./output/simulated discharge depth elev.txt")
 
@@ -239,7 +239,17 @@ program mesh
     allocate(notSwitchRouting(nlinks))
     allocate(currentROutingDiffusive(nlinks))
 
-    dx=dx_ar_g
+    !dx=dx_ar_g     ! change Nazmul 20210601
+    dx = 0.
+    minDx = 1e10
+    do j = 1,nlinks
+        ncomp= frnw_g(j,1)
+        do i = 1,ncomp-1
+            dx(i,j) = dx_ar_g(i,j)
+        end do
+        minDx = min(minDx,minval(dx(1:ncomp-1,j)))
+    end do
+
     z=z_ar_g
     ini_y=0.05  !* [meter]
     ini_q=0.1   !*[m^3/sec]
@@ -250,7 +260,7 @@ program mesh
 	allocate(noQSKtable(nlinks))
     applyNaturalSection=1
     dt = dtini
-    minDx=minval(dx)
+    !minDx=minval(dx) ! change Nazmul 20210601
 
     ! reading bank locations
     if (applyNaturalSection .eq. 1) then
@@ -395,7 +405,7 @@ program mesh
 	theta = 1.0
 	qpx = 0.
 	cfl=0.9
-    width = 10. !!! average width of MS from BR to BC
+    width = 100. !   initialization
     celerity = 1.0
     maxCelerity = 1.0
     diffusivity = 10.
@@ -414,6 +424,26 @@ program mesh
     minNotSwitchRouting = 10000         ! works between Dynamic and Diffusive switching
     minNotSwitchRouting2 = 000        ! works between full Diffusive and partial Diffusive switching
     timestep = 0
+
+
+    ! change Nazmul 20210601
+    ! Writing initial data
+    do j = 1, nlinks
+        ncomp= frnw_g(j,1)
+        do i=1, ncomp
+            write(*,*) t, i, j, oldY(i,j)-z(i,j), oldQ(i,j)
+            if (i==1) then
+                !* only head node has link ID
+                write(101,"(f10.2, i6, 2i15, 3f15.2)" ) t, i, j, pynw(j,2), oldY(i,j)-z(i,j), oldQ(i,j), oldY(i,j)
+            else
+                idmy1=-100
+                write(101,"(f10.2, i6, 2i15, 3f15.2)" ) t, i, j, idmy1, oldY(i,j)-z(i,j), oldQ(i,j), oldY(i,j)
+            endif
+        enddo
+    enddo
+
+
+
     do while ( t .lt. tfin *60.)
         timestep = timestep + 1
         !+-------------------------------------------------------------------------------------

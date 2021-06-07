@@ -25,7 +25,8 @@ contains
     ! change 20210228: All qlat to a river reach is applied to the u/s boundary
     ! Note: lateralFlow(1,j) is already added to the boundary
         ncomp= frnw_g(j,1)
-        allqlat = sum(lateralFlow(2:ncomp,j) * dx(1:ncomp-1,j))
+        !allqlat = sum(lateralFlow(2:ncomp,j) * dx(1:ncomp-1,j))
+        allqlat = sum(lateralFlow(2:ncomp-1,j) * dx(2:ncomp-1,j)) ! change Nazmul 20210601
 
 !       lateralFlow(:,j) = 0. !* Dongha: no need to put it zero as lateralFlow is updated at the next time step.
         eei = -999.
@@ -143,6 +144,8 @@ contains
             qpx(i,j)= exi(i) *qpx(i+1,j) + fxi(i)
         end do
 
+        qp(1,j) = newQ(1,j)     ! change Nazmul 20210601
+
         ! change 20210228: All qlat to a river reach is applied to the u/s boundary
         qp(1,j) = qp(1,j) + allqlat
 
@@ -156,6 +159,7 @@ contains
         dqp(1:ncomp,j) = newQ(1:ncomp,j)-oldQ(1:ncomp,j)
         dqc(1:ncomp,j) = dqp(1:ncomp,j)
         dap(1:ncomp,j) = 0.
+
     end subroutine mesh_diffusive_forward
 
     subroutine mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j, leftBank, rightBank)
@@ -172,10 +176,10 @@ contains
         real :: y_norm_ds, y_crit_ds, S_ncomp, frds, area_0, width_0, hydR_0, errorY, currentQ, stg1, stg2
         integer :: tableLength, jj, newMassBalance, iii
         real :: elevTable_1(nel),areaTable_1(nel),rediTable_1(nel),convTable_1(nel),topwTable_1(nel),currentSquaredDepth_1(nel)
-        real :: skkkTable_1(nel)
+        real :: skkkTable_1(nel), dKdATable_1(nel)                                                                              ! change Nazmul 20210601
         real :: pereTable_1(nel),depthYi,tempDepthi_1,tempCo_1,temp_q_sk_multi_1,tempY_1,tempArea_1,tempRadi_1,tempbo_1,ffy
         real :: ffy_1, ffy_2, ffy_3, tempCo_2, tempCo_3, tempsfi_2, tempsfi_3
-        real :: ffprime,tempDepthi_1_new,tempsfi_1,toll, dkda, tempPere_1, tempsk_1, tempY_2, tempY_3
+        real :: ffprime,tempDepthi_1_new,tempsfi_1,toll, dkda, tempPere_1, tempsk_1, tempY_2, tempY_3, tempdKdA_1               ! change Nazmul 20210601
         integer :: depthCalOk(ncomp), newtonRaphson
         integer :: i, pp
 
@@ -316,6 +320,7 @@ contains
                                 rediTable_1 = xsec_tab(4,:,i-1,j)
                                 convTable_1 = xsec_tab(5,:,i-1,j)
                                 topwTable_1 = xsec_tab(6,:,i-1,j)
+                                dKdATable_1 = xsec_tab(9,:,i-1,j)       ! change Nazmul 20210601
                                 skkkTable_1 = xsec_tab(11,:,i-1,j)
                                 currentSquaredDepth_1=(elevTable_1-z(i-1,j))**2.
                                 toll = 1.0
@@ -335,14 +340,16 @@ contains
                                         call r_interpol(elevTable_1,pereTable_1,nel,tempY_1,tempPere_1)
                                         call r_interpol(elevTable_1,rediTable_1,nel,tempY_1,tempRadi_1)
                                         call r_interpol(elevTable_1,topwTable_1,nel,tempY_1,tempbo_1)
-                                        call r_interpol(elevTable_1,skkkTable_1,nel,tempY_1,tempsk_1)!
+                                        call r_interpol(elevTable_1,dKdATable_1,nel,tempY_1,tempdKdA_1)     ! change Nazmul 20210601
+                                        !call r_interpol(elevTable_1,skkkTable_1,nel,tempY_1,tempsk_1)!
 
                                         tempsfi_1 = qp(i-1,j) * abs(qp(i-1,j)) / ( tempCo_1** 2.0 )!
 
                                         ffy = tempDepthi_1 - depthYi + dx(i-1,j)*slope - 0.5*dx(i-1,j)*(sfi + tempsfi_1)
 
-                                        dkda=tempsk_1*((5.0/3.0*tempArea_1**(2.0/3.0)*tempPere_1)- &
-                                            (tempArea_1**(5.0/3.0)*2.0/tempbo_1))/(tempPere_1**(5.0/3.0))
+                                        !dkda=tempsk_1*((5.0/3.0*tempArea_1**(2.0/3.0)*tempPere_1)- &
+                                        !    (tempArea_1**(5.0/3.0)*2.0/tempbo_1))/(tempPere_1**(5.0/3.0))
+                                        dkda = tempdKdA_1                                                   ! change Nazmul 20210601
 
                                         ffprime = 1 + dx(i-1,j) * tempbo_1 *  qp(i-1,j) * abs(qp(i-1,j)) / (tempCo_1 ** 3.0) * dkda
 
@@ -351,9 +358,22 @@ contains
                                         tempDepthi_1_new = max(tempDepthi_1_new,0.005)
 
                                         toll = abs(tempDepthi_1_new - tempDepthi_1)
+
+                                        ! Change Nazmul 20210601
+                                        if(iii .gt. 30)then
+                                            print*, 'Warning: Depth iteration reached maximum trial at j=', j, 'i=', i-1 , &
+                                            'and',i,'depths are',tempDepthi_1, tempDepthi_1_new, 'slope=', slope, &
+                                            'dx=', dx(i-1,j), 'depth at d/s',depthYi, 'Q-s are', qp(i-1,j), qp(i,j)
+                                            !tempDepthi_1 = oldY(i-1,j)-z(i-1,j)
+                                            depthCalOk(i-1) = 0
+                                            EXIT
+                                        endif
+
                                         tempDepthi_1 = tempDepthi_1_new
                                         depthCalOk(i-1) = 1
+
                                     end do
+                                    !print*, j, i, iii
                                 end if
 
                                 ! Applying mid point bisection
@@ -421,7 +441,7 @@ contains
                 endif
             end do
 
-            celerity(1:ncomp,j) = minval(celerity2(1:ncomp)) ! change 20210423
+            celerity(1:ncomp,j) =  sum(celerity2(1:ncomp)) / ncomp  ! change Nazmul 20210601
             if (celerity(1,j) .lt. 0.5) celerity(1:ncomp,j) = 0.5
             diffusivity(1:ncomp,j)=sum(diffusivity2(1:ncomp)) / ncomp
             do i = 1, ncomp

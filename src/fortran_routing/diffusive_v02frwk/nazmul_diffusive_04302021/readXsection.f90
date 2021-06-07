@@ -14,7 +14,7 @@ contains
         real, dimension(:,:), allocatable :: el1, a1, peri1, redi1
         real, dimension(:), allocatable :: redi1All
         real, dimension(:,:), allocatable :: conv1, tpW1, diffArea, newI1, diffPere
-        real, dimension(:), allocatable :: newdPdA, diffAreaAll, diffPereAll
+        real, dimension(:), allocatable :: newdPdA, diffAreaAll, diffPereAll, newdKdA       ! change Nazmul 20210601
         real, dimension(:), allocatable :: compoundSKK, elev
         integer, dimension(:), allocatable :: i_start, i_end, totalNodes
         real, dimension(:,:), allocatable :: allXcs, allYcs
@@ -29,7 +29,7 @@ contains
 
         allocate (el1(nel,3),a1(nel,3),peri1(nel,3),redi1(nel,3),redi1All(nel))
         allocate (conv1(nel,3), tpW1(nel,3), diffArea(nel,3), newI1(nel,3), diffPere(nel,3))
-        allocate (newdPdA(nel), diffAreaAll(nel), diffPereAll(nel))
+        allocate (newdPdA(nel), diffAreaAll(nel), diffPereAll(nel), newdKdA(nel))       ! change Nazmul 20210601
         allocate (compoundSKK(nel), elev(nel))
         allocate (i_start(nel), i_end(nel))
         allocate (totalNodes(3))
@@ -98,7 +98,7 @@ contains
             if(ycs(i).lt.el_min)el_min=ycs(i)
             if(ycs(i).gt.el_max)el_max=ycs(i)
         enddo
-        el_range=(el_max-el_min)*timesDepth
+        el_range=(el_max-el_min)*2.0 ! change Nazmul 20210601
 
         do i=1, 3
             allXcs(i+1,1)=xcs(i) !x1*f2m
@@ -141,7 +141,7 @@ contains
         allYcs(4,2) = allYcs(3,2) - 0.01
 
         el_min_1 = el_min
-        el_min = allYcs(5,2)
+        el_min = allYcs(4,2)    ! change Nazmul 20210601 ! corrected
 
         elev(1) = el_min
         elev(2) = el_min + 0.01/4.
@@ -275,8 +275,10 @@ contains
             el_now=el1(j,1)
             if (j .eq. 1) then
                 newdPdA(j) = sum(peri1(j,:)) / sum(a1(j,:))
+                newdKdA(j) = sum(conv1(j,:)) / sum(a1(j,:))     ! change Nazmul 20210601
             else
                 newdPdA(j)= (sum(peri1(j,:)) - sum(peri1(j-1,:))) / (sum(a1(j,:)) - sum(a1(j-1,:)))
+                newdKdA(j)= (sum(conv1(j,:)) - sum(conv1(j-1,:))) / (sum(a1(j,:)) - sum(a1(j-1,:)))
             end if
 
             compoundMann = sqrt((abs(peri1(j,1))*lftBnkMann ** 2. + abs(peri1(j,2))*rmanning_main ** 2.+&
@@ -292,13 +294,14 @@ contains
             xsec_tab(6,j,k,num_reach) = abs(tpW1(j,1))+abs(tpW1(j,2))+abs(tpW1(j,3))
             xsec_tab(7,j,k,num_reach) = sum(newI1(j,:))
             xsec_tab(8,j,k,num_reach) = newdPdA(j)
+            xsec_tab(9,j,k,num_reach) = newdKdA(j)
             xsec_tab(11,j,k,num_reach) = compoundSKK(j)
         end do
         z(k,num_reach)= el_min
 
         deallocate (el1, a1, peri1, redi1, redi1All)
         deallocate (conv1, tpW1, diffArea, newI1, diffPere)
-        deallocate (newdPdA, diffAreaAll, diffPereAll)
+        deallocate (newdPdA, diffAreaAll, diffPereAll, newdKdA)       ! change Nazmul 20210601
         deallocate (compoundSKK, elev)
         deallocate (i_start, i_end)
         deallocate (totalNodes)

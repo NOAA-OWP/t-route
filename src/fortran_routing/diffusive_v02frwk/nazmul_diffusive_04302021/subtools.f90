@@ -89,7 +89,7 @@ end subroutine r_interpol
 !+ computation of normal depth in regular/trapezoidal x-section using
 !+ Newton-Raphson method. Refer to Appendix C-2, Chaudhary and p71,RM1_MESH
 !+++-------------------------------------------------------------------------------
-     subroutine normal_crit_y(i, j, q_sk_multi, So, dsc, y_norm, y_crit, area_n, area_c)
+     subroutine normal_crit_y_old(i, j, q_sk_multi, So, dsc, y_norm, y_crit, area_n, area_c)    ! Name change: Nazmul 20210301
         implicit none
         integer, intent(in) :: i, j
         real, intent(in) :: q_sk_multi, So, dsc
@@ -137,6 +137,58 @@ end subroutine r_interpol
         call r_interpol(areaTable,elevTable,nel,area_0,y_norm)
 
         call r_interpol(areaTable,elevTable,nel,area_c,y_crit)
+
+    end subroutine normal_crit_y_old    ! change: Nazmul 20210301
+
+    ! Nazmul Added 20210601
+    ! The following subroutine calculates the normal depth properly
+    subroutine normal_crit_y(i, j, q_sk_multi, So, dsc, y_norm, y_crit, area_n, area_c)
+
+
+        implicit none
+
+        integer, intent(in) :: i, j
+        real, intent(in) :: q_sk_multi, So, dsc
+        real, intent(out) :: y_norm, y_crit, area_n, area_c
+        real :: area_0, width_0, errorY, pere_0,hydR_0,skk_0!, fro
+        integer :: trapnm_app, recnm_app, iter
+
+
+            elevTable = xsec_tab(1,:,i,j)
+            areaTable = xsec_tab(2,:,i,j)
+            pereTable = xsec_tab(3,:,i,j)
+            convTable = xsec_tab(5,:,i,j)
+            topwTable = xsec_tab(6,:,i,j)
+            !print*, 'initial ara 0', oldY(i,j)
+            call r_interpol(convTable,areaTable,nel,dsc/sqrt(So),area_n)
+            call r_interpol(convTable,elevTable,nel,dsc/sqrt(So),y_norm)
+
+            call r_interpol(elevTable,areaTable,nel,oldY(i,j),area_0) ! initial estimate
+
+            call r_interpol(elevTable,topwTable,nel,oldY(i,j),width_0) ! initial estimate
+
+            !print*, 'initial ara 0', area_0
+
+            area_c=area_0
+            errorY = 100.
+            !pause
+            do while (errorY .gt. 0.0001)
+                area_c = (dsc * dsc * width_0 / grav) ** (1./3.)
+                errorY = abs(area_c - area_0)
+
+                call r_interpol(areaTable,topwTable,nel,area_c, width_0)
+                area_0 = area_c
+
+            enddo
+
+            !pause
+
+            call r_interpol(areaTable,elevTable,nel,area_c,y_crit)
+            if (y_norm .eq. -9999) then
+                print*, 'At j = ',j,', i = ',i, 'interpolation of y_norm in calculating normal area was not possible, Q', &
+                dsc,'slope',So !,'lateralFlow', lateralFlow(1:nx1(j),j)
+                stop
+            end if
 
     end subroutine normal_crit_y
 
