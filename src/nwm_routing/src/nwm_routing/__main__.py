@@ -788,7 +788,7 @@ def main_v03(argv):
     #     da_sets = [BIG LIST OF DA BLOCKS]
 
     if "wrf_hydro_parity_check" in output_parameters:
-        parity_sets = parity_parameters.get("parity_check_compare_file_sets", False)
+        parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
     else:
         parity_sets = []
 
@@ -869,7 +869,7 @@ def main_v03(argv):
             supernetwork_parameters,
             output_parameters,
             parity_parameters,
-            parity_sets[run_set_iterator],
+            parity_sets[run_set_iterator] if parity_parameters else {},
             nts,
             compute_parameters.get("return_courant", False),
             showtiming,
