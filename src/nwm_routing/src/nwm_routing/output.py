@@ -173,12 +173,7 @@ def nwm_output_generator(
 
     ################### Parity Check
 
-    if (
-        "parity_check_input_folder" in parity_parameters
-        or "parity_check_file" in parity_parameters
-        or "parity_check_waterbody_file" in parity_parameters
-    ):
-
+    if parity_set:
         if verbose:
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
