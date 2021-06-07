@@ -529,6 +529,10 @@ def compute_nhd_routing_v02(
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
             connections, rconn, subnetwork_target_size
         )
+        
+        # Construct a dictionary of subnetwork segments sorted by subnetwork order
+        # subnetworks_only_ordered_jit (dict) 
+        #      (subnetwork_order (int): (subnetwork_tailwater (int): subnetwork_segments (set))) 
         subnetworks_only_ordered_jit = defaultdict(dict)
         subnetworks = defaultdict(dict)
         for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
@@ -538,12 +542,25 @@ def compute_nhd_routing_v02(
                 for subn_tw, subnetwork in subnet_sets.items():
                     subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
+        # Construct a dictionary of subnetwork reaches sorted by subnetwork order
+        # reaches_ordered_bysubntw (dict) 
+        #      (subnetwork_order (int): (subnetwork_tailwater (int): subnetwork_reaches (list of lists))) 
         reaches_ordered_bysubntw = defaultdict(dict)
         for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                
+                # break subnetwork reaches at waterbieds if reservoirs are included
+                if waterbodies_df.empty:
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                else:
+                    path_func = partial(
+                        nhd_network.split_at_waterbodies_and_junctions,
+                        list(waterbodies_df.index.values),
+                        rconn_subn
+                        )
+                    
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
