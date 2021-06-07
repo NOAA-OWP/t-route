@@ -31,7 +31,7 @@ network_topology_parameters:
         terminal_code: 0
         driver_string: NetCDF
         layer_string: 0
-        #waterbody parameters and assignments from lake parm file
+    #waterbody parameters and assignments from lake parm file
     waterbody_parameters:
         break_network_at_waterbodies: true # replace waterbodies in the route-link dataset with segments representing the reservoir and calculate to divide the computation (leave blank for no splitting.)
                               # TODO: Remove the following limitation
