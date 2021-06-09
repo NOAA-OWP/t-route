@@ -183,9 +183,14 @@ def compute_nhd_routing_v02(
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
+                    
+                    param_df_sub_super = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
-                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
                                 us_subn_tw
                             )
                             flowveldepth_interorder[us_subn_tw][
@@ -367,9 +372,14 @@ def compute_nhd_routing_v02(
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
+                    
+                    param_df_sub_super = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
-                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
                                 us_subn_tw
                             )
                             flowveldepth_interorder[us_subn_tw][
