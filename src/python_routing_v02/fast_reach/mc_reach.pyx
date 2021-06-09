@@ -1031,10 +1031,7 @@ cpdef object compute_network_structured(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):            
-            if idx == 0:
-                flowveldepth_nd[fill_index, idx+1, 0] = val
-            else:
-                flowveldepth_nd[fill_index, np.floor(idx/3).astype('int')+1, np.mod(idx,3)] = val
+            flowveldepth_nd[fill_index, np.floor(idx//3).astype('int')+1, idx%3] = val
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
