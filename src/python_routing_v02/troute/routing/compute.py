@@ -249,10 +249,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             q0_sub.values.astype("float32"),
                             qlat_sub.values.astype("float32"),
-                            [],  # lake_segs
-                            np.empty(
-                                shape=(0, 0), dtype="float64"
-                            ),  # waterbodies_df_sub.values
+                            lake_segs, 
+                            waterbodies_df_sub.values,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
@@ -441,10 +439,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             q0_sub.values.astype("float32"),
                             qlat_sub.values.astype("float32"),
-                            [],  # lake_segs
-                            np.empty(
-                                shape=(0, 0), dtype="float64"
-                            ),  # waterbodies_df_sub.values
+                            lake_segs,
+                            waterbodies_df_sub.values,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
