@@ -212,6 +212,18 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+                        
+                    subn_reach_list_with_type = []
+                    for reaches in subn_reach_list:
+                        if set(reaches) & wbodies_segs:
+                            reach_type = 1  # type 1 for waterbody/lake
+                        else:
+                            reach_type = 0  # type 0 for reach
+
+                        reach_and_type_tuple = (reaches, reach_type)
+
+                        subn_reach_list_with_type.append(reach_and_type_tuple)
+
 
                     last_obs_sub = pd.DataFrame()
 
@@ -398,6 +410,17 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+                        
+                    subn_reach_list_with_type = []
+                    for reaches in subn_reach_list:
+                        if set(reaches) & wbodies_segs:
+                            reach_type = 1  # type 1 for waterbody/lake
+                        else:
+                            reach_type = 0  # type 0 for reach
+
+                        reach_and_type_tuple = (reaches, reach_type)
+
+                        subn_reach_list_with_type.append(reach_and_type_tuple)
 
                     last_obs_sub = pd.DataFrame()
 
