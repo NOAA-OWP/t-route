@@ -230,14 +230,11 @@ def compute_nhd_routing_v02(
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
-                    # TODO: Wire in the proper reservoir distinction
-                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
-                    # only produce a dummy list, but...
-                    # Eventually, the wiring for reservoir simulation needs to be added.
-                    subn_reach_type_list = [0 for reaches in subn_reach_list]
-                    subn_reach_list_with_type = list(
-                        zip(subn_reach_list, subn_reach_type_list)
-                    )
+                    param_df_sub = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                    q0_sub = q0_sub.reindex(param_df_sub.index)
 
                     # results_subn[order].append(
                     #     compute_func(
@@ -427,13 +424,11 @@ def compute_nhd_routing_v02(
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
-                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
-                    # only produce a dummy list, but...
-                    # Eventually, the wiring for reservoir simulation needs to be added.
-                    subn_reach_type_list = [0 for reaches in subn_reach_list]
-                    subn_reach_list_with_type = list(
-                        zip(subn_reach_list, subn_reach_type_list)
-                    )
+                    param_df_sub = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                    q0_sub = q0_sub.reindex(param_df_sub.index)
 
                     jobs.append(
                         delayed(compute_func)(
