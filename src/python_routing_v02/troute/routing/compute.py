@@ -153,8 +153,34 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
+                    
+                    common_segs = list(param_df.index.intersection(segs))
+                    wbodies_segs = set(segs).symmetric_difference(common_segs)
+                    if not waterbodies_df.empty:
+                        lake_segs = list(waterbodies_df.index.intersection(segs))
+                        waterbodies_df_sub = waterbodies_df.loc[
+                            lake_segs,
+                            [
+                                "LkArea",
+                                "LkMxE",
+                                "OrificeA",
+                                "OrificeC",
+                                "OrificeE",
+                                "WeirC",
+                                "WeirE",
+                                "WeirL",
+                                "ifd",
+                                "qd0",
+                                "h0",
+                            ],
+                        ]
+
+                    else:
+                        lake_segs = []
+                        waterbodies_df_sub = pd.DataFrame()
+                    
                     param_df_sub = param_df.loc[
-                        segs,
+                        common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
@@ -311,8 +337,34 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
+                    
+                    common_segs = list(param_df.index.intersection(segs))
+                    wbodies_segs = set(segs).symmetric_difference(common_segs)
+                    if not waterbodies_df.empty:
+                        lake_segs = list(waterbodies_df.index.intersection(segs))
+                        waterbodies_df_sub = waterbodies_df.loc[
+                            lake_segs,
+                            [
+                                "LkArea",
+                                "LkMxE",
+                                "OrificeA",
+                                "OrificeC",
+                                "OrificeE",
+                                "WeirC",
+                                "WeirE",
+                                "WeirL",
+                                "ifd",
+                                "qd0",
+                                "h0",
+                            ],
+                        ]
+
+                    else:
+                        lake_segs = []
+                        waterbodies_df_sub = pd.DataFrame()
+                    
                     param_df_sub = param_df.loc[
-                        segs,
+                        common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
                     if order < max(subnetworks_only_ordered_jit.keys()):
