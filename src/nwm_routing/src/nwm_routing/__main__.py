@@ -348,7 +348,7 @@ def main_v02(argv):
         )
 
         # Remove duplicate lake_ids and rows
-        waterbodies_df_reduced = (
+        waterbodies_df = (
             waterbodies_df.reset_index()
             .drop_duplicates(subset="lake_id")
             .set_index("lake_id")
@@ -356,7 +356,6 @@ def main_v02(argv):
 
         #Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
-        waterbody_types_df_reduced = pd.DataFrame()
 
         #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype="hybrid_and_rfc"
@@ -377,7 +376,7 @@ def main_v02(argv):
                 wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
 
             # Remove duplicate lake_ids and rows
-            waterbody_types_df_reduced = (
+            waterbody_types_df = (
                 waterbody_types_df.reset_index()
                 .drop_duplicates(subset="lake_id")
                 .set_index("lake_id")
@@ -385,8 +384,8 @@ def main_v02(argv):
 
     else:
         #Declare empty dataframe
-        waterbody_types_df_reduced = pd.DataFrame()
-        waterbodies_df_reduced = pd.DataFrame()
+        waterbody_types_df = pd.DataFrame()
+        waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
@@ -396,7 +395,7 @@ def main_v02(argv):
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        list(waterbodies_df_reduced.index.values)
+        list(waterbodies_df.index.values)
         if break_network_at_waterbodies
         else None,
     )
@@ -438,8 +437,8 @@ def main_v02(argv):
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(
-            waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id"
+        waterbodies_df = pd.merge(
+            waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
         if verbose:
@@ -548,9 +547,9 @@ def main_v02(argv):
         last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
-        waterbodies_df_reduced,
         waterbody_parameters,
-        waterbody_types_df_reduced,
+        waterbodies_df,
+        waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
     )
