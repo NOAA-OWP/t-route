@@ -547,8 +547,8 @@ def main_v02(argv):
         last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
-        waterbody_parameters,
         waterbodies_df,
+        waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
         waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
@@ -692,6 +692,9 @@ def nwm_route(
     assume_short_ts,
     return_courant,
     waterbodies_df,
+    waterbody_parameters,
+    waterbody_types_df,
+    waterbody_type_specified,
     diffusive_parameters,
     showtiming=False,
     verbose=False,
@@ -733,6 +736,9 @@ def nwm_route(
         assume_short_ts,
         return_courant,
         waterbodies_df,
+        waterbody_parameters,
+        waterbody_types_df,
+        waterbody_type_specified,
         diffusive_parameters,
     )
 
@@ -790,7 +796,9 @@ def main_v03(argv):
         param_df,
         wbodies,
         waterbodies_df,
+        waterbody_types_df,
         break_network_at_waterbodies,
+        waterbody_type_specified,
         independent_networks,
         reaches_bytw,
         rconn,
@@ -802,6 +810,7 @@ def main_v03(argv):
         debuglevel=debuglevel,
     )
 
+    # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, last_obs_df = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
@@ -877,6 +886,9 @@ def main_v03(argv):
             assume_short_ts,
             return_courant,
             waterbodies_df,
+            waterbody_parameters,
+            waterbody_types_df,
+            waterbody_type_specified,
             diffusive_parameters,
             showtiming,
             verbose,
