@@ -62,7 +62,39 @@ def nwm_network_preprocess(
             .drop_duplicates(subset="lake_id")
             .set_index("lake_id")
         )
+
+        #Declare empty dataframe
+        waterbody_types_df = pd.DataFrame()
+
+        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype="hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+
+        wbtype="level_pool"
+        wb_params_level_pool = waterbody_parameters[wbtype]  # TODO: Convert these to `get` statments
+
+        waterbody_type_specified = False
+
+        # NOTE: What are we accomplishing with this logic here?
+        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
+        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
+        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
+
+            waterbody_type_specified = True
+
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
+                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
+
+            # Remove duplicate lake_ids and rows
+            waterbody_types_df = (
+                waterbody_types_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+            )
+
     else:
+        #Declare empty dataframes
+        waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
@@ -90,7 +122,9 @@ def nwm_network_preprocess(
         param_df,
         wbodies,
         waterbodies_df,
-        break_network_at_waterbodies,
+        waterbody_types_df,
+        break_network_at_waterbodies,  # Could this be inferred from the wbodies or waterbodies_df  # Could this be inferred from the wbodies or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
+        waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
         independent_networks,
         reaches_bytw,
         rconn,
@@ -162,6 +196,7 @@ def nwm_initial_warmstate_preprocess(
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
+    # TODO: Does this need to live outside the if-block for waterbodies above? If not, let's move it up there to keep things together.
     waterbodies_df = pd.merge(
         waterbodies_df, waterbodies_initial_states_df, on="lake_id"
     )
