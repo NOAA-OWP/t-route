@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+from collections import defaultdict
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
@@ -71,7 +72,7 @@ def nwm_network_preprocess(
         wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
 
         wbtype="level_pool"
-        wb_params_level_pool = waterbody_parameters[wbtype]  # TODO: Convert these to `get` statments
+        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
 
         waterbody_type_specified = False
 

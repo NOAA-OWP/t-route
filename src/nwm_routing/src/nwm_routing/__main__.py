@@ -1,6 +1,7 @@
 import argparse
 import time
 from datetime import datetime
+from collections import defaultdict
 import pathlib
 import pandas as pd
 
@@ -359,10 +360,10 @@ def main_v02(argv):
 
         #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype="hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters[wbtype]
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
 
         wbtype="level_pool"
-        wb_params_level_pool = waterbody_parameters[wbtype]
+        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
 
         waterbody_type_specified = False
 
