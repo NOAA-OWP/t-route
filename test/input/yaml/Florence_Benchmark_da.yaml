@@ -12,6 +12,8 @@ run_parameters:
                           # WARNING: `break_network_at_waterbodies: true` will only work if compute_method is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
     # compute_method: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     #v02-structured is off as well as V02-structured-obj
+    break_network_at_gages: true  # Ensures gages are in a reach by themselves.
+    # compute_method: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
@@ -24,8 +26,9 @@ output_parameters: {}
 supernetwork_parameters:
     title_string: "Florence_FullRes"
     geo_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
-    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
-    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
+    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
+    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777381_gage8777381.txt"
+    # mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw8777535_gage8777381.txt"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
@@ -38,6 +41,7 @@ supernetwork_parameters:
         s0: "So"  # TODO: rename to `bedslope`
         bw: "BtmWdth"  # TODO: rename to `bottomwidth`
         waterbody: "NHDWaterbodyComID"
+        gages: "gages"
         tw: "TopWdth"  # TODO: rename to `topwidth`
         twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
         alt: "alt"
@@ -75,6 +79,7 @@ forcing_parameters:
 restart_parameters:
     #WRF-Hydro channels restart file
     wrf_hydro_channel_restart_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/HYDRO_RST/HYDRO_RST.2018-09-18_00:00_DOMAIN1"
+    # wrf_hydro_channel_restart_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/RESTART_open-loop/HYDRO_RST.2018-09-10_00:00_DOMAIN1"
     #WRF-Hydro channels ID crosswalk file
     # florence_testcase/florence_933020089/DOMAIN
     wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
@@ -105,18 +110,25 @@ data_assimilation_parameters:
 parity_parameters:
     # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
     parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
-    #parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
+    # parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
     parity_check_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
     # parity_check_file: "florence_streamflow_test.csv.hourly"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
     # parity_check_compare_node: 933020089 # contains only Nan in WRF simulations including waterbodies
     # parity_check_compare_node: 8835386
-    # parity_check_compare_node: 10975909
+    parity_check_compare_node: 8777381
     # parity_check_compare_node: 8778771  # Headwater
     # parity_check_compare_node: 8778459  # Midwater
+    # parity_check_compare_node: 8778201  # Midwater
+    # parity_check_compare_node: 8777277  # Just above gage
     # parity_check_compare_node: 8777275  # Just above gage
-    parity_check_compare_node: 8777381  # At gage
+    # parity_check_compare_node: 8777381  # At gage
+    # parity_check_compare_node: 8777409  # Just above 8777353
+    # parity_check_compare_node: 8777353  # Just above 8777387 -- next upstreams [8777369, 8777409]
+    # parity_check_compare_node: 8777351  # Just above 8777387
+    # parity_check_compare_node: 8777451  # Just above 8777387 -- next upstreams [8777455, 8777489]
+    # parity_check_compare_node: 8777387  # Just above 8777383 -- next upstreams [8777351, 8777353]
     # parity_check_compare_node: 8777383  # Below gage
     # parity_check_compare_node: 8777419  # Below gage
     # parity_check_compare_node: 8777523  # Below gage

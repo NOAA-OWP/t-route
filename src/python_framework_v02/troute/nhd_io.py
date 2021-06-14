@@ -46,6 +46,44 @@ def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
 
+def read_custom_input_new(custom_input_file):
+    if custom_input_file[-4:] == "yaml":
+        with open(custom_input_file) as custom_file:
+            data = yaml.load(custom_file, Loader=yaml.SafeLoader)
+    else:
+        with open(custom_input_file) as custom_file:
+            data = json.load(custom_file)
+    log_parameters = data.get("log_parameters", {})
+    network_topology_parameters = data.get("network_topology_parameters", None)
+    supernetwork_parameters = network_topology_parameters.get(
+        "supernetwork_parameters", None
+    )
+    waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
+    compute_parameters = data.get("compute_parameters", {})
+    forcing_parameters = compute_parameters.get("forcing_parameters", {})
+    restart_parameters = compute_parameters.get("restart_parameters", {})
+    diffusive_parameters = compute_parameters.get("diffusive_parameters", {})
+    data_assimilation_parameters = compute_parameters.get(
+        "data_assimilation_parameters", {}
+    )
+    output_parameters = data.get("output_parameters", {})
+    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
+
+    # TODO: add error trapping for potentially missing files
+    return (
+        log_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        diffusive_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    )
+
+
 def read_custom_input(custom_input_file):
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
@@ -132,6 +170,24 @@ def read_level_pool_waterbody_df(
     return df1
 
 
+def read_reservoir_parameter_file(
+    reservoir_parameter_file, lake_index_field="lake_id", lake_id_mask=None
+):
+    """
+    Reads reservoir parameter file, which is separate from the LAKEPARM file.
+    This function is only called if Hybrid Persistence or RFC type reservoirs
+    are active.
+    """
+    with xr.open_dataset(reservoir_parameter_file) as ds:
+        ds = ds.swap_dims({"feature_id": lake_index_field})
+
+        ds_new = ds["reservoir_type"]
+       
+        df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+
+    return df1
+
+
 def get_ql_from_csv(qlat_input_file, index_col=0):
     """
     qlat_input_file: comma delimted file with header giving timesteps, rows for each segment
@@ -150,7 +206,12 @@ def read_qlat(path):
     return get_ql_from_csv(path)
 
 
-def get_ql_from_wrf_hydro_mf(qlat_files, index_col="feature_id", value_col="q_lateral"):
+# TODO: Generalize this name -- perhaps `read_wrf_hydro_chrt_mf()`
+def get_ql_from_wrf_hydro_mf(
+    qlat_files,
+    index_col="feature_id",
+    value_col="q_lateral",
+):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
@@ -427,6 +488,92 @@ def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
         return final_df, last_obs_date
 
 
+def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
+    # open routelink_file and extract discharges
+
+    ds1 = xr.open_dataset(routelink)
+    df = ds1.to_dataframe()
+    df2 = df.loc[df["gages"] != b"               "]
+    df2["gages"] = df2["gages"].astype("int")
+    df2 = df2[["gages", "to"]]
+    df2 = df2.reset_index()
+    df2 = df2.set_index("gages")
+
+    with xr.open_dataset(lastobsfile) as ds:
+        df_model_discharges = ds["model_discharge"].to_dataframe()
+        df_discharges = ds["discharge"].to_dataframe()
+        last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
+        model_discharge_last_ts = df_model_discharges[
+            df_model_discharges.index.get_level_values("timeInd") == last_ts
+        ]
+        discharge_last_ts = df_discharges[
+            df_discharges.index.get_level_values("timeInd") == last_ts
+        ]
+        df1 = ds["stationId"].to_dataframe()
+        df1 = df1.astype(int)
+        model_discharge_last_ts = model_discharge_last_ts.join(df1)
+        model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
+        model_discharge_last_ts = model_discharge_last_ts.loc[
+            model_discharge_last_ts["model_discharge"] != -9999.0
+        ]
+        model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index(
+            "stationId"
+        )
+        model_discharge_last_ts = model_discharge_last_ts.drop(
+            ["stationIdInd", "timeInd"], axis=1
+        )
+        model_discharge_last_ts["discharge"] = model_discharge_last_ts[
+            "discharge"
+        ].to_frame()
+        # If predict from last_obs file use last obs file results
+        # if last_obs_file == "error-based":
+        # elif last_obs_file == "obs-based":  # the wrf-hydro default
+        if wrf_last_obs_flag:
+            model_discharge_last_ts["last_nudge"] = (
+                model_discharge_last_ts["discharge"]
+                - model_discharge_last_ts["model_discharge"]
+            )
+        final_df = df2.join(model_discharge_last_ts["discharge"])
+        final_df = final_df.reset_index()
+        final_df = final_df.set_index("to")
+        final_df = final_df.drop(["feature_id", "gages"], axis=1)
+        final_df = final_df.dropna()
+
+        # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
+        # else:
+        #     fvd_df = fvd_df
+        #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
+        #         model_discharge_last_ts["last_nudge"] = (
+        #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
+        #         )
+        #     else:
+        #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
+        #         sys.exit()
+        # # Predictions created with continuously decreasing deltas until near 0 difference
+        # a = 120
+        # prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
+
+        # for time in range(0, 720, 5):
+        #     weight = math.exp(time / -a)
+        #     delta = pd.DataFrame(
+        #         model_discharge_last_ts["last_nudge"] / weight)
+
+        #     if time == 0:
+        #         prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
+        #         weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
+        #     else:
+        #         if weight > 0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        #         elif weight < -0.1:
+        #             prediction_df[str(time)] = (
+        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+        #             )
+        # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
+        return final_df
+
+
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
     df2 = pd.read_csv(usgs_csv, index_col=0)
@@ -522,14 +669,24 @@ def get_usgs_from_time_slices_folder(
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
         dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
 
+<<<<<<< HEAD
     '''
+=======
+    """
+>>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9
     # dates_to_drop = ~usgs_df.columns.isin(dates)
     OR 
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
+<<<<<<< HEAD
     '''
 
     usgs_df = usgs_df.reindex(columns = dates)
+=======
+    """
+
+    usgs_df = usgs_df.reindex(columns=dates)
+>>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9
 
     usgs_df = usgs_df.interpolate(method="linear", axis=1)
     usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")

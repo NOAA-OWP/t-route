@@ -89,10 +89,17 @@ def reverse_network(N):
 
 
 def find_tw_for_node(reaches_bytw, node):
+<<<<<<< HEAD
 # TODO: extend this function (or write a new one) to handle a list of nodes.
 # Such functionality might be useful for finding networks corresponding to a
 # list of gages, for instance.
     '''
+=======
+    # TODO: extend this function (or write a new one) to handle a list of nodes.
+    # Such functionality might be useful for finding networks corresponding to a
+    # list of gages, for instance.
+    """
+>>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9
     reaches_bytw is a dictionary of lists of the form
 
     tw 1: 
@@ -104,6 +111,7 @@ def find_tw_for_node(reaches_bytw, node):
         [ ... ] ] reach n
     tw 2:
         etc.
+<<<<<<< HEAD
     '''
     for tw, rs in reaches_bytw.items():
         for r in rs:
@@ -111,6 +119,15 @@ def find_tw_for_node(reaches_bytw, node):
                 return(tw)
 
     raise AssertionError  # Node not in reach set. 
+=======
+    """
+    for tw, rs in reaches_bytw.items():
+        for r in rs:
+            if node in r:
+                return tw
+
+    return None  # Node not in reach set.
+>>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9
 
 
 def junctions(N):

@@ -1,11 +1,11 @@
 cimport numpy as np
 """
-FIXME add some significant inline documentation
+Declaring C types for Level Pool Class variables and functions
 """
 from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
-cdef void run(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil
+cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil
 
 cdef extern from "levelpool_structs.h":
   ctypedef struct _MC_Levelpool:
@@ -19,6 +19,6 @@ cdef extern from "levelpool_structs.h":
 
 cdef class MC_Levelpool(Reach):
   """
-
+  C type for MC_Levelpool which is a resevoir subclass of a Reach
   """
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)
