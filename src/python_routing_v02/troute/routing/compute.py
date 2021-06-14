@@ -486,7 +486,10 @@ def compute_nhd_routing_v02(
 
                 qlat_time_step_seconds = qts_subdivisions * dt
 
-                qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+                if not isinstance(qlat_start_time,datetime):
+                    qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+                else:
+                    qlat_start_time_datetime_object =  qlat_start_time
 
                 model_start_time_datetime_object = qlat_start_time_datetime_object \
                 - timedelta(seconds=qlat_time_step_seconds)
