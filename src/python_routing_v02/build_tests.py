@@ -166,7 +166,9 @@ def parity_check(
     compare_node = parity_set["parity_check_compare_node"]
 
     parity_check_input_folder = parity_set.get("parity_check_input_folder", None)
-    parity_check_input_file = parity_set.get("parity_check_input_file", None)
+    parity_check_file = parity_set.get("parity_check_file", None)
+    parity_check_waterbody_file = parity_set.get("parity_check_waterbody_file", None)
+
     if parity_check_input_folder:
         parity_check_input_folder = pathlib.Path(parity_check_input_folder)
         if "validation_files" in parity_set:
@@ -187,13 +189,13 @@ def parity_check(
             # [compare_node],
         )
 
-    elif "parity_check_file" in parity_set:
+    elif parity_check_file:
         validation_data = pd.read_csv(parity_set["parity_check_file"], index_col=0)
         validation_data.index = validation_data.index.astype(int)
         validation_data.columns = validation_data.columns.astype("datetime64[ns]")
         validation_data = validation_data.sort_index(axis="index")
 
-    elif "parity_check_waterbody_file" in parity_set:
+    elif parity_check_waterbody_file:
         validation_data = pd.read_csv(
             parity_set["parity_check_waterbody_file"], index_col=0
         )

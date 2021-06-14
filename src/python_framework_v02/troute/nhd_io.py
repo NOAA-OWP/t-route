@@ -170,6 +170,24 @@ def read_level_pool_waterbody_df(
     return df1
 
 
+def read_reservoir_parameter_file(
+    reservoir_parameter_file, lake_index_field="lake_id", lake_id_mask=None
+):
+    """
+    Reads reservoir parameter file, which is separate from the LAKEPARM file.
+    This function is only called if Hybrid Persistence or RFC type reservoirs
+    are active.
+    """
+    with xr.open_dataset(reservoir_parameter_file) as ds:
+        ds = ds.swap_dims({"feature_id": lake_index_field})
+
+        ds_new = ds["reservoir_type"]
+       
+        df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+
+    return df1
+
+
 def get_ql_from_csv(qlat_input_file, index_col=0):
     """
     qlat_input_file: comma delimted file with header giving timesteps, rows for each segment

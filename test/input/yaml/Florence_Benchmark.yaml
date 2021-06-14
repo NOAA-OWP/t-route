@@ -2,6 +2,7 @@
 # Initial input parameters
 run_parameters:
     parallel_compute_method: by-subnetwork-jit-clustered
+    compute_kernel: V02-structured
     verbose: true
     showtiming: true
     debuglevel: 1
@@ -57,21 +58,6 @@ supernetwork_parameters:
     terminal_code: 0
     driver_string: NetCDF
     layer_string: 0
-# Waterbody parameters and assignments from lake parm file
-waterbody_parameters:
-    level_pool:
-        #WRF-Hydro lake parm file
-        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
-        level_pool_waterbody_id: lake_id
-        level_pool_waterbody_area: LkArea
-        level_pool_weir_elevation: WeirE
-        level_pool_waterbody_max_elevation: LkMxE
-        level_pool_outfall_weir_coefficient: WeirC
-        level_pool_outfall_weir_length: WeirL
-        level_pool_overall_dam_length: DamL
-        level_pool_orifice_elevation: OrificeE
-        level_pool_orifice_coefficient: OrificeC
-        level_pool_orifice_area: OrificeA
 # Q-Lateral inputs from hydrology model
 forcing_parameters:
     qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral_wDates.csv"

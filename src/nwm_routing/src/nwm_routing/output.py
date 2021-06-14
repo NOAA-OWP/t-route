@@ -19,28 +19,37 @@ def nwm_output_generator(
     debuglevel=0,
 ):
 
-    parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
-    parity_check_file_index_col = parity_parameters.get(
-        "parity_check_file_index_col", None
-    )
-    parity_check_file_value_col = parity_parameters.get(
-        "parity_check_file_value_col", None
-    )
-    parity_check_compare_node = parity_parameters.get("parity_check_compare_node", None)
+    if parity_parameters:
+        parity_check_waterbody_file = parity_parameters.get("parity_check_waterbody_file", None)
+        parity_check_file = parity_parameters.get("parity_check_file", None)
+        parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
+        parity_check_file_index_col = parity_parameters.get(
+            "parity_check_file_index_col", None
+        )
+        parity_check_file_value_col = parity_parameters.get(
+            "parity_check_file_value_col", None
+        )
+        parity_check_compare_node = parity_parameters.get("parity_check_compare_node", None)
 
-    # TODO: find a better way to deal with these defaults and overrides.
-    parity_set["parity_check_input_folder"] = parity_set.get(
-        "parity_check_input_folder", parity_check_input_folder
-    )
-    parity_set["parity_check_file_index_col"] = parity_set.get(
-        "parity_check_file_index_col", parity_check_file_index_col
-    )
-    parity_set["parity_check_file_value_col"] = parity_set.get(
-        "parity_check_file_value_col", parity_check_file_value_col
-    )
-    parity_set["parity_check_compare_node"] = parity_set.get(
-        "parity_check_compare_node", parity_check_compare_node
-    )
+        # TODO: find a better way to deal with these defaults and overrides.
+        parity_set["parity_check_waterbody_file"] = parity_set.get(
+            "parity_check_waterbody_file", parity_check_waterbody_file
+        )
+        parity_set["parity_check_file"] = parity_set.get(
+            "parity_check_file", parity_check_file
+        )
+        parity_set["parity_check_input_folder"] = parity_set.get(
+            "parity_check_input_folder", parity_check_input_folder
+        )
+        parity_set["parity_check_file_index_col"] = parity_set.get(
+            "parity_check_file_index_col", parity_check_file_index_col
+        )
+        parity_set["parity_check_file_value_col"] = parity_set.get(
+            "parity_check_file_value_col", parity_check_file_value_col
+        )
+        parity_set["parity_check_compare_node"] = parity_set.get(
+            "parity_check_compare_node", parity_check_compare_node
+        )
 
     ################### Output Handling
     if showtiming:
@@ -169,12 +178,7 @@ def nwm_output_generator(
 
     ################### Parity Check
 
-    if (
-        "parity_check_input_folder" in parity_parameters
-        or "parity_check_file" in parity_parameters
-        or "parity_check_waterbody_file" in parity_parameters
-    ):
-
+    if parity_set:
         if verbose:
             print(
                 "conducting parity check, comparing WRF Hydro results against t-route results"

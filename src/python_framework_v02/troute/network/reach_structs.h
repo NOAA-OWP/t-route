@@ -5,10 +5,14 @@
 */
 #include "musking/mc_reach_structs.h"
 #include "reservoirs/levelpool/levelpool_structs.h"
+#include "reservoirs/hybrid/hybrid_structs.h"
+#include "reservoirs/rfc/rfc_structs.h"
 
 typedef union {
   _MC_Reach mc_reach;
   _MC_Levelpool lp;
+  _MC_Hybrid hybrid;
+  _MC_RFC rfc;
 } _ReachUnion;
 
 typedef struct {

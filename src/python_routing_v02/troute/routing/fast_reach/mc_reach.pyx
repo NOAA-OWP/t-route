@@ -15,9 +15,9 @@ from libc.stdlib cimport malloc, free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-#from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run
-cimport troute.network.reservoirs.levelpool.levelpool as lp
-
+from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c
+from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, run_hybrid_c
+from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from cython.parallel import prange
 #import cProfile
 #pr = cProfile.Profile()
@@ -170,6 +170,10 @@ cpdef object compute_network(
     const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    dict waterbody_parameters,
+    const int[:,:] reservoir_types,
+    bint reservoir_type_specified,
+    str model_start_time,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
@@ -722,6 +726,10 @@ cpdef object compute_network_structured_obj(
     const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    dict waterbody_parameters,
+    const int[:,:] reservoir_types,
+    bint reservoir_type_specified,
+    str model_start_time,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
@@ -798,14 +806,71 @@ cpdef object compute_network_structured_obj(
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
-            #Add level pool reservoir ojbect to reach_objects
-            reach_objects.append(
-                #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                (
-                  lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], array('l',upstream_ids), wbody_parameters[wbody_index]),
-                  reach_type)#lp_reservoir)
-                )
-            wbody_index += 1
+
+            #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
+            if (not reservoir_type_specified):
+
+                #Add level pool reservoir object to reach_objects
+                reach_objects.append(
+                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                    (
+                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
+                      array('l',upstream_ids), wbody_parameters[wbody_index]),
+                      reach_type)#lp_reservoir)
+                    )
+                wbody_index += 1
+             
+            else:
+                #If reservoir_type is 1, then initialize Level Pool reservoir
+                if (reservoir_types[wbody_index][0] == 1):
+            
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                        (
+                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index]),
+                          reach_type)#lp_reservoir)
+                        )
+                    wbody_index += 1
+
+                #If reservoir_type is 2 for USGS or 3 for USACE, then initialize Hybrid reservoir
+                elif (reservoir_types[wbody_index][0] == 2 or reservoir_types[wbody_index][0] == 3):
+
+                    #Add hybrid reservoir object to reach_objects
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
+                        (
+                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usgs_timeslice_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usace_timeslice_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_lookback_hours"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_update_time_interval_seconds"]),
+                          reach_type)#hybrid_reservoir)
+                        )
+                    wbody_index += 1
+
+                #If reservoir_type is 4, then initialize RFC reservoir
+                elif (reservoir_types[wbody_index][0] == 4):
+
+                    #Add rfc reservoir object to reach_objects
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and rfc_reservoir
+                        (
+                          MC_RFC(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_time_series_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_lookback_hours"]),
+                          reach_type)#rfc_reservoir)
+                        )
+                    wbody_index += 1
+
         else:
             segment_ids = binary_find(data_idx, reach)
             #Set the initial condtions before running loop
@@ -927,6 +992,10 @@ cpdef object compute_network_structured(
     const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
+    dict waterbody_parameters,
+    const int[:,:] reservoir_types,
+    bint reservoir_type_specified,
+    str model_start_time,
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
@@ -1003,14 +1072,67 @@ cpdef object compute_network_structured(
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
-            #Add level pool reservoir ojbect to reach_objects
-            reach_objects.append(
-                #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                 lp.MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                               array('l',upstream_ids),
-                               wbody_parameters[wbody_index])
-                )
-            wbody_index += 1
+            
+            #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
+            if (not reservoir_type_specified):
+                
+                #Add level pool reservoir object to reach_objects
+                reach_objects.append(
+                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
+                                   array('l',upstream_ids), 
+                                   wbody_parameters[wbody_index])
+                    )
+                wbody_index += 1
+
+            else:
+                #If reservoir_type is 1, then initialize Level Pool reservoir
+                if (reservoir_types[wbody_index][0] == 1):
+                    #Add level pool reservoir object to reach_objects
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
+                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
+                                       array('l',upstream_ids), 
+                                       wbody_parameters[wbody_index])
+                        )
+                    wbody_index += 1
+
+                #If reservoir_type is 2 for USGS or 3 for USACE, then initialize Hybrid reservoir
+                elif (reservoir_types[wbody_index][0] == 2 or reservoir_types[wbody_index][0] == 3):
+
+                    #Add hybrid reservoir object to reach_objects
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
+                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids), 
+                          wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usgs_timeslice_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usace_timeslice_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_lookback_hours"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_update_time_interval_seconds"])
+                        )
+                    wbody_index += 1
+
+                #If reservoir_type is 4, then initialize RFC reservoir
+                elif (reservoir_types[wbody_index][0] == 4):
+
+                    #Add rfc reservoir object to reach_objects
+                    reach_objects.append(
+                        #tuple of MC_Reservoir, reach_type, and rfc_reservoir
+                          MC_RFC(my_id[0], lake_numbers_col[wbody_index], 
+                          array('l',upstream_ids),
+                          wbody_parameters[wbody_index],
+                          reservoir_types[wbody_index][0],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
+                          model_start_time,
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_time_series_path"],
+                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_lookback_hours"])
+                        )
+                    wbody_index += 1
+
         else:
             segment_ids = binary_find(data_idx, reach)
             #Set the initial condtions before running loop
@@ -1063,7 +1185,7 @@ cpdef object compute_network_structured(
     cdef _Reach* r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
-    cdef float lp_outflow, lp_water_elevation
+    cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     #Run time
     with nogil:
@@ -1083,10 +1205,23 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-                lp.run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
-                flowveldepth[r.id, timestep, 0] = lp_outflow
+                run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
-                flowveldepth[r.id, timestep, 2] = lp_water_elevation
+                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+
+              elif r.type == compute_type.RESERVOIR_HYBRID:
+                run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+
+              elif r.type == compute_type.RESERVOIR_RFC:
+                run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+
               else:
                 #Create compute reach kernel input buffer
                 for i in range(r.reach.mc_reach.num_segments):

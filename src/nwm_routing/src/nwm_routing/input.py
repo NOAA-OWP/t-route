@@ -2,6 +2,7 @@ import pathlib
 
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_io as nhd_io
+import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
 
 # FIXME
 ENV_IS_CL = False

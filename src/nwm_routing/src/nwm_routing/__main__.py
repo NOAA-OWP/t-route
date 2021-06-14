@@ -1,6 +1,7 @@
 import argparse
 import time
 from datetime import datetime
+from collections import defaultdict
 import pathlib
 import pandas as pd
 
@@ -339,6 +340,8 @@ def main_v02(argv):
     # waterbodies_segments = supernetwork_values[13]
     # connections_tailwaters = supernetwork_values[4]
 
+    waterbody_type_specified = False
+
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -346,13 +349,44 @@ def main_v02(argv):
         )
 
         # Remove duplicate lake_ids and rows
-        waterbodies_df_reduced = (
+        waterbodies_df = (
             waterbodies_df.reset_index()
             .drop_duplicates(subset="lake_id")
             .set_index("lake_id")
         )
+
+        #Declare empty dataframe
+        waterbody_types_df = pd.DataFrame()
+
+        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype="hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+
+        wbtype="level_pool"
+        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+
+        waterbody_type_specified = False
+
+        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
+        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
+        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
+
+            waterbody_type_specified = True
+
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
+                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
+
+            # Remove duplicate lake_ids and rows
+            waterbody_types_df = (
+                waterbody_types_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+            )
+
     else:
-        waterbodies_df_reduced = pd.DataFrame()
+        #Declare empty dataframe
+        waterbody_types_df = pd.DataFrame()
+        waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
@@ -362,7 +396,7 @@ def main_v02(argv):
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        list(waterbodies_df_reduced.index.values)
+        list(waterbodies_df.index.values)
         if break_network_at_waterbodies
         else None,
     )
@@ -404,8 +438,8 @@ def main_v02(argv):
                 len(waterbodies_initial_states_df)
             )
 
-        waterbodies_df_reduced = pd.merge(
-            waterbodies_df_reduced, waterbodies_initial_states_df, on="lake_id"
+        waterbodies_df = pd.merge(
+            waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
         if verbose:
@@ -514,7 +548,10 @@ def main_v02(argv):
         last_obs_df,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
-        waterbodies_df_reduced,
+        waterbodies_df,
+        waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
+        waterbody_types_df,
+        waterbody_type_specified,
         diffusive_parameters,
     )
 
@@ -656,6 +693,9 @@ def nwm_route(
     assume_short_ts,
     return_courant,
     waterbodies_df,
+    waterbody_parameters,
+    waterbody_types_df,
+    waterbody_type_specified,
     diffusive_parameters,
     showtiming=False,
     verbose=False,
@@ -697,6 +737,9 @@ def nwm_route(
         assume_short_ts,
         return_courant,
         waterbodies_df,
+        waterbody_parameters,
+        waterbody_types_df,
+        waterbody_type_specified,
         diffusive_parameters,
     )
 
@@ -754,7 +797,9 @@ def main_v03(argv):
         param_df,
         wbodies,
         waterbodies_df,
+        waterbody_types_df,
         break_network_at_waterbodies,
+        waterbody_type_specified,
         independent_networks,
         reaches_bytw,
         rconn,
@@ -766,6 +811,7 @@ def main_v03(argv):
         debuglevel=debuglevel,
     )
 
+    # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, last_obs_df = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
@@ -788,7 +834,7 @@ def main_v03(argv):
     #     da_sets = [BIG LIST OF DA BLOCKS]
 
     if "wrf_hydro_parity_check" in output_parameters:
-        parity_sets = parity_parameters.get("parity_check_compare_file_sets", False)
+        parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
     else:
         parity_sets = []
 
@@ -841,6 +887,9 @@ def main_v03(argv):
             assume_short_ts,
             return_courant,
             waterbodies_df,
+            waterbody_parameters,
+            waterbody_types_df,
+            waterbody_type_specified,
             diffusive_parameters,
             showtiming,
             verbose,
@@ -869,7 +918,7 @@ def main_v03(argv):
             supernetwork_parameters,
             output_parameters,
             parity_parameters,
-            parity_sets[run_set_iterator],
+            parity_sets[run_set_iterator] if parity_parameters else {},
             nts,
             compute_parameters.get("return_courant", False),
             showtiming,
