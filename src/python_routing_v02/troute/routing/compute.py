@@ -77,7 +77,14 @@ def compute_nhd_routing_v02(
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                if waterbodies_df.empty:
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                else:
+                    path_func = partial(
+                        nhd_network.split_at_waterbodies_and_junctions,
+                        list(waterbodies_df.index.values),
+                        rconn_subn
+                        )
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
@@ -150,13 +157,44 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
+                    
+                    common_segs = list(param_df.index.intersection(segs))
+                    wbodies_segs = set(segs).symmetric_difference(common_segs)
+                    if not waterbodies_df.empty:
+                        lake_segs = list(waterbodies_df.index.intersection(segs))
+                        waterbodies_df_sub = waterbodies_df.loc[
+                            lake_segs,
+                            [
+                                "LkArea",
+                                "LkMxE",
+                                "OrificeA",
+                                "OrificeC",
+                                "OrificeE",
+                                "WeirC",
+                                "WeirE",
+                                "WeirL",
+                                "ifd",
+                                "qd0",
+                                "h0",
+                            ],
+                        ]
+
+                    else:
+                        lake_segs = []
+                        waterbodies_df_sub = pd.DataFrame()
+                    
                     param_df_sub = param_df.loc[
-                        segs,
+                        common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
+                    
+                    param_df_sub_super = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
-                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
                                 us_subn_tw
                             )
                             flowveldepth_interorder[us_subn_tw][
@@ -178,20 +216,29 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+                        
+                    subn_reach_list_with_type = []
+                    for reaches in subn_reach_list:
+                        if set(reaches) & wbodies_segs:
+                            reach_type = 1  # type 1 for waterbody/lake
+                        else:
+                            reach_type = 0  # type 0 for reach
+
+                        reach_and_type_tuple = (reaches, reach_type)
+
+                        subn_reach_list_with_type.append(reach_and_type_tuple)
+
 
                     last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
-                    # TODO: Wire in the proper reservoir distinction
-                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
-                    # only produce a dummy list, but...
-                    # Eventually, the wiring for reservoir simulation needs to be added.
-                    subn_reach_type_list = [0 for reaches in subn_reach_list]
-                    subn_reach_list_with_type = list(
-                        zip(subn_reach_list, subn_reach_type_list)
-                    )
+                    param_df_sub = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                    q0_sub = q0_sub.reindex(param_df_sub.index)
 
                     # results_subn[order].append(
                     #     compute_func(
@@ -206,10 +253,8 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             q0_sub.values.astype("float32"),
                             qlat_sub.values.astype("float32"),
-                            [],  # lake_segs
-                            np.empty(
-                                shape=(0, 0), dtype="float64"
-                            ),  # waterbodies_df_sub.values
+                            lake_segs, 
+                            waterbodies_df_sub.values,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
@@ -271,7 +316,14 @@ def compute_nhd_routing_v02(
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                if waterbodies_df.empty:
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                else:
+                    path_func = partial(
+                        nhd_network.split_at_waterbodies_and_junctions,
+                        list(waterbodies_df.index.values),
+                        rconn_subn
+                        )
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
@@ -301,13 +353,44 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
+                    
+                    common_segs = list(param_df.index.intersection(segs))
+                    wbodies_segs = set(segs).symmetric_difference(common_segs)
+                    if not waterbodies_df.empty:
+                        lake_segs = list(waterbodies_df.index.intersection(segs))
+                        waterbodies_df_sub = waterbodies_df.loc[
+                            lake_segs,
+                            [
+                                "LkArea",
+                                "LkMxE",
+                                "OrificeA",
+                                "OrificeC",
+                                "OrificeE",
+                                "WeirC",
+                                "WeirE",
+                                "WeirL",
+                                "ifd",
+                                "qd0",
+                                "h0",
+                            ],
+                        ]
+
+                    else:
+                        lake_segs = []
+                        waterbodies_df_sub = pd.DataFrame()
+                    
                     param_df_sub = param_df.loc[
-                        segs,
+                        common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
+                    
+                    param_df_sub_super = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
-                            subn_tw_sortposition = param_df_sub.index.get_loc(
+                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
                                 us_subn_tw
                             )
                             flowveldepth_interorder[us_subn_tw][
@@ -326,19 +409,28 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
+                        
+                    subn_reach_list_with_type = []
+                    for reaches in subn_reach_list:
+                        if set(reaches) & wbodies_segs:
+                            reach_type = 1  # type 1 for waterbody/lake
+                        else:
+                            reach_type = 0  # type 0 for reach
+
+                        reach_and_type_tuple = (reaches, reach_type)
+
+                        subn_reach_list_with_type.append(reach_and_type_tuple)
 
                     last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
 
-                    # At present, in by-subnetwork-jit/jit-clustered, these next two lines
-                    # only produce a dummy list, but...
-                    # Eventually, the wiring for reservoir simulation needs to be added.
-                    subn_reach_type_list = [0 for reaches in subn_reach_list]
-                    subn_reach_list_with_type = list(
-                        zip(subn_reach_list, subn_reach_type_list)
-                    )
+                    param_df_sub = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                    q0_sub = q0_sub.reindex(param_df_sub.index)
 
                     jobs.append(
                         delayed(compute_func)(
@@ -351,13 +443,12 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             q0_sub.values.astype("float32"),
                             qlat_sub.values.astype("float32"),
-                            [],  # lake_segs
-                            np.empty(
-                                shape=(0, 0), dtype="float64"
-                            ),  # waterbodies_df_sub.values
+                            lake_segs,
+                            waterbodies_df_sub.values,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
