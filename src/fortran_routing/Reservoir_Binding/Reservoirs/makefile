@@ -1,4 +1,4 @@
-NETCDFINC := $(shell nc-config --fflags)
+NETCDFINC := -I$(NETCDFINC) $(shell nc-config --fflags)
 NETCDFLIB := $(shell nc-config --flibs)
 COMPILER90 = $(F90)
 F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4
