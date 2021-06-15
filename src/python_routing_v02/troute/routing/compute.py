@@ -58,6 +58,7 @@ def compute_nhd_routing_v02(
     param_df = param_df.astype("float32")
 
     start_time = time.time()
+    # import pdb; pdb.set_trace()
     compute_func = _compute_func_map[compute_func_name]
     if parallel_compute_method == "by-subnetwork-jit-clustered":
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(

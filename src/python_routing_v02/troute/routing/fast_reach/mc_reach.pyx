@@ -9,11 +9,7 @@ from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-from libc.stdio cimport printf
-=======
 # from libc.stdio cimport printf
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
@@ -181,10 +177,7 @@ cpdef object compute_network(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-    int last_obs_start,
-=======
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
+    #int last_obs_start,
     # const float[:] wbody_idx,
     # object[:] wbody_cols,
     # const float[:, :] wbody_vals,
@@ -231,9 +224,6 @@ cpdef object compute_network(
     cdef int gages_size = usgs_positions_list.shape[0]
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-    
-=======
 
     flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
     flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
@@ -242,7 +232,6 @@ cpdef object compute_network(
         flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
         # TODO: handle the instance where there are no values, only gage positions
 
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
     # Pseudocode: LOOP ON Upstream Inflowers
         # to pre-fill FlowVelDepth
         # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
@@ -346,11 +335,7 @@ cpdef object compute_network(
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
     cdef float a, da_weight, da_decay_time
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-    cdef int lastobs_timestep 
-=======
     cdef int lastobs_timestep
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
     cdef float dt = 300.0  # TODO: pull this value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
@@ -368,135 +353,121 @@ cpdef object compute_network(
     # minimal validation,
     # Jump straight to nogil.
 
-    with nogil:
-        while timestep < nsteps:
-            ts_offset = (timestep + 1) * qvd_ts_w
+    #with nogil:
+    while timestep < nsteps:
+        ts_offset = (timestep + 1) * qvd_ts_w
 
-            ireach_cache = 0
-            iusreach_cache = 0
-            while ireach_cache < reach_cache.shape[0]:
-                reachlen = -reach_cache[ireach_cache]
-                usreachlen = -usreach_cache[iusreach_cache]
+        ireach_cache = 0
+        iusreach_cache = 0
+        while ireach_cache < reach_cache.shape[0]:
+            reachlen = -reach_cache[ireach_cache]
+            usreachlen = -usreach_cache[iusreach_cache]
 
-                ireach_cache += 1
-                iusreach_cache += 1
+            ireach_cache += 1
+            iusreach_cache += 1
 
-                qup = 0.0
-                quc = 0.0
-                for i in range(usreachlen):
+            qup = 0.0
+            quc = 0.0
+            for i in range(usreachlen):
 
-                    '''
-                    New logic was added to handle initial conditions:
-                    When timestep == 0, the flow from the upstream segments in the previous timestep
-                    are equal to the initial conditions.
-                    '''
+                '''
+                New logic was added to handle initial conditions:
+                When timestep == 0, the flow from the upstream segments in the previous timestep
+                are equal to the initial conditions.
+                '''
 
-                    # upstream flow in the current timestep is equal the sum of flows
-                    # in upstream segments, current timestep
-                    # Headwater reaches are computed before higher order reaches, so quc can
-                    # be evaulated even when the timestep == 0.
-                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                # upstream flow in the current timestep is equal the sum of flows
+                # in upstream segments, current timestep
+                # Headwater reaches are computed before higher order reaches, so quc can
+                # be evaulated even when the timestep == 0.
+                quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
 
-                    # upstream flow in the previous timestep is equal to the sum of flows
-                    # in upstream segments, previous timestep
-                    qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - qvd_ts_w]
-                    # Remember, we have filled the first position in flowveldepth with qd0
+                # upstream flow in the previous timestep is equal to the sum of flows
+                # in upstream segments, previous timestep
+                qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - qvd_ts_w]
+                # Remember, we have filled the first position in flowveldepth with qd0
 
-                buf_view = buf[:reachlen, :]
-                out_view = out_buf[:reachlen, :]
-                drows = drows_tmp[:reachlen]
-                srows = reach_cache[ireach_cache:ireach_cache+reachlen]
+            buf_view = buf[:reachlen, :]
+            out_view = out_buf[:reachlen, :]
+            drows = drows_tmp[:reachlen]
+            srows = reach_cache[ireach_cache:ireach_cache+reachlen]
 
-                """
-                qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
-                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below,
-                the second argument, which defines the column in qlat_values that data should be drawn from, is specified
-                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep.
-                """
-                fill_buffer_column(srows,
-                                   int(timestep/qts_subdivisions),  # adjust timestep to WRF-hydro timestep
-                                   drows,
-                                   0,
-                                   qlat_values,
-                                   buf_view)
+            """
+            qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
+            which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below,
+            the second argument, which defines the column in qlat_values that data should be drawn from, is specified
+            such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep.
+            """
+            fill_buffer_column(srows,
+                                int(timestep/qts_subdivisions),  # adjust timestep to WRF-hydro timestep
+                                drows,
+                                0,
+                                qlat_values,
+                                buf_view)
 
-                for i in range(scols.shape[0]):
-                        fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+            for i in range(scols.shape[0]):
+                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
 
-                # fill buffer with qdp, depthp, velp
-                fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
-                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 1), drows, 11, flowveldepth, buf_view)
-                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 2), drows, 12, flowveldepth, buf_view)
+            # fill buffer with qdp, depthp, velp
+            fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
+            fill_buffer_column(srows, ts_offset - (qvd_ts_w - 1), drows, 11, flowveldepth, buf_view)
+            fill_buffer_column(srows, ts_offset - (qvd_ts_w - 2), drows, 12, flowveldepth, buf_view)
 
-                if assume_short_ts:
-                    quc = qup
+            if assume_short_ts:
+                quc = qup
 
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
+            compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
 
-                # copy out_buf results back to flowdepthvel
-                for i in range(qvd_ts_w):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+            # copy out_buf results back to flowdepthvel
+            for i in range(qvd_ts_w):
+                fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
 
-                # copy out_buf results back to courant
-                if return_courant:
-                    for i in range(qvd_ts_w,qvd_ts_w + 3):
-                        fill_buffer_column(drows, i, srows, ts_offset + (i-qvd_ts_w), out_view, courant)
+            # copy out_buf results back to courant
+            if return_courant:
+                for i in range(qvd_ts_w,qvd_ts_w + 3):
+                    fill_buffer_column(drows, i, srows, ts_offset + (i-qvd_ts_w), out_view, courant)
 
-                # Update indexes to point to next reach
-                ireach_cache += reachlen
-                iusreach_cache += usreachlen
+            # Update indexes to point to next reach
+            ireach_cache += reachlen
+            iusreach_cache += usreachlen
 
-                if gages_size:  # TODO: This loops over all gages for all reaches.
-                                # We should have a membership test at the reach loop level
-                                # so that we only enter this process for reaches where the
-                                # gage actually exists. We have the filter in place to
-                                # filter the gage list so that only relevant gages for a
-                                # particular network are present in the function call ---
-                                # adding the reach-based filter would be the next level.
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-                    for gage_i in range(gages_size):                            
-                        usgs_position_i = usgs_positions_list[gage_i]
-                        if timestep == last_obs_start and found_last_obs == 0:
-                            flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
-                            decay_timestep = 2
-                            found_last_obs = 1
-                            #printf("equal to lastobsstart")
-                        elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
-                            flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-                            lastobs_values_stored = usgs_values[gage_i, timestep]
-                            #printf("last_obs_check <: %d\t", found_last_obs)
-                        #elif timestep == gage_maxtimestep and found_last_obs != 1:
-                            #flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
-                            #decay_timestep += 1
-                            #flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
-                            #lastobs_values_stored = usgs_values[gage_i, timestep]
-                            #printf("equal to maxtimestep")
-                            #printf("last_obs_check =: %d\t", found_last_obs)
-                        else:
-                            #printf("last_obs_check >: %d\t", found_last_obs)
-                            a = 120  # TODO: pull this a value from the config file somehow
-                            da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                            flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]
-                            decay_timestep += 1 
-                            #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
-                            #da_decay_time = (decay_timestep - lastobs_timestep) * dt
-                            #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
-                            # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                            # printf("decaying from timestep: %d %d\t", timestep, gages_size)
-=======
-                    for gage_i in range(gages_size):
-                        usgs_position_i = usgs_positions_list[gage_i]
-                        if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
-                            flowveldepth[usgs_position_i, ts_offset] = usgs_values[gage_i, timestep]
-                            # TODO: add/update lastobs_timestep and/or decay_timestep
-                        else:
-                            a = 120  # TODO: pull this a value from the config file somehow
-                            da_decay_time = (timestep - lastobs_timestep) * dt
-                            da_weight = exp(da_decay_time/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                            # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                            # printf("decaying from timestep: %d %d\t", timestep, gages_size)
-                            # flowveldepth[usgs_position_i, timestep * qvd_ts_w] = replacement_value
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
+            if gages_size:  # TODO: This loops over all gages for all reaches.
+                            # We should have a membership test at the reach loop level
+                            # so that we only enter this process for reaches where the
+                            # gage actually exists. We have the filter in place to
+                            # filter the gage list so that only relevant gages for a
+                            # particular network are present in the function call ---
+                            # adding the reach-based filter would be the next level.
+                for gage_i in range(gages_size):                            
+                    usgs_position_i = usgs_positions_list[gage_i]
+                    #if timestep == last_obs_start and found_last_obs == 0:
+                    if found_last_obs == 0:
+                        flowveldepth[usgs_position_i, timestep * 3] = lastobs_values[gage_i, timestep]
+                        decay_timestep = 2
+                        found_last_obs = 1
+                        #printf("equal to lastobsstart")
+                    elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
+                        flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                        lastobs_values_stored = usgs_values[gage_i, timestep]
+                        #printf("last_obs_check <: %d\t", found_last_obs)
+                    #elif timestep == gage_maxtimestep and found_last_obs != 1:
+                        #flowveldepth[usgs_position_i, timestep * 3] = lastobs_values_stored
+                        #decay_timestep += 1
+                        #flowveldepth[usgs_position_i, timestep * 3] = usgs_values[gage_i, timestep]
+                        #lastobs_values_stored = usgs_values[gage_i, timestep]
+                        #printf("equal to maxtimestep")
+                        #printf("last_obs_check =: %d\t", found_last_obs)
+                    else:
+                        #printf("last_obs_check >: %d\t", found_last_obs)
+                        a = 120  # TODO: pull this a value from the config file somehow
+                        da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                        flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]
+                        decay_timestep += 1 
+                        #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
+                        #da_decay_time = (decay_timestep - lastobs_timestep) * dt
+                        #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
+                        # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+                        # printf("decaying from timestep: %d %d\t", timestep, gages_size)
 
             timestep += 1
 
@@ -784,10 +755,7 @@ cpdef object compute_network_structured_obj(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
     int last_obs_start,
-=======
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1005,13 +973,7 @@ cpdef object compute_network_structured_obj(
             compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                  len(r), buf_view,
                                  out_buf,
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-                                 assume_short_ts)#,
-                                 #timestep,
-                                 #nsteps)
-=======
                                  assume_short_ts)
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
 
             # #a = 120
             # #weight = math.exp(timestep/-a)
@@ -1060,10 +1022,7 @@ cpdef object compute_network_structured(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
     int last_obs_start,
-=======
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1256,10 +1215,6 @@ cpdef object compute_network_structured(
                 upstream_flows = previous_upstream_flows
 
               if r.type == compute_type.RESERVOIR_LP:
-<<<<<<< HEAD:src/python_routing_v02/fast_reach/mc_reach.pyx
-                run(r, upstream_flows, 0.0, 300, &lp_outflow, &lp_water_elevation)  # TODO: Need to replace this hard coded 300 with dt
-                flowveldepth[r.id, timestep, 0] = lp_outflow
-=======
                 run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
@@ -1268,7 +1223,6 @@ cpdef object compute_network_structured(
               elif r.type == compute_type.RESERVOIR_HYBRID:
                 run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
->>>>>>> 14fa7926b0fa7907526e8692a29b4457660eece9:src/python_routing_v02/troute/routing/fast_reach/mc_reach.pyx
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
