@@ -1154,6 +1154,20 @@ cpdef object compute_network_structured(
                 #tuple of MC_Reach and reach_type
                 MC_Reach(segment_objects, array('l',upstream_ids))
                 )
+            
+    cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
+    cdef Py_ssize_t fill_index
+    cdef long upstream_tw_id
+    cdef dict tmp
+    cdef int idx
+    cdef float val
+
+    for upstream_tw_id in upstream_results:
+        tmp = upstream_results[upstream_tw_id]
+        fill_index = tmp["position_index"]
+        fill_index_mask[fill_index] = False
+        for idx, val in enumerate(tmp["results"]):
+            flowveldepth_nd[fill_index, np.floor(idx//3).astype('int')+1, idx%3] = val
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
@@ -1246,4 +1260,4 @@ cpdef object compute_network_structured(
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask]
