@@ -45,6 +45,7 @@ def compute_nhd_routing_v02(
     qlats,
     usgs_df,
     last_obs_df,
+    last_obs_start,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -181,10 +182,18 @@ def compute_nhd_routing_v02(
                         nudging_positions_list = []
 
                     last_obs_sub = pd.DataFrame()
-
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-
+                    
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
                     # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -193,7 +202,16 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -329,10 +347,19 @@ def compute_nhd_routing_v02(
                         nudging_positions_list = []
 
                     last_obs_sub = pd.DataFrame()
-
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-
+                    
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
                     # Eventually, the wiring for reservoir simulation needs to be added.
@@ -340,7 +367,16 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-
+                    if not last_obs_df.empty and not usgs_df.empty:
+                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df = last_obs_df.reset_index()
+                        last_obs_df = last_obs_df.set_index("usgs_index")
+                        last_obs_df = last_obs_df.drop(['to'],axis=1)
+                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -462,9 +498,27 @@ def compute_nhd_routing_v02(
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
-
+                # import pdb; pdb.set_trace() 
+            
                 last_obs_sub = pd.DataFrame()
-
+                qlat_sub = qlats.loc[param_df_sub.index]
+                q0_sub = q0.loc[param_df_sub.index]
+                
+                if not last_obs_df.empty and not usgs_df.empty:
+                    # index values for last obs are not correct, but line up correctly with usgs values. Switched
+                    
+                    last_obs_df['usgs_index'] = usgs_df.index
+                    last_obs_df = last_obs_df.reset_index()
+                    last_obs_df = last_obs_df.set_index("usgs_index")
+                    last_obs_df = last_obs_df.drop(['to'],axis=1)
+                    lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
+                    nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                    last_obs_sub = last_obs_df.loc[lastobs_segs]
+                # TODO: Wire in the proper reservoir distinction
+                # At present, in by-subnetwork-jit/jit-clustered, these next two lines
+                # only produce a dummy list, but...
+                # Eventually, the wiring for reservoir simulation needs to be added.
+                
                 reaches_list_with_type = []
 
                 for reaches in reach_list:
@@ -502,7 +556,7 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-
+                import pdb; pdb.set_trace()
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -523,6 +577,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
                         last_obs_sub.values.astype("float32"),
+                        last_obs_start,
                         {},
                         assume_short_ts,
                         return_courant,
