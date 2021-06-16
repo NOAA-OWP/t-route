@@ -1155,6 +1155,17 @@ cpdef object compute_network_structured(
                 MC_Reach(segment_objects, array('l',upstream_ids))
                 )
             
+    # replace initial conditions with gage observations, wherever available
+    cdef int gages_size = usgs_positions_list.shape[0]
+    cdef int gage_i, usgs_position_i
+    cdef int gage_maxtimestep = usgs_values.shape[1]
+
+    if gages_size:
+        for gage_i in range(gages_size):
+            usgs_position_i = usgs_positions_list[gage_i]
+            flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
+            # TODO: handle the instance where there are no values, only gage positions
+    
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
     cdef long upstream_tw_id
@@ -1226,7 +1237,7 @@ cpdef object compute_network_structured(
                 #Create compute reach kernel input buffer
                 for i in range(r.reach.mc_reach.num_segments):
                   segment = get_mc_segment(r, i)#r._segments[i]
-                  buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qlat_resample)]
+                  buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
                   buf_view[i, 1] = segment.dt
                   buf_view[i, 2] = segment.dx
                   buf_view[i, 3] = segment.bw
@@ -1251,6 +1262,13 @@ cpdef object compute_network_structured(
                   flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
                   flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
                   flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
+                    
+        if gages_size:
+            for gage_i in range(gages_size):
+                usgs_position_i = usgs_positions_list[gage_i]
+                if timestep < gage_maxtimestep:
+                    flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
+               
 
         timestep += 1
     #pr.disable()
