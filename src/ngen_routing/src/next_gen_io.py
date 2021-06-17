@@ -19,12 +19,15 @@ def read_catchment_lateral_flows(path):
     catchment_id_list = []
 
     for file_name in os.listdir(path):
-       if file_name.startswith("cat-"):
+       #if file_name.startswith("cat-"):
+       if file_name.startswith("nex-"):
           file_name_str_list = file_name.split("_")
+          #file_name_str_list = file_name.split(".")
           catchment_id = int(file_name_str_list[0][4 :])
           catchment_id_list.append(catchment_id)
           # Read the second column of a csv file and return a series. The index will be an autoincrementing range.
-          catchment_qlats = pd.read_csv(os.path.join(path, file_name), usecols=['Flow'], squeeze=True)
+          #catchment_qlats = pd.read_csv(os.path.join(path, file_name), usecols=['Flow'], squeeze=True)
+          catchment_qlats = pd.read_csv(os.path.join(path, file_name), usecols=[2], squeeze=True)
           catchment_qlats.rename(catchment_id, inplace=True)
           ql.append(catchment_qlats)
 
