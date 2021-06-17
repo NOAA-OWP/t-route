@@ -9,7 +9,7 @@ from libc.math cimport exp
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
-# from libc.stdio cimport printf
+from libc.stdio cimport printf
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
@@ -470,7 +470,8 @@ cpdef object compute_network(
                         #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                         #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                         # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                        # printf("decaying from timestep: %d %d\t", timestep, gages_size)
+                        printf("decaying from timestep: %d %d %d %d\t", flowveldepth[usgs_position_i, timestep * 3], (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) ,lastobs_values_stored, da_weight)
+                       
 
             timestep += 1
 
