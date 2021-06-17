@@ -401,10 +401,10 @@ def preprocess_time_station_index(xd):
         data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
     )
 
-
+        
 def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
     # open routelink_file and extract discharges
-
+    last_obs_date = str(datetime.strptime(lastobsfile[-22:-3], "%Y-%m-%d_%H:%M:%S"))
     ds1 = xr.open_dataset(routelink)
     df = ds1.to_dataframe()
     df2 = df.loc[df["gages"] != b"               "]
@@ -485,7 +485,94 @@ def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
         #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
         #             )
         # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
-        return final_df
+
+        return final_df, last_obs_date
+
+
+# def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
+#     # open routelink_file and extract discharges
+
+#     ds1 = xr.open_dataset(routelink)
+#     df = ds1.to_dataframe()
+#     df2 = df.loc[df["gages"] != b"               "]
+#     df2["gages"] = df2["gages"].astype("int")
+#     df2 = df2[["gages", "to"]]
+#     df2 = df2.reset_index()
+#     df2 = df2.set_index("gages")
+
+#     with xr.open_dataset(lastobsfile) as ds:
+#         df_model_discharges = ds["model_discharge"].to_dataframe()
+#         df_discharges = ds["discharge"].to_dataframe()
+#         last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
+#         model_discharge_last_ts = df_model_discharges[
+#             df_model_discharges.index.get_level_values("timeInd") == last_ts
+#         ]
+#         discharge_last_ts = df_discharges[
+#             df_discharges.index.get_level_values("timeInd") == last_ts
+#         ]
+#         df1 = ds["stationId"].to_dataframe()
+#         df1 = df1.astype(int)
+#         model_discharge_last_ts = model_discharge_last_ts.join(df1)
+#         model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
+#         model_discharge_last_ts = model_discharge_last_ts.loc[
+#             model_discharge_last_ts["model_discharge"] != -9999.0
+#         ]
+#         model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index(
+#             "stationId"
+#         )
+#         model_discharge_last_ts = model_discharge_last_ts.drop(
+#             ["stationIdInd", "timeInd"], axis=1
+#         )
+#         model_discharge_last_ts["discharge"] = model_discharge_last_ts[
+#             "discharge"
+#         ].to_frame()
+#         # If predict from last_obs file use last obs file results
+#         # if last_obs_file == "error-based":
+#         # elif last_obs_file == "obs-based":  # the wrf-hydro default
+#         if wrf_last_obs_flag:
+#             model_discharge_last_ts["last_nudge"] = (
+#                 model_discharge_last_ts["discharge"]
+#                 - model_discharge_last_ts["model_discharge"]
+#             )
+#         final_df = df2.join(model_discharge_last_ts["discharge"])
+#         final_df = final_df.reset_index()
+#         final_df = final_df.set_index("to")
+#         final_df = final_df.drop(["feature_id", "gages"], axis=1)
+#         final_df = final_df.dropna()
+
+#         # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
+#         # else:
+#         #     fvd_df = fvd_df
+#         #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
+#         #         model_discharge_last_ts["last_nudge"] = (
+#         #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
+#         #         )
+#         #     else:
+#         #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
+#         #         sys.exit()
+#         # # Predictions created with continuously decreasing deltas until near 0 difference
+#         # a = 120
+#         # prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
+
+#         # for time in range(0, 720, 5):
+#         #     weight = math.exp(time / -a)
+#         #     delta = pd.DataFrame(
+#         #         model_discharge_last_ts["last_nudge"] / weight)
+
+#         #     if time == 0:
+#         #         prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
+#         #         weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
+#         #     else:
+#         #         if weight > 0.1:
+#         #             prediction_df[str(time)] = (
+#         #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+#         #             )
+#         #         elif weight < -0.1:
+#         #             prediction_df[str(time)] = (
+#         #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
+#         #             )
+#         # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
+#         return final_df
 
 
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
@@ -853,3 +940,12 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+def get_last_obs_location(qlats_df,last_obs_date):
+    dates = []
+    
+    for j in pd.date_range(qlats_df.columns[0], qlats_df.columns[-1], freq="5min"):
+        dates.append(j.strftime("%Y-%m-%d %H:%M:00"))
+    last_obs_start = dates.index(last_obs_date)
+
+    return last_obs_start

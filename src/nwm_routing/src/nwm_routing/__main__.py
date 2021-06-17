@@ -276,9 +276,9 @@ def _handle_args_v02(argv):
         default=None,
     )
     parser.add_argument(
-        "--data_assimilation_filter",
+        "--data_assimilation_folder",
         help="Provide a glob pattern filter for ncdf files (e.g., 2020-03-21*.usgsTimeSlice.ncdf)",
-        dest="data_assimilation_filter",
+        dest="data_assimilation_folder",
         default=None,
     )
     parser.add_argument(
@@ -470,13 +470,14 @@ def main_v02(argv):
 
     forcing_parameters["qts_subdivisions"] = run_parameters["qts_subdivisions"]
     forcing_parameters["nts"] = run_parameters["nts"]
+
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         param_df.index,
         nts,
         run_parameters.get("qts_subdivisions", 1),
     )
-
+  
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -486,16 +487,31 @@ def main_v02(argv):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_folder", None
     )
-    if data_assimilation_csv or data_assimilation_filter:
+    last_obs_file = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_file", None
+    )
+    
+    last_obs_df = pd.DataFrame()
+    if last_obs_file:
+        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
+        # import pdb; pdb.set_trace()
+        last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
+        
+        
+    else:
+        usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
+        last_obs_start = -1
+
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df, _ = nnu.build_data_assimilation(data_assimilation_parameters)
+        
 
         if verbose:
             print("usgs array complete")
@@ -506,7 +522,7 @@ def main_v02(argv):
         usgs_df = pd.DataFrame()
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    last_obs_df = pd.DataFrame()
+    
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -546,6 +562,7 @@ def main_v02(argv):
         qlats,
         usgs_df,
         last_obs_df,
+        last_obs_start,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df,
@@ -690,6 +707,7 @@ def nwm_route(
     qlats,
     usgs_df,
     last_obs_df,
+    last_obs_start,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -734,6 +752,7 @@ def nwm_route(
         qlats,
         usgs_df,
         last_obs_df,
+        last_obs_start,
         assume_short_ts,
         return_courant,
         waterbodies_df,
@@ -884,6 +903,7 @@ def main_v03(argv):
             qlats,
             usgs_df,
             last_obs_df,
+            last_obs_start,
             assume_short_ts,
             return_courant,
             waterbodies_df,
