@@ -493,7 +493,7 @@ def main_v02(argv):
     last_obs_file = data_assimilation_parameters.get(
         "wrf_hydro_last_obs_file", None
     )
-    import pdb;
+    
     last_obs_df = pd.DataFrame()
     if last_obs_file:
         usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)

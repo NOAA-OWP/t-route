@@ -438,6 +438,8 @@ cpdef object compute_network(
                             # filter the gage list so that only relevant gages for a
                             # particular network are present in the function call ---
                             # adding the reach-based filter would be the next level.
+                
+                
                 for gage_i in range(gages_size):                            
                     usgs_position_i = usgs_positions_list[gage_i]
                     if timestep == last_obs_start and found_last_obs == 0:
@@ -464,7 +466,7 @@ cpdef object compute_network(
                         #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
                         flowveldepth[usgs_position_i, timestep * 3] = (lastobs_values_stored * flowveldepth[usgs_position_i, timestep * 3] * da_weight) + flowveldepth[usgs_position_i, timestep * 3]
                         #decay_timestep += 1 
-                        #printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
+                        printf("decaying from timestep: %d %d %f\t", timestep, decay_timestep, lastobs_values_stored)
                         #da_decay_time = (decay_timestep - lastobs_timestep) * dt
                         #flowveldepth[usgs_position_i, timestep * 3] = flowveldepth[usgs_position_i, timestep * 3] + replacement_value
                         # f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
