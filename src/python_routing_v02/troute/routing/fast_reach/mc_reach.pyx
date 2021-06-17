@@ -1173,12 +1173,14 @@ cpdef object compute_network_structured(
     cdef int idx
     cdef float val
 
-    for upstream_tw_id in upstream_results:
+    for upstream_tw_id in upstream_results:  
         tmp = upstream_results[upstream_tw_id]
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
-            flowveldepth_nd[fill_index, np.floor(idx//3).astype('int')+1, idx%3] = val
+            flowveldepth_nd[fill_index, (idx//3) + 1, idx%3] = val
+            flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
+            flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )
