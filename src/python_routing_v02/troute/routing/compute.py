@@ -286,7 +286,7 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-
+        
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -720,7 +720,7 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-                # import pdb; pdb.set_trace()
+
                 jobs.append(
                     delayed(compute_func)(
                         nts,

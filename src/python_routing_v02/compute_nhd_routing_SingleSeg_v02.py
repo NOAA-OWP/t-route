@@ -489,7 +489,7 @@ def compute_nhd_routing_v02(
                         nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
                         
-                    
+                    import pdb; pdb.set_trace()
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -798,7 +798,8 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-
+                import pdb; pdb.set_trace()
+                
                 jobs.append(
                     delayed(compute_func)(
                         nts,

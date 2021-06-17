@@ -66,7 +66,7 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
-    qlat_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
+    qlat_file_pattern_filter: "201809180[0-8]*.CHRTOUT_DOMAIN1"
     # qlat_input_file: "florence_qlat_test.csv.hourly"
     qlat_file_index_col: feature_id
     qlat_file_value_col: q_lateral
@@ -95,7 +95,7 @@ data_assimilation_parameters:
     data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
     data_assimilation_filter: "2018-09-18_0[0-9]*.usgsTimeSlice.ncdf"
     wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    # wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
     wrf_last_obs_type: "obs-based"
     # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
@@ -104,11 +104,11 @@ parity_parameters:
     # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
     parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
     # parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
-    parity_check_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
+    parity_check_file_pattern_filter: "201809180[0-8]*.CHRTOUT_DOMAIN1"
     # parity_check_file: "florence_streamflow_test.csv.hourly"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
-    parity_check_compare_node: 10975909
+    parity_check_compare_node: 8777381
     # parity_check_compare_node: 8778771  # Headwater
     # parity_check_compare_node: 8778459  # Midwater
     # parity_check_compare_node: 8778201  # Midwater
