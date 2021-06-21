@@ -1172,7 +1172,7 @@ cpdef object compute_network_structured(
     cdef int idx
     cdef float val
 
-    for upstream_tw_id in upstream_results: 
+    for upstream_tw_id in upstream_results:
         tmp = upstream_results[upstream_tw_id]
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
