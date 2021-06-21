@@ -504,7 +504,6 @@ def main_v02(argv):
         usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(
             data_assimilation_parameters
         )
-        # import pdb; pdb.set_trace()
         last_obs_start = nhd_io.get_last_obs_location(qlats, last_obs_date)
 
     else:
@@ -545,7 +544,6 @@ def main_v02(argv):
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-    # import pdb;pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,
