@@ -183,9 +183,28 @@ def fp_dbcd_map(usgsID2tw
                 , usgspCd
                 ):
    
+    import pandas as pd
+    elev_flag=0
+    stage_flag=1
+    discharge_flag=0
+    daylightsaving_flag=1 # 0: daylight saving deactivated, 1: activated.    
     
-    # ** 1) downstream stage (here, lake elevation) boundary condition
+    usgssDT_pd=pd.to_datetime(usgssDT)
+    usgseDT_pd=pd.to_datetime(usgseDT)
+    diff= usgseDT_pd-usgssDT_pd 
+    totalmin= divmod(diff.total_seconds(),60) # total minutes between usgs data start and end dates
+    if daylightsaving_flag==1:
+        nts_db_g=int(totalmin[0]/15+1) 
+    else:
+        nts_db_g=int(totalmin[0]/15+1)-4
+        
+    dbcd_g= np.ones((nts_db_g,6))*-100.0 # columns 0 and 1: accumulated minutes and water depth
+                                   # columns 2 and 3: accumulated minutes and discharge
+                                   # columns 4 and 5: accumulated minutes and lake elevation    
+
     from nwis_client.iv import IVDataService
+
+    
     #from evaluation_tools.nwis_client.iv import IVDataService
     # Retrieve streamflow and stage data from two sites
         # Note: 1. Retrieved data all are based on UTC time zone (UTC is 4 hours ahead of Eastern Time during
@@ -205,38 +224,115 @@ def fp_dbcd_map(usgsID2tw
         #          2018-08-31-22:15:00
         #          2018-08-31-22:30:00
         #          2018-08-31-22:45:00
-        #          2018-08-31-23:00:00        
+        #          2018-08-31-23:00:00
+        # Note: This time delay only occurs when daylight saving is deactivated.  During daylight saving, the
+        #          example yields
+        #          2018-08-01-00:00:00
+        #          2018-08-01-00:15:00
+        #               .......
+        #          2018-08-31-23:45:00
+        #          2018-09-01-00:00:00
         #       4. '00060' for discharge [ft^3/s]  
         #          '00065' for stage [ft]
         #          '62614' for Elevation, lake/res,NGVD29 [ft]
-    observations_data = IVDataService.get(
+    
+    # ** 1) when lake elevation is available for downstream boundary condition 
+    if elev_flag==1:
+        observations_data = IVDataService.get(
                                             sites= usgsID2tw,   #sites='01646500,0208758850', 
                                             startDT=usgssDT,      #'2018-08-01', 
                                             endDT=usgseDT,         #'2020-09-01', 
-                                            #parameterCd='62614'
-                                            parameterCd=usgspCd)  
-    nts_db_g=len(observations_data)-4
-    #print(f"nts_db_g:{nts_db_g}")
-    #test
-    #for tsi in range(0,nts_db_g):
-    #    print(f"observatons_data date:{observations_data.iloc[tsi,0]} value:{observations_data.iloc[tsi,4]}")        
-    #for tsi in range(0,nts_db_g):
-    #    i=tsi+4
-    #    print(f"observatons_data shifted date:{observations_data.iloc[i,0]} value:{observations_data.iloc[i,4]}")
-    
+                                            parameterCd='62614'
+                                            #parameterCd=usgspCd
+                                          )          
+        
+        # ** 4 is added to make data used here has its date time as from startDT 00:00 to (endDT-1day) 23:00, UTC 
+        # ** usgs data at this site uses NGVD1929 feet datum while 'alt' of RouteLink uses NAD88 meter datum.
+        #  -> Has to convert accordingly !!!!
+        if daylightsaving_flag==1:
+            datalen=len(observations_data)
+        else:
+            datalen=len(observations_data)-4
+        
+        ## when elevation data is retrieved,
+        #source: https://pubs.usgs.gov/sir/2010/5040/section.html
+        # Over most USGS study area it is used that NGVD = NAVD88 - 3.6 feet
+        #dbcd_g= np.zeros((nts_db_g,2))
+        for tsi in range(0,datalen):
+            if daylightsaving_flag==1:
+                tval= observations_data.iloc[tsi,0] # date and time
+                mval= observations_data.iloc[tsi,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time.                
+            else:
+                i=tsi+4
+                tval= observations_data.iloc[i,0] # date and time
+                mval= observations_data.iloc[i,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time.             
+            dbcd_g[tsi,4]= totaldiff[0]
+            dbcd_g[tsi,5]= 0.3048*(mval+3.6)  # accuracy with +-0.5feet for 95 percent of USGS study area. 
+                                                          # 0.3048 to covert ft to meter.
+    # ** 2) when water stage is available for downstream boundary condition
+    if stage_flag==1:
+        observations_data = IVDataService.get(
+                                            sites= usgsID2tw,   #sites='01646500,0208758850', 
+                                            startDT=usgssDT,      #'2018-08-01', 
+                                            endDT=usgseDT,         #'2020-09-01', 
+                                            parameterCd='00065'
+                                            #parameterCd=usgspCd
+                                          )  
+        if daylightsaving_flag==1:
+            datalen=len(observations_data)
+        else:
+            datalen=len(observations_data)-4
+ 
+        for tsi in range(0, datalen):
+            if daylightsaving_flag==1:
+                tval= observations_data.iloc[tsi,0] # date and time
+                mval= observations_data.iloc[tsi,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time.
+            else:
+                i=tsi+4
+                tval= observations_data.iloc[i,0] # date and time
+                mval= observations_data.iloc[i,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time. 
+            
+            dbcd_g[tsi,0]= totaldiff[0]
+            dbcd_g[tsi,1]= 0.3048*mval # 0.3048 to covert ft to meter.
 
-    # ** 4 is added to make data used here has its date time as from startDT 00:00 to (endDT-1day) 23:00, UTC 
-    # ** usgs data at this site uses NGVD1929 feet datum while 'alt' of RouteLink uses NAD88 meter datum.
-    #  -> Has to convert accordingly !!!!
-    # 
-    #source: https://pubs.usgs.gov/sir/2010/5040/section.html
-    # Over most USGS study area it is used that NGVD = NAVD88 - 3.6 feet
-    dbcd_g= np.zeros(nts_db_g)
-    for tsi in range(0,nts_db_g):
-        i=tsi+4
-        dmy= observations_data.iloc[i,4]   
-        dbcd_g[tsi]= 0.3048*(dmy+3.6)  # accuracy with +-0.5feet for 95 percent of USGS study area. 
-                                                          # 0.3048 to covert ft to meter. [meter]
+        
+    # ** 3) Additionally when discharge is available for downstream boundary condition    
+    if discharge_flag==1:
+        observations_data = IVDataService.get(
+                                            sites= usgsID2tw,   #sites='01646500,0208758850', 
+                                            startDT=usgssDT,      #'2018-08-01', 
+                                            endDT=usgseDT,         #'2020-09-01', 
+                                            parameterCd='00060'
+                                            #parameterCd=usgspCd
+                                          )  
+        if daylightsaving_flag==1:
+            datalen=len(observations_data)
+        else:
+            datalen=len(observations_data)-4
+        
+        for tsi in range(0, datalen):
+            if daylightsaving_flag==1:
+                tval= observations_data.iloc[tsi,0] # date and time
+                mval= observations_data.iloc[tsi,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time.
+            else:
+                i=tsi+4
+                tval= observations_data.iloc[i,0] # date and time
+                mval= observations_data.iloc[i,4] # usgs measured value 
+                diff= tval-usgssDT_pd
+                totaldiff=divmod(diff.total_seconds(),60) #total minute difference between tval and given start time.            
+            dbcd_g[tsi,2]= totaldiff[0]
+            dbcd_g[tsi,3]= 0.028317*mval   # 0.028317 to covert cfs to cms.
+    
     
     return nts_db_g, dbcd_g
 
