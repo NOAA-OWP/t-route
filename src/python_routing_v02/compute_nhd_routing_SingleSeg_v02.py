@@ -456,20 +456,23 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
-                    
-                    
+
                     last_obs_sub = pd.DataFrame()
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
+
                     if not last_obs_df.empty and not usgs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df["usgs_index"] = usgs_df.index
                         last_obs_df = last_obs_df.reset_index()
                         last_obs_df = last_obs_df.set_index("usgs_index")
-                        last_obs_df = last_obs_df.drop(['to'],axis=1)
-                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_df = last_obs_df.drop(["to"], axis=1)
+                        lastobs_segs = list(
+                            last_obs_df.index.intersection(param_df_sub.index)
+                        )
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            lastobs_segs
+                        )
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
                     # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
@@ -481,15 +484,21 @@ def compute_nhd_routing_v02(
                     )
                     if not last_obs_df.empty and not usgs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df["usgs_index"] = usgs_df.index
                         last_obs_df = last_obs_df.reset_index()
                         last_obs_df = last_obs_df.set_index("usgs_index")
-                        last_obs_df = last_obs_df.drop(['to'],axis=1)
-                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_df = last_obs_df.drop(["to"], axis=1)
+                        lastobs_segs = list(
+                            last_obs_df.index.intersection(param_df_sub.index)
+                        )
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            lastobs_segs
+                        )
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
-                        
-                    import pdb; pdb.set_trace()
+
+                    import pdb
+
+                    pdb.set_trace()
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -624,20 +633,23 @@ def compute_nhd_routing_v02(
                     else:
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
-                    
-                    
+
                     last_obs_sub = pd.DataFrame()
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
+
                     if not last_obs_df.empty and not usgs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                        last_obs_df['usgs_index'] = usgs_df.index
+                        last_obs_df["usgs_index"] = usgs_df.index
                         last_obs_df = last_obs_df.reset_index()
                         last_obs_df = last_obs_df.set_index("usgs_index")
-                        last_obs_df = last_obs_df.drop(['to'],axis=1)
-                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                        last_obs_df = last_obs_df.drop(["to"], axis=1)
+                        lastobs_segs = list(
+                            last_obs_df.index.intersection(param_df_sub.index)
+                        )
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            lastobs_segs
+                        )
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -646,7 +658,9 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-                    import pdb;pdb.set_trace()
+                    import pdb
+
+                    pdb.set_trace()
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -750,9 +764,7 @@ def compute_nhd_routing_v02(
 
                 if not usgs_df.empty:
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                    nudging_positions_list = param_df_sub.index.get_indexer(
-                        usgs_segs
-                    )
+                    nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                     usgs_df_sub = usgs_df.loc[usgs_segs]
                     usgs_df_sub.drop(
                         usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
@@ -760,20 +772,23 @@ def compute_nhd_routing_v02(
                 else:
                     usgs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
-                
-                
+
                 last_obs_sub = pd.DataFrame()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
-                
+
                 if not last_obs_df.empty and not usgs_df.empty:
                     # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                    last_obs_df['usgs_index'] = usgs_df.index
+                    last_obs_df["usgs_index"] = usgs_df.index
                     last_obs_df = last_obs_df.reset_index()
                     last_obs_df = last_obs_df.set_index("usgs_index")
-                    last_obs_df = last_obs_df.drop(['to'],axis=1)
-                    lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                    nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
+                    last_obs_df = last_obs_df.drop(["to"], axis=1)
+                    lastobs_segs = list(
+                        last_obs_df.index.intersection(param_df_sub.index)
+                    )
+                    nudging_positions_list = param_df_sub.index.get_indexer(
+                        lastobs_segs
+                    )
                     last_obs_sub = last_obs_df.loc[lastobs_segs]
 
                 reaches_list_with_type = []
@@ -798,7 +813,7 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-                
+
                 jobs.append(
                     delayed(compute_func)(
                         nts,
@@ -823,7 +838,7 @@ def compute_nhd_routing_v02(
                     )
                 )
             results = parallel(jobs)
-    
+
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
@@ -869,28 +884,23 @@ def compute_nhd_routing_v02(
 
             if not usgs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
-                nudging_positions_list = param_df_sub.index.get_indexer(
-                    usgs_segs
-                )
+                nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(
-                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                )
+                usgs_df_sub.drop(usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True)
             else:
                 usgs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
-            
-            
+
             last_obs_sub = pd.DataFrame()
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
-            
+
             if not last_obs_df.empty and not usgs_df.empty:
                 # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                last_obs_df['usgs_index'] = usgs_df.index
+                last_obs_df["usgs_index"] = usgs_df.index
                 last_obs_df = last_obs_df.reset_index()
                 last_obs_df = last_obs_df.set_index("usgs_index")
-                last_obs_df = last_obs_df.drop(['to'],axis=1)
+                last_obs_df = last_obs_df.drop(["to"], axis=1)
                 lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                 last_obs_sub = last_obs_df.loc[lastobs_segs]
@@ -924,7 +934,7 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type.append(reach_and_type_tuple)
             """
-            
+
             results.append(
                 compute_func(
                     nts,
@@ -1261,12 +1271,12 @@ def main():
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     if last_obs_file:
-        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
-        last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
+        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(
+            data_assimilation_parameters
+        )
+        last_obs_start = nhd_io.get_last_obs_location(qlats, last_obs_date)
     else:
         usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
         last_obs_start = -1
@@ -1286,7 +1296,6 @@ def main():
         usgs_df = pd.DataFrame()
         last_obs_df = pd.DataFrame()
     # Get last obs timestep number
-
 
     # STEP 7
     coastal_boundary_elev = coastal_parameters.get("coastal_boundary_elev_data", None)

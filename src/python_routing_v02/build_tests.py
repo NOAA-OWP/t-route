@@ -219,7 +219,7 @@ def parity_check(
     flows.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
-  
+
     depths = flowveldepth.loc[:, (slice(None), "d")]
     depths = depths.T.reset_index(level=[0, 1])
     depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)

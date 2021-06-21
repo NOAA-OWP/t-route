@@ -355,26 +355,35 @@ def main_v02(argv):
             .set_index("lake_id")
         )
 
-        #Declare empty dataframe
+        # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype="hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype = "hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
-        wbtype="level_pool"
-        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        wbtype = "level_pool"
+        wb_params_level_pool = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
         waterbody_type_specified = False
 
-        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
-        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
-        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
+        if (
+            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
+            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
+            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
+        ):
 
             waterbody_type_specified = True
 
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
-                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
+                wb_params_level_pool["level_pool_waterbody_id"],
+                wbodies.values(),
+            )
 
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
@@ -384,7 +393,7 @@ def main_v02(argv):
             )
 
     else:
-        #Declare empty dataframe
+        # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
@@ -396,9 +405,7 @@ def main_v02(argv):
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        list(waterbodies_df.index.values)
-        if break_network_at_waterbodies
-        else None,
+        list(waterbodies_df.index.values) if break_network_at_waterbodies else None,
     )
     if verbose:
         print("reach organization complete")
@@ -477,7 +484,7 @@ def main_v02(argv):
         nts,
         run_parameters.get("qts_subdivisions", 1),
     )
-  
+
     if verbose:
         print("qlateral array complete")
     if showtiming:
@@ -490,17 +497,16 @@ def main_v02(argv):
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_folder", None
     )
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
-    
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+
     last_obs_df = pd.DataFrame()
     if last_obs_file:
-        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(data_assimilation_parameters)
+        usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(
+            data_assimilation_parameters
+        )
         # import pdb; pdb.set_trace()
-        last_obs_start = nhd_io.get_last_obs_location(qlats,last_obs_date)
-        
-        
+        last_obs_start = nhd_io.get_last_obs_location(qlats, last_obs_date)
+
     else:
         usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
         last_obs_start = -1
@@ -511,8 +517,6 @@ def main_v02(argv):
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        
-
         if verbose:
             print("usgs array complete")
         if showtiming:
@@ -522,7 +526,6 @@ def main_v02(argv):
         usgs_df = pd.DataFrame()
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
