@@ -236,7 +236,6 @@ def parity_check(
         (wrf_time[0] - dt_wrf + dt_routing), periods=nts, freq=dt_routing
     ).astype("datetime64[ns]")
     time_wrf = validation_data.columns.values
-    print(time_wrf)
 
     if compare_node in validation_data.index:
 
