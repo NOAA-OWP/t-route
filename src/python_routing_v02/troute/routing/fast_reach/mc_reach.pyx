@@ -1055,8 +1055,7 @@ cpdef object compute_network_structured(
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
-    #pre compute the qlat resample fraction
-    cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
+    cdef int qvd_ts_w = 3  # There are 3 values per timestep (corresponding to 3 columns per timestep)
 
     cdef long sid
     cdef _MC_Segment segment
@@ -1178,7 +1177,7 @@ cpdef object compute_network_structured(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
-            flowveldepth_nd[fill_index, (idx//3) + 1, idx%3] = val
+            flowveldepth_nd[fill_index, (idx//qvd_ts_w) + 1, idx%qvd_ts_w] = val
             flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
             flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
