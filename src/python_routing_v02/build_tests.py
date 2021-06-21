@@ -219,7 +219,7 @@ def parity_check(
     flows.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
     flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
     flows = flows.set_index("Time (d)")
-
+  
     depths = flowveldepth.loc[:, (slice(None), "d")]
     depths = depths.T.reset_index(level=[0, 1])
     depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
@@ -236,6 +236,7 @@ def parity_check(
         (wrf_time[0] - dt_wrf + dt_routing), periods=nts, freq=dt_routing
     ).astype("datetime64[ns]")
     time_wrf = validation_data.columns.values
+    print(time_wrf)
 
     if compare_node in validation_data.index:
 

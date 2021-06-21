@@ -542,7 +542,7 @@ def main_v02(argv):
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,

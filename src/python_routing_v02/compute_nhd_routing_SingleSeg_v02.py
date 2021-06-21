@@ -798,7 +798,6 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-                import pdb; pdb.set_trace()
                 
                 jobs.append(
                     delayed(compute_func)(
