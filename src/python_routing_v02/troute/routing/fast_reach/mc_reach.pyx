@@ -812,6 +812,18 @@ cpdef object compute_network_structured_obj(
     cdef list segment_objects
     #pre compute the qlat resample fraction
     cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
+    cdef int decay_timestep = 1
+    cdef float lastobs_values_stored = 0 
+    cdef int found_last_obs = 0
+    cdef int gages_size = usgs_positions_list.shape[0]
+    cdef int gage_i, usgs_position_i
+    cdef int gage_maxtimestep = usgs_values.shape[1]
+    cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
+    if gages_size:
+        for gage_i in range(gages_size):
+            usgs_position_i = usgs_positions_list[gage_i]
+            flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
+            # TODO: handle the instance where there are no values, only gage positions
 
     cdef long sid
     #cdef MC_Segment segment
@@ -923,76 +935,82 @@ cpdef object compute_network_structured_obj(
 
     #Run time
     while timestep < nsteps+1:
-      for r, reach_type in reach_objects:
+        for r, reach_type in reach_objects:
 
-        #Need to get quc and qup
-        upstream_flows = 0.0
-        previous_upstream_flows = 0.0
-        for id in r.upstream_ids: #Explicit loop reduces some overhead
-          upstream_flows += flowveldepth[id, timestep, 0]
-          previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+            #Need to get quc and qup
+            upstream_flows = 0.0
+            previous_upstream_flows = 0.0
+            for id in r.upstream_ids: #Explicit loop reduces some overhead
+                upstream_flows += flowveldepth[id, timestep, 0]
+                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
-        if assume_short_ts:
-          upstream_flows = previous_upstream_flows
+            if assume_short_ts:
+                upstream_flows = previous_upstream_flows
 
-        #Check if reach_type is 1 for reservoir/waterbody
-        if (reach_type == 1):
-            #TODO: dt is currently held by the segment. Need to find better place to hold dt
-            routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
+            #Check if reach_type is 1 for reservoir/waterbody
+            if (reach_type == 1):
+                #TODO: dt is currently held by the segment. Need to find better place to hold dt
+                routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
 
-            reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
+                reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
-            flowveldepth[r.id, timestep, 0] = reservoir_outflow
-            flowveldepth[r.id, timestep, 1] = 0.0
-            flowveldepth[r.id, timestep, 2] = water_elevation
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = water_elevation
 
-        else:
+            else:
 
-            #Index of segments required to process this reach
-            segment_ids = []
+                #Index of segments required to process this reach
+                segment_ids = []
 
-            #Create compute reach kernel input buffer
-            for i, segment in enumerate(r):
-              segment_ids.append(segment['id'])
-              buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
-              buf_view[i, 1] = segment['dt']
-              buf_view[i, 2] = segment['dx']
-              buf_view[i, 3] = segment['bw']
-              buf_view[i, 4] = segment['tw']
-              buf_view[i, 5] = segment['twcc']
-              buf_view[i, 6] = segment['n']
-              buf_view[i, 7] = segment['ncc']
-              buf_view[i, 8] = segment['cs']
-              buf_view[i, 9] = segment['s0']
-              buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
-              buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-              buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
+                #Create compute reach kernel input buffer
+                for i, segment in enumerate(r):
+                    segment_ids.append(segment['id'])
+                    buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
+                    buf_view[i, 1] = segment['dt']
+                    buf_view[i, 2] = segment['dx']
+                    buf_view[i, 3] = segment['bw']
+                    buf_view[i, 4] = segment['tw']
+                    buf_view[i, 5] = segment['twcc']
+                    buf_view[i, 6] = segment['n']
+                    buf_view[i, 7] = segment['ncc']
+                    buf_view[i, 8] = segment['cs']
+                    buf_view[i, 9] = segment['s0']
+                    buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
+                    buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                    buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
 
-            compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                 len(r), buf_view,
-                                 out_buf,
-                                 assume_short_ts)
+                compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                        len(r), buf_view,
+                                        out_buf,
+                                        assume_short_ts)
 
-            # #a = 120
-            # #weight = math.exp(timestep/-a)
-            # #lastobs = 1
-            # for i, id in enumerate(segment_ids):
-            #     flowveldepth[id, timestep, 0] = out_buf[i, 0]
-            #     #for pos, loid in enumerate(lastobs_ids):
-            #     #    if loid == id:
-            #     #        lasterror = flowveldepth[id, timestep, 0] - lastobs_values[pos]
-            #     #        delta = weight * lasterror
-            #     #        flowveldepth[id, timestep, 0] = flowveldepth[id, timestep, 0] + delta
-            #     flowveldepth[id, timestep, 1] = out_buf[i, 1]
-            #     flowveldepth[id, timestep, 2] = out_buf[i, 2]
+                #Copy the output out
+                for i, id in enumerate(segment_ids):
+                    flowveldepth[id, timestep, 0] = out_buf[i, 0]
+                    flowveldepth[id, timestep, 1] = out_buf[i, 1]
+                    flowveldepth[id, timestep, 2] = out_buf[i, 2]
 
-            #Copy the output out
-            for i, id in enumerate(segment_ids):
-              flowveldepth[id, timestep, 0] = out_buf[i, 0]
-              flowveldepth[id, timestep, 1] = out_buf[i, 1]
-              flowveldepth[id, timestep, 2] = out_buf[i, 2]
+        if gages_size:
 
-      timestep += 1
+            for gage_i in range(gages_size):                            
+                usgs_position_i = usgs_positions_list[gage_i]
+                if timestep == last_obs_start+1 and found_last_obs == 0:
+                    flowveldepth[usgs_position_i, timestep, 0] = lastobs_values[gage_i, 0]
+                    found_last_obs = 1
+                    decay_timestep = 2
+                    #printf("last_obs_check1 =: %d %d\t", lastobs_values[gage_i, 0],found_last_obs)
+                elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
+                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
+                    #printf("last_obs_check2 =: %d %d %d \t", lastobs_values[gage_i, 0], timestep, 2)
+                else:
+                    a = 120  # TODO: pull this a value from the config file somehow
+                    decay_timestep += 1
+                    da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                    flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
+                    #printf("last_obs_check3 =: %d\t", lastobs_values[gage_i, 0])
+
+        timestep += 1
 
     #pr.disable()
     #pr.print_stats(sort='time')
