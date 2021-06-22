@@ -8,7 +8,7 @@ import pathlib
 import pandas as pd
 from functools import partial
 from itertools import chain, islice
-import next_gen_io
+#import next_gen_io
 import json
 
 def set_paths(root_path):
@@ -25,10 +25,12 @@ def set_paths(root_path):
   import troute.nhd_network as nhd_network
   #import compute_nhd_routing_v02
   #from troute.routing.compute import compute_nhd_routing_v02
+  #import mc_reach
+
   import troute.nhd_io as nhd_io
 
-  #from .preprocess import ngen_preprocess
-  #import next_gen_io
+  from preprocess import ngen_preprocess
+  import next_gen_io
 
 
 
