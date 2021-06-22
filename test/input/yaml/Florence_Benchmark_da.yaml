@@ -8,6 +8,7 @@ run_parameters:
     showtiming: true  # set the showtiming (omit flag for no timing information.)
     # break_network_at_gages: true  # Ensures gages are in a reach by themselves.
     compute_method: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    break_network_at_gages: true  # Ensures gages are in a reach by themselves.
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
