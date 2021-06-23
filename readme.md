@@ -11,7 +11,11 @@ In particular, given the observation that the routing of independent river netwo
 
 The project and program contain the following elements. 
   - **Technology stack**: The hydrofabric pre-processor, river network traversal framework, and time series data model are all written in python. The routing model engines are primarily written in fortran, but we are also experimenting with ML-based methods and can imagine any number of options called from within the network traversal framework.
+<<<<<<< HEAD
   - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. Eventually, there will be a [CHANGELOG](CHANGELOG.md).
+=======
+  - **Status**:  The project is currently in development phase 2 -- we are making the first connections of the various components within a single module. Phase 3 shoulud begin around July 2020 and we will be working demonstrations of the framework with operational outputs bootstrapped from the current national water model. For additional detail on versions, please see the [CHANGELOG](changelog.md).
+>>>>>>> upstream/master
   - **Demos**: The `notebooks` folder has a number of python notebooks, many of which can be executed from within the Google colaboratory environment, which demonstrate various aspects of the project. 
 
 In general, as with all things related to the National Water Center, our goal is to save
@@ -33,13 +37,21 @@ python3-devel
 gcc-gfortran
 ```
 
+<<<<<<< HEAD
 ... and the following python modules:
+=======
+... and the following non-default python modules:
+>>>>>>> upstream/master
 ```
 geopandas 
 numpy 
 pandas 
 xarray 
 netcdf4 
+<<<<<<< HEAD
+=======
+tqdm # for a download progress bar when pulling test datasets from the NOAA site.
+>>>>>>> upstream/master
 ```
 
 ## Installation
@@ -62,7 +74,11 @@ cd -
 cd src/python_routing_v02/
 # Execute a serial (~2.5 minutes) and a parallel test (~0.5 minutes)
 # times from 6 cores (x2 threads per core), 3.7GHz
+<<<<<<< HEAD
 python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py.
+=======
+python3 compute_nhd_routing.py; python3 parallel_compute_nhd_routing.py
+>>>>>>> upstream/master
 ```
  
 In addition, the notebooks in the `notebooks` folder represent experiments to demonstrate the base classes and basic functionality of libraries contained in rest of the repoository. Collectively they are intended to support incorporation of evaluation of the dynamic routing codes and related utilities being considered and prepared as potential candidates for use as the base dynamic hydraulic engine for the NWM. 
@@ -79,10 +95,17 @@ If you have any questions, please contact james.halgren@noaa.gov or dongha.kim@n
 
 ## Getting involved
 
+<<<<<<< HEAD
 Our current focus is improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
 
 Please feel free to fork the repository and let us know if you will be issuing a pull request. 
 More instructions will eventually be documented in [CONTRIBUTING](CONTRIBUTING.md).
+=======
+Among other things, we are working on preparing more robust I/O capability for testing and on improving the speed of the parallel tree traversal. We welcome your thoughts, recommendations, comments, and of course, PRs. 
+
+Please feel free to fork the repository and let us know if you will be issuing a pull request. 
+More instructions will eventually be documented in [CONTRIBUTING](contributing.md).
+>>>>>>> upstream/master
 
 
 ----

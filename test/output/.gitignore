@@ -1,9 +1,20 @@
 # Ignore everything in this directory
 text/*
+<<<<<<< HEAD
 map/*
 plot/*
 # Except for these folders
 !text/.gitkeep
 !map/.gitkeep
 !plot/.gitkeep
+=======
+nc/*
+map/*
+plot/*
+# Except for these empty folders
+!text/.gitkeep
+!map/.gitkeep
+!plot/.gitkeep
+!nc/.gitkeep
+>>>>>>> upstream/master
 #

@@ -1,7 +1,11 @@
 # To compile the fortran modules, 
 # First activate a python version with the f2py extension for python 3+
 # Then, execute the following command:
+<<<<<<< HEAD
 f2py3 -c varSingleChStime_f2py.f90  MCsingleChStime_f2py_clean.f90  -m mc_sc_stime
+=======
+f2py3 -c varSingleRchStime_f2py.f90  MCsingleRchStime_f2py_clean.f90  -m mc_sc_stime
+>>>>>>> upstream/master
 # Finally, if the link does not exist, create it by the following command, 
 # substituting <cpythonversioname> for the version name your f2py compiler is 
 # appending to the library name:

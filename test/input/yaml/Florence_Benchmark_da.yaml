@@ -1,0 +1,126 @@
+---
+#initial input parameters
+run_parameters:
+    parallel_compute_method: by-network # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
+    subnetwork_target_size: 100  # by-subnetwork* requires a value here to identify the target subnetwork size.
+    cpu_pool: 8
+    verbose: true  # verbose output (leave blank for quiet output.)
+    showtiming: true  # set the showtiming (omit flag for no timing information.)
+    break_network_at_gages: true  # Ensures gages are in a reach by themselves.
+    compute_method: V02-caching  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    assume_short_ts: true  # use the previous timestep value for both current and previous flow.
+    qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
+    dt: 300  # default timestep length, seconds
+    nts: 85  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+    return_courant: false  # WARNING: true will only work with compute_method "V02-caching", therefore not currently compatible with simulation for waterbodies.
+output_parameters:
+    #output location for csv file 
+    csv_output:
+        csv_output_folder: {}
+        csv_output_segments: {}
+    #out location for nc file
+    nc_output_folder: {}
+#data column assignment inside supernetwork_parameters
+supernetwork_parameters:
+    title_string: "Florence_FullRes"
+    geo_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
+    mask_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/florence_fullres_mask_tw10975909_gage8777381.txt"
+    mask_layer_string: ""
+    mask_driver_string: "csv"
+    mask_key: 0
+    columns:
+        key: "link"
+        downstream: "to"
+        dx: "Length"
+        n: "n"  # TODO: rename to `manningn`
+        ncc: "nCC"  # TODO: rename to `mannningncc`
+        s0: "So"  # TODO: rename to `bedslope`
+        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+        waterbody: "NHDWaterbodyComID"
+        gages: "gages"
+        tw: "TopWdth"  # TODO: rename to `topwidth`
+        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+        alt: "alt"
+        musk: "MusK"
+        musx: "MusX"
+        cs: "ChSlp"  # TODO: rename to `sideslope`
+    waterbody_null_code: -9999
+    terminal_code: 0
+    driver_string: NetCDF
+    layer_string: 0
+#waterbody parameters and assignments from lake parm file
+waterbody_parameters:
+    level_pool:
+        #WRF-Hydro lake parm file
+        level_pool_waterbody_parameter_file_path: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_id: lake_id
+        level_pool_waterbody_area: LkArea
+        level_pool_weir_elevation: WeirE
+        level_pool_waterbody_max_elevation: LkMxE
+        level_pool_outfall_weir_coefficient: WeirC
+        level_pool_outfall_weir_length: WeirL
+        level_pool_overall_dam_length: DamL
+        level_pool_orifice_elevation: OrificeE
+        level_pool_orifice_coefficient: OrificeC
+        level_pool_orifice_area: OrificeA
+#WRF-Hydro output file
+forcing_parameters:
+    qlat_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
+    qlat_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
+    # qlat_input_file: "florence_qlat_test.csv.hourly"
+    qlat_file_index_col: feature_id
+    qlat_file_value_col: q_lateral
+#WRF-Hydro restart files
+restart_parameters:
+    #WRF-Hydro channels restart file
+    wrf_hydro_channel_restart_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/HYDRO_RST/HYDRO_RST.2018-09-18_00:00_DOMAIN1"
+    #WRF-Hydro channels ID crosswalk file
+    # florence_testcase/florence_933020089/DOMAIN
+    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/Route_Link.nc"
+    wrf_hydro_channel_ID_crosswalk_file_field_name: link
+    wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+    wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+    wrf_hydro_channel_restart_depth_flow_field_name: hlink
+    #WRF-Hydro waterbodies restart file
+    wrf_hydro_waterbody_restart_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/HYDRO_RST/HYDRO_RST.2018-09-18_00:00_DOMAIN1"
+    # #WRF-Hydro waterbody ID crosswalk file
+    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/DOMAIN/LAKEPARM.nc"
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    # #WRF-Hydro waterbody crosswalk filter file
+    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+#WRF-Hydro data assimilation files
+data_assimilation_parameters:
+    # florence_testcase/florence_933020089/DOMAIN
+    data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
+    data_assimilation_filter: "2018-09-18_0[0-9]*.usgsTimeSlice.ncdf"
+    wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    # wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_last_obs_type: "obs-based"
+    # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
+    # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
+    # florence_testcase/florenceNudgingChannelOnly/FORCING_AnA_channel-only/24timeslices
+parity_parameters:
+    # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
+    parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
+    # parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
+    parity_check_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
+    # parity_check_file: "florence_streamflow_test.csv.hourly"
+    parity_check_file_index_col: feature_id
+    parity_check_file_value_col: streamflow
+    parity_check_compare_node: 10975909
+    # parity_check_compare_node: 8778771  # Headwater
+    # parity_check_compare_node: 8778459  # Midwater
+    # parity_check_compare_node: 8778201  # Midwater
+    # parity_check_compare_node: 8777277  # Just above gage
+    # parity_check_compare_node: 8777275  # Just above gage
+    # parity_check_compare_node: 8777381  # At gage
+    # parity_check_compare_node: 8777409  # Just above 8777353
+    # parity_check_compare_node: 8777353  # Just above 8777387 -- next upstreams [8777369, 8777409]
+    # parity_check_compare_node: 8777351  # Just above 8777387
+    # parity_check_compare_node: 8777451  # Just above 8777387 -- next upstreams [8777455, 8777489]
+    # parity_check_compare_node: 8777387  # Just above 8777383 -- next upstreams [8777351, 8777353]
+    # parity_check_compare_node: 8777383  # Below gage
+    # parity_check_compare_node: 8777419  # Below gage
+    # parity_check_compare_node: 8777523  # Below gage
+    # parity_check_compare_node: 8777535  # Below gage
