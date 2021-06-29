@@ -378,7 +378,8 @@ def fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd):
     #       4. '00060' for discharge [ft^3/s]
     #          '00065' for stage [ft]
     #          '62614' for Elevation, lake/res,NGVD29 [ft]
-    observations_data = IVDataService.get(
+    ivds = IVDataService()
+    observations_data = ivds.get(
         sites=usgsID2tw,  # sites='01646500,0208758850',
         startDT=usgssDT,  #'2018-08-01',
         endDT=usgseDT,  #'2020-09-01',
