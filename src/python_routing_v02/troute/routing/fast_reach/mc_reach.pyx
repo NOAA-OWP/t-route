@@ -995,20 +995,14 @@ cpdef object compute_network_structured_obj(
 
             for gage_i in range(gages_size):                            
                 usgs_position_i = usgs_positions_list[gage_i]
-                if timestep == last_obs_start+1 and found_last_obs == 0:
-                    flowveldepth[usgs_position_i, timestep, 0] = lastobs_values[gage_i, 0]
-                    found_last_obs = 1
-                    decay_timestep = 2
-                    #printf("last_obs_check1 =: %d %d\t", lastobs_values[gage_i, 0],found_last_obs)
-                elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
-                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
-                    #printf("last_obs_check2 =: %d %d %d \t", lastobs_values[gage_i, 0], timestep, 2)
-                else:
+                if lastobs_values == float:
                     a = 120  # TODO: pull this a value from the config file somehow
                     decay_timestep += 1
                     da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                     flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
-                    #printf("last_obs_check3 =: %d\t", lastobs_values[gage_i, 0])
+                    #printf("last_obs_check1 =: %d\t", found_last_obs)
+                else:
+                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
 
         timestep += 1
 
@@ -1310,19 +1304,32 @@ cpdef object compute_network_structured(
 
             for gage_i in range(gages_size):                            
                 usgs_position_i = usgs_positions_list[gage_i]
-                if timestep == last_obs_start+1 and found_last_obs == 0:
-                    flowveldepth[usgs_position_i, timestep, 0] = lastobs_values[gage_i, 0]
-                    found_last_obs = 1
-                    decay_timestep = 2
-                    #printf("last_obs_check1 =: %d %d\t", lastobs_values[gage_i, 0],found_last_obs)
-                elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
-                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
-                    #printf("last_obs_check2 =: %d %d %d \t", lastobs_values[gage_i, 0], timestep, 2)
-                else:
+                if lastobs_values == float:
                     a = 120  # TODO: pull this a value from the config file somehow
                     decay_timestep += 1
                     da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                     flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
+                    #printf("last_obs_check1 =: %d\t", found_last_obs)
+                else:
+                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
+                    
+
+
+
+
+                #if timestep == last_obs_start+1 and found_last_obs == 0:
+                    #flowveldepth[usgs_position_i, timestep, 0] = lastobs_values[gage_i, 0]
+                    #found_last_obs = 1
+                    #decay_timestep = 2
+                    #printf("last_obs_check1 =: %d %d\t", lastobs_values[gage_i, 0],found_last_obs)
+                #elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
+                    #flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
+                    #printf("last_obs_check2 =: %d %d %d \t", lastobs_values[gage_i, 0], timestep, 2)
+                #else:
+                    #a = 120  # TODO: pull this a value from the config file somehow
+                    #decay_timestep += 1
+                    #da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                    #flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
                     #printf("last_obs_check3 =: %d\t", lastobs_values[gage_i, 0])
 
         timestep += 1

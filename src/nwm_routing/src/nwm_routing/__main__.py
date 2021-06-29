@@ -500,6 +500,7 @@ def main_v02(argv):
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
 
     last_obs_df = pd.DataFrame()
+  
     if last_obs_file:
         usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(
             data_assimilation_parameters
@@ -510,7 +511,7 @@ def main_v02(argv):
         usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
         last_obs_start = -1
 
-    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file == None:
         if showtiming:
             start_time = time.time()
         if verbose:
@@ -544,6 +545,7 @@ def main_v02(argv):
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
+    # import pdb; pdb.set_trace()
     results = compute_nhd_routing_v02(
         connections,
         rconn,

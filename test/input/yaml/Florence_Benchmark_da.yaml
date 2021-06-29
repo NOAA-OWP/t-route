@@ -7,7 +7,7 @@ run_parameters:
     verbose: true  # verbose output (leave blank for quiet output.)
     showtiming: true  # set the showtiming (omit flag for no timing information.)
     # break_network_at_gages: true  # Ensures gages are in a reach by themselves.
-    compute_method: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    compute_method: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     break_network_at_gages: true  # Ensures gages are in a reach by themselves.
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
@@ -67,7 +67,7 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
-    qlat_file_pattern_filter: "201809180[0-8]*.CHRTOUT_DOMAIN1"
+    qlat_file_pattern_filter: "201809180[1-9]*.CHRTOUT_DOMAIN1"
     # qlat_input_file: "florence_qlat_test.csv.hourly"
     qlat_file_index_col: feature_id
     qlat_file_value_col: q_lateral
@@ -105,7 +105,7 @@ parity_parameters:
     # florence_testcase/florenceNudgingChannelOnly/CHRTOUT
     parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
     # parity_check_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/FORCING_AnA_channel-only/"
-    parity_check_file_pattern_filter: "201809180[1-8]*.CHRTOUT_DOMAIN1"
+    parity_check_file_pattern_filter: "201809180[1-9]*.CHRTOUT_DOMAIN1"
     # parity_check_file: "florence_streamflow_test.csv.hourly"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
