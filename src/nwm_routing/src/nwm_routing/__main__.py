@@ -627,6 +627,76 @@ def main_v02(argv):
         if debuglevel <= -1:
             print(flowveldepth)
 
+    # directory containing WRF Hydro restart files
+    wrf_hydro_restart_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_directory", None
+    )
+    if wrf_hydro_restart_dir:
+
+        wrf_hydro_channel_restart_new_extension = output_parameters.get(
+            "wrf_hydro_channel_restart_new_extension", "TRTE"
+        )
+
+        # list of WRF Hydro restart files
+        wrf_hydro_restart_files = list(
+            Path(wrf_hydro_restart_dir).glob(
+                output_parameters["wrf_hydro_channel_restart_pattern_filter"]
+                + "[!"
+                + wrf_hydro_channel_restart_new_extension
+                + "]"
+            )
+        )
+
+        if len(wrf_hydro_restart_files) > 0:
+            qvd_columns = pd.MultiIndex.from_product(
+                [range(nts), ["q", "v", "d"]]
+            ).to_flat_index()
+
+            flowveldepth = pd.concat(
+                [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+                copy=False,
+            )
+            nhd_io.write_channel_restart_to_wrf_hydro(
+                flowveldepth,
+                wrf_hydro_restart_files,
+                restart_parameters.get("wrf_hydro_channel_restart_file"),
+                run_parameters.get("dt"),
+                run_parameters.get("nts"),
+                restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                restart_parameters.get(
+                    "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                ),
+                wrf_hydro_channel_restart_new_extension,
+            )
+        else:
+            # print error and/or raise exception
+            print(
+                "WRF Hydro restart files not found - Aborting restart write sequence"
+            )
+            raise AssertionError
+
+    chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
+    if chrtout_folder:
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+        wrf_hydro_channel_output_new_extension = output_parameters.get(
+            "wrf_hydro_channel_output_new_extension", "TRTE"
+        )
+        chrtout_files = list(
+            Path(chrtout_folder).glob(
+                output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
+            )
+        )
+        nhd_io.write_q_to_wrf_hydro(
+            flowveldepth, chrtout_files, run_parameters["qts_subdivisions"]
+        )
+
     if verbose:
         print("output complete")
     if showtiming:
