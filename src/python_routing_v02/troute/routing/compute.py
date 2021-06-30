@@ -269,6 +269,7 @@ def compute_nhd_routing_v02(
                     q0_sub = q0_sub.reindex(param_df_sub.index)
                     
                     if not last_obs_df.empty and not usgs_df.empty:
+                        import pdb; pdb.set_trace()
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
                         last_obs_df['usgs_index'] = usgs_df.index
                         last_obs_df = last_obs_df.reset_index()
@@ -509,8 +510,9 @@ def compute_nhd_routing_v02(
                     ).sort_index()
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
-
+                    import pdb; pdb.set_trace()
                     if not last_obs_df.empty and not usgs_df.empty:
+                        import pdb; pdb.set_trace()
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
                         last_obs_df['usgs_index'] = usgs_df.index
                         last_obs_df = last_obs_df.reset_index()
@@ -527,6 +529,7 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
+                    import pdb; pdb.set_trace()
                     if not last_obs_df.empty and not usgs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
                         last_obs_df['usgs_index'] = usgs_df.index
@@ -665,8 +668,9 @@ def compute_nhd_routing_v02(
                 last_obs_sub = pd.DataFrame()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
-                
+                import pdb; pdb.set_trace()
                 if not last_obs_df.empty and not usgs_df.empty:
+                    import pdb; pdb.set_trace()
                     # index values for last obs are not correct, but line up correctly with usgs values. Switched
                     
                     last_obs_df['usgs_index'] = usgs_df.index
@@ -676,6 +680,8 @@ def compute_nhd_routing_v02(
                     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                     last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    usgs_df.iloc[:, 0] = last_obs_sub.iloc[:,0]
+
                 # TODO: Wire in the proper reservoir distinction
                 # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                 # only produce a dummy list, but...

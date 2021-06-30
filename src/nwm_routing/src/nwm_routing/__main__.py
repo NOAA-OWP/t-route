@@ -497,10 +497,11 @@ def main_v02(argv):
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_folder", None
     )
+    data_assimilation_filter = data_assimilation_parameters.get("data_assimilation_filter",None)
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
 
     last_obs_df = pd.DataFrame()
-  
+
     if last_obs_file:
         usgs_df, last_obs_df, last_obs_date = nnu.build_data_assimilation(
             data_assimilation_parameters
@@ -511,7 +512,7 @@ def main_v02(argv):
         usgs_df, last_obs_df = nnu.build_data_assimilation(data_assimilation_parameters)
         last_obs_start = -1
 
-    if data_assimilation_csv or data_assimilation_folder or last_obs_file == None:
+    if data_assimilation_csv or data_assimilation_folder or data_assimilation_filter:
         if showtiming:
             start_time = time.time()
         if verbose:

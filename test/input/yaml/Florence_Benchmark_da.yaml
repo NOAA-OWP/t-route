@@ -67,7 +67,7 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     qlat_input_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/CHRTOUT/"
-    qlat_file_pattern_filter: "201809180[1-9]*.CHRTOUT_DOMAIN1"
+    qlat_file_pattern_filter: "201809180[0-9]*.CHRTOUT_DOMAIN1"
     # qlat_input_file: "florence_qlat_test.csv.hourly"
     qlat_file_index_col: feature_id
     qlat_file_value_col: q_lateral
