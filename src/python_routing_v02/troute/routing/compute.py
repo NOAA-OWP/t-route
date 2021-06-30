@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import time
 import pandas as pd
 import numpy as np
-
+from math import exp
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import (
     compute_network,
@@ -278,6 +278,7 @@ def compute_nhd_routing_v02(
                         lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
+                        usgs_df.iloc[:, 0] = last_obs_sub.iloc[:,0]
                     # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -521,6 +522,7 @@ def compute_nhd_routing_v02(
                         lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                         last_obs_sub = last_obs_df.loc[lastobs_segs]
+                        usgs_df.iloc[:, 0] = last_obs_sub.iloc[:,0]
                     # TODO: Wire in the proper reservoir distinction
                     # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                     # only produce a dummy list, but...
@@ -529,17 +531,6 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-                    import pdb; pdb.set_trace()
-                    if not last_obs_df.empty and not usgs_df.empty:
-                        # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                        last_obs_df['usgs_index'] = usgs_df.index
-                        last_obs_df = last_obs_df.reset_index()
-                        last_obs_df = last_obs_df.set_index("usgs_index")
-                        last_obs_df = last_obs_df.drop(['to'],axis=1)
-                        lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                        nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                    
                     jobs.append(
                         delayed(compute_func)(
                             nts,
@@ -668,9 +659,8 @@ def compute_nhd_routing_v02(
                 last_obs_sub = pd.DataFrame()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
-                import pdb; pdb.set_trace()
+
                 if not last_obs_df.empty and not usgs_df.empty:
-                    import pdb; pdb.set_trace()
                     # index values for last obs are not correct, but line up correctly with usgs values. Switched
                     
                     last_obs_df['usgs_index'] = usgs_df.index
@@ -680,8 +670,29 @@ def compute_nhd_routing_v02(
                     lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
                     last_obs_sub = last_obs_df.loc[lastobs_segs]
+                    #need to match it up with last obs date within usgs
                     usgs_df.iloc[:, 0] = last_obs_sub.iloc[:,0]
+                    starting_bias = usgs_df.iloc[:, 0].values
+                    a = 120  # TODO: pull this a value from the config file somehow
+                    decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+                    #da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                    #flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
+                    
+                    import pdb; pdb.set_trace()
+                    for i in range(0,len(usgs_df.columns)):
+                        current_timestep = usgs_df.iloc[:, i].values
+                        for loc,value in enumerate(current_timestep):
+                            if np.isnan(value):
+                                da_weight = exp(decay_timestep_array[loc]/-a)
+                                usgs_df.iloc[loc, i] = (starting_bias[loc] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
+                                decay_timestep_array[loc] += 1
+                                print(decay_timestep_array)
+                            else:
+                                decay_timestep_array[loc] == 1
+                                print(decay_timestep_array)
+                                pass
 
+                import pdb; pdb.set_trace()
                 # TODO: Wire in the proper reservoir distinction
                 # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                 # only produce a dummy list, but...
