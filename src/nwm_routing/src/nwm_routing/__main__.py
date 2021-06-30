@@ -580,16 +580,10 @@ def main_v02(argv):
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
 
-        if run_parameters.get("return_courant", False):
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d, c in results],
-                copy=False,
-            )
-        else:
-            flowveldepth = pd.concat(
-                [pd.DataFrame(d, index=i, columns=qvd_columns) for i, d in results],
-                copy=False,
-            )
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
