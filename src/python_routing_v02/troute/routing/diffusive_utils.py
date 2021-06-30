@@ -404,7 +404,7 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
             # 0.3048 to covert ft to meter. [meter]
     else:
         nts_db_g = 1
-        dbcd_g = np.zeros(nts_db_g)
+        dbcd_g = -np.ones(nts_db_g)
         
     return nts_db_g, dbcd_g
 
