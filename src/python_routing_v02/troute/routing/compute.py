@@ -678,7 +678,7 @@ def compute_nhd_routing_v02(
                     #da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
                     #flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
                     
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     for i in range(0,len(usgs_df.columns)):
                         current_timestep = usgs_df.iloc[:, i].values
                         for loc,value in enumerate(current_timestep):
@@ -686,13 +686,17 @@ def compute_nhd_routing_v02(
                                 da_weight = exp(decay_timestep_array[loc]/-a)
                                 usgs_df.iloc[loc, i] = (starting_bias[loc] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
                                 decay_timestep_array[loc] += 1
-                                print(decay_timestep_array)
                             else:
-                                decay_timestep_array[loc] == 1
-                                print(decay_timestep_array)
+                                decay_timestep_array[loc] = 1
                                 pass
+                    usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                    nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
+                    usgs_df_sub = usgs_df.loc[usgs_segs]
+                    usgs_df_sub.drop(
+                        usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                    )
 
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 # TODO: Wire in the proper reservoir distinction
                 # At present, in by-subnetwork-jit/jit-clustered, these next two lines
                 # only produce a dummy list, but...

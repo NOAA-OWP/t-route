@@ -684,7 +684,7 @@ def get_usgs_from_time_slices_folder(
 
     # usgs_df = usgs_df.interpolate(method="linear", axis=1)
     # usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
-    # usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
+    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df
 
