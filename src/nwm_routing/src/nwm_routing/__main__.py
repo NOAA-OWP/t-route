@@ -2,7 +2,7 @@ import argparse
 import time
 from datetime import datetime
 from collections import defaultdict
-import pathlib
+from pathlib import Path
 import pandas as pd
 
 ## network and reach utilities
@@ -612,7 +612,7 @@ def main_v02(argv):
                 filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
                 filename_courant = "courant_" + run_time_stamp + ".csv"
 
-            output_path = pathlib.Path(csv_output_folder).resolve()
+            output_path = Path(csv_output_folder).resolve()
 
             flowveldepth = flowveldepth.sort_index()
             flowveldepth.to_csv(output_path.joinpath(filename_fvd))
