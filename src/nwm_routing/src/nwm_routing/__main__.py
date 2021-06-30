@@ -567,13 +567,12 @@ def main_v02(argv):
     if verbose:
         print(f"Handling output ...")
 
-    if output_parameters:
-        csv_output = output_parameters.get("csv_output", None)
-        if csv_output:
-            csv_output_folder = output_parameters["csv_output"].get(
-                "csv_output_folder", None
-            )
-            csv_output_segments = csv_output.get("csv_output_segments", None)
+    csv_output = output_parameters.get("csv_output", None)
+    if csv_output:
+        csv_output_folder = output_parameters["csv_output"].get(
+            "csv_output_folder", None
+        )
+        csv_output_segments = csv_output.get("csv_output_segments", None)
 
     if (debuglevel <= -1) or csv_output:
 
