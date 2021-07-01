@@ -754,7 +754,7 @@ cpdef object compute_network_structured_obj(
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
     const int[:] decay_timestep_array,
-    const int[:] starting_bias,
+    const float[:] starting_bias,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -826,6 +826,7 @@ cpdef object compute_network_structured_obj(
             flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
             # TODO: handle the instance where there are no values, only gage positions
     decay_timesteps = decay_timestep_array
+    starting_bias_array = starting_bias
     cdef long sid
     #cdef MC_Segment segment
     #pr.enable()
@@ -1020,10 +1021,12 @@ cpdef object compute_network_structured_obj(
                     #for loc,value in enumerate(current_timestep):
                     if np.isnan(usgs_values[gage_i, timestep-1]):
                         da_weight = exp(decay_timesteps[gage_i]/-a)
-                        flowveldepth[usgs_position_i, timestep , 0] = (flowveldepth[usgs_position_i, timestep , 0] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
+                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
                         decay_timesteps[gage_i] += 1
                     else:
                         decay_timesteps[gage_i] = 1
+                        starting_bias_array[gage_i] = usgs_values[gage_i, timestep-1]
+                        flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
                         pass
                     
                 

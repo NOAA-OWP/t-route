@@ -761,7 +761,7 @@ def compute_nhd_routing_v02(
                         np.array(nudging_positions_list, dtype="int32"),
                         last_obs_sub.values.astype("float32"),
                         decay_timestep_array.astype("int32"),
-                        starting_bias.astype("int32"),
+                        starting_bias.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
