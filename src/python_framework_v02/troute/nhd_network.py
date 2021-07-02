@@ -301,7 +301,10 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
 
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
-    Decompose N into a list of simple segments.
+    Decompose network into lists of simply connected nodes
+    For the routing problem, these sets of nodes are segments
+    in a reach terminated by a junction, headwater, or tailwater.
+
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
     the predecessor segments appear before it in the list.
 
