@@ -243,7 +243,15 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
         stack = [(h, iter(N[h]))]
         while stack:
             node, children = stack[-1]
-            if not path_func(None, node) and (node not in junctions):
+            is_new_split = False
+            for _child in N[node]:  # list of upstreams
+                if not path_func([node], _child):
+                    is_new_split = True  # if any of the children are a split, then they all should be.
+                    break
+            if is_new_split:
+                if node in junctions:
+                    is_new_split = False
+            if is_new_split:
                 reach_seq_order += 1
                 junctions.add(node)
             try:
