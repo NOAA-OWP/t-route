@@ -669,11 +669,9 @@ def main_v02(argv):
                 wrf_hydro_channel_restart_new_extension,
             )
         else:
-            # print error and/or raise exception
-            print(
-                "WRF Hydro restart files not found - Aborting restart write sequence"
-            )
-            raise AssertionError
+            # print error and raise exception
+            str = "WRF Hydro restart files not found - Aborting restart write sequence"
+            raise AssertionError(str)
 
     chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
     if chrtout_folder:
