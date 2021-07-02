@@ -992,23 +992,6 @@ cpdef object compute_network_structured_obj(
                     flowveldepth[id, timestep, 0] = out_buf[i, 0]
                     flowveldepth[id, timestep, 1] = out_buf[i, 1]
                     flowveldepth[id, timestep, 2] = out_buf[i, 2]
-
-
-                    #starting_bias = usgs_df.iloc[:, 0].values
-                    #a = 120  # TODO: pull this a value from the config file somehow
-                    #decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
-
-                    #for i in range(0,len(usgs_df.columns)):
-                        #current_timestep = usgs_df.iloc[:, i].values
-                        #for loc,value in enumerate(current_timestep):
-                           # if np.isnan(value):
-                              #  da_weight = exp(decay_timestep_array[loc]/-a)
-                             #   usgs_df.iloc[loc, i] = (starting_bias[loc] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
-                            #    decay_timestep_array[loc] += 1
-                           # else:
-                               # decay_timestep_array[loc] = 1
-                              #  pass
-
            
         if gages_size:
 
@@ -1016,28 +999,18 @@ cpdef object compute_network_structured_obj(
                 usgs_position_i = usgs_positions_list[gage_i]
                 a = 120  # TODO: pull this a value from the config file somehow  
                 for i in range(0,len(usgs_values[0])):
-                    #printf("last_obs_check1 =: %d\t", gage_i)
-                    #current_timestep = usgs_values[gage_i, timestep-1]
-                    #for loc,value in enumerate(current_timestep):
                     if np.isnan(usgs_values[gage_i, timestep-1]):
                         da_weight = exp(decay_timesteps[gage_i]/-a)
-                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
+                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]  
+                        #alternative version below using decay_timestep not da_weight calculation based on discussions 
+                        #flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * decay_timesteps[gage_i] + starting_bias_array[gage_i]  
                         decay_timesteps[gage_i] += 1
                     else:
                         decay_timesteps[gage_i] = 1
                         starting_bias_array[gage_i] = usgs_values[gage_i, timestep-1]
                         flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
                         pass
-                    
-                
-               # if lastobs_values == float:
-                    #a = 120  # TODO: pull this a value from the config file somehow
-                   # decay_timestep += 1
-                  #  da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                 #   flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
-                    #printf("last_obs_check1 =: %d\t", found_last_obs)
-                #else:
-                    # = usgs_values[gage_i, timestep-1]
+            #This does not continue decay after the usgs_obs ends
 
         timestep += 1
 
@@ -1067,7 +1040,8 @@ cpdef object compute_network_structured(
     const float[:,:] usgs_values,
     const int[:] usgs_positions_list,
     const float[:,:] lastobs_values,
-    int last_obs_start,
+    const int[:] decay_timestep_array,
+    const float[:] starting_bias,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1130,6 +1104,8 @@ cpdef object compute_network_structured(
     cdef int found_last_obs = 0
     cdef long sid
     cdef _MC_Segment segment
+    decay_timesteps = decay_timestep_array
+    starting_bias_array = starting_bias
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
@@ -1337,16 +1313,22 @@ cpdef object compute_network_structured(
                     
         if gages_size:
 
-            for gage_i in range(gages_size):                            
+            for gage_i in range(gages_size):                        
                 usgs_position_i = usgs_positions_list[gage_i]
-                if lastobs_values == float:
-                    a = 120  # TODO: pull this a value from the config file somehow
-                    decay_timestep += 1
-                    da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                    flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
-                    #printf("last_obs_check1 =: %d\t", found_last_obs)
-                else:
-                    flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
+                a = 120  # TODO: pull this a value from the config file somehow  
+                for i in range(0,len(usgs_values[0])):
+                    if np.isnan(usgs_values[gage_i, timestep-1]):
+                        da_weight = exp(decay_timesteps[gage_i]/-a)
+                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]  
+                        #alternative version below using decay_timestep not da_weight calculation based on discussions 
+                        #flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * decay_timesteps[gage_i] + starting_bias_array[gage_i]  
+                        decay_timesteps[gage_i] += 1
+                    else:
+                        decay_timesteps[gage_i] = 1
+                        starting_bias_array[gage_i] = usgs_values[gage_i, timestep-1]
+                        flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
+                        pass
+            #This does not continue decay after the usgs_obs ends
                     
 
 

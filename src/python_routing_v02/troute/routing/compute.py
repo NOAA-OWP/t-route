@@ -287,7 +287,7 @@ def compute_nhd_routing_v02(
                     subn_reach_list_with_type = list(
                         zip(subn_reach_list, subn_reach_type_list)
                     )
-        
+                
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -673,22 +673,7 @@ def compute_nhd_routing_v02(
                     #need to match it up with last obs date within usgs
                     usgs_df.iloc[:, 0] = last_obs_sub.iloc[:,0]
                     starting_bias = usgs_df.iloc[:, 0].values
-                    a = 120  # TODO: pull this a value from the config file somehow
                     decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
-                    #da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                    #flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
-                    
-                    # import pdb; pdb.set_trace()
-                    # for i in range(0,len(usgs_df.columns)):
-                    #     current_timestep = usgs_df.iloc[:, i].values
-                    #     for loc,value in enumerate(current_timestep):
-                    #         if np.isnan(value):
-                    #             da_weight = exp(decay_timestep_array[loc]/-a)
-                    #             usgs_df.iloc[loc, i] = (starting_bias[loc] * da_weight) #one is the temp value being used for current fvd prediction until ported to mc_reach
-                    #             decay_timestep_array[loc] += 1
-                    #         else:
-                    #             decay_timestep_array[loc] = 1
-                    #             pass
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                     usgs_df_sub = usgs_df.loc[usgs_segs]
@@ -739,7 +724,7 @@ def compute_nhd_routing_v02(
                 ).sort_index()
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
-            
+                
                 jobs.append(
                     delayed(compute_func)(
                         nts,
