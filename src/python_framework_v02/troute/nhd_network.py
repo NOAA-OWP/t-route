@@ -203,7 +203,8 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
         return len(network[node]) == 1
 
 
-def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
+def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
+
     """
     Decompose network into lists of simply connected nodes
     For the routing problem, these sets of nodes are segments
@@ -228,30 +229,49 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
         source_nodes: starting points (default use the top of the network,
         which, for the reversed network passed to this function,
         is the set of tailwaters...)
+
+    Method:
+      call: dfs_decomposition
+      call: coalesce reaches *New function*
+      call: count order *New function -- could be level order (i.e., bfs) or dfs*
+        zip results together and return order/reach tuples as before.
+
     Returns:
         [List(tuple)]: List of tuples of (depth, path) to be processed
         in order.
     """
+    dfs_decomposition_depth_tuple(RN, path_func, source_nodes)
+
+    tag_idx = (
+        -1
+    )  # Label coalesced reaches with the hydrologcially  downstream-most segment
+    RN_coalesced = coalesce_reaches(RN, reach_list, tag_idx)
+    # Make sure that if source_nodes is not empty,
+    # this doesn't create some kind of nasty collision.
+    # TODO: There might be a way to more gracefully handle this...
+
     if source_nodes is None:
-        source_nodes = headwaters(N)
+        source_nodes = headwaters(RN_coalesced)
+    else:
+        if source_nodes not in RN_coalesced:
+            raise AssertionError(
+                "the source nodes *must* be members of the coalesced set..."
+            )
+    depths = count_depth(RN_coalesced, source_nodes)
+    return zip(depth, reach_list)
+
+
+def count_depth(RN, source_nodes=None):
 
     path_tuples = []
     reach_seq_order = 0
     visited = set()
     junctions = set()
     for h in source_nodes:
-        stack = [(h, iter(N[h]))]
+        stack = [(h, iter(RN_coalesced[h]))]
         while stack:
             node, children = stack[-1]
-            is_new_split = False
-            for _child in N[node]:  # list of upstreams
-                if not path_func([node], _child):
-                    is_new_split = True  # if any of the children are a split, then they all should be.
-                    break
-            if is_new_split:
-                if node in junctions:
-                    is_new_split = False
-            if is_new_split:
+            if node not in junctions:
                 reach_seq_order += 1
                 junctions.add(node)
             try:
@@ -297,6 +317,31 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
         load_dict[t[key_idx]].append(t[val_idx])
 
     return load_dict
+
+
+def coalesce_reaches(RN, reach_list, tag_idx=-1):
+    """
+    From a list of reaches separated according to a particular rule
+    (e.g., the rule might be, "split at junctions,"
+    or "split at junctions_and waterbodies"),
+    generate a new network describing the topology of the reaches
+    using tag_idx to determine which segment id of the reach is
+    used to represent the reach in the new topology.
+
+    We assume that the RN is a reverse network and that the reaches are
+    a forward network. Hydrologically,
+    this means that the reaches are indexed from upstream to downstream
+    but that the segment keys in the network give the ids of the
+    upstream neighbors of each segment.
+
+    The concept is extensible to a non-hydrologic network.
+
+    Returns
+    RN_coalesced which has the same form as RN (i.e., seg_key: [list, of, upstreams])
+    but with each reach represented by exactly one topological element.
+    """
+
+    return {reach[tag_idx]: RN[reach[0]] for reach in reach_list}
 
 
 def dfs_decomposition(N, path_func, source_nodes=None):
