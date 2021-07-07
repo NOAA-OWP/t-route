@@ -240,11 +240,11 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
         [List(tuple)]: List of tuples of (depth, path) to be processed
         in order.
     """
-    dfs_decomposition_depth_tuple(RN, path_func, source_nodes)
+    reach_list = dfs_decomposition(RN, path_func, source_nodes)
 
-    tag_idx = (
-        -1
-    )  # Label coalesced reaches with the hydrologcially  downstream-most segment
+    # Label coalesced reaches with the hydrologcially  downstream-most segment
+    tag_idx = -1
+
     RN_coalesced = coalesce_reaches(RN, reach_list, tag_idx)
     # Make sure that if source_nodes is not empty,
     # this doesn't create some kind of nasty collision.
@@ -257,11 +257,12 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
             raise AssertionError(
                 "the source nodes *must* be members of the coalesced set..."
             )
-    depths = dfs_count_depth(RN_coalesced, source_nodes)
-    return zip(depth, reach_list)
+    depth_tuples = dfs_count_depth_coalesced(RN_coalesced, source_nodes)
+    depths = [d for d, *_ in depth_tuples]
+    return zip(depths, reach_list)
 
 
-def dfs_count_depth(RN, source_nodes=None):
+def dfs_count_depth_coalesced(RN, source_nodes=None):
 
     path_tuples = []
     reach_seq_order = 0
@@ -278,23 +279,14 @@ def dfs_count_depth(RN, source_nodes=None):
                 child = next(children)
                 if child not in visited:
                     # Check to see if we are at a leaf
-                    if child in N:
-                        stack.append((child, iter(N[child])))
+                    if child in RN:
+                        stack.append((child, iter(RN[child])))
                     visited.add(child)
             except StopIteration:
                 node, _ = stack.pop()
-                path = [node]
 
-                for n, _ in reversed(stack):
-                    if path_func(path, n):
-                        path.append(n)
-                    else:
-                        break
                 reach_seq_order -= 1
-                path_tuples.append((reach_seq_order, path))
-                if len(path) > 1:
-                    # Only pop ancestor nodes that were added by path_func.
-                    del stack[-(len(path) - 1) :]
+                path_tuples.append((reach_seq_order, [node]))
 
     return path_tuples
 
