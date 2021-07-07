@@ -259,11 +259,11 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
             raise AssertionError(
                 "the source nodes *must* be members of the coalesced set..."
             )
-    depth_tuples = dfs_count_depth_coalesced(RN_coalesced, source_nodes)
+    depth_tuples = dfs_count_depth(RN_coalesced, source_nodes)
     return zip(pluck(0,depth_tuples), reach_list)
 
 
-def dfs_count_depth_coalesced(RN, source_nodes=None):
+def dfs_count_depth(RN, source_nodes=None):
     """
     Returns tree depth, via depth-first-search of every element
     in a network.
