@@ -2,6 +2,7 @@ from collections import defaultdict, Counter, deque
 from itertools import chain
 from functools import reduce, partial
 from collections.abc import Iterable
+from toolz import pluck
 
 
 def nodes(N):
@@ -259,8 +260,7 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
                 "the source nodes *must* be members of the coalesced set..."
             )
     depth_tuples = dfs_count_depth_coalesced(RN_coalesced, source_nodes)
-    depths = [d for d, *_ in depth_tuples]
-    return zip(depths, reach_list)
+    return zip(pluck(0,depth_tuples), reach_list)
 
 
 def dfs_count_depth_coalesced(RN, source_nodes=None):
