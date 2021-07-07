@@ -257,18 +257,18 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
             raise AssertionError(
                 "the source nodes *must* be members of the coalesced set..."
             )
-    depths = count_depth(RN_coalesced, source_nodes)
+    depths = dfs_count_depth(RN_coalesced, source_nodes)
     return zip(depth, reach_list)
 
 
-def count_depth(RN, source_nodes=None):
+def dfs_count_depth(RN, source_nodes=None):
 
     path_tuples = []
     reach_seq_order = 0
     visited = set()
     junctions = set()
     for h in source_nodes:
-        stack = [(h, iter(RN_coalesced[h]))]
+        stack = [(h, iter(RN[h]))]
         while stack:
             node, children = stack[-1]
             if node not in junctions:
