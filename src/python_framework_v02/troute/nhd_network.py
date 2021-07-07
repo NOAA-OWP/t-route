@@ -231,10 +231,11 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
         is the set of tailwaters...)
 
     Method:
-      call: dfs_decomposition
-      call: coalesce reaches *New function*
-      call: count order *New function -- could be level order (i.e., bfs) or dfs*
-        zip results together and return order/reach tuples as before.
+      call dfs_decomposition
+      call coalesce reaches
+      call count order -- currently done with another dfs, but
+        could be level order (i.e., bfs)
+      zip results together and return order/reach tuples as before.
 
     Returns:
         [List(tuple)]: List of tuples of (depth, path) to be processed
@@ -263,6 +264,14 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
 
 
 def dfs_count_depth_coalesced(RN, source_nodes=None):
+    """
+    Returns tree depth, via depth-first-search of every element
+    in a network.
+
+    The count assumes that every element will be counted, so
+    if the objective is to identify reach depth, the network
+    must first be coalesced.
+    """
 
     path_tuples = []
     reach_seq_order = 0
@@ -341,6 +350,7 @@ def dfs_decomposition(N, path_func, source_nodes=None):
     Decompose network into lists of simply connected nodes
     For the routing problem, these sets of nodes are segments
     in a reach terminated by a junction, headwater, or tailwater.
+    (... or as otherwise tagged by the `path_func`.)
 
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
     the predecessor segments appear before it in the list.
