@@ -419,6 +419,8 @@ def diffusive_input_data_v02(
     geo_index,
     geo_data,
     qlat_data,
+    initial_conditions
+
 ):
     """
     Build input data objects for diffusive wave model
@@ -613,9 +615,8 @@ def diffusive_input_data_v02(
         geo_data,
         qlat_data,
         qlat_g,
-        initial_conditions
     )
-
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
