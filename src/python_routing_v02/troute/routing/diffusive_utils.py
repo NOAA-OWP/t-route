@@ -732,6 +732,7 @@ def diffusive_input_data_v02(
     diff_ins["y_opt_g"] = y_opt_g
     diff_ins["so_llm_g"] = so_llm_g
     diff_ins["ntss_ev_g"] = ntss_ev_g
+    diff_ins["iniq"] = iniq
 
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw
