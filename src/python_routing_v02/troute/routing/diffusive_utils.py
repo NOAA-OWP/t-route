@@ -599,7 +599,22 @@ def diffusive_input_data_v02(
     #                              Step 0-6
     #                  Prepare initial conditions data
     # ---------------------------------------------------------------------------------
-
+    iniq = np.zeros((mxncomp_g, nrch_g))
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp):
+                if seg == ncomp - 1:
+                    segID = seg_list[seg - 1]
+                else:
+                    segID = seg_list[seg]
+                    
+                idx_segID = np.where(geo_index == segID)
+                iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
