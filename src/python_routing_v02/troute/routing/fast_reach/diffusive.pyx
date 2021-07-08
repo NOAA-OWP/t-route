@@ -195,6 +195,7 @@ cpdef object compute_diffusive_tst(
         int y_opt_g = diff_inputs["y_opt_g"]
         double so_llm_g = diff_inputs["so_llm_g"]
         int ntss_ev_g = diff_inputs["ntss_ev_g"]
+        double[::1,:] iniq = np.asfortranarray(diff_inputs["iniq"])
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
