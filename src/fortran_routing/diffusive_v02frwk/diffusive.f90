@@ -23,7 +23,7 @@ contains
     subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
                         nts_ql_g, nts_ub_g, nts_db_g, &
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
-                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, &
+                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
                         nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g, &
                         frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
                         cfl_g, theta_g, tzeq_flag_g, y_opt_g, so_llm_g, &
@@ -36,7 +36,7 @@ contains
         integer, intent(in) :: nhincr_m_g, nhincr_f_g, frnw_col
         double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
-        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g
+        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, iniq
         double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
         double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g !* set frnw_col=8
