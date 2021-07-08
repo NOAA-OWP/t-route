@@ -420,7 +420,6 @@ def diffusive_input_data_v02(
     geo_data,
     qlat_data,
     initial_conditions
-
 ):
     """
     Build input data objects for diffusive wave model
@@ -436,6 +435,7 @@ def diffusive_input_data_v02(
     geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
     geo_data --(ndarray of float32s) geomorphic parameters data array
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
     
     Returns
     -------
@@ -594,9 +594,14 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
-
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
+    #                  Prepare initial conditions data
+    # ---------------------------------------------------------------------------------
+
+    # ---------------------------------------------------------------------------------
+    #                              Step 0-7
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
@@ -618,14 +623,14 @@ def diffusive_input_data_v02(
     )
     
     # ---------------------------------------------------------------------------------
-    #                              Step 0-7
+    #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
     nts_ub_g = nts_ql_g
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g)
     # ---------------------------------------------------------------------------------
-    #                              Step 0-8
+    #                              Step 0-9
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
     # ---------------------------------------------------------------------------------
@@ -641,7 +646,7 @@ def diffusive_input_data_v02(
     nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
 
     # ---------------------------------------------------------------------------------
-    #                              Step 0-8
+    #                              Step 0-10
 
     #                 Prepare uniform flow lookup tables
     # ---------------------------------------------------------------------------------
@@ -663,7 +668,7 @@ def diffusive_input_data_v02(
     # TODO: Call uniform flow lookup table creation kernel
 
     # ---------------------------------------------------------------------------------
-    #                              Step 0-9
+    #                              Step 0-11
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
