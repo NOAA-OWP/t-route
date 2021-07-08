@@ -613,6 +613,7 @@ def diffusive_input_data_v02(
         geo_data,
         qlat_data,
         qlat_g,
+        initial_conditions
     )
 
     # ---------------------------------------------------------------------------------
