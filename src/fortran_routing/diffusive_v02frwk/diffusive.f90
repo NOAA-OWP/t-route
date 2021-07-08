@@ -211,34 +211,36 @@ contains
         !+                  INITIAL CONDITION of q
         !+
         !+++---------------------------------------------------------------------------------+
+        q_g = iniq
+        
         !+ 1) Headbasin link: initialize q along all the nodes with the measured data at n=1
         !+ until the link meets a junction.
-        ts=1
-        do j=1, nrch_g
-            ncomp=frnw_g(j,1)
-        !* For the head node of a reach,
-            if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
-            !* head water reach
-               i=1
-               q_g(i,j)= ubcd_g(ts,j)
-            else
-            !* at a junction
-                qjt= 0.0
-                nusrch= frnw_g(j,3) !* then number of upstream reaches
-                do rch=1, nusrch
-                    usrchj= frnw_g(j,3+rch) !* js corresponding to upstream reaches
-                    ncomp_usrchj= frnw_g(usrchj,1)
-                    qjt= qjt + q_g(ncomp_usrchj, usrchj)
-                enddo
-                i=1
-                q_g(i,j)= qjt
-            endif
-        !* For the following nodes within a reach after the head node,
-            do i=2, ncomp
-                !* qlat_g(n,i,j) in unit of m2/sec
-                q_g(i,j) = q_g(1,j) + qlat_g(ts,i-1,j)*dx_ar_g(i-1,j)
-            enddo
-        enddo
+        !ts=1
+        !do j=1, nrch_g
+        !    ncomp=frnw_g(j,1)
+        !!* For the head node of a reach,
+        !    if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
+        !    !* head water reach
+        !       i=1
+        !       q_g(i,j)= ubcd_g(ts,j)
+        !    else
+        !    !* at a junction
+        !        qjt= 0.0
+        !        nusrch= frnw_g(j,3) !* then number of upstream reaches
+        !        do rch=1, nusrch
+        !            usrchj= frnw_g(j,3+rch) !* js corresponding to upstream reaches
+        !            ncomp_usrchj= frnw_g(usrchj,1)
+        !            qjt= qjt + q_g(ncomp_usrchj, usrchj)
+        !        enddo
+        !        i=1
+        !        q_g(i,j)= qjt
+        !    endif
+        !!* For the following nodes within a reach after the head node,
+        !    do i=2, ncomp
+        !        !* qlat_g(n,i,j) in unit of m2/sec
+        !        q_g(i,j) = q_g(1,j) + qlat_g(ts,i-1,j)*dx_ar_g(i-1,j)
+        !    enddo
+        !enddo
 
         tc = t0_g*60.0     !!! t0 is in hour. tc is in minutes
         ts=1    !*simulation time step in parallel with tc.
