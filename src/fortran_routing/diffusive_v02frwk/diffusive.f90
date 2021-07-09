@@ -23,7 +23,7 @@ contains
     subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
                         nts_ql_g, nts_ub_g, nts_db_g, &
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
-                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, &
+                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
                         nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g, &
                         frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
                         cfl_g, theta_g, tzeq_flag_g, y_opt_g, so_llm_g, &
@@ -36,7 +36,7 @@ contains
         integer, intent(in) :: nhincr_m_g, nhincr_f_g, frnw_col
         double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
-        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g
+        double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, iniq
         double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
         double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
         double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g !* set frnw_col=8
@@ -211,34 +211,36 @@ contains
         !+                  INITIAL CONDITION of q
         !+
         !+++---------------------------------------------------------------------------------+
+        q_g = iniq
+        
         !+ 1) Headbasin link: initialize q along all the nodes with the measured data at n=1
         !+ until the link meets a junction.
-        ts=1
-        do j=1, nrch_g
-            ncomp=frnw_g(j,1)
-        !* For the head node of a reach,
-            if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
-            !* head water reach
-               i=1
-               q_g(i,j)= ubcd_g(ts,j)
-            else
-            !* at a junction
-                qjt= 0.0
-                nusrch= frnw_g(j,3) !* then number of upstream reaches
-                do rch=1, nusrch
-                    usrchj= frnw_g(j,3+rch) !* js corresponding to upstream reaches
-                    ncomp_usrchj= frnw_g(usrchj,1)
-                    qjt= qjt + q_g(ncomp_usrchj, usrchj)
-                enddo
-                i=1
-                q_g(i,j)= qjt
-            endif
-        !* For the following nodes within a reach after the head node,
-            do i=2, ncomp
-                !* qlat_g(n,i,j) in unit of m2/sec
-                q_g(i,j) = q_g(1,j) + qlat_g(ts,i-1,j)*dx_ar_g(i-1,j)
-            enddo
-        enddo
+        !ts=1
+        !do j=1, nrch_g
+        !    ncomp=frnw_g(j,1)
+        !!* For the head node of a reach,
+        !    if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
+        !    !* head water reach
+        !       i=1
+        !       q_g(i,j)= ubcd_g(ts,j)
+        !    else
+        !    !* at a junction
+        !        qjt= 0.0
+        !        nusrch= frnw_g(j,3) !* then number of upstream reaches
+        !        do rch=1, nusrch
+        !            usrchj= frnw_g(j,3+rch) !* js corresponding to upstream reaches
+        !            ncomp_usrchj= frnw_g(usrchj,1)
+        !            qjt= qjt + q_g(ncomp_usrchj, usrchj)
+        !        enddo
+        !        i=1
+        !        q_g(i,j)= qjt
+        !    endif
+        !!* For the following nodes within a reach after the head node,
+        !    do i=2, ncomp
+        !        !* qlat_g(n,i,j) in unit of m2/sec
+        !        q_g(i,j) = q_g(1,j) + qlat_g(ts,i-1,j)*dx_ar_g(i-1,j)
+        !    enddo
+        !enddo
 
         tc = t0_g*60.0     !!! t0 is in hour. tc is in minutes
         ts=1    !*simulation time step in parallel with tc.

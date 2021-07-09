@@ -425,6 +425,7 @@ def diffusive_input_data_v02(
     geo_index,
     geo_data,
     qlat_data,
+    initial_conditions,
     upstream_results,
     qts_subdivisions
 ):
@@ -442,6 +443,7 @@ def diffusive_input_data_v02(
     geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
     geo_data --(ndarray of float32s) geomorphic parameters data array
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
     upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth   
     qts_subdivisions -- (int) number of qlateral timestep subdivisions 
  
@@ -623,9 +625,29 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
-
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
+    #                  Prepare initial conditions data
+    # ---------------------------------------------------------------------------------
+    iniq = np.zeros((mxncomp_g, nrch_g))
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp):
+                if seg == ncomp - 1:
+                    segID = seg_list[seg - 1]
+                else:
+                    segID = seg_list[seg]
+                    
+                idx_segID = np.where(geo_index == segID)
+                iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                
+    # ---------------------------------------------------------------------------------
+    #                              Step 0-7
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
@@ -645,9 +667,9 @@ def diffusive_input_data_v02(
         qlat_data,
         qlat_g,
     )
-
+    
     # ---------------------------------------------------------------------------------
-    #                              Step 0-7
+    #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
@@ -655,7 +677,7 @@ def diffusive_input_data_v02(
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
 
     # ---------------------------------------------------------------------------------
-    #                              Step 0-8
+    #                              Step 0-9
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
     # ---------------------------------------------------------------------------------
@@ -671,7 +693,7 @@ def diffusive_input_data_v02(
     nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
 
     # ---------------------------------------------------------------------------------
-    #                              Step 0-8
+    #                              Step 0-10
 
     #                 Prepare uniform flow lookup tables
     # ---------------------------------------------------------------------------------
@@ -693,7 +715,7 @@ def diffusive_input_data_v02(
     # TODO: Call uniform flow lookup table creation kernel
 
     # ---------------------------------------------------------------------------------
-    #                              Step 0-9
+    #                              Step 0-11
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
@@ -742,6 +764,7 @@ def diffusive_input_data_v02(
     diff_ins["y_opt_g"] = y_opt_g
     diff_ins["so_llm_g"] = so_llm_g
     diff_ins["ntss_ev_g"] = ntss_ev_g
+    diff_ins["iniq"] = iniq
 
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw

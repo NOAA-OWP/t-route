@@ -62,6 +62,7 @@ cdef extern from "pydiffusive.h":
                      double *manncc_ar_g,
                      double *so_ar_g,
                      double *dx_ar_g,
+                     double *iniq,
                      int *nhincr_m_g,
                      int *nhincr_f_g,
                      double *ufhlt_m_g,
