@@ -1071,6 +1071,9 @@ cpdef object compute_network_structured(
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
+
+            # write initial reservoir flows to flowveldepth array
+            flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
             
             # write initial reservoir flows to flowveldepth array
             flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
@@ -1181,8 +1184,12 @@ cpdef object compute_network_structured(
         fill_index_mask[fill_index] = False
         for idx, val in enumerate(tmp["results"]):
             flowveldepth_nd[fill_index, (idx//qvd_ts_w) + 1, idx%qvd_ts_w] = val
-            flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
-            flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
+            if data_idx[fill_index]  in lake_numbers_col:
+                res_idx = binary_find(lake_numbers_col, [data_idx[fill_index]])
+                flowveldepth_nd[fill_index, 0, 0] = wbody_parameters[res_idx, 9] # TODO ref dataframe column label
+            else:
+                flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
+                flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
     #Init buffers
     lateral_flows = np.zeros( max_buff_size, dtype='float32' )

@@ -534,3 +534,101 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
         subnetwork_master[net] = subnetworks
 
     return subnetwork_master
+
+
+def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_networks, sources=None):
+    """
+    Isolate subnetworks between reservoirs using a breadth-first-search
+    Arguments:
+        connections (dict): downstream network conenctions
+        rconn (dict): upstream network connections
+        wbodies (dict): {stream segment IDs in a waterbody: water body ID that segments are in}
+        sources (set): list of segments from which to begin breadth-first searches. Default to
+                       network tailwaters
+    Returns:
+        subnetwork_master (dict): {[subnetwork order]: 
+                                      {[subnetwork tail water]: 
+                                          [subnetwork segments]}}
+    """    
+
+     # if no sources provided, use tailwaters
+    if sources is None:
+        # identify tailwaters
+        sources = headwaters(rconn)
+
+    # create a list of all headwater and reservoirs in the network
+    all_hws = headwaters(connections)
+    all_wbodies = set(wbodies.values())
+
+    # search targets are all headwaters or water bodies that are not also sources
+    targets = [x for x in set.union(all_hws, all_wbodies) if x not in sources]
+
+    networks_with_subnetworks_ordered = {}
+    for net in sources:
+        new_sources = set([net])
+        subnetworks = {}
+        group_order = 0
+
+        while new_sources:
+
+            rv = {}
+            reached_wbodies = set()
+            for h in new_sources:
+                
+                reached_segs = set()
+                Q = deque([h])
+                while Q:
+                    x = Q.popleft()
+                    
+                    if x not in all_wbodies:
+                        reached_segs.add(x)
+                    else:
+                        reached_wbodies.add(x)
+
+                    if x not in targets:
+                        Q.extend(rconn.get(x, ()))
+
+                rv[h] = reached_segs
+
+            # append master dictionary
+            subnetworks[group_order] = rv # stream network
+            
+            if reached_wbodies:
+                res_dict = {}
+                for s in reached_wbodies:
+                    res_dict[s] = {s}
+                
+                # consider making key the reservoir id - a duplicate key: value
+                subnetworks[group_order+1] = res_dict # reservoirs
+            
+            # advance group order
+            group_order += 2
+            
+            new_sources = set()
+            for w in reached_wbodies:
+                new_sources.update(rconn[w])
+                
+        networks_with_subnetworks_ordered[net] = subnetworks
+
+    # create a dictionary of ordered subnetworks
+    subnetwork_master = defaultdict(dict)
+    subnetworks = defaultdict(dict)
+    for tw, ordered_network in networks_with_subnetworks_ordered.items():
+        intw = independent_networks[tw]
+        for order, subnet_sets in ordered_network.items():
+            subnetwork_master[order].update(subnet_sets)
+            for subn_tw, subnetwork in subnet_sets.items():
+                subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+    reaches_ordered_bysubntw = defaultdict(dict)
+
+    for order, ordered_subn_dict in subnetwork_master.items():
+        for subn_tw, subnet in ordered_subn_dict.items():
+            conn_subn = {k: connections[k] for k in subnet if k in connections}
+            rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+            path_func = partial(split_at_junction, rconn_subn)
+            reaches_ordered_bysubntw[order][
+                subn_tw
+            ] = dfs_decomposition(rconn_subn, path_func)
+            
+    return reaches_ordered_bysubntw, subnetworks, subnetwork_master
