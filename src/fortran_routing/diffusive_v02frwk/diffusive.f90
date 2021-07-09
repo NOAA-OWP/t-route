@@ -510,6 +510,9 @@ contains
         deallocate(tarr_db, varr_db)
         deallocate(cel_av_g)
 	deallocate(frnw_g)
+        
+        ! Consider using this format for deallocation?
+        if(allocated(bfuf_g)) deallocate(bfuf_g)
 
     endsubroutine diffnw
 
