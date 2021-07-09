@@ -293,7 +293,7 @@ def fp_qlat_map(
     return qlat_g
 
 
-def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g):
+def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, upstream_inflows):
     """
     Upstream boundary condition mapping between Python and Fortran
     
@@ -303,8 +303,7 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g):
     pynw -- (dict) ordered reach head segments
     nrch_g -- (int) number of reaches in the network
     geo_index -- (ndarray of int64) row indices for geomorphic parameters data array (geo_data)
-    qlat_data -- (ndarray of float32) qlateral data (m3/sec)
-    qlat_g -- (ndarray of float32) qlateral array (m3/sec/m) 
+    upstream_inflows (ndarray of float32) upstream_inflows (m3/sec)
     
     Returns
     -------
@@ -313,15 +312,22 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g):
 
     ubcd_g = np.zeros((nts_ub_g, nrch_g))
     frj = -1
+
+    #loop over every segment in network
     for frj in range(nrch_g):
+
+        #if this is a head segment
         if frnw_g[frj, 2] == 0:  # the number of upstream reaches is zero.
+            
             head_segment = pynw[frj]
-            for tsi in range(0, nts_ub_g):
-
-                idx_segID = np.where(geo_index == head_segment)
-
-                ubcd_g[tsi, frj] = qlat_data[idx_segID, tsi]  # [m^3/s]
-                qlat_g[tsi, 0, frj] = 0.0
+            
+            if head_segment in geo_index:
+                
+                idx_segID = np.where(np.asarray(geo_index) == head_segment)
+                
+                for tsi in range(0, nts_ub_g):
+                    
+                    ubcd_g[tsi, frj] = upstream_inflows[idx_segID, tsi]  # [m^3/s]
 
     return ubcd_g
 
@@ -419,6 +425,8 @@ def diffusive_input_data_v02(
     geo_index,
     geo_data,
     qlat_data,
+    upstream_results,
+    qts_subdivisions
 ):
     """
     Build input data objects for diffusive wave model
@@ -434,7 +442,9 @@ def diffusive_input_data_v02(
     geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
     geo_data --(ndarray of float32s) geomorphic parameters data array
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
-    
+    upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth   
+    qts_subdivisions -- (int) number of qlateral timestep subdivisions 
+ 
     Returns
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
@@ -484,9 +494,47 @@ def diffusive_input_data_v02(
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
 
+
+    ds_seg = []
+    upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
+    if upstream_results:
+        # create a list of segments downstream of reservoirs
+        ds_seg = []
+        inv_map = nhd_network.reverse_network(rconn)
+        for wbody_id in upstream_results:
+            ds_seg.append(inv_map[wbody_id][0])
+        # build array of flow reservoir outflow
+        upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
+        for j, wbody_id in enumerate(upstream_results):
+            tmp = upstream_results[wbody_id]
+            for i, val in enumerate(tmp["results"][::3]):
+                if i%qts_subdivisions == 0:
+                    upstream_flow_array[j, int(i/qts_subdivisions)] = val
+                    
+        
+    
+    # edit rconn dict values to remove any values above reservoir tailwaters. 
+    # how to quickly find reservoir values in the rconn dictionary?
+        # search the connections dictionary for reservoir segments, that will give you the downstream segments
+        # for all connections in wbodies, give me the reverse connections
+        # will need to pass wbodies df (list)
+#     import pdb; pdb.set_trace()
+    
+    # attn - this is a hack for issues in dfs_decomposition_depth_tuple
+    # generalize these lines to replace rconn values for segs below reservoirs with [ ]
+    # need to pass waterbody list down to this level
+    
+    if 6227150 in rconn:
+        # rconn[6227150] is the reservoir, we are replacing that value with [ ], here.
+        rconn[6227150] = []
+ 
     # Order reaches by junction depth
     path_func = partial(nhd_network.split_at_junction, rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)
+    
+#     if 6227150 in rconn:
+#         rconn[6227150].pop()
+    
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
 
@@ -621,7 +669,8 @@ def diffusive_input_data_v02(
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
     nts_ub_g = nts_ql_g
-    ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g)
+    ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
