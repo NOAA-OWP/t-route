@@ -326,7 +326,7 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, qlat_data, qlat_g):
     return ubcd_g
 
 
-def fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd):
+def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
     """
     Downststream boundary condition mapping between Python and Fortran using USGS stage observations
     
@@ -346,60 +346,66 @@ def fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd):
     # ** 1) downstream stage (here, lake elevation) boundary condition
     # from nwis_client.iv import IVDataService
     # install via: pip install hydrotools.nwis_client
-    try:
-        from hydrotools.nwis_client.iv import IVDataService
-    except ImportError as err:
-        print(err, end="... ")
-        print(
-            "Please install hydrotools.nwis_client via: `pip install hydrotools.nwis_client`"
-        )
-        raise  # ensures program exit by re-raising the error.
+    if usgsID2tw:
+        try:
+            from hydrotools.nwis_client.iv import IVDataService
+        except ImportError as err:
+            print(err, end="... ")
+            print(
+                "Please install hydrotools.nwis_client via: `pip install hydrotools.nwis_client`"
+            )
+            raise  # ensures program exit by re-raising the error.
 
-    # from evaluation_tools.nwis_client.iv import IVDataService
-    # Retrieve streamflow and stage data from two sites
-    # Note: 1. Retrieved data all are based on UTC time zone (UTC is 4 hours ahead of Eastern Time during
-    #          daylight saving time and 5 hours ahead during standard time)
-    #       2. Retrieved data are always 1 hour ahead of stated startDT and 1 hour ahead of endDT,
-    #          where starDT or endDT equal to yyyy-mm-dd 00:00.
-    #       3. Also, retrieved data in 15 min so there are always four more data before startDT
-    #          and four less data before endDT.
-    #          For example, startDT='2018-08-01' and endDT='2018-09-01', then the retrieved data starts by
-    #          2018-07-31-23:00:00
-    #          2018-07-31-23:15:00
-    #          2018-07-31-23:30:00
-    #          2018-07-31-23:45:00
-    #          2018-08-01-00:00:00
-    #               .......
-    #          2018-08-31-22:00:00
-    #          2018-08-31-22:15:00
-    #          2018-08-31-22:30:00
-    #          2018-08-31-22:45:00
-    #          2018-08-31-23:00:00
-    #       4. '00060' for discharge [ft^3/s]
-    #          '00065' for stage [ft]
-    #          '62614' for Elevation, lake/res,NGVD29 [ft]
-    observations_data = IVDataService.get(
-        sites=usgsID2tw,  # sites='01646500,0208758850',
-        startDT=usgssDT,  #'2018-08-01',
-        endDT=usgseDT,  #'2020-09-01',
-        # parameterCd='62614'
-        parameterCd=usgspCd,
-    )
-    nts_db_g = len(observations_data) - 4
-    # ** 4 is added to make data used here has its date time as from startDT 00:00 to (endDT-1day) 23:00, UTC
-    # ** usgs data at this site uses NGVD1929 feet datum while 'alt' of RouteLink uses NAD88 meter datum.
-    #  -> Has to convert accordingly !!!!
-    #
-    # source: https://pubs.usgs.gov/sir/2010/5040/section.html
-    # Over most USGS study area it is used that NGVD = NAVD88 - 3.6 feet
-    dbcd_g = np.zeros(nts_db_g)
-    for tsi in range(0, nts_db_g):
-        i = tsi + 4
-        dmy = observations_data.iloc[i, 4]
-        dbcd_g[tsi] = 0.3048 * (
-            dmy + 3.6
-        )  # accuracy with +-0.5feet for 95 percent of USGS study area.
-        # 0.3048 to covert ft to meter. [meter]
+        # from evaluation_tools.nwis_client.iv import IVDataService
+        # Retrieve streamflow and stage data from two sites
+        # Note: 1. Retrieved data all are based on UTC time zone (UTC is 4 hours ahead of Eastern Time during
+        #          daylight saving time and 5 hours ahead during standard time)
+        #       2. Retrieved data are always 1 hour ahead of stated startDT and 1 hour ahead of endDT,
+        #          where starDT or endDT equal to yyyy-mm-dd 00:00.
+        #       3. Also, retrieved data in 15 min so there are always four more data before startDT
+        #          and four less data before endDT.
+        #          For example, startDT='2018-08-01' and endDT='2018-09-01', then the retrieved data starts by
+        #          2018-07-31-23:00:00
+        #          2018-07-31-23:15:00
+        #          2018-07-31-23:30:00
+        #          2018-07-31-23:45:00
+        #          2018-08-01-00:00:00
+        #               .......
+        #          2018-08-31-22:00:00
+        #          2018-08-31-22:15:00
+        #          2018-08-31-22:30:00
+        #          2018-08-31-22:45:00
+        #          2018-08-31-23:00:00
+        #       4. '00060' for discharge [ft^3/s]
+        #          '00065' for stage [ft]
+        #          '62614' for Elevation, lake/res,NGVD29 [ft]
+        ivds = IVDataService()
+        observations_data = ivds.get(
+            sites=usgsID2tw,  # sites='01646500,0208758850',
+            startDT=usgssDT,  #'2018-08-01',
+            endDT=usgseDT,  #'2020-09-01',
+            # parameterCd='62614'
+            parameterCd=usgspCd,
+        )
+        nts_db_g = len(observations_data) - 4
+        # ** 4 is added to make data used here has its date time as from startDT 00:00 to (endDT-1day) 23:00, UTC
+        # ** usgs data at this site uses NGVD1929 feet datum while 'alt' of RouteLink uses NAD88 meter datum.
+        #  -> Has to convert accordingly !!!!
+        #
+        # source: https://pubs.usgs.gov/sir/2010/5040/section.html
+        # Over most USGS study area it is used that NGVD = NAVD88 - 3.6 feet
+        dbcd_g = np.zeros(nts_db_g)
+        for tsi in range(0, nts_db_g):
+            i = tsi + 4
+            dmy = observations_data.iloc[i, 4]
+            dbcd_g[tsi] = 0.3048 * (
+                dmy + 3.6
+            )  # accuracy with +-0.5feet for 95 percent of USGS study area.
+            # 0.3048 to covert ft to meter. [meter]
+    else:
+        nts_db_g = 1
+        dbcd_g = -np.ones(nts_db_g)
+        
     return nts_db_g, dbcd_g
 
 
@@ -621,13 +627,16 @@ def diffusive_input_data_v02(
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
     # ---------------------------------------------------------------------------------
-    if tw in seg2usgsID:
-        ipos = seg2usgsID.index(tw)
-        usgsID2tw = usgsID[ipos]
-        nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
+    if seg2usgsID:
+        if tw in seg2usgsID:
+            ipos = seg2usgsID.index(tw)
+            usgsID2tw = usgsID[ipos]
+        else:
+            usgsID2tw=None
     else:
-        # no usgs data available at this TW.
-        nts_db_g = -1.0
+        usgsID2tw=None
+    
+    nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
