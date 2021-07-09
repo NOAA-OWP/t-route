@@ -494,15 +494,15 @@ def diffusive_input_data_v02(
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
 
-
     ds_seg = []
+    offnet_wbodies = []
     upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
     if upstream_results:
         # create a list of segments downstream of reservoirs
-        ds_seg = []
         inv_map = nhd_network.reverse_network(rconn)
         for wbody_id in upstream_results:
             ds_seg.append(inv_map[wbody_id][0])
+            offnet_wbodies.append(wbody_id)
         # build array of flow reservoir outflow
         upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
         for j, wbody_id in enumerate(upstream_results):
@@ -510,30 +510,10 @@ def diffusive_input_data_v02(
             for i, val in enumerate(tmp["results"][::3]):
                 if i%qts_subdivisions == 0:
                     upstream_flow_array[j, int(i/qts_subdivisions)] = val
-                    
-        
-    
-    # edit rconn dict values to remove any values above reservoir tailwaters. 
-    # how to quickly find reservoir values in the rconn dictionary?
-        # search the connections dictionary for reservoir segments, that will give you the downstream segments
-        # for all connections in wbodies, give me the reverse connections
-        # will need to pass wbodies df (list)
-#     import pdb; pdb.set_trace()
-    
-    # attn - this is a hack for issues in dfs_decomposition_depth_tuple
-    # generalize these lines to replace rconn values for segs below reservoirs with [ ]
-    # need to pass waterbody list down to this level
-    
-    if 6227150 in rconn:
-        # rconn[6227150] is the reservoir, we are replacing that value with [ ], here.
-        rconn[6227150] = []
  
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_junction, rconn)
-    tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)
-    
-#     if 6227150 in rconn:
-#         rconn[6227150].pop()
+    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, offnet_wbodies, rconn)
+    tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
@@ -549,7 +529,10 @@ def diffusive_input_data_v02(
         rch.append(fksegID)
 
         # additional segment(fake) to upstream bottom segments
-        fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]
+        if any(j in rconn[rch[0]] for j in offnet_wbodies):
+            fk_usbseg = []
+        else:
+            fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]            
 
         if o not in ordered_reaches:
             ordered_reaches.update({o: []})
