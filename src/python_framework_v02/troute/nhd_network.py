@@ -2,6 +2,7 @@ from collections import defaultdict, Counter, deque
 from itertools import chain
 from functools import reduce, partial
 from collections.abc import Iterable
+from toolz import pluck
 
 
 def nodes(N):
@@ -95,7 +96,7 @@ def find_tw_for_node(reaches_bytw, node):
     """
     reaches_bytw is a dictionary of lists of the form
 
-    tw 1: 
+    tw 1:
       [ [ seg1, seg2, seg3, ... segn ], # reach 1
         [ sega, segb, segc, ... segz ], # reach 2
         .
@@ -203,7 +204,8 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
         return len(network[node]) == 1
 
 
-def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
+def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
+
     """
     Decompose network into lists of simply connected nodes
     For the routing problem, these sets of nodes are segments
@@ -228,45 +230,72 @@ def dfs_decomposition_depth_tuple(N, path_func, source_nodes=None):
         source_nodes: starting points (default use the top of the network,
         which, for the reversed network passed to this function,
         is the set of tailwaters...)
+
+    Method:
+      call dfs_decomposition
+      call coalesce reaches
+      call count order -- currently done with another dfs, but
+        could be level order (i.e., bfs)
+      zip results together and return order/reach tuples as before.
+
     Returns:
         [List(tuple)]: List of tuples of (depth, path) to be processed
         in order.
     """
+    reach_list = dfs_decomposition(RN, path_func, source_nodes)
+
+    # Label coalesced reaches with the hydrologcially  downstream-most segment
+    tag_idx = -1
+
+    RN_coalesced = coalesce_reaches(RN, reach_list, tag_idx)
+    # Make sure that if source_nodes is not empty,
+    # this doesn't create some kind of nasty collision.
+    # TODO: There might be a way to more gracefully handle this...
+
     if source_nodes is None:
-        source_nodes = headwaters(N)
+        source_nodes = headwaters(RN_coalesced)
+    else:
+        if source_nodes not in RN_coalesced:
+            raise AssertionError(
+                "the source nodes *must* be members of the coalesced set..."
+            )
+    depth_tuples = dfs_count_depth(RN_coalesced, source_nodes)
+    return zip(pluck(0,depth_tuples), reach_list)
+
+
+def dfs_count_depth(RN, source_nodes=None):
+    """
+    Returns tree depth, via depth-first-search of every element
+    in a network.
+
+    The count assumes that every element will be counted, so
+    if the objective is to identify reach depth, the network
+    must first be coalesced.
+    """
 
     path_tuples = []
     reach_seq_order = 0
     visited = set()
     junctions = set()
     for h in source_nodes:
-        stack = [(h, iter(N[h]))]
+        stack = [(h, iter(RN[h]))]
         while stack:
             node, children = stack[-1]
-            if not path_func(None, node) and (node not in junctions):
+            if node not in junctions:
                 reach_seq_order += 1
                 junctions.add(node)
             try:
                 child = next(children)
                 if child not in visited:
                     # Check to see if we are at a leaf
-                    if child in N:
-                        stack.append((child, iter(N[child])))
+                    if child in RN:
+                        stack.append((child, iter(RN[child])))
                     visited.add(child)
             except StopIteration:
                 node, _ = stack.pop()
-                path = [node]
 
-                for n, _ in reversed(stack):
-                    if path_func(path, n):
-                        path.append(n)
-                    else:
-                        break
                 reach_seq_order -= 1
-                path_tuples.append((reach_seq_order, path))
-                if len(path) > 1:
-                    # Only pop ancestor nodes that were added by path_func.
-                    del stack[-(len(path) - 1) :]
+                path_tuples.append((reach_seq_order, [node]))
 
     return path_tuples
 
@@ -291,9 +320,38 @@ def tuple_with_orders_into_dict(tuple_list, key_idx=0, val_idx=1):
     return load_dict
 
 
+def coalesce_reaches(RN, reach_list, tag_idx=-1):
+    """
+    From a list of reaches separated according to a particular rule
+    (e.g., the rule might be, "split at junctions,"
+    or "split at junctions_and waterbodies"),
+    generate a new network describing the topology of the reaches
+    using tag_idx to determine which segment id of the reach is
+    used to represent the reach in the new topology.
+
+    We assume that the RN is a reverse network and that the reaches are
+    a forward network. Hydrologically,
+    this means that the reaches are indexed from upstream to downstream
+    but that the segment keys in the network give the ids of the
+    upstream neighbors of each segment.
+
+    The concept is extensible to a non-hydrologic network.
+
+    Returns
+    RN_coalesced which has the same form as RN (i.e., seg_key: [list, of, upstreams])
+    but with each reach represented by exactly one topological element.
+    """
+
+    return {reach[tag_idx]: RN[reach[0]] for reach in reach_list}
+
+
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
-    Decompose N into a list of simple segments.
+    Decompose network into lists of simply connected nodes
+    For the routing problem, these sets of nodes are segments
+    in a reach terminated by a junction, headwater, or tailwater.
+    (... or as otherwise tagged by the `path_func`.)
+
     The order of these segments are suitable to be parallelized as we guarantee that for any segment,
     the predecessor segments appear before it in the list.
 
@@ -534,3 +592,101 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
         subnetwork_master[net] = subnetworks
 
     return subnetwork_master
+
+
+def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_networks, sources=None):
+    """
+    Isolate subnetworks between reservoirs using a breadth-first-search
+    Arguments:
+        connections (dict): downstream network conenctions
+        rconn (dict): upstream network connections
+        wbodies (dict): {stream segment IDs in a waterbody: water body ID that segments are in}
+        sources (set): list of segments from which to begin breadth-first searches. Default to
+                       network tailwaters
+    Returns:
+        subnetwork_master (dict): {[subnetwork order]: 
+                                      {[subnetwork tail water]: 
+                                          [subnetwork segments]}}
+    """    
+
+     # if no sources provided, use tailwaters
+    if sources is None:
+        # identify tailwaters
+        sources = headwaters(rconn)
+
+    # create a list of all headwater and reservoirs in the network
+    all_hws = headwaters(connections)
+    all_wbodies = set(wbodies.values())
+
+    # search targets are all headwaters or water bodies that are not also sources
+    targets = [x for x in set.union(all_hws, all_wbodies) if x not in sources]
+
+    networks_with_subnetworks_ordered = {}
+    for net in sources:
+        new_sources = set([net])
+        subnetworks = {}
+        group_order = 0
+
+        while new_sources:
+
+            rv = {}
+            reached_wbodies = set()
+            for h in new_sources:
+                
+                reached_segs = set()
+                Q = deque([h])
+                while Q:
+                    x = Q.popleft()
+                    
+                    if x not in all_wbodies:
+                        reached_segs.add(x)
+                    else:
+                        reached_wbodies.add(x)
+
+                    if x not in targets:
+                        Q.extend(rconn.get(x, ()))
+
+                rv[h] = reached_segs
+
+            # append master dictionary
+            subnetworks[group_order] = rv # stream network
+            
+            if reached_wbodies:
+                res_dict = {}
+                for s in reached_wbodies:
+                    res_dict[s] = {s}
+                
+                # consider making key the reservoir id - a duplicate key: value
+                subnetworks[group_order+1] = res_dict # reservoirs
+            
+            # advance group order
+            group_order += 2
+            
+            new_sources = set()
+            for w in reached_wbodies:
+                new_sources.update(rconn[w])
+                
+        networks_with_subnetworks_ordered[net] = subnetworks
+
+    # create a dictionary of ordered subnetworks
+    subnetwork_master = defaultdict(dict)
+    subnetworks = defaultdict(dict)
+    for tw, ordered_network in networks_with_subnetworks_ordered.items():
+        intw = independent_networks[tw]
+        for order, subnet_sets in ordered_network.items():
+            subnetwork_master[order].update(subnet_sets)
+            for subn_tw, subnetwork in subnet_sets.items():
+                subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+
+    reaches_ordered_bysubntw = defaultdict(dict)
+
+    for order, ordered_subn_dict in subnetwork_master.items():
+        for subn_tw, subnet in ordered_subn_dict.items():
+            conn_subn = {k: connections[k] for k in subnet if k in connections}
+            rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+            path_func = partial(split_at_junction, rconn_subn)
+            reaches_ordered_bysubntw[order][
+                subn_tw
+            ] = dfs_decomposition(rconn_subn, path_func)
+            
+    return reaches_ordered_bysubntw, subnetworks, subnetwork_master

@@ -153,7 +153,9 @@ cpdef object compute_diffusive_tst(
         np.asarray(data_idx),
         np.asarray(data_values),
         np.asarray(qlat_values),
-        np.asarray(initial_conditions)
+        np.asarray(initial_conditions),
+        upstream_results,
+        qts_subdivisions
         )
 
     # unpack/declare diffusive input variables
