@@ -652,7 +652,7 @@ def diffusive_input_data_v02(
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
     nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g) + 1
+        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
@@ -719,7 +719,7 @@ def diffusive_input_data_v02(
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
-    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / saveinterval_ev_g) + 1
+    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / saveinterval_ev_g)
 
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
