@@ -12,7 +12,7 @@ run_parameters:
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
-    nts: 25  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+    nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
     return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
 #output file parameters
 output_parameters:
@@ -123,11 +123,13 @@ restart_parameters:
 parity_parameters:
     #Use two lines below for parity check on streamflow and leave the following two lines commented out
     parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
-    parity_check_compare_node: 6227150 #Stream outflow from reservoir
-    #parity_check_compare_node: 6227066 #Stream TW to reservoir
+#     parity_check_compare_node: 6227150 #Stream outflow from reservoir
+#     parity_check_compare_node: 6227024 #Stream TW to reservoir
+    parity_check_compare_node: 6226966 #Stream midwater reach
+
     #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
-    #parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
-    #parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+#     parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
+#     parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
 
 diffusive_parameters:
     # the link among usgsID, link2usgsID, and paramterCd is based on integer position in the list.
@@ -146,7 +148,7 @@ diffusive_parameters:
     dt_output: 300.0  # output time step for routed discharge and elevation in sec
     dt_evaluation_output: 300.0  # output time step for evaluating routed discharge and elevation in sec
     dt_diffusive: 300.0  # initial computation time step of diffusive routing in sec
-    simulation_end_hr: 2.0  # simulation end time in hr
+    simulation_end_hr: 24.0  # simulation end time in hr
     normaldepth_lookuptable_main_increment_number: 20  # the total number of sub-intervals of water depth in main channel for creating normaldepth(or uniform flow) lookup table
     normaldepth_lookuptable_floodplain_increment_number: 20  # the total number of sub-intervals of water depth in floodplain for creating normaldepth(or uniform flow) lookup table
     normaldepth_lookuptable_depth_multiplier: 10 # a multiplier of depth in floodplain for covering large depth events

@@ -245,7 +245,7 @@ contains
         tc = t0_g*60.0     !!! t0 is in hour. tc is in minutes
         ts=1    !*simulation time step in parallel with tc.
         ts_ev=1 !* time step for outputting q and elv at evaluation time
-        ts_ev=ts_ev+1
+!        ts_ev=ts_ev+1
 !*Py        theta_g=1.0
 !*Py         y_opt_g=1 !* 1 for normal depth(kinematic); 2 for dept of diffusive wave.
 !*Py         tzeq_flag_g=1
