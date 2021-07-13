@@ -11,7 +11,7 @@ run_parameters:
     qts_subdivisions: 12
     return_courant: false
     dt: 300
-    nts: 25
+    nts: 24
     cpu_pool: 12
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
