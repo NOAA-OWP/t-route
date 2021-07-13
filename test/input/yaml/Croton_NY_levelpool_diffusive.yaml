@@ -124,8 +124,9 @@ parity_parameters:
     #Use two lines below for parity check on streamflow and leave the following two lines commented out
     parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
 #     parity_check_compare_node: 6227150 #Stream outflow from reservoir
-#     parity_check_compare_node: 6227024 #Stream TW to reservoir
-    parity_check_compare_node: 6226966 #Stream midwater reach
+    parity_check_compare_node: 6227024 #Stream TW to reservoir
+#     parity_check_compare_node: 6226966 #Stream midwater reach
+#     parity_check_compare_node: 6228214
 
     #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
 #     parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
