@@ -260,6 +260,10 @@ contains
                 end do
             end if
         end do
+        
+        ! use initial conditions array
+        oldQ = iniq
+        
         ! reading Q-Strickler's coefficient multiplier table
         do j = 1,nlinks
             ncomp= frnw_g(j,1)
@@ -279,18 +283,18 @@ contains
 !        do n=1, nts_db_g2
 !            tarr_db(n)= dbcd_g(n,1)         !* [min]
 !        enddo
-
+        
         t=t0*60.0     !! from now on, t is in minute
         !* initial value at initial time for head nodes of head water reach or TW node
         do j = 1, nlinks
             ncomp= frnw_g(j,1)
-            if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
-            !* head water reach
-                do n=1,nts_ub_g
-                    varr_ub(n)= ubcd_g(n,j)
-                enddo
-                oldQ(1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
-            endif
+            !if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
+            !!* head water reach
+            !    do n=1,nts_ub_g
+            !        varr_ub(n)= ubcd_g(n,j)
+            !    enddo
+            !    oldQ(1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
+            !endif
 
             if (frnw_g(j,2)<0.0) then
                 !* downstream boundary node at TW
@@ -631,10 +635,10 @@ contains
                 call calc_dimensionless_numbers(j)
             enddo
 
-            do j=1,nlinks
-                i=1
-                write(*,*) t,i,j,newQ(i,j),newY(i,j)-z(i,j)
-            end do
+            !do j=1,nlinks
+            !    i=1
+            !    write(*,*) t,i,j,newQ(i,j),newY(i,j)-z(i,j)
+            !end do
             if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
                 do j = 1, nlinks
                     ncomp= frnw_g(j,1)
