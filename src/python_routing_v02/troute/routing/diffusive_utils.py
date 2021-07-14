@@ -427,7 +427,8 @@ def diffusive_input_data_v02(
     qlat_data,
     initial_conditions,
     upstream_results,
-    qts_subdivisions
+    qts_subdivisions,
+    nsteps
 ):
     """
     Build input data objects for diffusive wave model
@@ -453,38 +454,14 @@ def diffusive_input_data_v02(
     """
 
     # diffusive time steps info.
-    dt_ql_g = diffusive_parameters.get("dt_qlat", None)  # time step of lateral flow
-    dt_ub_g = diffusive_parameters.get(
-        "dt_upstream_boundary", None
-    )  # time step of us.boundary data
-    dt_db_g = diffusive_parameters.get(
-        "dt_downstream_boundary", None
-    )  # time step of ds.boundary data
-    saveinterval_g = diffusive_parameters.get(
-        "dt_output", None
-    )  # time step for outputting routed results
-    saveinterval_ev_g = diffusive_parameters.get(
-        "dt_output", None
-    )  # time step for evaluating routed results
-    dtini_g = diffusive_parameters.get(
-        "dt_diffusive", None
-    )  # initial simulation time step
+    dt_ql_g = geo_data[0,0] * qts_subdivisions
+    dt_ub_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    dt_db_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    saveinterval_g = geo_data[0,0]
+    saveinterval_ev_g = geo_data[0,0]
+    dtini_g = geo_data[0,0]
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
-    tfin_g = diffusive_parameters.get("simulation_end_hr", None)  # simulation end time
-
-    # USGS data related info.
-    usgsID = diffusive_parameters.get("usgsID", None)
-    seg2usgsID = diffusive_parameters.get("link2usgsID", None)
-    usgssDT = diffusive_parameters.get("usgs_start_date", None)
-    usgseDT = diffusive_parameters.get("usgs_end_date", None)
-    usgspCd = diffusive_parameters.get("usgs_parameterCd", None)
-
-    # diffusive parameters
-    cfl_g = diffusive_parameters.get("courant_number_upper_limit", None)
-    theta_g = diffusive_parameters.get("theta_parameter", None)
-    tzeq_flag_g = diffusive_parameters.get("chgeo_computation_flag", None)
-    y_opt_g = diffusive_parameters.get("water_elevation_computation_flag", None)
-    so_llm_g = diffusive_parameters.get("bed_slope_lower_limit", None)
+    tfin_g = (geo_data[0,0] * nsteps)/60/60
 
     # number of reaches in network
     nrch_g = len(reach_list)
