@@ -462,6 +462,20 @@ def diffusive_input_data_v02(
     dtini_g = geo_data[0,0]
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (geo_data[0,0] * nsteps)/60/60
+    
+    # USGS data related info.
+    usgsID = diffusive_parameters.get("usgsID", None)
+    seg2usgsID = diffusive_parameters.get("link2usgsID", None)
+    usgssDT = diffusive_parameters.get("usgs_start_date", None)
+    usgseDT = diffusive_parameters.get("usgs_end_date", None)
+    usgspCd = diffusive_parameters.get("usgs_parameterCd", None)
+    
+    # diffusive parameters
+    cfl_g = diffusive_parameters.get("courant_number_upper_limit", None)
+    theta_g = diffusive_parameters.get("theta_parameter", None)
+    tzeq_flag_g = diffusive_parameters.get("chgeo_computation_flag", None)
+    y_opt_g = diffusive_parameters.get("water_elevation_computation_flag", None)
+    so_llm_g = diffusive_parameters.get("bed_slope_lower_limit", None)
 
     # number of reaches in network
     nrch_g = len(reach_list)
