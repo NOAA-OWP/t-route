@@ -619,7 +619,7 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_ne
     all_wbodies = set(wbodies.values())
 
     # search targets are all headwaters or water bodies that are not also sources
-    targets = [x for x in set.union(all_hws, all_wbodies) if x not in sources]
+    targets = {x for x in set.union(all_hws, all_wbodies) if x not in sources}
 
     networks_with_subnetworks_ordered = {}
     for net in sources:
