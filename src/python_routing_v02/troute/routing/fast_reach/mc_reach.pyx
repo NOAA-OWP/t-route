@@ -1071,9 +1071,6 @@ cpdef object compute_network_structured(
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
             #Reservoirs should be singleton list reaches, TODO enforce that here?
-
-            # write initial reservoir flows to flowveldepth array
-            flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
             
             # write initial reservoir flows to flowveldepth array
             flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
