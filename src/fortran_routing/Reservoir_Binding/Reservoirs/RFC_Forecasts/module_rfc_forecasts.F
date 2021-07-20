@@ -61,7 +61,7 @@ contains
         implicit none
         class(rfc_forecasts), intent(inout) :: this ! object being initialized
         real,    intent(inout) :: water_elevation           ! meters AMSL
-        real,    intent(in)    :: lake_area      		    ! area of lake (km^2)
+        real,    intent(in)    :: lake_area                 ! area of lake (km^2)
         real,    intent(in)    :: weir_elevation            ! bottom of weir elevation (meters AMSL)
         real,    intent(in)    :: weir_coeffecient          ! weir coefficient
         real,    intent(in)    :: weir_length               ! weir length (meters)
@@ -88,12 +88,12 @@ contains
 
         if (this%pointer_allocation_guard .eqv. .false. ) then
 
-            if (reservoir_type .ne. 4) then
+            if (reservoir_type .ne. 4 .and. reservoir_type .ne. 5) then
                 ! Call hydro_stop if reservoir_type is not RFC Forecast.
                 write(lake_number_string, "(I15)") lake_number
                 write(reservoir_type_string, "(I15)") reservoir_type
                 call hydro_stop("ERROR: Incorrect reservoir type for reservoir " // trim(ADJUSTL(lake_number_string)) // &
-                ". Expected reservoir type 4 and instead received reservoir type " // reservoir_type_string // "." )
+                ". Expected reservoir type 4 or 5 and instead received reservoir type " // reservoir_type_string // "." )
             end if
 
             ! try to allocate input
@@ -129,7 +129,8 @@ contains
                 // trim(ADJUSTL(lake_number_string)) // ".")
             else
                 ! initialize rfc forecasts properties
-                call this%properties%init(lake_area, lake_max_water_elevation, lake_number, reservoir_parameter_file)
+                call this%properties%init(lake_area, lake_max_water_elevation, lake_number, &
+                reservoir_type, reservoir_parameter_file)
             end if
             this%pointer_allocation_guard = .true.
 
@@ -308,8 +309,18 @@ contains
 
             end if
 
-            ! Set outflow to corresponding discharge from array
-            this%output%outflow = this%state%discharges(this%state%time_series_index)
+            ! If reservoir_type is 4 for CONUS RFC reservoirs
+            if (this%properties%reservoir_type == 4) then
+ 
+                ! Set outflow to corresponding discharge from array
+                this%output%outflow = this%state%discharges(this%state%time_series_index)
+
+            ! Else reservoir_type 5 for for Alaska RFC glacier outflows
+            else
+
+                ! Set outflow to sum inflow and corresponding discharge from array
+                this%output%outflow = this%input%inflow + this%state%discharges(this%state%time_series_index)
+            end if
 
             ! Update water elevation
             this%state%water_elevation = this%state%water_elevation + &
@@ -343,7 +354,15 @@ contains
                 end do
 
                 if (this%output%outflow < 0) then
-                    this%output%outflow = levelpool_outflow
+
+                    ! If reservoir_type is 4 for CONUS RFC reservoirs
+                    if (this%properties%reservoir_type == 4) then
+                        this%output%outflow = levelpool_outflow
+
+                    ! Else reservoir_type 5 for for Alaska RFC glacier outflows
+                    else
+                        this%output%outflow = this%input%inflow
+                    end if
 
                     ! Update water elevation to levelpool water elevation
                     this%state%water_elevation = this%state%levelpool_water_elevation
@@ -361,7 +380,14 @@ contains
             end if
 
         else
-            this%output%outflow = levelpool_outflow
+            ! If reservoir_type is 4 for CONUS RFC reservoirs
+            if (this%properties%reservoir_type == 4) then
+                this%output%outflow = levelpool_outflow
+
+            ! Else reservoir_type 5 for for Alaska RFC glacier outflows
+            else
+                this%output%outflow = this%input%inflow
+            end if
 
             ! Update water elevation to levelpool water elevation
             this%state%water_elevation = this%state%levelpool_water_elevation
