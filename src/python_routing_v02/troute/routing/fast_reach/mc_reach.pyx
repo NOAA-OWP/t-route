@@ -820,6 +820,7 @@ cpdef object compute_network_structured_obj(
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
+    cdef float dt = 300.0
     if gages_size:
         for gage_i in range(gages_size):
             usgs_position_i = usgs_positions_list[gage_i]
@@ -1000,7 +1001,7 @@ cpdef object compute_network_structured_obj(
                 a = 120  # TODO: pull this a value from the config file somehow  
                 for i in range(0,len(usgs_values[0])):
                     if np.isnan(usgs_values[gage_i, timestep-1]):
-                        da_weight = exp(decay_timesteps[gage_i]/-a)
+                        da_weight = exp(decay_timesteps[gage_i]*dt/-a)
                         flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]  
                         #alternative version below using decay_timestep not da_weight calculation based on discussions 
                         #flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * decay_timesteps[gage_i] + starting_bias_array[gage_i]  
@@ -1012,6 +1013,16 @@ cpdef object compute_network_structured_obj(
                         pass
             #This does not continue decay after the usgs_obs ends
 
+        else:
+            #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
+            for gage_i in range(gages_size):                        
+                usgs_position_i = usgs_positions_list[gage_i]
+                a = 120
+                for i in range(0,len(usgs_values[0])):
+                    da_weight = exp(decay_timesteps[gage_i]*dt/-a)
+                    while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
+                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
+        
         timestep += 1
 
     #pr.disable()
@@ -1104,6 +1115,7 @@ cpdef object compute_network_structured(
     cdef int found_last_obs = 0
     cdef long sid
     cdef _MC_Segment segment
+    cdef float dt = 300.0
     decay_timesteps = decay_timestep_array
     starting_bias_array = starting_bias
     #pr.enable()
@@ -1318,7 +1330,7 @@ cpdef object compute_network_structured(
                 a = 120  # TODO: pull this a value from the config file somehow  
                 for i in range(0,len(usgs_values[0])):
                     if np.isnan(usgs_values[gage_i, timestep-1]):
-                        da_weight = exp(decay_timesteps[gage_i]/-a)
+                        da_weight = exp(decay_timesteps[gage_i]*dt/-a)
                         flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]  
                         #alternative version below using decay_timestep not da_weight calculation based on discussions 
                         #flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * decay_timesteps[gage_i] + starting_bias_array[gage_i]  
@@ -1328,28 +1340,20 @@ cpdef object compute_network_structured(
                         starting_bias_array[gage_i] = usgs_values[gage_i, timestep-1]
                         flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
                         pass
-            #This does not continue decay after the usgs_obs ends
-                    
 
 
-
-
-                #if timestep == last_obs_start+1 and found_last_obs == 0:
-                    #flowveldepth[usgs_position_i, timestep, 0] = lastobs_values[gage_i, 0]
-                    #found_last_obs = 1
-                    #decay_timestep = 2
-                    #printf("last_obs_check1 =: %d %d\t", lastobs_values[gage_i, 0],found_last_obs)
-                #elif timestep < gage_maxtimestep and found_last_obs != 1:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
-                    #flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
-                    #printf("last_obs_check2 =: %d %d %d \t", lastobs_values[gage_i, 0], timestep, 2)
-                #else:
-                    #a = 120  # TODO: pull this a value from the config file somehow
-                    #decay_timestep += 1
-                    #da_weight = exp(decay_timestep/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
-                    #flowveldepth[usgs_position_i, timestep , 0] = (lastobs_values[gage_i, 0] * flowveldepth[usgs_position_i, timestep ,0] * da_weight) + flowveldepth[usgs_position_i, timestep ,0]
-                    #printf("last_obs_check3 =: %d\t", lastobs_values[gage_i, 0])
-
+        else:
+            #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
+            for gage_i in range(gages_size):                        
+                usgs_position_i = usgs_positions_list[gage_i]
+                a = 120
+                for i in range(0,len(usgs_values[0])):
+                    da_weight = exp(decay_timesteps[gage_i]*dt/-a)
+                    while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
+                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
+        
         timestep += 1
+        
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
