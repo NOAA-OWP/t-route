@@ -560,7 +560,7 @@ def build_qlateral_array(
             qlat_file_pattern_filter = forcing_parameters.get(
                 "qlat_file_pattern_filter", "*CHRT_OUT*"
             )
-            qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
+            qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
 
         qlat_file_index_col = forcing_parameters.get(
             "qlat_file_index_col", "feature_id"

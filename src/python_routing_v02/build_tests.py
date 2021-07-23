@@ -177,9 +177,9 @@ def parity_check(
                 parity_check_input_folder.joinpath(f) for f in validation_files
             ]
         elif "parity_check_file_pattern_filter" in parity_set:
-            validation_files = pathlib.Path(
+            validation_files = sorted(pathlib.Path(
                 parity_set["parity_check_input_folder"]
-            ).rglob(parity_set.get("parity_check_file_pattern_filter", "*CHRT_OUT*"))
+            ).rglob(parity_set.get("parity_check_file_pattern_filter", "*CHRT_OUT*")))
 
         # read validation data from CHRTOUT files
         validation_data = nhd_io.get_ql_from_wrf_hydro_mf(
