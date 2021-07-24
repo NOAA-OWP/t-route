@@ -4,13 +4,24 @@ import pandas as pd
 import json
 
 
+# Each catchment has one or more segments/comids from the crosswalk-mapping. 
+# Each cacthment has one downstream nexus from the flowpath_data.geojson.
+# From the Route Link file, each segment/comid has one downstream segment/comid. 
+# From filtering, each catchment can then reduce to having one downstream segment/comid.
+# We can then map the single nexus to one downstream segment/comid.
+# In the end, multiple nexuses can point to a single downstream segment/comid,
+# but a single nexus cannot have multiple downstream segments/comids.
+
+# Actually a single nexus can have mult ds comids. Need to revisit this later
+
+
 def ngen_preprocess():
     """
 
     """
 
     #ngen_network_df = nhd_io.read_geopandas( "flowpath_data.geojson" )
-    ngen_network_df = nhd_io.read_geopandas( "/glade/work/dmattern/ngen_pybind/crosswalk_mapping/flowpath_data.geojson" )
+    ngen_network_df = nhd_io.read_geopandas( "........../ngen_pybind/crosswalk_mapping/flowpath_data.geojson" )
     print("ngen_network_df1") 
     print(ngen_network_df) 
     # Extract subset here if needed
@@ -36,7 +47,8 @@ def ngen_preprocess():
     print ("connection_df2")
     print (connection_df)
 
-    connection_df = nhd_io.replace_downstreams(connection_df, "to", 0)
+    #No longer need this because not setting up catchment network for t-route
+    #connection_df = nhd_io.replace_downstreams(connection_df, "to", 0)
 
     #Set index name to cat-id
     connection_df.index.names = ["cat-id"]
@@ -53,7 +65,7 @@ def ngen_preprocess():
 
     # Channel parameters
     #param_df = nhd_io.read_netcdf("RouteLink_NHDPLUS.nc")
-    param_df = nhd_io.read_netcdf("/glade/scratch/mehdi/test_persistence/v3.0_enhancements_model_runs/nwm_v3/model_inputs/NWM/DOMAIN/RouteLink_NWMv2.1.nc")
+    param_df = nhd_io.read_netcdf("............/test_persistence/v3.0_enhancements_model_runs/nwm_v3/model_inputs/NWM/DOMAIN/RouteLink_NWMv2.1.nc")
     param_df['dt'] = 300.0
 
     param_df.set_index("link", inplace=True)
@@ -87,7 +99,7 @@ def ngen_preprocess():
     print (param_df)
 
     #with open(next_gen_input_folder/'coarse/crosswalk.json') as f:
-    with open("/glade/work/dmattern/ngen_pybind/crosswalk_mapping/crosswalk-mapping.json") as f:
+    with open(".........../ngen_pybind/crosswalk_mapping/crosswalk-mapping.json") as f:
         crosswalk_data = json.load(f)
     #connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['outlet_COMID'], axis=1)
     connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['COMID'], axis=1)
@@ -123,6 +135,7 @@ def ngen_preprocess():
     print ("comid_df")
     print (comid_df)
 
+    # Create mask as input to filter sub-domain for t-route
     comid_df.to_csv('ngen_comid_mask.csv', header=False, index=False)
 
 
@@ -184,6 +197,90 @@ def ngen_preprocess():
     print (connection_df_with_segs_and_params)
 
     del param_df
+
+
+    #connection_and_params_df_indexed_by_nexus = connection_df_with_segs_and_params
+
+
+    #connection_df_with_segs_and_params.to_json("routing_input_parms_to_ngen.json", orient='split', index=False)
+
+
+    connection_df_with_segs_and_params = connection_df_with_segs_and_params.drop(columns='time')
+    connection_df_with_segs_and_params = connection_df_with_segs_and_params.drop(columns='gages')
+
+
+
+    connection_dict_with_segs_and_params = connection_df_with_segs_and_params.groupby(level=0).apply(lambda connection_df_with_segs_and_params: connection_df_with_segs_and_params.xs(connection_df_with_segs_and_params.name).to_dict()).to_dict()
+
+
+    #downstream_comid_to_nexus_id_dict = {}
+    nexus_id_to_downstream_comid_dict = {}
+
+    for cat_id_key, params_value in connection_dict_with_segs_and_params.items():
+        for comid_key, nexus_id_value in params_value['to'].items():
+            print (str(comid_key) + " " + str(nexus_id_value))
+            nexus_id = nexus_id_value
+
+        comid_key_list = []
+        downstream_value_list = []
+
+        for comid_key, downstream_value in params_value['downstream'].items():
+           comid_key_list.append(comid_key)
+           downstream_value_list.append(downstream_value)
+
+        downstream_comid = None
+
+        for downstream_value in downstream_value_list:
+           if downstream_value not in comid_key_list:
+               downstream_comid = downstream_value
+
+        if downstream_comid == None:
+           raise ValueError('Did not find a downstream comid for catchment: ' + str(cat_id_key))
+
+        print ("Nexus " + str(nexus_id) + ": DS COMID " + str(downstream_comid))
+
+        #Add key/value of nexus and ds comid to a dict. What happens when a duplicate key/value is entered
+        #due to multiple nexuses from mult cats?? Maybe reduce to a set of single key nexus. Or could just check
+        #if the key/value is in the dict already and if so then don't add. Consider throwing an error
+        #if they key is in the dict but the value for that key in the dict does not match the value
+        #that is considering to be added
+
+
+        #Original thought of dict with ds_comids as keys and nex_is as vals
+        #if downstream_comid in downstream_comid_to_nexus_id_dict.keys():
+        #    if downstream_comid_to_nexus_id_dict[downstream_comid] != nexus_id:
+        #        raise ValueError("COMID: " + str(downstream_comid) + 
+        #        " is assigned as downstream to multiple nexus ids")
+        print ("nexus map: " + str(nexus_id) + " " + str(downstream_comid))    
+ 
+        if nexus_id in nexus_id_to_downstream_comid_dict.keys():
+            if nexus_id_to_downstream_comid_dict[nexus_id] != downstream_comid:
+                #raise ValueError("Nexus_id: " + str(nexus_id) + 
+                #" is assigned to have multiple downstream segments/comids")
+               
+                print ("Nexus_id: " + str(nexus_id) +
+                " is assigned to have multiple downstream segments/comids")
+
+
+ 
+        #Dict of ints right now for both ids
+        #downstream_comid_to_nexus_id_dict[downstream_comid] = nexus_id
+        nexus_id_to_downstream_comid_dict[nexus_id] = downstream_comid
+
+
+
+    print ("connection_dict_with_segs_and_params")
+    print (connection_dict_with_segs_and_params)
+
+    #output_file = "routing_input_parms_to_ngen.json"
+    #output_file = "downstream_comid_to_nexus_id_mapping.json"
+    output_file = "nexus_id_to_downstream_comid_mapping.json"
+
+    #with open(output_file, "w") as open_output_file: 
+    #  json.dump(connection_dict_with_segs_and_params, open_output_file, indent=4)
+
+    with open(output_file, "w") as open_output_file: 
+      json.dump(nexus_id_to_downstream_comid_dict, open_output_file, indent=4)
 
 
 if __name__ == "__main__":
