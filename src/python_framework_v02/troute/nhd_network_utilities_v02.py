@@ -421,6 +421,20 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
+
+    if "ngen_nexus_id_to_downstream_comid_mapping_json" in supernetwork_parameters:
+        ngen_nexus_id_to_downstream_comid_mapping_dict = nhd_io.read_ngen_nexus_id_to_downstream_comid_mapping(
+            pathlib.Path(supernetwork_parameters["ngen_nexus_id_to_downstream_comid_mapping_json"])
+        )
+
+        print("ngen_nexus_id_to_downstream_comid_mapping_dict")
+        print(ngen_nexus_id_to_downstream_comid_mapping_dict)
+
+    print("param_df")
+    print(param_df)
+
+
+    param_df = param_df.rename(columns=reverse_dict(cols))
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
