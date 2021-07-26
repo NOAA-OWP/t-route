@@ -25,7 +25,7 @@ output_parameters:
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "NGEN_HUC1"
-    geo_file_path: "/glade/scratch/mehdi/test_persistence/v3.0_enhancements_model_runs/nwm_v3/model_inputs/NWM/DOMAIN/RouteLink_NWMv2.1.nc"
+    geo_file_path: "/apd_common/anthro/backup/water_management_v3.0_archive/nwm_v3/DOMAIN/RouteLink_NWMv2.1.nc"
     mask_file_path: "../../test/input/next_gen/ngen_comid_mask_subset1.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
@@ -103,7 +103,11 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     #For ngen, replaced by nexus flows
-    qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
+    nexus_input_folder: "/apd_common/anthro/david_code/ngen/"
+    nexus_file_pattern_filter: "nex-*"
+    #qlat_input_folder: "/apd_common/anthro/david_code/ngen/"
+    #qlat_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+    #qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
 #WRF-Hydro restart files
 #restart_parameters:
     #WRF-Hydro channels restart file
