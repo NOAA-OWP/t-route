@@ -701,6 +701,7 @@ def build_qlateral_array(
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+    nexus_input_folder = forcing_parameters.get("nexus_input_folder", None)
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         if "qlat_files" in forcing_parameters:
@@ -736,6 +737,21 @@ def build_qlateral_array(
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
 
+
+    elif nexus_input_folder:
+        print (nexus_input_folder)
+        nexus_input_folder = pathlib.Path(nexus_input_folder)
+
+        if "nexus_file_pattern_filter" in forcing_parameters:
+            nexus_file_pattern_filter = forcing_parameters.get(
+                "nexus_file_pattern_filter", "nex-*"
+            )
+            nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
+
+            for nexus_file in nexus_files:
+                print (nexus_file)
+
+
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
@@ -745,6 +761,9 @@ def build_qlateral_array(
             dtype="float32",
         )
 
+    print ("qlat_df1")
+    print (qlat_df)
+
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
@@ -752,6 +771,10 @@ def build_qlateral_array(
 
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
+
+    print ("qlat_df2")
+    print (qlat_df)
+
 
     return qlat_df
 
