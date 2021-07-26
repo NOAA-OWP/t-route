@@ -412,6 +412,8 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.set_index("key")
 
+    ngen_nexus_id_to_downstream_comid_mapping_dict = {}
+
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
             pathlib.Path(supernetwork_parameters["mask_file_path"]),
@@ -487,7 +489,7 @@ def build_connections(supernetwork_parameters):
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df, wbodies, gages
+    return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
 
 
 def build_waterbodies(
@@ -685,10 +687,15 @@ def build_forcing_sets(
 def build_qlateral_array(
     forcing_parameters,
     segment_index=pd.Index([]),
+    ngen_nexus_id_to_downstream_comid_mapping_dict=None,
     ts_iterator=None,
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
+
+    print ("ngen_nexus_id_to_downstream_comid_mapping_dict2")
+    print (ngen_nexus_id_to_downstream_comid_mapping_dict)
+
 
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
