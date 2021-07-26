@@ -416,6 +416,7 @@ def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
     with xr.open_dataset(lastobsfile) as ds:
         df_model_discharges = ds["model_discharge"].to_dataframe()
         df_discharges = ds["discharge"].to_dataframe()
+        df_discharges[df_discharges['discharge'] != -9999.0] = df_discharges[df_discharges['discharge'] != -9999.0].interpolate(method="linear", axis=1)
         last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
         model_discharge_last_ts = df_model_discharges[
             df_model_discharges.index.get_level_values("timeInd") == last_ts

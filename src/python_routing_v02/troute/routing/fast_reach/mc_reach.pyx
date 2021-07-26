@@ -1013,15 +1013,15 @@ cpdef object compute_network_structured_obj(
                         pass
             #This does not continue decay after the usgs_obs ends
 
-        else:
-            #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
-            for gage_i in range(gages_size):                        
-                usgs_position_i = usgs_positions_list[gage_i]
-                a = 120
-                for i in range(0,len(usgs_values[0])):
-                    da_weight = exp(decay_timesteps[gage_i]*dt/-a)
-                    while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
-                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
+        #else:
+        #    #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
+        #    for gage_i in range(gages_size):                        
+        #        usgs_position_i = usgs_positions_list[gage_i]
+        #        a = 120
+        #        for i in range(0,len(usgs_values[0])):
+        #            da_weight = exp(decay_timesteps[gage_i]*dt/-a)
+        #           while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
+        #                flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
         
         timestep += 1
 
@@ -1342,15 +1342,15 @@ cpdef object compute_network_structured(
                         pass
 
 
-        else:
-            #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
-            for gage_i in range(gages_size):                        
-                usgs_position_i = usgs_positions_list[gage_i]
-                a = 120
-                for i in range(0,len(usgs_values[0])):
-                    da_weight = exp(decay_timesteps[gage_i]*dt/-a)
-                    while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
-                        flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
+        #else:
+        #    #this is roughly the necessary code needed to update after each timestep, it would continue to decay if the values delta was > .001 or whatever number we wished.
+        #    for gage_i in range(gages_size):                        
+        #        usgs_position_i = usgs_positions_list[gage_i]
+        #        a = 120
+        #        for i in range(0,len(usgs_values[0])):
+        #            da_weight = exp(decay_timesteps[gage_i]*dt/-a)
+        #            while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
+        #                flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
         
         timestep += 1
         
