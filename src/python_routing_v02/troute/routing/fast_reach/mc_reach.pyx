@@ -1011,6 +1011,12 @@ cpdef object compute_network_structured_obj(
                         starting_bias_array[gage_i] = usgs_values[gage_i, timestep-1]
                         flowveldepth[usgs_position_i, timestep , 0] = usgs_values[gage_i, timestep-1]
                         pass
+                printf("last_obs_check1 =: %d%d\t", len(usgs_values[0]),nsteps+1)
+                for i in range(len(usgs_values[0]),nsteps+1):
+                    printf("last_obs_check1 =: %d\t", flowveldepth[usgs_position_i, timestep , 0])
+                    da_weight = exp(decay_timesteps[gage_i]*dt/-a)
+                    flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
+                    printf("last_obs_check2 =: %d\t", flowveldepth[usgs_position_i, timestep , 0])
             #This does not continue decay after the usgs_obs ends
 
         #else:
@@ -1023,6 +1029,8 @@ cpdef object compute_network_structured_obj(
         #           while ((starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i]) > .001:
         #                flowveldepth[usgs_position_i, timestep , 0] = (starting_bias_array[gage_i] - flowveldepth[usgs_position_i, timestep , 0])  * da_weight + starting_bias_array[gage_i] 
         
+
+        #gages_size = usgs_positions_list.shape[0]
         timestep += 1
 
     #pr.disable()
