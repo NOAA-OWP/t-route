@@ -753,6 +753,10 @@ def build_qlateral_array(
 
             have_read_in_first_nexus_file = False
 
+
+
+
+
             for nexus_file in nexus_files:
                 print (nexus_file)
 
@@ -774,6 +778,22 @@ def build_qlateral_array(
 
                 nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
 
+                # Drop original integer index column
+                nexus_flows.drop(nexus_flows.columns[[0]], axis=1, inplace=True)
+                print ("===========nexus_flows-------------")
+                print (nexus_flows)
+
+
+                nexus_flows = nexus_flows.rename(columns={2: nexus_id})
+
+                print ("nexus_flows renamed")
+                print (nexus_flows)
+
+                nexus_flows_transposed = nexus_flows.transpose()
+                print ("----------nexus_flows_transposed-------------")
+                print (nexus_flows_transposed)
+
+                # Maybe can change logic for initializing dataframe with append
                 if not have_read_in_first_nexus_file:
                     have_read_in_first_nexus_file = True
 
@@ -781,15 +801,40 @@ def build_qlateral_array(
                     #to have the date as the header and nex id as the index.
                     #Then append or join each following nexus one.
                     #Then map and reduce to DS segment ids
-                    nexuses_flows_df = nexus_flows
+
+                    nexuses_flows_df = nexus_flows_transposed
+
+                    #print ("-----------------------------------------")
+                    #print ("nexus_flows.iloc[0]")
+                    #print (nexus_flows.iloc[0])
+                    #print (nexus_flows.iloc[:,0])
+                    #print ("!!!!!!-----------------------------------------")
+
+
+
+                    #print ("nexuses_flows_df")
+                    #print (nexuses_flows_df)
+
+                    #nexuses_flows_df = nexuses_flows_df.set_index(nexus_flows.iloc[:,0])
+
+                    #print ("nexuses_flows_df after reindex to time ++++++++++++++++++")
+                    #print (nexuses_flows_df)
+
+
 
                 else:
-                    #temp
-                    nexuses_flows_df = nexus_flows
+                    #TODO: Check on copying and duplication of memory on this??
+                    nexuses_flows_df = nexuses_flows_df.append(nexus_flows_transposed)
+
+
+                #print ("nexus_flows-------------")
+                #print (nexus_flows)
+
+            print ("@@@@@@@@@@@@nexuses_flows_df")
+            print (nexuses_flows_df)
 
 
 
-                print (nexus_flows)
 
 
     else:
