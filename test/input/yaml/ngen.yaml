@@ -10,7 +10,7 @@ run_parameters:
                           # WARNING: `break_network_at_waterbodies: true` will only work if compute_kernel is set to "V02-structured-obj" and parallel_compute_method is unset (serial execution) or set to "by-network".
     compute_kernel: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
-    qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
+    qts_subdivisions: 1  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
     nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
     return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
