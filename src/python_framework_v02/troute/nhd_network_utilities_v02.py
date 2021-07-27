@@ -7,7 +7,7 @@ import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
-
+import re
 
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
@@ -748,8 +748,48 @@ def build_qlateral_array(
             )
             nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
 
+            #Declare empty dataframe
+            #nexuses_flows_df = pd.DataFrame()
+
+            have_read_in_first_nexus_file = False
+
             for nexus_file in nexus_files:
                 print (nexus_file)
+
+                split_list = str(nexus_file).split("/")
+
+                print (split_list)
+
+                nexus_file_name = split_list[-1]
+
+                print (nexus_file_name)
+
+                nexus_file_name_split = re.split('-|_', nexus_file_name)
+
+                print (nexus_file_name_split)
+
+                nexus_id = int(nexus_file_name_split[1])
+
+                print (nexus_id)
+
+                nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
+
+                if not have_read_in_first_nexus_file:
+                    have_read_in_first_nexus_file = True
+
+                    #Need to make the date the index and then do a transformation
+                    #to have the date as the header and nex id as the index.
+                    #Then append or join each following nexus one.
+                    #Then map and reduce to DS segment ids
+                    nexuses_flows_df = nexus_flows
+
+                else:
+                    #temp
+                    nexuses_flows_df = nexus_flows
+
+
+
+                print (nexus_flows)
 
 
     else:
