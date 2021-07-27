@@ -208,6 +208,19 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     return ql.astype("float32")
 
 
+def get_nexus_flows_from_csv(nexus_input_file, index_col=0):
+    """
+    nexus_input_file: comma delimted file for a single nexus flow with timestep rows
+    index_col = 0:
+    col1: date-time
+    col2: flows
+    """
+    nexus_flows = pd.read_csv(nexus_input_file, index_col=index_col)
+    #return ql.astype("float32")
+    return nexus_flows
+
+
+
 def read_qlat(path):
     """
     retained for backwards compatibility with early v02 files
