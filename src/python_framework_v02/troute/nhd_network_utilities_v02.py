@@ -696,6 +696,7 @@ def build_qlateral_array(
     print ("ngen_nexus_id_to_downstream_comid_mapping_dict2")
     print (ngen_nexus_id_to_downstream_comid_mapping_dict)
 
+    using_nexus_flows = False
 
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
@@ -739,6 +740,9 @@ def build_qlateral_array(
 
 
     elif nexus_input_folder:
+
+        using_nexus_flows = True
+
         print (nexus_input_folder)
         nexus_input_folder = pathlib.Path(nexus_input_folder)
 
@@ -778,6 +782,9 @@ def build_qlateral_array(
 
                 nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
 
+                
+
+
                 # Drop original integer index column
                 nexus_flows.drop(nexus_flows.columns[[0]], axis=1, inplace=True)
                 print ("===========nexus_flows-------------")
@@ -804,6 +811,11 @@ def build_qlateral_array(
 
                     nexuses_flows_df = nexus_flows_transposed
 
+                    # Number of Timesteps
+                    nts = len(nexus_flows)
+
+                    nexus_first_id = nexus_id
+
                     #print ("-----------------------------------------")
                     #print ("nexus_flows.iloc[0]")
                     #print (nexus_flows.iloc[0])
@@ -827,6 +839,16 @@ def build_qlateral_array(
                     nexuses_flows_df = nexuses_flows_df.append(nexus_flows_transposed)
 
 
+                    nts_for_row = len(nexus_flows)
+
+                    if nts_for_row != nts:
+                        raise ValueError('Nexus input files number of timesteps discrepancy for nexus-id ' 
+                        + str(nexus_first_id) + ' with ' + str(nts) + ' timesteps and nexus-id ' 
+                        + str(nexus_id) + ' with ' + str(nts_for_row) + ' timesteps.'
+                        )
+
+
+
                 #print ("nexus_flows-------------")
                 #print (nexus_flows)
 
@@ -834,7 +856,71 @@ def build_qlateral_array(
             print (nexuses_flows_df)
 
 
+            #Map nexus flows to qlaterals
+            #ngen_nexus_id_to_downstream_comid_mapping_dict
 
+            print (ngen_nexus_id_to_downstream_comid_mapping_dict)
+
+            #nexuses_flows_df
+
+            comid_list = []
+
+            for nexus_key, comid_value in ngen_nexus_id_to_downstream_comid_mapping_dict.items():
+
+                #print ("nexus_key")
+                #print (nexus_key)
+
+                if comid_value not in comid_list:
+                    comid_list.append(comid_value)
+
+            # Might already be sorted?
+            #sorting problem???
+            #comid_list = comid_list.sort()
+
+            print ("comid_list")
+            print (comid_list)
+
+
+            #comid_df = pd.DataFrame(comid_list)
+            #comid_df = pd.DataFrame(comid_list).set_index(comid_list)
+           
+            #comid_df = comid_df.set_index(comid_df.columns[[0]])
+            
+            #kinda works???
+            #comid_df = comid_df.set_index(comid_df.columns[0])
+            
+            #comid_df = pd.DataFrame(comid_list, index=[i[0] for i in comid_list])
+            #comid_df = pd.DataFrame(comid_list, index=[i for i in comid_list])
+
+            #print ("comid_df")
+            #print (comid_df)
+
+
+            already_read_first_nexus_values = False
+
+            for nexus_key, comid_value in ngen_nexus_id_to_downstream_comid_mapping_dict.items():
+                if not already_read_first_nexus_values:
+                    already_read_first_nexus_values = True
+
+                    qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
+                    #qlat_df = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)].transpose())
+
+                    qlat_df = qlat_df_single.transpose()
+
+
+                else: 
+
+                    qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
+                    #qlat_df = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)].transpose())
+
+                    qlat_df_single_transpose = qlat_df_single.transpose()
+
+
+                    #Copying df, memory duplicate????
+                    qlat_df = qlat_df.append(qlat_df_single_transpose)
+
+
+             #Need to sort qlats
 
 
     else:
@@ -849,12 +935,23 @@ def build_qlateral_array(
     print ("qlat_df1")
     print (qlat_df)
 
+    print ("nts: " + str(nts))
+
+
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
+
+    print ("max_col: " + str(max_col))
+
+    print ("len(qlat_df.columns): " + str(len(qlat_df.columns)))
+
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    if not segment_index.empty:
+    print ("qlat_df1.5")
+    print (qlat_df)
+
+    if not segment_index.empty and not using_nexus_flows:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
 
     print ("qlat_df2")
