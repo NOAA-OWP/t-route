@@ -216,7 +216,10 @@ def get_nexus_flows_from_csv(nexus_input_file, index_col=0):
     col2: flows
     """
     #nexus_flows = pd.read_csv(nexus_input_file, index_col=index_col)
-    nexus_flows = pd.read_csv(nexus_input_file, index_col=1, header=None)
+    #nexus_flows = pd.read_csv(nexus_input_file, index_col=1, header=None)
+    #nexus_flows = pd.read_csv(nexus_input_file, index_col=1, header=0)
+    #nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=0)
+    nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=None)
     #return ql.astype("float32")
     return nexus_flows
 
