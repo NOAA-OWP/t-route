@@ -838,8 +838,9 @@ def build_qlateral_array(
 
                     nexuses_flows_df = nexus_flows_transposed
 
-                    # Number of Timesteps
-                    nts = len(nexus_flows)
+                    # Number of Timesteps plus one
+                    # The number of columns in Qlat must be equal to or less than the number of routing timesteps
+                    nts = len(nexus_flows) + 1
 
                     nexus_first_id = nexus_id
 
@@ -866,7 +867,9 @@ def build_qlateral_array(
                     nexuses_flows_df = nexuses_flows_df.append(nexus_flows_transposed)
 
 
-                    nts_for_row = len(nexus_flows)
+                    # Number of Timesteps plus one
+                    # The number of columns in Qlat must be equal to or less than the number of routing timesteps
+                    nts_for_row = len(nexus_flows) + 1
 
                     if nts_for_row != nts:
                         raise ValueError('Nexus input files number of timesteps discrepancy for nexus-id ' 
@@ -1059,7 +1062,13 @@ def build_qlateral_array(
                     print ("not in comid_list")
                     print (a_segment_index)
                     #Copying df, memory duplicate????
-                    qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df)
+                    #qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): comid_value})
+                    qlat_df_single_transpose_zeros_df_renamed = qlat_df_single_transpose_zeros_df.rename(index={0: a_segment_index})
+                    
+                    print("qlat_df_single_transpose_zeros_df_renamed")
+                    print(qlat_df_single_transpose_zeros_df_renamed)
+
+                    qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df_renamed)
                 print ("#############")
 
 
