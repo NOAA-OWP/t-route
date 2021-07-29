@@ -3,8 +3,6 @@ import troute.nhd_io as nhd_io
 import pandas as pd
 import json
 
-#RIGHT NOW, MANUALLY DELETE SITE NO. FROM CROSS-WALK MAPPING
-
 # Each catchment has one or more segments/comids from the crosswalk-mapping. 
 # Each cacthment has one downstream nexus from the flowpath_data.geojson.
 # From the Route Link file, each segment/comid has one downstream segment/comid. 
@@ -118,24 +116,29 @@ def ngen_preprocess():
     comid_list = []
     comid_list_unique_for_mask = []
 
-    #RIGHT NOW, MANUALLY DELETE SITE NO. FROM CROSS-WALK MAPPING
-
     for cat_id, value1 in crosswalk_data.items():
         for key2, value2 in value1.items():
-            #print (value2)
-            for comid in value2:
-                print ("comid values")
-                print (comid)
-                #cat_id_and_comid_tuple = (cat_id[4:], comid)
-                cat_id_and_comid_tuple = (int(cat_id[4:]), int(comid))
-                #print (cat_id_and_comid_tuple)
-                cat_id_and_comid_tuple_list.append(cat_id_and_comid_tuple)
+            print ("key2")
+            print (key2)
+
+            print ("value2")
+            print (value2)
+
+            if (key2 == "COMID"):
+
+                for comid in value2:
+                    print ("comid values")
+                    print (comid)
+                    #cat_id_and_comid_tuple = (cat_id[4:], comid)
+                    cat_id_and_comid_tuple = (int(cat_id[4:]), int(comid))
+                    #print (cat_id_and_comid_tuple)
+                    cat_id_and_comid_tuple_list.append(cat_id_and_comid_tuple)
                 
-                comid_list.append(comid)
+                    comid_list.append(comid)
                 
-                #don't add duplicates
-                if comid not in comid_list_unique_for_mask:
-                    comid_list_unique_for_mask.append(comid)
+                    #don't add duplicates
+                    if comid not in comid_list_unique_for_mask:
+                        comid_list_unique_for_mask.append(comid)
 
 
     print ("cat_id_and_comid_tuple_list")

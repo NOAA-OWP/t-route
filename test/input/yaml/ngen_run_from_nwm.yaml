@@ -20,19 +20,19 @@ run_parameters:
 output_parameters:
     #output location for csv file
     csv_output:
-        csv_output_folder: "extern/t-route/test/output/text"
+        csv_output_folder: "../../../../test/output/text"
         csv_output_segments: []
     #out location for nc file
-    nc_output_folder: "extern/t-route/test/output/text"
+    nc_output_folder: "../../../../test/output/text"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "NGEN_HUC1"
     geo_file_path: "/apd_common/anthro/backup/water_management_v3.0_archive/nwm_v3/DOMAIN/RouteLink_NWMv2.1.nc"
-    mask_file_path: "extern/t-route/test/input/next_gen/ngen_comid_mask_subset1.csv"
+    mask_file_path: "../../../../test/input/next_gen/ngen_comid_mask_subset1.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
-    ngen_nexus_id_to_downstream_comid_mapping_json: "extern/t-route/test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
+    ngen_nexus_id_to_downstream_comid_mapping_json: "../../../../test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
     columns:
         key: "link"
         downstream: "to"
