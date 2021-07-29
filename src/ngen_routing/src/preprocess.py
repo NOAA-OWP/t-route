@@ -22,6 +22,7 @@ def ngen_preprocess():
 
     #ngen_network_df = nhd_io.read_geopandas( "flowpath_data.geojson" )
     ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/t-route/test/input/next_gen/flowpath_data.geojson" )
+    #ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/ngen/data/flowpath_data.geojson" )
     print("ngen_network_df1") 
     print(ngen_network_df) 
     # Extract subset here if needed
@@ -124,7 +125,10 @@ def ngen_preprocess():
                 cat_id_and_comid_tuple = (int(cat_id[4:]), int(comid))
                 #print (cat_id_and_comid_tuple)
                 cat_id_and_comid_tuple_list.append(cat_id_and_comid_tuple)
-                comid_list.append(comid)
+                
+                #don't add duplicates
+                if comid not in comid_list:
+                    comid_list.append(comid)
 
     print ("cat_id_and_comid_tuple_list")
     print (cat_id_and_comid_tuple_list)
