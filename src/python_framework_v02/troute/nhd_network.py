@@ -42,7 +42,7 @@ def out_degrees(N):
     return in_degrees(reverse_network(N))
 
 
-def extract_connections(rows, target_col, terminal_codes={0}):
+def extract_connections(rows, target_col, terminal_codes=None):
     """Extract connection network from dataframe.
 
     Arguments:
@@ -53,6 +53,11 @@ def extract_connections(rows, target_col, terminal_codes={0}):
     Returns:
         (dict)
     """
+    if terminal_codes is not None:
+        terminal_codes = set(terminal_codes)
+    else:
+        terminal_codes = {0}
+
     network = {}
     for src, dst in rows[target_col].items():
         if src not in network:
