@@ -450,13 +450,17 @@ def build_connections(supernetwork_parameters):
     terminal_codes.add(terminal_code)
     # ... but there may also be off-domain nodes that are not explicitly identified
     # but which are terminal (i.e., off-domain) as a result of a mask or some other
-    # an interior domain truncation that results in a 
-    # otherwise valid node value being pointed to, but which is masked out or 
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
     # being intentionally separated into another domain.
-    terminal_codes = terminal_codes | set(param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values)
-    connections = nhd_network.extract_connections(param_df, "downstream", terminal_codes)
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+    connections = nhd_network.extract_connections(
+        param_df, "downstream", terminal_codes=terminal_codes
+    )
     param_df = param_df.drop("downstream", axis=1)
-    
+
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
