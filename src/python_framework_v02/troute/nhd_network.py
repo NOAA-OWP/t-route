@@ -63,7 +63,7 @@ def extract_connections(rows, target_col, terminal_codes={0}):
     return network
 
 
-def extract_waterbodies(rows, target_col, waterbody_null=-9999):
+def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
     """Extract waterbody mapping from dataframe."""
     return (
         rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
