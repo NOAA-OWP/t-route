@@ -888,6 +888,22 @@ def compute_nhd_routing_v02(
 
                 reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
+                pd.set_option('display.max_rows', 500)
+
+                print("param_df_sub.index")
+                print(param_df_sub.index)
+
+                #print ("qlats.Index.dtype")
+                #print (qlats.Index.dtype)
+
+
+                print ("qlats.dtypes")
+                print (qlats.dtypes)
+
+                print ("qlats")
+                print (qlats)
+
+
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
                 qlat_sub = qlats.loc[param_df_sub.index]
