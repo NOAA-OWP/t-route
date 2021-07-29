@@ -3,6 +3,7 @@ import troute.nhd_io as nhd_io
 import pandas as pd
 import json
 
+#RIGHT NOW, MANUALLY DELETE SITE NO. FROM CROSS-WALK MAPPING
 
 # Each catchment has one or more segments/comids from the crosswalk-mapping. 
 # Each cacthment has one downstream nexus from the flowpath_data.geojson.
@@ -115,20 +116,27 @@ def ngen_preprocess():
 
     cat_id_and_comid_tuple_list = []
     comid_list = []
+    comid_list_unique_for_mask = []
+
+    #RIGHT NOW, MANUALLY DELETE SITE NO. FROM CROSS-WALK MAPPING
 
     for cat_id, value1 in crosswalk_data.items():
         for key2, value2 in value1.items():
             #print (value2)
             for comid in value2:
-                #print (comid)
+                print ("comid values")
+                print (comid)
                 #cat_id_and_comid_tuple = (cat_id[4:], comid)
                 cat_id_and_comid_tuple = (int(cat_id[4:]), int(comid))
                 #print (cat_id_and_comid_tuple)
                 cat_id_and_comid_tuple_list.append(cat_id_and_comid_tuple)
                 
+                comid_list.append(comid)
+                
                 #don't add duplicates
-                if comid not in comid_list:
-                    comid_list.append(comid)
+                if comid not in comid_list_unique_for_mask:
+                    comid_list_unique_for_mask.append(comid)
+
 
     print ("cat_id_and_comid_tuple_list")
     print (cat_id_and_comid_tuple_list)
@@ -138,11 +146,14 @@ def ngen_preprocess():
 
     comid_df = pd.DataFrame(comid_list)
 
+    comid_df_unique_for_mask = pd.DataFrame(comid_list_unique_for_mask)
+
     print ("comid_df")
     print (comid_df)
 
     # Create mask as input to filter sub-domain for t-route
-    comid_df.to_csv('ngen_comid_mask.csv', header=False, index=False)
+    #comid_df.to_csv('ngen_comid_mask.csv', header=False, index=False)
+    comid_df_unique_for_mask.to_csv('ngen_comid_mask.csv', header=False, index=False)
 
 
     mult_index = pd.MultiIndex.from_tuples(cat_id_and_comid_tuple_list, names=["cat-id", "comid"])
