@@ -21,7 +21,7 @@ def ngen_preprocess():
     """
 
     #ngen_network_df = nhd_io.read_geopandas( "flowpath_data.geojson" )
-    ngen_network_df = nhd_io.read_geopandas( "........../ngen_pybind/crosswalk_mapping/flowpath_data.geojson" )
+    ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/t-route/test/input/next_gen/flowpath_data.geojson" )
     print("ngen_network_df1") 
     print(ngen_network_df) 
     # Extract subset here if needed
@@ -65,7 +65,8 @@ def ngen_preprocess():
 
     # Channel parameters
     #param_df = nhd_io.read_netcdf("RouteLink_NHDPLUS.nc")
-    param_df = nhd_io.read_netcdf("............/test_persistence/v3.0_enhancements_model_runs/nwm_v3/model_inputs/NWM/DOMAIN/RouteLink_NWMv2.1.nc")
+    #param_df = nhd_io.read_netcdf("............/test_persistence/v3.0_enhancements_model_runs/nwm_v3/model_inputs/NWM/DOMAIN/RouteLink_NWMv2.1.nc")
+    param_df = nhd_io.read_netcdf("/apd_common/anthro/backup/water_management_v3.0_archive/nwm_v3/DOMAIN/RouteLink_NWMv2.1.nc")
     param_df['dt'] = 300.0
 
     param_df.set_index("link", inplace=True)
@@ -99,7 +100,8 @@ def ngen_preprocess():
     print (param_df)
 
     #with open(next_gen_input_folder/'coarse/crosswalk.json') as f:
-    with open(".........../ngen_pybind/crosswalk_mapping/crosswalk-mapping.json") as f:
+    #with open(".........../ngen_pybind/crosswalk_mapping/crosswalk-mapping.json") as f:
+    with open("/apd_common/anthro/david_code/t-route/test/input/next_gen/crosswalk-mapping.json") as f:
         crosswalk_data = json.load(f)
     #connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['outlet_COMID'], axis=1)
     connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['COMID'], axis=1)

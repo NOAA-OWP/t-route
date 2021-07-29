@@ -494,6 +494,20 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.astype("float32")
 
+
+
+    print ("param_df at end of build_connections")
+    print (param_df)
+
+    print ("param_df.dtypes")
+    print (param_df.dtypes)
+
+
+    print("param_df.index")
+    print(param_df.index)
+
+    print ("@@@@@@!!!!!!!")
+
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
 
@@ -888,9 +902,17 @@ def build_qlateral_array(
                 else:
                     print ("%%%%%%%%%%%%")
                     print (comid_value)
-                
+               
+
+                if comid_value not in segment_index:
+                    print ("Not in segment_index: " + str(comid_value))
+
+
+
             print ("**************")
             print ("aaaaaaaaaaaaaaaa")
+
+            print (len(comid_list))
 
 
             # Might already be sorted?
@@ -999,16 +1021,49 @@ def build_qlateral_array(
 
             #qlat_df = qlat_df.merge(full_qlat_df_segment, how='right')
 
-
+            #connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['COMID'], axis
             #Need to zero out the values here
-            qlat_df_single_transpose_zeros = qlat_df_single_transpose
+            qlat_df_single_transpose_zeros = qlat_df_single_transpose.apply(lambda x: 0.0, axis=0)
+            #qlat_df_single_transpose_zeros = qlat_df_single_transpose.apply(np.zeros, axis=1)
 
-            print ("segment indexes")
+            #qlat_df_single_transpose_zeros = qlat_df_single_transpose_zeros.transpose()
+
+            print ("qlat_df_single_transpose_zeros")
+            print (qlat_df_single_transpose_zeros)
+
+            #maybe transpose in teh to_frame
+            qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros.to_frame()
+
+
+            qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros_df.transpose()
+
+
+            print ("qlat_df_single_transpose_zeros_df")
+            print (qlat_df_single_transpose_zeros_df)
+
+            a_segment_index_list = []
+            print ("segment_indexes")
             for a_segment_index in segment_index:
-                print (a_segment_index)
+                #print (a_segment_index)
+
+                if a_segment_index not in a_segment_index_list:
+                    a_segment_index_list.append(a_segment_index)
+
+                else:    
+                    print ("repeat segment in mask")
+                    print (a_segment_index)
+
 
                 if a_segment_index not in comid_list:
                     #add a qlat_df_single_transpose_zeros to qlat_df with the comid          
+                    print ("not in comid_list")
+                    print (a_segment_index)
+                    #Copying df, memory duplicate????
+                    qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df)
+                print ("#############")
+
+
+            print ("^^^^^^^^^^^^^^^^^^^")
 
 
     else:

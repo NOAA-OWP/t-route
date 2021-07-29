@@ -15,6 +15,7 @@ def nwm_network_preprocess(
     verbose=False,
     debuglevel=0,
 ):
+    print ("nwm_network_preprocess")
 
     if verbose:
         print("creating supernetwork connections set")
@@ -263,6 +264,8 @@ def nwm_forcing_preprocess(
     verbose=False,
     debuglevel=0,
 ):
+    print ("nwm_forcing_preprocess")
+
 
     # TODO: Harmonize the t0 parameter -- this
     # configuration permits the Warm-State derived
