@@ -481,7 +481,7 @@ def build_waterbodies(
     supernetwork_parameters
     waterbody_crosswalk_column
     """
-    wbodies = nhd_network.extract_waterbodies(
+    wbody_conn = nhd_network.extract_waterbody_connections(
         segment_reservoir_df,
         waterbody_crosswalk_column,
         supernetwork_parameters["waterbody_null_code"],
@@ -490,7 +490,7 @@ def build_waterbodies(
     # TODO: Add function to read LAKEPARM.nc here
     # TODO: return the lakeparam_df
 
-    return wbodies
+    return wbody_conn
 
 
 def organize_independent_networks(connections, wbodies=None):

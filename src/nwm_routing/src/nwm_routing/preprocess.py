@@ -21,7 +21,7 @@ def nwm_network_preprocess(
 
     # STEP 1: Build basic network connections graph,
     # read network parameters, identify waterbodies and gages, if any.
-    connections, param_df, wbodies, gages = nnu.build_connections(
+    connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
 
@@ -33,12 +33,12 @@ def nwm_network_preprocess(
     )
 
     if (
-        not wbodies
+        not wbody_conn
     ):  # Turn off any further reservoir processing if the network contains no waterbodies
         break_network_at_waterbodies = False
 
     if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
+        connections = nhd_network.replace_waterbodies_connections(connections, wbody_conn)
 
     if verbose:
         print("supernetwork connections set complete")
@@ -54,7 +54,7 @@ def nwm_network_preprocess(
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbodies.values()}
+            waterbody_parameters, {"level_pool": wbody_conn.values()}
         )
 
         # Remove duplicate lake_ids and rows
@@ -84,7 +84,7 @@ def nwm_network_preprocess(
             waterbody_type_specified = True
 
             waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
-                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
+                wb_params_level_pool["level_pool_waterbody_id"], wbody_conn.values(),)
 
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
@@ -106,7 +106,7 @@ def nwm_network_preprocess(
 
     network_break_segments = set()
     if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbodies.values())
+        network_break_segments = network_break_segments.union(wbody_conn.values())
     if break_network_at_gages:
         network_break_segments = network_break_segments.union(gages.keys())
 
@@ -121,10 +121,10 @@ def nwm_network_preprocess(
     return (
         connections,
         param_df,
-        wbodies,
+        wbody_conn,
         waterbodies_df,
         waterbody_types_df,
-        break_network_at_waterbodies,  # Could this be inferred from the wbodies or waterbodies_df  # Could this be inferred from the wbodies or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
+        break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
         waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
         independent_networks,
         reaches_bytw,
