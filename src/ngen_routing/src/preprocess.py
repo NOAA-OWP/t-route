@@ -20,15 +20,16 @@ def ngen_preprocess():
     """
 
     #ngen_network_df = nhd_io.read_geopandas( "flowpath_data.geojson" )
-    ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/t-route/test/input/next_gen/flowpath_data.geojson" )
+    #ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/t-route/test/input/next_gen/flowpath_data.geojson" )
+    ngen_network_df = nhd_io.read_geopandas( "/apd_common/test/demo1/hydrofabric/huc01/flowpath_data.geojson" )
     #ngen_network_df = nhd_io.read_geopandas( "/apd_common/anthro/david_code/ngen/data/flowpath_data.geojson" )
     print("ngen_network_df1") 
     print(ngen_network_df) 
     # Extract subset here if needed
 
     # map the connections into dictionary form
-    #ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.toid))
-    ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.to))
+    ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.toid))
+    #ngen_network_dict = dict(zip(ngen_network_df.id, ngen_network_df.to))
     
     def node_key_func(x):
         return int(x[4:])
@@ -101,7 +102,8 @@ def ngen_preprocess():
 
     #with open(next_gen_input_folder/'coarse/crosswalk.json') as f:
     #with open(".........../ngen_pybind/crosswalk_mapping/crosswalk-mapping.json") as f:
-    with open("/apd_common/anthro/david_code/t-route/test/input/next_gen/crosswalk-mapping.json") as f:
+    #with open("/apd_common/anthro/david_code/t-route/test/input/next_gen/crosswalk-mapping.json") as f:
+    with open("/apd_common/test/demo1/hydrofabric/huc01/crosswalk_mapping_v01/crosswalk-mapping.json") as f:
         crosswalk_data = json.load(f)
     #connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['outlet_COMID'], axis=1)
     connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['COMID'], axis=1)
@@ -124,7 +126,11 @@ def ngen_preprocess():
             print ("value2")
             print (value2)
 
-            if (key2 == "COMID"):
+            print ("cat_id5")
+            print (cat_id)
+
+
+            if (key2 == "COMID" and "." not in cat_id):
 
                 for comid in value2:
                     print ("comid values")
@@ -178,16 +184,19 @@ def ngen_preprocess():
 
     #Probably delete
     ################################# 
-    cat_id_index_df = cat_id_and_comid_tuple_df.index.get_level_values("cat-id")
-    print ("======================")
-    print ("cat_id_index_df")
-    print (cat_id_index_df)
+    #cat_id_index_df = cat_id_and_comid_tuple_df.index.get_level_values("cat-id")
+    #print ("======================")
+    #print ("cat_id_index_df")
+    #print (cat_id_index_df)
 
     #print ("cat_id_index_df.loc[62031]")
     #print (cat_id_index_df.loc[62031].values)
 
-    print ("connection_df.loc[cat_id_index_df].values")
-    print (connection_df.loc[cat_id_index_df].values)
+    ###Below errored on larger data set
+    #print ("connection_df.loc[cat_id_index_df].values")
+    #print (connection_df.loc[cat_id_index_df].values)
+    ####
+
     #connection_df_with_segs = connection_df.loc[cat_id_index_df].values
     #connection_df = connection_df.set_index(["cat-id"]) 
     #comid_index_df = cat_id_and_comid_tuple_df.index.get_level_values("comid")

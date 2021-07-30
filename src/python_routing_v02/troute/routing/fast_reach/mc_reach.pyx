@@ -60,7 +60,7 @@ cpdef object binary_find(object arr, object els):
             idxs.append(m)
         else:
             #raise ValueError(f"element {el} not found in {np.asarray(arr)}")
-            print(f"element {el} not found in {np.asarray(arr)}")
+            #print(f"element {el} not found in {np.asarray(arr)}")
     return idxs
 
 
@@ -1145,23 +1145,23 @@ cpdef object compute_network_structured(
             #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
             if (not reservoir_type_specified):
 
-                print ("my_id")
-                print (my_id)
+                #print ("my_id")
+                #print (my_id)
 
-                print ("my_id[0]")
-                print (my_id[0])
+                #print ("my_id[0]")
+                #print (my_id[0])
 
-                print ("wbody_index")
-                print (wbody_index)
-
-
-                print ("lake_numbers_col")
-                print (lake_numbers_col)
+                #print ("wbody_index")
+                #print (wbody_index)
 
 
+                #print ("lake_numbers_col")
+                #print (lake_numbers_col)
 
-                #print ("lake_numbers_col[wbody_index]")
-                #print (lake_numbers_col[wbody_index])
+
+
+                ##print ("lake_numbers_col[wbody_index]")
+                ##print (lake_numbers_col[wbody_index])
 
                 '''
                 #Add level pool reservoir object to reach_objects

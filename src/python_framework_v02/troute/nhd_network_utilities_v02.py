@@ -420,9 +420,9 @@ def build_connections(supernetwork_parameters):
             layer_string=supernetwork_parameters["mask_layer_string"],
         )
 
-        print ("data_mask")
-        print (data_mask)
-        print ("@@@@@@@@@@@@@@@@@@@@@@@@@@") 
+        #print ("data_mask")
+        #print (data_mask)
+        #print ("@@@@@@@@@@@@@@@@@@@@@@@@@@") 
 
 
         param_df = param_df.filter(
@@ -435,11 +435,11 @@ def build_connections(supernetwork_parameters):
             pathlib.Path(supernetwork_parameters["ngen_nexus_id_to_downstream_comid_mapping_json"])
         )
 
-        print("ngen_nexus_id_to_downstream_comid_mapping_dict")
-        print(ngen_nexus_id_to_downstream_comid_mapping_dict)
+        #print("ngen_nexus_id_to_downstream_comid_mapping_dict")
+        #print(ngen_nexus_id_to_downstream_comid_mapping_dict)
 
-    print("param_df")
-    print(param_df)
+    #print("param_df")
+    #print(param_df)
 
 
     param_df = param_df.rename(columns=reverse_dict(cols))
@@ -496,17 +496,17 @@ def build_connections(supernetwork_parameters):
 
 
 
-    print ("param_df at end of build_connections")
-    print (param_df)
+    #print ("param_df at end of build_connections")
+    #print (param_df)
 
-    print ("param_df.dtypes")
-    print (param_df.dtypes)
+    #print ("param_df.dtypes")
+    #print (param_df.dtypes)
 
 
-    print("param_df.index")
-    print(param_df.index)
+    #print("param_df.index")
+    #print(param_df.index)
 
-    print ("@@@@@@!!!!!!!")
+    #print ("@@@@@@!!!!!!!")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
@@ -714,8 +714,8 @@ def build_qlateral_array(
 ):
     # TODO: set default/optional arguments
 
-    print ("ngen_nexus_id_to_downstream_comid_mapping_dict2")
-    print (ngen_nexus_id_to_downstream_comid_mapping_dict)
+    #print ("ngen_nexus_id_to_downstream_comid_mapping_dict2")
+    #print (ngen_nexus_id_to_downstream_comid_mapping_dict)
 
     using_nexus_flows = False
 
@@ -764,7 +764,7 @@ def build_qlateral_array(
 
         using_nexus_flows = True
 
-        print (nexus_input_folder)
+        #print (nexus_input_folder)
         nexus_input_folder = pathlib.Path(nexus_input_folder)
 
         if "nexus_file_pattern_filter" in forcing_parameters:
@@ -783,49 +783,49 @@ def build_qlateral_array(
 
 
             for nexus_file in nexus_files:
-                print (nexus_file)
+                #print (nexus_file)
 
                 split_list = str(nexus_file).split("/")
 
-                print (split_list)
+                #print (split_list)
 
                 nexus_file_name = split_list[-1]
 
-                print (nexus_file_name)
+                #print (nexus_file_name)
 
                 nexus_file_name_split = re.split('-|_', nexus_file_name)
 
-                print (nexus_file_name_split)
+                #print (nexus_file_name_split)
 
                 nexus_id = int(nexus_file_name_split[1])
 
-                print (nexus_id)
+                #print (nexus_id)
 
                 nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
 
-                print ("!!!!!!===========nexus_flows-------------")
-                print (nexus_flows)
+                #print ("!!!!!!===========nexus_flows-------------")
+                #print (nexus_flows)
                 
                 #comid_df = comid_df.set_index(comid_df.columns[0])
                 nexus_flows = nexus_flows.set_index(nexus_flows.columns[0])
-                print ("$$$$$===========nexus_flows-------------")
-                print (nexus_flows)
+                #print ("$$$$$===========nexus_flows-------------")
+                #print (nexus_flows)
                 
 
                 # Drop original integer index column
                 #nexus_flows.drop(nexus_flows.columns[[0]], axis=1, inplace=True)
-                print ("===========nexus_flows-------------")
-                print (nexus_flows)
+                #print ("===========nexus_flows-------------")
+                #print (nexus_flows)
 
 
                 nexus_flows = nexus_flows.rename(columns={2: nexus_id})
 
-                print ("nexus_flows renamed")
-                print (nexus_flows)
+                #print ("nexus_flows renamed")
+                #print (nexus_flows)
 
                 nexus_flows_transposed = nexus_flows.transpose()
-                print ("----------nexus_flows_transposed-------------")
-                print (nexus_flows_transposed)
+                #print ("----------nexus_flows_transposed-------------")
+                #print (nexus_flows_transposed)
 
                 # Maybe can change logic for initializing dataframe with append
                 if not have_read_in_first_nexus_file:
@@ -844,21 +844,21 @@ def build_qlateral_array(
 
                     nexus_first_id = nexus_id
 
-                    #print ("-----------------------------------------")
-                    #print ("nexus_flows.iloc[0]")
-                    #print (nexus_flows.iloc[0])
-                    #print (nexus_flows.iloc[:,0])
-                    #print ("!!!!!!-----------------------------------------")
+                    ##print ("-----------------------------------------")
+                    ##print ("nexus_flows.iloc[0]")
+                    ##print (nexus_flows.iloc[0])
+                    ##print (nexus_flows.iloc[:,0])
+                    ##print ("!!!!!!-----------------------------------------")
 
 
 
-                    #print ("nexuses_flows_df")
-                    #print (nexuses_flows_df)
+                    ##print ("nexuses_flows_df")
+                    ##print (nexuses_flows_df)
 
                     #nexuses_flows_df = nexuses_flows_df.set_index(nexus_flows.iloc[:,0])
 
-                    #print ("nexuses_flows_df after reindex to time ++++++++++++++++++")
-                    #print (nexuses_flows_df)
+                    ##print ("nexuses_flows_df after reindex to time ++++++++++++++++++")
+                    ##print (nexuses_flows_df)
 
 
 
@@ -879,17 +879,17 @@ def build_qlateral_array(
 
 
 
-                #print ("nexus_flows-------------")
-                #print (nexus_flows)
+                ##print ("nexus_flows-------------")
+                ##print (nexus_flows)
 
-            print ("@@@@@@@@@@@@nexuses_flows_df")
-            print (nexuses_flows_df)
+            #print ("@@@@@@@@@@@@nexuses_flows_df")
+            #print (nexuses_flows_df)
 
 
             #Map nexus flows to qlaterals
             #ngen_nexus_id_to_downstream_comid_mapping_dict
 
-            print (ngen_nexus_id_to_downstream_comid_mapping_dict)
+            #print (ngen_nexus_id_to_downstream_comid_mapping_dict)
 
             #nexuses_flows_df
 
@@ -897,33 +897,33 @@ def build_qlateral_array(
 
             for nexus_key, comid_value in ngen_nexus_id_to_downstream_comid_mapping_dict.items():
 
-                #print ("nexus_key")
-                #print (nexus_key)
+                ##print ("nexus_key")
+                ##print (nexus_key)
 
                 if comid_value not in comid_list:
                     comid_list.append(comid_value)
                 else:
-                    print ("%%%%%%%%%%%%")
-                    print (comid_value)
+                    #print ("%%%%%%%%%%%%")
+                    #print (comid_value)
                
 
                 if comid_value not in segment_index:
-                    print ("Not in segment_index: " + str(comid_value))
+                    #print ("Not in segment_index: " + str(comid_value))
 
 
 
-            print ("**************")
-            print ("aaaaaaaaaaaaaaaa")
+            #print ("**************")
+            #print ("aaaaaaaaaaaaaaaa")
 
-            print (len(comid_list))
+            #print (len(comid_list))
 
 
             # Might already be sorted?
             #sorting problem???
             #comid_list = comid_list.sort()
 
-            print ("comid_list")
-            print (comid_list)
+            #print ("comid_list")
+            #print (comid_list)
 
 
             #comid_df = pd.DataFrame(comid_list)
@@ -937,8 +937,8 @@ def build_qlateral_array(
             #comid_df = pd.DataFrame(comid_list, index=[i[0] for i in comid_list])
             #comid_df = pd.DataFrame(comid_list, index=[i for i in comid_list])
 
-            #print ("comid_df")
-            #print (comid_df)
+            ##print ("comid_df")
+            ##print (comid_df)
 
 
             already_read_first_nexus_values = False
@@ -962,14 +962,14 @@ def build_qlateral_array(
                     #qlat_df_single_transpose = qlat_df_single_transpose.set_index('1')
                     #qlat_df_single_transpose = qlat_df_single_transpose.set_index(qlat_df_single_transpose.columns[0])
 
-                    print("qlat_df_single_transpose first") 
-                    print(qlat_df_single_transpose) 
+                    #print("qlat_df_single_transpose first") 
+                    #print(qlat_df_single_transpose) 
 
                     qlat_df = qlat_df_single_transpose
 
-                    print ("qlat_df first")
-                    print (qlat_df)
-                    print ("-------------------------------------------")
+                    #print ("qlat_df first")
+                    #print (qlat_df)
+                    #print ("-------------------------------------------")
 
 
                 else: 
@@ -983,8 +983,8 @@ def build_qlateral_array(
 
                     #qlat_df_single_transpose = qlat_df_single_transpose.set_index('1')
 
-                    print("qlat_df_single_transpose") 
-                    print(qlat_df_single_transpose) 
+                    #print("qlat_df_single_transpose") 
+                    #print(qlat_df_single_transpose) 
 
                     #Copying df, memory duplicate????
                     qlat_df = qlat_df.append(qlat_df_single_transpose)
@@ -999,9 +999,9 @@ def build_qlateral_array(
 
                     pd.set_option('display.max_rows', 500)
                     
-                    print ("qlat_df")
-                    print (qlat_df)
-                    print ("-------------------------------------------")
+                    #print ("qlat_df")
+                    #print (qlat_df)
+                    #print ("-------------------------------------------")
 
 
 
@@ -1019,8 +1019,8 @@ def build_qlateral_array(
                 dtype="float32",
             )
 
-            #print ("full_qlat_df_segment")
-            #print (full_qlat_df_segment)
+            ##print ("full_qlat_df_segment")
+            ##print (full_qlat_df_segment)
 
             #qlat_df = qlat_df.merge(full_qlat_df_segment, how='right')
 
@@ -1031,8 +1031,8 @@ def build_qlateral_array(
 
             #qlat_df_single_transpose_zeros = qlat_df_single_transpose_zeros.transpose()
 
-            print ("qlat_df_single_transpose_zeros")
-            print (qlat_df_single_transpose_zeros)
+            #print ("qlat_df_single_transpose_zeros")
+            #print (qlat_df_single_transpose_zeros)
 
             #maybe transpose in teh to_frame
             qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros.to_frame()
@@ -1041,38 +1041,38 @@ def build_qlateral_array(
             qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros_df.transpose()
 
 
-            print ("qlat_df_single_transpose_zeros_df")
-            print (qlat_df_single_transpose_zeros_df)
+            #print ("qlat_df_single_transpose_zeros_df")
+            #print (qlat_df_single_transpose_zeros_df)
 
             a_segment_index_list = []
-            print ("segment_indexes")
+            #print ("segment_indexes")
             for a_segment_index in segment_index:
-                #print (a_segment_index)
+                ##print (a_segment_index)
 
                 if a_segment_index not in a_segment_index_list:
                     a_segment_index_list.append(a_segment_index)
 
                 else:    
-                    print ("repeat segment in mask")
-                    print (a_segment_index)
+                    #print ("repeat segment in mask")
+                    #print (a_segment_index)
 
 
                 if a_segment_index not in comid_list:
                     #add a qlat_df_single_transpose_zeros to qlat_df with the comid          
-                    print ("not in comid_list")
-                    print (a_segment_index)
+                    #print ("not in comid_list")
+                    #print (a_segment_index)
                     #Copying df, memory duplicate????
                     #qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): comid_value})
                     qlat_df_single_transpose_zeros_df_renamed = qlat_df_single_transpose_zeros_df.rename(index={0: a_segment_index})
                     
-                    print("qlat_df_single_transpose_zeros_df_renamed")
-                    print(qlat_df_single_transpose_zeros_df_renamed)
+                    #print("qlat_df_single_transpose_zeros_df_renamed")
+                    #print(qlat_df_single_transpose_zeros_df_renamed)
 
                     qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df_renamed)
-                print ("#############")
+                #print ("#############")
 
 
-            print ("^^^^^^^^^^^^^^^^^^^")
+            #print ("^^^^^^^^^^^^^^^^^^^")
 
 
     else:
@@ -1085,30 +1085,30 @@ def build_qlateral_array(
         )
 
     pd.set_option('display.max_rows', 500)
-    print ("qlat_df1")
-    print (qlat_df)
+    #print ("qlat_df1")
+    #print (qlat_df)
 
-    print ("nts: " + str(nts))
+    #print ("nts: " + str(nts))
 
 
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
 
-    print ("max_col: " + str(max_col))
+    #print ("max_col: " + str(max_col))
 
-    print ("len(qlat_df.columns): " + str(len(qlat_df.columns)))
+    #print ("len(qlat_df.columns): " + str(len(qlat_df.columns)))
 
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    print ("qlat_df1.5")
-    print (qlat_df)
+    #print ("qlat_df1.5")
+    #print (qlat_df)
 
     if not segment_index.empty and not using_nexus_flows:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
 
-    print ("qlat_df2")
-    print (qlat_df)
+    #print ("qlat_df2")
+    #print (qlat_df)
 
 
     return qlat_df

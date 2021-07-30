@@ -20,19 +20,23 @@ run_parameters:
 output_parameters:
     #output location for csv file
     csv_output:
-        csv_output_folder: "extern/t-route/test/output/text"
+        #csv_output_folder: "extern/t-route/test/output/text"
+        csv_output_folder: "/apd_common/test/demo2/routing_outputs"
         csv_output_segments: []
     #out location for nc file
-    nc_output_folder: "extern/t-route/test/output/text"
+    #nc_output_folder: "extern/t-route/test/output/text"
+    nc_output_folder: "/apd_common/test/demo2/routing_outputs"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "NGEN_HUC1"
     geo_file_path: "/apd_common/anthro/backup/water_management_v3.0_archive/nwm_v3/DOMAIN/RouteLink_NWMv2.1.nc"
-    mask_file_path: "extern/t-route/test/input/next_gen/ngen_comid_mask_subset1.csv"
+    #mask_file_path: "extern/t-route/test/input/next_gen/ngen_comid_mask_subset1.csv"
+    mask_file_path: "/apd_common/test/test_data/hydrofabric/huc01/crosswalk_mapping_v01/ngen_comid_mask.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
     mask_key: 0
-    ngen_nexus_id_to_downstream_comid_mapping_json: "extern/t-route/test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
+    #ngen_nexus_id_to_downstream_comid_mapping_json: "extern/t-route/test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
+    ngen_nexus_id_to_downstream_comid_mapping_json: "/apd_common/test/test_data/hydrofabric/huc01/crosswalk_mapping_v01/nexus_id_to_downstream_comid_mapping.json"
     columns:
         key: "link"
         downstream: "to"
@@ -106,7 +110,8 @@ waterbody_parameters:
 #WRF-Hydro output file
 forcing_parameters:
     #For ngen, replaced by nexus flows
-    nexus_input_folder: "/apd_common/anthro/david_code/ngen/"
+    #nexus_input_folder: "/apd_common/anthro/david_code/ngen/"
+    nexus_input_folder: "/apd_common/test/demo1/output_csv/"
     nexus_file_pattern_filter: "nex-*"
     #qlat_input_folder: "/apd_common/anthro/david_code/ngen/"
     #qlat_input_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
