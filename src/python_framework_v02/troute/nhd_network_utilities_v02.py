@@ -2,6 +2,7 @@ import json
 import pathlib
 import pandas as pd
 from functools import partial
+# TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 
@@ -636,22 +637,30 @@ def build_data_assimilation(data_assimilation_parameters):
     # with an empty usgs dataframe.
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_start = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time", 0
+    )
     last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
     last_obs_crosswalk_file = data_assimilation_parameters.get(
         "wrf_hydro_da_channel_ID_crosswalk_file", None
     )
 
+    usgs_df = pd.DataFrame()
     last_obs_df = pd.DataFrame()
-
-    if last_obs_file:
-        last_obs_df = nhd_io.build_last_obs_df(
-            last_obs_file, last_obs_crosswalk_file, last_obs_type,
-        )
 
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
     elif data_assimilation_folder:
         usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
+
+    if last_obs_file:
+        last_obs_df = nhd_io.build_last_obs_df(
+            last_obs_file,
+            last_obs_crosswalk_file,
+            last_obs_type,  # TODO: Confirm that we are using this; delete it if not.
+            last_obs_start,
+        )
+
     return usgs_df, last_obs_df
 
 

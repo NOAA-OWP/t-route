@@ -489,13 +489,19 @@ def main_v02(argv):
     data_assimilation_filter = data_assimilation_parameters.get(
         "data_assimilation_filter", None
     )
-    if data_assimilation_csv or data_assimilation_filter:
+    last_obs_file = data_assimilation_parameters.get(
+         "wrf_hydro_last_obs_file", None
+    )
+
+    if data_assimilation_csv or data_assimilation_filter or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df, _ = nnu.build_data_assimilation(data_assimilation_parameters)
+            usgs_df, last_obs_df = nnu.build_data_assimilation(
+                data_assimilation_parameters
+            )
 
         if verbose:
             print("usgs array complete")
@@ -504,9 +510,7 @@ def main_v02(argv):
 
     else:
         usgs_df = pd.DataFrame()
-
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    last_obs_df = pd.DataFrame()
+        last_obs_df = pd.DataFrame()
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
