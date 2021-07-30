@@ -159,8 +159,9 @@ cpdef object column_mapper(object src_cols):
 
 
 cpdef object compute_network(
-    int nsteps,
-    int qts_subdivisions,
+    const int nsteps,
+    const float dt,
+    const int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
     const long[:] data_idx,
@@ -187,7 +188,7 @@ cpdef object compute_network(
     Compute network
     Args:
         nsteps (int): number of time steps
-        reaches (list): List of reaches
+        reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
         upstream_connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
@@ -715,6 +716,7 @@ cpdef object compute_network_multithread(int nsteps, list reaches, dict connecti
 
 cpdef object compute_network_structured_obj(
     int nsteps,
+    float dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
@@ -982,6 +984,7 @@ cpdef object compute_network_structured_obj(
 
 cpdef object compute_network_structured(
     int nsteps,
+    float dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict upstream_connections,
@@ -1009,7 +1012,7 @@ cpdef object compute_network_structured(
     Compute network
     Args:
         nsteps (int): number of time steps
-        reaches (list): List of reaches
+        reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
         upstream_connections (dict): Network
         data_idx (ndarray): a 1D sorted index for data_values
         data_values (ndarray): a 2D array of data inputs (nodes x variables)
@@ -1230,6 +1233,16 @@ cpdef object compute_network_structured(
                     id = r._upstream_ids[_i]
                     upstream_flows += flowveldepth[id, timestep, 0]
                     previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+
+                if assume_short_ts:
+                    upstream_flows = previous_upstream_flows
+
+                if r.type == compute_type.RESERVOIR_LP:
+                    run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    # TODO: Get rid of this insidious magic number (presumably the dt of 300 seconds...)
+                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                    flowveldepth[r.id, timestep, 1] = 0.0
+                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 if assume_short_ts:
                     upstream_flows = previous_upstream_flows
