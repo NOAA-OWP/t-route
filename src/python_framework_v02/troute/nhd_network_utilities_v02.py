@@ -387,14 +387,6 @@ def set_supernetwork_parameters(
             # TODO: add error trapping for potentially missing files
 
 
-def reverse_dict(d):
-    """
-    Reverse a 1-1 mapping
-    Values must be hashable!
-    """
-    return {v: k for k, v in d.items()}
-
-
 def build_connections(supernetwork_parameters):
     cols = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
@@ -413,7 +405,7 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
-    param_df = param_df.rename(columns=reverse_dict(cols))
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
@@ -432,7 +424,8 @@ def build_connections(supernetwork_parameters):
     #        cs: "ChSlp"  # TODO: rename to `sideslope`
     param_df = param_df.sort_index()
 
-    param_df = param_df.rename(columns=reverse_dict(cols))
+    # TODO: Do we need this second, identical call to the one above?
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols)) 
 
     wbodies = {}
     if "waterbody" in cols:
