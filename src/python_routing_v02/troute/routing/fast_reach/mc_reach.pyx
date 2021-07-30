@@ -5,7 +5,7 @@ from itertools import chain
 from operator import itemgetter
 from array import array
 from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
-from libc.math cimport exp
+from libc.math cimport exp, isnan
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
@@ -175,11 +175,9 @@ cpdef object compute_network(
     bint reservoir_type_specified,
     str model_start_time,
     const float[:,:] usgs_values,
-    const int[:] usgs_positions_list,
-    const float[:,:] lastobs_values,
-    # const float[:] wbody_idx,
-    # object[:] wbody_cols,
-    # const float[:, :] wbody_vals,
+    const int[:] usgs_positions,
+    const float[:] lastobs_values,
+    const float[:] decay_times,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -220,14 +218,14 @@ cpdef object compute_network(
     # rows: indexed by data_idx
     cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
 
-    cdef int gages_size = usgs_positions_list.shape[0]
+    cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
 
     flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
     flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
     for gage_i in range(gages_size):
-        usgs_position_i = usgs_positions_list[gage_i]
+        usgs_position_i = usgs_positions[gage_i]
         flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
         # TODO: handle the instance where there are no values, only gage positions
 
@@ -334,8 +332,8 @@ cpdef object compute_network(
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
     cdef float a, da_weight, da_decay_time
-    cdef int lastobs_timestep
-    cdef float dt = 300.0  # TODO: pull this value from the param_df dt (see line 153)
+    cdef int lastobs_timestep = 0
+    # cdef float dt = 300.0  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -435,7 +433,8 @@ cpdef object compute_network(
                                 # particular network are present in the function call ---
                                 # adding the reach-based filter would be the next level.
                     for gage_i in range(gages_size):
-                        usgs_position_i = usgs_positions_list[gage_i]
+                        usgs_position_i = usgs_positions[gage_i]
+                        # gage_maxtimestep = decay_times[gage_i]
                         if timestep < gage_maxtimestep:  # TODO: It is possible to remove this branching logic if we just loop over the timesteps during DA and post-DA, if that is a major performance optimization. On the flip side, it would probably introduce unwanted code complexity.
                             flowveldepth[usgs_position_i, ts_offset] = usgs_values[gage_i, timestep]
                             # TODO: add/update lastobs_timestep and/or decay_timestep
@@ -731,8 +730,9 @@ cpdef object compute_network_structured_obj(
     bint reservoir_type_specified,
     str model_start_time,
     const float[:,:] usgs_values,
-    const int[:] usgs_positions_list,
-    const float[:,:] lastobs_values,
+    const int[:] usgs_positions,
+    const float[:] lastobs_values,
+    const float[:] decay_times,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -997,8 +997,9 @@ cpdef object compute_network_structured(
     bint reservoir_type_specified,
     str model_start_time,
     const float[:,:] usgs_values,
-    const int[:] usgs_positions_list,
-    const float[:,:] lastobs_values,
+    const int[:] usgs_positions,
+    const float[:] lastobs_values_init,
+    const float[:] time_since_lastobs_init,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1158,16 +1159,26 @@ cpdef object compute_network_structured(
                 )
 
     # replace initial conditions with gage observations, wherever available
-    cdef int gages_size = usgs_positions_list.shape[0]
-    cdef int gage_i, usgs_position_i
+    cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
-
+    cdef int gage_i, usgs_position_i
+    cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
+    cdef int [:] lastobs_timestep
+    cdef float [:] lastobs_values
     if gages_size:
+        lastobs_timestep = np.full(gages_size, -1, dtype='int32')
+        lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
-            usgs_position_i = usgs_positions_list[gage_i]
-            flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
-            # TODO: handle the instance where there are no values, only gage positions
+            lastobs_values[gage_i] = lastobs_values_init[gage_i]
 
+    if gages_size and gage_maxtimestep > 0:
+        for gage_i in range(gages_size):
+            usgs_position_i = usgs_positions[gage_i]
+            # Handle the instance where there are no values, only gage positions
+            # TODO: Compare performance with math.isnan (imported for nogil...)
+            if not np.isnan(usgs_values[gage_i, 0]):
+                flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
+    
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
     cdef long upstream_tw_id
@@ -1264,21 +1275,50 @@ cpdef object compute_network_structured(
                                          out_buf,
                                          assume_short_ts)
 
-                    #Copy the output out
-                    for i in range(r.reach.mc_reach.num_segments):
-                        segment = get_mc_segment(r, i)
-                        flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
-                        flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
-                        flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
 
-            if gages_size:
-                for gage_i in range(gages_size):
-                    usgs_position_i = usgs_positions_list[gage_i]
-                    if timestep < gage_maxtimestep:
-                        flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
+                #Copy the output out
+                for i in range(r.reach.mc_reach.num_segments):
+                  segment = get_mc_segment(r, i)
+                  flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
+                  flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
+                  flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
+                    
+        if gages_size:  # TODO: This loops over all gages for all reaches.
+                        # We should have a membership test at the reach loop level
+                        # so that we only enter this process for reaches where the
+                        # gage actually exists. We have the filter in place to
+                        # filter the gage list so that only relevant gages for a
+                        # particular network are present in the function call ---
+                        # adding the reach-based filter would be the next level.
 
+            for gage_i in range(gages_size):
+                usgs_position_i = usgs_positions[gage_i] 
+                # TODO: It is possible to remove the following branching logic if
+                # we just loop over the timesteps during DA and post-DA, if that
+                # is a major performance optimization. On the flip side, it would
+                # probably introduce unwanted code complexity.
+                if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
+                    flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
+                    # add/update lastobs_timestep
+                    lastobs_timestep[gage_i] = timestep - 1
+                    lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
+                else:
+                    a = 120  # TODO: pull this a value from the config file somehow
+                    if lastobs_timestep[gage_i] < 0: # Initialized to -1
+                        da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                    else:
+                        da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                    da_weight = exp(da_decay_minutes/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+                    # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+                    da_shift = lastobs_values[gage_i] - flowveldepth[usgs_position_i, timestep, 0]
+                    da_weighted_shift = da_shift * da_weight
+                    replacement_value = flowveldepth[usgs_position_i, timestep, 0] + da_weighted_shift
+                    # printf("decaying from timestep: %d %d\t", timestep, gages_size)
+                    flowveldepth[usgs_position_i, timestep, 0] = replacement_value
 
-            timestep += 1
+        # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
+
+        timestep += 1
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created

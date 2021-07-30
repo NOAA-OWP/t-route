@@ -7,7 +7,7 @@ run_parameters:
     verbose: true  # verbose output (leave blank for quiet output.)
     showtiming: true  # set the showtiming (omit flag for no timing information.)
     break_network_at_gages: true  # Ensures gages are in a reach by themselves.
-    compute_method: V02-caching  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    compute_method: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
@@ -95,7 +95,8 @@ data_assimilation_parameters:
     data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
     data_assimilation_filter: "2018-09-18_0[0-9]*.usgsTimeSlice.ncdf"
     wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    # wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time: 0
     wrf_last_obs_type: "obs-based"
     # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
@@ -108,7 +109,8 @@ parity_parameters:
     # parity_check_file: "florence_streamflow_test.csv.hourly"
     parity_check_file_index_col: feature_id
     parity_check_file_value_col: streamflow
-    parity_check_compare_node: 10975909
+    # parity_check_compare_node: 10975909
+    parity_check_compare_node: 8777381
     # parity_check_compare_node: 8778771  # Headwater
     # parity_check_compare_node: 8778459  # Midwater
     # parity_check_compare_node: 8778201  # Midwater
