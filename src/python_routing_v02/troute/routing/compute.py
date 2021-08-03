@@ -552,7 +552,7 @@ def compute_nhd_routing_v02(
 
     elif parallel_compute_method == "by-subnetwork-diffusive":
         reaches_ordered_bysubntw, subnetworks, subnetworks_only_ordered_jit = nhd_network.build_subnetworks_btw_reservoirs(
-            connections, rconn, wbodies, independent_networks, sources=None
+            connections, rconn, wbody_conn, independent_networks, sources=None
         )
 
         if 1 == 1:
