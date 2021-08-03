@@ -444,8 +444,15 @@ def build_connections(supernetwork_parameters):
     if "gages" in cols:
         gages = build_gages(param_df[["gages"]])
         param_df = param_df.drop("gages", axis=1)
-
+            
     connections = nhd_network.extract_connections(param_df, "downstream")
+    
+    # if mask is used, enforce tailwater in connections dictionary
+    if not data_mask.empty:
+        for us, ds in connections.items():
+            if ds[0] not in param_df.index:
+                connections[us] = []
+            
     param_df = param_df.drop("downstream", axis=1)
     
     param_df = param_df.astype("float32")
