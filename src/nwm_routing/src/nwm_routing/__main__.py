@@ -323,11 +323,11 @@ def main_v02(argv):
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df, wbodies, gages = nnu.build_connections(
+    connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
     )
     if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(connections, wbodies)
+        connections = nhd_network.replace_waterbodies_connections(connections, wbody_conn)
 
     if verbose:
         print("supernetwork connections set complete")
@@ -345,7 +345,7 @@ def main_v02(argv):
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbodies.values()}
+            waterbody_parameters, {"level_pool": wbody_conn.values()}
         )
 
         # Remove duplicate lake_ids and rows
@@ -374,7 +374,7 @@ def main_v02(argv):
             waterbody_type_specified = True
 
             waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
-                wb_params_level_pool["level_pool_waterbody_id"], wbodies.values(),) 
+                wb_params_level_pool["level_pool_waterbody_id"], wbody_conn.values(),)
 
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
@@ -530,7 +530,7 @@ def main_v02(argv):
     results = compute_nhd_routing_v02(
         connections,
         rconn,
-        wbodies,
+        wbody_conn,
         reaches_bytw,
         compute_func,
         run_parameters.get("parallel_compute_method", None),
@@ -638,7 +638,7 @@ def main_v02(argv):
         )
 
         # list of WRF Hydro restart files
-        wrf_hydro_restart_files = list(
+        wrf_hydro_restart_files = sorted(
             Path(wrf_hydro_restart_dir).glob(
                 output_parameters["wrf_hydro_channel_restart_pattern_filter"]
                 + "[!"
@@ -686,7 +686,7 @@ def main_v02(argv):
         wrf_hydro_channel_output_new_extension = output_parameters.get(
             "wrf_hydro_channel_output_new_extension", "TRTE"
         )
-        chrtout_files = list(
+        chrtout_files = sorted(
             Path(chrtout_folder).glob(
                 output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
             )
@@ -856,7 +856,7 @@ def main_v03(argv):
     (
         connections,
         param_df,
-        wbodies,
+        wbody_conn,
         waterbodies_df,
         waterbody_types_df,
         break_network_at_waterbodies,
@@ -930,7 +930,7 @@ def main_v03(argv):
         run_results = nwm_route(
             connections,
             rconn,
-            wbodies,
+            wbody_conn,
             reaches_bytw,
             parallel_compute_method,
             compute_kernel,
