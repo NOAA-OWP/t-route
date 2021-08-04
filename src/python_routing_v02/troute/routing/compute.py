@@ -53,7 +53,7 @@ def compute_nhd_routing_v02(
     q0,
     qlats,
     usgs_df,
-    last_obs_df,
+    lastobs_df,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -240,61 +240,46 @@ def compute_nhd_routing_v02(
                     """
                     # NOTE: Uncomment to easily test no observations...
                     # usgs_df = pd.DataFrame()
-                    if not usgs_df.empty and not last_obs_df.empty:
+                    if not usgs_df.empty and not lastobs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
 
                         lastobs_segs = list(
-                            last_obs_df.index.intersection(param_df_sub.index)
+                            lastobs_df.index.intersection(param_df_sub.index)
                         )
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                        # need to match it up with last obs date within usgs
-                        decay_timestep_array = np.full(
-                            shape=len(usgs_df), fill_value=1, dtype=np.int
-                        )
+                        lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             usgs_segs
                         )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(
-                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                        )
-                    elif usgs_df.empty and not last_obs_df.empty:
+                    elif usgs_df.empty and not lastobs_df.empty:
                         lastobs_segs = list(
-                            last_obs_df.index.intersection(param_df_sub.index)
+                            lastobs_df.index.intersection(param_df_sub.index)
                         )
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                        # need to match it up with last obs date within usgs
-                        decay_timestep_array = np.full(
-                            shape=len(usgs_df), fill_value=1, dtype=np.int
-                        )
+                        lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                         # Create a completely empty list of gages -- the .shape[1] attribute
                         # will be == 0, and that will trigger a reference to the lastobs.
                         # in the compute kernel below.
                         usgs_df_sub = pd.DataFrame(
-                            index=[last_obs_sub.index], columns=[]
+                            index=[lastobs_df_sub.index], columns=[]
                         )
                         usgs_segs = lastobs_segs
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             lastobs_segs
                         )
-
-                    elif not usgs_df.empty and last_obs_df.empty:
+                    elif not usgs_df.empty and lastobs_df.empty:
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             usgs_segs
                         )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(
-                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                        )
                         lastobs_df_sub = pd.DataFrame(
                             index=[usgs_df_sub.index],
                             columns=["discharge", "time", "model_discharge"],
                         )
                     else:
                         usgs_df_sub = pd.DataFrame()
-                        last_obs_sub = pd.DataFrame()
+                        lastobs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
@@ -346,13 +331,13 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
-                            last_obs_sub.get(
+                            lastobs_df_sub.get(
                                 "last_obs_discharge",
-                                pd.Series(index=last_obs_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
-                            last_obs_sub.get(
+                            lastobs_df_sub.get(
                                 "time_since_lastobs",
-                                pd.Series(index=last_obs_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             {
                                 us: fvd
@@ -520,61 +505,46 @@ def compute_nhd_routing_v02(
                     """
                     # NOTE: Uncomment to easily test no observations...
                     # usgs_df = pd.DataFrame()
-                    if not usgs_df.empty and not last_obs_df.empty:
+                    if not usgs_df.empty and not lastobs_df.empty:
                         # index values for last obs are not correct, but line up correctly with usgs values. Switched
 
                         lastobs_segs = list(
-                            last_obs_df.index.intersection(param_df_sub.index)
+                            lastobs_df.index.intersection(param_df_sub.index)
                         )
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                        # need to match it up with last obs date within usgs
-                        decay_timestep_array = np.full(
-                            shape=len(usgs_df), fill_value=1, dtype=np.int
-                        )
+                        lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             usgs_segs
                         )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(
-                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                        )
-                    elif usgs_df.empty and not last_obs_df.empty:
+                    elif usgs_df.empty and not lastobs_df.empty:
                         lastobs_segs = list(
-                            last_obs_df.index.intersection(param_df_sub.index)
+                            lastobs_df.index.intersection(param_df_sub.index)
                         )
-                        last_obs_sub = last_obs_df.loc[lastobs_segs]
-                        # need to match it up with last obs date within usgs
-                        decay_timestep_array = np.full(
-                            shape=len(usgs_df), fill_value=1, dtype=np.int
-                        )
+                        lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                         # Create a completely empty list of gages -- the .shape[1] attribute
                         # will be == 0, and that will trigger a reference to the lastobs.
                         # in the compute kernel below.
                         usgs_df_sub = pd.DataFrame(
-                            index=[last_obs_sub.index], columns=[]
+                            index=[lastobs_df_sub.index], columns=[]
                         )
                         usgs_segs = lastobs_segs
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             lastobs_segs
                         )
-
-                    elif not usgs_df.empty and last_obs_df.empty:
+                    elif not usgs_df.empty and lastobs_df.empty:
                         usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                         nudging_positions_list = param_df_sub.index.get_indexer(
                             usgs_segs
                         )
                         usgs_df_sub = usgs_df.loc[usgs_segs]
-                        usgs_df_sub.drop(
-                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                        )
                         lastobs_df_sub = pd.DataFrame(
                             index=[usgs_df_sub.index],
                             columns=["discharge", "time", "model_discharge"],
                         )
                     else:
                         usgs_df_sub = pd.DataFrame()
-                        last_obs_sub = pd.DataFrame()
+                        lastobs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
@@ -624,13 +594,13 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
-                            last_obs_sub.get(
+                            lastobs_df_sub.get(
                                 "last_obs_discharge",
-                                pd.Series(index=last_obs_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
-                            last_obs_sub.get(
+                            lastobs_df_sub.get(
                                 "time_since_lastobs",
-                                pd.Series(index=last_obs_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             {
                                 us: fvd
@@ -786,7 +756,7 @@ def compute_nhd_routing_v02(
                         
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
-                    last_obs_sub = pd.DataFrame()
+                    lastobs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
@@ -832,7 +802,7 @@ def compute_nhd_routing_v02(
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(nudging_positions_list, dtype="int32"),
-                            last_obs_sub.values.astype("float32"),
+                            lastobs_sub.values.astype("float32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -940,42 +910,31 @@ def compute_nhd_routing_v02(
                 """
                 # NOTE: Uncomment to easily test no observations...
                 # usgs_df = pd.DataFrame()
-                if not usgs_df.empty and not last_obs_df.empty:
+                if not usgs_df.empty and not lastobs_df.empty:
                     # index values for last obs are not correct, but line up correctly with usgs values. Switched
 
-                    lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                    last_obs_sub = last_obs_df.loc[lastobs_segs]
-                    #need to match it up with last obs date within usgs
-                    decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+                    lastobs_segs = list(lastobs_df.index.intersection(param_df_sub.index))
+                    lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                     usgs_df_sub = usgs_df.loc[usgs_segs]
-                    usgs_df_sub.drop(
-                        usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                    )
-                elif usgs_df.empty and not last_obs_df.empty:
-                    lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                    last_obs_sub = last_obs_df.loc[lastobs_segs]
-                    #need to match it up with last obs date within usgs
-                    decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+                elif usgs_df.empty and not lastobs_df.empty:
+                    lastobs_segs = list(lastobs_df.index.intersection(param_df_sub.index))
+                    lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                     # Create a completely empty list of gages -- the .shape[1] attribute
                     # will be == 0, and that will trigger a reference to the lastobs.
                     # in the compute kernel below.
-                    usgs_df_sub = pd.DataFrame(index=[last_obs_sub.index],columns=[])
+                    usgs_df_sub = pd.DataFrame(index=[lastobs_df_sub.index],columns=[])
                     usgs_segs = lastobs_segs
                     nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-
-                elif not usgs_df.empty and last_obs_df.empty:
+                elif not usgs_df.empty and lastobs_df.empty:
                     usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                     nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                     usgs_df_sub = usgs_df.loc[usgs_segs]
-                    usgs_df_sub.drop(
-                        usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                    )
                     lastobs_df_sub = pd.DataFrame(index=[usgs_df_sub.index],columns=["discharge","time","model_discharge"])
                 else:
                     usgs_df_sub = pd.DataFrame()
-                    last_obs_sub = pd.DataFrame()
+                    lastobs_df_sub = pd.DataFrame()
                     nudging_positions_list = []
 
                 reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
@@ -1026,8 +985,8 @@ def compute_nhd_routing_v02(
                         model_start_time,
                         usgs_df_sub.values.astype("float32"),
                         np.array(nudging_positions_list, dtype="int32"),
-                        last_obs_sub.get("last_obs_discharge", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
-                        last_obs_sub.get("time_since_lastobs", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
+                        lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                        lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -1092,41 +1051,31 @@ def compute_nhd_routing_v02(
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
             
-            if not usgs_df.empty and not last_obs_df.empty:
+            if not usgs_df.empty and not lastobs_df.empty:
                 # index values for last obs are not correct, but line up correctly with usgs values. Switched
-                usgs_df = usgs_df.loc[last_obs_df.index]
-                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                last_obs_sub = last_obs_df.loc[lastobs_segs]
-                #need to match it up with last obs date within usgs
-                decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+                usgs_df = usgs_df.loc[lastobs_df.index]
+                lastobs_segs = list(lastobs_df.index.intersection(param_df_sub.index))
+                lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(
-                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                )
-            elif usgs_df.empty and not last_obs_df.empty:
-                lastobs_segs = list(last_obs_df.index.intersection(param_df_sub.index))
-                last_obs_sub = last_obs_df.loc[lastobs_segs]
-                #need to match it up with last obs date within usgs
-                decay_timestep_array = np.full(shape=len(usgs_df),fill_value=1,dtype=np.int)
+            elif usgs_df.empty and not lastobs_df.empty:
+                lastobs_segs = list(lastobs_df.index.intersection(param_df_sub.index))
+                lastobs_df_sub = lastobs_df.loc[lastobs_segs]
                 # Create a completely empty list of gages -- the .shape[1] attribute
                 # will be == 0, and that will trigger a reference to the lastobs.
                 # in the compute kernel below.
-                usgs_df_sub = pd.DataFrame(index=[last_obs_sub.index],columns=[])
+                usgs_df_sub = pd.DataFrame(index=[lastobs_df_sub.index],columns=[])
                 usgs_segs = lastobs_segs
                 nudging_positions_list = param_df_sub.index.get_indexer(lastobs_segs)
-            elif not usgs_df.empty and last_obs_df.empty:
+            elif not usgs_df.empty and lastobs_df.empty:
                 usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
                 nudging_positions_list = param_df_sub.index.get_indexer(usgs_segs)
                 usgs_df_sub = usgs_df.loc[usgs_segs]
-                usgs_df_sub.drop(
-                    usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
-                )
                 lastobs_df_sub = pd.DataFrame(index=[usgs_df_sub.index],columns=["discharge","time","model_discharge"])
             else:
                 usgs_df_sub = pd.DataFrame()
-                last_obs_sub = pd.DataFrame()
+                lastobs_df_sub = pd.DataFrame()
                 nudging_positions_list = []
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
@@ -1177,8 +1126,8 @@ def compute_nhd_routing_v02(
                     model_start_time,
                     usgs_df_sub.values.astype("float32"),
                     np.array(nudging_positions_list, dtype="int32"),
-                    last_obs_sub.get("last_obs_discharge", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
-                    last_obs_sub.get("time_since_lastobs", pd.Series(index=last_obs_sub.index, name="Null")).values.astype("float32"),
+                    lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     {},
                     assume_short_ts,
                     return_courant,
