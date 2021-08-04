@@ -713,6 +713,7 @@ def compute_nhd_routing_v02(
                     jobs.append(
                         delayed(compute_func_switch)(
                             nts,
+                            dt,
                             qts_subdivisions,
                             subn_reach_list_with_type,
                             subnetworks[subn_tw],
@@ -728,9 +729,10 @@ def compute_nhd_routing_v02(
                             waterbody_type_specified,
                             model_start_time,
                             usgs_df_sub.values.astype("float32"),
-                            # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(da_positions_list, dtype="int32"),
-                            lastobs_sub.values.astype("float32"),
+                            lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                            lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()

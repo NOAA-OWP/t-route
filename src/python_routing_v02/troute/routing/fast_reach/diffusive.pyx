@@ -108,6 +108,7 @@ cdef void diffnw(double dtini_g,
 
 cpdef object compute_diffusive_tst(
     int nsteps,
+    float dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict rconn,
@@ -123,8 +124,9 @@ cpdef object compute_diffusive_tst(
     bint reservoir_type_specified,
     str model_start_time,
     const float[:,:] usgs_values,
-    const int[:] usgs_positions_list,
-    const float[:,:] lastobs_values,
+    const int[:] usgs_positions,
+    const float[:] lastobs_values_init,
+    const float[:] time_since_lastobs_init,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
