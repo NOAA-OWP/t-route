@@ -27,6 +27,24 @@ from cython.parallel import prange
 #____pyx_f_5reach_muskingcunge
 #from reach cimport muskingcunge, QVD
 cimport troute.routing.fast_reach.reach as reach
+# cimport troute.routing.fast_reach.simple_da_with_decay as simple_da_with_decay
+
+
+@cython.boundscheck(False)
+cdef float simple_da_with_decay(
+    const float last_valid_obs,
+    const float model_val,
+    const float minutes_since_last_valid,
+    const float decay_coeff,
+) nogil:
+
+    cdef float da_weight, da_shift, da_weighted_shift, replacement_value
+    da_weight = exp(minutes_since_last_valid/-decay_coeff)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+    # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
+    da_shift = last_valid_obs - model_val
+    da_weighted_shift = da_shift * da_weight
+    return model_val + da_weighted_shift
+
 
 @cython.boundscheck(False)
 cpdef object binary_find(object arr, object els):
@@ -1321,13 +1339,9 @@ cpdef object compute_network_structured(
                         da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                     else:
                         da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
-                    da_weight = exp(da_decay_minutes/-a)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+
                     # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
-                    da_shift = lastobs_values[gage_i] - flowveldepth[usgs_position_i, timestep, 0]
-                    da_weighted_shift = da_shift * da_weight
-                    replacement_value = flowveldepth[usgs_position_i, timestep, 0] + da_weighted_shift
-                    # printf("decaying from timestep: %d %d\t", timestep, gages_size)
-                    flowveldepth[usgs_position_i, timestep, 0] = replacement_value
+                    flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
 
         # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
