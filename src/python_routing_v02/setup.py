@@ -37,17 +37,17 @@ mc_reach = Extension(
     extra_compile_args=["-g"],
 )
 
-# simple_da = Extension(
-    # "troute.routing.fast_reach.simple_da",
-    # sources=[
-        # "troute/routing/fast_reach/simple_da.{}".format(ext),
-    # ],
-    # include_dirs=[np.get_include()],
-    # libraries=[],
-    # library_dirs=[],
-    # extra_objects=[],
-    # extra_compile_args=["-g"],
-# )
+simple_da = Extension(
+    "troute.routing.fast_reach.simple_da",
+    sources=[
+        "troute/routing/fast_reach/simple_da.{}".format(ext),
+    ],
+    include_dirs=[np.get_include()],
+    libraries=[],
+    library_dirs=[],
+    extra_objects=[],
+    extra_compile_args=["-g"],
+)
 
 diffusive = Extension(
     "troute.routing.fast_reach.diffusive",
@@ -62,8 +62,8 @@ diffusive = Extension(
 )
 
 package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
-# ext_modules = [reach, mc_reach, diffusive, simple_da]
-ext_modules = [reach, mc_reach, diffusive]
+ext_modules = [reach, mc_reach, diffusive, simple_da]
+# ext_modules = [reach, mc_reach, diffusive]
 
 if USE_CYTHON:
     from Cython.Build import cythonize
