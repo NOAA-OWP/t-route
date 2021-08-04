@@ -653,7 +653,7 @@ def build_data_assimilation(data_assimilation_parameters):
             last_obs_type,  # TODO: Confirm that we are using this; delete it if not.
             last_obs_start,
         )
-        if not usgs_df.index.equals(last_obs_df.index):
+        if not usgs_df.empty and not usgs_df.index.equals(last_obs_df.index):
             print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[last_obs_df.index]
 
