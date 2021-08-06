@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 
 import troute.nhd_network as nhd_network
-import troute.nhd_network_utilities_v02 as nnu
 from troute.routing.fast_reach.mc_reach import (
     compute_network,
     compute_network_structured,
@@ -33,9 +32,8 @@ def _build_reach_type_list(reach_list, wbodies_segs):
     reach_type_list = [
                 1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
             ]
-    reaches_list_with_type = list(zip(reach_list, reach_type_list))
 
-    return reaches_list_with_type
+    return list(zip(reach_list, reach_type_list))
 
 
 def compute_nhd_routing_v02(
