@@ -28,6 +28,16 @@ _compute_func_map = defaultdict(
 )
 
 
+def _build_reach_type_list(reach_list, wbodies_segs):
+
+    reach_type_list = [
+                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+            ]
+    reaches_list_with_type = list(zip(reach_list, reach_type_list))
+
+    return reaches_list_with_type
+
+
 def compute_nhd_routing_v02(
     connections,
     rconn,
@@ -231,7 +241,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = nnu.build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
                     last_obs_sub = pd.DataFrame()
 
@@ -446,7 +456,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = nnu.build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
                     
                     last_obs_sub = pd.DataFrame()
 
@@ -647,7 +657,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = nnu.build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
                     last_obs_sub = pd.DataFrame()
 
@@ -802,7 +812,7 @@ def compute_nhd_routing_v02(
 
                 last_obs_sub = pd.DataFrame()
 
-                reaches_list_with_type = nnu.build_reach_type_list(reach_list, wbodies_segs)
+                reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
@@ -957,7 +967,7 @@ def compute_nhd_routing_v02(
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
 
-            reaches_list_with_type = nnu.build_reach_type_list(reach_list, wbodies_segs)
+            reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
             results.append(
                 compute_func(
