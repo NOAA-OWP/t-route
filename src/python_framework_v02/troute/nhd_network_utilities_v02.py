@@ -679,3 +679,12 @@ def build_data_assimilation_folder(data_assimilation_parameters):
         )
 
     return usgs_df
+
+def build_reach_type_list(reach_list, wbodies_segs):
+    
+    reach_type_list = [
+                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+            ]
+    reaches_list_with_type = list(zip(reach_list, reach_type_list))
+    
+    return reaches_list_with_type
