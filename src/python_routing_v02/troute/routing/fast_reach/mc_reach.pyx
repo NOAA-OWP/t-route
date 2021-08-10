@@ -1317,21 +1317,21 @@ cpdef object compute_network_structured(
 
                 else:
                     #Create compute reach kernel input buffer
-                    for i in range(r.reach.mc_reach.num_segments):
-                        segment = get_mc_segment(r, i)#r._segments[i]
-                        buf_view[i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
-                        buf_view[i, 1] = segment.dt
-                        buf_view[i, 2] = segment.dx
-                        buf_view[i, 3] = segment.bw
-                        buf_view[i, 4] = segment.tw
-                        buf_view[i, 5] = segment.twcc
-                        buf_view[i, 6] = segment.n
-                        buf_view[i, 7] = segment.ncc
-                        buf_view[i, 8] = segment.cs
-                        buf_view[i, 9] = segment.s0
-                        buf_view[i, 10] = flowveldepth[segment.id, timestep-1, 0]
-                        buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                        buf_view[i, 12] = flowveldepth[segment.id, timestep-1, 2]
+                    for _i in range(r.reach.mc_reach.num_segments):
+                        segment = get_mc_segment(r, _i)#r._segments[_i]
+                        buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
+                        buf_view[_i, 1] = segment.dt
+                        buf_view[_i, 2] = segment.dx
+                        buf_view[_i, 3] = segment.bw
+                        buf_view[_i, 4] = segment.tw
+                        buf_view[_i, 5] = segment.twcc
+                        buf_view[_i, 6] = segment.n
+                        buf_view[_i, 7] = segment.ncc
+                        buf_view[_i, 8] = segment.cs
+                        buf_view[_i, 9] = segment.s0
+                        buf_view[_i, 10] = flowveldepth[segment.id, timestep-1, 0]
+                        buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                        buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
                     compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                          r.reach.mc_reach.num_segments, buf_view,
@@ -1339,11 +1339,11 @@ cpdef object compute_network_structured(
                                          assume_short_ts)
 
                     #Copy the output out
-                    for i in range(r.reach.mc_reach.num_segments):
-                        segment = get_mc_segment(r, i)
-                        flowveldepth[segment.id, timestep, 0] = out_buf[i, 0]
-                        flowveldepth[segment.id, timestep, 1] = out_buf[i, 1]
-                        flowveldepth[segment.id, timestep, 2] = out_buf[i, 2]
+                    for _i in range(r.reach.mc_reach.num_segments):
+                        segment = get_mc_segment(r, _i)
+                        flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
+                        flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
+                        flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
 
             if gages_size:  # TODO: This loops over all gages for all reaches.
                             # We should have a membership test at the reach loop level
