@@ -261,7 +261,10 @@ def nwm_forcing_preprocess(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-    if data_assimilation_csv or data_assimilation_folder:
+    last_obs_file = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_file", None
+    )
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
 
         if data_assimilation_folder and data_assimilation_csv:
             print(
@@ -273,7 +276,9 @@ def nwm_forcing_preprocess(
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df, _ = nnu.build_data_assimilation(data_assimilation_parameters)
+        usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
+            data_assimilation_parameters
+        )
 
         if verbose:
             print("usgs array complete")
@@ -282,6 +287,8 @@ def nwm_forcing_preprocess(
 
     else:
         usgs_df = pd.DataFrame()
+        lastobs_df = pd.DataFrame()
+        da_parameter_dict = {}
 
     # STEP 7
     coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
@@ -296,4 +303,4 @@ def nwm_forcing_preprocess(
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
-    return qlats_df, usgs_df
+    return qlats_df, usgs_df, lastobs_df, da_parameter_dict

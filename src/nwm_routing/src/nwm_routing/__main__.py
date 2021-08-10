@@ -486,14 +486,14 @@ def main_v02(argv):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
-    data_assimilation_filter = data_assimilation_parameters.get(
-        "data_assimilation_filter", None
+    data_assimilation_folder = data_assimilation_parameters.get(
+        "data_assimilation_folder", None
     )
     last_obs_file = data_assimilation_parameters.get(
-         "wrf_hydro_last_obs_file", None
+        "wrf_hydro_last_obs_file", None
     )
 
-    if data_assimilation_csv or data_assimilation_filter or last_obs_file:
+    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
@@ -756,7 +756,8 @@ def nwm_route(
     q0,
     qlats,
     usgs_df,
-    last_obs_df,
+    lastobs_df,
+    da_parameter_dict,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -800,7 +801,8 @@ def nwm_route(
         q0,
         qlats,
         usgs_df,
-        last_obs_df,
+        lastobs_df,
+        da_parameter_dict,
         assume_short_ts,
         return_courant,
         waterbodies_df,
@@ -879,7 +881,7 @@ def main_v03(argv):
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, last_obs_df = nwm_initial_warmstate_preprocess(
+    waterbodies_df, q0, lastobs_df = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         param_df.index,
@@ -913,7 +915,7 @@ def main_v03(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
 
-    qlats, usgs_df = nwm_forcing_preprocess(
+    qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
         data_assimilation_parameters,
@@ -950,7 +952,8 @@ def main_v03(argv):
             q0,
             qlats,
             usgs_df,
-            last_obs_df,
+            lastobs_df,
+            da_parameter_dict,
             assume_short_ts,
             return_courant,
             waterbodies_df,
@@ -966,7 +969,7 @@ def main_v03(argv):
         if (
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
-            qlats, usgs_df = nwm_forcing_preprocess(
+            qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 data_assimilation_parameters,
