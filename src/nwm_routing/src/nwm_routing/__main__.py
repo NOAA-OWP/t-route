@@ -499,7 +499,7 @@ def main_v02(argv):
         if verbose:
             print("creating usgs time_slice data array ...")
 
-            usgs_df, last_obs_df = nnu.build_data_assimilation(
+            usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
                 data_assimilation_parameters
             )
 
@@ -510,7 +510,8 @@ def main_v02(argv):
 
     else:
         usgs_df = pd.DataFrame()
-        last_obs_df = pd.DataFrame()
+        lastobs_df = pd.DataFrame()
+        da_parameter_dict = {}
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -549,7 +550,8 @@ def main_v02(argv):
         q0,
         qlats,
         usgs_df,
-        last_obs_df,
+        lastobs_df,
+        da_parameter_dict,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
         waterbodies_df,

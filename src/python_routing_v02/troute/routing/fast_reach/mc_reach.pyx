@@ -182,6 +182,7 @@ cpdef object compute_network(
     const int[:] usgs_positions_gage,
     const float[:] lastobs_values_init,
     const float[:] time_since_lastobs_init,
+    const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -461,7 +462,7 @@ cpdef object compute_network(
                             lastobs_timestep[gage_i] = timestep
                             lastobs_values[gage_i] = usgs_values[gage_i, timestep]
                         else:
-                            a = 120  # TODO: pull this a value from the config file somehow
+                            a = da_decay_coefficient
                             if lastobs_timestep[gage_i] < 0: # Initialized to -1
                                 da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                             else:
@@ -761,6 +762,7 @@ cpdef object compute_network_structured_obj(
     const int[:] usgs_positions_gage,
     const float[:] lastobs_values_init,
     const float[:] time_since_lastobs_init,
+    const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1027,7 +1029,7 @@ cpdef object compute_network_structured_obj(
                         lastobs_timestep[gage_i] = timestep - 1
                         lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
                     else:
-                        a = 120  # TODO: pull this a value from the config file somehow
+                        a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
                             da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                         else:
@@ -1068,6 +1070,7 @@ cpdef object compute_network_structured(
     const int[:] usgs_positions_gage,
     const float[:] lastobs_values_init,
     const float[:] time_since_lastobs_init,
+    const double da_decay_coefficient,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -1389,7 +1392,7 @@ cpdef object compute_network_structured(
                         lastobs_timestep[gage_i] = timestep - 1
                         lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
                     else:
-                        a = 120  # TODO: pull this a value from the config file somehow
+                        a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
                             da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                         else:

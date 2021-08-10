@@ -128,6 +128,7 @@ def compute_nhd_routing_v02(
     qlats,
     usgs_df,
     lastobs_df,
+    da_parameter_dict,
     assume_short_ts,
     return_courant,
     waterbodies_df,
@@ -137,6 +138,7 @@ def compute_nhd_routing_v02(
     diffusive_parameters=None,
 ):
 
+    da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
     param_df = param_df.astype("float32")
 
@@ -362,6 +364,7 @@ def compute_nhd_routing_v02(
                                 "time_since_lastobs",
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
+                            da_decay_coefficient,
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -574,6 +577,7 @@ def compute_nhd_routing_v02(
                                 "time_since_lastobs",
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
+                            da_decay_coefficient,
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -766,6 +770,7 @@ def compute_nhd_routing_v02(
                             np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                             lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                            da_decay_coefficient,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
                                 us: fvd
@@ -915,6 +920,7 @@ def compute_nhd_routing_v02(
                         np.array(da_positions_list_bygage, dtype="int32"),
                         lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                        da_decay_coefficient,
                         {},
                         assume_short_ts,
                         return_courant,
@@ -1034,6 +1040,7 @@ def compute_nhd_routing_v02(
                     np.array(da_positions_list_bygage, dtype="int32"),
                     lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                    da_decay_coefficient,
                     {},
                     assume_short_ts,
                     return_courant,
