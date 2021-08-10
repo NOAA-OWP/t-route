@@ -1,3 +1,4 @@
+# cython: language_level=3, boundscheck=True, wraparound=False, profile=True
 
 import numpy as np
 from itertools import chain
@@ -1096,7 +1097,6 @@ cpdef object compute_network_structured(
         This version creates python objects for segments and reaches,
         but then uses only the C structures and access for efficiency
     """
-
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
