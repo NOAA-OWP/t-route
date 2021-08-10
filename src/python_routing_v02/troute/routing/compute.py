@@ -87,17 +87,14 @@ def _prep_da_dataframes(
 
 
 def _prep_da_positions_byreach(reach_list, gage_index):
-    breakpoint()
     reach_key = []
     reach_gage = []
     for i, r in enumerate(reach_list):
-        idx_test = gage_index.get_indexer(r)
-        idx_mask = idx_test > -1
-        if idx_mask.any():
-            reach_key.append(i)
-            reach_gage.append(idx_test[idx_mask])
-
-    gage_reach_i = list(concat(reach_gage))
+        for s in r:
+            if s in gage_index:
+                reach_key.append(i)
+                reach_gage.append(s)
+    gage_reach_i = gage_index.get_indexer(reach_gage)
 
     return reach_key, gage_reach_i
 
