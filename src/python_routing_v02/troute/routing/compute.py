@@ -292,7 +292,8 @@ def compute_nhd_routing_v02(
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -342,7 +343,9 @@ def compute_nhd_routing_v02(
                             model_start_time,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
-                            np.array(da_positions_list, dtype="int32"),
+                            np.array(da_positions_list_byseg, dtype="int32"),
+                            np.array(da_positions_list_byreach, dtype="int32"),
+                            np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get(
                                 "last_obs_discharge",
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
@@ -503,7 +506,8 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -551,7 +555,9 @@ def compute_nhd_routing_v02(
                             model_start_time,
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
-                            np.array(da_positions_list, dtype="int32"),
+                            np.array(da_positions_list_byseg, dtype="int32"),
+                            np.array(da_positions_list_byreach, dtype="int32"),
+                            np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get(
                                 "last_obs_discharge",
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
@@ -699,7 +705,8 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -746,7 +753,9 @@ def compute_nhd_routing_v02(
                             waterbody_type_specified,
                             model_start_time,
                             usgs_df_sub.values.astype("float32"),
-                            np.array(da_positions_list, dtype="int32"),
+                            np.array(da_positions_list_byseg, dtype="int32"),
+                            np.array(da_positions_list_byreach, dtype="int32"),
+                            np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                             lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
@@ -843,7 +852,8 @@ def compute_nhd_routing_v02(
                     ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                 ].sort_index()
 
-                usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df.index)
 
                 reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
@@ -892,7 +902,9 @@ def compute_nhd_routing_v02(
                         waterbody_type_specified,
                         model_start_time,
                         usgs_df_sub.values.astype("float32"),
-                        np.array(da_positions_list, dtype="int32"),
+                        np.array(da_positions_list_byseg, dtype="int32"),
+                        np.array(da_positions_list_byreach, dtype="int32"),
+                        np.array(da_positions_list_bygage, dtype="int32"),
                         lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         {},
