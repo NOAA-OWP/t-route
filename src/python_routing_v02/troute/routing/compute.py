@@ -43,7 +43,13 @@ def _prep_da_dataframes(
     param_df_sub_idx
     ):
     """
-    Options:
+    Produce, based on the segments in the param_df_sub_idx (which is a subset
+    representing a subnetwork of the larger collection of all segments),
+    a subset of the relevant usgs gage observation time series
+    and the relevant last-valid gage observation from any
+    prior model execution.
+
+    Cases to consider:
     USGS_DF, LAST_OBS
     Yes, Yes: Analysis and Assimilation; Last_Obs used to fill gaps in the front of the time series
     No, Yes: Forecasting mode;
@@ -87,6 +93,11 @@ def _prep_da_dataframes(
 
 
 def _prep_da_positions_byreach(reach_list, gage_index):
+    """
+    produce a list of indexes of the reach_list identifying reaches with gages
+    and a corresponding list of indexes of the gage_list of the gages in
+    the order they are found in the reach_list.
+    """
     reach_key = []
     reach_gage = []
     for i, r in enumerate(reach_list):
