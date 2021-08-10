@@ -61,7 +61,7 @@ def _prep_da_dataframes(
         lastobs_segs = list(lastobs_df.index.intersection(param_df_sub_idx))
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
         usgs_segs = list(usgs_df.index.intersection(param_df_sub_idx))
-        da_positions_list = param_df_sub_idx.get_indexer(usgs_segs)
+        da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
     elif usgs_df.empty and not lastobs_df.empty:
         lastobs_segs = list(lastobs_df.index.intersection(param_df_sub_idx))
@@ -71,18 +71,18 @@ def _prep_da_dataframes(
         # in the compute kernel below.
         usgs_df_sub = pd.DataFrame(index=[lastobs_df_sub.index],columns=[])
         usgs_segs = lastobs_segs
-        da_positions_list = param_df_sub_idx.get_indexer(lastobs_segs)
+        da_positions_list_byseg = param_df_sub_idx.get_indexer(lastobs_segs)
     elif not usgs_df.empty and lastobs_df.empty:
         usgs_segs = list(usgs_df.index.intersection(param_df_sub_idx))
-        da_positions_list = param_df_sub_idx.get_indexer(usgs_segs)
+        da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
         lastobs_df_sub = pd.DataFrame(index=[usgs_df_sub.index],columns=["discharge","time","model_discharge"])
     else:
         usgs_df_sub = pd.DataFrame()
         lastobs_df_sub = pd.DataFrame()
-        da_positions_list = []
+        da_positions_list_byseg = []
 
-    return usgs_df_sub, lastobs_df_sub, da_positions_list
+    return usgs_df_sub, lastobs_df_sub, da_positions_list_byseg
 
 
 def compute_nhd_routing_v02(
