@@ -1,4 +1,3 @@
-# cython: language_level=3, boundscheck=True, wraparound=False, profile=True
 
 import numpy as np
 from itertools import chain
@@ -353,7 +352,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
-    # cdef float dt = 300.0  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float dt = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -815,6 +814,7 @@ cpdef object compute_network_structured_obj(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
@@ -973,9 +973,6 @@ cpdef object compute_network_structured_obj(
 
             #Check if reach_type is 1 for reservoir/waterbody
             if (reach_type == 1):
-            #TODO: dt is currently held by the segment. Need to find better place to hold dt
-                routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
-
                 reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
@@ -1099,6 +1096,7 @@ cpdef object compute_network_structured(
         This version creates python objects for segments and reaches,
         but then uses only the C structures and access for efficiency
     """
+
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
@@ -1128,6 +1126,7 @@ cpdef object compute_network_structured(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
@@ -1322,20 +1321,19 @@ cpdef object compute_network_structured(
                     upstream_flows = previous_upstream_flows
 
                 if r.type == compute_type.RESERVOIR_LP:
-                    run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
-                    # TODO: Get rid of this insidious magic number (presumably the dt of 300 seconds...)
+                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_HYBRID:
-                    run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_RFC:
-                    run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
