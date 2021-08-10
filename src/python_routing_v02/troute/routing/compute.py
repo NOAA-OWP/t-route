@@ -1,6 +1,7 @@
 from collections import defaultdict
 from itertools import chain
 from functools import partial
+from tlz import concat
 from joblib import delayed, Parallel
 from datetime import datetime, timedelta
 import time
@@ -83,6 +84,22 @@ def _prep_da_dataframes(
         da_positions_list_byseg = []
 
     return usgs_df_sub, lastobs_df_sub, da_positions_list_byseg
+
+
+def _prep_da_positions_byreach(reach_list, gage_index):
+    breakpoint()
+    reach_key = []
+    reach_gage = []
+    for i, r in enumerate(reach_list):
+        idx_test = gage_index.get_indexer(r)
+        idx_mask = idx_test > -1
+        if idx_mask.any():
+            reach_key.append(i)
+            reach_gage.append(idx_test[idx_mask])
+
+    gage_reach_i = list(concat(reach_gage))
+
+    return reach_key, gage_reach_i
 
 
 def compute_nhd_routing_v02(
@@ -942,7 +959,8 @@ def compute_nhd_routing_v02(
                 ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
             ].sort_index()
 
-            usgs_df_sub, lastobs_df_sub, da_positions_list = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+            usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df.index)
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
@@ -991,7 +1009,9 @@ def compute_nhd_routing_v02(
                     waterbody_type_specified,
                     model_start_time,
                     usgs_df_sub.values.astype("float32"),
-                    np.array(da_positions_list, dtype="int32"),
+                    np.array(da_positions_list_byseg, dtype="int32"),
+                    np.array(da_positions_list_byreach, dtype="int32"),
+                    np.array(da_positions_list_bygage, dtype="int32"),
                     lastobs_df_sub.get("last_obs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     {},
