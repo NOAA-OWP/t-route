@@ -33,6 +33,7 @@ cdef void diffnw(double dtini_g,
              double[::1,:] manncc_ar_g,
              double[::1,:] so_ar_g,
              double[::1,:] dx_ar_g,
+             double[::1,:] iniq,    
              int nhincr_m_g,
              int nhincr_f_g,
              double[::1,:,:] ufhlt_m_g,
@@ -80,6 +81,7 @@ cdef void diffnw(double dtini_g,
             &manncc_ar_g[0,0],
             &so_ar_g[0,0],
             &dx_ar_g[0,0],
+            &iniq[0,0],
             &nhincr_m_g,
             &nhincr_f_g,
             &ufhlt_m_g[0,0,0],
@@ -150,7 +152,11 @@ cpdef object compute_diffusive_tst(
         np.asarray(data_cols),
         np.asarray(data_idx),
         np.asarray(data_values),
-        np.asarray(qlat_values)
+        np.asarray(qlat_values),
+        np.asarray(initial_conditions),
+        upstream_results,
+        qts_subdivisions,
+        nsteps
         )
 
     # unpack/declare diffusive input variables
@@ -194,6 +200,7 @@ cpdef object compute_diffusive_tst(
         int y_opt_g = diff_inputs["y_opt_g"]
         double so_llm_g = diff_inputs["so_llm_g"]
         int ntss_ev_g = diff_inputs["ntss_ev_g"]
+        double[::1,:] iniq = np.asfortranarray(diff_inputs["iniq"])
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
@@ -220,6 +227,7 @@ cpdef object compute_diffusive_tst(
      manncc_ar_g,
      so_ar_g,
      dx_ar_g,
+     iniq,
      nhincr_m_g,
      nhincr_f_g,
      ufhlt_m_g,

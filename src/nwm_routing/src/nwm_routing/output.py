@@ -98,7 +98,7 @@ def nwm_output_generator(
             )
 
             # list of WRF Hydro restart files
-            wrf_hydro_restart_files = list(
+            wrf_hydro_restart_files = sorted(
                 Path(wrf_hydro_restart_dir).glob(
                     output_parameters["wrf_hydro_channel_restart_pattern_filter"]
                     + "[!"
@@ -132,7 +132,7 @@ def nwm_output_generator(
             wrf_hydro_channel_output_new_extension = output_parameters.get(
                 "wrf_hydro_channel_output_new_extension", "TRTE"
             )
-            chrtout_files = list(
+            chrtout_files = sorted(
                 Path(chrtout_folder).glob(
                     output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
                 )

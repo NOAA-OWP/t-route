@@ -27,10 +27,19 @@ _compute_func_map = defaultdict(
 )
 
 
+def _build_reach_type_list(reach_list, wbodies_segs):
+
+    reach_type_list = [
+                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+            ]
+
+    return list(zip(reach_list, reach_type_list))
+
+
 def compute_nhd_routing_v02(
     connections,
     rconn,
-    wbodies,
+    wbody_conn,  # TODO: We never use this argument... delete it!!!
     reaches_bytw,
     compute_func_name,
     parallel_compute_method,
@@ -230,17 +239,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = []
-                    for reaches in subn_reach_list:
-                        if set(reaches) & wbodies_segs:
-                            reach_type = 1  # type 1 for waterbody/lake
-                        else:
-                            reach_type = 0  # type 0 for reach
-
-                        reach_and_type_tuple = (reaches, reach_type)
-
-                        subn_reach_list_with_type.append(reach_and_type_tuple)
-
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
                     last_obs_sub = pd.DataFrame()
 
@@ -455,17 +454,8 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = []
-                    for reaches in subn_reach_list:
-                        if set(reaches) & wbodies_segs:
-                            reach_type = 1  # type 1 for waterbody/lake
-                        else:
-                            reach_type = 0  # type 0 for reach
-
-                        reach_and_type_tuple = (reaches, reach_type)
-
-                        subn_reach_list_with_type.append(reach_and_type_tuple)
-
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+                    
                     last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
@@ -494,6 +484,207 @@ def compute_nhd_routing_v02(
 
                     jobs.append(
                         delayed(compute_func)(
+                            nts,
+                            qts_subdivisions,
+                            subn_reach_list_with_type,
+                            subnetworks[subn_tw],
+                            param_df_sub.index.values,
+                            param_df_sub.columns.values,
+                            param_df_sub.values,
+                            q0_sub.values.astype("float32"),
+                            qlat_sub.values.astype("float32"),
+                            lake_segs,
+                            waterbodies_df_sub.values,
+                            waterbody_parameters,
+                            waterbody_types_df_sub.values.astype("int32"),
+                            waterbody_type_specified,
+                            model_start_time,
+                            usgs_df_sub.values.astype("float32"),
+                            # flowveldepth_interorder,  # obtain keys and values from this dataset
+                            np.array(nudging_positions_list, dtype="int32"),
+                            last_obs_sub.values.astype("float32"),
+                            {
+                                us: fvd
+                                for us, fvd in flowveldepth_interorder.items()
+                                if us in offnetwork_upstreams
+                            },
+                            assume_short_ts,
+                            return_courant,
+                            diffusive_parameters,
+                        )
+                    )
+
+                results_subn[order] = parallel(jobs)
+
+                if order > 0:  # This is not needed for the last rank of subnetworks
+                    flowveldepth_interorder = {}
+                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
+                        # TODO: This index step is necessary because we sort the segment index
+                        # TODO: I think there are a number of ways we could remove the sorting step
+                        #       -- the binary search could be replaced with an index based on the known topology
+                        flowveldepth_interorder[subn_tw] = {}
+                        subn_tw_sortposition = (
+                            results_subn[order][twi][0].tolist().index(subn_tw)
+                        )
+                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
+                            order
+                        ][twi][1][subn_tw_sortposition]
+                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
+                        # There will be an empty array initialized at the top of the loop, then re-populated here.
+                        # we don't have to bother with populating it after the last group
+
+        results = []
+        for order in subnetworks_only_ordered_jit:
+            results.extend(results_subn[order])
+
+        if 1 == 1:
+            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+
+    elif parallel_compute_method == "by-subnetwork-diffusive":
+        reaches_ordered_bysubntw, subnetworks, subnetworks_only_ordered_jit = nhd_network.build_subnetworks_btw_reservoirs(
+            connections, rconn, wbody_conn, independent_networks, sources=None
+        )
+
+        if 1 == 1:
+            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            print("starting Parallel JIT calculation")
+
+        start_para_time = time.time()
+        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+            results_subn = defaultdict(list)
+            flowveldepth_interorder = {}
+
+            for order in range(max(reaches_ordered_bysubntw.keys()), -1, -1):
+                jobs = []
+                for twi, (subn_tw, subn_reach_list) in enumerate(
+                    reaches_ordered_bysubntw[order].items(), 1
+                ):
+                    # TODO: Confirm that a list here is best -- we are sorting,
+                    # so a set might be sufficient/better
+                    segs = list(chain.from_iterable(subn_reach_list))
+                    offnetwork_upstreams = set()
+                    segs_set = set(segs)
+                    for seg in segs:
+                        for us in rconn[seg]:
+                            if us not in segs_set:
+                                offnetwork_upstreams.add(us)
+
+                    segs.extend(offnetwork_upstreams)
+
+                    common_segs = list(param_df.index.intersection(segs))
+                    wbodies_segs = set(segs).symmetric_difference(common_segs)
+                    
+                    # Declare empty dataframe
+                    waterbody_types_df_sub = pd.DataFrame()
+
+                    # Set compute_func_switch to compute_func.
+                    # compute_func for this function should be set to "diffusive" 
+                    compute_func_switch = compute_func
+
+                    # Can comment out above statement and uncomment below
+                    # if need to run compute_network_structured in mc_reach
+                    # for every subnetwork for debugging purposes.
+                    #compute_func_switch = compute_network_structured
+
+                    if not waterbodies_df.empty:
+                        lake_segs = list(waterbodies_df.index.intersection(segs))
+
+                        if subn_tw in waterbodies_df.index:
+                            # Since this subn_tw is a resevoir, set compute_func_switch
+                            # to compute_network_structured.
+                            compute_func_switch = compute_network_structured
+
+                        waterbodies_df_sub = waterbodies_df.loc[
+                            lake_segs,
+                            [
+                                "LkArea",
+                                "LkMxE",
+                                "OrificeA",
+                                "OrificeC",
+                                "OrificeE",
+                                "WeirC",
+                                "WeirE",
+                                "WeirL",
+                                "ifd",
+                                "qd0",
+                                "h0",
+                            ],
+                        ]
+                        
+                        #If reservoir types other than Level Pool are active
+                        if not waterbody_types_df.empty:
+                            waterbody_types_df_sub = waterbody_types_df.loc[
+                                lake_segs,
+                                [
+                                    "reservoir_type",
+                                ],
+                            ]
+
+                    else:
+                        lake_segs = []
+                        waterbodies_df_sub = pd.DataFrame()
+                    
+                    param_df_sub = param_df.loc[
+                        common_segs,
+                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+                    ].sort_index()
+                    
+                    param_df_sub_super = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+
+                    if order < max(reaches_ordered_bysubntw.keys()):
+                        for us_subn_tw in offnetwork_upstreams:
+                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
+                                us_subn_tw
+                            )
+                            flowveldepth_interorder[us_subn_tw][
+                                "position_index"
+                            ] = subn_tw_sortposition
+
+                    if not usgs_df.empty:
+                        usgs_segs = list(usgs_df.index.intersection(param_df_sub.index))
+                        nudging_positions_list = param_df_sub.index.get_indexer(
+                            usgs_segs
+                        )
+                        usgs_df_sub = usgs_df.loc[usgs_segs]
+                        usgs_df_sub.drop(
+                            usgs_df_sub.columns[range(0, 1)], axis=1, inplace=True
+                        )
+                    else:
+                        usgs_df_sub = pd.DataFrame()
+                        nudging_positions_list = []
+                        
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+
+                    last_obs_sub = pd.DataFrame()
+
+                    qlat_sub = qlats.loc[param_df_sub.index]
+                    q0_sub = q0.loc[param_df_sub.index]
+                    
+                    #Determine model_start_time from qlat_start_time
+                    qlat_start_time = list(qlat_sub)[0]
+
+                    qlat_time_step_seconds = qts_subdivisions * dt
+
+                    if not isinstance(qlat_start_time,datetime):
+                        qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+                    else:
+                        qlat_start_time_datetime_object =  qlat_start_time
+
+                    model_start_time_datetime_object = qlat_start_time_datetime_object \
+                    - timedelta(seconds=qlat_time_step_seconds)
+
+                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+
+                    param_df_sub = param_df_sub.reindex(
+                        param_df_sub.index.tolist() + lake_segs
+                    ).sort_index()
+                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
+                    q0_sub = q0_sub.reindex(param_df_sub.index)
+
+                    jobs.append(
+                        delayed(compute_func_switch)(
                             nts,
                             qts_subdivisions,
                             subn_reach_list_with_type,
@@ -619,17 +810,7 @@ def compute_nhd_routing_v02(
 
                 last_obs_sub = pd.DataFrame()
 
-                reaches_list_with_type = []
-
-                for reaches in reach_list:
-                    if set(reaches) & wbodies_segs:
-                        reach_type = 1  # type 1 for waterbody/lake
-                    else:
-                        reach_type = 0  # type 0 for reach
-
-                    reach_and_type_tuple = (reaches, reach_type)
-
-                    reaches_list_with_type.append(reach_and_type_tuple)
+                reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
@@ -784,23 +965,7 @@ def compute_nhd_routing_v02(
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
 
-            reach_type_list = [
-                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
-            ]
-            reaches_list_with_type = list(zip(reach_list, reach_type_list))
-            """
-            reaches_list_with_type = []
-
-            for reaches in reach_list:
-                if (set(reaches) & wbodies_segs):
-                    reach_type = 1 # type 1 for waterbody/lake
-                else:
-                    reach_type = 0 # type 0 for reach
-
-                reach_and_type_tuple = (reaches, reach_type)
-
-                reaches_list_with_type.append(reach_and_type_tuple)
-            """
+            reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
             results.append(
                 compute_func(

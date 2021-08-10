@@ -445,9 +445,22 @@ def build_connections(supernetwork_parameters):
         gages = build_gages(param_df[["gages"]])
         param_df = param_df.drop("gages", axis=1)
 
-    connections = nhd_network.extract_connections(param_df, "downstream")
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.add(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+    connections = nhd_network.extract_connections(
+        param_df, "downstream", terminal_codes=terminal_codes
+    )
     param_df = param_df.drop("downstream", axis=1)
-    
+
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
@@ -472,7 +485,7 @@ def build_waterbodies(
     supernetwork_parameters
     waterbody_crosswalk_column
     """
-    wbodies = nhd_network.extract_waterbodies(
+    wbody_conn = nhd_network.extract_waterbody_connections(
         segment_reservoir_df,
         waterbody_crosswalk_column,
         supernetwork_parameters["waterbody_null_code"],
@@ -481,7 +494,7 @@ def build_waterbodies(
     # TODO: Add function to read LAKEPARM.nc here
     # TODO: return the lakeparam_df
 
-    return wbodies
+    return wbody_conn
 
 
 def organize_independent_networks(connections, wbodies=None):
@@ -560,7 +573,7 @@ def build_qlateral_array(
             qlat_file_pattern_filter = forcing_parameters.get(
                 "qlat_file_pattern_filter", "*CHRT_OUT*"
             )
-            qlat_files = qlat_input_folder.glob(qlat_file_pattern_filter)
+            qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
 
         qlat_file_index_col = forcing_parameters.get(
             "qlat_file_index_col", "feature_id"
