@@ -27,6 +27,15 @@ _compute_func_map = defaultdict(
 )
 
 
+def _build_reach_type_list(reach_list, wbodies_segs):
+
+    reach_type_list = [
+                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+            ]
+
+    return list(zip(reach_list, reach_type_list))
+
+
 def compute_nhd_routing_v02(
     connections,
     rconn,
@@ -230,17 +239,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = []
-                    for reaches in subn_reach_list:
-                        if set(reaches) & wbodies_segs:
-                            reach_type = 1  # type 1 for waterbody/lake
-                        else:
-                            reach_type = 0  # type 0 for reach
-
-                        reach_and_type_tuple = (reaches, reach_type)
-
-                        subn_reach_list_with_type.append(reach_and_type_tuple)
-
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
                     last_obs_sub = pd.DataFrame()
 
@@ -455,17 +454,8 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = []
-                    for reaches in subn_reach_list:
-                        if set(reaches) & wbodies_segs:
-                            reach_type = 1  # type 1 for waterbody/lake
-                        else:
-                            reach_type = 0  # type 0 for reach
-
-                        reach_and_type_tuple = (reaches, reach_type)
-
-                        subn_reach_list_with_type.append(reach_and_type_tuple)
-
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+                    
                     last_obs_sub = pd.DataFrame()
 
                     qlat_sub = qlats.loc[param_df_sub.index]
@@ -665,16 +655,7 @@ def compute_nhd_routing_v02(
                         usgs_df_sub = pd.DataFrame()
                         nudging_positions_list = []
                         
-                    subn_reach_list_with_type = []
-                    for reaches in subn_reach_list:
-                        if set(reaches) & wbodies_segs:
-                            reach_type = 1  # type 1 for waterbody/lake
-                        else:
-                            reach_type = 0  # type 0 for reach
-
-                        reach_and_type_tuple = (reaches, reach_type)
-
-                        subn_reach_list_with_type.append(reach_and_type_tuple)
+                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
                     last_obs_sub = pd.DataFrame()
 
@@ -829,17 +810,7 @@ def compute_nhd_routing_v02(
 
                 last_obs_sub = pd.DataFrame()
 
-                reaches_list_with_type = []
-
-                for reaches in reach_list:
-                    if set(reaches) & wbodies_segs:
-                        reach_type = 1  # type 1 for waterbody/lake
-                    else:
-                        reach_type = 0  # type 0 for reach
-
-                    reach_and_type_tuple = (reaches, reach_type)
-
-                    reaches_list_with_type.append(reach_and_type_tuple)
+                reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
@@ -994,23 +965,7 @@ def compute_nhd_routing_v02(
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
 
-            reach_type_list = [
-                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
-            ]
-            reaches_list_with_type = list(zip(reach_list, reach_type_list))
-            """
-            reaches_list_with_type = []
-
-            for reaches in reach_list:
-                if (set(reaches) & wbodies_segs):
-                    reach_type = 1 # type 1 for waterbody/lake
-                else:
-                    reach_type = 0 # type 0 for reach
-
-                reach_and_type_tuple = (reaches, reach_type)
-
-                reaches_list_with_type.append(reach_and_type_tuple)
-            """
+            reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
             results.append(
                 compute_func(
