@@ -1060,6 +1060,8 @@ cpdef object compute_network_structured(
     str model_start_time,
     const float[:,:] usgs_values,
     const int[:] usgs_positions,
+    const int[:] usgs_positions_reach,
+    const int[:] usgs_positions_gage,
     const float[:] lastobs_values_init,
     const float[:] time_since_lastobs_init,
     dict upstream_results={},
@@ -1227,6 +1229,9 @@ cpdef object compute_network_structured(
     cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
     cdef int [:] lastobs_timestep
     cdef float [:] lastobs_values
+    cdef int[:] reach_has_gage
+    reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
+
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype='int32')
         lastobs_values = np.zeros(gages_size, dtype='float32')
@@ -1240,6 +1245,9 @@ cpdef object compute_network_structured(
             # TODO: Compare performance with math.isnan (imported for nogil...)
             if not np.isnan(usgs_values[gage_i, 0]):
                 flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
+
+            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
+            # print(f"{gage_i} {usgs_positions[gage_i]} {usgs_positions_reach[gage_i]} {usgs_positions_gage[gage_i]} {list(usgs_positions)}")
 
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
@@ -1345,16 +1353,28 @@ cpdef object compute_network_structured(
                         flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
                         flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
 
-            if gages_size:  # TODO: This loops over all gages for all reaches.
-                            # We should have a membership test at the reach loop level
-                            # so that we only enter this process for reaches where the
-                            # gage actually exists. We have the filter in place to
-                            # filter the gage list so that only relevant gages for a
-                            # particular network are present in the function call ---
-                            # adding the reach-based filter would be the next level.
+                # For each reach,
+                # at the end of flow calculation, Check if there is something to assimilate
+                # by evaluating whether the reach_has_gage array has a value different from
+                # the initialized value, -1.
 
-                for gage_i in range(gages_size):
+                # TODO: If it were possible to invert the time and reach loops
+                # (should be possible for the MC), then this check could be
+                # performed fewer times -- consider implementing such a change.
+                if reach_has_gage[i] > -1:
+                # We only enter this process for reaches where the
+                # gage actually exists.
+
+                    #printf("gages_size: %d\t", gages_size)
+                    #printf("reach_has_gage[i]: %d\t", reach_has_gage[i])
+                    #printf("num_reaches: %d\t", num_reaches)
+                    #printf("i: %d\n", i)
+
+                    # If assimilation is active for this reach, we loop over all the reaches...
+                    # we touch the exactly one gage which is relevant for the reach ...
+                    gage_i = reach_has_gage[i]
                     usgs_position_i = usgs_positions[gage_i]
+
                     # TODO: It is possible to remove the following branching logic if
                     # we just loop over the timesteps during DA and post-DA, if that
                     # is a major performance optimization. On the flip side, it would
