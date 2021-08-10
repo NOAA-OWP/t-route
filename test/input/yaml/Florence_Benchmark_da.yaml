@@ -98,6 +98,7 @@ data_assimilation_parameters:
     wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
     wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time: 0
     wrf_last_obs_type: "obs-based"
+    da_decay_coefficient: 120  # `a` parameter in WRF-Hydro
     # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
     # florence_testcase/florenceNudgingChannelOnly/FORCING_AnA_channel-only/24timeslices

@@ -657,7 +657,9 @@ def build_data_assimilation(data_assimilation_parameters):
             print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[last_obs_df.index]
 
-    return usgs_df, last_obs_df
+    da_parameter_dict = {}
+    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+    return usgs_df, last_obs_df, da_parameter_dict
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):
