@@ -1193,7 +1193,7 @@ def test_compute_rfc_run(rfc_reservoir):
         #print(water_elevation)
 
     expected_final_outflow = 3.6
-    expected_final_water_elevation = 1331.430786
+    expected_final_water_elevation = 1331.436035
 
     assert rfc_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
