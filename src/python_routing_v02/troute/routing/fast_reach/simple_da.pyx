@@ -1,6 +1,24 @@
 from libc.math cimport exp, isnan
 # from libc.stdio cimport printf
 
+
+cpdef float simple_da_with_decay_py(
+    const float last_valid_obs,
+    const float model_val,
+    const float minutes_since_last_valid,
+    const float decay_coeff,
+):
+    """
+    pass-through for using pytest with `simple_da_with_decay`
+    """
+    return simple_da_with_decay(
+        last_valid_obs,
+        model_val,
+        minutes_since_last_valid,
+        decay_coeff,
+    )
+
+
 cdef float simple_da_with_decay(
     const float last_valid_obs,
     const float model_val,
