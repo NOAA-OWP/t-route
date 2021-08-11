@@ -150,17 +150,16 @@ expected_wbody_connections = {4: 403, 5: 403, 16: 401, 17: 401, 21: 401, 26: 402
 
 import pandas as pd
 import troute.nhd_network_utilities_v02 as nnu
+import troute.nhd_network as nhd_network
 
 test_param_df = pd.DataFrame(network_clean)
-test_param_df = test_param_df.rename(columns=nnu.reverse_dict(test_columns))
+test_param_df = test_param_df.rename(columns=nhd_network.reverse_dict(test_columns))
 test_param_df = test_param_df.set_index("key")
 
-import troute.nhd_network_utilities_v02 as nnu
-import troute.nhd_network as nhd_network
 
 def test_reverse_dict():
 
-    result = nnu.reverse_dict(test_columns)
+    result = nhd_network.reverse_dict(test_columns)
     assert result == reverse_test_columns
 
 
