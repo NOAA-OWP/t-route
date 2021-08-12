@@ -221,7 +221,7 @@ cpdef object compute_network(
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
-    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], (nsteps + 1) * 3), dtype='float32')
 
     flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
     flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
@@ -481,7 +481,7 @@ cpdef object compute_network(
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
     if return_courant:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
     else:
         return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
 
