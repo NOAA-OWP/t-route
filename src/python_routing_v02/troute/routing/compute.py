@@ -303,7 +303,7 @@ def compute_nhd_routing_v02(
                     upstreams = clustered_subns["upstreams"]
 
                     usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -518,7 +518,7 @@ def compute_nhd_routing_v02(
                             ] = subn_tw_sortposition
 
                     usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -718,7 +718,7 @@ def compute_nhd_routing_v02(
                             ] = subn_tw_sortposition
 
                     usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df.index)
+                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
 
@@ -866,7 +866,7 @@ def compute_nhd_routing_v02(
                 ].sort_index()
 
                 usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-                da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df.index)
+                da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
 
                 reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
 
@@ -986,7 +986,7 @@ def compute_nhd_routing_v02(
             ].sort_index()
 
             usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df.index)
+            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
