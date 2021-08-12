@@ -232,12 +232,15 @@ cpdef object compute_network(
     cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
     cdef int [:] lastobs_timestep
     cdef float [:] lastobs_values
+    cdef int[:] reach_has_gage
+    reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
 
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype='int32')
         lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
 
     # replace initial conditions with gage observations, wherever available
     if gages_size and gage_maxtimestep > 0:
@@ -832,12 +835,15 @@ cpdef object compute_network_structured_obj(
     cdef float a, da_decay_minutes, da_weight, da_shift, da_weighted_shift, replacement_value
     cdef int [:] lastobs_timestep
     cdef float [:] lastobs_values
+    cdef int[:] reach_has_gage
+    reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
 
     if gages_size:
         lastobs_timestep = np.full(gages_size, -1, dtype='int32')
         lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
 
     # replace initial conditions with gage observations, wherever available
     if gages_size and gage_maxtimestep > 0:
@@ -1244,6 +1250,7 @@ cpdef object compute_network_structured(
         lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
 
     if gages_size and gage_maxtimestep > 0:
         for gage_i in range(gages_size):
@@ -1252,9 +1259,6 @@ cpdef object compute_network_structured(
             # TODO: Compare performance with math.isnan (imported for nogil...)
             if not np.isnan(usgs_values[gage_i, 0]):
                 flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
-
-            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
-            # print(f"{gage_i} {usgs_positions[gage_i]} {usgs_positions_reach[gage_i]} {usgs_positions_gage[gage_i]} {list(usgs_positions)}")
 
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
