@@ -1081,6 +1081,7 @@ cpdef object compute_network_structured(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
+    # int da_check_gage=-1,
     ):
     """
     Compute network
@@ -1246,11 +1247,15 @@ cpdef object compute_network_structured(
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
-        lastobs_timestep = np.full(gages_size, -1, dtype='int32')
-        lastobs_values = np.zeros(gages_size, dtype='float32')
+        lastobs_timestep = np.full(gages_size, -1, dtype="int32")
+        lastobs_values = np.zeros(gages_size, dtype="float32")
+        # if da_check_gage > 0:
+        #     print(f"gage_i     usgs_positions[gage_i]  usgs_positions_reach[gage_i]  usgs_positions_gage[gage_i]   list(usgs_positions)")
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
+            # if da_check_gage > 0:
+            #     print(f"{gage_i} {usgs_positions[gage_i]} {usgs_positions_reach[gage_i]} {usgs_positions_gage[gage_i]} {list(usgs_positions)}")
 
     if gages_size and gage_maxtimestep > 0:
         for gage_i in range(gages_size):
@@ -1300,6 +1305,7 @@ cpdef object compute_network_structured(
     cdef int id = 0
     #Run time
     with nogil:
+        # printf("timestep, gage_maxtimestep, a, da_decay_minutes, lastobs_timestep[gage_i], da_weighted_shift, lastobs_val, original_val, replacement_val")
         while timestep < nsteps+1:
             for i in range(num_reaches):
                 r = &reach_structs[i]
@@ -1372,6 +1378,7 @@ cpdef object compute_network_structured(
                 # TODO: If it were possible to invert the time and reach loops
                 # (should be possible for the MC), then this check could be
                 # performed fewer times -- consider implementing such a change.
+
                 if reach_has_gage[i] > -1:
                 # We only enter this process for reaches where the
                 # gage actually exists.
@@ -1406,6 +1413,25 @@ cpdef object compute_network_structured(
                         nudge[gage_i, timestep] = da_weighted_shift
                         # TODO: we need to export these values
                         replacement_val = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
+
+                        # lastobs_val = lastobs_values[gage_i]
+                        # original_val = flowveldepth[usgs_position_i, timestep, 0]
+                        # if gage_i == da_check_gage:
+                        #     printf("gages_size: %d\t", gages_size)
+                        #     printf("reach_has_gage[i]: %d\t", reach_has_gage[i])
+                        #     printf("num_reaches: %d\t", num_reaches)
+                        #     printf("i: %d\t", i)
+
+                        #     printf("ts: %d\t", timestep)
+                        #     printf("maxts: %d\t", gage_maxtimestep)
+                        #     printf("a: %g\t", a)
+                        #     printf("min: %g\t", da_decay_minutes)
+                        #     printf("lo_ts: %d\t", lastobs_timestep[gage_i])
+                        #     printf("ndg: %g\t", da_weighted_shift)
+                        #     printf("lov: %g\t", lastobs_val)
+                        #     printf("orig: %g\t", original_val)
+                        #     printf("new: %g\t", replacement_val)
+                        #     printf("\n")
                         flowveldepth[usgs_position_i, timestep, 0] = replacement_val
 
             # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
