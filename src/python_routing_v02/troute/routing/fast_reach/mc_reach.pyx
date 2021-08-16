@@ -1398,7 +1398,7 @@ cpdef object compute_network_structured(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                            da_decay_minutes = (timestep * dt - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                         else:
                             da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
 
