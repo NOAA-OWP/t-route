@@ -28,6 +28,17 @@ _compute_func_map = defaultdict(
 )
 
 
+def _format_qlat_start_time(qlat_start_time):
+    if not isinstance(qlat_start_time,datetime):
+        try:
+            return datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+        except:  # TODO: make sure this doesn't introduce a silent error
+            return datetime.now()
+
+    else:
+        return qlat_start_time
+
+
 def _build_reach_type_list(reach_list, wbodies_segs):
 
     reach_type_list = [
@@ -315,10 +326,7 @@ def compute_nhd_routing_v02(
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    if not isinstance(qlat_start_time,datetime):
-                        qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        qlat_start_time_datetime_object =  qlat_start_time
+                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
 
                     model_start_time_datetime_object = qlat_start_time_datetime_object \
                     - timedelta(seconds=qlat_time_step_seconds)
@@ -530,10 +538,7 @@ def compute_nhd_routing_v02(
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    if not isinstance(qlat_start_time,datetime):
-                        qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        qlat_start_time_datetime_object =  qlat_start_time
+                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
 
                     model_start_time_datetime_object = qlat_start_time_datetime_object \
                     - timedelta(seconds=qlat_time_step_seconds)
@@ -730,10 +735,7 @@ def compute_nhd_routing_v02(
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    if not isinstance(qlat_start_time,datetime):
-                        qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        qlat_start_time_datetime_object =  qlat_start_time
+                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
 
                     model_start_time_datetime_object = qlat_start_time_datetime_object \
                     - timedelta(seconds=qlat_time_step_seconds)
@@ -880,10 +882,7 @@ def compute_nhd_routing_v02(
 
                 qlat_time_step_seconds = qts_subdivisions * dt
 
-                if not isinstance(qlat_start_time,datetime):
-                    qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-                else:
-                    qlat_start_time_datetime_object =  qlat_start_time
+                qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
 
                 model_start_time_datetime_object = qlat_start_time_datetime_object \
                 - timedelta(seconds=qlat_time_step_seconds)
@@ -998,10 +997,7 @@ def compute_nhd_routing_v02(
 
             qlat_time_step_seconds = qts_subdivisions * dt
 
-            if not isinstance(qlat_start_time,datetime):
-                qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-            else:
-                qlat_start_time_datetime_object =  qlat_start_time
+            qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
 
             model_start_time_datetime_object = qlat_start_time_datetime_object \
             - timedelta(seconds=qlat_time_step_seconds)
