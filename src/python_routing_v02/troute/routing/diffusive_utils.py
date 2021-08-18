@@ -458,8 +458,8 @@ def diffusive_input_data_v02(
     dt_ql_g = dt * qts_subdivisions
     dt_ub_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
     dt_db_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    saveinterval_g = dt # 1-hour
-    saveinterval_ev_g = dt * 12
+    saveinterval_cnx = dt
+    saveinterval_cnt = dt * 12
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (dt * nsteps)/60/60
@@ -720,8 +720,8 @@ def diffusive_input_data_v02(
     diff_ins["dtini_g"] = dtini_g
     diff_ins["t0_g"] = t0_g
     diff_ins["tfin_g"] = tfin_g
-    diff_ins["saveinterval_g"] = saveinterval_g
-    diff_ins["saveinterval_ev_g"] = saveinterval_ev_g
+    diff_ins["saveinterval_cnx"] = saveinterval_cnx
+    diff_ins["saveinterval_cnt"] = saveinterval_cnt
     diff_ins["dt_ql_g"] = dt_ql_g
     diff_ins["dt_ub_g"] = dt_ub_g
     diff_ins["dt_db_g"] = dt_db_g

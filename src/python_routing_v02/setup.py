@@ -81,7 +81,7 @@ diffusive_cnt = Extension(
 )
 
 package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
-ext_modules = [reach, mc_reach, diffusive, diffusive_cnt]
+ext_modules = [reach, mc_reach, diffusive, simple_da, diffusive_cnt]
 
 if USE_CYTHON:
     from Cython.Build import cythonize
