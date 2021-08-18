@@ -287,7 +287,7 @@ cpdef object compute_network(
     cdef int buf_cols = 13
 
     cdef:
-        Py_ssize_t i  # Temporary variable
+        Py_ssize_t _i  # Temporary variable
         Py_ssize_t ireach  # current reach index
         Py_ssize_t ireach_cache  # current index of reach cache
         Py_ssize_t iusreach_cache  # current index of upstream reach cache
@@ -383,7 +383,7 @@ cpdef object compute_network(
 
                 qup = 0.0
                 quc = 0.0
-                for i in range(usreachlen):
+                for _i in range(usreachlen):
 
                     '''
                     New logic was added to handle initial conditions:
@@ -395,11 +395,11 @@ cpdef object compute_network(
                     # in upstream segments, current timestep
                     # Headwater reaches are computed before higher order reaches, so quc can
                     # be evaulated even when the timestep == 0.
-                    quc += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
+                    quc += flowveldepth[usreach_cache[iusreach_cache + _i], ts_offset]
 
                     # upstream flow in the previous timestep is equal to the sum of flows
                     # in upstream segments, previous timestep
-                    qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - qvd_ts_w]
+                    qup += flowveldepth[usreach_cache[iusreach_cache + _i], ts_offset - qvd_ts_w]
                     # Remember, we have filled the first position in flowveldepth with qd0
 
                 buf_view = buf[:reachlen, :]
@@ -420,8 +420,8 @@ cpdef object compute_network(
                                    qlat_values,
                                    buf_view)
 
-                for i in range(scols.shape[0]):
-                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
+                for _i in range(scols.shape[0]):
+                    fill_buffer_column(srows, scols[_i], drows, _i + 1, data_values, buf_view)
 
                 # fill buffer with qdp, depthp, velp
                 fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
@@ -434,13 +434,13 @@ cpdef object compute_network(
                 compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
 
                 # copy out_buf results back to flowdepthvel
-                for i in range(qvd_ts_w):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
+                for _i in range(qvd_ts_w):
+                    fill_buffer_column(drows, _i, srows, ts_offset + _i, out_view, flowveldepth)
 
                 # copy out_buf results back to courant
                 if return_courant:
-                    for i in range(qvd_ts_w,qvd_ts_w + 3):
-                        fill_buffer_column(drows, i, srows, ts_offset + (i-qvd_ts_w), out_view, courant)
+                    for _i in range(qvd_ts_w,qvd_ts_w + 3):
+                        fill_buffer_column(drows, _i, srows, ts_offset + (_i-qvd_ts_w), out_view, courant)
 
                 if reach_has_gage[ireach] > -1:
                 # we only enter this process for reaches where the
@@ -985,21 +985,21 @@ cpdef object compute_network_structured_obj(
                 segment_ids = []
 
                 #Create compute reach kernel input buffer
-                for i, segment in enumerate(r):
+                for _i, segment in enumerate(r):
                     segment_ids.append(segment['id'])
-                    buf_view[i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
-                    buf_view[i, 1] = segment['dt']
-                    buf_view[i, 2] = segment['dx']
-                    buf_view[i, 3] = segment['bw']
-                    buf_view[i, 4] = segment['tw']
-                    buf_view[i, 5] = segment['twcc']
-                    buf_view[i, 6] = segment['n']
-                    buf_view[i, 7] = segment['ncc']
-                    buf_view[i, 8] = segment['cs']
-                    buf_view[i, 9] = segment['s0']
-                    buf_view[i, 10] = flowveldepth[segment['id'], timestep-1, 0]
-                    buf_view[i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                    buf_view[i, 12] = flowveldepth[segment['id'], timestep-1, 2]
+                    buf_view[_i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
+                    buf_view[_i, 1] = segment['dt']
+                    buf_view[_i, 2] = segment['dx']
+                    buf_view[_i, 3] = segment['bw']
+                    buf_view[_i, 4] = segment['tw']
+                    buf_view[_i, 5] = segment['twcc']
+                    buf_view[_i, 6] = segment['n']
+                    buf_view[_i, 7] = segment['ncc']
+                    buf_view[_i, 8] = segment['cs']
+                    buf_view[_i, 9] = segment['s0']
+                    buf_view[_i, 10] = flowveldepth[segment['id'], timestep-1, 0]
+                    buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                    buf_view[_i, 12] = flowveldepth[segment['id'], timestep-1, 2]
 
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      len(r), buf_view,
@@ -1007,10 +1007,10 @@ cpdef object compute_network_structured_obj(
                                      assume_short_ts)
 
                 #Copy the output out
-                for i, id in enumerate(segment_ids):
-                    flowveldepth[id, timestep, 0] = out_buf[i, 0]
-                    flowveldepth[id, timestep, 1] = out_buf[i, 1]
-                    flowveldepth[id, timestep, 2] = out_buf[i, 2]
+                for _i, id in enumerate(segment_ids):
+                    flowveldepth[id, timestep, 0] = out_buf[_i, 0]
+                    flowveldepth[id, timestep, 1] = out_buf[_i, 1]
+                    flowveldepth[id, timestep, 2] = out_buf[_i, 2]
 
             if reach_has_gage[reachi] > -1:
             # We only enter this process for reaches where the
