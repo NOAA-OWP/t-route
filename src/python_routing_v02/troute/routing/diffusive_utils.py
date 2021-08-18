@@ -454,14 +454,15 @@ def diffusive_input_data_v02(
     """
 
     # diffusive time steps info.
-    dt_ql_g = geo_data[0,0] * qts_subdivisions
-    dt_ub_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    dt_db_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    saveinterval_g = geo_data[0,0]
-    saveinterval_ev_g = geo_data[0,0]
-    dtini_g = geo_data[0,0]
+    dt = 300 # seconds
+    dt_ql_g = dt * qts_subdivisions
+    dt_ub_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    dt_db_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    saveinterval_g = dt # 1-hour
+    saveinterval_ev_g = dt * 12
+    dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
-    tfin_g = (geo_data[0,0] * nsteps)/60/60
+    tfin_g = (dt * nsteps)/60/60
     
     # USGS data related info.
     usgsID = diffusive_parameters.get("usgsID", None)
@@ -710,7 +711,7 @@ def diffusive_input_data_v02(
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
-    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / saveinterval_ev_g)
+    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt)
 
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
@@ -790,34 +791,37 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
         for rch in ordered_reaches[o]:
 
             rch_segs = rch[1]["segments_list"]
-            rch_list.extend(rch_segs)
+            rch_list.extend(rch_segs[:-1])
 
             j = reach_heads.index(rch[0])
 
+
             if i == 1:
-                dat_all = np.empty((len(rch_segs), nts * 3))
+                dat_all = np.empty((len(rch_segs)-1, nts * 3))
                 dat_all[:] = np.nan
                 # flow result
-                dat_all[:, ::3] = np.transpose(np.array(out_q[:, 0 : len(rch_segs), j]))
+                dat_all[:, ::3] = np.transpose(np.array(out_q[:, 1 : len(rch_segs), j]))
                 # elevation result
                 dat_all[:, 2::3] = np.transpose(
-                    np.array(out_elv[:, 0 : len(rch_segs), j])
+                    np.array(out_elv[:, 1 : len(rch_segs), j])
                 )
+                
 
             else:
-                dat_all_c = np.empty((len(rch_segs), nts * 3))
+                dat_all_c = np.empty((len(rch_segs)-1, nts * 3))
                 dat_all_c[:] = np.nan
                 # flow result
                 dat_all_c[:, ::3] = np.transpose(
-                    np.array(out_q[:, 0 : len(rch_segs), j])
+                    np.array(out_q[:, 1 : len(rch_segs), j])
                 )
                 # elevation result
                 dat_all_c[:, 2::3] = np.transpose(
-                    np.array(out_elv[:, 0 : len(rch_segs), j])
+                    np.array(out_elv[:, 1 : len(rch_segs), j])
                 )
                 # concatenate
                 dat_all = np.concatenate((dat_all, dat_all_c))
 
             i += 1
+
 
     return np.asarray(rch_list, dtype=np.intp), np.asarray(dat_all, dtype="float32")
