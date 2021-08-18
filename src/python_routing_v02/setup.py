@@ -37,18 +37,6 @@ mc_reach = Extension(
     extra_compile_args=["-g"],
 )
 
-simple_da = Extension(
-    "troute.routing.fast_reach.simple_da",
-    sources=[
-        "troute/routing/fast_reach/simple_da.{}".format(ext),
-    ],
-    include_dirs=[np.get_include()],
-    libraries=[],
-    library_dirs=[],
-    extra_objects=[],
-    extra_compile_args=["-g"],
-)
-
 diffusive = Extension(
     "troute.routing.fast_reach.diffusive",
     sources=["troute/routing/fast_reach/diffusive.{}".format(ext)],
@@ -61,9 +49,27 @@ diffusive = Extension(
     libraries=["gfortran"],
 )
 
+diffusive_cnt = Extension(
+    "troute.routing.fast_reach.diffusive_cnt",
+    sources=["troute/routing/fast_reach/diffusive_cnt.{}".format(ext)],
+    extra_objects=[
+        "troute/routing/fast_reach/arrays_module.o",
+        "troute/routing/fast_reach/matrix_module.o",
+        "troute/routing/fast_reach/var_module.o",
+        "troute/routing/fast_reach/arrays_section_module.o",
+        "troute/routing/fast_reach/xsec_attribute_module.o",
+        "troute/routing/fast_reach/constants_module.o",
+        "troute/routing/fast_reach/subtools.o",
+        "troute/routing/fast_reach/diffusive_cnt.o",
+        "troute/routing/fast_reach/pydiffusive_cnt.o",
+    ],
+    include_dirs=[np.get_include()],
+    extra_compile_args=["-g"],
+    libraries=["gfortran"],
+)
+
 package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
-ext_modules = [reach, mc_reach, diffusive, simple_da]
-# ext_modules = [reach, mc_reach, diffusive]
+ext_modules = [reach, mc_reach, diffusive, diffusive_cnt]
 
 if USE_CYTHON:
     from Cython.Build import cythonize
