@@ -353,7 +353,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
-    cdef float dt = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -467,9 +467,9 @@ cpdef object compute_network(
                         else:
                             a = da_decay_coefficient
                             if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                                da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                                da_decay_minutes = (timestep) * routing_period / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                             else:
-                                da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                                da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                             # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             flowveldepth[usgs_position_i, ts_offset] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, ts_offset], da_decay_minutes, a)
@@ -1035,9 +1035,9 @@ cpdef object compute_network_structured_obj(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                            da_decay_minutes = (timestep) * routing_period / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                         # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                         flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
@@ -1403,9 +1403,9 @@ cpdef object compute_network_structured(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep * dt - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
+                            da_decay_minutes = (timestep * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                         da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
                         nudge[gage_i, timestep] = da_weighted_shift
