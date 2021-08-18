@@ -458,9 +458,9 @@ cpdef object compute_network(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep * dt - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
+                            da_decay_minutes = (timestep * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                         da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, ts_offset], da_decay_minutes, a)
                         nudge[gage_i, timestep] = da_weighted_shift
@@ -1029,9 +1029,9 @@ cpdef object compute_network_structured_obj(
                 else:
                     a = da_decay_coefficient
                     if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                        da_decay_minutes = ((timestep - 1) * dt - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
+                        da_decay_minutes = ((timestep - 1) * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                     else:
-                        da_decay_minutes = ((timestep - 1) - lastobs_timestep[gage_i]) * dt / 60
+                        da_decay_minutes = ((timestep - 1) - lastobs_timestep[gage_i]) * routing_period / 60
 
                     da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
                     nudge[gage_i, timestep] = da_weighted_shift
@@ -1400,9 +1400,9 @@ cpdef object compute_network_structured(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
+                            da_decay_minutes = ((timestep - 1) * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
+                            da_decay_minutes = ((timestep - 1) - lastobs_timestep[gage_i]) * routing_period / 60
 
                         da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
                         nudge[gage_i, timestep] = da_weighted_shift
