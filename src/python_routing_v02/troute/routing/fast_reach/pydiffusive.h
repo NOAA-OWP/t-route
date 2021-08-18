@@ -1,7 +1,6 @@
 extern void c_diffnw(double *dtini_g,
                      double *t0_g,
                      double *tfin_g,
-                     double *saveinterval_g,
                      double *saveinterval_ev_g,
                      double *dt_ql_g,
                      double *dt_ub_g,

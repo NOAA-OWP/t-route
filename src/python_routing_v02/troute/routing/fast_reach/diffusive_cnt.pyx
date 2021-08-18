@@ -106,6 +106,7 @@ cdef void diffnw_cnt(double dtini_g,
 
 cpdef object compute_diffusive_tst(
     int nsteps,
+    float dt,
     int qts_subdivisions,
     list reaches_wTypes, # a list of tuples
     dict rconn,
@@ -162,7 +163,7 @@ cpdef object compute_diffusive_tst(
         double dtini_g = diff_inputs["dtini_g"]
         double t0_g = diff_inputs["t0_g"]
         double tfin_g  = diff_inputs["tfin_g"]
-        double saveinterval_ev_g = diff_inputs["saveinterval_ev_g"]
+        double saveinterval_ev_g = diff_inputs["saveinterval_cnt"]
         double dt_ql_g = diff_inputs["dt_ql_g"]
         double dt_ub_g = diff_inputs["dt_ub_g"]
         double dt_db_g = diff_inputs["dt_db_g"]
