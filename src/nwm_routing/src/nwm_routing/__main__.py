@@ -860,7 +860,6 @@ def main_v03(argv):
 
     if showtiming:
         main_start_time = time.time()
-
     (
         connections,
         param_df,
@@ -897,7 +896,9 @@ def main_v03(argv):
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
-
+    run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
+    if run_sets_da:
+        data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[0]['data_assimilation_filter']
     # TODO: Data Assimilation will be something like the parity block
     # if DA:
     #     da_sets = [BIG LIST OF DA BLOCKS]
@@ -914,7 +915,7 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-
+    
     qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -969,6 +970,8 @@ def main_v03(argv):
         if (
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
+            if run_sets_da:
+                data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_filter']
             qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
