@@ -898,7 +898,7 @@ def main_v03(argv):
     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
     if run_sets_da:
-        data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[0]['data_assimilation_filter']
+        data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[0]['data_assimilation_subset']
     # TODO: Data Assimilation will be something like the parity block
     # if DA:
     #     da_sets = [BIG LIST OF DA BLOCKS]
@@ -971,7 +971,7 @@ def main_v03(argv):
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
             if run_sets_da:
-                data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_filter']
+                data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_subset']
             qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,

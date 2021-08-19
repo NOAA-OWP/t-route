@@ -103,8 +103,8 @@ compute_parameters:
     data_assimilation_parameters:
         data_assimilation_timeslices_folder: "/glade/work/jamesmcc/domains/private/florence_v21/NWM/nudgingTimeSliceObs_calibration"
         data_assimilation_sets:
-            - data_assimilation_filter: "2018-09-18_0[0-4]*.15min.usgsTimeSlice.ncdf"
-            - data_assimilation_filter: "2018-09-18_0[4-6]*.15min.usgsTimeSlice.ncdf"
+            - data_assimilation_subset: "2018-09-18_0[0-4]*.15min.usgsTimeSlice.ncdf"
+            - data_assimilation_subset: "2018-09-18_0[4-6]*.15min.usgsTimeSlice.ncdf"
         wrf_hydro_da_channel_ID_crosswalk_file: "/glade/scratch/jamesmcc/tmp_florence_run_nudging/forecasts/cast_2018091800/NWM/DOMAIN/Route_Link.nc"
         wrf_hydro_last_obs_file: "/glade/scratch/jamesmcc/tmp_florence_run_nudging/run_nudging_nwm_channel-only/nudgingLastObs.2018-09-18_00:00:00.nc"
         wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time: 0
