@@ -1,3 +1,15 @@
+cdef float simple_da(
+    const float timestep,
+    const float routing_period,
+    const float decay_coeff,
+    const float gage_maxtimestep,
+    const float target_val,
+    const float model_val,
+    float lastobs_time,
+    float lastobs_val,
+) nogil
+
+
 cdef float simple_da_with_decay(
     const float last_valid_obs,
     const float model_val,
