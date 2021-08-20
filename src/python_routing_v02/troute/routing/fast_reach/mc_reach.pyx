@@ -230,7 +230,8 @@ cpdef object compute_network(
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
-    cdef float [:] lastobs_values, lastobs_times
+    cdef float[:] lastobs_values, lastobs_times
+    cdef (float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -449,8 +450,7 @@ cpdef object compute_network(
                 # exactly one gage which is relevant for the reach ...
                     gage_i = reach_has_gage[ireach]
                     usgs_position_i = usgs_positions[gage_i]
-                    #nudge[gage_i, timestep])  =
-                    flowveldepth[usgs_position_i, ts_offset] = simple_da(
+                    da_buf = simple_da(
                         timestep + 1,
                         routing_period,
                         da_decay_coefficient,
@@ -460,6 +460,8 @@ cpdef object compute_network(
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
                     )
+                    flowveldepth[usgs_position_i, ts_offset] = da_buf[0]
+                    nudge[gage_i, timestep+1] = da_buf[1]
 
                 # Update indexes to point to next reach
                 ireach += 1
@@ -827,6 +829,7 @@ cpdef object compute_network_structured_obj(
     cdef int gage_i, usgs_position_i
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
     cdef float [:] lastobs_values, lastobs_times
+    cdef (float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -1012,8 +1015,7 @@ cpdef object compute_network_structured_obj(
             # exactly one gage which is relevant for the reach ...
                 gage_i = reach_has_gage[reachi]
                 usgs_position_i = usgs_positions[gage_i]
-                #nudge[gage_i, timestep])  =
-                flowveldepth[usgs_position_i, timestep, 0] = simple_da(
+                da_buf = simple_da(
                     timestep,
                     routing_period,
                     da_decay_coefficient,
@@ -1023,6 +1025,8 @@ cpdef object compute_network_structured_obj(
                     lastobs_times[gage_i],
                     lastobs_values[gage_i],
                 )
+                flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
+                nudge[gage_i, timestep] = da_buf[1]
 
         timestep += 1
 
@@ -1223,6 +1227,7 @@ cpdef object compute_network_structured(
     cdef int gage_i, usgs_position_i
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
     cdef float [:] lastobs_values, lastobs_times
+    cdef (float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -1286,7 +1291,7 @@ cpdef object compute_network_structured(
     cdef int id = 0
     #Run time
     with nogil:
-        # printf("timestep, gage_maxtimestep, a, da_decay_minutes, lastobs_timestep[gage_i], da_weighted_shift, lastobs_val, original_val, replacement_val")
+        # printf("timestep, gage_maxtimestep, a, da_decay_minutes, lastobs_times[gage_i], da_weighted_shift, lastobs_val, original_val, replacement_val")
         while timestep < nsteps+1:
             for i in range(num_reaches):
                 r = &reach_structs[i]
@@ -1366,8 +1371,7 @@ cpdef object compute_network_structured(
                 # exactly one gage which is relevant for the reach ...
                     gage_i = reach_has_gage[i]
                     usgs_position_i = usgs_positions[gage_i]
-                    #nudge[gage_i, timestep])  =
-                    flowveldepth[usgs_position_i, timestep, 0] = simple_da(
+                    da_buf = simple_da(
                         timestep,
                         routing_period,
                         da_decay_coefficient,
@@ -1377,6 +1381,8 @@ cpdef object compute_network_structured(
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
                     )
+                    flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
+                    nudge[gage_i, timestep] = da_buf[1]
 
             # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
