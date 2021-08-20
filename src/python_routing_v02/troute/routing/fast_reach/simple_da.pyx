@@ -20,7 +20,7 @@ cpdef float simple_da_with_decay_py(
     )
 
 
-cdef float simple_da(
+cdef (float, float) simple_da(
     const float timestep,
     const float routing_period,
     const float decay_coeff,
@@ -33,7 +33,7 @@ cdef float simple_da(
     """
     wrapper function to compute all DA elements
     """
-    cdef float replacement_val, nudge, da_weighted_shift, da_decay_minutes,
+    cdef float replacement_val, nudge_val, da_weighted_shift, da_decay_minutes,
     # cdef float lastobs_timestep, lastobs_value,
 
     #printf("gages_size: %d\t", gages_size)
@@ -53,7 +53,7 @@ cdef float simple_da(
     else:
         da_decay_minutes = ((timestep - 1) * routing_period - lastobs_time) / 60 # seconds to minutes
         da_weighted_shift = obs_persist_shift(lastobs_val, model_val, da_decay_minutes, decay_coeff)
-        nudge = da_weighted_shift
+        nudge_val = da_weighted_shift
         # TODO: we need to export these values
         replacement_val = simple_da_with_decay(lastobs_val, model_val, da_decay_minutes, decay_coeff)
 
@@ -73,8 +73,8 @@ cdef float simple_da(
         #     printf("orig: %g\t", model_val)
         #     printf("new: %g\t", replacement_val)
         #     printf("\n")
-        return replacement_val
-        # return nudge, replacement_val
+
+        return replacement_val, nudge_val
 
 
 cdef float simple_da_with_decay(
