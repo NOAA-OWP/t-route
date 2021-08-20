@@ -898,6 +898,7 @@ def main_v03(argv):
     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
     if run_sets_da:
+        nhd_io.build_da_sets(data_assimilation_parameters,0)
         data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[0]['data_assimilation_subset']
     # TODO: Data Assimilation will be something like the parity block
     # if DA:

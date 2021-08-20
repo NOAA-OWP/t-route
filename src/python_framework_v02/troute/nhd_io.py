@@ -949,3 +949,21 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+def build_da_sets(data_assimilation_parameters,iterator):
+    
+    data_assimilation_start = data_assimilation_parameters['data_assimilation_sets']['data_assimilation_start_file']
+    data_assimilation_end = data_assimilation_parameters['data_assimilation_sets']['data_assimilation_end_file']
+    file_tail = data_assimilation_start[13:]
+    #may need refinement to make more robust if naming convention changes
+    date_time_str = data_assimilation_start[:13]
+    date_time_obj_start = datetime.strptime(date_time_str, "%Y-%m-%d_%H")
+
+    date_time_str = data_assimilation_end[:13]
+    date_time_obj_end = datetime.strptime(date_time_str, "%Y-%m-%d_%H")
+
+    dates = []
+    # for j in pd.date_range(date_time_obj_start, date_time_obj_end + timedelta(1), freq="5min"):
+    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="hourly"):
+        dates.append(j.strftime("%Y-%m-%d_%H:%M:00")+str(file_tail))
+    import pdb; pdb.set_trace()
