@@ -96,7 +96,7 @@ contains
 		totalTimeSteps = floor((tfin - t0)/dtini*3600)+1
         ! number of timesteps in a calculation time chunk
         repeatInterval = int(saveInterval/dtini_given)
-		ntim= repeatInterval+2 
+		ntim= repeatInterval+20 
 		num_time=ntim
 		! number of reaches in the network
 		nlinks=nrch_g
@@ -210,6 +210,8 @@ contains
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
         
+        ini_y = 0.05
+        
 		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		! create channel geometry lookup tables
 		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -236,8 +238,6 @@ contains
 				! initial depth
                 oldY(i,j) = ini_y(j) + z(i,j)
                 
-                ! initial flow
-                oldQ(i,j) = ini_q(j)
             end do
 		end do
         
@@ -289,7 +289,7 @@ contains
                 slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
                 if (slope .le. 0.0001) slope = 0.0001
                 !oldY below takes normal depth value as a result.
-                call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
+                call normal_crit_y(ncomp, j, q_sk_multi, slope, iniq(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
             end if
         end do
         
@@ -330,11 +330,6 @@ contains
 
 		ini_E = 1.0
 		ini_F = 0.0
-		! Define initial discharge conditons
-        do j = 1, nlinks
-            ncomp = frnw_g(j,1)
-            ini_q_repeat(1:ncomp,j) = ini_q(j)
-        end do
 		! initialization of Q, celerity, and diffusivity
 		celerity = 1.0
 		diffusivity = 100.0
@@ -342,6 +337,7 @@ contains
 			ncomp = frnw_g(j,1)
 			do i=1, ncomp
 				newQ(i,1,j) = iniq(i,j)
+                ini_q_repeat(i,j) = iniq(i,j)
 			end do
 		end do
 
