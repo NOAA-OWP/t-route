@@ -230,16 +230,16 @@ cpdef object compute_network(
     cdef int gage_i, usgs_position_i
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
-    cdef int [:] lastobs_timestep
-    cdef float [:] lastobs_values
+    cdef float [:] lastobs_values, lastobs_times
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
-        lastobs_timestep = np.full(gages_size, -1, dtype='int32')
+        lastobs_times = np.zeros(gages_size, dtype='float32')
         lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            lastobs_times[gage_i] = time_since_lastobs_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
 
     # replace initial conditions with gage observations, wherever available
@@ -443,30 +443,23 @@ cpdef object compute_network(
                         fill_buffer_column(drows, _i, srows, ts_offset + (_i-qvd_ts_w), out_view, courant)
 
                 if reach_has_gage[ireach] > -1:
-                # we only enter this process for reaches where the
+                # We only enter this process for reaches where the
                 # gage actually exists.
-
-                    # If assimilation is active for this reach, we loop over all the reaches...
-                    # we touch the exactly one gage which is relevant for the reach ...
+                # If assimilation is active for this reach, we touch the
+                # exactly one gage which is relevant for the reach ...
                     gage_i = reach_has_gage[ireach]
                     usgs_position_i = usgs_positions[gage_i]
-                    if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
-                        flowveldepth[usgs_position_i, ts_offset] = usgs_values[gage_i, timestep-1]
-                        # add/update lastobs_timestep
-                        lastobs_timestep[gage_i] = timestep - 1
-                        lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
-                    else:
-                        a = da_decay_coefficient
-                        if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
-                        else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
-
-                        da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, ts_offset], da_decay_minutes, a)
-                        nudge[gage_i, timestep] = da_weighted_shift
-                        # TODO: we need to export these values
-                        replacement_val = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, ts_offset], da_decay_minutes, a)
-                        flowveldepth[usgs_position_i, ts_offset] = replacement_val
+                    #nudge[gage_i, timestep])  =
+                    flowveldepth[usgs_position_i, ts_offset] = simple_da(
+                        timestep + 1,
+                        routing_period,
+                        da_decay_coefficient,
+                        gage_maxtimestep,
+                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep-1],
+                        flowveldepth[usgs_position_i, ts_offset],
+                        lastobs_times[gage_i],
+                        lastobs_values[gage_i],
+                    )
 
                 # Update indexes to point to next reach
                 ireach += 1
@@ -833,16 +826,16 @@ cpdef object compute_network_structured_obj(
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
-    cdef int [:] lastobs_timestep
-    cdef float [:] lastobs_values
+    cdef float [:] lastobs_values, lastobs_times
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
-        lastobs_timestep = np.full(gages_size, -1, dtype='int32')
+        lastobs_times = np.zeros(gages_size, dtype="float32")
         lastobs_values = np.zeros(gages_size, dtype='float32')
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
+            lastobs_times[gage_i] = time_since_lastobs_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
 
     # replace initial conditions with gage observations, wherever available
@@ -1015,29 +1008,21 @@ cpdef object compute_network_structured_obj(
             if reach_has_gage[reachi] > -1:
             # We only enter this process for reaches where the
             # gage actually exists.
-
-                # If assimilation is active for this reach, we loop over all the reaches...
-                # we touch the exactly one gage which is relevant for the reach ...
+            # If assimilation is active for this reach, we touch the
+            # exactly one gage which is relevant for the reach ...
                 gage_i = reach_has_gage[reachi]
                 usgs_position_i = usgs_positions[gage_i]
-
-                if (timestep < gage_maxtimestep and not isnan(usgs_values[gage_i,timestep-1])):
-                    flowveldepth[usgs_position_i, timestep, 0] = usgs_values[gage_i, timestep-1]
-                    # add/update lastobs_timestep
-                    lastobs_timestep[gage_i] = timestep - 1
-                    lastobs_values[gage_i] = usgs_values[gage_i, timestep-1]
-                else:
-                    a = da_decay_coefficient
-                    if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                        da_decay_minutes = ((timestep - 1) * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
-                    else:
-                        da_decay_minutes = ((timestep - 1) - lastobs_timestep[gage_i]) * routing_period / 60
-
-                    da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
-                    nudge[gage_i, timestep] = da_weighted_shift
-                    # TODO: we need to export these values
-                    replacement_val = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
-                    flowveldepth[usgs_position_i, timestep, 0] = replacement_val
+                #nudge[gage_i, timestep])  =
+                flowveldepth[usgs_position_i, timestep, 0] = simple_da(
+                    timestep,
+                    routing_period,
+                    da_decay_coefficient,
+                    gage_maxtimestep,
+                    NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep-1],
+                    flowveldepth[usgs_position_i, timestep, 0],
+                    lastobs_times[gage_i],
+                    lastobs_values[gage_i],
+                )
 
         timestep += 1
 
