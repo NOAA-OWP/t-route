@@ -233,13 +233,15 @@ def nwm_forcing_preprocess(
     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
 
     # TODO: find a better way to deal with these defaults and overrides.
-    run["nts"] = run.get("nts", nts)
+    
+    
     run["dt"] = run.get("dt", dt)
     run["qts_subdivisions"] = run.get("qts_subdivisions", qts_subdivisions)
+    run["nts"] = run["qts_subdivisions"]*len(run)
     run["qlat_input_folder"] = run.get("qlat_input_folder", qlat_input_folder)
     run["qlat_file_index_col"] = run.get("qlat_file_index_col", qlat_file_index_col)
     run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
-
+    import pdb; pdb.set_trace()
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
         start_time = time.time()

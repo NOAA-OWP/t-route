@@ -895,7 +895,11 @@ def main_v03(argv):
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
-    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+    # run_sets_qlats = forcing_parameters.get("qlat_files", False)
+
+    forcing_parameters = nhd_io.build_qlat_date_range(forcing_parameters)
+    
+    run_sets = forcing_parameters['qlat_forcing_sets']["qlat_files"]
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
     run_size_da = run_sets_da['data_assimilation_run_block_size']
 
@@ -921,7 +925,7 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-    
+    import pdb; pdb.set_trace()
     qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -979,7 +983,6 @@ def main_v03(argv):
             if run_sets_da:
                 # data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_subset']
                 data_assimilation_parameters['data_assimilation_filter'] = da_dates[((run_set_iterator + 1)*run_size_da)+1:(run_set_iterator + 2)*run_size_da]
-                import pdb; pdb.set_trace()
             qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,

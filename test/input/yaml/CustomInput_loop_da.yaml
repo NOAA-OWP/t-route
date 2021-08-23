@@ -90,16 +90,20 @@ compute_parameters:
         # and break that up according to some `qlat_forcing_configuration`
         # but for now, we'll use this.
         qlat_forcing_sets:
-            - qlat_files:
-                - 201809180100.CHRTOUT_DOMAIN1
-                - 201809180200.CHRTOUT_DOMAIN1
-                - 201809180300.CHRTOUT_DOMAIN1
-                - 201809180400.CHRTOUT_DOMAIN1
-              nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-            - qlat_files:
-                - 201809180500.CHRTOUT_DOMAIN1
-                - 201809180600.CHRTOUT_DOMAIN1
-              nts: 24
+            qlat_file_range:
+                qlat_start_file: "201809180100.CHRTOUT_DOMAIN1"
+                qlat_end_file: "201809180600.CHRTOUT_DOMAIN1"
+        qlat_run_block_size: 4
+            # - qlat_files:
+            #     - 201809180100.CHRTOUT_DOMAIN1
+            #     - 201809180200.CHRTOUT_DOMAIN1
+            #     - 201809180300.CHRTOUT_DOMAIN1
+            #     - 201809180400.CHRTOUT_DOMAIN1
+            #   nts: 48  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+            # - qlat_files:
+            #     - 201809180500.CHRTOUT_DOMAIN1
+            #     - 201809180600.CHRTOUT_DOMAIN1
+            #   nts: 24
     data_assimilation_parameters:
         data_assimilation_timeslices_folder: "/glade/work/jamesmcc/domains/private/florence_v21/NWM/nudgingTimeSliceObs_calibration"
         data_assimilation_sets:
