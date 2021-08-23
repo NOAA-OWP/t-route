@@ -979,7 +979,6 @@ def main_v03(argv):
             if run_sets_da:
                 # data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_subset']
                 data_assimilation_parameters['data_assimilation_filter'] = da_dates[((run_set_iterator + 1)*run_size_da)+1:(run_set_iterator + 2)*run_size_da]
-                import pdb; pdb.set_trace()
             qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
