@@ -76,9 +76,10 @@ forcing_parameters:
     # qlat_file_value_col: q_lateral
 # Warm state files from prior simulations
 restart_parameters:
-    wrf_hydro_channel_restart_file: "../../test/input/falls_lake/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    channel_restart_file: "/glade/u/home/jhreha/t-route/src/python_routing_v02/wrf_hydro_channel_restart_file.csv"
+    #wrf_hydro_channel_restart_file: "../../test/input/falls_lake/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
     # #WRF-Hydro channels ID crosswalk file
-    wrf_hydro_channel_ID_crosswalk_file:  "../../test/input/falls_lake/DOMAIN/Route_Link.nc"
+    #wrf_hydro_channel_ID_crosswalk_file:  "../../test/input/falls_lake/DOMAIN/Route_Link.nc"
     wrf_hydro_channel_ID_crosswalk_file_field_name: link
     wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
     wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
