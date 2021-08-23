@@ -989,20 +989,19 @@ def build_qlat_date_range(forcing_parameters):
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="1H"):
         dates.append(j.strftime("%Y%m%d%H%M")+str(file_tail))
 
-    forcing_parameters = build_qlat_sets(forcing_parameters,dates)
-    return forcing_parameters
+    run_sets = build_qlat_sets(forcing_parameters,dates)
+    return  run_sets
 
 def build_qlat_sets(forcing_parameters,dates):
-    qlat_list = []
-    nts_list = []
-
+    run_sets = []
     for block in range(0,math.ceil(len(dates)/forcing_parameters['qlat_run_block_size']),1):
         if block == 0:
-            qlat_list.append(dates[block:(forcing_parameters['qlat_run_block_size'])])
+            run_sets.append({'qlat_files':dates[block:(forcing_parameters['qlat_run_block_size'])],'nts':forcing_parameters['qts_subdivisions']*len(dates[block:(forcing_parameters['qlat_run_block_size'])])})
+            # qlat_list.append(dates[block:(forcing_parameters['qlat_run_block_size'])])
             # nts_list.append(forcing_parameters['qts_subdivisions']*len(dates[block:(forcing_parameters['qlat_run_block_size'])]))
         else:
-            qlat_list.append(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2])
+            run_sets.append({'qlat_files':dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2],'nts':forcing_parameters['qts_subdivisions']*len(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2+1])})
+            # qlat_list.append(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2])
             # nts_list.append(forcing_parameters['qts_subdivisions']*len(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2+1]))
-    forcing_parameters['qlat_forcing_sets']['qlat_files'] = qlat_list
-    # forcing_parameters['qlat_forcing_sets']['nts'] = nts_list
-    return forcing_parameters
+    # forcing_parameters['qlat_forcing_sets']['qlat_files'] = run_sets
+    return  run_sets

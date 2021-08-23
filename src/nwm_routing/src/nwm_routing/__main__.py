@@ -897,9 +897,7 @@ def main_v03(argv):
     # TODO: Make this more flexible.
     # run_sets_qlats = forcing_parameters.get("qlat_files", False)
 
-    forcing_parameters = nhd_io.build_qlat_date_range(forcing_parameters)
-    
-    run_sets = forcing_parameters['qlat_forcing_sets']["qlat_files"]
+    run_sets = nhd_io.build_qlat_date_range(forcing_parameters)
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
     run_size_da = run_sets_da['data_assimilation_run_block_size']
 
@@ -925,7 +923,7 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-    import pdb; pdb.set_trace()
+    
     qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
