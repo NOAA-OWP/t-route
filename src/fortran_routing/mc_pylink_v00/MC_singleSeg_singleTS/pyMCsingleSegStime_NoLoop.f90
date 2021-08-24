@@ -17,6 +17,7 @@ subroutine c_muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
 
     call muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
+    !print*, "fortran c_bind", depthc
     
 end subroutine c_muskingcungenwm
 end module muskingcunge_interface
