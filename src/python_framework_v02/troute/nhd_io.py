@@ -997,11 +997,6 @@ def build_qlat_sets(forcing_parameters,dates):
     for block in range(0,math.ceil(len(dates)/forcing_parameters['qlat_run_block_size']),1):
         if block == 0:
             run_sets.append({'qlat_files':dates[block:(forcing_parameters['qlat_run_block_size'])],'nts':forcing_parameters['qts_subdivisions']*len(dates[block:(forcing_parameters['qlat_run_block_size'])])})
-            # qlat_list.append(dates[block:(forcing_parameters['qlat_run_block_size'])])
-            # nts_list.append(forcing_parameters['qts_subdivisions']*len(dates[block:(forcing_parameters['qlat_run_block_size'])]))
         else:
             run_sets.append({'qlat_files':dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2],'nts':forcing_parameters['qts_subdivisions']*len(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2+1])})
-            # qlat_list.append(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2])
-            # nts_list.append(forcing_parameters['qts_subdivisions']*len(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2+1]))
-    # forcing_parameters['qlat_forcing_sets']['qlat_files'] = run_sets
     return  run_sets
