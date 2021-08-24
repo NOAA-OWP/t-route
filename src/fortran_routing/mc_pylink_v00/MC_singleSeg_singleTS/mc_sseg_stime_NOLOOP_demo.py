@@ -1,4 +1,6 @@
 import traceback
+from troute.routing.fast_reach import reach
+import test_suite_parameters
 
 debuglevel = 0
 COMPILE = True
@@ -157,6 +159,7 @@ def singlesegment(
 
     return rv[:3]
 
+
 def main():
     """
       No Inputs: 
@@ -303,24 +306,63 @@ def main():
     )
 
     print("\nSecond set of inputs activating compound channel")
-    dt = 60.0  # Time step
-    dx = 1800.0  # segment length
-    bw = 112.0  # Trapezoidal bottom width
-    tw = 248.0  # Channel top width (at bankfull)
-    twcc = 623.5999755859375  # Flood plain width
-    n_manning = 0.02800000086426735  # manning roughness of channel
-    n_manning_cc = 0.03136000037193298  # manning roughness of floodplain
-    cs = 0.42  # channel trapezoidal sideslope
-    s0 = 0.007999999690800905  # downstream segment bed slope
-    qlat = 40.0  # Lateral inflow in this time step
+    param_set = [
+        {
+            "precision": "single",
+            "dt": 60.0,  # Time step
+            "dx": 1800.0,  # segment length
+            "bw": 112.0,  # Trapezoidal bottom width
+            "tw": 248.0,  # Channel top width (at bankfull)
+            "twcc": 623.5999755859375,  # Flood plain width
+            "n_manning": 0.02800000086426735,  # manning roughness of channel
+            "n_manning_cc": 0.03136000037193298,  # manning roughness of floodplain
+            "cs": 0.42,  # channel trapezoidal sideslope
+            "s0": 0.007999999690800905,  # downstream segment bed slope
+            "qlat": 40.0,  # Lateral inflow in this time step
+            "qup": 45009,
+            "quc": 50098,
+            "qdp": 50014,
+            "depthp": 30,
+        },
+    ]
 
-    qup = 45009
-    quc = 50098
-    qdp = 50014
-    depthp = 30
+    qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods(**param_set[0])
+
+    print(
+        "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+            qdc1 - qdc2, velc1 - velc2, depthc1 - depthc2
+        )
+    )
+
+    param_set = test_suite_parameters.test_suite_parameter_set
+    for p in param_set:
+        qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods("single", *p)
+        print(
+            "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+                qdc1 - qdc2, velc1 - velc2, depthc1 - depthc2
+            )
+        )
+
+def compare_methods(
+    precision,
+    dt,
+    qup,
+    quc,
+    qdp,
+    qlat,
+    dx,
+    bw,
+    tw,
+    twcc,
+    n_manning,
+    n_manning_cc,
+    cs,
+    s0,
+    depthp,
+):
 
     # run M-C model
-    qdc, velc, depthc = singlesegment(
+    qdc1, velc1, depthc1 = singlesegment(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -338,13 +380,13 @@ def main():
         depthp=depthp,
     )
 
-    print(
-        "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
-    )
+    # print(
+        # "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
+            # precision, qdc1, velc1, depthc1
+        # )
+    # )
     # run M-C model
-    qdc, velc, depthc = singlesegment_wrf(
+    qdc_t, velc_t, depthc_t = singlesegment_wrf(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -361,11 +403,38 @@ def main():
         s0=s0,
         depthp=depthp,
     )
-    print(
-        "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
+
+    # print(
+        # "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            # precision, qdc_t, velc_t, depthc_t
+        # )
+    # )
+
+    # compare_func = reach.compute_reach_cython_kernel
+    compare_func = reach.compute_reach_kernel
+
+    # run M-C cython model
+    rv = compare_func(
+        # precision=precision,
+        dt,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n_manning,
+        n_manning_cc,
+        cs,
+        s0,
+        0,
+        depthp,
     )
+    qdc2, velc2, depthc2 = rv["qdc"], rv["velc"], rv["depthc"]
+
+    return qdc1, qdc2, velc1, velc2, depthc1, depthc2
 
 
 if __name__ == "__main__":

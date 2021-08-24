@@ -25,6 +25,7 @@ reach = Extension(
         "troute/routing/fast_reach/pymc_single_seg.o",
     ],
     extra_compile_args=["-g"],
+    # libraries=["gfortran"],
 )
 
 mc_reach = Extension(

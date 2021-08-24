@@ -181,6 +181,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     ! call courant subroutine here
     ! *************************************************************
     call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+    !print*, "deep down", depthc
 
 end subroutine muskingcungenwm
 
