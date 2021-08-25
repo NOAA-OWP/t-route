@@ -184,7 +184,7 @@ def main():
     # precision = "double"  # the fortran precis module must be edited
     precision = "single"
 
-    if precision is "single":
+    if precision == "single":
 
         """
         single precision results from standard procedure
@@ -218,7 +218,7 @@ def main():
         # depthp = 0.010033470578491688  # Depth at the current segment in the previous timestep')
         # velp = 0.07048019021749496  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
 
-    elif precision is "double":
+    elif precision == "double":
         """
         double precision results from standard procedure
         k,   i,   q,    vel,    depth
