@@ -1,5 +1,7 @@
 import pytest
 import mc_sseg_stime_NOLOOP_demo as demo
+from test_suite_parameters import generate_conus_MC_parameters
+
 
 """
 Statistics from the CONUS NWM 2.1 dataset
@@ -64,7 +66,12 @@ input_tup = (
     30,
 )
 
-qdc1, qdc2, velc1, velc2, depthc1, depthc2 = demo.compare_methods(*input_tup)
+# qdc1, qdc2, velc1, velc2, depthc1, depthc2 = demo.compare_methods(*input_tup)
+
+input_tup_random = generate_conus_MC_parameters(3, 10)
+out = demo.compare_methods("single", *(next(input_tup_random)))
+# print(out)
+qdc1, qdc2, velc1, velc2, depthc1, depthc2 = out
 
 
 def test_MC_kernel_q():
