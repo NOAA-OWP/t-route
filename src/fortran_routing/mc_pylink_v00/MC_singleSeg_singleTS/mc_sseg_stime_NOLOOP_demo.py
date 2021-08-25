@@ -1,6 +1,6 @@
 import traceback
 from troute.routing.fast_reach import reach
-import test_suite_parameters
+from test_suite_parameters import generate_conus_MC_parameters
 
 debuglevel = 0
 COMPILE = True
@@ -334,7 +334,7 @@ def main():
         )
     )
 
-    param_set = test_suite_parameters.test_suite_parameter_set
+    param_set = generate_conus_MC_parameters(3,10)
     for p in param_set:
         qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods("single", *p)
         print(
