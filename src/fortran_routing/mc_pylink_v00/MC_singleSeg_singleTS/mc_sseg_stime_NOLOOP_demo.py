@@ -434,7 +434,7 @@ def compare_methods(
     )
     qdc2, velc2, depthc2 = rv["qdc"], rv["velc"], rv["depthc"]
 
-    return qdc1, qdc2, velc1, velc2, depthc1, depthc2
+    return qdc_t, qdc2, velc_t, velc2, depthc_t, depthc2
 
 
 if __name__ == "__main__":
