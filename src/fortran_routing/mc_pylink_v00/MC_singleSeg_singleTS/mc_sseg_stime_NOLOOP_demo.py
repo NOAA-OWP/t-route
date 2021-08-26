@@ -160,10 +160,10 @@ def singlesegment(
     return rv[:3]
 
 
-def main():
+def single_vs_double():
     """
       No Inputs: 
-      Uses seceral sets of hard-coded test values to show the behavior
+      Uses several sets of hard-coded test values to show the behavior
       of the Muskingum Cunge routing calculation module under a low-flow 
       and a high-flow condition.
     """
@@ -305,6 +305,8 @@ def main():
         )
     )
 
+
+def activate_compound_channel():
     print("\nSecond set of inputs activating compound channel")
     param_set = [
         {
@@ -334,9 +336,26 @@ def main():
         )
     )
 
-    param_set = generate_conus_MC_parameters(3,10)
+
+def main():
+    single_vs_double()
+    activate_compound_channel()
+
+    n_tests = 5000
+    seedval = 16
+    param_set = generate_conus_MC_parameters(n_tests, seedval)
     for p in param_set:
         qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods("single", *p)
+        # print(
+        #     "first q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+        #         qdc1, velc1, depthc1
+        #     )
+        # )
+        # print(
+        #     "second q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+        #         qdc2, velc2, depthc2
+        #     )
+        # )
         print(
             "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
                 qdc1 - qdc2, velc1 - velc2, depthc1 - depthc2
@@ -360,6 +379,7 @@ def compare_methods(
     s0,
     depthp,
 ):
+    # TODO: introduce ability to toggle precision
 
     # run M-C model
     qdc1, velc1, depthc1 = singlesegment(
@@ -381,7 +401,7 @@ def compare_methods(
     )
 
     # print(
-        # "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
+        # "real {} precision computed via updated method wrapped in f2py q: {} vel: {} depth: {}".format(
             # precision, qdc1, velc1, depthc1
         # )
     # )
@@ -434,7 +454,14 @@ def compare_methods(
     )
     qdc2, velc2, depthc2 = rv["qdc"], rv["velc"], rv["depthc"]
 
-    return qdc_t, qdc2, velc_t, velc2, depthc_t, depthc2
+    # print(
+        # "real {} precision computed via T-Route method q: {} vel: {} depth: {}".format(
+            # precision, qdc2, velc2, depthc2
+        # )
+    # )
+
+    # compare_func = reach.compute_reach_cython_kernel
+    return qdc1, qdc2, velc1, velc2, depthc1, depthc2
 
 
 if __name__ == "__main__":

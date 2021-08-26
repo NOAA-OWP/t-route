@@ -2,7 +2,6 @@ from itertools import zip_longest
 import numpy as np
 
 """
-see https://docs.google.com/spreadsheets/d/1kRdpoY2Ul0vZP2l9XXXT4tVA7QIPi8Co/edit#gid=1870807915
 Statistics from the CONUS NWM 2.1 dataset
             mean     std_dev      min        25%         50%          75%           max
 dx    1,947.776    1,965.625     1.000   558.000   1,549.000    2,631.000    95,714.000 
@@ -13,12 +12,46 @@ n         0.058        0.003     0.040     0.060       0.060        0.060       
 ncc       0.117        0.006     0.080     0.120       0.120        0.120         0.120 
 cs        0.5857       0.1945    0.0846    0.4625      0.5944       0.7012        2.254 
 s0        0.02150      0.04585   0.00001   0.00100     0.00600      0.01900       4.600 
-qlat                              1       500000
-qup                               1       500000
-quc                               1       500000
-qdp                               1       500000
+
+These values are bounded by the estimated maximum discharge (70k cms) at
+Arkansas City during the 1927 flood on the Mississippi.
+See: https://pubs.usgs.gov/circ/2004/circ1254/pdf/circ1254.pdf
+The deepest river in the US is the Hudson, at around 200 ft. The model
+may often seed greater depths, because of the geometric formulation of
+the current NWM, so the test range is given a buffer.
+        min      max
+qlat                              1       70000
+qup                               1       70000
+quc                               1       70000
+qdp                               1       70000
 depthp                            1       100
 dt==300
+
+*Legend*
+dt = Time step
+dx = segment length
+bw = Trapezoidal bottom width
+tw = Channel top width (at bankfull)
+twcc = Flood plain width
+n_manning = manning roughness of channel
+n_manning_cc = manning roughness of floodplain
+cs = channel trapezoidal sideslope
+s0 = downstream segment bed slope
+qlat = Lateral inflow in this time step
+qup = inflow into segment from upstream in previous timestep
+quc = inflow into segment from upstream in current timestep
+qdp = outflow from segment in previous timestep
+depthp = depth in segment in previous timestep
+qdc = outflow from segment in current timestep (MC solution yields this value)
+
+*Notes:*
+ncc == 2 * n
+
+twcc == 3 * tw
+
+tw >= bw
+
+prior tests have varied dt, even though it is always held at 300 for NWM simulations to date.
 """
 
 def generate_conus_MC_parameters(rg = 1, randomseed = None):
@@ -30,16 +63,14 @@ def generate_conus_MC_parameters(rg = 1, randomseed = None):
     ncc = ( 0.117, 0.006, 0.080, 0.120, 0.120, 0.120, 0.120,)
     cs = ( 0.5857, 0.1945, 0.0846, 0.4625, 0.5944, 0.7012, 2.254,)
     s0 = ( 0.02150, 0.04585, 0.00001, 0.00100, 0.00600, 0.01900, 4.600,)
-    qlat = (1, 500000)
-    qup = (1, 500000)
-    quc = (1, 500000)
-    qdp = (1, 500000)
-    depthp = (1, 100)
+    qlat = (1, 70000)
+    qup = (1, 70000)
+    quc = (1, 70000)
+    qdp = (1, 70000)
+    depthp = (1, 25)
     dt = (5, 500)
 
     np.random.seed(randomseed)
-
-    # rg = 15000
 
     test_suite_parameter_set = zip_longest(
         np.random.uniform(dx[2], dx[6], rg),
