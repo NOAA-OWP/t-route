@@ -91,10 +91,10 @@ cdef class MC_Hybrid(Reach):
        raise ValueError("start_date is too large. Length must be less than or equal to 19 characters.")
 
     if (len(usgs_timeslice_path) > 256):
-       raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
+       raise ValueError("usgs_timeslice_path is too large. Length must be less than or equal to 256 characters.")
    
     if (len(usace_timeslice_path) > 256):
-       raise ValueError("rusace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
+       raise ValueError("usace_timeslice_path is too large. Length must be less than or equal to 256 characters.")
 
     init_hybrid_reach(&self._reach, lake_number,
                          dam_length, area, max_depth, orifice_area,
