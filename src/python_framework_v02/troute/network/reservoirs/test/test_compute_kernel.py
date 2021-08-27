@@ -17,6 +17,7 @@ finder.find_module = find_module_new.__get__(finder, pyximport.PyxImporter)
 """
 ###FIXME NOT PORTED###
 import pytest
+import os
 from array import array
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
 from troute.network.reservoirs.hybrid.hybrid import MC_Hybrid
@@ -117,7 +118,8 @@ def hybrid_reservoir():
     """
     #print("hybrid test")
 
-    cwd_full = "./reservoir_testing_files/"
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    cwd_full = os.path.join(cwd, "reservoir_testing_files/")
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -132,9 +134,7 @@ def hybrid_reservoir():
     initial_fractional_depth = 0.9
     lake_number = 402142
     reservoir_type = 2
-    reservoir_parameter_file = (
-        "./reservoir_testing_files/reservoir_index_short_range.nc"
-    )
+    reservoir_parameter_file = os.path.join(cwd_full, "reservoir_index_short_range.nc")
     start_date = "2010-10-01_07:00:00"
     usgs_timeslice_path = cwd_full
     usace_timeslice_path = cwd_full
@@ -161,7 +161,8 @@ def rfc_reservoir():
     """
     #print("rfc test")
 
-    cwd_full = "./reservoir_testing_files/"
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    cwd_full = os.path.join(cwd, "reservoir_testing_files/")
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -176,9 +177,7 @@ def rfc_reservoir():
     initial_fractional_depth = 0.9
     lake_number = 17609317
     reservoir_type = 4
-    reservoir_parameter_file = (
-        "./reservoir_testing_files/reservoir_index_short_range.nc"
-    )
+    reservoir_parameter_file = os.path.join(cwd_full, "reservoir_index_short_range.nc")
     start_date = "2019-08-18_09:00:00"
     time_series_path = cwd_full
     forecast_lookback_hours = 24
@@ -289,7 +288,8 @@ def test_hybrid_construction(hybrid_reservoir):
     test construction of a hybrid reservoir 
     """
 
-    cwd_full = b"./reservoir_testing_files/"
+    cwd = os.path.dirname(os.path.realpath(__file__)).encode('UTF-8')
+    cwd_full = os.path.join(cwd, b"reservoir_testing_files/")
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -304,9 +304,7 @@ def test_hybrid_construction(hybrid_reservoir):
     initial_fractional_depth = 0.9
     lake_number = 402142
     reservoir_type = 2
-    reservoir_parameter_file = (
-        b"./reservoir_testing_files/reservoir_index_short_range.nc"
-    )
+    reservoir_parameter_file = os.path.join(cwd_full, b"reservoir_index_short_range.nc")
     start_date = b"2010-10-01_07:00:00"
     usgs_timeslice_path = cwd_full
     usace_timeslice_path = cwd_full
@@ -339,7 +337,8 @@ def test_rfc_construction(rfc_reservoir):
     """
     test construction of a rfc reservoir 
     """
-    cwd_full = b"./reservoir_testing_files/"
+    cwd = os.path.dirname(os.path.realpath(__file__)).encode('UTF-8')
+    cwd_full = os.path.join(cwd, b"reservoir_testing_files/")
 
     water_elevation = 1331.18005
     lake_area = 209.632
@@ -354,9 +353,7 @@ def test_rfc_construction(rfc_reservoir):
     initial_fractional_depth = 0.9
     lake_number = 17609317
     reservoir_type = 4
-    reservoir_parameter_file = (
-        b"./reservoir_testing_files/reservoir_index_short_range.nc"
-    )
+    reservoir_parameter_file = os.path.join(cwd_full, b"reservoir_index_short_range.nc")
     start_date = b"2019-08-18_09:00:00"
     time_series_path = cwd_full
     forecast_lookback_hours = 24
