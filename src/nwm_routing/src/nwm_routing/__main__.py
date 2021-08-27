@@ -632,8 +632,11 @@ def main_v02(argv):
                 courant = courant.sort_index()
                 courant.to_csv(output_path.joinpath(filename_courant))
 
-            usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
-            usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+            # TODO: need to identify the purpose of these outputs
+            # if the need is to output the usgs_df dataframe,
+            # then that could be done in the dataframe IO somewhere above.
+            # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
         if debuglevel <= -1:
             print(flowveldepth)
@@ -673,6 +676,7 @@ def main_v02(argv):
             nhd_io.write_channel_restart_to_wrf_hydro(
                 flowveldepth,
                 wrf_hydro_restart_files,
+                # TODO: remove this dependence on the restart_parameters
                 Path(wrf_hydro_restart_write_dir),
                 restart_parameters.get("wrf_hydro_channel_restart_file"),
                 run_parameters.get("dt"),
