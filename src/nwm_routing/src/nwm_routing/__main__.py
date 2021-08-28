@@ -305,6 +305,52 @@ def main_v02(argv):
         coastal_parameters,
     ) = _input_handler_v02(args)
 
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    if showtiming:
+        main_start_time = time.time()
+
+    _results = _run_everything_v02(
+        supernetwork_parameters,
+        waterbody_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+    )
+
+    _handle_output_v02(
+        _results,
+        run_parameters,
+        supernetwork_parameters,
+        restart_parameters,
+        output_parameters,
+        parity_parameters,
+    )
+
+    if verbose:
+        print("process complete")
+    if showtiming:
+        print("%s seconds." % (time.time() - main_start_time))
+
+
+def _run_everything_v02(
+    supernetwork_parameters,
+    waterbody_parameters,
+    forcing_parameters,
+    restart_parameters,
+    output_parameters,
+    run_parameters,
+    parity_parameters,
+    data_assimilation_parameters,
+    diffusive_parameters,
+    coastal_parameters,
+):
+
     dt = run_parameters.get("dt", None)
     nts = run_parameters.get("nts", None)
     verbose = run_parameters.get("verbose", None)
@@ -316,9 +362,6 @@ def main_v02(argv):
     break_network_at_gages = supernetwork_parameters.get(
         "break_network_at_gages", False
     )
-
-    if showtiming:
-        main_start_time = time.time()
 
     if verbose:
         print("creating supernetwork connections set")
@@ -571,7 +614,23 @@ def main_v02(argv):
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
+    return results
+
+
+def _handle_output_v02(
+    results,
+    run_parameters,
+    supernetwork_parameters,
+    restart_parameters,
+    output_parameters,
+    parity_parameters,
+):
     ################### Output Handling
+    dt = run_parameters.get("dt", None)
+    nts = run_parameters.get("nts", None)
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    debuglevel = run_parameters.get("debuglevel", 0)
 
     if showtiming:
         start_time = time.time()
@@ -750,11 +809,6 @@ def main_v02(argv):
             print("parity check complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
-
-    if verbose:
-        print("process complete")
-    if showtiming:
-        print("%s seconds." % (time.time() - main_start_time))
 
 
 def nwm_route(
