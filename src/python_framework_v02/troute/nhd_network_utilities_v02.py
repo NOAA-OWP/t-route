@@ -807,6 +807,8 @@ def build_qlateral_array(
                 #print (nexus_flows)
                 
                 #comid_df = comid_df.set_index(comid_df.columns[0])
+
+                #if nexus_id in ngen_nexus_id_to_downstream_comid_mapping_dict.keys():
                 nexus_flows = nexus_flows.set_index(nexus_flows.columns[0])
                 #print ("$$$$$===========nexus_flows-------------")
                 #print (nexus_flows)
@@ -905,11 +907,11 @@ def build_qlateral_array(
                 else:
                     #print ("%%%%%%%%%%%%")
                     #print (comid_value)
-               
+                    delme = 1 
 
                 if comid_value not in segment_index:
                     #print ("Not in segment_index: " + str(comid_value))
-
+                    delme = 1
 
 
             #print ("**************")
@@ -1055,7 +1057,7 @@ def build_qlateral_array(
                 else:    
                     #print ("repeat segment in mask")
                     #print (a_segment_index)
-
+                    delme = 1
 
                 if a_segment_index not in comid_list:
                     #add a qlat_df_single_transpose_zeros to qlat_df with the comid          

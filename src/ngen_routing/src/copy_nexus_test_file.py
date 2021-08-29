@@ -38,19 +38,30 @@ for key in mapping_dict:
 #print ("nex_set")
 #print (nex_set)
 
-copy_nex_file = "/apd_common/anthro/david_code/ngen/nex-11111_copy.csv"
+#copy_nex_file = "/apd_common/anthro/david_code/ngen/nex-11111_copy.csv"
 
-path = "/apd_common/anthro/david_code/ngen/"
+#path = "/apd_common/anthro/david_code/ngen/"
+
+from_dir = "/apd_common/test/demo1/output_csv/"
+
+dst_dir = "/apd_common/test/demo2/routing_demo/"
 
 print ("each nex in list ----")
 for nex in nex_list:
-    print (nex)
+    
+    try:
 
-    new_file_name = path + "nex-" + str(nex) + "_output.csv"
+      print (nex)
+      #copy_nex_file = "/apd_common/anthro/david_code/ngen/nex-11111_copy.csv"
+      #copy_nex_file = from_dir + 
+      copy_nex_file = from_dir + "nex-" + str(nex) + "_output.csv"
 
-    print (new_file_name)
+      new_file_name = dst_dir + "nex-" + str(nex) + "_output.csv"
 
-    copyfile(copy_nex_file, new_file_name)
+      print (new_file_name)
 
+      copyfile(copy_nex_file, new_file_name)
+    except:
+      print ("not found")
 
 
