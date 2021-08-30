@@ -1,7 +1,7 @@
 ---
 #initial input parameters
 run_parameters:
-    #parallel_compute_method: by-network # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
+    parallel_compute_method: by-network # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
     subnetwork_target_size: 20  # by-subnetwork* requires a value here to identify the target subnetwork size.
     verbose: true  # verbose output (leave blank for quiet output.)
     showtiming: true  # set the showtiming (omit flag for no timing information.)

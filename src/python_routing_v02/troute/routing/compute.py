@@ -1061,10 +1061,10 @@ def compute_nhd_routing_v02(
             #print (qlat_start_time)
 
             #Original
-            #qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+            qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
 
             #Quick fix for now for nexus time because has an extra space at the beginning of the string
-            qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, ' %Y-%m-%d %H:%M:%S')
+            #qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, ' %Y-%m-%d %H:%M:%S')
 
             model_start_time_datetime_object = qlat_start_time_datetime_object \
             - timedelta(seconds=qlat_time_step_seconds)

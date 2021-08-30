@@ -59,7 +59,7 @@ cpdef object binary_find(object arr, object els):
         if arr[m] == el:
             idxs.append(m)
         else:
-            #raise ValueError(f"element {el} not found in {np.asarray(arr)}")
+            raise ValueError(f"element {el} not found in {np.asarray(arr)}")
             #print(f"element {el} not found in {np.asarray(arr)}")
     return idxs
 
@@ -1329,6 +1329,10 @@ cpdef object compute_network_structured(
 
                 if r.type == compute_type.RESERVOIR_LP:
                     run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                    #JDM: temp
+                    #reservoir_outflow = upstream_flows
+                    #reservoir_water_elevation = 0.0
+
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
