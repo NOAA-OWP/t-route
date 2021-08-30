@@ -513,6 +513,7 @@ def build_connections(supernetwork_parameters):
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
+    #return connections, param_df, wbodies, gages
 
 
 def build_waterbodies(
