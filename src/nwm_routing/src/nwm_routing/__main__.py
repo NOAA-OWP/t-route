@@ -597,8 +597,8 @@ def _run_everything_v02(
     qlats = nnu.build_qlateral_array(
         forcing_parameters,
         param_df.index,
-        ngen_nexus_id_to_downstream_comid_mapping_dict,
         nts,
+        ngen_nexus_id_to_downstream_comid_mapping_dict,
         run_parameters.get("qts_subdivisions", 1),
     )
 
