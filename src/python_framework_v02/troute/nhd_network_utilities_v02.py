@@ -433,10 +433,18 @@ def build_connections(supernetwork_parameters):
     #param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     ####################################################
 
-    if "ngen_nexus_id_to_downstream_comid_mapping_json" in supernetwork_parameters:
-        ngen_nexus_id_to_downstream_comid_mapping_dict = nhd_io.read_ngen_nexus_id_to_downstream_comid_mapping(
-            pathlib.Path(supernetwork_parameters["ngen_nexus_id_to_downstream_comid_mapping_json"])
+    #if "ngen_nexus_id_to_downstream_comid_mapping_json" in supernetwork_parameters:
+    #    ngen_nexus_id_to_downstream_comid_mapping_dict = nhd_io.read_ngen_nexus_id_to_downstream_comid_mapping(
+    #        pathlib.Path(supernetwork_parameters["ngen_nexus_id_to_downstream_comid_mapping_json"])
+    #    )
+
+
+    if "ngen_nexus_file" in supernetwork_parameters:
+        nexus_to_downstream_catchment_dict = nhd_io.read_nexus_file(
+            pathlib.Path(supernetwork_parameters["ngen_nexus_file"])
         )
+
+        #print("ngen_nexus_id_to_downstream_comid_mapping_dict")
 
         #print("ngen_nexus_id_to_downstream_comid_mapping_dict")
         #print(ngen_nexus_id_to_downstream_comid_mapping_dict)
@@ -512,7 +520,8 @@ def build_connections(supernetwork_parameters):
     #print ("@@@@@@!!!!!!!")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
+    #return connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict
+    return connections, param_df, wbodies, gages, nexus_to_downstream_catchment_dict
     #return connections, param_df, wbodies, gages
 
 
@@ -713,8 +722,8 @@ def build_qlateral_array(
     segment_index=pd.Index([]),
     ts_iterator=None,
     #supernetwork_parameters, #adding this for now, might remove later. Just need to read data_mask
-    ngen_nexus_id_to_downstream_comid_mapping_dict=None,
-    #ts_iterator=None,
+    #ngen_nexus_id_to_downstream_comid_mapping_dict=None,
+    nexus_to_downstream_catchment_dict=None,
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
