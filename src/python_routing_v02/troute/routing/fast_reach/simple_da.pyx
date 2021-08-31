@@ -41,10 +41,10 @@ cdef (float, float, float, float) simple_da(
     # we just loop over the timesteps during DA and post-DA, if that
     # is a major performance optimization. On the flip side, it would
     # probably introduce unwanted code complexity.
-    if (timestep < gage_maxtimestep and not isnan(target_val)):
     if isnan(target_val):
         if da_check_gage:
             printf("THIS IS A NAN\t")
+    if ((timestep <= gage_maxtimestep) and not (isnan(target_val))):
         if da_check_gage:
             printf("replace\t")
         replacement_val = target_val

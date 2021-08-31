@@ -1385,7 +1385,7 @@ cpdef object compute_network_structured(
                         routing_period,
                         da_decay_coefficient,
                         gage_maxtimestep,
-                        NAN if timestep > gage_maxtimestep else usgs_values[gage_i,timestep-1],
+                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep],
                         flowveldepth[usgs_position_i, timestep, 0],
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
@@ -1396,15 +1396,16 @@ cpdef object compute_network_structured(
                         printf("gmxt: %d\t", gage_maxtimestep)
                         printf("gage: %d\t", gage_i)
                         printf("old: %g\t", flowveldepth[usgs_position_i, timestep, 0])
-                        flowveldepth[usgs_position_i, timestep - 1, 0] = da_buf[0]
                         printf("exp_gage_val: %g\t", usgs_values[gage_i,timestep])
+
+                    flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
 
                     if gage_i == da_check_gage:
                         printf("new: %g\t", flowveldepth[usgs_position_i, timestep, 0])
                         printf("repl: %g\t", da_buf[0])
                         printf("nudg: %g\n", da_buf[1])
-                        nudge[gage_i, timestep] = da_buf[1]
 
+                    nudge[gage_i, timestep] = da_buf[1]
                     lastobs_times[gage_i] = da_buf[2]
                     lastobs_values[gage_i] = da_buf[3]
 
