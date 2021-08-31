@@ -7,6 +7,7 @@ cdef (float, float, float, float) simple_da(
     const float model_val,
     float lastobs_time,
     float lastobs_val,
+    bint da_check_gage=*,
 ) nogil
 
 

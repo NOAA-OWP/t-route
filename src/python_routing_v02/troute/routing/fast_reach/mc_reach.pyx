@@ -459,6 +459,7 @@ cpdef object compute_network(
                         flowveldepth[usgs_position_i, ts_offset],
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
+                        0,
                     )
                     flowveldepth[usgs_position_i, ts_offset] = da_buf[0]
                     nudge[gage_i, timestep+1] = da_buf[1]
@@ -1026,6 +1027,7 @@ cpdef object compute_network_structured_obj(
                     flowveldepth[usgs_position_i, timestep, 0],
                     lastobs_times[gage_i],
                     lastobs_values[gage_i],
+                    0,
                 )
                 flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
                 nudge[gage_i, timestep] = da_buf[1]
@@ -1387,14 +1389,18 @@ cpdef object compute_network_structured(
                         flowveldepth[usgs_position_i, timestep, 0],
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
+                        gage_i == da_check_gage,
                     )
                     if gage_i == da_check_gage:
                         printf("ts: %d\t", timestep)
+                        printf("gmxt: %d\t", gage_maxtimestep)
                         printf("gage: %d\t", gage_i)
-                        printf("old_prev: %g\t", flowveldepth[usgs_position_i, timestep - 1, 0])
                         printf("old: %g\t", flowveldepth[usgs_position_i, timestep, 0])
                         flowveldepth[usgs_position_i, timestep - 1, 0] = da_buf[0]
-                        printf("new: %g\t", flowveldepth[usgs_position_i, timestep - 1, 0])
+                        printf("exp_gage_val: %g\t", usgs_values[gage_i,timestep])
+
+                    if gage_i == da_check_gage:
+                        printf("new: %g\t", flowveldepth[usgs_position_i, timestep, 0])
                         printf("repl: %g\t", da_buf[0])
                         printf("nudg: %g\n", da_buf[1])
                         nudge[gage_i, timestep] = da_buf[1]
