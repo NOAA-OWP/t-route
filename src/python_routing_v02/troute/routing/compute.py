@@ -87,14 +87,14 @@ def _prep_da_dataframes(
         # Create a completely empty list of gages -- the .shape[1] attribute
         # will be == 0, and that will trigger a reference to the lastobs.
         # in the compute kernel below.
-        usgs_df_sub = pd.DataFrame(index=[lastobs_df_sub.index],columns=[])
+        usgs_df_sub = pd.DataFrame(index=lastobs_df_sub.index,columns=[])
         usgs_segs = lastobs_segs
         da_positions_list_byseg = param_df_sub_idx.get_indexer(lastobs_segs)
     elif not usgs_df.empty and lastobs_df.empty:
         usgs_segs = list(usgs_df.index.intersection(param_df_sub_idx))
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
-        lastobs_df_sub = pd.DataFrame(index=[usgs_df_sub.index],columns=["discharge","time","model_discharge"])
+        lastobs_df_sub = pd.DataFrame(index=usgs_df_sub.index,columns=["discharge","time","model_discharge"])
     else:
         usgs_df_sub = pd.DataFrame()
         lastobs_df_sub = pd.DataFrame()
