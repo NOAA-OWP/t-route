@@ -47,6 +47,7 @@ cdef (float, float) simple_da(
     # probably introduce unwanted code complexity.
     if (timestep < gage_maxtimestep and not isnan(target_val)):
         replacement_val = target_val
+        nudge_val = target_val - model_val
         # add/update lastobs_timestep
         lastobs_time = (timestep - 1) * routing_period
         lastobs_val = target_val
@@ -55,7 +56,8 @@ cdef (float, float) simple_da(
         da_weighted_shift = obs_persist_shift(lastobs_val, model_val, da_decay_minutes, decay_coeff)
         nudge_val = da_weighted_shift
         # TODO: we need to export these values
-        replacement_val = simple_da_with_decay(lastobs_val, model_val, da_decay_minutes, decay_coeff)
+        # replacement_val = simple_da_with_decay(lastobs_val, model_val, da_decay_minutes, decay_coeff)
+        replacement_val = model_val + da_weighted_shift
 
         # if gage_i == da_check_gage:
         #     printf("gages_size: %d\t", gages_size)
@@ -74,7 +76,7 @@ cdef (float, float) simple_da(
         #     printf("new: %g\t", replacement_val)
         #     printf("\n")
 
-        return replacement_val, nudge_val
+    return replacement_val, nudge_val
 
 
 cdef float simple_da_with_decay(
