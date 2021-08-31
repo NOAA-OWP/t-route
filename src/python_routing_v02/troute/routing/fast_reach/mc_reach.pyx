@@ -187,6 +187,7 @@ cpdef object compute_network(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
+    int da_check_gage = -1,
     ):
     """
     Compute network
@@ -459,7 +460,7 @@ cpdef object compute_network(
                         flowveldepth[usgs_position_i, ts_offset],
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
-                        0,
+                        gage_i == da_check_gage,
                     )
                     flowveldepth[usgs_position_i, ts_offset] = da_buf[0]
                     nudge[gage_i, timestep+1] = da_buf[1]
@@ -767,6 +768,7 @@ cpdef object compute_network_structured_obj(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
+    int da_check_gage = -1,
     ):
     """
     Compute network
@@ -1027,7 +1029,7 @@ cpdef object compute_network_structured_obj(
                     flowveldepth[usgs_position_i, timestep, 0],
                     lastobs_times[gage_i],
                     lastobs_values[gage_i],
-                    0,
+                    gage_i == da_check_gage,
                 )
                 flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
                 nudge[gage_i, timestep] = da_buf[1]
@@ -1071,7 +1073,7 @@ cpdef object compute_network_structured(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
-    int da_check_gage=-1,
+    int da_check_gage = -1,
     ):
     """
     Compute network
