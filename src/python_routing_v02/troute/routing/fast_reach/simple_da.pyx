@@ -20,7 +20,7 @@ cpdef float simple_da_with_decay_py(
     )
 
 
-cdef (float, float) simple_da(
+cdef (float, float, float, float) simple_da(
     const float timestep,
     const float routing_period,
     const float decay_coeff,
@@ -76,7 +76,7 @@ cdef (float, float) simple_da(
         #     printf("new: %g\t", replacement_val)
         #     printf("\n")
 
-    return replacement_val, nudge_val
+    return replacement_val, nudge_val, lastobs_time, lastobs_val,
 
 
 cdef float simple_da_with_decay(
