@@ -231,7 +231,7 @@ cpdef object compute_network(
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
     cdef float[:] lastobs_values, lastobs_times
-    cdef (float, float) da_buf
+    cdef (float, float, float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -462,6 +462,8 @@ cpdef object compute_network(
                     )
                     flowveldepth[usgs_position_i, ts_offset] = da_buf[0]
                     nudge[gage_i, timestep+1] = da_buf[1]
+                    lastobs_times[gage_i] = da_buf[2]
+                    lastobs_values[gage_i] = da_buf[3]
 
                 # Update indexes to point to next reach
                 ireach += 1
@@ -829,7 +831,7 @@ cpdef object compute_network_structured_obj(
     cdef int gage_i, usgs_position_i
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
     cdef float [:] lastobs_values, lastobs_times
-    cdef (float, float) da_buf
+    cdef (float, float, float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -1027,6 +1029,8 @@ cpdef object compute_network_structured_obj(
                 )
                 flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
                 nudge[gage_i, timestep] = da_buf[1]
+                lastobs_times[gage_i] = da_buf[2]
+                lastobs_values[gage_i] = da_buf[3]
 
         timestep += 1
 
@@ -1227,7 +1231,7 @@ cpdef object compute_network_structured(
     cdef int gage_i, usgs_position_i
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
     cdef float [:] lastobs_values, lastobs_times
-    cdef (float, float) da_buf
+    cdef (float, float, float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
@@ -1394,6 +1398,9 @@ cpdef object compute_network_structured(
                         printf("repl: %g\t", da_buf[0])
                         printf("nudg: %g\n", da_buf[1])
                         nudge[gage_i, timestep] = da_buf[1]
+
+                    lastobs_times[gage_i] = da_buf[2]
+                    lastobs_values[gage_i] = da_buf[3]
 
             # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 

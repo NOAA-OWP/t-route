@@ -1,4 +1,4 @@
-cdef (float, float) simple_da(
+cdef (float, float, float, float) simple_da(
     const float timestep,
     const float routing_period,
     const float decay_coeff,
