@@ -354,7 +354,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
-    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -809,7 +809,7 @@ cpdef object compute_network_structured_obj(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
-    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
@@ -1112,7 +1112,7 @@ cpdef object compute_network_structured(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
-    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
