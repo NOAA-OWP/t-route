@@ -9,7 +9,7 @@ from libc.math cimport exp, isnan, NAN
 cimport numpy as np
 cimport cython
 from libc.stdlib cimport malloc, free
-# from libc.stdio cimport printf
+from libc.stdio cimport printf
 #Note may get slightly better performance using cython mem module (pulls from python's heap)
 #from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
@@ -1065,7 +1065,7 @@ cpdef object compute_network_structured(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
-    # int da_check_gage=-1,
+    int da_check_gage=-1,
     ):
     """
     Compute network
@@ -1352,6 +1352,9 @@ cpdef object compute_network_structured(
                     for _i in range(r.reach.mc_reach.num_segments):
                         segment = get_mc_segment(r, _i)
                         flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
+                        if reach_has_gage[i] == da_check_gage:
+                            printf("segment.id: %d\t", segment.id)
+                            printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
                         flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
                         flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
 
@@ -1376,13 +1379,21 @@ cpdef object compute_network_structured(
                         routing_period,
                         da_decay_coefficient,
                         gage_maxtimestep,
-                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep-1],
+                        NAN if timestep > gage_maxtimestep else usgs_values[gage_i,timestep-1],
                         flowveldepth[usgs_position_i, timestep, 0],
                         lastobs_times[gage_i],
                         lastobs_values[gage_i],
                     )
-                    flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
-                    nudge[gage_i, timestep] = da_buf[1]
+                    if gage_i == da_check_gage:
+                        printf("ts: %d\t", timestep)
+                        printf("gage: %d\t", gage_i)
+                        printf("old_prev: %g\t", flowveldepth[usgs_position_i, timestep - 1, 0])
+                        printf("old: %g\t", flowveldepth[usgs_position_i, timestep, 0])
+                        flowveldepth[usgs_position_i, timestep - 1, 0] = da_buf[0]
+                        printf("new: %g\t", flowveldepth[usgs_position_i, timestep - 1, 0])
+                        printf("repl: %g\t", da_buf[0])
+                        printf("nudg: %g\n", da_buf[1])
+                        nudge[gage_i, timestep] = da_buf[1]
 
             # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
