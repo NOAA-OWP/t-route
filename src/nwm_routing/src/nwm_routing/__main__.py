@@ -487,7 +487,7 @@ def main_v02(argv):
         "data_assimilation_csv", None
     )
     data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_folder", None
+        "data_assimilation_timeslices_folder", None
     )
     last_obs_file = data_assimilation_parameters.get(
         "wrf_hydro_last_obs_file", None
