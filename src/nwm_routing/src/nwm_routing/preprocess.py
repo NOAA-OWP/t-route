@@ -246,7 +246,7 @@ def nwm_forcing_preprocess(
         start_time = time.time()
     if verbose:
         print("creating qlateral array ...")
-    import pdb;pdb.set_trace()
+
     qlats_df = nnu.build_qlateral_array(run, segment_index,)
 
     if verbose:

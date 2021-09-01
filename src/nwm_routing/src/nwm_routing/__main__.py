@@ -895,13 +895,18 @@ def main_v03(argv):
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
-    # run_sets_qlats = forcing_parameters.get("qlat_files", False)
 
-    run_sets = nhd_io.build_qlat_date_range(forcing_parameters)
+    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+    
+    if type(run_sets) == list:
+        pass
+    else:
+        run_sets = nhd_io.build_qlat_date_range(forcing_parameters)
+
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
-    run_size_da = run_sets_da['data_assimilation_run_block_size']
 
     if run_sets_da:
+        run_size_da = run_sets_da['data_assimilation_run_block_size']
         da_dates = nhd_io.build_da_date_range(data_assimilation_parameters)
         data_assimilation_parameters['data_assimilation_filter'] = da_dates[0:run_size_da]
         
