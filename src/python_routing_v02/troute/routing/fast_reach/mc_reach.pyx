@@ -221,7 +221,7 @@ cpdef object compute_network(
     # courant is a 2D float array that holds courant results
     # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
     # rows: indexed by data_idx
-    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
+    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], (nsteps + 1) * 3), dtype='float32')
 
     flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
     flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
@@ -353,7 +353,7 @@ cpdef object compute_network(
     drows_tmp = np.arange(maxreachlen, dtype=np.intp)
     cdef Py_ssize_t[:] drows
     cdef float qup, quc
-    # cdef float dt = 300.0  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     cdef int timestep = 0
     cdef int ts_offset
 
@@ -467,9 +467,9 @@ cpdef object compute_network(
                         else:
                             a = da_decay_coefficient
                             if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                                da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                                da_decay_minutes = (timestep) * routing_period / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                             else:
-                                da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                                da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                             # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                             flowveldepth[usgs_position_i, ts_offset] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, ts_offset], da_decay_minutes, a)
@@ -481,7 +481,7 @@ cpdef object compute_network(
     # The upstream keys have empty results because they are not part of any reaches
     # so we need to delete the null values that return
     if return_courant:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant, dtype='float32')[fill_index_mask]
+        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
     else:
         return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
 
@@ -815,6 +815,7 @@ cpdef object compute_network_structured_obj(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
@@ -973,9 +974,6 @@ cpdef object compute_network_structured_obj(
 
             #Check if reach_type is 1 for reservoir/waterbody
             if (reach_type == 1):
-            #TODO: dt is currently held by the segment. Need to find better place to hold dt
-                routing_period = 300.0  # TODO: Fix this hardcoded value to pull from dt
-
                 reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
 
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
@@ -1037,9 +1035,9 @@ cpdef object compute_network_structured_obj(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep) * dt / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
+                            da_decay_minutes = (timestep) * routing_period / 60 - time_since_lastobs_init[gage_i] # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                         # replacement_value = f(lastobs_value, da_weight)  # TODO: we need to be able to export these values to compute the 'Nudge'
                         flowveldepth[usgs_position_i, timestep, 0] = simple_da_with_decay(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
@@ -1128,6 +1126,7 @@ cpdef object compute_network_structured(
     cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
+    cdef float routing_period = data_values[0][0]  # TODO: harmonize the dt with the value from the param_df dt (see line 153)
     #buffers to pass to compute_reach_kernel
     cdef float[:,:] buf_view
     cdef float[:,:] out_buf
@@ -1322,20 +1321,19 @@ cpdef object compute_network_structured(
                     upstream_flows = previous_upstream_flows
 
                 if r.type == compute_type.RESERVOIR_LP:
-                    run_lp_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
-                    # TODO: Get rid of this insidious magic number (presumably the dt of 300 seconds...)
+                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_HYBRID:
-                    run_hybrid_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_RFC:
-                    run_rfc_c(r, upstream_flows, 0.0, 300, &reservoir_outflow, &reservoir_water_elevation)
+                    run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
@@ -1405,9 +1403,9 @@ cpdef object compute_network_structured(
                     else:
                         a = da_decay_coefficient
                         if lastobs_timestep[gage_i] < 0: # Initialized to -1
-                            da_decay_minutes = (timestep * dt - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
+                            da_decay_minutes = (timestep * routing_period - time_since_lastobs_init[gage_i]) / 60 # seconds to minutes
                         else:
-                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * dt / 60
+                            da_decay_minutes = (timestep - lastobs_timestep[gage_i]) * routing_period / 60
 
                         da_weighted_shift = obs_persist_shift(lastobs_values[gage_i], flowveldepth[usgs_position_i, timestep, 0], da_decay_minutes, a)
                         nudge[gage_i, timestep] = da_weighted_shift
