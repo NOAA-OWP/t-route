@@ -3,6 +3,12 @@ import mc_sseg_stime_NOLOOP_demo as demo
 from test_suite_parameters import generate_conus_MC_parameters
 
 
+@pytest.fixture
+def random_mc_input_tuple():
+    return next(generate_conus_MC_parameters(1,16))
+
+"""
+The input for the demo.compare methods is a tuple of values as follows:
 input_tup = (
     "single",  # calculation precision (NOT USED)
     300.0,  # Time step
@@ -22,31 +28,13 @@ input_tup = (
 )
 
 # qdc1, qdc2, velc1, velc2, depthc1, depthc2 = demo.compare_methods(*input_tup)
-
-input_tup_random = generate_conus_MC_parameters(1, 16)
-out = demo.compare_methods("single", *(next(input_tup_random)))
-# print(out)
-qdc1, qdc2, velc1, velc2, depthc1, depthc2 = out
+"""
 
 
-def test_MC_kernel_q():
-# TODO: Take advantage of ranges above to build a state-space 
-# exploration of potential inputs and confirm it parity across all inputs
-
-    assert qdc1 == qdc2
-
-
-def test_MC_kernel_vel():
-# TODO: Take advantage of ranges above to build a state-space 
-# exploration of potential inputs and confirm it parity across all inputs
-
-    assert velc1 == velc2
- 
-
-def test_MC_kernel_depth():
-# TODO: Take advantage of ranges above to build a state-space 
-# exploration of potential inputs and confirm it parity across all inputs
-
-   assert depthc1 == depthc2
-
+# use pytest -v to show difference for all values in the tuple
+def test_MC_kernel(random_mc_input_tuple):
+    out = demo.compare_methods("single", *random_mc_input_tuple)
+    # print(out)
+    qdc1, qdc2, velc1, velc2, depthc1, depthc2 = out
+    assert (qdc1, velc1, depthc1) == (qdc2, velc2, depthc2)
 
