@@ -428,7 +428,8 @@ def diffusive_input_data_v02(
     initial_conditions,
     upstream_results,
     qts_subdivisions,
-    nsteps
+    nsteps,
+    dt
 ):
     """
     Build input data objects for diffusive wave model
@@ -453,15 +454,30 @@ def diffusive_input_data_v02(
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
 
-    # diffusive time steps info.
-    dt = 300 # seconds
-    dt_ql_g = dt * qts_subdivisions
-    dt_ub_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    dt_db_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    # timestep of lateral inflow data
+    dt_ql_g = dt*qts_subdivisions 
+    
+    # timestep of upper boundary data
+    dt_ub_g = dt_ql_g
+    
+    # timestep of downstream boundary data
+    # note - this is not used unless a time series of downstream boundary data are available
+    # otherwise, a normal depth downstream boundary condition is used and dt_db_g goes unused
+    dt_db_g = 900 
+    
+    # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_cnx = dt
-    saveinterval_cnt = dt * 12
+    
+    # time interval at which depth is written out by cnt model
+    saveinterval_cnt = dt * (qts_subdivisions)
+    
+    # time interval at which flow is computed and written out by cnt model
     dtini_g = dt
-    t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
+
+    # simulation start time (hrs)
+    t0_g = 0.0 
+    
+    # simulation end time (hrs)
     tfin_g = (dt * nsteps)/60/60
     
     # USGS data related info.
@@ -624,6 +640,7 @@ def diffusive_input_data_v02(
     # ---------------------------------------------------------------------------------
     iniq = np.zeros((mxncomp_g, nrch_g))
     frj = -1
+    #import pdb; pdb.set_trace()
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             seg_list = reach["segments_list"]
@@ -638,13 +655,16 @@ def diffusive_input_data_v02(
                 idx_segID = np.where(geo_index == segID)
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
                 
+    
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
+    #import pdb; pdb.set_trace()
     nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
+        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)+1
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
@@ -704,8 +724,7 @@ def diffusive_input_data_v02(
     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
-    # TODO: Call uniform flow lookup table creation kernel
-
+    # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
     #                              Step 0-11
 
@@ -746,7 +765,7 @@ def diffusive_input_data_v02(
     diff_ins["ufhlt_f_g"] = ufhlt_f_g
     diff_ins["ufqlt_f_g"] = ufqlt_f_g
     diff_ins["frnw_col"] = frnw_col
-    diff_ins["frnw_g"] = frnw_g
+    diff_ins["frnw_g"] = dfrnw_g
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g
     diff_ins["dbcd_g"] = dbcd_g

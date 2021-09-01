@@ -1,17 +1,17 @@
 ---
 # Initial input parameters
 run_parameters:
-    compute_kernel: "diffusive"
+    compute_kernel: "diffusive_cnt"
     parallel_compute_method: None
     verbose: true
     showtiming: true
     debuglevel: 1
     assume_short_ts: true
     subnetwork_target_size: 100
-    qts_subdivisions: 12
+    qts_subdivisions: 6
     return_courant: false
-    dt: 300
-    nts: 24
+    dt: 600
+    nts: 4308 
     cpu_pool: 12
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
@@ -26,14 +26,14 @@ run_parameters:
 # Output file parameters
 output_parameters:
     #output location for csv file 
-    csv_output:
-#         csv_output_folder: None
-        csv_output_segments: None
+    csv_output: 
+        csv_output_folder: "../../test/output/text"
+        csv_output_segments: []
     #out location for nc file
     nc_output_folder: None
 # Data column assignment inside supernetwork_parameters
 supernetwork_parameters:
-    title_string: Custom Input Example (using Florence-Event Cutout datafile)
+    title_string: cnt_test_mc
     geo_file_path: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
     mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
     mask_layer_string: ""

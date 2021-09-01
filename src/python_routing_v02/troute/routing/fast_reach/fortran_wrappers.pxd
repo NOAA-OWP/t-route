@@ -112,7 +112,7 @@ cdef extern from "pydiffusive_cnt.h":
                      double *ufhlt_f_g,
                      double *ufqlt_f_g,
                      int *frnw_col,
-                     double *frnw_g,
+                     double *dfrnw_g,
                      double *qlat_g,
                      double *ubcd_g,
                      double *dbcd_g,

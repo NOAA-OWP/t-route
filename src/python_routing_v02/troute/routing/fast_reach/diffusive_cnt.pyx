@@ -40,7 +40,7 @@ cdef void diffnw_cnt(double dtini_g,
              double[::1,:,:] ufhlt_f_g,
              double[::1,:,:] ufqlt_f_g,
              int frnw_col,
-             double[::1,:] frnw_g,
+             double[::1,:] dfrnw_g,
              double[::1,:,:] qlat_g,
              double[::1,:] ubcd_g,
              double[::1] dbcd_g,
@@ -87,7 +87,7 @@ cdef void diffnw_cnt(double dtini_g,
             &ufhlt_f_g[0,0,0],
             &ufqlt_f_g[0,0,0],
             &frnw_col,
-            &frnw_g[0,0],
+            &dfrnw_g[0,0],
             &qlat_g[0,0,0],
             &ubcd_g[0,0],
             &dbcd_g[0],
@@ -159,7 +159,8 @@ cpdef object compute_diffusive_tst(
         np.asarray(initial_conditions),
         upstream_results,
         qts_subdivisions,
-        nsteps
+        nsteps,
+        dt
         )
 
     # unpack/declare diffusive input variables
@@ -192,7 +193,7 @@ cpdef object compute_diffusive_tst(
         double[::1,:,:] ufhlt_f_g = np.asfortranarray(diff_inputs["ufhlt_f_g"])
         double[::1,:,:] ufqlt_f_g = np.asfortranarray(diff_inputs["ufqlt_f_g"])
         int frnw_col = diff_inputs["frnw_col"]
-        double[::1,:] frnw_g = np.asfortranarray(diff_inputs["frnw_g"], dtype = np.double)
+        double[::1,:] dfrnw_g = np.asfortranarray(diff_inputs["frnw_g"], dtype = np.double)
         double[::1,:,:] qlat_g = np.asfortranarray(diff_inputs["qlat_g"])
         double[::1,:] ubcd_g = np.asfortranarray(diff_inputs["ubcd_g"])
         double[::1] dbcd_g = np.asfortranarray(diff_inputs["dbcd_g"])
@@ -236,7 +237,7 @@ cpdef object compute_diffusive_tst(
      ufhlt_f_g,
      ufqlt_f_g,
      frnw_col,
-     frnw_g,
+     dfrnw_g,
      qlat_g,
      ubcd_g,
      dbcd_g,
