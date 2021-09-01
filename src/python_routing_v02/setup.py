@@ -24,7 +24,7 @@ reach = Extension(
         "troute/routing/fast_reach/mc_single_seg.o",
         "troute/routing/fast_reach/pymc_single_seg.o",
     ],
-    extra_compile_args=["-O3", "-g"],
+    extra_compile_args=["-O2", "-g"],
     # libraries=["gfortran"],
 )
 
@@ -35,7 +35,7 @@ mc_reach = Extension(
     libraries=[],
     library_dirs=[],
     extra_objects=[],
-    extra_compile_args=["-O3", "-g"],
+    extra_compile_args=["-O2", "-g"],
 )
 
 simple_da = Extension(
@@ -47,7 +47,7 @@ simple_da = Extension(
     libraries=[],
     library_dirs=[],
     extra_objects=[],
-    extra_compile_args=["-O3", "-g"],
+    extra_compile_args=["-O2", "-g"],
 )
 
 diffusive = Extension(
@@ -58,7 +58,7 @@ diffusive = Extension(
         "troute/routing/fast_reach/pydiffusive.o",
     ],
     include_dirs=[np.get_include()],
-    extra_compile_args=["-O3", "-g"],
+    extra_compile_args=["-O2", "-g"],
     libraries=["gfortran"],
 )
 
