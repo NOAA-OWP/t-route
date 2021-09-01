@@ -611,10 +611,13 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 def get_usgs_from_time_slices_folder(
     routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
 ):
-    usgs_files = []
-    
-    for file in data_assimilation_filter:
-        usgs_files.append(str(usgs_timeslices_folder)+"/"+file)
+    if type(data_assimilation_filter) == str:
+        usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
+    else:
+        usgs_files = []
+        
+        for file in data_assimilation_filter:
+            usgs_files.append(str(usgs_timeslices_folder)+"/"+file)
 
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
         df2 = pd.DataFrame(
