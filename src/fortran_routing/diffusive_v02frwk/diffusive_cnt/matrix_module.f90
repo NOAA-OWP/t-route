@@ -1,4 +1,4 @@
-  module matrix_module
+module matrix_module
 
     implicit none
     save
