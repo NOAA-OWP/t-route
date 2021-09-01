@@ -128,23 +128,23 @@ def read_ngen_nexus_id_to_downstream_comid_mapping(ngen_nexus_id_to_downstream_c
 
 def read_nexus_file(nexus_file_path):
     #with open(nexus_file_path) as json_file:
-    #    nexus_to_downstream_catchment_dict = json.load(json_file)
+    #    nexus_to_downstream_flowpath_dict = json.load(json_file)
 
-    nexus_to_downstream_catchment_df = gpd.read_file(nexus_file_path)
+    nexus_to_downstream_flowpath_df = gpd.read_file(nexus_file_path)
 
-    nexus_to_downstream_catchment_dict_str = dict(zip(nexus_to_downstream_catchment_df.id, nexus_to_downstream_catchment_df.toid))
+    nexus_to_downstream_flowpath_dict_str = dict(zip(nexus_to_downstream_flowpath_df.id, nexus_to_downstream_flowpath_df.toid))
 
     def node_key_func(x):
         return int(x[4:])
 
     # Extract the ID integer values
-    nexus_to_downstream_catchment_dict = {node_key_func(k): node_key_func(v) for k, v in nexus_to_downstream_catchment_dict_str.items()}
+    nexus_to_downstream_flowpath_dict = {node_key_func(k): node_key_func(v) for k, v in nexus_to_downstream_flowpath_dict_str.items()}
 
 
-    print ("nexus_to_downstream_catchment_dict")
-    print (nexus_to_downstream_catchment_dict)
+    print ("nexus_to_downstream_flowpath_dict")
+    print (nexus_to_downstream_flowpath_dict)
 
-    return nexus_to_downstream_catchment_dict
+    return nexus_to_downstream_flowpath_dict
 
 
 def replace_downstreams(data, downstream_col, terminal_code):
