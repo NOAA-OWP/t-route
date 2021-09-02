@@ -262,6 +262,9 @@ def parity_check(
         compare["absdiff"] = np.abs(
             compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
         )
+        compare["rel_absdiff"] = np.abs(
+            (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]) / compare["flow, wrf (cms)"]
+        )
 
         print(compare)
         print(compare.describe())
