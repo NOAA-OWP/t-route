@@ -5,8 +5,8 @@ from itertools import chain
 from operator import itemgetter
 from array import array
 from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
-from libc.math cimport exp, isnan, NAN
-cimport numpy as np
+from libc.math cimport isnan, NAN
+cimport numpy as np  # TODO: We are cimporting and importing numpy into the same symbol, 'np'. Problem?
 cimport cython
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport printf
