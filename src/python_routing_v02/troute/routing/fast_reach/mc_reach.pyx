@@ -233,7 +233,7 @@ cpdef object compute_network(
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
     cdef float[:] lastobs_values, lastobs_times
     cdef (float, float, float, float) da_buf
-    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
+    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
@@ -835,7 +835,7 @@ cpdef object compute_network_structured_obj(
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
     cdef float [:] lastobs_values, lastobs_times
     cdef (float, float, float, float) da_buf
-    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
+    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
@@ -1236,7 +1236,7 @@ cpdef object compute_network_structured(
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
     cdef float [:] lastobs_values, lastobs_times
     cdef (float, float, float, float) da_buf
-    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), -1, dtype="int32")
+    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
     if gages_size:
@@ -1369,7 +1369,7 @@ cpdef object compute_network_structured(
                 # For each reach,
                 # at the end of flow calculation, Check if there is something to assimilate
                 # by evaluating whether the reach_has_gage array has a value different from
-                # the initialized value, -1.
+                # the initialized value, np.iinfo(np.int32).min (the minimum possible integer).
 
                 # TODO: If it were possible to invert the time and reach loops
                 # (should be possible for the MC), then this check could be
