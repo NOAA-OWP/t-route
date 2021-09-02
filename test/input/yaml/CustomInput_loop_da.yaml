@@ -56,6 +56,7 @@ compute_parameters:
     compute_kernel: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured", "V02-diffusive-dummy"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
+    asynchronous: false
     #WRF-Hydro restart files
     restart_parameters:
         #WRF-Hydro channels restart file

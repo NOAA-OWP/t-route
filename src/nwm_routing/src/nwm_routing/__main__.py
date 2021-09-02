@@ -915,7 +915,7 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-    
+    asynchronous = compute_parameters.get("asynchronous", False)
     qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -927,7 +927,8 @@ def main_v03(argv):
         debuglevel,
     )
 
-    loop = asyncio.get_event_loop()
+    if asynchronous:
+        loop = asyncio.get_event_loop()
 
     for run_set_iterator, run in enumerate(run_sets):
 
@@ -938,43 +939,87 @@ def main_v03(argv):
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
-            execute_model = loop.run_in_executor(None, nwm_route,
-            connections,
-            rconn,
-            wbody_conn,
-            reaches_bytw,
-            parallel_compute_method,
-            compute_kernel,
-            subnetwork_target_size,
-            cpu_pool,
-            dt,
-            nts,
-            qts_subdivisions,
-            independent_networks,
-            param_df,
-            q0,
-            qlats,
-            usgs_df,
-            lastobs_df,
-            da_parameter_dict,
-            assume_short_ts,
-            return_courant,
-            waterbodies_df,
-            waterbody_parameters,
-            waterbody_types_df,
-            waterbody_type_specified,
-            diffusive_parameters,
-            showtiming,
-            verbose,
-            debuglevel,
-        )
+            if asynchronous:
+                execute_model = loop.run_in_executor(None, nwm_route,
+                connections,
+                rconn,
+                wbody_conn,
+                reaches_bytw,
+                parallel_compute_method,
+                compute_kernel,
+                subnetwork_target_size,
+                cpu_pool,
+                dt,
+                nts,
+                qts_subdivisions,
+                independent_networks,
+                param_df,
+                q0,
+                qlats,
+                usgs_df,
+                lastobs_df,
+                da_parameter_dict,
+                assume_short_ts,
+                return_courant,
+                waterbodies_df,
+                waterbody_parameters,
+                waterbody_types_df,
+                waterbody_type_specified,
+                diffusive_parameters,
+                showtiming,
+                verbose,
+                debuglevel,
+            )
+            else:
+                run_results = nwm_route(
+                connections,
+                rconn,
+                wbody_conn,
+                reaches_bytw,
+                parallel_compute_method,
+                compute_kernel,
+                subnetwork_target_size,
+                cpu_pool,
+                dt,
+                nts,
+                qts_subdivisions,
+                independent_networks,
+                param_df,
+                q0,
+                qlats,
+                usgs_df,
+                lastobs_df,
+                da_parameter_dict,
+                assume_short_ts,
+                return_courant,
+                waterbodies_df,
+                waterbody_parameters,
+                waterbody_types_df,
+                waterbody_type_specified,
+                diffusive_parameters,
+                showtiming,
+                verbose,
+                debuglevel,
+            )
 
         if (
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
             if run_sets_da:
                 data_assimilation_parameters['data_assimilation_filter'] = run_sets_da[run_set_iterator + 1]['data_assimilation_subset']
-            build_next_forcing = loop.run_in_executor(None, nwm_forcing_preprocess,
+            if asynchronous:
+                build_next_forcing = loop.run_in_executor(None, nwm_forcing_preprocess,
+                    run_sets[run_set_iterator + 1],
+                    forcing_parameters,
+                    data_assimilation_parameters,
+                    break_network_at_waterbodies,
+                    param_df.index,
+                    showtiming,
+                    verbose,
+                    debuglevel,
+                )
+            else:
+                qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 data_assimilation_parameters,
@@ -984,35 +1029,51 @@ def main_v03(argv):
                 verbose,
                 debuglevel,
             )
+                q0 = new_nwm_q0(run_results)
+        if asynchronous:
+            if run_set_iterator < len(run_sets) - 1:  # Only prepare the next forcing if there is one.
+                # Run the model, trigger preparation of next model forcing.
+                loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
+                run_results = execute_model.result()  # gives us whatever is returned, once it is done.
+                qlats, usgs_df, lastobs_dict, da_parameter_dict = build_next_forcing.result()  # gives us whatever is returned, once it is done.
+                # When model is complete, prepare next warmstate
+                new_q0 = loop.run_in_executor(None, new_nwm_q0, run_results)
+                loop.run_until_complete(asyncio.gather(new_q0))
+                q0 = new_q0.result()
+            else:  # For the last loop, no next forcing or warm state is needed for execution.
+                loop.run_until_complete(asyncio.gather(execute_model))
+                run_results = execute_model.result()  # gives us whatever is returned, once it is done.
 
-        if run_set_iterator < len(run_sets) - 1:  # Only prepare the next forcing if there is one.
-            # Run the model, trigger preparation of next model forcing.
-            loop.run_until_complete(asyncio.gather(execute_model, build_next_forcing))
-            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
-            qlats, usgs_df, lastobs_dict, da_parameter_dict = build_next_forcing.result()  # gives us whatever is returned, once it is done.
-            # When model is complete, prepare next warmstate
-            new_q0 = loop.run_in_executor(None, new_nwm_q0, run_results)
-            loop.run_until_complete(asyncio.gather(new_q0))
-            q0 = new_q0.result()
-        else:  # For the last loop, no next forcing or warm state is needed for execution.
-            loop.run_until_complete(asyncio.gather(execute_model))
-            run_results = execute_model.result()  # gives us whatever is returned, once it is done.
-
-        output_last_run = loop.run_in_executor(None, nwm_output_generator,
-            run_results,
-            supernetwork_parameters,
-            output_parameters,
-            parity_parameters,
-            parity_sets[run_set_iterator] if parity_parameters else {},
-            nts,
-            compute_parameters.get("return_courant", False),
-            showtiming,
-            verbose,
-            debuglevel,
-        )
-
-    loop.run_until_complete(output_last_run)
-    # nwm_final_output_generator()
+            output_last_run = loop.run_in_executor(None, nwm_output_generator,
+                run_results,
+                supernetwork_parameters,
+                output_parameters,
+                parity_parameters,
+                parity_sets[run_set_iterator] if parity_parameters else {},
+                nts,
+                compute_parameters.get("return_courant", False),
+                showtiming,
+                verbose,
+                debuglevel,
+            )
+        else:
+            nwm_output_generator(
+                run_results,
+                supernetwork_parameters,
+                output_parameters,
+                parity_parameters,
+                parity_sets[run_set_iterator] if parity_parameters else {},
+                nts,
+                compute_parameters.get("return_courant", False),
+                showtiming,
+                verbose,
+                debuglevel,
+            )
+    if asynchronous:
+        loop.run_until_complete(output_last_run)
+        # nwm_final_output_generator()
+    else:
+        pass
 
     if verbose:
         print("process complete")
