@@ -1,4 +1,6 @@
 import traceback
+from troute.routing.fast_reach import reach
+from test_suite_parameters import generate_conus_MC_parameters
 
 debuglevel = 0
 COMPILE = True
@@ -157,10 +159,11 @@ def singlesegment(
 
     return rv[:3]
 
-def main():
+
+def single_vs_double():
     """
       No Inputs: 
-      Uses seceral sets of hard-coded test values to show the behavior
+      Uses several sets of hard-coded test values to show the behavior
       of the Muskingum Cunge routing calculation module under a low-flow 
       and a high-flow condition.
     """
@@ -181,7 +184,7 @@ def main():
     # precision = "double"  # the fortran precis module must be edited
     precision = "single"
 
-    if precision is "single":
+    if precision == "single":
 
         """
         single precision results from standard procedure
@@ -215,7 +218,7 @@ def main():
         # depthp = 0.010033470578491688  # Depth at the current segment in the previous timestep')
         # velp = 0.07048019021749496  # Velocity in the current segment in the previous timestep NOT USED AS AN INPUT!!!
 
-    elif precision is "double":
+    elif precision == "double":
         """
         double precision results from standard procedure
         k,   i,   q,    vel,    depth
@@ -302,25 +305,84 @@ def main():
         )
     )
 
+
+def activate_compound_channel():
     print("\nSecond set of inputs activating compound channel")
-    dt = 60.0  # Time step
-    dx = 1800.0  # segment length
-    bw = 112.0  # Trapezoidal bottom width
-    tw = 248.0  # Channel top width (at bankfull)
-    twcc = 623.5999755859375  # Flood plain width
-    n_manning = 0.02800000086426735  # manning roughness of channel
-    n_manning_cc = 0.03136000037193298  # manning roughness of floodplain
-    cs = 0.42  # channel trapezoidal sideslope
-    s0 = 0.007999999690800905  # downstream segment bed slope
-    qlat = 40.0  # Lateral inflow in this time step
+    param_set = [
+        {
+            "precision": "single",
+            "dt": 60.0,  # Time step
+            "dx": 1800.0,  # segment length
+            "bw": 112.0,  # Trapezoidal bottom width
+            "tw": 248.0,  # Channel top width (at bankfull)
+            "twcc": 623.5999755859375,  # Flood plain width
+            "n_manning": 0.02800000086426735,  # manning roughness of channel
+            "n_manning_cc": 0.03136000037193298,  # manning roughness of floodplain
+            "cs": 0.42,  # channel trapezoidal sideslope
+            "s0": 0.007999999690800905,  # downstream segment bed slope
+            "qlat": 40.0,  # Lateral inflow in this time step
+            "qup": 45009,
+            "quc": 50098,
+            "qdp": 50014,
+            "depthp": 30,
+        },
+    ]
 
-    qup = 45009
-    quc = 50098
-    qdp = 50014
-    depthp = 30
+    qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods(**param_set[0])
+
+    print(
+        "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+            qdc1 - qdc2, velc1 - velc2, depthc1 - depthc2
+        )
+    )
+
+
+def main():
+    single_vs_double()
+    activate_compound_channel()
+
+    n_tests = 5000
+    seedval = 16
+    param_set = generate_conus_MC_parameters(n_tests, seedval)
+    for p in param_set:
+        qdc1, qdc2, velc1, velc2, depthc1, depthc2 = compare_methods("single", *p)
+        # print(
+        #     "first q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+        #         qdc1, velc1, depthc1
+        #     )
+        # )
+        # print(
+        #     "second q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+        #         qdc2, velc2, depthc2
+        #     )
+        # )
+        print(
+            "original minus cython method q: {0: 8.15f} vel: {1: 8.15f} depth: {2: 8.15f}".format(
+                qdc1 - qdc2, velc1 - velc2, depthc1 - depthc2
+            )
+        )
+
+def compare_methods(
+    precision,
+    dt,
+    qup,
+    quc,
+    qdp,
+    qlat,
+    dx,
+    bw,
+    tw,
+    twcc,
+    n_manning,
+    n_manning_cc,
+    cs,
+    s0,
+    depthp,
+):
+    # TODO: introduce ability to toggle precision
 
     # run M-C model
-    qdc, velc, depthc = singlesegment(
+    qdc1, velc1, depthc1 = singlesegment(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -338,13 +400,13 @@ def main():
         depthp=depthp,
     )
 
-    print(
-        "real {} precision computed via updated method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
-    )
+    # print(
+        # "real {} precision computed via updated method wrapped in f2py q: {} vel: {} depth: {}".format(
+            # precision, qdc1, velc1, depthc1
+        # )
+    # )
     # run M-C model
-    qdc, velc, depthc = singlesegment_wrf(
+    qdc_t, velc_t, depthc_t = singlesegment_wrf(
         # precision=precision,
         dt=dt,
         qup=qup,
@@ -361,11 +423,45 @@ def main():
         s0=s0,
         depthp=depthp,
     )
-    print(
-        "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
-            precision, qdc, velc, depthc
-        )
+
+    # print(
+        # "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+            # precision, qdc_t, velc_t, depthc_t
+        # )
+    # )
+
+    # compare_func = reach.compute_reach_cython_kernel
+    compare_func = reach.compute_reach_kernel
+
+    # run M-C cython model
+    rv = compare_func(
+        # precision=precision,
+        dt,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n_manning,
+        n_manning_cc,
+        cs,
+        s0,
+        0,
+        depthp,
     )
+    qdc2, velc2, depthc2 = rv["qdc"], rv["velc"], rv["depthc"]
+
+    # print(
+        # "real {} precision computed via T-Route method q: {} vel: {} depth: {}".format(
+            # precision, qdc2, velc2, depthc2
+        # )
+    # )
+
+    # compare_func = reach.compute_reach_cython_kernel
+    return qdc1, qdc2, velc1, velc2, depthc1, depthc2
 
 
 if __name__ == "__main__":
