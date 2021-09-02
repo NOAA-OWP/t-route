@@ -1,7 +1,6 @@
 from libc.math cimport exp, isnan
 from libc.stdio cimport printf
 
-# TODO: remove unused math functions from mc_reach.pyx
 
 cpdef float simple_da_with_decay_py(
     const float last_valid_obs,
