@@ -2,6 +2,7 @@ import json
 import pathlib
 import pandas as pd
 from functools import partial
+# TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 
@@ -386,14 +387,6 @@ def set_supernetwork_parameters(
             # TODO: add error trapping for potentially missing files
 
 
-def reverse_dict(d):
-    """
-    Reverse a 1-1 mapping
-    Values must be hashable!
-    """
-    return {v: k for k, v in d.items()}
-
-
 def build_connections(supernetwork_parameters):
     cols = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
@@ -412,7 +405,7 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
-    param_df = param_df.rename(columns=reverse_dict(cols))
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
@@ -431,7 +424,8 @@ def build_connections(supernetwork_parameters):
     #        cs: "ChSlp"  # TODO: rename to `sideslope`
     param_df = param_df.sort_index()
 
-    param_df = param_df.rename(columns=reverse_dict(cols))
+    # TODO: Do we need this second, identical call to the one above?
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols)) 
 
     wbodies = {}
     if "waterbody" in cols:
@@ -636,23 +630,36 @@ def build_data_assimilation(data_assimilation_parameters):
     # with an empty usgs dataframe.
 
     last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
+    last_obs_start = data_assimilation_parameters.get(
+        "wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time", 0
+    )
     last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
     last_obs_crosswalk_file = data_assimilation_parameters.get(
         "wrf_hydro_da_channel_ID_crosswalk_file", None
     )
 
+    usgs_df = pd.DataFrame()
     last_obs_df = pd.DataFrame()
-
-    if last_obs_file:
-        last_obs_df = nhd_io.build_last_obs_df(
-            last_obs_file, last_obs_crosswalk_file, last_obs_type,
-        )
 
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
     elif data_assimilation_folder:
         usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
-    return usgs_df, last_obs_df
+
+    if last_obs_file:
+        last_obs_df = nhd_io.build_last_obs_df(
+            last_obs_file,
+            last_obs_crosswalk_file,
+            last_obs_type,  # TODO: Confirm that we are using this; delete it if not.
+            last_obs_start,
+        )
+        if not usgs_df.empty and not usgs_df.index.equals(last_obs_df.index):
+            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            usgs_df = usgs_df.loc[last_obs_df.index]
+
+    da_parameter_dict = {}
+    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+    return usgs_df, last_obs_df, da_parameter_dict
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):

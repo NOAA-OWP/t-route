@@ -81,8 +81,8 @@ def nwm_output_generator(
             ).to_flat_index()
             courant = pd.concat(
                 [
-                    pd.DataFrame(c, index=i, columns=courant_columns)
-                    for i, d, c in results
+                    pd.DataFrame(r[2], index=r[0], columns=courant_columns)
+                    for r in results
                 ],
                 copy=False,
             )

@@ -12,6 +12,7 @@ import sys
 import math
 from datetime import *
 
+from troute.nhd_network import reverse_dict
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -402,56 +403,125 @@ def preprocess_time_station_index(xd):
     )
 
 
-def build_last_obs_df(lastobsfile, routelink, wrf_last_obs_flag):
-    # open routelink_file and extract discharges
+def build_last_obs_df(
+        lastobsfile,
+        routelink,
+        wrf_last_obs_flag,
+        time_shift = 0,
+        gage_id = "gages",
+        link_id = "link",
+        model_discharge_id = "model_discharge",
+        obs_discharge_id = "discharge",
+        time_idx_id = "timeInd",
+        station_id = "stationId",
+        station_idx_id = "stationIdInd",
+        time_id = "time",
+        discharge_nan = -9999.0,
+        ref_t_attr_id = "modelTimeAtOutput",
+        blank_filter = b"               ",
+        route_link_idx = "feature_id",
+        # last_nudge_id = "last_nudge",
+    ):
 
-    ds1 = xr.open_dataset(routelink)
-    df = ds1.to_dataframe()
-    df2 = df.loc[df["gages"] != b"               "]
-    df2["gages"] = df2["gages"].astype("int")
-    df2 = df2[["gages", "to"]]
-    df2 = df2.reset_index()
-    df2 = df2.set_index("gages")
+    standard_columns = {
+        "last_obs_discharge": obs_discharge_id,
+        "time_since_lastobs": time_id,
+        "gages": gage_id,
+        "last_model_discharge": model_discharge_id
+    }
+
+    """
+    Open last_obs file, import the segment keys from the routelink_file
+    and extract discharges.
+    """
+    # TODO: We should already know the link/gage relationship by this point and can require that as an input
+    # TODO: ... so we could get rid of the following handful of lines.
+    with xr.open_dataset(routelink) as ds1:
+        station_gage_df = ds1[[gage_id,link_id]].to_dataframe()
+        station_gage_df = station_gage_df.loc[station_gage_df[gage_id] != blank_filter]
+        station_gage_df[gage_id] = station_gage_df[gage_id].astype("int")
+        station_gage_df = station_gage_df[[gage_id, link_id]]
+        station_gage_df = station_gage_df.reset_index()
+        station_gage_df = station_gage_df.set_index(gage_id)
+        station_gage_df = station_gage_df.drop(route_link_idx, axis=1)
 
     with xr.open_dataset(lastobsfile) as ds:
-        df_model_discharges = ds["model_discharge"].to_dataframe()
-        df_discharges = ds["discharge"].to_dataframe()
-        last_ts = df_model_discharges.index.get_level_values("timeInd")[-1]
-        model_discharge_last_ts = df_model_discharges[
-            df_model_discharges.index.get_level_values("timeInd") == last_ts
-        ]
+        model_discharge_last_ts = ds[model_discharge_id][:,-1].to_dataframe()
+
+        # TODO: Determine if the df_discharges extractions can be performed
+        # exclusively on the dataset with no
+        # transformation to dataframe.
+        # ... like how we are doing for the model_discharge_last_ts
+        # NOTE: The purpose of the interpolation is to pull the last non-nan
+        # value in the time series forward to the end of the series for easy extraction.
+        # Caution should be exercised not to compare modeled values from the last
+        # time step with the last valid observed values, as these may not
+        # correspond to the same times. (See additional comment below...)
+
+        df_discharges = ds[obs_discharge_id].to_dataframe()
+        last_ts = df_discharges.index.get_level_values(time_idx_id)[-1]
+        df_discharges[df_discharges[obs_discharge_id] != discharge_nan] = df_discharges[
+            df_discharges[obs_discharge_id] != discharge_nan
+        ].interpolate(method="linear", axis=1)
+
         discharge_last_ts = df_discharges[
-            df_discharges.index.get_level_values("timeInd") == last_ts
+            df_discharges.index.get_level_values(time_idx_id) == last_ts
         ]
-        df1 = ds["stationId"].to_dataframe()
-        df1 = df1.astype(int)
-        model_discharge_last_ts = model_discharge_last_ts.join(df1)
+        # ref_time = ds.attrs[ref_t_attr_id]
+        ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
+        # lastobs_times = ds[time_id][:,-1]
+        # lastobs_times = ds[time_id].str.decode("utf-8").to_dataframe()
+        lastobs_times = pd.to_datetime(
+            ds[time_id][:,-1].to_dataframe()[time_id].str.decode("utf-8"),
+            format="%Y-%m-%d_%H:%M:%S",
+            errors='coerce',
+        )
+        lastobs_times = (lastobs_times - ref_time).dt.total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+        lastobs_stations = ds[station_id].to_dataframe().astype(int)
+
+        ## END OF CONTEXT (Remaining items could be outdented...)
+        model_discharge_last_ts = model_discharge_last_ts.join(lastobs_stations)
+        model_discharge_last_ts = model_discharge_last_ts.join(lastobs_times)
         model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
         model_discharge_last_ts = model_discharge_last_ts.loc[
-            model_discharge_last_ts["model_discharge"] != -9999.0
+            model_discharge_last_ts[model_discharge_id] != discharge_nan
         ]
         model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index(
-            "stationId"
+            station_id
         )
         model_discharge_last_ts = model_discharge_last_ts.drop(
-            ["stationIdInd", "timeInd"], axis=1
+            [station_idx_id, time_idx_id], axis=1
         )
-        model_discharge_last_ts["discharge"] = model_discharge_last_ts[
-            "discharge"
+
+        model_discharge_last_ts[obs_discharge_id] = model_discharge_last_ts[
+            obs_discharge_id
         ].to_frame()
         # If predict from last_obs file use last obs file results
         # if last_obs_file == "error-based":
         # elif last_obs_file == "obs-based":  # the wrf-hydro default
-        if wrf_last_obs_flag:
-            model_discharge_last_ts["last_nudge"] = (
-                model_discharge_last_ts["discharge"]
-                - model_discharge_last_ts["model_discharge"]
-            )
-        final_df = df2.join(model_discharge_last_ts["discharge"])
+        # NOTE:  The following would compare potentially mis-matched
+        # obs/model pairs, so it is commented until we can figure out
+        # a more robust bias-type persistence.
+        # For now, we use only obs-type persistence.
+        # It would be possible to preserve a 'last_valid_bias' which would
+        # presumably correspond to the last_valid_time.
+        # # if wrf_last_obs_flag:
+        # #     model_discharge_last_ts[last_nudge_id] = (
+        # #         model_discharge_last_ts[obs_discharge_id]
+        # #         - model_discharge_last_ts[model_discharge_id]
+        # #     )
+
+        # final_df = station_gage_df.join(model_discharge_last_ts[obs_discharge_id])  # Preserve all columns
+        final_df = station_gage_df.join(model_discharge_last_ts)
         final_df = final_df.reset_index()
-        final_df = final_df.set_index("to")
-        final_df = final_df.drop(["feature_id", "gages"], axis=1)
+        final_df = final_df.set_index(link_id)
+        # final_df = final_df.drop([gage_id], axis=1)  # Not needed -- gage id could be useful
+        # TODO: What effect does this dropna have?
         final_df = final_df.dropna()
+        # Translate to standard column names
+        final_df = final_df.rename(columns=reverse_dict(standard_columns))
 
         # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
         # else:
@@ -591,9 +661,35 @@ def get_usgs_from_time_slices_folder(
     """
 
     usgs_df = usgs_df.reindex(columns=dates)
+    # TODO: this index shifting is a data qa issue -- the time slices come in with extra values
+    # on the front end and we have to trim those.
+    # TODO: DO NOT ACCEPT THIS PR UNTIL WE ARE SURE THE DATES LINE UP!!
+    usgs_df = usgs_df.iloc[:, 1:]
 
-    usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
+    # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
+    # TODO: Implement a robust test verifying the intended output of the interpolation
+    """
+    The idea would be to have a function in Cython which could be called in a testable 
+    framework with inputs such as the following (and corresponding expected outputs for 
+    the various combinations) for use with pytest or the like:
+    ```
+    obs = [ 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10]
+    obs_gap1 = [ None, None, None, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10]
+    obs_gap2 = [ 10, None, None, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10]
+    obs_gap3 = [ 10, 11, 14, None, None, None, 26, 20, 14, 12, 11, 10, 10, 10, 10]
+    obs_gap4 = [ 10, 11, 14, 18, 30, 32, 26, None, None, None, 11, 10, 10, 10, 10]
+    obs_gap5 = [ 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, None, None, None, None]
+    modeled_low = [ 8, 9, 12, 16, 28, 30, 24, 18, 12, 10, 9, 8, 8, 8, 8]
+    modeled_high = [ 12, 13, 16, 20, 32, 34, 28, 22, 16, 14, 13, 12, 12, 12, 12]
+    modeled_shift_late = [ 10, 10, 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10]
+    modeled_shift_late = [ 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10, 10]
+    last_obs = {"obs":9.5, "time":0}  # Most recent observation at simulation start
+    last_obs_old = {"obs":9.5, "time":-3600}  # Most recent observation 1 hour ago
+    last_obs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
+    ```
+    """
+    # usgs_df = usgs_df.interpolate(method="linear", axis=1)
+    # usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df

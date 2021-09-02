@@ -5,6 +5,14 @@ from collections.abc import Iterable
 from toolz import pluck
 
 
+def reverse_dict(d):
+    """
+    Reverse a 1-1 mapping
+    Values must be hashable!
+    """
+    return {v: k for k, v in d.items()}
+
+
 def nodes(N):
     yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
 

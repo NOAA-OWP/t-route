@@ -343,6 +343,7 @@ subroutine secant_h0(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     ! call courant subroutine here
     ! *************************************************************
     call courant(h, bfd, bw, twcc, ncc, s0, n, z, dx, dt, ck, cn)
+    !print*, "deep down", depthc
 
 end subroutine muskingcungenwm
 
