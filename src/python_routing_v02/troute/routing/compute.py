@@ -178,7 +178,7 @@ def compute_nhd_routing_v02(
                 else:
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
-                        list(waterbodies_df.index.values),
+                        set(waterbodies_df.index.values),
                         rconn_subn
                         )
                 reaches_ordered_bysubntw[order][
@@ -436,7 +436,7 @@ def compute_nhd_routing_v02(
                 else:
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
-                        list(waterbodies_df.index.values),
+                        set(waterbodies_df.index.values),
                         rconn_subn
                         )
                 reaches_ordered_bysubntw[order][

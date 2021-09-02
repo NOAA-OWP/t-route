@@ -499,7 +499,7 @@ def organize_independent_networks(connections, wbodies=None):
     for tw, net in independent_networks.items():
         if wbodies:
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, wbodies, net
+                nhd_network.split_at_waterbodies_and_junctions, set(wbodies), net
             )
         else:
             path_func = partial(nhd_network.split_at_junction, net)
