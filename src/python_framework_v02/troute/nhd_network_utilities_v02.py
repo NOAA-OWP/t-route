@@ -397,6 +397,13 @@ def build_connections(supernetwork_parameters):
 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
+    print ("param_df after read")
+    print (param_df)
+    print ("$$$$$$$$$$$$$$$$$$$$$$$")
+
+    #JDM: Might need to parse out the ints from the fp-id here like in
+    #https://github.com/NOAA-OWP/t-route/blob/master/src/external_connections/next_gen_network.py#L82
+
     param_df = param_df[list(cols.values())]
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     if synthetic_wb_segments:
@@ -430,9 +437,20 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
+    print ("param_df after read1.5")
+    print (param_df)
+    print ("$$$$$$$$$$$$$$$$$$$$$$$")
+    print ("cols!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print (cols)
+    print ("******************")
+
     #JDM: line below new??
     #param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     ####################################################
+
+    print ("param_df after read2")
+    print (param_df)
+    print ("$$$$$$$$$$$$$$$$$$$$$$$")
 
     #if "ngen_nexus_id_to_downstream_comid_mapping_json" in supernetwork_parameters:
     #    ngen_nexus_id_to_downstream_comid_mapping_dict = nhd_io.read_ngen_nexus_id_to_downstream_comid_mapping(
@@ -475,6 +493,10 @@ def build_connections(supernetwork_parameters):
 
     # TODO: Do we need this second, identical call to the one above?
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+    
+    print ("param_df after rename")
+    print (param_df)
+    print ("$$$$$$$$$$$$$$$$$$$$$$$")
 
     wbodies = {}
     if "waterbody" in cols:
