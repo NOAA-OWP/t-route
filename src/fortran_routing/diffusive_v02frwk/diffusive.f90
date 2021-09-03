@@ -223,9 +223,10 @@ contains
         end do
 
         z=z_ar_g
-        ini_y=0.05  !* [meter]
-        ini_q=0.5   !*[m^3/sec]
-        oldQ = -999; oldY = -999; newQ = -999; newY = -999
+        !ini_y=0.05  !* [meter]
+        !ini_q=0.5   !*[m^3/sec]
+        !oldQ = -999; oldY = -999; 
+	newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
         !* Reading Q-SK table data data starts
@@ -255,8 +256,8 @@ contains
                                         leftBank(i,j), rightBank(i,j),timesDepth, j,&
                                         z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
 
-                    oldY(i,j) = ini_y(j) + z(i,j)
-                    oldQ(i,j) = ini_q(j)
+                    !oldY(i,j) = ini_y(j) + z(i,j)
+                    !oldQ(i,j) = ini_q(j)
                 end do
             end if
         end do
@@ -324,6 +325,32 @@ contains
                 call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
             end if
         enddo
+       !* compute initial water depth (normal depth), celerity, and diffusivity using iniq
+        q_sk_multi=1.0
+        do j=1, nlinks
+            ncomp= frnw_g(j,1)
+            do i=1, ncomp
+                !* normal depth
+                if (i==1) then
+                    slope= (z(i,j)-z(i+1,j))/dx(i,j)
+                else
+                    slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
+                endif
+                if (slope .le. 0.0001) slope = 0.0001
+                oldQ(i,j) = iniq(i,j)
+                qp(i,j)= oldQ(i,j)
+                if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
+                    !*use TW boundary water elevation data
+                    oldY(ncomp,j)=oldY(ncomp,j)
+                else
+                    !* oldY(i,j) <- normal depth for iniq(i,j) + z(i,j). Hence, oldY is water elevation [m].
+                    call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), oldY(i,j), temp, temp, temp)
+                endif
+            enddo
+            !* for computing celerity and diffusivity
+            newY(ncomp,j)= oldY(ncomp,j)
+            call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j,leftBank, rightBank)
+        enddo
         !* correcting the WL initial condition based on the WL boundary
         !* so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
         do j = 1,nlinks
@@ -362,9 +389,9 @@ contains
         qpx = 0.
         cfl=0.9
         width = 100. !   initialization
-        celerity = 1.0
+        !celerity = 1.0
         maxCelerity = 1.0
-        diffusivity = 10.
+        !diffusivity = 10.
         maxCelDx = maxCelerity / minDx
         !!! setting initial values of dimensionless parameters
         !dimensionless_Cr, dimensionless_Fo, dimensionless_Fi, dimensionless_Fc, dimensionless_Di, dimensionless_D
