@@ -504,7 +504,7 @@ def main_v02(argv):
         if verbose:
             print("creating usgs time_slice data array ...")
 
-            usgs_df, usgs_qual_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
+            usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
                 data_assimilation_parameters
             )
 
