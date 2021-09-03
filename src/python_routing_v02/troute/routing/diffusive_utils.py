@@ -636,6 +636,9 @@ def diffusive_input_data_v02(
                     
                 idx_segID = np.where(geo_index == segID)
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                # set min. value to prevent water depth computation from crashing in fortran kernel.
+                if iniq[seg, frj]<0.0001: 
+                    iniq[seg, frj]=0.0001
                 
     # ---------------------------------------------------------------------------------
     #                              Step 0-7

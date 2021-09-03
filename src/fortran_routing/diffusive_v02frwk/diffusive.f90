@@ -34,7 +34,6 @@ module diffusive
     double precision, dimension(:,:), allocatable :: lateralFlow
     double precision, dimension(:,:), allocatable :: dimensionless_Cr, dimensionless_Fo, dimensionless_Fi
     double precision, dimension(:,:), allocatable :: dimensionless_Di, dimensionless_Fc, dimensionless_D
-    double precision, dimension(:), allocatable :: ini_y, ini_q
     double precision, dimension(:), allocatable :: lowerLimitCount, higherLimitCount
     double precision, dimension(:,:), allocatable :: volRemain
     integer, dimension(:), allocatable :: currentROutingDiffusive, notSwitchRouting
@@ -118,7 +117,8 @@ contains
         integer :: ndata, idmy1, nts_db_g2
         double precision :: slope, y_norm, area_n, temp
 
-        !open(unit=101, file="./output/simulated discharge depth elev.txt")
+        !open(unit=101, file="./temp_test/simulated discharge depth elev.txt")
+	!open(unit=11, file="./temp_test/iniY C D.txt")
 
         nlinks=nrch_g
         allocate(frnw_g(nlinks,frnw_col))
@@ -196,8 +196,6 @@ contains
         allocate(rightBank(num_points, totalChannels), leftBank(num_points, totalChannels))
         allocate(skLeft(num_points, totalChannels), skMain(num_points, totalChannels), skRight(num_points, totalChannels))
         allocate(currentSquareDepth(nel))
-        allocate(ini_y(nlinks))
-        allocate(ini_q(nlinks))
         allocate(notSwitchRouting(nlinks))
         allocate(currentROutingDiffusive(nlinks))
         allocate(tarr_ql(nts_ql_g), varr_ql(nts_ql_g))
@@ -223,8 +221,6 @@ contains
         end do
 
         z=z_ar_g
-        !ini_y=0.05  !* [meter]
-        !ini_q=0.5   !*[m^3/sec]
         !oldQ = -999; oldY = -999; 
 	newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
@@ -255,9 +251,6 @@ contains
                     call readXsection(i,(1.0/skLeft(i,j)),(1.0/skMain(i,j)),(1.0/skRight(i,j)),&
                                         leftBank(i,j), rightBank(i,j),timesDepth, j,&
                                         z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
-
-                    !oldY(i,j) = ini_y(j) + z(i,j)
-                    !oldQ(i,j) = ini_q(j)
                 end do
             end if
         end do
@@ -330,28 +323,42 @@ contains
         do j=1, nlinks
             ncomp= frnw_g(j,1)
             do i=1, ncomp
-                !* normal depth
-                if (i==1) then
-                    slope= (z(i,j)-z(i+1,j))/dx(i,j)
-                else
-                    slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
-                endif
-                if (slope .le. 0.0001) slope = 0.0001
                 oldQ(i,j) = iniq(i,j)
                 qp(i,j)= oldQ(i,j)
-                if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
-                    !*use TW boundary water elevation data
-                    oldY(ncomp,j)=oldY(ncomp,j)
-                else
-                    !* oldY(i,j) <- normal depth for iniq(i,j) + z(i,j). Hence, oldY is water elevation [m].
-                    call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), oldY(i,j), temp, temp, temp)
-                endif
+		if (i==ncomp) then
+                	if (i==1) then
+                    		slope= (z(i,j)-z(i+1,j))/dx(i,j)
+                	else
+                    		slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
+                	endif
+                	if (slope .le. 0.0001) slope = 0.0001
+
+                	if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
+                    	!*use TW boundary water elevation data
+                    		oldY(ncomp,j)=oldY(ncomp,j)
+                	else
+                    	!* oldY(i,j) <- normal depth for iniq(i,j) + z(i,j). Hence, oldY is water elevation [m].
+                    		call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), oldY(i,j), temp, temp, temp)
+                	endif
+		endif
             enddo
             !* for computing celerity and diffusivity
             newY(ncomp,j)= oldY(ncomp,j)
             call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j,leftBank, rightBank)
+	    do i=1,ncomp-1
+		oldY(i,j)=newY(i,j)
+	    enddo
         enddo
-        !* correcting the WL initial condition based on the WL boundary
+	!* test	
+	!do j=1, nlinks
+	!	ncomp= frnw_g(j,1)		
+	!	write(11,*) j, "ncomp:", ncomp, "iniq:", (iniq(i,j),i=1,mxncomp),&
+	!			  "ini_elv:", (oldY(i,j), i=1,mxncomp),&
+	!			"ini_C:", (celerity(i,j),i=1,mxncomp),&
+	!			"ini_D:", (diffusivity(i,j),i=1,mxncomp)
+	!enddo         
+	
+	!* correcting the WL initial condition based on the WL boundary
         !* so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
         do j = 1,nlinks
             ncomp= frnw_g(j,1)
@@ -672,6 +679,7 @@ contains
                     do i=1, ncomp
                         q_ev_g(ts_ev, i, j)= newQ(i,j)
                         elv_ev_g(ts_ev, i, j)= newY(i,j)
+			!write(101,"(F8.1, 2I10, 3F20.4)") t,i,j,newQ(i,j),newY(i,j)-z(i,j), newY(i,j)
                     enddo
                 enddo
                 ts_ev=ts_ev+1
@@ -697,7 +705,7 @@ contains
         deallocate(elevTable, areaTable, pereTable, rediTable, convTable, topwTable)
         deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
         deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
-        deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
+        deallocate(currentSquareDepth,  notSwitchRouting, currentROutingDiffusive ) 
         deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub)
 
 
