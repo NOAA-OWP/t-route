@@ -614,12 +614,21 @@ def get_usgs_from_time_slices_folder(
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
 
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
+        
+        # dataframe containing discharge observations
         df2 = pd.DataFrame(
             ds2["discharge"].values.T,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
-
+        
+        # dataframe containing discharge quality flags [0,1]
+        df_qual = pd.DataFrame(
+            ds2["discharge_quality"].values.T/100,
+            index=ds2["stationId"].values,
+            columns=ds2.time.values,
+        )
+                
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
         gage_mask = list(map(bytes.isdigit, gage_list))
@@ -633,23 +642,24 @@ def get_usgs_from_time_slices_folder(
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
 
-    usgs_df = df.join(df2)
-    usgs_df = usgs_df.reset_index()
-    usgs_df = usgs_df.rename(columns={"index": "gages"})
-    usgs_df = usgs_df.set_index("link")
-    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
-    columns_list = usgs_df.columns
-
-    original_string_first = usgs_df.columns[0]
-    date_time_str = original_string_first[:10] + " " + original_string_first[11:]
-    date_time_obj_start = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
-
-    original_string_last = usgs_df.columns[-1]
-    date_time_str = original_string_last[:10] + " " + original_string_last[11:]
-    date_time_obj_end = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
-
+    
+    usgs_df = (df.join(df2).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
+    
+    usgs_qual_df = (df.join(df_qual).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
+    
+    date_time_strs = usgs_df.columns.tolist()
+    date_time_obj_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
+    date_time_obj_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
+        
     dates = []
-    # for j in pd.date_range(date_time_obj_start, date_time_obj_end + timedelta(1), freq="5min"):
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
         dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
 
@@ -661,10 +671,12 @@ def get_usgs_from_time_slices_folder(
     """
 
     usgs_df = usgs_df.reindex(columns=dates)
+    usgs_qual_df = usgs_qual_df.reindex(columns=dates)
     # TODO: this index shifting is a data qa issue -- the time slices come in with extra values
     # on the front end and we have to trim those.
     # TODO: DO NOT ACCEPT THIS PR UNTIL WE ARE SURE THE DATES LINE UP!!
     usgs_df = usgs_df.iloc[:, 1:]
+    usgs_qual_df = usgs_qual_df.iloc[:, 1:]
 
     # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
     # TODO: Implement a robust test verifying the intended output of the interpolation
@@ -691,8 +703,9 @@ def get_usgs_from_time_slices_folder(
     # usgs_df = usgs_df.interpolate(method="linear", axis=1)
     # usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
+    usgs_qual_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
-    return usgs_df
+    return usgs_df, usgs_qual_df
 
 
 # TODO: Move channel restart above usgs to keep order with execution script
