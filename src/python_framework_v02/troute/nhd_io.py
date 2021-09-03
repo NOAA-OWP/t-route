@@ -700,12 +700,28 @@ def get_usgs_from_time_slices_folder(
     last_obs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
     ```
     """
-    # usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    # usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
+    
+    # ---- Laugh testing ------
+    # scren-out erroneous qc flags
+    usgs_qual_df = usgs_qual_df.mask(usgs_qual_df < 0, np.nan)
+    usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
+    
+    # screen-out poor quality flow observations
+    qc_trehsh = 1
+    usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
+    
+    # screen-out erroneous flow observations
+    usgs_df = usgs_df.mask(usgs_df < 0, np.nan)
+        
+    # ---- Interpolate USGS observations to time discretization of the simulation ----
+    usgs_df.columns = pd.to_datetime(usgs_df.columns, format = "%Y-%m-%d_%H:%M:00")
+    max_fill = 5
+    usgs_df = usgs_df.interpolate(method='index', axis = 1, limit = max_fill, limit_direction = 'forward')
+
     usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
     usgs_qual_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
-    return usgs_df, usgs_qual_df
+    return usgs_df
 
 
 # TODO: Move channel restart above usgs to keep order with execution script
