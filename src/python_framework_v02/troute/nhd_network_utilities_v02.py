@@ -639,12 +639,13 @@ def build_data_assimilation(data_assimilation_parameters):
     )
 
     usgs_df = pd.DataFrame()
+    usgs_qual_df = pd.DataFrame()
     last_obs_df = pd.DataFrame()
 
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
     elif data_assimilation_folder:
-        usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
+        usgs_df, usgs_qual_df = build_data_assimilation_folder(data_assimilation_parameters)
 
     if last_obs_file:
         last_obs_df = nhd_io.build_last_obs_df(
@@ -659,7 +660,7 @@ def build_data_assimilation(data_assimilation_parameters):
 
     da_parameter_dict = {}
     da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
-    return usgs_df, last_obs_df, da_parameter_dict
+    return usgs_df, usgs_qual_df, last_obs_df, da_parameter_dict
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):
@@ -679,10 +680,10 @@ def build_data_assimilation_folder(data_assimilation_parameters):
             data_assimilation_parameters["data_assimilation_timeslices_folder"],
         ).resolve()
 
-        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
+        usgs_df, usgs_qual_df = nhd_io.get_usgs_from_time_slices_folder(
             data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
         )
 
-    return usgs_df
+    return usgs_df, usgs_qual_df
