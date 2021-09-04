@@ -653,7 +653,6 @@ def get_usgs_from_time_slices_folder(
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
 
-
     usgs_df = (df.join(df2).
                reset_index().
                rename(columns={"index": "gages"}).
@@ -710,6 +709,7 @@ def get_usgs_from_time_slices_folder(
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
 
     # screen-out poor quality flow observations
+    # TODO: Bring qc_thresh parameter in from yaml as user input
     qc_trehsh = 1
     usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
 
@@ -720,6 +720,7 @@ def get_usgs_from_time_slices_folder(
     usgs_df_T = usgs_df.transpose()
     usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
 
+    # TODO: Bring max_fill_lmin parameter in from yaml as user input
     max_fill_1min = 59
     """
     Note: The max_fill is applied when the series is being considered at a 1 minute interval
@@ -728,7 +729,7 @@ def get_usgs_from_time_slices_folder(
 
     TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     """
-        usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
+    usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
     usgs_df_new = usgs_df_T.transpose()
 
     # TODO: At this point in the code, if we had a date parameter from
