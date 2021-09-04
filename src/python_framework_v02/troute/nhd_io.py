@@ -672,7 +672,6 @@ def get_usgs_from_time_slices_folder(
 
     dates = []
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
-        # dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
         dates.append(j)
 
     """
@@ -681,15 +680,7 @@ def get_usgs_from_time_slices_folder(
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
     """
-
-    # usgs_df = usgs_df.reindex(columns=dates)
-    # usgs_qual_df = usgs_qual_df.reindex(columns=dates)
-    # TODO: this index shifting is a data qa issue -- the time slices come in with extra values
-    # on the front end and we have to trim those.
-    # TODO: DO NOT ACCEPT THIS PR UNTIL WE ARE SURE THE DATES LINE UP!!
-    # usgs_df = usgs_df.iloc[:, 1:]
-    # usgs_qual_df = usgs_qual_df.iloc[:, 1:]
-
+    
     # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
     # TODO: Implement a robust test verifying the intended output of the interpolation
     """
@@ -730,8 +721,6 @@ def get_usgs_from_time_slices_folder(
     usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
 
     max_fill_1min = 59
-    # max_fill_1min = 14
-    # max_fill = 5
     """
     Note: The max_fill is applied when the series is being considered at a 1 minute interval
     14 minutes ensures no over-interpolation with 15-minute gage records, but creates
@@ -739,13 +728,9 @@ def get_usgs_from_time_slices_folder(
 
     TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     """
+        usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
+    usgs_df_new = usgs_df_T.transpose()
 
-    usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
-    usgs_df_T_T = usgs_df_T.transpose()
-    # Note: We have the option of re-interpolation again at a 5 minute increment, like we were doing before,
-    # but that seems unnecessary.
-    # usgs_df_new = usgs_df_T_T.interpolate(method='index', axis = 1, limit = max_fill, limit_direction = 'forward')
-    usgs_df_new = usgs_df_T_T
     # TODO: At this point in the code, if we had a date parameter from
     # the input file, we could truncate this list of possible dates to
     # the values germane to the simulation.
