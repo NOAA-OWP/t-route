@@ -394,10 +394,21 @@ def preprocess_time_station_index(xd):
 
     unique_times = np.array(unique_times_str, dtype="str")
 
+    tmask = []
+    for t in unique_times_str:
+        tmask.append(xd.time == t)
+
     data_var_dict = {}
+    # TODO: make this input parameters
     data_vars = ("discharge", "discharge_quality")
+
     for v in data_vars:
-        data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
+        vals = []
+        for i, t in enumerate(unique_times_str):
+            vals.append(np.where(tmask[i],xd[v].values[stationId_da_mask],np.nan))
+        combined = np.vstack(vals).T
+        data_var_dict[v] = (["stationId","time"], combined)
+
     return xr.Dataset(
         data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
     )
@@ -617,14 +628,14 @@ def get_usgs_from_time_slices_folder(
         
         # dataframe containing discharge observations
         df2 = pd.DataFrame(
-            ds2["discharge"].values.T,
+            ds2["discharge"].values,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
         
         # dataframe containing discharge quality flags [0,1]
         df_qual = pd.DataFrame(
-            ds2["discharge_quality"].values.T/100,
+            ds2["discharge_quality"].values/100,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
