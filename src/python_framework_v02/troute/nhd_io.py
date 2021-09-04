@@ -625,21 +625,21 @@ def get_usgs_from_time_slices_folder(
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
 
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
-        
+
         # dataframe containing discharge observations
         df2 = pd.DataFrame(
             ds2["discharge"].values,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
-        
+
         # dataframe containing discharge quality flags [0,1]
         df_qual = pd.DataFrame(
             ds2["discharge_quality"].values/100,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
-                
+
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
         gage_mask = list(map(bytes.isdigit, gage_list))
@@ -653,47 +653,48 @@ def get_usgs_from_time_slices_folder(
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
 
-    
+
     usgs_df = (df.join(df2).
                reset_index().
                rename(columns={"index": "gages"}).
                set_index("link").
                drop(["gages", "ascendingIndex", "to"], axis=1))
-    
+
     usgs_qual_df = (df.join(df_qual).
                reset_index().
                rename(columns={"index": "gages"}).
                set_index("link").
                drop(["gages", "ascendingIndex", "to"], axis=1))
-    
+
     date_time_strs = usgs_df.columns.tolist()
     date_time_obj_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
     date_time_obj_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
-        
+
     dates = []
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
-        dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
+        # dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
+        dates.append(j)
 
     """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
-    OR 
+    OR
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
     """
 
-    usgs_df = usgs_df.reindex(columns=dates)
-    usgs_qual_df = usgs_qual_df.reindex(columns=dates)
+    # usgs_df = usgs_df.reindex(columns=dates)
+    # usgs_qual_df = usgs_qual_df.reindex(columns=dates)
     # TODO: this index shifting is a data qa issue -- the time slices come in with extra values
     # on the front end and we have to trim those.
     # TODO: DO NOT ACCEPT THIS PR UNTIL WE ARE SURE THE DATES LINE UP!!
-    usgs_df = usgs_df.iloc[:, 1:]
-    usgs_qual_df = usgs_qual_df.iloc[:, 1:]
+    # usgs_df = usgs_df.iloc[:, 1:]
+    # usgs_qual_df = usgs_qual_df.iloc[:, 1:]
 
     # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
     # TODO: Implement a robust test verifying the intended output of the interpolation
     """
-    The idea would be to have a function in Cython which could be called in a testable 
-    framework with inputs such as the following (and corresponding expected outputs for 
+    The idea would be to have a function in Cython which could be called in a testable
+    framework with inputs such as the following (and corresponding expected outputs for
     the various combinations) for use with pytest or the like:
     ```
     obs = [ 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10]
@@ -711,28 +712,48 @@ def get_usgs_from_time_slices_folder(
     last_obs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
     ```
     """
-    
+
     # ---- Laugh testing ------
     # scren-out erroneous qc flags
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df < 0, np.nan)
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
-    
+
     # screen-out poor quality flow observations
     qc_trehsh = 1
     usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
-    
+
     # screen-out erroneous flow observations
     usgs_df = usgs_df.mask(usgs_df < 0, np.nan)
-        
+
     # ---- Interpolate USGS observations to time discretization of the simulation ----
-    usgs_df.columns = pd.to_datetime(usgs_df.columns, format = "%Y-%m-%d_%H:%M:00")
-    max_fill = 5
-    usgs_df = usgs_df.interpolate(method='index', axis = 1, limit = max_fill, limit_direction = 'forward')
+    usgs_df_T = usgs_df.transpose()
+    usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
 
-    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
-    usgs_qual_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
+    max_fill_1min = 59
+    # max_fill_1min = 14
+    # max_fill = 5
+    """
+    Note: The max_fill is applied when the series is being considered at a 1 minute interval
+    14 minutes ensures no over-interpolation with 15-minute gage records, but creates
+    square-wave signals at gages reporting hourly.
 
-    return usgs_df
+    TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
+    """
+
+    usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
+    usgs_df_T_T = usgs_df_T.transpose()
+    # Note: We have the option of re-interpolation again at a 5 minute increment, like we were doing before,
+    # but that seems unnecessary.
+    # usgs_df_new = usgs_df_T_T.interpolate(method='index', axis = 1, limit = max_fill, limit_direction = 'forward')
+    usgs_df_new = usgs_df_T_T
+    # TODO: At this point in the code, if we had a date parameter from
+    # the input file, we could truncate this list of possible dates to
+    # the values germane to the simulation.
+    # At this point, we trim the first value, which is, in our testing, always
+    # five minutes prior to model start (i.e., at [T0-1]:55).
+    usgs_df_new = usgs_df_new.reindex(columns=dates[1:])
+
+    return usgs_df_new
 
 
 # TODO: Move channel restart above usgs to keep order with execution script
