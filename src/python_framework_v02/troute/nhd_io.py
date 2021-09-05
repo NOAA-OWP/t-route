@@ -380,7 +380,7 @@ def read_netcdfs(paths, dim, transform_func=None):
             return ds
 
     datasets = [process_one_path(p) for p in paths]
-    combined = xr.concat(datasets, dim)
+    combined = xr.concat(datasets, dim, combine_attrs = "override")
     return combined
 
 
@@ -393,7 +393,9 @@ def preprocess_time_station_index(xd):
     unique_times_str = np.unique(xd.time.values).tolist()
 
     unique_times = np.array(unique_times_str, dtype="str")
-
+    
+    center_time = xd.sliceCenterTimeUTC
+    
     tmask = []
     for t in unique_times_str:
         tmask.append(xd.time == t)
@@ -410,7 +412,9 @@ def preprocess_time_station_index(xd):
         data_var_dict[v] = (["stationId","time"], combined)
 
     return xr.Dataset(
-        data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
+        data_vars=data_var_dict,
+        coords={"stationId": stationId, "time": unique_times},
+        attrs={"sliceCenterTimeUTC": center_time},
     )
 
 
@@ -639,6 +643,9 @@ def get_usgs_from_time_slices_folder(
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
+        
+        # center time of the first TimeSlice file in the glob
+        first_center_time = ds2.sliceCenterTimeUTC
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
@@ -668,6 +675,7 @@ def get_usgs_from_time_slices_folder(
     date_time_strs = usgs_df.columns.tolist()
     date_time_obj_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
     date_time_obj_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
+    date_time_start_center = datetime.strptime(first_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
     for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
