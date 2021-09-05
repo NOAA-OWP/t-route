@@ -515,7 +515,6 @@ def main_v02(argv):
 
     else:
         usgs_df = pd.DataFrame()
-        usgs_qual_df = pd.DataFrame()
         lastobs_df = pd.DataFrame()
         da_parameter_dict = {}
 
