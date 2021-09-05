@@ -737,18 +737,15 @@ def get_usgs_from_time_slices_folder(
 
     TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     """
-    usgs_df_T = usgs_df_T.resample('min').interpolate(limit = max_fill_1min, limit_direction = 'both').resample('5min').asfreq()
+    usgs_df_T = (usgs_df_T.resample('min').
+                 interpolate(limit = max_fill_1min, limit_direction = 'both').
+                 resample('5min').
+                 asfreq().
+                 loc[date_time_start_center:,:])
+    
     usgs_df_new = usgs_df_T.transpose()
 
-    # TODO: At this point in the code, if we had a date parameter from
-    # the input file, we could truncate this list of possible dates to
-    # the values germane to the simulation.
-    # At this point, we trim the first value, which is, in our testing, always
-    # five minutes prior to model start (i.e., at [T0-1]:55).
-    usgs_df_new = usgs_df_new.reindex(columns=dates[1:])
-
     return usgs_df_new
-
 
 # TODO: Move channel restart above usgs to keep order with execution script
 def get_channel_restart_from_csv(
