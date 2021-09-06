@@ -397,6 +397,7 @@ def build_connections(supernetwork_parameters):
 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
+    pd.set_option('display.max_rows', 500)
     print ("param_df after read")
     print (param_df)
     print ("$$$$$$$$$$$$$$$$$$$$$$$")
@@ -418,6 +419,11 @@ def build_connections(supernetwork_parameters):
         param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
 
     param_df = param_df.set_index("key")
+
+    print ("param_df after reindex")
+    print (param_df)
+    print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^6")
+
 
     #ngen_nexus_id_to_downstream_comid_mapping_dict = {}
     nexus_to_downstream_flowpath_dict = {}

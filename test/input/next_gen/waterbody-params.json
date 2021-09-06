@@ -20,7 +20,8 @@
       "TopWdthCC": 148.413,
       "TopWdth": 49.471,
       "slope": 0.001,
-      "toID": 45
+      "toID": 45,
+      "length_m": 4970.0225
     }
   ],
   "wb-45": [
@@ -43,7 +44,8 @@
       "TopWdthCC": 169.355,
       "TopWdth": 56.452,
       "slope": 0.001,
-      "toID": 0
+      "toID": 0,
+      "length_m": 5939.3079
     }
   ],
   "wb-97": [
@@ -66,7 +68,8 @@
       "TopWdthCC": 17.817,
       "TopWdth": 5.939,
       "slope": 0.005,
-      "toID": 98
+      "toID": 98,
+      "length_m": 6562.0526
     }
   ],
   "wb-98": [
@@ -89,7 +92,8 @@
       "TopWdthCC": 30.401,
       "TopWdth": 10.134,
       "slope": 0,
-      "toID": 99
+      "toID": 99,
+      "length_m": 4404.0415
     }
   ],
   "wb-99": [
@@ -112,7 +116,8 @@
       "TopWdthCC": 42.314,
       "TopWdth": 14.105,
       "slope": 0,
-      "toID": 100
+      "toID": 100,
+      "length_m": 5635.1887
     }
   ],
   "wb-100": [
@@ -135,7 +140,8 @@
       "TopWdthCC": 51.67,
       "TopWdth": 17.223,
       "slope": 0,
-      "toID": 101
+      "toID": 101,
+      "length_m": 4669.5121
     }
   ],
   "wb-101": [
@@ -158,7 +164,8 @@
       "TopWdthCC": 57.905,
       "TopWdth": 19.302,
       "slope": 0,
-      "toID": 103
+      "toID": 103,
+      "length_m": 4050.2247
     }
   ],
   "wb-104": [
@@ -181,7 +188,8 @@
       "TopWdthCC": 67.533,
       "TopWdth": 22.511,
       "slope": 0,
-      "toID": 105
+      "toID": 105,
+      "length_m": 1891.8584
     }
   ],
   "wb-105": [
@@ -204,7 +212,8 @@
       "TopWdthCC": 70.01,
       "TopWdth": 23.337,
       "slope": 0.002,
-      "toID": 106
+      "toID": 106,
+      "length_m": 4157.21
     }
   ],
   "wb-106": [
@@ -227,7 +236,8 @@
       "TopWdthCC": 71.642,
       "TopWdth": 23.881,
       "slope": 0.002,
-      "toID": 107
+      "toID": 107,
+      "length_m": 3449.3178
     }
   ],
   "wb-107": [
@@ -250,7 +260,8 @@
       "TopWdthCC": 72.991,
       "TopWdth": 24.33,
       "slope": 0.003,
-      "toID": 108
+      "toID": 108,
+      "length_m": 3352.1348
     }
   ],
   "wb-108": [
@@ -273,7 +284,8 @@
       "TopWdthCC": 74.032,
       "TopWdth": 24.677,
       "slope": 0.001,
-      "toID": 109
+      "toID": 109,
+      "length_m": 5950.2859
     }
   ],
   "wb-109": [
@@ -296,7 +308,8 @@
       "TopWdthCC": 74.914,
       "TopWdth": 24.971,
       "slope": 0,
-      "toID": 110
+      "toID": 110,
+      "length_m": 3682.353
     }
   ],
   "wb-110": [
@@ -319,7 +332,8 @@
       "TopWdthCC": 76.603,
       "TopWdth": 25.534,
       "slope": 0,
-      "toID": 111
+      "toID": 111,
+      "length_m": 3821.0073
     }
   ],
   "wb-111": [
@@ -342,7 +356,8 @@
       "TopWdthCC": 78.553,
       "TopWdth": 26.184,
       "slope": 0,
-      "toID": 112
+      "toID": 112,
+      "length_m": 3579.6306
     }
   ],
   "wb-112": [
@@ -365,7 +380,8 @@
       "TopWdthCC": 84.672,
       "TopWdth": 28.224,
       "slope": 0,
-      "toID": 113
+      "toID": 113,
+      "length_m": 3385.7473
     }
   ],
   "wb-113": [
@@ -388,7 +404,8 @@
       "TopWdthCC": 92.005,
       "TopWdth": 30.668,
       "slope": -2.672,
-      "toID": 114
+      "toID": 114,
+      "length_m": 3740.4596
     }
   ],
   "wb-114": [
@@ -411,7 +428,8 @@
       "TopWdthCC": 92.988,
       "TopWdth": 30.996,
       "slope": 0,
-      "toID": 115
+      "toID": 115,
+      "length_m": 3468.4589
     }
   ],
   "wb-115": [
@@ -434,7 +452,8 @@
       "TopWdthCC": 94.095,
       "TopWdth": 31.365,
       "slope": 0,
-      "toID": 116
+      "toID": 116,
+      "length_m": 5022.1307
     }
   ],
   "wb-116": [
@@ -457,7 +476,8 @@
       "TopWdthCC": 94.348,
       "TopWdth": 31.449,
       "slope": 0.002,
-      "toID": 117
+      "toID": 117,
+      "length_m": 3997.5063
     }
   ],
   "wb-117": [
@@ -480,7 +500,8 @@
       "TopWdthCC": 95.187,
       "TopWdth": 31.729,
       "slope": -3.059,
-      "toID": 118
+      "toID": 118,
+      "length_m": 6535.9436
     }
   ],
   "wb-118": [
@@ -503,7 +524,8 @@
       "TopWdthCC": 96.791,
       "TopWdth": 32.264,
       "slope": 0,
-      "toID": 119
+      "toID": 119,
+      "length_m": 5772.2569
     }
   ],
   "wb-119": [
@@ -526,7 +548,8 @@
       "TopWdthCC": 103.376,
       "TopWdth": 34.459,
       "slope": 0,
-      "toID": 120
+      "toID": 120,
+      "length_m": 4441.5093
     }
   ],
   "wb-120": [
@@ -549,7 +572,8 @@
       "TopWdthCC": 104.795,
       "TopWdth": 34.932,
       "slope": 0.001,
-      "toID": 121
+      "toID": 121,
+      "length_m": 4758.3449
     }
   ],
   "wb-121": [
@@ -572,7 +596,8 @@
       "TopWdthCC": 105.903,
       "TopWdth": 35.301,
       "slope": 0.001,
-      "toID": 122
+      "toID": 122,
+      "length_m": 5333.2115
     }
   ],
   "wb-122": [
@@ -595,7 +620,8 @@
       "TopWdthCC": 106.919,
       "TopWdth": 35.64,
       "slope": 0.001,
-      "toID": 123
+      "toID": 123,
+      "length_m": 6134.2534
     }
   ],
   "wb-123": [
@@ -618,7 +644,8 @@
       "TopWdthCC": 107.816,
       "TopWdth": 35.939,
       "slope": 0.003,
-      "toID": 124
+      "toID": 124,
+      "length_m": 5145.0319
     }
   ],
   "wb-124": [
@@ -641,7 +668,8 @@
       "TopWdthCC": 111.274,
       "TopWdth": 37.091,
       "slope": 0.001,
-      "toID": 125
+      "toID": 125,
+      "length_m": 4609.8878
     }
   ],
   "wb-125": [
@@ -664,7 +692,8 @@
       "TopWdthCC": 112.523,
       "TopWdth": 37.508,
       "slope": 0,
-      "toID": 126
+      "toID": 126,
+      "length_m": 1565.4839
     }
   ],
   "wb-126": [
@@ -687,7 +716,8 @@
       "TopWdthCC": 112.631,
       "TopWdth": 37.544,
       "slope": 0.001,
-      "toID": 127
+      "toID": 127,
+      "length_m": 3775.8732
     }
   ],
   "wb-127": [
@@ -710,7 +740,8 @@
       "TopWdthCC": 113.456,
       "TopWdth": 37.819,
       "slope": 0.001,
-      "toID": 128
+      "toID": 128,
+      "length_m": 2151.2736
     }
   ],
   "wb-128": [
@@ -734,7 +765,8 @@
       "TopWdthCC": 113.807,
       "TopWdth": 37.936,
       "slope": 0.002,
-      "toID": 129
+      "toID": 129,
+      "length_m": 2809.7259
     }
   ],
   "wb-335": [
@@ -757,7 +789,8 @@
       "TopWdthCC": 34.291,
       "TopWdth": 11.43,
       "slope": 0,
-      "toID": 100
+      "toID": 100,
+      "length_m": 3009.5844
     }
   ],
   "wb-340": [
@@ -780,7 +813,8 @@
       "TopWdthCC": 32.938,
       "TopWdth": 10.979,
       "slope": 0,
-      "toID": 99
+      "toID": 99,
+      "length_m": 4558.8573
     }
   ],
   "wb-347": [
@@ -803,7 +837,8 @@
       "TopWdthCC": 33.808,
       "TopWdth": 11.269,
       "slope": 0,
-      "toID": 104
+      "toID": 104,
+      "length_m": 2784.4693
     }
   ],
   "wb-415": [
@@ -826,7 +861,8 @@
       "TopWdthCC": 29.299,
       "TopWdth": 9.766,
       "slope": 0.009,
-      "toID": 111
+      "toID": 111,
+      "length_m": 2837.6971
     }
   ],
   "wb-461": [
@@ -849,7 +885,8 @@
       "TopWdthCC": 31.053,
       "TopWdth": 10.351,
       "slope": 0,
-      "toID": 101
+      "toID": 101,
+      "length_m": 1997.4053
     }
   ],
   "wb-482": [
@@ -872,7 +909,8 @@
       "TopWdthCC": 24.715,
       "TopWdth": 8.238,
       "slope": 0.023,
-      "toID": 127
+      "toID": 127,
+      "length_m": 4963.2227
     }
   ],
   "wb-485": [
@@ -895,7 +933,8 @@
       "TopWdthCC": 22.333,
       "TopWdth": 7.444,
       "slope": 0.018,
-      "toID": 110
+      "toID": 110,
+      "length_m": 5323.1285
     }
   ],
   "wb-490": [
@@ -918,7 +957,8 @@
       "TopWdthCC": 28.695,
       "TopWdth": 9.565,
       "slope": 0.017,
-      "toID": 124
+      "toID": 124,
+      "length_m": 4631.192
     }
   ],
   "wb-538": [
@@ -941,7 +981,8 @@
       "TopWdthCC": 26.146,
       "TopWdth": 8.715,
       "slope": 0.013,
-      "toID": 115
+      "toID": 115,
+      "length_m": 2721.1733
     }
   ],
   "wb-542": [
@@ -964,7 +1005,8 @@
       "TopWdthCC": 15.24,
       "TopWdth": 5.08,
       "slope": 0.015,
-      "toID": 112
+      "toID": 112,
+      "length_m": 6626.7388
     }
   ],
   "wb-669": [
@@ -987,7 +1029,8 @@
       "TopWdthCC": 12.071,
       "TopWdth": 4.024,
       "slope": 0.027,
-      "toID": 109
+      "toID": 109,
+      "length_m": 2961.9079
     }
   ],
   "wb-671": [
@@ -1010,7 +1053,8 @@
       "TopWdthCC": 19.782,
       "TopWdth": 6.594,
       "slope": 0.031,
-      "toID": 127
+      "toID": 127,
+      "length_m": 2900.439
     }
   ],
   "wb-1023": [
@@ -1033,7 +1077,8 @@
       "TopWdthCC": 17.624,
       "TopWdth": 5.875,
       "slope": 0.022,
-      "toID": 120
+      "toID": 120,
+      "length_m": 7839.0669
     }
   ],
   "wb-1026": [
@@ -1056,7 +1101,8 @@
       "TopWdthCC": 12.375,
       "TopWdth": 4.125,
       "slope": 0.039,
-      "toID": 116
+      "toID": 116,
+      "length_m": 2212.5228
     }
   ],
   "wb-1081": [
@@ -1079,7 +1125,8 @@
       "TopWdthCC": 13.724,
       "TopWdth": 4.575,
       "slope": 0.027,
-      "toID": 121
+      "toID": 121,
+      "length_m": 3815.5758
     }
   ],
   "wb-1096": [
@@ -1102,7 +1149,8 @@
       "TopWdthCC": 14.773,
       "TopWdth": 4.924,
       "slope": 0.031,
-      "toID": 128
+      "toID": 128,
+      "length_m": 5049.9859
     }
   ],
   "wb-1411": [
@@ -1125,7 +1173,8 @@
       "TopWdthCC": 15.927,
       "TopWdth": 5.309,
       "slope": 0.021,
-      "toID": 108
+      "toID": 108,
+      "length_m": 6044.0145
     }
   ],
   "wb-103": [
@@ -1148,7 +1197,8 @@
       "TopWdthCC": 61.879,
       "TopWdth": 20.626,
       "slope": 0,
-      "toID": 104
+      "toID": 104,
+      "length_m": 5335.186
     }
   ],
   "wb-129": [
@@ -1172,7 +1222,8 @@
       "TopWdthCC": 113.809,
       "TopWdth": 37.936,
       "slope": 0.002,
-      "toID": 45
+      "toID": 45,
+      "length_m": 5771.7623
     }
   ],
   "wb-181": [
@@ -1195,7 +1246,8 @@
       "TopWdthCC": 55.528,
       "TopWdth": 18.509,
       "slope": 0.003,
-      "toID": 119
+      "toID": 119,
+      "length_m": 8168.0054
     }
   ],
   "wb-351": [
@@ -1218,7 +1270,8 @@
       "TopWdthCC": 28.262,
       "TopWdth": 9.421,
       "slope": 0.002,
-      "toID": 105
+      "toID": 105,
+      "length_m": 9643.5308
     }
   ],
   "wb-599": [
@@ -1241,7 +1294,8 @@
       "TopWdthCC": 24.342,
       "TopWdth": 8.114,
       "slope": 0.01,
-      "toID": 114
+      "toID": 114,
+      "length_m": 8324.9022
     }
   ],
   "wb-800": [
@@ -1264,7 +1318,8 @@
       "TopWdthCC": 16.13,
       "TopWdth": 5.377,
       "slope": 0.004,
-      "toID": 103
+      "toID": 103,
+      "length_m": 3740.0492
     }
   ]
 }
