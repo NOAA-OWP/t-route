@@ -418,6 +418,21 @@ def preprocess_time_station_index(xd):
     )
 
 
+def get_nc_attributes(nc_list, attribute, file_selection=[0, -1]):
+    rv = []
+    for fs in file_selection:
+        try:
+            rv.append(get_attribute(nc_list[fs], attribute))
+        except:
+            rv.append(-1)
+    return rv
+
+
+def get_attribute(nc_file, attribute):
+    with xr.open_dataset(nc_file) as xd:
+        return xd.attrs[attribute]
+
+
 def build_last_obs_df(
         lastobsfile,
         routelink,
@@ -624,8 +639,18 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
 
 def get_usgs_from_time_slices_folder(
-    routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
+    routelink_subset_file,
+    usgs_timeslices_folder,
+    data_assimilation_filter,
+    max_fill_1min = 14
 ):
+    # TODO: Use an explicit list for the files. By this point, the globbing should be complete.
+    """
+    routelink_subset_file - provides the gage-->segment crosswalk
+    usgs_timeslices_folder - folder with timeslices
+    data_assimilation_filter - glob pattern for selecting files
+    max_fill_1min - sets the maximum interpolation length
+    """
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
 
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
@@ -643,9 +668,6 @@ def get_usgs_from_time_slices_folder(
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
-        
-        # center time of the first TimeSlice file in the glob
-        first_center_time = ds2.sliceCenterTimeUTC
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
@@ -672,13 +694,21 @@ def get_usgs_from_time_slices_folder(
                set_index("link").
                drop(["gages", "ascendingIndex", "to"], axis=1))
 
+    # Start and end times of the data obtained from the timeslice dataset
     date_time_strs = usgs_df.columns.tolist()
-    date_time_obj_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
-    date_time_obj_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
-    date_time_start_center = datetime.strptime(first_center_time, "%Y-%m-%d_%H:%M:%S")
+    date_time_data_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
+    date_time_data_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
+
+    # Nominal start and end times of the data in timeslice dataset
+    # TODO: Consider the case of missing timeslice files...
+    # The current method could be fragile in the event of a
+    # missing first or last file.
+    (first_center_time, last_center_time) = get_nc_attributes(usgs_files, "sliceCenterTimeUTC", (0,-1))
+    date_time_center_start = datetime.strptime(first_center_time, "%Y-%m-%d_%H:%M:%S")
+    date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq="5min"):
         dates.append(j)
 
     """
@@ -687,8 +717,7 @@ def get_usgs_from_time_slices_folder(
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
     """
-    
-    # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
+
     # TODO: Implement a robust test verifying the intended output of the interpolation
     """
     The idea would be to have a function in Cython which could be called in a testable
@@ -728,24 +757,24 @@ def get_usgs_from_time_slices_folder(
     usgs_df_T = usgs_df.transpose()
     usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
 
-    # TODO: Bring max_fill_lmin parameter in from yaml as user input
-    max_fill_1min = 59
     """
     Note: The max_fill is applied when the series is being considered at a 1 minute interval
-    14 minutes ensures no over-interpolation with 15-minute gage records, but creates
-    square-wave signals at gages reporting hourly.
-
-    TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
+    so 14 minutes ensures no over-interpolation with 15-minute gage records, but creates
+    square-wave signals at gages reporting hourly...
+    therefore, we use a 59 minute gap filling tolerance.
     """
+    # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     usgs_df_T = (usgs_df_T.resample('min').
                  interpolate(limit = max_fill_1min, limit_direction = 'both').
                  resample('5min').
                  asfreq().
-                 loc[date_time_start_center:,:])
-    
+                 loc[date_time_center_start:,:])
+
+    # usgs_df_T.reindex(dates)
     usgs_df_new = usgs_df_T.transpose()
 
     return usgs_df_new
+
 
 # TODO: Move channel restart above usgs to keep order with execution script
 def get_channel_restart_from_csv(
