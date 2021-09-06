@@ -683,6 +683,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
             data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
+            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
         )
 
     return usgs_df
