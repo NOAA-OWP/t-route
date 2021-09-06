@@ -38,7 +38,7 @@ supernetwork_parameters:
     #ngen_nexus_id_to_downstream_comid_mapping_json: "extern/t-route/test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
 
     #CHANGE BELOW WITH NEW NGEN HYDRO FABRIC DATA
-    ngen_nexus_file: "../../test/input/next_gen/nexus_data.geojson" 
+    ngen_nexus_file: "../../test/input/next_gen/flowpath_edge_list.json" 
     #columns:
     #    key: "link"
     #    downstream: "to"
@@ -56,9 +56,9 @@ supernetwork_parameters:
     #    cs: "ChSlp"  # TODO: rename to `sideslope`
     columns:
         #link????
-        key: "link"
+        key: "ID"
         downstream: "toID"
-        dx: "lengthkm"
+        dx: "length_m"
         n: "n"  # TODO: rename to `manningn`
         ncc: "nCC"  # TODO: rename to `mannningncc`
         s0: "So"  # TODO: rename to `bedslope`
