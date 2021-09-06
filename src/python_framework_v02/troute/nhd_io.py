@@ -998,5 +998,9 @@ def build_qlat_sets(forcing_parameters,dates):
         if block == 0:
             run_sets.append({'qlat_files':dates[block:(forcing_parameters['qlat_run_block_size'])],'nts':forcing_parameters['qts_subdivisions']*len(dates[block:(forcing_parameters['qlat_run_block_size'])])})
         else:
-            run_sets.append({'qlat_files':dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2],'nts':forcing_parameters['qts_subdivisions']*len(dates[block*forcing_parameters['qlat_run_block_size']:block*forcing_parameters['qlat_run_block_size']*2+1])})
+            start_point = block*forcing_parameters['qlat_run_block_size']
+            end_point = (block+1)*forcing_parameters['qlat_run_block_size']
+            qlat_dates = dates[start_point:end_point]
+            nts_slice = len(qlat_dates*forcing_parameters['qts_subdivisions'])
+            run_sets.append({'qlat_files':qlat_dates,'nts':nts_slice})
     return  run_sets

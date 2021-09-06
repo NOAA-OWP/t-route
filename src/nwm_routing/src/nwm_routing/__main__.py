@@ -321,7 +321,6 @@ def main_v02(argv):
         print("creating supernetwork connections set")
     if showtiming:
         start_time = time.time()
-
     # STEP 1: Build basic network connections graph
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
@@ -531,7 +530,7 @@ def main_v02(argv):
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
+    
     results = compute_nhd_routing_v02(
         connections,
         rconn,
