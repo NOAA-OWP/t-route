@@ -914,9 +914,12 @@ def main_v03(argv):
     # TODO: Data Assimilation will be something like the parity block
     # if DA:
     #     da_sets = [BIG LIST OF DA BLOCKS]
-
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
+        if type(parity_sets) == list:
+            pass
+        else:
+            parity_sets = nhd_io.build_parity_date_range(parity_parameters)
     else:
         parity_sets = []
 

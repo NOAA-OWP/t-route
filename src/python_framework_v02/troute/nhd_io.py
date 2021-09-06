@@ -1004,3 +1004,36 @@ def build_qlat_sets(forcing_parameters,dates):
             nts_slice = len(qlat_dates*forcing_parameters['qts_subdivisions'])
             run_sets.append({'qlat_files':qlat_dates,'nts':nts_slice})
     return  run_sets
+
+
+def build_parity_date_range(parity_parameters):
+    
+    qlat_start = parity_parameters['parity_check_compare_file_sets']['parity_file_range']['parity_start_file']
+    qlat_end = parity_parameters['parity_check_compare_file_sets']['parity_file_range']['parity_end_file']
+    file_tail = qlat_start[-16:]
+
+    date_time_str = qlat_start[:-16]
+    date_time_obj_start = datetime.strptime(date_time_str, "%Y%m%d%H%M")
+
+    date_time_str = qlat_end[:-16]
+    date_time_obj_end = datetime.strptime(date_time_str, "%Y%m%d%H%M")
+
+    dates = []
+
+    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="1H"):
+        dates.append(j.strftime("%Y%m%d%H%M")+str(file_tail))
+
+    run_sets = build_parity_sets(parity_parameters,dates)
+    return  run_sets
+
+def build_parity_sets(parity_parameters,dates):
+    run_sets = []
+    for block in range(0,math.ceil(len(dates)/parity_parameters['parity_run_block_size']),1):
+        if block == 0:
+            run_sets.append({'validation_files':dates[block:(parity_parameters['parity_run_block_size'])]})
+        else:
+            start_point = block*parity_parameters['parity_run_block_size']
+            end_point = (block+1)*parity_parameters['parity_run_block_size']
+            qlat_dates = dates[start_point:end_point]
+            run_sets.append({'validation_files':qlat_dates})
+    return  run_sets
