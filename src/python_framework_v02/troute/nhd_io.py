@@ -722,7 +722,7 @@ def get_usgs_from_time_slices_folder(
     usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
 
     # screen-out erroneous flow observations
-    usgs_df = usgs_df.mask(usgs_df < 0, np.nan)
+    usgs_df = usgs_df.mask(usgs_df <= 0, np.nan)
 
     # ---- Interpolate USGS observations to time discretization of the simulation ----
     usgs_df_T = usgs_df.transpose()
