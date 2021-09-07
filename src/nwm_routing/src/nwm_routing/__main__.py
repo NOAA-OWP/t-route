@@ -903,7 +903,7 @@ def main_v03(argv):
         run_sets = nhd_io.build_qlat_date_range(forcing_parameters)
 
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
-    
+
     if run_sets_da:
         run_size_da = run_sets_da['data_assimilation_run_block_size']
         da_dates = nhd_io.build_da_date_range(data_assimilation_parameters)
