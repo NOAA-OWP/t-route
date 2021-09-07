@@ -636,6 +636,8 @@ def diffusive_input_data_v02(
                     
                 idx_segID = np.where(geo_index == segID)
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                if iniq[seg, frj]<0.0001:
+                    iniq[seg, frj]=0.0001
                 
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
@@ -643,7 +645,7 @@ def diffusive_input_data_v02(
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
     nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
+        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)+1
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
