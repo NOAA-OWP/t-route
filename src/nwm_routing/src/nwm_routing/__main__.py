@@ -712,6 +712,7 @@ def main_v02(argv):
             chrtout_files,
             Path(chrtout_write_folder),
             run_parameters["qts_subdivisions"],
+            wrf_hydro_channel_output_new_extension,
         )
 
     if verbose:
