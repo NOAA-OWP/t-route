@@ -688,8 +688,9 @@ def main_v02(argv):
             str = "WRF Hydro restart files not found - Aborting restart write sequence"
             raise AssertionError(str)
 
-    chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
-    if chrtout_folder:
+    chrtout_read_folder = output_parameters.get("wrf_hydro_channel_output_source_folder", None)
+    chrtout_write_folder = output_parameters.get("wrf_hydro_channel_final_output_folder", chrtout_read_folder)
+    if chrtout_read_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
@@ -702,12 +703,15 @@ def main_v02(argv):
             "wrf_hydro_channel_output_new_extension", "TRTE"
         )
         chrtout_files = sorted(
-            Path(chrtout_folder).glob(
+            Path(chrtout_read_folder).glob(
                 output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
             )
         )
         nhd_io.write_q_to_wrf_hydro(
-            flowveldepth, chrtout_files, run_parameters["qts_subdivisions"]
+            flowveldepth,
+            chrtout_files,
+            Path(chrtout_write_folder),
+            run_parameters["qts_subdivisions"],
         )
 
     if verbose:

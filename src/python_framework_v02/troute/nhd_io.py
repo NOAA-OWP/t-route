@@ -286,7 +286,11 @@ def drop_all_coords(ds):
 
 
 def write_q_to_wrf_hydro(
-    flowveldepth, chrtout_files, qts_subdivisions, new_extension="TRTE"
+    flowveldepth,
+    chrtout_files,
+    output_folder,
+    qts_subdivisions,
+    new_extension="TRTE"
 ):
     """
     Write t-route simulated flows to WRF-Hydro CHRTOUT files.
@@ -294,6 +298,7 @@ def write_q_to_wrf_hydro(
     Arguments:
         flowveldepth (pandas Data Frame): t-route simulated flow, velocity and depth
         chrtout_files (list): chrtout filepaths
+        output_folder (pathlib.Path): folder where updated chrtout files will be written
         qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps
     """
 
@@ -331,7 +336,7 @@ def write_q_to_wrf_hydro(
 
     # save a new set of chrtout files to disk that contail t-route simulated flow
     chrtout_files_new = [
-        s.parent / (s.name + "." + new_extension) for s in chrtout_files
+        output_folder / (s.name + "." + new_extension) for s in chrtout_files
     ]
 
     # mfdataset solution - can theoretically be parallelised via dask.distributed
