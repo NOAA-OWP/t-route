@@ -166,6 +166,12 @@ def compute_nhd_routing_v02(
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
+
+    #JDM: Temp for ngen
+    param_df["alt"] = 1.0
+    ###############
+
+
     param_df = param_df.astype("float32")
 
     start_time = time.time()
@@ -881,6 +887,15 @@ def compute_nhd_routing_v02(
                     lake_segs = []
                     waterbodies_df_sub = pd.DataFrame()
 
+
+                pd.set_option('display.max_rows', 500)
+                pd.set_option('display.max_columns', 50)
+
+
+                print ("param_df in compute.py &&&&&&&&&&&&&&&&&&&&")
+                print (param_df)
+
+
                 param_df_sub = param_df.loc[
                     common_segs,
                     ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
@@ -893,8 +908,14 @@ def compute_nhd_routing_v02(
 
                 #print ("in compute.py at 636")
 
-                #print("param_df_sub.index")
-                #print(param_df_sub.index)
+                print("param_df_sub.index")
+                print(param_df_sub.index)
+                print("---------------------------------------------")
+
+                print ("q0")
+                print (q0)
+
+                print("@@@@@@@---------------------------------------------")
 
                 ##print ("qlats.Index.dtype")
                 ##print (qlats.Index.dtype)
@@ -903,8 +924,9 @@ def compute_nhd_routing_v02(
                 #print ("qlats.dtypes")
                 #print (qlats.dtypes)
 
-                #print ("qlats")
-                #print (qlats)
+                print ("qlats in compute.py 906")
+                print (qlats)
+                print("---------------------------------------------")
 
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()

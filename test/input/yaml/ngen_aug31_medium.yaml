@@ -30,7 +30,8 @@ supernetwork_parameters:
     #Below will change with new catchment route link
     #geo_file_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
     #PUT NEW SUBSET HYDRO FABRIC FILE HERE
-    geo_file_path: "../../test/input/next_gen/waterbody-params.json"
+    #geo_file_path: "../../test/input/next_gen/waterbody-params.json"
+    geo_file_path: "/glade/work/dmattern/hydro_fabrics/9_5_huc01_medium_subset/waterbody-params.json"
     #mask_file_path: ""
     #mask_layer_string: ""
     #mask_driver_string: "csv"
@@ -38,7 +39,7 @@ supernetwork_parameters:
     #ngen_nexus_id_to_downstream_comid_mapping_json: "extern/t-route/test/input/next_gen/nexus_id_to_downstream_comid_mapping_subset1.json"
 
     #CHANGE BELOW WITH NEW NGEN HYDRO FABRIC DATA
-    ngen_nexus_file: "../../test/input/next_gen/flowpath_edge_list.json" 
+    ngen_nexus_file: "/glade/work/dmattern/hydro_fabrics/9_5_huc01_medium_subset/flowpath_edge_list.json" 
     #columns:
     #    key: "link"
     #    downstream: "to"
