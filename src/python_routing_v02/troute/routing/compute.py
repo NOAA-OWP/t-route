@@ -51,7 +51,8 @@ def _build_reach_type_list(reach_list, wbodies_segs):
 def _prep_da_dataframes(
     usgs_df,
     lastobs_df,
-    param_df_sub_idx
+    param_df_sub_idx,
+    offnetwork_upstreams=[],
     ):
     """
     Produce, based on the segments in the param_df_sub_idx (which is a subset
@@ -71,18 +72,20 @@ def _prep_da_dataframes(
     time series is as long as the simulation.
 
     """
+    # segments in the subnetwork ONLY, no offnetwork upstreams included
+    subnet_segs = param_df_sub_idx.symmetric_difference(offnetwork_upstreams)
+    
     # NOTE: Uncomment to easily test no observations...
     # usgs_df = pd.DataFrame()
     if not usgs_df.empty and not lastobs_df.empty:
         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-
-        lastobs_segs = list(lastobs_df.index.intersection(param_df_sub_idx))
+        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
-        usgs_segs = list(usgs_df.index.intersection(param_df_sub_idx))
+        usgs_segs = list(usgs_df.index.intersection(subnet_segs))
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
     elif usgs_df.empty and not lastobs_df.empty:
-        lastobs_segs = list(lastobs_df.index.intersection(param_df_sub_idx))
+        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
         # Create a completely empty list of gages -- the .shape[1] attribute
         # will be == 0, and that will trigger a reference to the lastobs.
@@ -91,7 +94,7 @@ def _prep_da_dataframes(
         usgs_segs = lastobs_segs
         da_positions_list_byseg = param_df_sub_idx.get_indexer(lastobs_segs)
     elif not usgs_df.empty and lastobs_df.empty:
-        usgs_segs = list(usgs_df.index.intersection(param_df_sub_idx))
+        usgs_segs = list(usgs_df.index.intersection(subnet_segs))
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
         lastobs_df_sub = pd.DataFrame(index=usgs_df_sub.index,columns=["discharge","time","model_discharge"])
@@ -334,7 +337,7 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index.symmetric_difference(offnetwork_upstreams))
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
                     da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
@@ -547,7 +550,7 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index.symmetric_difference(offnetwork_upstreams))
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
                     da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
@@ -745,7 +748,7 @@ def compute_nhd_routing_v02(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index.symmetric_difference(offnetwork_upstreams))
+                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
                     da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
