@@ -73,7 +73,7 @@ def _prep_da_dataframes(
 
     """
     # segments in the subnetwork ONLY, no offnetwork upstreams included
-    subnet_segs = param_df_sub_idx.symmetric_difference(offnetwork_upstreams)
+    subnet_segs = param_df_sub_idx.difference(offnetwork_upstreams)
     
     # NOTE: Uncomment to easily test no observations...
     # usgs_df = pd.DataFrame()
