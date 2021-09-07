@@ -863,6 +863,7 @@ def get_channel_restart_from_wrf_hydro(
 def write_channel_restart_to_wrf_hydro(
     data,
     restart_files,
+    output_folder,
     channel_initial_states_file,
     dt_troute,
     nts_troute,
@@ -883,6 +884,7 @@ def write_channel_restart_to_wrf_hydro(
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
         restart_files (list): globbed list of WRF-Hydro restart files
+        output_folder (pathlib.Path): folder where updated restart files will be written
         channel_initial_states_file (str): WRF-HYDRO standard restart file used to initiate t-route simulation
         dt_troute (int): timestep of t-route simulation (seconds)
         nts_troute (int): number of t-route simulation timesteps
@@ -957,7 +959,7 @@ def write_channel_restart_to_wrf_hydro(
                 ds[troute_depth_var_name] = htrt_DataArray
 
                 # write edited to disk with new filename
-                ds.to_netcdf(f.parent / (f.name + "." + new_extension))
+                ds.to_netcdf(output_folder / (f.name + "." + new_extension))
 
 
 def get_reservoir_restart_from_wrf_hydro(

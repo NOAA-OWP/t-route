@@ -639,10 +639,13 @@ def main_v02(argv):
             print(flowveldepth)
 
     # directory containing WRF Hydro restart files
-    wrf_hydro_restart_dir = output_parameters.get(
-        "wrf_hydro_channel_restart_directory", None
+    wrf_hydro_restart_read_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_source_directory", None
     )
-    if wrf_hydro_restart_dir:
+    wrf_hydro_restart_write_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_read_dir
+    )
+    if wrf_hydro_restart_read_dir:
 
         wrf_hydro_channel_restart_new_extension = output_parameters.get(
             "wrf_hydro_channel_restart_new_extension", "TRTE"
@@ -650,7 +653,7 @@ def main_v02(argv):
 
         # list of WRF Hydro restart files
         wrf_hydro_restart_files = sorted(
-            Path(wrf_hydro_restart_dir).glob(
+            Path(wrf_hydro_restart_read_dir).glob(
                 output_parameters["wrf_hydro_channel_restart_pattern_filter"]
                 + "[!"
                 + wrf_hydro_channel_restart_new_extension
@@ -670,6 +673,7 @@ def main_v02(argv):
             nhd_io.write_channel_restart_to_wrf_hydro(
                 flowveldepth,
                 wrf_hydro_restart_files,
+                Path(wrf_hydro_restart_write_dir),
                 restart_parameters.get("wrf_hydro_channel_restart_file"),
                 run_parameters.get("dt"),
                 run_parameters.get("nts"),
