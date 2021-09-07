@@ -52,7 +52,7 @@ def _prep_da_dataframes(
     usgs_df,
     lastobs_df,
     param_df_sub_idx,
-    offnetwork_upstreams=[],
+    exclude_segments=None,
     ):
     """
     Produce, based on the segments in the param_df_sub_idx (which is a subset
@@ -60,6 +60,11 @@ def _prep_da_dataframes(
     a subset of the relevant usgs gage observation time series
     and the relevant last-valid gage observation from any
     prior model execution.
+    
+    exclude_segments (list): segments to exclude from param_df_sub when searching for gages
+                             This catches and excludes offnetwork upstreams segments from being
+                             realized as locations for DA substitution. Else, by-subnetwork
+                             parallel executions fail.
 
     Cases to consider:
     USGS_DF, LAST_OBS
@@ -72,8 +77,11 @@ def _prep_da_dataframes(
     time series is as long as the simulation.
 
     """
+    
+    subnet_segs = param_df_sub_idx
     # segments in the subnetwork ONLY, no offnetwork upstreams included
-    subnet_segs = param_df_sub_idx.difference(offnetwork_upstreams)
+    if exclude_segments:
+        subnet_segs = param_df_sub_idx.difference(set(exclude_segments))
     
     # NOTE: Uncomment to easily test no observations...
     # usgs_df = pd.DataFrame()
