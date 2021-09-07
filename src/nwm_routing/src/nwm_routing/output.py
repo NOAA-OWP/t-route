@@ -11,8 +11,11 @@ def nwm_output_generator(
     supernetwork_parameters,
     output_parameters,
     parity_parameters,
+    restart_parameters,
     parity_set,
     nts,
+    dt,
+    qts_subdivisions,
     return_courant,
     showtiming=False,
     verbose=False,
@@ -88,58 +91,69 @@ def nwm_output_generator(
             )
 
         # directory containing WRF Hydro restart files
-        wrf_hydro_restart_dir = output_parameters.get(
-            "wrf_hydro_channel_restart_directory", None
-        )
-        if wrf_hydro_restart_dir:
-
-            wrf_hydro_channel_restart_new_extension = output_parameters.get(
-                "wrf_hydro_channel_restart_new_extension", "TRTE"
+        rsrto = output_parameters.get("hydro_rst_output", None)
+        if rsrto:
+            wrf_hydro_restart_dir = rsrto.get(
+                "wrf_hydro_channel_restart_source_directory", None
             )
+            wrf_hydro_restart_write_dir = rsrto.get(
+                "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_dir
+            )
+            if wrf_hydro_restart_dir:
 
-            # list of WRF Hydro restart files
-            wrf_hydro_restart_files = sorted(
-                Path(wrf_hydro_restart_dir).glob(
-                    output_parameters["wrf_hydro_channel_restart_pattern_filter"]
-                    + "[!"
-                    + wrf_hydro_channel_restart_new_extension
-                    + "]"
+                wrf_hydro_channel_restart_new_extension = rsrto.get(
+                    "wrf_hydro_channel_restart_new_extension", "TRTE"
                 )
-            )
 
-            if len(wrf_hydro_restart_files) > 0:
-                nhd_io.write_channel_restart_to_wrf_hydro(
+                # list of WRF Hydro restart files
+                wrf_hydro_restart_files = sorted(
+                    Path(wrf_hydro_restart_dir).glob(
+                        rsrto["wrf_hydro_channel_restart_pattern_filter"]
+                        + "[!"
+                        + wrf_hydro_channel_restart_new_extension
+                        + "]"
+                    )
+                )
+
+                if len(wrf_hydro_restart_files) > 0:
+                    nhd_io.write_channel_restart_to_wrf_hydro(
+                        flowveldepth,
+                        wrf_hydro_restart_files,
+                        Path(wrf_hydro_restart_write_dir),
+                        restart_parameters.get("wrf_hydro_channel_restart_file"),
+                        dt,
+                        nts,
+                        restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                        restart_parameters.get(
+                            "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                        ),
+                        wrf_hydro_channel_restart_new_extension,
+                    )
+                else:
+                    # print error and/or raise exception
+                    str = "WRF Hydro restart files not found - Aborting restart write sequence"
+                    raise AssertionError(str)
+
+        chrto = output_parameters.get("chrtout_output", None)
+        if chrto:
+            chrtout_read_folder = chrto.get("wrf_hydro_channel_output_source_folder", None)
+            chrtout_write_folder = chrto.get("wrf_hydro_channel_final_output_folder", chrtout_read_folder)
+            if chrtout_read_folder:
+                wrf_hydro_channel_output_new_extension = chrto.get(
+                    "wrf_hydro_channel_output_new_extension", "TRTE"
+                )
+                chrtout_files = sorted(
+                    Path(chrtout_read_folder).glob(
+                        chrto["wrf_hydro_channel_output_file_pattern_filter"]
+                    )
+                )
+                nhd_io.write_q_to_wrf_hydro(
                     flowveldepth,
-                    wrf_hydro_restart_files,
-                    restart_parameters.get("wrf_hydro_channel_restart_file"),
-                    run_parameters.get("dt"),
-                    run_parameters.get("nts"),
-                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
-                    restart_parameters.get(
-                        "wrf_hydro_channel_ID_crosswalk_file_field_name"
-                    ),
-                    wrf_hydro_channel_restart_new_extension,
+                    chrtout_files,
+                    Path(chrtout_write_folder),
+                    qts_subdivisions,
+                    wrf_hydro_channel_output_new_extension,
                 )
-            else:
-                # print error and/or raise exception
-                print(
-                    "WRF Hydro restart files not found - Aborting restart write sequence"
-                )
-                raise AssertionError
-
-        chrtout_folder = output_parameters.get("wrf_hydro_channel_output_folder", None)
-        if chrtout_folder:
-            wrf_hydro_channel_output_new_extension = output_parameters.get(
-                "wrf_hydro_channel_output_new_extension", "TRTE"
-            )
-            chrtout_files = sorted(
-                Path(chrtout_folder).glob(
-                    output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
-                )
-            )
-            nhd_io.write_q_to_wrf_hydro(
-                flowveldepth, chrtout_files, run_parameters["qts_subdivisions"]
-            )
 
         if csv_output_folder:
             # create filenames
