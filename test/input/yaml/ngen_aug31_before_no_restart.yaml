@@ -134,27 +134,27 @@ forcing_parameters:
     nexus_input_folder: "/glade/scratch/dmattern/ngen_routing_test/"
     nexus_file_pattern_filter: "nex-*"
 #WRF-Hydro restart files
-#restart_parameters:
-#    #WRF-Hydro channels restart file
-#    wrf_hydro_channel_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_RESTART/HYDRO_RST.2011-08-26_00-00_DOMAIN1"
-#    #WRF-Hydro channels ID crosswalk file
-#    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-#    wrf_hydro_channel_ID_crosswalk_file_field_name: link
-#    wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
-#    wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
-#    wrf_hydro_channel_restart_depth_flow_field_name: hlink
-#    #WRF-Hydro waterbodies restart file
-#    wrf_hydro_waterbody_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_RESTART/HYDRO_RST.2011-08-26_00-00_DOMAIN1"
-#    #WRF-Hydro waterbody ID crosswalk file
-#    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
-#    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
-#    #WRF-Hydro waterbody crosswalk filter file
-#    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
-#    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
-#parity_parameters:
-#    #Use two lines below for parity check on streamflow and leave the following two lines commented out
-#    parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
-#    parity_check_compare_node: 6227150 #Stream
-#    #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
-#    #parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
-#    #parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+restart_parameters:
+    #WRF-Hydro channels restart file
+    wrf_hydro_channel_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_RESTART/HYDRO_RST.2011-08-26_00-00_DOMAIN1"
+    #WRF-Hydro channels ID crosswalk file
+    wrf_hydro_channel_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+    wrf_hydro_channel_ID_crosswalk_file_field_name: link
+    wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+    wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+    wrf_hydro_channel_restart_depth_flow_field_name: hlink
+    #WRF-Hydro waterbodies restart file
+    wrf_hydro_waterbody_restart_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_RESTART/HYDRO_RST.2011-08-26_00-00_DOMAIN1"
+    #WRF-Hydro waterbody ID crosswalk file
+    wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/LAKEPARM.nc"
+    wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    #WRF-Hydro waterbody crosswalk filter file
+    wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/primary_domain/DOMAIN/Route_Link.nc"
+    wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+parity_parameters:
+    #Use two lines below for parity check on streamflow and leave the following two lines commented out
+    parity_check_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/streamflow_croton_levelpool.csv"
+    parity_check_compare_node: 6227150 #Stream
+    #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
+    #parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
+    #parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
