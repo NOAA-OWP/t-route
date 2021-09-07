@@ -499,7 +499,7 @@ def organize_independent_networks(connections, wbodies=None):
     for tw, net in independent_networks.items():
         if wbodies:
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, wbodies, net
+                nhd_network.split_at_waterbodies_and_junctions, set(wbodies), net
             )
         else:
             path_func = partial(nhd_network.split_at_junction, net)
@@ -639,7 +639,7 @@ def build_data_assimilation(data_assimilation_parameters):
     )
 
     usgs_df = pd.DataFrame()
-    last_obs_df = pd.DataFrame()
+    usgs_qual_df = pd.DataFrame()
 
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
@@ -683,6 +683,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
             data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
+            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
         )
 
     return usgs_df

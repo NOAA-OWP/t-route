@@ -313,6 +313,9 @@ def main_v02(argv):
     break_network_at_waterbodies = run_parameters.get(
         "break_network_at_waterbodies", False
     )
+    break_network_at_gages = supernetwork_parameters.get(
+        "break_network_at_gages", False
+    )
 
     if showtiming:
         main_start_time = time.time()
@@ -394,11 +397,13 @@ def main_v02(argv):
     if verbose:
         print("organizing connections into reaches ...")
 
+    network_break_segments = set()
+    if break_network_at_waterbodies:
+        network_break_segments = network_break_segments.union(wbody_conn.values())
+    if break_network_at_gages:
+        network_break_segments = network_break_segments.union(gages.keys())
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections,
-        list(waterbodies_df.index.values)
-        if break_network_at_waterbodies
-        else None,
+        connections, network_break_segments,
     )
     if verbose:
         print("reach organization complete")
@@ -487,7 +492,7 @@ def main_v02(argv):
         "data_assimilation_csv", None
     )
     data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_folder", None
+        "data_assimilation_timeslices_folder", None
     )
     last_obs_file = data_assimilation_parameters.get(
         "wrf_hydro_last_obs_file", None
