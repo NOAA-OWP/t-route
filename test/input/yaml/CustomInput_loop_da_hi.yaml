@@ -156,7 +156,7 @@ output_parameters:
         # parity_check_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
         parity_check_file_index_col: feature_id
         parity_check_file_value_col: streamflow
-        parity_check_compare_node: 8777381
+        parity_check_compare_node: 800018384
         parity_check_compare_file_sets:
             parity_file_range:
                 parity_start_file: "201105010000.CHRTOUT_DOMAIN1"

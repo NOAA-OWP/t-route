@@ -903,7 +903,7 @@ def main_v03(argv):
         run_sets = nhd_io.build_qlat_date_range(forcing_parameters)
 
     run_sets_da = data_assimilation_parameters.get("data_assimilation_sets", False)
-
+    
     if run_sets_da:
         run_size_da = run_sets_da['data_assimilation_run_block_size']
         da_dates = nhd_io.build_da_date_range(data_assimilation_parameters)
@@ -914,6 +914,7 @@ def main_v03(argv):
     # TODO: Data Assimilation will be something like the parity block
     # if DA:
     #     da_sets = [BIG LIST OF DA BLOCKS]
+
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
         if type(parity_sets) == list:
