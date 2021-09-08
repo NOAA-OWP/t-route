@@ -916,7 +916,7 @@ def write_channel_restart_to_wrf_hydro(
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
 
-    # reindex flowvedl depth array
+    # reindex flowveldepth array
     flowveldepth_reindex = data.reindex(xdf.link)
 
     # get restart timestamps - revise do this one at a time
