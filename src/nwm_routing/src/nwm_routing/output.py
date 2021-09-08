@@ -7,20 +7,22 @@ from build_tests import parity_check
 
 
 def nwm_output_generator(
+    run,
     results,
     supernetwork_parameters,
     output_parameters,
     parity_parameters,
     restart_parameters,
     parity_set,
-    nts,
-    dt,
     qts_subdivisions,
     return_courant,
     showtiming=False,
     verbose=False,
     debuglevel=0,
 ):
+
+    dt = run.get("dt")
+    nts = run.get("nts")
 
     if parity_parameters:
         parity_check_waterbody_file = parity_parameters.get("parity_check_waterbody_file", None)
@@ -105,15 +107,20 @@ def nwm_output_generator(
                     "wrf_hydro_channel_restart_new_extension", "TRTE"
                 )
 
-                # list of WRF Hydro restart files
-                wrf_hydro_restart_files = sorted(
-                    Path(wrf_hydro_restart_dir).glob(
-                        rsrto["wrf_hydro_channel_restart_pattern_filter"]
-                        + "[!"
-                        + wrf_hydro_channel_restart_new_extension
-                        + "]"
+                if rsrto.get("wrf_hydro_channel_restart_pattern_filter", None):
+                    # list of WRF Hydro restart files
+                    wrf_hydro_restart_files = sorted(
+                        Path(wrf_hydro_restart_dir).glob(
+                            rsrto["wrf_hydro_channel_restart_pattern_filter"]
+                            + "[!"
+                            + wrf_hydro_channel_restart_new_extension
+                            + "]"
+                        )
                     )
-                )
+                else:
+                    wrf_hydro_restart_files = sorted(
+                        Path(wrf_hydro_restart_dir) / f for f in run["qlat_files"]
+                    )
 
                 if len(wrf_hydro_restart_files) > 0:
                     nhd_io.write_channel_restart_to_wrf_hydro(
@@ -136,17 +143,27 @@ def nwm_output_generator(
 
         chrto = output_parameters.get("chrtout_output", None)
         if chrto:
-            chrtout_read_folder = chrto.get("wrf_hydro_channel_output_source_folder", None)
-            chrtout_write_folder = chrto.get("wrf_hydro_channel_final_output_folder", chrtout_read_folder)
+            chrtout_read_folder = chrto.get(
+                "wrf_hydro_channel_output_source_folder", None
+            )
+            chrtout_write_folder = chrto.get(
+                "wrf_hydro_channel_final_output_folder", chrtout_read_folder
+            )
             if chrtout_read_folder:
                 wrf_hydro_channel_output_new_extension = chrto.get(
                     "wrf_hydro_channel_output_new_extension", "TRTE"
                 )
-                chrtout_files = sorted(
-                    Path(chrtout_read_folder).glob(
-                        chrto["wrf_hydro_channel_output_file_pattern_filter"]
+                if chrto.get("wrf_hydro_channel_output_file_pattern_filter", None):
+                    chrtout_files = sorted(
+                        Path(chrtout_read_folder).glob(
+                            chrto["wrf_hydro_channel_output_file_pattern_filter"]
+                        )
                     )
-                )
+                else:
+                    chrtout_files = sorted(
+                        Path(chrtout_read_folder) / f for f in run["qlat_files"]
+                    )
+
                 nhd_io.write_q_to_wrf_hydro(
                     flowveldepth,
                     chrtout_files,
