@@ -1056,14 +1056,13 @@ def main_v03(argv):
             q0 = new_nwm_q0(run_results)
 
         nwm_output_generator(
+            run,
             run_results,
             supernetwork_parameters,
             output_parameters,
             parity_parameters,
             restart_parameters,
             parity_sets[run_set_iterator] if parity_parameters else {},
-            nts,
-            dt,
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             showtiming,
