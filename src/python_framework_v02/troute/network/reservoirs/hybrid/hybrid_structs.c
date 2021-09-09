@@ -55,7 +55,7 @@ init_hybrid_reach(_Reach* reach, int lake_number,
     reach->reach.hybrid.observation_lookback_hours = observation_lookback_hours;
     reach->reach.hybrid.observation_update_time_interval_seconds = observation_update_time_interval_seconds;
 
-    if(water_elevation < 0){
+    if(water_elevation < -900000000){
       //Equation below is used in wrf-hydro
       printf("WARNING: HYBRID PERSISTENCE RESERVOIR USING COLDSTART WATER ELEVATION\n");
       fflush(stdout);

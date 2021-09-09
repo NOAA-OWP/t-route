@@ -431,7 +431,7 @@ def main_v02(argv):
         else:
             # TODO: Consider adding option to read cold state from route-link file
             waterbodies_initial_ds_flow_const = 0.0
-            waterbodies_initial_depth_const = -1.0
+            waterbodies_initial_depth_const = -1E9
             # Set initial states from cold-state
             waterbodies_initial_states_df = pd.DataFrame(
                 0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
