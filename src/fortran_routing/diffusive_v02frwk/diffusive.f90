@@ -223,9 +223,10 @@ contains
         end do
 
         z=z_ar_g
-        ini_y=0.05  !* [meter]
-        ini_q=0.5   !*[m^3/sec]
-        oldQ = -999; oldY = -999; newQ = -999; newY = -999
+        !ini_y=0.05  !* [meter]
+        !ini_q=0.5   !*[m^3/sec]
+        !oldQ = -999; oldY = -999; 
+	newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
         !* Reading Q-SK table data data starts
@@ -255,14 +256,14 @@ contains
                                         leftBank(i,j), rightBank(i,j),timesDepth, j,&
                                         z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
 
-                    oldY(i,j) = ini_y(j) + z(i,j)
-                    oldQ(i,j) = ini_q(j)
+                    !oldY(i,j) = ini_y(j) + z(i,j)
+                    !oldQ(i,j) = ini_q(j)
                 end do
             end if
         end do
         
         ! use initial conditions array
-        oldQ = iniq
+        !oldQ = iniq
         
         ! reading Q-Strickler's coefficient multiplier table
         do j = 1,nlinks
@@ -288,13 +289,13 @@ contains
         !* initial value at initial time for head nodes of head water reach or TW node
         do j = 1, nlinks
             ncomp= frnw_g(j,1)
-            !if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
+            if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
             !!* head water reach
-            !    do n=1,nts_ub_g
-            !        varr_ub(n)= ubcd_g(n,j)
-            !    enddo
-            !    oldQ(1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
-            !endif
+                do n=1,nts_ub_g
+                    varr_ub(n)= ubcd_g(n,j)
+                enddo
+                oldQ(1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
+            endif
 
             if (frnw_g(j,2)<0.0) then
                 !* downstream boundary node at TW
@@ -321,10 +322,43 @@ contains
                 q_sk_multi=1.0
                 slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
                 if (slope .le. 0.0001) slope = 0.0001
+		oldQ(ncomp,j)= iniq(ncomp,j)
                 call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
             end if
         enddo
-        !* correcting the WL initial condition based on the WL boundary
+	!* compute initial water depth (normal depth), celerity, and diffusivity using iniq
+        q_sk_multi=1.0
+        do j=1, nlinks
+            ncomp= frnw_g(j,1)
+            do i=1, ncomp
+                oldQ(i,j) = iniq(i,j)
+                qp(i,j)= oldQ(i,j)
+                if (i==ncomp) then
+                    !* normal depth
+                    slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
+                    if (slope .le. 0.0001) slope = 0.0001
+                    if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
+                        !*use TW boundary water elevation data
+                        oldY(ncomp,j)=oldY(ncomp,j)
+                    else
+                        !* oldY(i,j) <- normal depth for iniq(i,j) + z(i,j). Hence, oldY is water elevation [m].
+                        call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), oldY(i,j), temp, temp, temp)
+                    endif
+                endif
+            enddo
+            !* for mainly computing celerity and diffusivity
+            newY(ncomp,j)= oldY(ncomp,j)
+            call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j,leftBank, rightBank)
+            do i=1,ncomp
+                oldY(i,j)=newY(i,j)
+            end do
+
+            !do i=1,ncomp
+                !write(14,*) i, j, oldQ(i,j), oldY(i,j), newY(i,j), celerity(i,j), diffusivity(i,j)
+                !print*, i, j, oldQ(i,j), oldY(i,j), celerity(i,j), diffusivity(i,j)
+            !enddo
+        enddo        
+	!* correcting the WL initial condition based on the WL boundary
         !* so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
         do j = 1,nlinks
             ncomp= frnw_g(j,1)
@@ -362,9 +396,9 @@ contains
         qpx = 0.
         cfl=0.9
         width = 100. !   initialization
-        celerity = 1.0
+        !celerity = 1.0
         maxCelerity = 1.0
-        diffusivity = 10.
+        !diffusivity = 10.
         maxCelDx = maxCelerity / minDx
         !!! setting initial values of dimensionless parameters
         !dimensionless_Cr, dimensionless_Fo, dimensionless_Fi, dimensionless_Fc, dimensionless_Di, dimensionless_D
@@ -634,11 +668,13 @@ contains
                 ncomp= frnw_g(j,1)
                 call calc_dimensionless_numbers(j)
             enddo
-
+            !* test		
             !do j=1,nlinks
-            !    i=1
-            !    write(*,*) t,i,j,newQ(i,j),newY(i,j)-z(i,j)
-            !end do
+            !    ncomp=frnw_g(j,1)
+            !	 do i=1,ncomp
+            !        print*, t,i,j,newQ(i,j),newY(i,j)-z(i,j)
+            !	 enddo
+	    !end do
             if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
                 do j = 1, nlinks
                     ncomp= frnw_g(j,1)
