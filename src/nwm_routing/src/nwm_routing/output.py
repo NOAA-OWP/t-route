@@ -23,6 +23,7 @@ def nwm_output_generator(
 
     dt = run.get("dt")
     nts = run.get("nts")
+    t0 = run.get("t0")
 
     if parity_parameters:
         parity_check_waterbody_file = parity_parameters.get("parity_check_waterbody_file", None)
@@ -130,6 +131,7 @@ def nwm_output_generator(
                         restart_parameters.get("wrf_hydro_channel_restart_file"),
                         dt,
                         nts,
+                        t0,
                         restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
                         restart_parameters.get(
                             "wrf_hydro_channel_ID_crosswalk_file_field_name"

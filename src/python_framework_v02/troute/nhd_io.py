@@ -872,6 +872,7 @@ def write_channel_restart_to_wrf_hydro(
     channel_initial_states_file,
     dt_troute,
     nts_troute,
+    t0,
     crosswalk_file,
     channel_ID_column,
     new_extension,
@@ -904,13 +905,19 @@ def write_channel_restart_to_wrf_hydro(
     -------
     """
     # create t-route simulation timestamp array
-    with xr.open_dataset(channel_initial_states_file) as ds:
-        t0 = ds.Restart_Time.replace("_", " ")
+    # TODO: Replace this with a more general function to identify
+    # the model timesteps of a particular run.
+    # consider as a candidate something like:
+    # pd.date_range(start = datetime.strptime('2017-12-31T06:00:00',"%Y-%m-%dT%H:%M:%S"), periods = nts_troute, freq = '300s')
+    # or the equivalent resulting from
+    # pd.date_range(start = np.datetime64('2017-12-31T06:00:00'), periods = nts_troute, freq = '300s')
     t0 = np.array(t0, dtype=np.datetime64)
     troute_dt = np.timedelta64(dt_troute, "s")
     troute_timestamps = t0 + np.arange(nts_troute) * troute_dt
 
     # extract ordered feature_ids from crosswalk file
+    # TODO: Find out why we re-index this dataset when it
+    # already has a segment index.
     with xr.open_dataset(crosswalk_file) as xds:
         xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
@@ -919,6 +926,7 @@ def write_channel_restart_to_wrf_hydro(
     # reindex flowveldepth array
     flowveldepth_reindex = data.reindex(xdf.link)
 
+    # TODO: The comment "revise do this one at a time" appears to be done... is it?
     # get restart timestamps - revise do this one at a time
     for f in restart_files:
         with xr.open_dataset(f) as ds:
@@ -932,6 +940,8 @@ def write_channel_restart_to_wrf_hydro(
             # if the restart timestamp exists in the t-route simulatuion
             if len(a) > 0:
 
+                # TODO: consider Packaging the following into a function
+                # e.g., def get_restart_vals_from_fvd(a, flowveldepth, idx=0,):
                 # pull flow data from flowveldepth array, package into DataArray
                 # !! TO DO - is there a more percise way to slice flowveldepth array?
                 qtrt = (

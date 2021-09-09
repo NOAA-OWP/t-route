@@ -1,6 +1,6 @@
 import argparse
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
 import pandas as pd
@@ -953,7 +953,7 @@ def main_v03(argv):
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, lastobs_df = nwm_initial_warmstate_preprocess(
+    waterbodies_df, q0, lastobs_df, t0 = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         param_df.index,
@@ -1000,6 +1000,7 @@ def main_v03(argv):
 
     for run_set_iterator, run in enumerate(run_sets):
 
+        run["t0"] = t0
         dt = run.get("dt")
         nts = run.get("nts")
 
@@ -1069,6 +1070,7 @@ def main_v03(argv):
             verbose,
             debuglevel,
         )
+        t0 = t0 + timedelta(seconds = dt * nts)
 
     # nwm_final_output_generator()
 

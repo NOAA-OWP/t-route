@@ -1,9 +1,24 @@
 import time
 import pandas as pd
+import xarray as xr
+from datetime import datetime
 from collections import defaultdict
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
+
+
+def get_t0_str_from_restart_parameters(
+    restart_parameters,
+):
+    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
+        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
+        with xr.open_dataset(channel_initial_states_file) as ds:
+            t0_str = ds.Restart_Time.replace("_", " ")
+    else:
+        t0_str = "2015-08-16 00:00:00"
+
+    return t0_str
 
 
 def nwm_network_preprocess(
@@ -152,6 +167,9 @@ def nwm_initial_warmstate_preprocess(
         if verbose:
             print("setting waterbody initial states ...")
 
+        t0_str = get_t0_str_from_restart_parameters(restart_parameters)
+        t0 = datetime.strptime(t0_str, "%Y-%m-%d %H:%M:%S")
+
         if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
@@ -203,9 +221,10 @@ def nwm_initial_warmstate_preprocess(
     )
 
     last_obs_file = restart_parameters.get("wrf_hydro_last_obs_file", None)
+    # TODO: Split apart the da input functions to get last_obs here.
     last_obs_df = pd.DataFrame()
 
-    return waterbodies_df, q0, last_obs_df
+    return waterbodies_df, q0, last_obs_df, t0
     # TODO: This returns a full dataframe (waterbodies_df) with the
     # merged initial states for waterbodies, but only the
     # initial state values (q0; not merged with the channel properties)
