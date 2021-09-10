@@ -855,14 +855,13 @@ cpdef object compute_network_structured_obj(
             if not np.isnan(usgs_values[gage_i, 0]):
                 flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
 
-    wbody_index = 0
-
     for reach, reach_type in reaches_wTypes:
         upstream_reach = upstream_connections.get(reach[0], ())
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
             my_id = binary_find(data_idx, reach)
+            wbody_index = binary_find(lake_numbers_col,reach)[0]
             #Reservoirs should be singleton list reaches, TODO enforce that here?
 
             #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
@@ -876,7 +875,6 @@ cpdef object compute_network_structured_obj(
                       array('l',upstream_ids), wbody_parameters[wbody_index]),
                       reach_type)#lp_reservoir)
                     )
-                wbody_index += 1
 
             else:
                 #If reservoir_type is 1, then initialize Level Pool reservoir
@@ -889,7 +887,6 @@ cpdef object compute_network_structured_obj(
                           array('l',upstream_ids), wbody_parameters[wbody_index]),
                           reach_type)#lp_reservoir)
                         )
-                    wbody_index += 1
 
                 #If reservoir_type is 2 for USGS or 3 for USACE, then initialize Hybrid reservoir
                 elif (reservoir_types[wbody_index][0] == 2 or reservoir_types[wbody_index][0] == 3):
@@ -909,7 +906,6 @@ cpdef object compute_network_structured_obj(
                           waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_update_time_interval_seconds"]),
                           reach_type)#hybrid_reservoir)
                         )
-                    wbody_index += 1
 
                 #If reservoir_type is 4, then initialize RFC reservoir
                 elif (reservoir_types[wbody_index][0] == 4):
@@ -927,7 +923,6 @@ cpdef object compute_network_structured_obj(
                           waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_lookback_hours"]),
                           reach_type)#rfc_reservoir)
                         )
-                    wbody_index += 1
 
         else:
             segment_ids = binary_find(data_idx, reach)
