@@ -80,8 +80,10 @@ compute_parameters:
         qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
         dt: 300  # default timestep length, seconds
         qlat_forcing_sets:
-            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
-              nts: 288
+            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/looping/qlats_croton_loop1.csv"
+              nts: 144
+            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/looping/qlats_croton_loop2.csv"
+              nts: 144
 output_parameters:
     #output location for csv file
     csv_output:
@@ -97,4 +99,6 @@ output_parameters:
         #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
         parity_check_compare_file_sets:
             - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
+              parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+            - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off_12_hours_in.csv"
               parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
