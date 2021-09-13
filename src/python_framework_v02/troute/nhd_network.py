@@ -607,13 +607,14 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
     return subnetwork_master
 
 
-def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_networks, sources=None):
+def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, independent_networks, sources=None):
     """
     Isolate subnetworks between reservoirs using a breadth-first-search
     Arguments:
         connections (dict): downstream network conenctions
         rconn (dict): upstream network connections
         wbodies (dict): {stream segment IDs in a waterbody: water body ID that segments are in}
+        all_gages (set): list of segments containing stream gages
         sources (set): list of segments from which to begin breadth-first searches. Default to
                        network tailwaters
     Returns:
@@ -632,18 +633,21 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_ne
     all_wbodies = set(wbodies.values())
 
     # search targets are all headwaters or water bodies that are not also sources
-    targets = {x for x in set.union(all_hws, all_wbodies) if x not in sources}
+    targets = {x for x in set.union(all_hws, all_wbodies, all_gages) if x not in sources}
 
     networks_with_subnetworks_ordered = {}
     for net in sources:
         new_sources = set([net])
         subnetworks = {}
         group_order = 0
+        subnetworks[group_order] = {}
+        reached_wbodies_hold = set()
 
         while new_sources:
 
             rv = {}
             reached_wbodies = set()
+            reached_gages = set()
             for h in new_sources:
                 
                 reached_segs = set()
@@ -651,10 +655,14 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_ne
                 while Q:
                     x = Q.popleft()
                     
-                    if x not in all_wbodies:
+                    if x not in set.union(all_wbodies, all_gages):
                         reached_segs.add(x)
-                    else:
+                        
+                    elif x in all_wbodies:
                         reached_wbodies.add(x)
+                        
+                    else:
+                        reached_gages.add(x)
 
                     if x not in targets:
                         Q.extend(rconn.get(x, ()))
@@ -662,22 +670,71 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, independent_ne
                 rv[h] = reached_segs
 
             # append master dictionary
-            subnetworks[group_order] = rv # stream network
+            subnetworks[group_order].update(rv) # stream network
             
-            if reached_wbodies:
+            # reset sources
+            new_sources = set()
+            
+            # in the event that both gages and water bodies are found in the previous search itteration
+            # (group_order - 1), add water bodies to group_order include reservoir inflows as new sources
+            # for the next search itteration
+            if reached_wbodies_hold:
+                res_dict = {}
+                for s in reached_wbodies_hold:
+                    res_dict[s] = {s}
+                    new_sources.update(rconn[s])
+                    
+                subnetworks[group_order].update(res_dict) # reservoirs
+                reached_wbodies_hold = set()
+                
+            # search itteration finds gages (and maybe reservoirs, but maybe not)
+            if reached_gages:
+                
+                # start next search itteration from found gages
+                new_sources.update(reached_gages)
+                
+                # hold onto list of reached water bodies
+                if reached_wbodies:
+                    reached_wbodies_hold = reached_wbodies
+                
+                # remove reached gages from search target set
+                targets = targets.difference(reached_gages)
+                
+                # remove reached gages from all_gages set
+                all_gages = all_gages.difference(reached_gages)
+                
+                # advance group order by 1 and initialize order dictionary
+                group_order += 1
+                subnetworks[group_order] = {}
+                
+            # search itteration finds only water bodies
+            elif not reached_gages and reached_wbodies:
+                
+                # start next search itteration from inflows to found reservoirs
+                for w in reached_wbodies:
+                    new_sources.update(rconn[w])
+                    
+                # add found reservoirs to next order
                 res_dict = {}
                 for s in reached_wbodies:
                     res_dict[s] = {s}
+                subnetworks[group_order + 1] = res_dict # reservoirs
                 
-                # consider making key the reservoir id - a duplicate key: value
-                subnetworks[group_order+1] = res_dict # reservoirs
+                # advance order by 2 to hop over the order containing only reservoirs
+                group_order += 2
+                subnetworks[group_order] = {}
             
-            # advance group order
-            group_order += 2
-            
-            new_sources = set()
-            for w in reached_wbodies:
-                new_sources.update(rconn[w])
+            else:
+                
+                group_order += 1
+                if new_sources:
+                    subnetworks[group_order] = {}
+                
+            # if new sources contains gages, remove those gages from target and all_gages sets
+            if new_sources.intersection(all_gages):
+                a = new_sources.intersection(all_gages)
+                targets = targets.difference(a)
+                all_gages = all_gages.difference(a)
                 
         networks_with_subnetworks_ordered[net] = subnetworks
 
