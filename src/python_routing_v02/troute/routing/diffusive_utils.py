@@ -459,7 +459,7 @@ def diffusive_input_data_v02(
     dt_ub_g = dt * qts_subdivisions
     dt_db_g = dt * qts_subdivisions 
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
-    saveinterval_cnx = dt
+    saveinterval_tu = dt
     # time interval at which depth is written out by cnt model
     saveinterval_cnt = dt * (qts_subdivisions)
     # time interval at which flow is computed and written out by cnt model
@@ -628,7 +628,6 @@ def diffusive_input_data_v02(
     # ---------------------------------------------------------------------------------
     iniq = np.zeros((mxncomp_g, nrch_g))
     frj = -1
-    #import pdb; pdb.set_trace()
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             seg_list = reach["segments_list"]
@@ -644,15 +643,12 @@ def diffusive_input_data_v02(
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
-                
-    
-    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
-    #import pdb; pdb.set_trace()
     nts_ql_g = (
         int((tfin_g - t0_g) * 3600.0 / dt_ql_g)+1
     )  # the number of the entire time steps of lateral flow data
@@ -729,7 +725,7 @@ def diffusive_input_data_v02(
     diff_ins["dtini_g"] = dtini_g
     diff_ins["t0_g"] = t0_g
     diff_ins["tfin_g"] = tfin_g
-    diff_ins["saveinterval_cnx"] = saveinterval_cnx
+    diff_ins["saveinterval_tu"] = saveinterval_tu
     diff_ins["saveinterval_cnt"] = saveinterval_cnt
     diff_ins["dt_ql_g"] = dt_ql_g
     diff_ins["dt_ub_g"] = dt_ub_g
