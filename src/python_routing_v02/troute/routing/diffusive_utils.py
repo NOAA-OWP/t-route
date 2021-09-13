@@ -453,33 +453,21 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-
-    # timestep of lateral inflow data
-    dt_ql_g = dt*qts_subdivisions 
     
-    # timestep of upper boundary data
-    dt_ub_g = dt_ql_g
-    
-    # timestep of downstream boundary data
-    # note - this is not used unless a time series of downstream boundary data are available
-    # otherwise, a normal depth downstream boundary condition is used and dt_db_g goes unused
-    dt_db_g = 900 
-    
+    # diffusive time steps info.
+    dt_ql_g = dt * qts_subdivisions
+    dt_ub_g = dt * qts_subdivisions
+    dt_db_g = dt * qts_subdivisions 
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_cnx = dt
-    
     # time interval at which depth is written out by cnt model
     saveinterval_cnt = dt * (qts_subdivisions)
-    
     # time interval at which flow is computed and written out by cnt model
+    # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
-
-    # simulation start time (hrs)
-    t0_g = 0.0 
-    
-    # simulation end time (hrs)
+    t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (dt * nsteps)/60/60
-    
+
     # USGS data related info.
     usgsID = diffusive_parameters.get("usgsID", None)
     seg2usgsID = diffusive_parameters.get("link2usgsID", None)
@@ -814,7 +802,6 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
 
             j = reach_heads.index(rch[0])
 
-
             if i == 1:
                 dat_all = np.empty((len(rch_segs)-1, nts * 3))
                 dat_all[:] = np.nan
@@ -824,7 +811,6 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
                 dat_all[:, 2::3] = np.transpose(
                     np.array(out_elv[:, 1 : len(rch_segs), j])
                 )
-                
 
             else:
                 dat_all_c = np.empty((len(rch_segs)-1, nts * 3))
@@ -841,6 +827,5 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
                 dat_all = np.concatenate((dat_all, dat_all_c))
 
             i += 1
-
 
     return np.asarray(rch_list, dtype=np.intp), np.asarray(dat_all, dtype="float32")
