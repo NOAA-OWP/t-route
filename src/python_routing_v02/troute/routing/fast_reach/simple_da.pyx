@@ -1,5 +1,5 @@
 from libc.math cimport exp, isnan
-# from libc.stdio cimport printf
+from libc.stdio cimport printf
 
 
 cpdef float simple_da_with_decay_py(
@@ -17,6 +17,65 @@ cpdef float simple_da_with_decay_py(
         minutes_since_last_valid,
         decay_coeff,
     )
+
+
+cdef (float, float, float, float) simple_da(
+    const float timestep,
+    const float routing_period,
+    const float decay_coeff,
+    const float gage_maxtimestep,
+    const float target_val,
+    const float model_val,
+    float lastobs_time,
+    float lastobs_val,
+    bint da_check_gage = 0,
+) nogil:
+    """
+    wrapper function to compute all DA elements
+    """
+    cdef float replacement_val, nudge_val, da_weighted_shift, da_decay_minutes,
+    # cdef float lastobs_timestep, lastobs_value,
+
+    # TODO: It is possible to remove the following branching logic if
+    # we just loop over the timesteps during DA and post-DA, if that
+    # is a major performance optimization. On the flip side, it would
+    # probably introduce unwanted code complexity.
+    if isnan(target_val):
+        if da_check_gage:
+            printf("THIS IS A NAN\t")
+    if ((timestep <= gage_maxtimestep) and not (isnan(target_val))):
+        if da_check_gage:
+            printf("replace\t")
+        replacement_val = target_val
+        nudge_val = target_val - model_val
+        # add/update lastobs_timestep
+        lastobs_time = (timestep - 1) * routing_period
+        lastobs_val = target_val
+    else:
+        if da_check_gage:
+            printf("So we are fixing that...\t")
+        if da_check_gage:
+            printf("decay; target: %g\t", target_val)
+        da_decay_minutes = ((timestep - 1) * routing_period - lastobs_time) / 60 # seconds to minutes
+        da_weighted_shift = obs_persist_shift(lastobs_val, model_val, da_decay_minutes, decay_coeff)
+        nudge_val = da_weighted_shift
+        # TODO: we need to export these values
+        # replacement_val = simple_da_with_decay(lastobs_val, model_val, da_decay_minutes, decay_coeff)
+        replacement_val = model_val + da_weighted_shift
+
+        if da_check_gage:
+            printf("a: %g\t", decay_coeff)
+            printf("ts: %g\t", timestep)
+            printf("dt: %g\t", routing_period)
+            printf("min: %g\t", da_decay_minutes)
+            printf("lo_t: %d\t", lastobs_time)
+            printf("lov: %g\t", lastobs_val)
+            printf("ndg: %g\t", da_weighted_shift)
+            printf("orig: %g\t", model_val)
+            printf("new: %g\t", replacement_val)
+            printf("\n")
+
+    return replacement_val, nudge_val, lastobs_time, lastobs_val,
 
 
 cdef float simple_da_with_decay(

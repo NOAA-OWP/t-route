@@ -49,7 +49,7 @@ init_rfc_reach(_Reach* reach, int lake_number,
 
     reach->reach.rfc.forecast_lookback_hours = forecast_lookback_hours;
 
-    if(water_elevation < 0){
+    if(water_elevation < -900000000){
       //Equation below is used in wrf-hydro
       printf("WARNING: RFC RESERVOIR USING COLDSTART WATER ELEVATION\n");
       fflush(stdout);

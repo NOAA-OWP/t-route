@@ -1,4 +1,5 @@
 import cython
+#from libc.stdio cimport printf
 
 from .fortran_wrappers cimport c_muskingcungenwm
 
@@ -28,6 +29,7 @@ cdef void muskingcunge(float dt,
         float cn = 0.0
         float X = 0.0
 
+    #printf("reach.pyx before %3.9f\t", depthc)
     c_muskingcungenwm(
         &dt,
         &qup,
@@ -50,6 +52,7 @@ cdef void muskingcunge(float dt,
         &ck,
         &cn,
         &X)
+    #printf("reach.pyx after %3.9f\t", depthc)
 
     rv.qdc = qdc
     rv.depthc = depthc

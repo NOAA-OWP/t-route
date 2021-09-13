@@ -390,11 +390,25 @@ def set_supernetwork_parameters(
 def build_connections(supernetwork_parameters):
     cols = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
+    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     param_df = param_df[list(cols.values())]
-    param_df = param_df.set_index(cols["key"])
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+    if synthetic_wb_segments:
+        # rename the current key column to key32
+        key32_d = {"key":"key32"}
+        param_df = param_df.rename(columns=key32_d)
+        # create a key index that is int64
+        # copy the links into the new column
+        param_df["key"] = param_df.key32.astype("int64")
+        # update the values of the synthetic reservoir segments
+        fix_idx = param_df.key.isin(set(synthetic_wb_segments))
+        param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
+
+    param_df = param_df.set_index("key")
 
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
@@ -405,7 +419,6 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
-    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
@@ -499,7 +512,7 @@ def organize_independent_networks(connections, wbodies=None):
     for tw, net in independent_networks.items():
         if wbodies:
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, wbodies, net
+                nhd_network.split_at_waterbodies_and_junctions, set(wbodies), net
             )
         else:
             path_func = partial(nhd_network.split_at_junction, net)
@@ -639,7 +652,7 @@ def build_data_assimilation(data_assimilation_parameters):
     )
 
     usgs_df = pd.DataFrame()
-    last_obs_df = pd.DataFrame()
+    usgs_qual_df = pd.DataFrame()
 
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
@@ -683,6 +696,7 @@ def build_data_assimilation_folder(data_assimilation_parameters):
             data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_timeslices_folder,
             data_assimilation_parameters["data_assimilation_filter"],
+            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
         )
 
     return usgs_df

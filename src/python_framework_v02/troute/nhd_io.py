@@ -286,7 +286,11 @@ def drop_all_coords(ds):
 
 
 def write_q_to_wrf_hydro(
-    flowveldepth, chrtout_files, qts_subdivisions, new_extension="TRTE"
+    flowveldepth,
+    chrtout_files,
+    output_folder,
+    qts_subdivisions,
+    new_extension="TRTE"
 ):
     """
     Write t-route simulated flows to WRF-Hydro CHRTOUT files.
@@ -294,6 +298,7 @@ def write_q_to_wrf_hydro(
     Arguments:
         flowveldepth (pandas Data Frame): t-route simulated flow, velocity and depth
         chrtout_files (list): chrtout filepaths
+        output_folder (pathlib.Path): folder where updated chrtout files will be written
         qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps
     """
 
@@ -331,7 +336,7 @@ def write_q_to_wrf_hydro(
 
     # save a new set of chrtout files to disk that contail t-route simulated flow
     chrtout_files_new = [
-        s.parent / (s.name + "." + new_extension) for s in chrtout_files
+        output_folder / (s.name + "." + new_extension) for s in chrtout_files
     ]
 
     # mfdataset solution - can theoretically be parallelised via dask.distributed
@@ -380,7 +385,7 @@ def read_netcdfs(paths, dim, transform_func=None):
             return ds
 
     datasets = [process_one_path(p) for p in paths]
-    combined = xr.concat(datasets, dim)
+    combined = xr.concat(datasets, dim, combine_attrs = "override")
     return combined
 
 
@@ -393,14 +398,44 @@ def preprocess_time_station_index(xd):
     unique_times_str = np.unique(xd.time.values).tolist()
 
     unique_times = np.array(unique_times_str, dtype="str")
+    
+    center_time = xd.sliceCenterTimeUTC
+    
+    tmask = []
+    for t in unique_times_str:
+        tmask.append(xd.time == t)
 
     data_var_dict = {}
+    # TODO: make this input parameters
     data_vars = ("discharge", "discharge_quality")
+
     for v in data_vars:
-        data_var_dict[v] = (["stationId"], xd[v].values[stationId_da_mask])
+        vals = []
+        for i, t in enumerate(unique_times_str):
+            vals.append(np.where(tmask[i],xd[v].values[stationId_da_mask],np.nan))
+        combined = np.vstack(vals).T
+        data_var_dict[v] = (["stationId","time"], combined)
+
     return xr.Dataset(
-        data_vars=data_var_dict, coords={"stationId": stationId, "time": unique_times}
+        data_vars=data_var_dict,
+        coords={"stationId": stationId, "time": unique_times},
+        attrs={"sliceCenterTimeUTC": center_time},
     )
+
+
+def get_nc_attributes(nc_list, attribute, file_selection=[0, -1]):
+    rv = []
+    for fs in file_selection:
+        try:
+            rv.append(get_attribute(nc_list[fs], attribute))
+        except:
+            rv.append(-1)
+    return rv
+
+
+def get_attribute(nc_file, attribute):
+    with xr.open_dataset(nc_file) as xd:
+        return xd.attrs[attribute]
 
 
 def build_last_obs_df(
@@ -609,13 +644,32 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
 
 def get_usgs_from_time_slices_folder(
-    routelink_subset_file, usgs_timeslices_folder, data_assimilation_filter
+    routelink_subset_file,
+    usgs_timeslices_folder,
+    data_assimilation_filter,
+    max_fill_1min = 14
 ):
+    # TODO: Use an explicit list for the files. By this point, the globbing should be complete.
+    """
+    routelink_subset_file - provides the gage-->segment crosswalk
+    usgs_timeslices_folder - folder with timeslices
+    data_assimilation_filter - glob pattern for selecting files
+    max_fill_1min - sets the maximum interpolation length
+    """
     usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
 
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
+
+        # dataframe containing discharge observations
         df2 = pd.DataFrame(
-            ds2["discharge"].values.T,
+            ds2["discharge"].values,
+            index=ds2["stationId"].values,
+            columns=ds2.time.values,
+        )
+
+        # dataframe containing discharge quality flags [0,1]
+        df_qual = pd.DataFrame(
+            ds2["discharge_quality"].values/100,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
@@ -633,44 +687,46 @@ def get_usgs_from_time_slices_folder(
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
 
-    usgs_df = df.join(df2)
-    usgs_df = usgs_df.reset_index()
-    usgs_df = usgs_df.rename(columns={"index": "gages"})
-    usgs_df = usgs_df.set_index("link")
-    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
-    columns_list = usgs_df.columns
+    usgs_df = (df.join(df2).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
 
-    original_string_first = usgs_df.columns[0]
-    date_time_str = original_string_first[:10] + " " + original_string_first[11:]
-    date_time_obj_start = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+    usgs_qual_df = (df.join(df_qual).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
 
-    original_string_last = usgs_df.columns[-1]
-    date_time_str = original_string_last[:10] + " " + original_string_last[11:]
-    date_time_obj_end = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+    # Start and end times of the data obtained from the timeslice dataset
+    date_time_strs = usgs_df.columns.tolist()
+    date_time_data_start = datetime.strptime(date_time_strs[0], "%Y-%m-%d_%H:%M:%S")
+    date_time_data_end = datetime.strptime(date_time_strs[-1], "%Y-%m-%d_%H:%M:%S")
+
+    # Nominal start and end times of the data in timeslice dataset
+    # TODO: Consider the case of missing timeslice files...
+    # The current method could be fragile in the event of a
+    # missing first or last file.
+    (first_center_time, last_center_time) = get_nc_attributes(usgs_files, "sliceCenterTimeUTC", (0,-1))
+    date_time_center_start = datetime.strptime(first_center_time, "%Y-%m-%d_%H:%M:%S")
+    date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    # for j in pd.date_range(date_time_obj_start, date_time_obj_end + timedelta(1), freq="5min"):
-    for j in pd.date_range(date_time_obj_start, date_time_obj_end, freq="5min"):
-        dates.append(j.strftime("%Y-%m-%d_%H:%M:00"))
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq="5min"):
+        dates.append(j)
 
     """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
-    OR 
+    OR
     # dates_to_drop = usgs_df.columns.difference(dates)
     # dates_to_add = pd.Index(dates).difference(usgs_df.columns)
     """
 
-    usgs_df = usgs_df.reindex(columns=dates)
-    # TODO: this index shifting is a data qa issue -- the time slices come in with extra values
-    # on the front end and we have to trim those.
-    # TODO: DO NOT ACCEPT THIS PR UNTIL WE ARE SURE THE DATES LINE UP!!
-    usgs_df = usgs_df.iloc[:, 1:]
-
-    # NOTE: We omit linear interpolation to allow for the decay process to provide values if needed.
     # TODO: Implement a robust test verifying the intended output of the interpolation
     """
-    The idea would be to have a function in Cython which could be called in a testable 
-    framework with inputs such as the following (and corresponding expected outputs for 
+    The idea would be to have a function in Cython which could be called in a testable
+    framework with inputs such as the following (and corresponding expected outputs for
     the various combinations) for use with pytest or the like:
     ```
     obs = [ 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10]
@@ -688,11 +744,41 @@ def get_usgs_from_time_slices_folder(
     last_obs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
     ```
     """
-    # usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    # usgs_df = usgs_df.interpolate(method="linear", axis=1, limit_direction="backward")
-    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
-    return usgs_df
+    # ---- Laugh testing ------
+    # scren-out erroneous qc flags
+    usgs_qual_df = usgs_qual_df.mask(usgs_qual_df < 0, np.nan)
+    usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
+
+    # screen-out poor quality flow observations
+    # TODO: Bring qc_thresh parameter in from yaml as user input
+    qc_trehsh = 1
+    usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
+
+    # screen-out erroneous flow observations
+    usgs_df = usgs_df.mask(usgs_df <= 0, np.nan)
+
+    # ---- Interpolate USGS observations to time discretization of the simulation ----
+    usgs_df_T = usgs_df.transpose()
+    usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
+
+    """
+    Note: The max_fill is applied when the series is being considered at a 1 minute interval
+    so 14 minutes ensures no over-interpolation with 15-minute gage records, but creates
+    square-wave signals at gages reporting hourly...
+    therefore, we use a 59 minute gap filling tolerance.
+    """
+    # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
+    usgs_df_T = (usgs_df_T.resample('min').
+                 interpolate(limit = max_fill_1min, limit_direction = 'both').
+                 resample('5min').
+                 asfreq().
+                 loc[date_time_center_start:,:])
+
+    # usgs_df_T.reindex(dates)
+    usgs_df_new = usgs_df_T.transpose()
+
+    return usgs_df_new
 
 
 # TODO: Move channel restart above usgs to keep order with execution script
@@ -782,6 +868,7 @@ def get_channel_restart_from_wrf_hydro(
 def write_channel_restart_to_wrf_hydro(
     data,
     restart_files,
+    output_folder,
     channel_initial_states_file,
     dt_troute,
     nts_troute,
@@ -802,6 +889,7 @@ def write_channel_restart_to_wrf_hydro(
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
         restart_files (list): globbed list of WRF-Hydro restart files
+        output_folder (pathlib.Path): folder where updated restart files will be written
         channel_initial_states_file (str): WRF-HYDRO standard restart file used to initiate t-route simulation
         dt_troute (int): timestep of t-route simulation (seconds)
         nts_troute (int): number of t-route simulation timesteps
@@ -828,7 +916,7 @@ def write_channel_restart_to_wrf_hydro(
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
 
-    # reindex flowvedl depth array
+    # reindex flowveldepth array
     flowveldepth_reindex = data.reindex(xdf.link)
 
     # get restart timestamps - revise do this one at a time
@@ -876,7 +964,7 @@ def write_channel_restart_to_wrf_hydro(
                 ds[troute_depth_var_name] = htrt_DataArray
 
                 # write edited to disk with new filename
-                ds.to_netcdf(f.parent / (f.name + "." + new_extension))
+                ds.to_netcdf(output_folder / (f.name + "." + new_extension))
 
 
 def get_reservoir_restart_from_wrf_hydro(

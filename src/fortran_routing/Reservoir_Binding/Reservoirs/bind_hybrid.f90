@@ -60,7 +60,7 @@ contains
 
             integer :: char_index, nchars_reservoir_parameter_file 
             integer :: nchars_start_date, nchars_usgs_timeslice_path, nchars_usace_timeslice_path
-         
+
             ! Use fortran calls to go find certain things like null_char instead of using this loop every time
             ! Look up more about converting char array to string
 
