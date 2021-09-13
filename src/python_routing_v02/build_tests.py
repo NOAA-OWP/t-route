@@ -258,8 +258,12 @@ def parity_check(
         # compare dataframes
         compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
         compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        compare["rel_diff"] = (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]) / compare["flow, wrf (cms)"]
         compare["absdiff"] = np.abs(
             compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        )
+        compare["rel_absdiff"] = np.abs(
+            (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]) / compare["flow, wrf (cms)"]
         )
 
         print(compare)

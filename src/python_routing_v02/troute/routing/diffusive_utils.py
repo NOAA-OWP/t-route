@@ -428,7 +428,8 @@ def diffusive_input_data_v02(
     initial_conditions,
     upstream_results,
     qts_subdivisions,
-    nsteps
+    nsteps,
+    dt
 ):
     """
     Build input data objects for diffusive wave model
@@ -454,14 +455,14 @@ def diffusive_input_data_v02(
     """
 
     # diffusive time steps info.
-    dt_ql_g = geo_data[0,0] * qts_subdivisions
-    dt_ub_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    dt_db_g = geo_data[0,0] * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    saveinterval_g = geo_data[0,0]
-    saveinterval_ev_g = geo_data[0,0]
-    dtini_g = geo_data[0,0]
+    dt_ql_g = dt * qts_subdivisions
+    dt_ub_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    dt_db_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
+    saveinterval_g = dt
+    saveinterval_ev_g = dt
+    dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
-    tfin_g = (geo_data[0,0] * nsteps)/60/60
+    tfin_g = (dt * nsteps)/60/60
     
     # USGS data related info.
     usgsID = diffusive_parameters.get("usgsID", None)
@@ -505,7 +506,7 @@ def diffusive_input_data_v02(
                     upstream_flow_array[j, int(i/qts_subdivisions)] = val
  
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, offnet_wbodies, rconn)
+    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_wbodies), rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
@@ -636,6 +637,8 @@ def diffusive_input_data_v02(
                     
                 idx_segID = np.where(geo_index == segID)
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                if iniq[seg, frj]<0.0001:
+                    iniq[seg, frj]=0.0001
                 
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
@@ -643,7 +646,7 @@ def diffusive_input_data_v02(
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
     nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
+        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)+1
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
@@ -790,30 +793,30 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
         for rch in ordered_reaches[o]:
 
             rch_segs = rch[1]["segments_list"]
-            rch_list.extend(rch_segs)
+            rch_list.extend(rch_segs[:-1])
 
             j = reach_heads.index(rch[0])
 
             if i == 1:
-                dat_all = np.empty((len(rch_segs), nts * 3))
+                dat_all = np.empty((len(rch_segs)-1, nts * 3))
                 dat_all[:] = np.nan
                 # flow result
-                dat_all[:, ::3] = np.transpose(np.array(out_q[:, 0 : len(rch_segs), j]))
+                dat_all[:, ::3] = np.transpose(np.array(out_q[:, 1 : len(rch_segs), j]))
                 # elevation result
                 dat_all[:, 2::3] = np.transpose(
-                    np.array(out_elv[:, 0 : len(rch_segs), j])
+                    np.array(out_elv[:, 1 : len(rch_segs), j])
                 )
 
             else:
-                dat_all_c = np.empty((len(rch_segs), nts * 3))
+                dat_all_c = np.empty((len(rch_segs)-1, nts * 3))
                 dat_all_c[:] = np.nan
                 # flow result
                 dat_all_c[:, ::3] = np.transpose(
-                    np.array(out_q[:, 0 : len(rch_segs), j])
+                    np.array(out_q[:, 1 : len(rch_segs), j])
                 )
                 # elevation result
                 dat_all_c[:, 2::3] = np.transpose(
-                    np.array(out_elv[:, 0 : len(rch_segs), j])
+                    np.array(out_elv[:, 1 : len(rch_segs), j])
                 )
                 # concatenate
                 dat_all = np.concatenate((dat_all, dat_all_c))

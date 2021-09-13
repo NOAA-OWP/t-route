@@ -24,11 +24,13 @@ output_parameters:
     #out location for nc file
     nc_output_folder: "../../test/output/text"
     # Write t-route data to WRF-Hydro restart files
-    wrf_hydro_channel_output_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+    wrf_hydro_channel_output_source_folder: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_CHRTOUT/"
+    wrf_hydro_channel_final_output_folder: "../../test/output/Pocono_TEST1/example_CHRTOUT"
     wrf_hydro_channel_output_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
     wrf_hydro_channel_output_new_extension: "TROUTE"
     # Write t-route data to WRF-Hydro CHRTOUT files
-    wrf_hydro_channel_restart_directory: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/"
+    wrf_hydro_channel_restart_source_directory: "../../test/input/geo/NWM_2.1_Sample_Datasets/Pocono_TEST1/example_RESTART/"
+    wrf_hydro_channel_restart_output_directory: "../../test/output/Pocono_TEST1/example_RESTART"
     wrf_hydro_channel_restart_pattern_filter: "HYDRO_RST.*"
     wrf_hydro_channel_restart_new_extension: "TROUTE"
 #data column assignment inside supernetwork_parameters
