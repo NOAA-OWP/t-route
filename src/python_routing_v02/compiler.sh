@@ -6,7 +6,7 @@ REPOROOT=`pwd`
 #For each build step, you can set these to true to make it build
 #or set it to anything else (or unset) to skip that step
 build_mc_kernel=true
-build_diffusive_cnx_kernel=true
+build_diffusive_tulane_kernel=true
 build_diffusive_cnt_kernel=true
 build_reservoir_kernel=true
 build_framework=true
@@ -33,7 +33,7 @@ if  [[ "$build_mc_kernel" == true ]]; then
   make install || exit
 fi
 
-if  [[ "$build_diffusive_cnx_kernel" == true ]]; then
+if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
   #building reach and resevoir kernel files .o  
   cd $REPOROOT/src/fortran_routing/diffusive_v02frwk/
   make clean
