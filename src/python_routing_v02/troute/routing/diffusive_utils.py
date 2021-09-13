@@ -453,17 +453,21 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-
+    
     # diffusive time steps info.
     dt_ql_g = dt * qts_subdivisions
-    dt_ub_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    dt_db_g = dt * qts_subdivisions # TODO: make this timestep the same as the simulation timestep
-    saveinterval_g = dt
-    saveinterval_ev_g = dt
+    dt_ub_g = dt * qts_subdivisions
+    dt_db_g = dt * qts_subdivisions 
+    # time interval at which flow and depth simulations are written out by Tulane diffusive model
+    saveinterval_tu = dt
+    # time interval at which depth is written out by cnt model
+    saveinterval_cnt = dt * (qts_subdivisions)
+    # time interval at which flow is computed and written out by cnt model
+    # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (dt * nsteps)/60/60
-    
+
     # USGS data related info.
     usgsID = diffusive_parameters.get("usgsID", None)
     seg2usgsID = diffusive_parameters.get("link2usgsID", None)
@@ -639,7 +643,7 @@ def diffusive_input_data_v02(
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
-                
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
@@ -706,14 +710,13 @@ def diffusive_input_data_v02(
     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
-    # TODO: Call uniform flow lookup table creation kernel
-
+    # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
     #                              Step 0-11
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
-    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / saveinterval_ev_g)
+    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt)
 
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
@@ -722,8 +725,8 @@ def diffusive_input_data_v02(
     diff_ins["dtini_g"] = dtini_g
     diff_ins["t0_g"] = t0_g
     diff_ins["tfin_g"] = tfin_g
-    diff_ins["saveinterval_g"] = saveinterval_g
-    diff_ins["saveinterval_ev_g"] = saveinterval_ev_g
+    diff_ins["saveinterval_tu"] = saveinterval_tu
+    diff_ins["saveinterval_cnt"] = saveinterval_cnt
     diff_ins["dt_ql_g"] = dt_ql_g
     diff_ins["dt_ub_g"] = dt_ub_g
     diff_ins["dt_db_g"] = dt_db_g
@@ -748,7 +751,7 @@ def diffusive_input_data_v02(
     diff_ins["ufhlt_f_g"] = ufhlt_f_g
     diff_ins["ufqlt_f_g"] = ufqlt_f_g
     diff_ins["frnw_col"] = frnw_col
-    diff_ins["frnw_g"] = frnw_g
+    diff_ins["frnw_g"] = dfrnw_g
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g
     diff_ins["dbcd_g"] = dbcd_g

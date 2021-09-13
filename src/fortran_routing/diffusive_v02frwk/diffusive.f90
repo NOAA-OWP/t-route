@@ -60,7 +60,7 @@ contains
     !*          with diffusive routing engines
     !
     !*--------------------------------------------------------------------------------
-    subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
+    subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
                         nts_ql_g, nts_ub_g, nts_db_g, &
                         mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
                         mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
@@ -74,7 +74,7 @@ contains
         integer, intent(in) :: mxncomp_g, nrch_g
         integer, intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g
         integer, intent(in) :: nhincr_m_g, nhincr_f_g, frnw_col
-        double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g
+        double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g
 
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, iniq
