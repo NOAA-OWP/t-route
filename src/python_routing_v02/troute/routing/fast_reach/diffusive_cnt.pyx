@@ -251,11 +251,49 @@ cpdef object compute_diffusive_tst(
      out_elv)
 
     # re-format outputs
-    index_array, flowvelelv = diff_utils.unpack_output(
+    index_array, flowveldepth = diff_utils.unpack_output(
                                 diff_inputs["pynw"],
                                 diff_inputs["ordered_reaches"],
                                 out_q,
                                 out_elv
                                 )
+        
+    # TODO: reindex flowveldepth array to match data_idx, else we will end up
+    # assimilating data to the wron segment. 
+    
+    cdef int gages_size = usgs_positions.shape[0]
+    cdef int gage_maxtimestep = usgs_values.shape[1]
+    cdef int gage_i, usgs_position_i, timestep
+    cdef float lastosbs_value, lastobs_time
+    cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
+    cdef float [:] lastobs_values, lastobs_times
+    cdef (float, float, float, float) da_buf
+    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
+    cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
 
-    return index_array, flowvelelv
+    if gages_size:
+        lastobs_value = lastobs_values_init[0]
+        lastobs_time = time_since_lastobs_init[0]
+        routing_period = dt
+        usgs_positions_i = usgs_positions[0]
+        
+        timestep = 0
+        while timestep <= nsteps:
+
+#             da_buf = simple_da(
+#                 timestep,
+#                 dt,
+#                 da_decay_coefficient,
+#                 gage_maxtimestep,
+#                 NAN if timestep >= gage_maxtimestep else usgs_values[0,timestep],
+#                 flowveldepth[usgs_positions_i, timestep, 0],
+#                 lastobs_time,
+#                 lastobs_value,
+#                 False,
+#             )
+
+            timestep += 1
+        
+        
+
+    return index_array, flowveldepth
