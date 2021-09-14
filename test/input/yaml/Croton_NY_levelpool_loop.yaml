@@ -100,5 +100,11 @@ output_parameters:
         parity_check_compare_file_sets:
             - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off.csv"
               parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+              #Uncomment below to parity check the reservoir's water elevation instead
+              #of outflow
+              parity_check_water_elevation: true
             - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_levelpool_warm_nudge_off_12_hours_in.csv"
               parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+              #Uncomment below to parity check the reservoir's water elevation instead
+              #of outflow
+              parity_check_water_elevation: true

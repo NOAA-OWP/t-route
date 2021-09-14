@@ -78,7 +78,8 @@ def nwm_network_preprocess(
 
         waterbody_type_specified = False
 
-        # NOTE: What are we accomplishing with this logic here?
+        # Determine if any data assimilation reservoirs are activated, and if so, read
+        # the reservoir parameter file
         if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
         or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
         or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
