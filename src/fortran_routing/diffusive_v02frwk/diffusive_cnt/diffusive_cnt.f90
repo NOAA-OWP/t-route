@@ -207,11 +207,11 @@ contains
         end do
         
         ! TO DO:
-		! * pass initial depth as initial conditions and dont arbitrarily intialize
-		z=z_ar_g
-        ini_y=0.05  !* [meter]
-  
-        oldQ = -999; oldY = -999; newQ = -999; newY = -999
+	! * pass initial depth as initial conditions and dont arbitrarily intialize
+	z=z_ar_g
+        !ini_y=0.05  !* [meter] 
+        !oldQ = -999; oldY = -999; 
+	newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
 		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -231,14 +231,14 @@ contains
 									leftBank(i,j), rightBank(i,j),timesDepth, j,&
 									z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
 
-				oldY(i,j) = ini_y(j) + z(i,j)
-                oldQ(i,j) = iniq(i,j)
+				!oldY(i,j) = ini_y(j) + z(i,j)
+                		!oldQ(i,j) = iniq(i,j)
             end do
 		end do
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		! Populate lateral inflow and upper boundary time arrays
-		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		! lateral inflow time
+	! Populate lateral inflow and upper boundary time arrays
+	! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	! lateral inflow time
         do n=1, nts_ql_g
             tarr_ql(n)= t0_g*60.0 + dt_ql_g*real(n-1,KIND(dt_ql_g))/60.0 !* [min]
         end do
@@ -252,8 +252,8 @@ contains
         end do
 
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		!  interpolation of boundaries at the initial time step
-		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	!  interpolation of boundaries at the initial time step
+	! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         t=t0*60.0     !! from now on, t is in minute
         !! Need to define which channel has terminal boundary
         ppn = 1; qqn = 1        ! ppn and qqn indicates the sequence no of the boundary data
@@ -278,10 +278,46 @@ contains
                 q_sk_multi=1.0
                 slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
                 if (slope .le. 0.0001) slope = 0.0001
+		oldQ(ncomp,j)= iniq(ncomp,j)
                 !oldY below takes normal depth value as a result.
                 call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
             end if
         end do
+        ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        ! compute initial water depth, celerity, and diffusivity using iniq
+        ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        q_sk_multi=1.0
+        do j=1, nlinks
+            ncomp= frnw_g(j,1)
+            do i=1, ncomp
+                oldQ(i,j) = iniq(i,j)
+		newQ(i,1,j) = iniq(i,j)
+                qp(i,1,j)= iniq(i,j)
+                if (i==ncomp) then
+                    !* normal depth
+                    slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
+                    if (slope .le. 0.0001) slope = 0.0001
+                    if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
+                        !*use TW boundary water elevation data
+                        oldY(ncomp,j)=oldY(ncomp,j)
+                    else
+                        !* oldY(i,j) <- normal depth for iniq(i,j) + z(i,j). Hence, oldY is water elevation [m].
+                        call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), oldY(i,j), temp, temp, temp)
+                    endif
+                endif
+            enddo
+            !* for mainly computing celerity and diffusivity
+	    newY(ncomp,j)= oldY(ncomp,j)
+	    idmy1=0
+            call mesh_diffusive_backward(j,ntim, idmy1)
+            do i=1,ncomp
+                oldY(i,j)=newY(i,j)
+            end do
+            do i=1,ncomp
+                !write(14,*) i, j, oldQ(i,j), oldY(i,j), newY(i,j), celerity(i,j), diffusivity(i,j)
+                print*, i, j, oldQ(i,j), oldY(i,j), celerity(i,j), diffusivity(i,j)
+            enddo
+        enddo
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         ! correcting the WL initial condition based on the WL boundary
         ! so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
@@ -299,9 +335,9 @@ contains
         qpx = 0.
         cfl=0.9
         width = 10. !   initialization
-        celerity = -999.
+        !celerity = -999.
         maxCelerity = 1.0
-        diffusivity = -999.
+        !diffusivity = -999.
         maxCelDx = maxCelerity / minDx
         !!! setting initial values of dimensionless parameters
         !dimensionless_Cr, dimensionless_Fo, dimensionless_Fi, dimensionless_Fc, dimensionless_Di, dimensionless_D
@@ -324,17 +360,17 @@ contains
             end do        
         end do
 		! initialization of Q, celerity, and diffusivity
-		celerity = 1.0
-		diffusivity = 100.0
-		do j=1,nlinks
-			ncomp = frnw_g(j,1)
-			do i=1, ncomp
-				newQ(i,1,j) = iniq(i,j)
+		!celerity = 1.0
+		!diffusivity = 100.0
+		!do j=1,nlinks
+		!	ncomp = frnw_g(j,1)
+		!	do i=1, ncomp
+		!		newQ(i,1,j) = iniq(i,j)
 				!timestep=1
 				!ini_time=0.0				
 				!write(12,*) ini_time, i, timestep, j, newQ(i,1,j)
-			end do
-		end do
+		!	end do
+		!end do
 
         ts_ev=0
 		do kkk = 1,totalTimeSteps-1, repeatInterval
@@ -443,7 +479,7 @@ contains
 				call mesh_diffusive_backward(j,ntim,repeatInterval)
 			end do
 			! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-			! Write q and depth results to q_ev_g array
+			! Write and depth results to q_ev_g array
 			! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 			do timestep = 1, repeatInterval
                 ts_ev = ((ini_time*60.0/dtini) + timestep)
@@ -452,6 +488,7 @@ contains
                     do i = 1, ncomp
                         q_ev_g(ts_ev, i, j) = newQ(i, timestep, j)
                         elv_ev_g(ts_ev, i, j) = newY(i, j) - z(i,j) ! depth (meters)
+			print*, ts_ev, i, j,  q_ev_g(ts_ev, i, j), elv_ev_g(ts_ev, i, j)
                     end do
                 end do
             end do
