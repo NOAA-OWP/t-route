@@ -911,6 +911,15 @@ def new_nwm_q0(run_results):
     )
 
 
+def get_waterbody_water_elevation(waterbodies_df, q0):
+    
+    # Update the starting water_elevation of each lake/reservoir 
+    # with depth values from q0
+    waterbodies_df.update(q0)  
+
+    return waterbodies_df
+
+
 def main_v03(argv):
     args = _handle_args_v03(argv)
     (
@@ -1054,6 +1063,8 @@ def main_v03(argv):
 
             # q0 = run_results
             q0 = new_nwm_q0(run_results)
+
+            waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)   
 
         nwm_output_generator(
             run_results,

@@ -127,3 +127,11 @@ parity_parameters:
     #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
     parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_rfc_nudge_off.csv"
     parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+    #Uncomment below to parity check the reservoir's water elevation instead
+    #of outflow
+    #NOTE: For this Croton NY RFC test, the water elevation does not pass the parity
+    #      check because the original wrf test was conducted with the reservoir's 
+    #      water elevation balanced from the level pool outflow and not the assimilated
+    #      RFC forecasted outflow. The current updated version in t-route balances 
+    #      the reservoir's water elevation with the assimilated RFC forecasted outflow.
+    #parity_check_water_elevation: true
