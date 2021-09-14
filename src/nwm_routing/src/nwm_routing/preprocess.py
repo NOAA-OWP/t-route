@@ -167,14 +167,6 @@ def nwm_initial_warmstate_preprocess(
         if verbose:
             print("setting waterbody initial states ...")
 
-        if restart_parameters.get("wrf_hydro_channel_restart_file",None):
-            channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
-            t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
-        else:
-            t0_str = "2015-08-16_00:00:00"
-
-        t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-
         if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
@@ -216,13 +208,21 @@ def nwm_initial_warmstate_preprocess(
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
-    # STEP 4: Handle Channel Initial States
+    # STEP 4: Handle Channel Initial States and Set T0
     if showtiming:
         start_time = time.time()
     if verbose:
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
+
+    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
+        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
+        t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+    else:
+        t0_str = "2015-08-16_00:00:00"
+
+    t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
 
     if verbose:
         print("channel initial states complete")
