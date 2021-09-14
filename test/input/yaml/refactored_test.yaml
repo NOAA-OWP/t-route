@@ -33,8 +33,8 @@ output_parameters:
     nc_output_folder: "../../test/output/text"
 # Data column assignment inside supernetwork_parameters
 supernetwork_parameters:
-    title_string: Refactored_test_meters_check #Custom Input Example (using Florence-Event Cutout datafile)
-    geo_file_path: "../../test/input/florence_933020089/DOMAIN/nhdplus_reconciled_500_10975909_params_meters_check.gpkg"
+    title_string: refactored_01a_10000_500_500 #Custom Input Example (using Florence-Event Cutout datafile)
+    geo_file_path: "/media/sf_Inland_hydrofabric/testing/S3/cleaned_up/01a_10000_500_500.gpkg"
     # mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
     mask_layer_string: ""
     mask_driver_string: "csv"
