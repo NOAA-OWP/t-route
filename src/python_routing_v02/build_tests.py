@@ -250,6 +250,7 @@ def parity_check(
     time_wrf = validation_data.columns.values
 
     if compare_node in validation_data.index:
+        print(f"Comparing flows at {compare_node}")
 
         # construct comparable dataframes
         if not parity_check_water_elevation:
