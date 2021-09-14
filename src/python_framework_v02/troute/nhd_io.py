@@ -785,7 +785,6 @@ def get_param_str(
     target_file,
     param,
 ):
-    breakpoint()
     with xr.open_dataset(target_file) as ds:
         param_str = ds.attrs[param]
 
