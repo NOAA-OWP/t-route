@@ -53,7 +53,7 @@ compute_parameters:
     parallel_compute_method: by-network  # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
     cpu_pool: 4
     # subnetwork_target_size: 100  # by-subnetwork* requires a value here to identify the target subnetwork size.
-    compute_kernel: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    compute_kernel: V02-structured # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true  # use the previous timestep value for both current and previous flow.
     return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
     #WRF-Hydro restart files
