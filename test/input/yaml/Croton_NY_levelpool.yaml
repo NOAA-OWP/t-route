@@ -129,4 +129,4 @@ parity_parameters:
     parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
     #Uncomment below to parity check the reservoir's water elevation instead
     #of outflow
-    #parity_check_water_elevation: true
+    #parity_check_water_elevation: true 
