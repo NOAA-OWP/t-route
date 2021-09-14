@@ -55,6 +55,8 @@ def nwm_network_preprocess(
     # waterbodies_segments = supernetwork_values[13]
     # connections_tailwaters = supernetwork_values[4]
 
+    waterbody_type_specified = False
+
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -81,8 +83,6 @@ def nwm_network_preprocess(
         wb_params_level_pool = waterbody_parameters.get(
             wbtype, defaultdict(list)
         )  # TODO: Convert these to `get` statments
-
-        waterbody_type_specified = False
 
         # Determine if any data assimilation reservoirs are activated, and if so, read
         # the reservoir parameter file
@@ -206,6 +206,10 @@ def nwm_initial_warmstate_preprocess(
                 len(waterbodies_initial_states_df)
             )
 
+        waterbodies_df = pd.merge(
+            waterbodies_df, waterbodies_initial_states_df, on="lake_id"
+        )
+
         if verbose:
             print("waterbody initial states complete")
         if showtiming:
@@ -225,11 +229,6 @@ def nwm_initial_warmstate_preprocess(
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
-
-    # TODO: Does this need to live outside the if-block for waterbodies above? If not, let's move it up there to keep things together.
-    waterbodies_df = pd.merge(
-        waterbodies_df, waterbodies_initial_states_df, on="lake_id"
-    )
 
     last_obs_file = restart_parameters.get("wrf_hydro_last_obs_file", None)
     # TODO: Split apart the da input functions to get last_obs here.
