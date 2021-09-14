@@ -183,7 +183,7 @@ def read_reservoir_parameter_file(
         ds = ds.swap_dims({"feature_id": lake_index_field})
 
         ds_new = ds["reservoir_type"]
-       
+
         df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
 
     return df1
@@ -398,9 +398,9 @@ def preprocess_time_station_index(xd):
     unique_times_str = np.unique(xd.time.values).tolist()
 
     unique_times = np.array(unique_times_str, dtype="str")
-    
+
     center_time = xd.sliceCenterTimeUTC
-    
+
     tmask = []
     for t in unique_times_str:
         tmask.append(xd.time == t)
@@ -781,6 +781,17 @@ def get_usgs_from_time_slices_folder(
     return usgs_df_new
 
 
+def get_param_str(
+    target_file,
+    param,
+):
+    breakpoint()
+    with xr.open_dataset(target_file) as ds:
+        param_str = ds.attrs[param]
+
+    return param_str
+
+
 # TODO: Move channel restart above usgs to keep order with execution script
 def get_channel_restart_from_csv(
     channel_initial_states_file,
@@ -884,8 +895,8 @@ def write_channel_restart_to_wrf_hydro(
     """
     Write t-route flow and depth data to WRF-Hydro restart files. New WRF-Hydro restart
     files are created that contain all of the data in the original files, plus t-route
-    flow and depth data. 
-    
+    flow and depth data.
+
     Agruments
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
@@ -900,7 +911,7 @@ def write_channel_restart_to_wrf_hydro(
         troute_us_flow_var_name (str):
         troute_ds_flow_var_name (str):
         troute_depth_var_name (str):
-        
+
     Returns
     -------
     """
