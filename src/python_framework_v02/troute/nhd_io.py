@@ -922,9 +922,9 @@ def write_channel_restart_to_wrf_hydro(
     # pd.date_range(start = datetime.strptime('2017-12-31T06:00:00',"%Y-%m-%dT%H:%M:%S"), periods = nts_troute, freq = '300s')
     # or the equivalent resulting from
     # pd.date_range(start = np.datetime64('2017-12-31T06:00:00'), periods = nts_troute, freq = '300s')
-    t0 = np.array(t0, dtype=np.datetime64)
+    t_array = np.array(t0, dtype=np.datetime64)
     troute_dt = np.timedelta64(dt_troute, "s")
-    troute_timestamps = t0 + np.arange(nts_troute) * troute_dt
+    troute_timestamps = t_array + np.arange(nts_troute) * troute_dt
 
     # extract ordered feature_ids from crosswalk file
     # TODO: Find out why we re-index this dataset when it
