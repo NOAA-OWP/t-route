@@ -373,7 +373,9 @@ def _run_everything_v02(
         supernetwork_parameters
     )
     if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(connections, wbody_conn)
+        connections = nhd_network.replace_waterbodies_connections(
+            connections, wbody_conn
+        )
 
     if verbose:
         print("supernetwork connections set complete")
@@ -401,26 +403,35 @@ def _run_everything_v02(
             .set_index("lake_id")
         )
 
-        #Declare empty dataframe
+        # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype="hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype = "hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
-        wbtype="level_pool"
-        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        wbtype = "level_pool"
+        wb_params_level_pool = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
         waterbody_type_specified = False
 
-        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
-        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
-        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
+        if (
+            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
+            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
+            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
+        ):
 
             waterbody_type_specified = True
 
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
-                wb_params_level_pool["level_pool_waterbody_id"], wbody_conn.values(),)
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
+                wb_params_level_pool["level_pool_waterbody_id"],
+                wbody_conn.values(),
+            )
 
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
@@ -430,7 +441,7 @@ def _run_everything_v02(
             )
 
     else:
-        #Declare empty dataframe
+        # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
@@ -446,7 +457,8 @@ def _run_everything_v02(
     if break_network_at_gages:
         network_break_segments = network_break_segments.union(gages.keys())
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections, network_break_segments,
+        connections,
+        network_break_segments,
     )
     if verbose:
         print("reach organization complete")
@@ -474,10 +486,16 @@ def _run_everything_v02(
         else:
             # TODO: Consider adding option to read cold state from route-link file
             waterbodies_initial_ds_flow_const = 0.0
-            waterbodies_initial_depth_const = -1E9
+            waterbodies_initial_depth_const = -1e9
             # Set initial states from cold-state
             waterbodies_initial_states_df = pd.DataFrame(
-                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+                0,
+                index=waterbodies_df.index,
+                columns=[
+                    "qd0",
+                    "h0",
+                ],
+                dtype="float32",
             )
             # TODO: This assignment could probably by done in the above call
             waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
@@ -537,9 +555,7 @@ def _run_everything_v02(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
 
     if data_assimilation_csv or data_assimilation_folder or last_obs_file:
         if showtiming:
@@ -751,8 +767,12 @@ def _handle_output_v02(
             str = "WRF Hydro restart files not found - Aborting restart write sequence"
             raise AssertionError(str)
 
-    chrtout_read_folder = output_parameters.get("wrf_hydro_channel_output_source_folder", None)
-    chrtout_write_folder = output_parameters.get("wrf_hydro_channel_final_output_folder", chrtout_read_folder)
+    chrtout_read_folder = output_parameters.get(
+        "wrf_hydro_channel_output_source_folder", None
+    )
+    chrtout_write_folder = output_parameters.get(
+        "wrf_hydro_channel_final_output_folder", chrtout_read_folder
+    )
     if chrtout_read_folder:
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -802,7 +822,8 @@ def _handle_output_v02(
         parity_parameters["dt"] = dt
 
         build_tests.parity_check(
-            parity_parameters, results,
+            parity_parameters,
+            results,
         )
 
         if verbose:
@@ -912,10 +933,10 @@ def new_nwm_q0(run_results):
 
 
 def get_waterbody_water_elevation(waterbodies_df, q0):
-    
-    # Update the starting water_elevation of each lake/reservoir 
+
+    # Update the starting water_elevation of each lake/reservoir
     # with depth values from q0
-    waterbodies_df.update(q0)  
+    waterbodies_df.update(q0)
 
     return waterbodies_df
 
@@ -1064,7 +1085,7 @@ def main_v03(argv):
             # q0 = run_results
             q0 = new_nwm_q0(run_results)
 
-            waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)   
+            waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
         nwm_output_generator(
             run_results,

@@ -89,7 +89,7 @@ waterbody_parameters:
         # The default is 86400 (seconds per day). Set to 3600 for standard and extended AnA simulations.
         # Set to 1000000000 for short range and medium range forecasts.
         reservoir_observation_update_time_interval_seconds: 1000000000
-        
+
         # If using RFC forecast reservoirs, set to True. (default=.FALSE.)
         reservoir_rfc_forecasts: True
 
@@ -130,8 +130,8 @@ parity_parameters:
     #Uncomment below to parity check the reservoir's water elevation instead
     #of outflow
     #NOTE: For this Croton NY RFC test, the water elevation does not pass the parity
-    #      check because the original wrf test was conducted with the reservoir's 
+    #      check because the original wrf test was conducted with the reservoir's
     #      water elevation balanced from the level pool outflow and not the assimilated
-    #      RFC forecasted outflow. The current updated version in t-route balances 
+    #      RFC forecasted outflow. The current updated version in t-route balances
     #      the reservoir's water elevation with the assimilated RFC forecasted outflow.
     #parity_check_water_elevation: true

@@ -52,7 +52,10 @@ def build_test_parameters(
 
         # Simulation domain RouteLink file
         routelink_file = pathlib.Path(
-            NWM_test_path, "primary_domain", "DOMAIN", "Route_Link.nc",
+            NWM_test_path,
+            "primary_domain",
+            "DOMAIN",
+            "Route_Link.nc",
         ).resolve()
 
         # Speficify WRF hydro restart file, name and destination
@@ -158,7 +161,8 @@ def build_test_parameters(
 
 
 def parity_check(
-    parity_set, results,
+    parity_set,
+    results,
 ):
     nts = parity_set["nts"]
     dt = parity_set["dt"]
@@ -207,7 +211,9 @@ def parity_check(
             validation_data.rename(columns={"outflow": compare_node}, inplace=True)
         # TODO: Add toggle option to compare water elevation
         else:
-            validation_data.rename(columns = {"water_sfc_elev": compare_node}, inplace = True)
+            validation_data.rename(
+                columns={"water_sfc_elev": compare_node}, inplace=True
+            )
         validation_data = validation_data[[compare_node]]
         validation_data.index = validation_data.index.astype("datetime64[ns]")
         validation_data = validation_data.transpose()
@@ -263,28 +269,31 @@ def parity_check(
                 depths.loc[:, compare_node].values,
                 index=time_routing,
                 columns=["flow, t-route (cms)"],
-                #TODO: Consider having another compare dataframes
+                # TODO: Consider having another compare dataframes
                 #      block below with water elevation labels?
-                #columns=["water elevation, t-route (m)"],
+                # columns=["water elevation, t-route (m)"],
             )
             wrf = pd.DataFrame(
                 validation_data.loc[compare_node, :].values,
                 index=time_wrf,
                 columns=["flow, wrf (cms)"],
-                #TODO: Consider having another compare dataframes
+                # TODO: Consider having another compare dataframes
                 #      block below with water elevation labels?
-                #columns=["water elevation, wrf (m)"],
+                # columns=["water elevation, wrf (m)"],
             )
 
         # compare dataframes
         compare = pd.concat([wrf, trt], axis=1, sort=False, join="inner")
         compare["diff"] = compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
-        compare["rel_diff"] = (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]) / compare["flow, wrf (cms)"]
+        compare["rel_diff"] = (
+            compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
+        ) / compare["flow, wrf (cms)"]
         compare["absdiff"] = np.abs(
             compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]
         )
         compare["rel_absdiff"] = np.abs(
-            (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"]) / compare["flow, wrf (cms)"]
+            (compare["flow, wrf (cms)"] - compare["flow, t-route (cms)"])
+            / compare["flow, wrf (cms)"]
         )
 
         print(compare)
