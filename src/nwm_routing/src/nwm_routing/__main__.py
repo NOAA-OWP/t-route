@@ -1120,7 +1120,6 @@ def main_v03(argv):
         )
         t0 = t0 + timedelta(seconds = dt * nts)
 
-
     # nwm_final_output_generator()
 
     if verbose:
