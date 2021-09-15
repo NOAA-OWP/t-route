@@ -2,11 +2,13 @@ import cython
 import numpy as np
 import pandas as pd
 cimport numpy as np
+from libc.math cimport isnan, NAN
 
 from .fortran_wrappers cimport c_diffnw
 from .. import diffusive_utils as diff_utils
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
+from troute.routing.fast_reach.simple_da cimport obs_persist_shift, simple_da_with_decay, simple_da
 
 # TO DO load some example inputs to test the module
 
