@@ -493,24 +493,40 @@ def diffusive_input_data_v02(
             mxncomp_g = nnodes
 
     ds_seg = []
-    offnet_wbodies = []
+    offnet_segs = []
     upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
     if upstream_results:
-        # create a list of segments downstream of reservoirs
+        
+        # create a list of segments downstream of offnetwork upstreams [ds_seg]
+        # and a list of offnetwork upstream segments [offnet_segs]
         inv_map = nhd_network.reverse_network(rconn)
-        for wbody_id in upstream_results:
-            ds_seg.append(inv_map[wbody_id][0])
-            offnet_wbodies.append(wbody_id)
-        # build array of flow reservoir outflow
-        upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
-        for j, wbody_id in enumerate(upstream_results):
-            tmp = upstream_results[wbody_id]
-            for i, val in enumerate(tmp["results"][::3]):
+        for seg in upstream_results:
+            ds_seg.append(inv_map[seg][0])
+            offnet_segs.append(seg)
+
+        # populate an array of upstream flows (boundary condtions)
+        upstream_flow_array = np.zeros((len(set(ds_seg)), np.shape(qlat_data)[1]))
+        for j, seg in enumerate(set(ds_seg)):
+            
+            # offnetwork-upstream connections
+            us_segs = rconn[seg]
+            
+            # sum upstream flows
+            usq = np.zeros((len(us_segs), nsteps))
+            for k, s in enumerate(us_segs):
+                usq[k] = upstream_results[s]['results'][::3]
+            usq_total = np.sum(usq, axis = 0)
+            
+            # write upstream flows to upstream_flow_array
+            for i, val in enumerate(usq_total):
                 if i%qts_subdivisions == 0:
                     upstream_flow_array[j, int(i/qts_subdivisions)] = val
+                
+            # TODO: why are we constraining upstream_flow_array time interval to that of q laterals?
+            # can we just use the same timestep as the simulations?
  
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_wbodies), rconn)
+    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_segs), rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
@@ -527,7 +543,7 @@ def diffusive_input_data_v02(
         rch.append(fksegID)
 
         # additional segment(fake) to upstream bottom segments
-        if any(j in rconn[rch[0]] for j in offnet_wbodies):
+        if any(j in rconn[rch[0]] for j in offnet_segs):
             fk_usbseg = []
         else:
             fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]            
