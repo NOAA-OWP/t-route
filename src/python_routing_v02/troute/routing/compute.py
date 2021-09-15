@@ -636,11 +636,11 @@ def compute_nhd_routing_v02(
             print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-subnetwork-diffusive":
-        gages = set(usgs_df.index)
+        gages = set(usgs_df.index).intersection(set(param_df.index))
         reaches_ordered_bysubntw, subnetworks, subnetworks_only_ordered_jit = nhd_network.build_subnetworks_btw_reservoirs(
             connections, rconn, wbody_conn, gages, independent_networks, sources=None
         )
-
+        
         if 1 == 1:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             print("starting Parallel JIT calculation")
