@@ -622,8 +622,8 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                                       {[subnetwork tail water]: 
                                           [subnetwork segments]}}
     """    
-
-     # if no sources provided, use tailwaters
+    
+    # if no sources provided, use tailwaters
     if sources is None:
         # identify tailwaters
         sources = headwaters(rconn)
@@ -631,9 +631,10 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
     # create a list of all headwater and reservoirs in the network
     all_hws = headwaters(connections)
     all_wbodies = set(wbodies.values())
+    gage_conns = {connections[s][0] for s in all_gages}.difference(all_wbodies)
 
     # search targets are all headwaters or water bodies that are not also sources
-    targets = {x for x in set.union(all_hws, all_wbodies, all_gages) if x not in sources}
+    targets = {x for x in set.union(all_hws, all_wbodies, gage_conns) if x not in sources}
 
     networks_with_subnetworks_ordered = {}
     for net in sources:
@@ -647,7 +648,7 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
 
             rv = {}
             reached_wbodies = set()
-            reached_gages = set()
+            reached_gage_conn = set()
             for h in new_sources:
                 
                 reached_segs = set()
@@ -655,14 +656,14 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                 while Q:
                     x = Q.popleft()
                     
-                    if x not in set.union(all_wbodies, all_gages):
+                    if x not in set.union(all_wbodies, gage_conns):
                         reached_segs.add(x)
                         
                     elif x in all_wbodies:
                         reached_wbodies.add(x)
                         
                     else:
-                        reached_gages.add(x)
+                        reached_gage_conn.add(x)
 
                     if x not in targets:
                         Q.extend(rconn.get(x, ()))
@@ -688,27 +689,28 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                 reached_wbodies_hold = set()
                 
             # search itteration finds gages (and maybe reservoirs, but maybe not)
-            if reached_gages:
+            if reached_gage_conn:
                 
                 # start next search itteration from found gages
-                new_sources.update(reached_gages)
+                for w in reached_gage_conn:
+                    new_sources.update(rconn[w])
                 
                 # hold onto list of reached water bodies
                 if reached_wbodies:
                     reached_wbodies_hold = reached_wbodies
                 
                 # remove reached gages from search target set
-                targets = targets.difference(reached_gages)
+                targets = targets.difference(reached_gage_conn)
                 
                 # remove reached gages from all_gages set
-                all_gages = all_gages.difference(reached_gages)
+                gage_conns = gage_conns.difference(reached_gage_conn)
                 
                 # advance group order by 1 and initialize order dictionary
                 group_order += 1
                 subnetworks[group_order] = {}
                 
             # search itteration finds only water bodies
-            elif not reached_gages and reached_wbodies:
+            elif not reached_gage_conn and reached_wbodies:
                 
                 # start next search itteration from inflows to found reservoirs
                 for w in reached_wbodies:
@@ -730,11 +732,11 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                 if new_sources:
                     subnetworks[group_order] = {}
                 
-            # if new sources contains gages, remove those gages from target and all_gages sets
-            if new_sources.intersection(all_gages):
-                a = new_sources.intersection(all_gages)
-                targets = targets.difference(a)
-                all_gages = all_gages.difference(a)
+#             # if new sources contains gages, remove those gages from target and all_gages sets
+#             if new_sources.intersection(all_gages):
+#                 a = new_sources.intersection(all_gages)
+#                 targets = targets.difference(a)
+#                 all_gages = all_gages.difference(a)
                 
         networks_with_subnetworks_ordered[net] = subnetworks
 
