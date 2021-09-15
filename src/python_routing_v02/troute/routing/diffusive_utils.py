@@ -454,10 +454,12 @@ def diffusive_input_data_v02(
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
     
-    # diffusive time steps info.
+    # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
-    dt_ub_g = dt * qts_subdivisions
-    dt_db_g = dt * qts_subdivisions 
+    # upstream boundary condition timestep (sec)
+    dt_ub_g = dt
+    # downstream boundary condition timestep (sec)
+    dt_db_g = dt * qts_subdivisions
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
     # time interval at which depth is written out by cnt model
@@ -494,7 +496,7 @@ def diffusive_input_data_v02(
 
     ds_seg = []
     offnet_segs = []
-    upstream_flow_array = np.zeros((len(ds_seg), np.shape(qlat_data)[1]))
+    upstream_flow_array = np.zeros((len(ds_seg), nsteps))
     if upstream_results:
         
         # create a list of segments downstream of offnetwork upstreams [ds_seg]
@@ -505,7 +507,7 @@ def diffusive_input_data_v02(
             offnet_segs.append(seg)
 
         # populate an array of upstream flows (boundary condtions)
-        upstream_flow_array = np.zeros((len(set(ds_seg)), np.shape(qlat_data)[1]))
+        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps))
         for j, seg in enumerate(set(ds_seg)):
             
             # offnetwork-upstream connections
@@ -515,12 +517,14 @@ def diffusive_input_data_v02(
             usq = np.zeros((len(us_segs), nsteps))
             for k, s in enumerate(us_segs):
                 usq[k] = upstream_results[s]['results'][::3]
-            usq_total = np.sum(usq, axis = 0)
             
             # write upstream flows to upstream_flow_array
-            for i, val in enumerate(usq_total):
-                if i%qts_subdivisions == 0:
-                    upstream_flow_array[j, int(i/qts_subdivisions)] = val
+            upstream_flow_array[j] = np.sum(usq, axis = 0)
+            
+#             # write upstream flows to upstream_flow_array
+#             for i, val in enumerate(usq_total):
+#                 if i%qts_subdivisions == 0:
+#                     upstream_flow_array[j, int(i/qts_subdivisions)] = val
                 
             # TODO: why are we constraining upstream_flow_array time interval to that of q laterals?
             # can we just use the same timestep as the simulations?
@@ -682,14 +686,17 @@ def diffusive_input_data_v02(
         qlat_g,
     )
     
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
-    nts_ub_g = nts_ql_g
+    nts_ub_g = upstream_flow_array.shape[1]
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
 
+
+        
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
