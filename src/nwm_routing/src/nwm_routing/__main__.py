@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import math
 
 ## network and reach utilities
 import troute.nhd_network as nhd_network
@@ -958,6 +959,20 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
     return waterbodies_df
 
 
+def update_lookback_hours(dt, nts, waterbody_parameters): 
+    """
+    Update the lookback hours that an RFC type reservoir searches in reverse
+    from the model start time to find a time series file. The update is based
+    on the total hours ran in the prior loop.
+    """
+
+    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
+    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
+    math.ceil((dt * nts) / 3600)
+
+    return waterbody_parameters
+
+
 def new_lastobs(run_results, time_increment):
     """
     Creates new "lastobs" dataframe for the next simulation chunk.
@@ -997,6 +1012,7 @@ def new_lastobs(run_results, time_increment):
     )
     df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
     return df
+
 
 def main_v03(argv):
     """
@@ -1162,6 +1178,9 @@ def main_v03(argv):
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
+            if waterbody_type_specified:
+                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
+
         nwm_output_generator(
             run,
             run_results,
@@ -1176,6 +1195,7 @@ def main_v03(argv):
             verbose,
             debuglevel,
         )
+
 
     # nwm_final_output_generator()
 
