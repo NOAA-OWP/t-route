@@ -664,6 +664,7 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                         
                     else:
                         reached_gage_conn.add(x)
+                        reached_segs.add(x)
 
                     if x not in targets:
                         Q.extend(rconn.get(x, ()))
