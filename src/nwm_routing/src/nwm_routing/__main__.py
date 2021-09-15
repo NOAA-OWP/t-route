@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
 import pandas as pd
+import math
 
 ## network and reach utilities
 import troute.nhd_network as nhd_network
@@ -941,6 +942,18 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
     return waterbodies_df
 
 
+def update_lookback_hours(dt, nts, waterbody_parameters): 
+    # Update the lookback hours that an RFC type reservoir searches in reverse
+    # from the model start time to find a time series file. The update is based
+    # on the total hours ran in the prior loop.
+
+    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
+    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
+    math.ceil((dt * nts) / 3600)
+
+    return waterbody_parameters
+
+
 def main_v03(argv):
     args = _handle_args_v03(argv)
     (
@@ -1088,6 +1101,9 @@ def main_v03(argv):
 
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
+            if waterbody_type_specified:
+                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
+
         nwm_output_generator(
             run,
             run_results,
@@ -1103,6 +1119,7 @@ def main_v03(argv):
             debuglevel,
         )
         t0 = t0 + timedelta(seconds = dt * nts)
+
 
     # nwm_final_output_generator()
 
