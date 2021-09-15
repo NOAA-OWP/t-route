@@ -321,10 +321,10 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, upstream_inflows):
             
             head_segment = pynw[frj]
             
-            if head_segment in geo_index:
+            if head_segment in set(geo_index):
                 
-                idx_segID = np.where(np.asarray(geo_index) == head_segment)
-                
+                idx_segID = np.where(np.asarray(list(set(geo_index))) == head_segment)
+
                 for tsi in range(0, nts_ub_g):
                     
                     ubcd_g[tsi, frj] = upstream_inflows[idx_segID, tsi]  # [m^3/s]
