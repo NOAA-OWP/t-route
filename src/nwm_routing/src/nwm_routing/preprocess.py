@@ -40,7 +40,9 @@ def nwm_network_preprocess(
         break_network_at_waterbodies = False
 
     if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(connections, wbody_conn)
+        connections = nhd_network.replace_waterbodies_connections(
+            connections, wbody_conn
+        )
 
     if verbose:
         print("supernetwork connections set complete")
@@ -66,28 +68,37 @@ def nwm_network_preprocess(
             .set_index("lake_id")
         )
 
-        #Declare empty dataframe
+        # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        #Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype="hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
+        wbtype = "hybrid_and_rfc"
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
-        wbtype="level_pool"
-        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))  # TODO: Convert these to `get` statments
+        wbtype = "level_pool"
+        wb_params_level_pool = waterbody_parameters.get(
+            wbtype, defaultdict(list)
+        )  # TODO: Convert these to `get` statments
 
         waterbody_type_specified = False
 
         # Determine if any data assimilation reservoirs are activated, and if so, read
         # the reservoir parameter file
-        if wb_params_hybrid_and_rfc["reservoir_persistence_usgs"] \
-        or wb_params_hybrid_and_rfc["reservoir_persistence_usace"] \
-        or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]:
+        if (
+            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
+            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
+            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
+        ):
 
             waterbody_type_specified = True
 
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(wb_params_hybrid_and_rfc["reservoir_parameter_file"], \
-                wb_params_level_pool["level_pool_waterbody_id"], wbody_conn.values(),)
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
+                wb_params_level_pool["level_pool_waterbody_id"],
+                wbody_conn.values(),
+            )
 
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
@@ -97,7 +108,7 @@ def nwm_network_preprocess(
             )
 
     else:
-        #Declare empty dataframes
+        # Declare empty dataframes
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
@@ -114,7 +125,8 @@ def nwm_network_preprocess(
         network_break_segments = network_break_segments.union(gages.keys())
 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections, network_break_segments,
+        connections,
+        network_break_segments,
     )
     if verbose:
         print("reach organization complete")
@@ -176,10 +188,16 @@ def nwm_initial_warmstate_preprocess(
         else:
             # TODO: Consider adding option to read cold state from route-link file
             waterbodies_initial_ds_flow_const = 0.0
-            waterbodies_initial_depth_const = -1E9
+            waterbodies_initial_depth_const = -1e9
             # Set initial states from cold-state
             waterbodies_initial_states_df = pd.DataFrame(
-                0, index=waterbodies_df.index, columns=["qd0", "h0",], dtype="float32"
+                0,
+                index=waterbodies_df.index,
+                columns=[
+                    "qd0",
+                    "h0",
+                ],
+                dtype="float32",
             )
             # TODO: This assignment could probably by done in the above call
             waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
@@ -259,7 +277,10 @@ def nwm_forcing_preprocess(
     if verbose:
         print("creating qlateral array ...")
 
-    qlats_df = nnu.build_qlateral_array(run, segment_index,)
+    qlats_df = nnu.build_qlateral_array(
+        run,
+        segment_index,
+    )
 
     if verbose:
         print("qlateral array complete")
@@ -273,9 +294,7 @@ def nwm_forcing_preprocess(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-    last_obs_file = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_file", None
-    )
+    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
     if data_assimilation_csv or data_assimilation_folder or last_obs_file:
 
         if data_assimilation_folder and data_assimilation_csv:

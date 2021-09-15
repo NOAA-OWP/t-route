@@ -89,7 +89,7 @@ waterbody_parameters:
         # The default is 86400 (seconds per day). Set to 3600 for standard and extended AnA simulations.
         # Set to 1000000000 for short range and medium range forecasts.
         reservoir_observation_update_time_interval_seconds: 1000000000
-        
+
         # If using RFC forecast reservoirs, set to True. (default=.FALSE.)
         reservoir_rfc_forecasts: False
 
@@ -152,4 +152,3 @@ diffusive_parameters:
     chgeo_computation_flag: 1 # In computing channel geometries and hydraulic features, value 0 leads to use lookup tables while value 1 to use explicit equations in Fortran model.
     water_elevation_computation_flag: 1 # **Temporary flag: For testing purpose, value 1 enforces normal depth all the time while value 2 diffusive depth. It will not need soon as new schemes will automatically switch between the two depth compuatations.
     bed_slope_lower_limit: 0.0001 # To account for too small bed slopes in Route_Link.nc especially those of segments underlying ponds or reservoirs,  this limit replaces the small slopes.
-
