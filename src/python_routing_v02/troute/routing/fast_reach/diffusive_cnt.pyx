@@ -266,9 +266,7 @@ cpdef object compute_diffusive_tst(
                     reindex(index = data_idx).
                     to_numpy(dtype = 'float32'))
     
-    # create memory view of flowveldepth_test 
     cdef float[:,:] flowveldepth = flowveldepth_test
-    
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i, timestep
