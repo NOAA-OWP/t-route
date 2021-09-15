@@ -77,7 +77,7 @@ network_topology_parameters:
             reservoir_rfc_forecasts: True
 
             # Specify the path to the RFC time series files to be used by reservoirs
-            reservoir_rfc_forecasts_time_series_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/"
+            reservoir_rfc_forecasts_time_series_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/looping/"
 
             # Specify lookback hours to read reservoir RFC forecasts
             reservoir_rfc_forecasts_lookback_hours: 48
@@ -110,8 +110,11 @@ compute_parameters:
         dt: 300  # default timestep length, seconds
         return_courant: false  # WARNING: true will only work with compute_method "V02-caching", therefore not currently compatible with simulation for waterbodies.
         qlat_forcing_sets:
-            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/qlats_croton.csv"
-                nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/looping/qlats_croton_loop1.csv"
+              nts: 144
+            - qlat_input_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/example_CHRTOUT/looping/qlats_croton_loop2.csv"
+              nts: 144
+
 output_parameters:
     wrf_hydro_parity_check:
         #Use two lines below for parity check on streamflow and leave the following two lines commented out
@@ -119,5 +122,13 @@ output_parameters:
         #parity_check_compare_node: 6227150 #Stream
         #Use two lines below for parity check on reservoir/waterbody and comment out two lines above
         parity_check_compare_file_sets:
-            - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_rfc_nudge_off.csv"
-                parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+            - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_rfc_nudge_off_loop1.csv"
+              parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+              #Uncomment below to parity check the reservoir's water elevation instead
+              #of outflow
+              #parity_check_water_elevation: true
+            - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_rfc_nudge_off_loop2.csv"
+              parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
+              #Uncomment below to parity check the reservoir's water elevation instead
+              #of outflow
+              #parity_check_water_elevation: true
