@@ -57,7 +57,7 @@ network_topology_parameters:
             reservoir_persistence_usgs: True
 
             # Specify the path to the timeslice files to be used by USGS reservoirs
-            reservoir_usgs_timeslice_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/"
+            reservoir_usgs_timeslice_path: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/observations/looping/"
 
             # If using USACE persistence reservoirs, set to True. (default=.FALSE.)
             reservoir_persistence_usace: False
@@ -126,9 +126,9 @@ output_parameters:
               parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
               #Uncomment below to parity check the reservoir's water elevation instead
               #of outflow
-              parity_check_water_elevation: true
+              #parity_check_water_elevation: true
             - parity_check_waterbody_file: "../../test/input/geo/NWM_2.1_Sample_Datasets/Croton_NY_TEST1/waterbodies/reservoir_outflow_croton_usgs_persistence_no_nudge_forecast_loop2.csv"
               parity_check_compare_node: 6228110 #Reservoir - only reservoir in domain
               #Uncomment below to parity check the reservoir's water elevation instead
               #of outflow
-              parity_check_water_elevation: true
+              #parity_check_water_elevation: true
