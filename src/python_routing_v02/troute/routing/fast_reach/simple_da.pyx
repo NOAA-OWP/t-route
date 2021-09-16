@@ -49,14 +49,14 @@ cdef (float, float, float, float) simple_da(
         replacement_val = target_val
         nudge_val = target_val - model_val
         # add/update lastobs_timestep
-        lastobs_time = (timestep - 1) * routing_period
+        lastobs_time = (timestep) * routing_period
         lastobs_val = target_val
     else:
         if da_check_gage:
             printf("So we are fixing that...\t")
         if da_check_gage:
             printf("decay; target: %g\t", target_val)
-        da_decay_minutes = ((timestep - 1) * routing_period - lastobs_time) / 60 # seconds to minutes
+        da_decay_minutes = ((timestep) * routing_period - lastobs_time) / 60 # seconds to minutes
         da_weighted_shift = obs_persist_shift(lastobs_val, model_val, da_decay_minutes, decay_coeff)
         nudge_val = da_weighted_shift
         # TODO: we need to export these values
