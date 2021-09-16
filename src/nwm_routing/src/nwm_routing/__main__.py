@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
+import numpy as np
 import pandas as pd
 
 ## network and reach utilities
@@ -952,9 +953,22 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
     return waterbodies_df
 
 
-def new_lastobs(run_results):
-    pass
-
+def new_lastobs(run_results, time_increment):
+    df = pd.concat(
+        [
+            pd.DataFrame(
+                # TODO: Add time_increment (or subtract?) from time_since_lastobs
+                np.array([rr[3][1],rr[3][2]]).T,
+                index=rr[3][0],
+                columns=["time_since_lastobs", "lastobs_discharge"]
+            )
+            for rr in run_results
+            if not rr[3][0].size == 0
+        ],
+        copy=False,
+    )
+    df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+    return df
 
 def main_v03(argv):
     args = _handle_args_v03(argv)
@@ -1104,9 +1118,9 @@ def main_v03(argv):
                 debuglevel,
             )
 
-            # q0 = run_results
             q0 = new_nwm_q0(run_results)
-            # lastobs_df = new_lastobs(run_results)
+
+            lastobs_df = new_lastobs(run_results, dt * nts)
 
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
