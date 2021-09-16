@@ -95,9 +95,9 @@ data_assimilation_parameters:
     data_assimilation_timeslices_folder: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingTimeSliceObs_calibration"
     data_assimilation_filter: "2018-09-18_0[0-9]*.usgsTimeSlice.ncdf"
     wrf_hydro_da_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
-    wrf_hydro_last_obs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
-    wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time: 0
-    wrf_last_obs_type: "obs-based"
+    wrf_hydro_lastobs_file: "../../test/input/florence_fullres/florenceNudgingChannelOnly/nudgingLastObs/nudgingLastObs.2018-09-18_00:00:00.nc"
+    wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time: 0
+    wrf_lastobs_type: "obs-based"
     da_decay_coefficient: 120  # `a` parameter in WRF-Hydro
     # 2018-12-31_23:45:00.15min.usgsTimeSlice.ncdf
     # data_assimilation_csv: "../../test/input/geo/usgs_files/usgs_files.csv"
