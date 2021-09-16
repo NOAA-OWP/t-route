@@ -595,6 +595,7 @@ def build_lastobs_df(
         return final_df
 
 
+# TODO: Update get_usgs_from_time_slices_csv with new interpolation method
 def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
     df2 = pd.read_csv(usgs_csv, index_col=0)
