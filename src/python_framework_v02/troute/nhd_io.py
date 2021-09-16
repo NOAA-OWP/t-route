@@ -645,19 +645,14 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
-    usgs_timeslices_folder,
-    data_assimilation_filter,
+    usgs_files,
     max_fill_1min = 14
 ):
-    # TODO: Use an explicit list for the files. By this point, the globbing should be complete.
     """
     routelink_subset_file - provides the gage-->segment crosswalk
-    usgs_timeslices_folder - folder with timeslices
-    data_assimilation_filter - glob pattern for selecting files
+    usgs_files - list of "time-slice" files containing observed values
     max_fill_1min - sets the maximum interpolation length
     """
-    usgs_files = sorted(usgs_timeslices_folder.glob(data_assimilation_filter))
-
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
         # dataframe containing discharge observations
