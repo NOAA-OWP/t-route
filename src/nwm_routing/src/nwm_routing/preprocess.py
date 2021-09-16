@@ -150,6 +150,7 @@ def nwm_network_preprocess(
 def nwm_initial_warmstate_preprocess(
     break_network_at_waterbodies,
     restart_parameters,
+    data_assimilation_parameters,
     segment_index,
     waterbodies_df,
     segment_list=None,
@@ -208,7 +209,7 @@ def nwm_initial_warmstate_preprocess(
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
 
-    # STEP 4: Handle Channel Initial States and Set T0
+    # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -216,13 +217,21 @@ def nwm_initial_warmstate_preprocess(
 
     q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
-    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
-        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
+    # STEP 4a: Set Channel States and T0
+    if restart_parameters.get("wrf_hydro_channel_restart_file", None):
+        channel_initial_states_file = restart_parameters[
+            "wrf_hydro_channel_restart_file"
+        ]
         t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
     else:
         t0_str = "2015-08-16_00:00:00"
 
     t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
+
+    # STEP 4b: Set LastObs
+    lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
+        data_assimilation_parameters
+    )
 
     if verbose:
         print("channel initial states complete")
@@ -230,11 +239,7 @@ def nwm_initial_warmstate_preprocess(
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-    last_obs_file = restart_parameters.get("wrf_hydro_last_obs_file", None)
-    # TODO: Split apart the da input functions to get last_obs here.
-    last_obs_df = pd.DataFrame()
-
-    return waterbodies_df, q0, last_obs_df, t0
+    return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
     # TODO: This returns a full dataframe (waterbodies_df) with the
     # merged initial states for waterbodies, but only the
     # initial state values (q0; not merged with the channel properties)
@@ -247,9 +252,11 @@ def nwm_initial_warmstate_preprocess(
 def nwm_forcing_preprocess(
     run,
     forcing_parameters,
+    da_run,
     data_assimilation_parameters,
     break_network_at_waterbodies,
     segment_index,
+    lastobs_index,
     showtiming=False,
     verbose=False,
     debuglevel=0,
@@ -270,6 +277,23 @@ def nwm_forcing_preprocess(
     run["qlat_file_index_col"] = run.get("qlat_file_index_col", qlat_file_index_col)
     run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
 
+    if data_assimilation_parameters:
+        data_assimilation_folder = data_assimilation_parameters.get("data_assimilation_timeslices_folder", None)
+        data_assimilation_csv = data_assimilation_parameters.get("data_assimilation_csv", None)
+        lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
+        lastobs_start = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
+        lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
+        lastobs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_da_channel_ID_crosswalk_file", None)
+        da_decay_coefficient = data_assimilation_parameters.get("da_decay_coefficient", 120)
+
+        da_run["data_assimilation_timeslices_folder"] = da_run.get("data_assimilation_timeslices_folder", data_assimilation_folder)
+        da_run["data_assimilation_csv"] = da_run.get("data_assimilation_csv", data_assimilation_csv)
+        da_run["wrf_hydro_lastobs_file"] = da_run.get("wrf_hydro_lastobs_file", lastobs_file)
+        da_run["wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0] = da_run.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", lastobs_start)
+        da_run["wrf_lastobs_type"] = da_run.get("wrf_lastobs_type", lastobs_type)
+        da_run["wrf_hydro_da_channel_ID_crosswalk_file"] = da_run.get("wrf_hydro_da_channel_ID_crosswalk_file", lastobs_crosswalk_file)
+        da_run["da_decay_coefficient"] = da_run.get("da_decay_coefficient", da_decay_coefficient)
+
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
         start_time = time.time()
@@ -287,14 +311,9 @@ def nwm_forcing_preprocess(
         print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
-    data_assimilation_csv = data_assimilation_parameters.get(
-        "data_assimilation_csv", None
-    )
-    data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_timeslices_folder", None
-    )
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    if data_assimilation_csv or data_assimilation_folder or last_obs_file:
+    data_assimilation_csv = da_run.get("data_assimilation_csv", None)
+    data_assimilation_folder = da_run.get("data_assimilation_timeslices_folder", None)
+    if data_assimilation_csv or data_assimilation_folder:
 
         if data_assimilation_folder and data_assimilation_csv:
             print(
@@ -306,9 +325,7 @@ def nwm_forcing_preprocess(
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
-            data_assimilation_parameters
-        )
+        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, lastobs_index)
 
         if verbose:
             print("usgs array complete")
@@ -317,8 +334,6 @@ def nwm_forcing_preprocess(
 
     else:
         usgs_df = pd.DataFrame()
-        lastobs_df = pd.DataFrame()
-        da_parameter_dict = {}
 
     # STEP 7
     coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
@@ -333,4 +348,4 @@ def nwm_forcing_preprocess(
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
-    return qlats_df, usgs_df, lastobs_df, da_parameter_dict
+    return qlats_df, usgs_df
