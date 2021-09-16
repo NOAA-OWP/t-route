@@ -434,7 +434,7 @@ contains
                     		do i = 1, ncomp
                         		q_ev_g(ts_ev, i, j) = newQ(i, timestep, j)
                         		elv_ev_g(ts_ev, i, j) = newY(i, j) - z(i,j) ! depth (meters)
-					!print*, ts_ev, i, j,  q_ev_g(ts_ev, i, j), elv_ev_g(ts_ev, i, j)
+					print*, ts_ev, i, j,  q_ev_g(ts_ev, i, j), elv_ev_g(ts_ev, i, j)
                     		end do
                 	end do
             	end do
