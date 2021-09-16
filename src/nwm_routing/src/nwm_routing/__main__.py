@@ -1031,9 +1031,10 @@ def main_v03(argv):
     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
 
     if "data_assimilation_parameters" in compute_parameters:
-        da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
-    else:
-        da_sets = []
+        if "data_assimilation_sets" in data_assimilation_parameters:
+            da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
+        else:
+            da_sets = [{} for _ in run_sets]
 
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
