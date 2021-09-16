@@ -438,10 +438,10 @@ def get_attribute(nc_file, attribute):
         return xd.attrs[attribute]
 
 
-def build_last_obs_df(
+def build_lastobs_df(
         lastobsfile,
         routelink,
-        wrf_last_obs_flag,
+        wrf_lastobs_flag,
         time_shift = 0,
         gage_id = "gages",
         link_id = "link",
@@ -459,14 +459,14 @@ def build_last_obs_df(
     ):
 
     standard_columns = {
-        "last_obs_discharge": obs_discharge_id,
+        "lastobs_discharge": obs_discharge_id,
         "time_since_lastobs": time_id,
         "gages": gage_id,
         "last_model_discharge": model_discharge_id
     }
 
     """
-    Open last_obs file, import the segment keys from the routelink_file
+    Open lastobs file, import the segment keys from the routelink_file
     and extract discharges.
     """
     # TODO: We should already know the link/gage relationship by this point and can require that as an input
@@ -533,16 +533,18 @@ def build_last_obs_df(
         model_discharge_last_ts[obs_discharge_id] = model_discharge_last_ts[
             obs_discharge_id
         ].to_frame()
-        # If predict from last_obs file use last obs file results
-        # if last_obs_file == "error-based":
-        # elif last_obs_file == "obs-based":  # the wrf-hydro default
+
+        # TODO: Remove any of the following comments that are no longer needed
+        # If predict from lastobs file use last obs file results
+        # if lastobs_file == "error-based":
+        # elif lastobs_file == "obs-based":  # the wrf-hydro default
         # NOTE:  The following would compare potentially mis-matched
         # obs/model pairs, so it is commented until we can figure out
         # a more robust bias-type persistence.
         # For now, we use only obs-type persistence.
         # It would be possible to preserve a 'last_valid_bias' which would
         # presumably correspond to the last_valid_time.
-        # # if wrf_last_obs_flag:
+        # # if wrf_lastobs_flag:
         # #     model_discharge_last_ts[last_nudge_id] = (
         # #         model_discharge_last_ts[obs_discharge_id]
         # #         - model_discharge_last_ts[model_discharge_id]
@@ -734,14 +736,18 @@ def get_usgs_from_time_slices_folder(
     modeled_high = [ 12, 13, 16, 20, 32, 34, 28, 22, 16, 14, 13, 12, 12, 12, 12]
     modeled_shift_late = [ 10, 10, 10, 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10]
     modeled_shift_late = [ 11, 14, 18, 30, 32, 26, 20, 14, 12, 11, 10, 10, 10, 10, 10]
-    last_obs = {"obs":9.5, "time":0}  # Most recent observation at simulation start
-    last_obs_old = {"obs":9.5, "time":-3600}  # Most recent observation 1 hour ago
-    last_obs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
+    lastobs = {"obs":9.5, "time":0}  # Most recent observation at simulation start
+    lastobs_old = {"obs":9.5, "time":-3600}  # Most recent observation 1 hour ago
+    lastobs_NaN = {"obs":NaN, "time":NaT}  # No valid recent observation
     ```
     """
 
+    #TODO: separate the interpolation into a function; eventually, the data source
+    # could be something other than the time-slice files, but the interpolation
+    # might be the same and the function would facilitate taking advantage of that.
+
     # ---- Laugh testing ------
-    # scren-out erroneous qc flags
+    # screen-out erroneous qc flags
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df < 0, np.nan)
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
 

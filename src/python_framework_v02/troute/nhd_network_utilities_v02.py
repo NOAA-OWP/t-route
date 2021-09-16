@@ -678,7 +678,7 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
     )
 
     if lastobs_file:
-        lastobs_df = nhd_io.build_last_obs_df(
+        lastobs_df = nhd_io.build_lastobs_df(
             lastobs_file,
             lastobs_crosswalk_file,
             lastobs_type,  # TODO: Confirm that we are using this; delete it if not.
