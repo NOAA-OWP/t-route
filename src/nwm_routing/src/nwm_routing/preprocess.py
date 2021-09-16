@@ -77,12 +77,12 @@ def nwm_network_preprocess(
         wbtype = "hybrid_and_rfc"
         wb_params_hybrid_and_rfc = waterbody_parameters.get(
             wbtype, defaultdict(list)
-        )  # TODO: Convert these to `get` statments
+        )
 
         wbtype = "level_pool"
         wb_params_level_pool = waterbody_parameters.get(
             wbtype, defaultdict(list)
-        )  # TODO: Convert these to `get` statments
+        )
 
         # Determine if any data assimilation reservoirs are activated, and if so, read
         # the reservoir parameter file
