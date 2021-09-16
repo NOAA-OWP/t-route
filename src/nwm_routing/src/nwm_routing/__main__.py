@@ -521,6 +521,15 @@ def _run_everything_v02(
         print("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
+    # STEP 4a: Set Channel States and T0
+    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
+        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
+        t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+    else:
+        t0_str = "2015-08-16_00:00:00"
+
+    t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
+    run_parameters["t0"] = t0
 
     if verbose:
         print("channel initial states complete")
@@ -644,6 +653,7 @@ def _handle_output_v02(
     ################### Output Handling
     dt = run_parameters.get("dt", None)
     nts = run_parameters.get("nts", None)
+    t0 = run_parameters.get("t0", None)
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
@@ -756,6 +766,7 @@ def _handle_output_v02(
                 restart_parameters.get("wrf_hydro_channel_restart_file"),
                 run_parameters.get("dt"),
                 run_parameters.get("nts"),
+                t0,
                 restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
                 restart_parameters.get(
                     "wrf_hydro_channel_ID_crosswalk_file_field_name"
@@ -941,6 +952,10 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
     return waterbodies_df
 
 
+def new_lastobs(run_results):
+    pass
+
+
 def main_v03(argv):
     args = _handle_args_v03(argv)
     (
@@ -983,9 +998,10 @@ def main_v03(argv):
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, lastobs_df, t0 = nwm_initial_warmstate_preprocess(
+    waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
+        data_assimilation_parameters,
         param_df.index,
         waterbodies_df,
         segment_list=None,
@@ -1000,9 +1016,10 @@ def main_v03(argv):
     # TODO: Make this more flexible.
     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
 
-    # TODO: Data Assimilation will be something like the parity block
-    # if DA:
-    #     da_sets = [BIG LIST OF DA BLOCKS]
+    if "data_assimilation_parameters" in compute_parameters:
+        da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
+    else:
+        da_sets = []
 
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
@@ -1017,12 +1034,14 @@ def main_v03(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
 
-    qlats, usgs_df, lastobs_df, da_parameter_dict = nwm_forcing_preprocess(
+    qlats, usgs_df = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
+        da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
         param_df.index,
+        lastobs_df.index,
         showtiming,
         verbose,
         debuglevel,
@@ -1072,12 +1091,14 @@ def main_v03(argv):
         if (
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
-            qlats, usgs_df, lastobs_dict, da_parameter_dict = nwm_forcing_preprocess(
+            qlats, usgs_df = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
+                da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
                 param_df.index,
+                lastobs_df.index,
                 showtiming,
                 verbose,
                 debuglevel,
@@ -1085,6 +1106,7 @@ def main_v03(argv):
 
             # q0 = run_results
             q0 = new_nwm_q0(run_results)
+            # lastobs_df = new_lastobs(run_results)
 
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
