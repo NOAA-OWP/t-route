@@ -68,7 +68,7 @@ cdef (float, float, float, float) simple_da(
             printf("ts: %g\t", timestep)
             printf("dt: %g\t", routing_period)
             printf("min: %g\t", da_decay_minutes)
-            printf("lo_t: %d\t", lastobs_time)
+            printf("lo_t: %f\t", lastobs_time)
             printf("lov: %g\t", lastobs_val)
             printf("ndg: %g\t", da_weighted_shift)
             printf("orig: %g\t", model_val)
