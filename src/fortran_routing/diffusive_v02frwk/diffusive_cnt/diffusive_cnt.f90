@@ -256,13 +256,6 @@ contains
 	q_sk_multi=1.0
         do j= nlinks, 1, -1
             ncomp= frnw_g(j,1)
-            !* upstream boundary Q for head water reach
-            if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
-                do n=1,nts_ub_g
-                    varr_ub(n)= ubcd_g(n,j)
-                end do
-                newQ(1,1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
-            end if
             if (frnw_g(j,2)<0.0) then
             !* downstream boundary water elevation at bottom node of TW reach                
 		!* 1. measured data
