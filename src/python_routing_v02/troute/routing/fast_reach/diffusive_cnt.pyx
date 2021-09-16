@@ -133,7 +133,7 @@ cpdef object compute_diffusive_tst(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
-    dict diffusive_parameters=False
+    dict diffusive_parameters=False,
     ):
 
     # segment connections dictionary
