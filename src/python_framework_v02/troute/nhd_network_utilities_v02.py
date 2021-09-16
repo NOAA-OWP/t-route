@@ -627,12 +627,37 @@ def build_qlateral_array(
 
 
 def build_data_assimilation(data_assimilation_parameters):
+    lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
+    usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, lastobs_df.index)
+    return usgs_df, lastobs_df, da_parameter_dict
+
+
+def build_data_assimilation_usgs_df(data_assimilation_parameters, lastobs_index=None):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
+
+    usgs_df = pd.DataFrame()
+    if not isinstance(lastobs_index, pd.Index):
+        lastobs_index = pd.Index()
+
+    if data_assimilation_csv:
+        usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
+    elif data_assimilation_folder:
+        usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
+
+    if not lastobs_index.empty:
+        if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
+            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            usgs_df = usgs_df.loc[lastobs_index]
+
+    return usgs_df
+
+
+def build_data_assimilation_lastobs(data_assimilation_parameters):
     # TODO: Fix the Logic here according to the following.
 
     # If there are any observations for data assimilation, there
@@ -642,37 +667,29 @@ def build_data_assimilation(data_assimilation_parameters):
     # no observations for assimilation, there can be a LastObs
     # with an empty usgs dataframe.
 
-    last_obs_file = data_assimilation_parameters.get("wrf_hydro_last_obs_file", None)
-    last_obs_start = data_assimilation_parameters.get(
-        "wrf_hydro_last_obs_lead_time_relative_to_simulation_start_time", 0
+    lastobs_df = pd.DataFrame()
+    lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
+    lastobs_start = data_assimilation_parameters.get(
+        "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0
     )
-    last_obs_type = data_assimilation_parameters.get("wrf_last_obs_type", "error-based")
-    last_obs_crosswalk_file = data_assimilation_parameters.get(
+    lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
+    lastobs_crosswalk_file = data_assimilation_parameters.get(
         "wrf_hydro_da_channel_ID_crosswalk_file", None
     )
 
-    usgs_df = pd.DataFrame()
-    usgs_qual_df = pd.DataFrame()
-
-    if data_assimilation_csv:
-        usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
-    elif data_assimilation_folder:
-        usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
-
-    if last_obs_file:
-        last_obs_df = nhd_io.build_last_obs_df(
-            last_obs_file,
-            last_obs_crosswalk_file,
-            last_obs_type,  # TODO: Confirm that we are using this; delete it if not.
-            last_obs_start,
+    if lastobs_file:
+        lastobs_df = nhd_io.build_last_obs_df(
+            lastobs_file,
+            lastobs_crosswalk_file,
+            lastobs_type,  # TODO: Confirm that we are using this; delete it if not.
+            lastobs_start,
         )
-        if not usgs_df.empty and not usgs_df.index.equals(last_obs_df.index):
-            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
-            usgs_df = usgs_df.loc[last_obs_df.index]
 
     da_parameter_dict = {}
     da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
-    return usgs_df, last_obs_df, da_parameter_dict
+    # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
+
+    return lastobs_df, da_parameter_dict
 
 
 def build_data_assimilation_csv(data_assimilation_parameters):
@@ -687,16 +704,23 @@ def build_data_assimilation_csv(data_assimilation_parameters):
 
 def build_data_assimilation_folder(data_assimilation_parameters):
 
-    if data_assimilation_parameters:
-        usgs_timeslices_folder = pathlib.Path(
-            data_assimilation_parameters["data_assimilation_timeslices_folder"],
-        ).resolve()
+    usgs_timeslices_folder = pathlib.Path(
+        data_assimilation_parameters["data_assimilation_timeslices_folder"],
+    ).resolve()
+    if "data_assimilation_filter" in data_assimilation_parameters:
+        da_glob_filter = data_assimilation_parameters["data_assimilation_filter"]
+        usgs_files = sorted(usgs_timeslices_folder.glob(da_glob_filter))
+    elif "usgs_timeslice_files" in data_assimilation_parameters:
+        usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
+        usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
+    else:
+        print("No Files Found for DA")
+        # TODO: Handles this with a real exception
 
-        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
-            data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-            usgs_timeslices_folder,
-            data_assimilation_parameters["data_assimilation_filter"],
-            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
-        )
+    usgs_df = nhd_io.get_usgs_from_time_slices_folder(
+        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
+        usgs_files,
+        data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
+    )
 
     return usgs_df
