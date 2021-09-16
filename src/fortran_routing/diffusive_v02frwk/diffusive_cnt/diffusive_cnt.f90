@@ -256,11 +256,6 @@ contains
 	q_sk_multi=1.0
         do j= nlinks, 1, -1
             ncomp= frnw_g(j,1)
-            do i=1, ncomp
-                oldQ(i,j) = iniq(i,j)
-		newQ(i,1,j) = iniq(i,j)
-                qp(i,1,j)= iniq(i,j)
-	    enddo
             !* upstream boundary Q for head water reach
             if (frnw_g(j,3)==0) then !* frnw_g(j,3) indicates the number of upstream reaches.
                 do n=1,nts_ub_g
