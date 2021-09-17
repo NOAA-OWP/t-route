@@ -445,7 +445,7 @@ contains
 			! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 			! Write q and depth results to q_ev_g array
 			! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-			do timestep = 1, repeatInterval
+			do timestep = 1, repeatInterval+1
                 ts_ev = ((ini_time*60.0/dtini) + timestep)
                 do j = 1, nlinks
                     ncomp = frnw_g(j,1)
