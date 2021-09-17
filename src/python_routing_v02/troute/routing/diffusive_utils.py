@@ -427,7 +427,9 @@ def diffusive_input_data_v02(
     upstream_results,
     qts_subdivisions,
     nsteps,
-    dt
+    dt,
+    lake_segs,
+    wbody_params,
 ):
     """
     Build input data objects for diffusive wave model

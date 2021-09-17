@@ -162,7 +162,9 @@ cpdef object compute_diffusive_tst(
         upstream_results,
         qts_subdivisions,
         nsteps,
-        dt
+        dt,
+        np.asarray(lake_numbers_col),
+        np.asarray(wbody_cols),
         )
 
     # unpack/declare diffusive input variables
