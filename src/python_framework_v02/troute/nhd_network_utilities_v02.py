@@ -626,13 +626,13 @@ def build_qlateral_array(
     return qlat_df
 
 
-def build_data_assimilation(data_assimilation_parameters):
+def build_data_assimilation(data_assimilation_parameters,run_parameters):
     lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
-    usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, lastobs_df.index)
+    usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters,run_parameters, lastobs_df.index)
     return usgs_df, lastobs_df, da_parameter_dict
 
 
-def build_data_assimilation_usgs_df(data_assimilation_parameters, lastobs_index=None):
+def build_data_assimilation_usgs_df(data_assimilation_parameters,run_parameters, lastobs_index=None):
     data_assimilation_csv = data_assimilation_parameters.get(
         "data_assimilation_csv", None
     )
@@ -643,11 +643,11 @@ def build_data_assimilation_usgs_df(data_assimilation_parameters, lastobs_index=
     usgs_df = pd.DataFrame()
     if not isinstance(lastobs_index, pd.Index):
         lastobs_index = pd.Index()
-
+    
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
     elif data_assimilation_folder:
-        usgs_df = build_data_assimilation_folder(data_assimilation_parameters)
+        usgs_df = build_data_assimilation_folder(data_assimilation_parameters,run_parameters)
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
@@ -702,7 +702,7 @@ def build_data_assimilation_csv(data_assimilation_parameters):
     return usgs_df
 
 
-def build_data_assimilation_folder(data_assimilation_parameters):
+def build_data_assimilation_folder(data_assimilation_parameters,run_parameters):
 
     usgs_timeslices_folder = pathlib.Path(
         data_assimilation_parameters["data_assimilation_timeslices_folder"],
@@ -716,11 +716,12 @@ def build_data_assimilation_folder(data_assimilation_parameters):
     else:
         print("No Files Found for DA")
         # TODO: Handles this with a real exception
-
+    
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
         data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
+        run_parameters,
         usgs_files,
-        data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
+        data_assimilation_parameters
     )
 
     return usgs_df

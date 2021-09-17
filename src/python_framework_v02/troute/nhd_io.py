@@ -648,14 +648,18 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
+    run_parameters,
     usgs_files,
-    max_fill_1min = 14
+    data_assimilation_parameters
 ):
     """
     routelink_subset_file - provides the gage-->segment crosswalk
     usgs_files - list of "time-slice" files containing observed values
     max_fill_1min - sets the maximum interpolation length
     """
+    max_fill_1min = data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
+    qc_trehsh = data_assimilation_parameters.get("QC_threshold", 1)
+    frequency = str(int(run_parameters['dt']/60))+"min"
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
         # dataframe containing discharge observations
@@ -711,7 +715,7 @@ def get_usgs_from_time_slices_folder(
     date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    for j in pd.date_range(date_time_center_start, date_time_center_end, freq="5min"):
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
 
     """
@@ -773,7 +777,7 @@ def get_usgs_from_time_slices_folder(
     # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     usgs_df_T = (usgs_df_T.resample('min').
                  interpolate(limit = max_fill_1min, limit_direction = 'both').
-                 resample('5min').
+                 resample(frequency).
                  asfreq().
                  loc[date_time_center_start:,:])
 
