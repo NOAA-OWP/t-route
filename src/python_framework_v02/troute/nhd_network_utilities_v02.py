@@ -698,9 +698,9 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
 
 def build_data_assimilation_csv(data_assimilation_parameters):
 
-    usgs_df = nhd_io.get_usgs_from_time_slices_csv(
-        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
+    usgs_df = nhd_io.get_usgs_df_from_csv(
         data_assimilation_parameters["data_assimilation_csv"],
+        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
     )
 
     return usgs_df

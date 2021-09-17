@@ -604,53 +604,46 @@ def build_lastobs_df(
         return final_df
 
 
-# TODO: Update get_usgs_from_time_slices_csv with new interpolation method
-def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
+def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
+    """
+    routelink_subset_file - provides the gage-->segment crosswalk. Only gages that are represented in the
+    crosswalk will be brought into the evaluation.
+    usgs_csv - csv file with SEGMENT IDs in the left-most column labeled with "link",
+                        and date-headed values from time-slice files in the format
+                        "2018-09-18 00:00:00"
 
-    df2 = pd.read_csv(usgs_csv, index_col=0)
+    It is assumed that the segment crosswalk and interpolation have both
+    already been performed, so we do not need to comprehend
+    the potentially non-numeric byte-strings associated with gage IDs, nor
+    do we need to interpolate anything here as when we read from the timeslices.
+
+    If that were necessary, we might use a solution such as proposed here:
+    https://stackoverflow.com/a/35058538
+    note that explicit typing of the index cannot be done on read and
+    requires a two-line solution such as:
+    ```
+    df2 = pd.read_csv(usgs_csv, dtype={index_col:bytes})
+    df2 = df2.set_index(index_col)
+    ```
+    """
+
+    df2 = pd.read_csv(usgs_csv, index_col=index_col)
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
         gage_mask = list(map(bytes.isdigit, gage_list))
 
-        gage_da = ds.gages[gage_mask].values.astype(int)
+        gage_da = ds[index_col][gage_mask].values.astype(int)
 
         data_var_dict = {}
-        data_vars = ("link", "to", "ascendingIndex")
+        data_vars = ("gages", "to", "ascendingIndex")
         for v in data_vars:
-            data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
-        ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
-    df = ds.to_dataframe()
+            data_var_dict[v] = ([index_col], ds[v].values[gage_mask])
+        ds = xr.Dataset(data_vars=data_var_dict, coords={index_col: gage_da})
+        df = ds.to_dataframe()
 
     usgs_df = df.join(df2)
-    usgs_df = usgs_df.reset_index()
-    usgs_df = usgs_df.rename(columns={"index": "gages"})
-    usgs_df = usgs_df.set_index("link")
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
-    columns_list = usgs_df.columns
-
-    for i in range(0, (len(columns_list) * 3) - 12, 12):
-        original_string = usgs_df.columns[i]
-        original_string_shortened = original_string[:-5]
-        temp_name1 = original_string_shortened + str("05:00")
-        temp_name2 = original_string_shortened + str("10:00")
-        temp_name3 = original_string_shortened + str("20:00")
-        temp_name4 = original_string_shortened + str("25:00")
-        temp_name5 = original_string_shortened + str("35:00")
-        temp_name6 = original_string_shortened + str("40:00")
-        temp_name7 = original_string_shortened + str("50:00")
-        temp_name8 = original_string_shortened + str("55:00")
-        usgs_df.insert(i + 1, temp_name1, np.nan)
-        usgs_df.insert(i + 2, temp_name2, np.nan)
-        usgs_df.insert(i + 4, temp_name3, np.nan)
-        usgs_df.insert(i + 5, temp_name4, np.nan)
-        usgs_df.insert(i + 7, temp_name5, np.nan)
-        usgs_df.insert(i + 8, temp_name6, np.nan)
-        usgs_df.insert(i + 10, temp_name7, np.nan)
-        usgs_df.insert(i + 11, temp_name8, np.nan)
-
-    usgs_df = usgs_df.interpolate(method="linear", axis=1)
-    usgs_df.drop(usgs_df[usgs_df.iloc[:, 0] == -999999.000000].index, inplace=True)
 
     return usgs_df
 
