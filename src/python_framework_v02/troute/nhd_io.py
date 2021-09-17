@@ -391,9 +391,10 @@ def read_netcdfs(paths, dim, transform_func=None):
 
 def preprocess_time_station_index(xd):
     stationId_da_mask = list(
-        map(compose(bytes.isdigit, bytes.strip), xd.stationId.values)
+        map(compose(bytes.isalnum, bytes.strip), xd.stationId.values)
     )
-    stationId = xd.stationId[stationId_da_mask].values.astype(int)
+    stationId = list(map(bytes.strip, xd.stationId[stationId_da_mask].values))
+    #stationId_int = xd.stationId[stationId_da_mask].values.astype(int)
 
     unique_times_str = np.unique(xd.time.values).tolist()
 
@@ -456,7 +457,6 @@ def build_lastobs_df(
         time_id = "time",
         discharge_nan = -9999.0,
         ref_t_attr_id = "modelTimeAtOutput",
-        blank_filter = b"               ",
         route_link_idx = "feature_id",
         # last_nudge_id = "last_nudge",
     ):
@@ -475,13 +475,18 @@ def build_lastobs_df(
     # TODO: We should already know the link/gage relationship by this point and can require that as an input
     # TODO: ... so we could get rid of the following handful of lines.
     with xr.open_dataset(routelink) as ds1:
-        station_gage_df = ds1[[gage_id,link_id]].to_dataframe()
-        station_gage_df = station_gage_df.loc[station_gage_df[gage_id] != blank_filter]
-        station_gage_df[gage_id] = station_gage_df[gage_id].astype("int")
-        station_gage_df = station_gage_df[[gage_id, link_id]]
-        station_gage_df = station_gage_df.reset_index()
-        station_gage_df = station_gage_df.set_index(gage_id)
-        station_gage_df = station_gage_df.drop(route_link_idx, axis=1)
+        gage_list = list(map(bytes.strip, ds1.gages.values))
+        gage_mask = list(map(bytes.isalnum, gage_list))
+
+        gage_da = list(map(bytes.strip, ds1.gages[gage_mask].values))
+        # gage_da = ds1.gages[gage_mask].values.astype(int)
+
+        data_var_dict = {}
+        data_vars = ("link", "to", "ascendingIndex")
+        for v in data_vars:
+            data_var_dict[v] = (["gages"], ds1[v].values[gage_mask])
+        ds1 = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
+        station_gage_df = ds1.to_dataframe()
 
     with xr.open_dataset(lastobsfile) as ds:
         model_discharge_last_ts = ds[model_discharge_id][:,-1].to_dataframe()
@@ -517,7 +522,8 @@ def build_lastobs_df(
         lastobs_times = (lastobs_times - ref_time).dt.total_seconds()
         lastobs_times = lastobs_times - time_shift
 
-        lastobs_stations = ds[station_id].to_dataframe().astype(int)
+        lastobs_stations = ds[station_id].to_dataframe()
+        lastobs_stations[station_id] = lastobs_stations[station_id].map(bytes.strip)
 
         ## END OF CONTEXT (Remaining items could be outdented...)
         model_discharge_last_ts = model_discharge_last_ts.join(lastobs_stations)
@@ -656,7 +662,9 @@ def get_usgs_from_time_slices_folder(
     t0 = None,
 ):
     """
-    routelink_subset_file - provides the gage-->segment crosswalk
+    routelink_subset_file - provides the gage-->segment crosswalk. 
+        Only gages that are represented in the
+        crosswalk will be brought into the evaluation.
     usgs_files - list of "time-slice" files containing observed values
     max_fill_1min - sets the maximum interpolation length
     t0 - optional date parameter to trim the front of the files -- if not provided,
@@ -681,9 +689,10 @@ def get_usgs_from_time_slices_folder(
 
     with xr.open_dataset(routelink_subset_file) as ds:
         gage_list = list(map(bytes.strip, ds.gages.values))
-        gage_mask = list(map(bytes.isdigit, gage_list))
+        gage_mask = list(map(bytes.isalnum, gage_list))
 
-        gage_da = ds.gages[gage_mask].values.astype(int)
+        gage_da = list(map(bytes.strip, ds.gages[gage_mask].values))
+        # gage_da = ds.gages[gage_mask].values.astype(int)
 
         data_var_dict = {}
         data_vars = ("link", "to", "ascendingIndex")
