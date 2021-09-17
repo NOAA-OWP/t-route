@@ -742,7 +742,7 @@ def diffusive_input_data_v02(
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
-    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt)
+    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
 
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}

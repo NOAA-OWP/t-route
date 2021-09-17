@@ -264,7 +264,8 @@ cpdef object compute_diffusive_tst(
                                 )
         
     # re-index the flowveldepth_unorder array returned by diff_utils
-    flowveldepth_test = np.zeros((data_idx.shape[0], nsteps*3), dtype='float32')
+    # TODO return depth not elevation from Tulane model
+    flowveldepth_test = np.zeros((data_idx.shape[0], ntss_ev_g*3), dtype='float32')
     flowveldepth_test = (pd.DataFrame(data = flowveldepth_unorder, index = index_array).
                     reindex(index = data_idx).
                     to_numpy(dtype = 'float32'))
@@ -281,7 +282,7 @@ cpdef object compute_diffusive_tst(
     cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
     cdef int qvd_ts_w = 3
     cdef int ts_offset
-    cdef float[:,:] flowveldepth_row_fill_buf = np.zeros((1, nsteps), dtype="float32")
+    cdef float[:,:] flowveldepth_row_fill_buf = np.zeros((1, ntss_ev_g), dtype="float32")
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     
     if gages_size:
@@ -290,8 +291,9 @@ cpdef object compute_diffusive_tst(
         lastobs_time = time_since_lastobs_init[0]
         usgs_positions_i = usgs_positions[0]
                    
+        # timestep 0 is the initial condition b/c diffusive wave writes out nsteps + 1 timesteps
         timestep = 0
-        while timestep <= nsteps-1:
+        while timestep <= ntss_ev_g-1:
             
             ts_offset = timestep * qvd_ts_w
 
