@@ -293,6 +293,8 @@ def nwm_forcing_preprocess(
         lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
         lastobs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_da_channel_ID_crosswalk_file", None)
         da_decay_coefficient = data_assimilation_parameters.get("da_decay_coefficient", 120)
+        qc_threshold = data_assimilation_parameters.get("qc_threshold", 1.0)
+        da_max_fill = data_assimilation_parameters.get("da_max_fill", 59)
 
         da_run["data_assimilation_timeslices_folder"] = da_run.get("data_assimilation_timeslices_folder", data_assimilation_folder)
         da_run["data_assimilation_csv"] = da_run.get("data_assimilation_csv", data_assimilation_csv)
@@ -301,6 +303,8 @@ def nwm_forcing_preprocess(
         da_run["wrf_lastobs_type"] = da_run.get("wrf_lastobs_type", lastobs_type)
         da_run["wrf_hydro_da_channel_ID_crosswalk_file"] = da_run.get("wrf_hydro_da_channel_ID_crosswalk_file", lastobs_crosswalk_file)
         da_run["da_decay_coefficient"] = da_run.get("da_decay_coefficient", da_decay_coefficient)
+        da_run["qc_threshold"] = da_run.get("QC_threshold", qc_threshold)
+        da_run["da_max_fill"] = da_run.get("da_max_fill", da_max_fill)
 
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
@@ -333,7 +337,7 @@ def nwm_forcing_preprocess(
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, lastobs_index, run["t0"])
+        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
 
         if verbose:
             print("usgs array complete")

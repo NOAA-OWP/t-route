@@ -653,7 +653,9 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file,
     usgs_files,
     max_fill_1min = 14,
+    dt = 300,
     t0 = None,
+    qc_threshold = 1.0,
 ):
     """
     routelink_subset_file - provides the gage-->segment crosswalk
@@ -663,6 +665,7 @@ def get_usgs_from_time_slices_folder(
           the interpolated values are truncated so that the first value returned
           corresponds to the first center date of the first provided file.
     """
+    frequency = str(dt/60))+"min"
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
         # dataframe containing discharge observations
@@ -718,7 +721,7 @@ def get_usgs_from_time_slices_folder(
     date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    for j in pd.date_range(date_time_center_start, date_time_center_end, freq="5min"):
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
 
     """
@@ -760,9 +763,7 @@ def get_usgs_from_time_slices_folder(
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
 
     # screen-out poor quality flow observations
-    # TODO: Bring qc_thresh parameter in from yaml as user input
-    qc_trehsh = 1
-    usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
+    usgs_df = usgs_df.mask(usgs_qual_df < qc_threshold, np.nan)
 
     # screen-out erroneous flow observations
     usgs_df = usgs_df.mask(usgs_df <= 0, np.nan)
@@ -782,7 +783,7 @@ def get_usgs_from_time_slices_folder(
     # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     usgs_df_T = (usgs_df_T.resample('min').
                  interpolate(limit = max_fill_1min, limit_direction = 'both').
-                 resample('5min').
+                 resample(frequency).
                  asfreq().
                  loc[date_time_center_start:,:])
 
