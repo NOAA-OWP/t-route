@@ -321,4 +321,5 @@ cpdef object compute_diffusive_tst(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth)[fill_index_mask]
+    # drop the initial conditions columns from the flowveldepth array before returning 
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,3:])[fill_index_mask]
