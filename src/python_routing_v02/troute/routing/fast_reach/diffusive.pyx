@@ -255,7 +255,6 @@ cpdef object compute_diffusive_tst(
      out_elv)
 
     # re-format outputs from the diffusive Fortran kernel
-    # TODO: elevation is returned by Tulane model, not depth
     index_array, flowveldepth_unorder = diff_utils.unpack_output(
                                 diff_inputs["pynw"],
                                 diff_inputs["ordered_reaches"],
