@@ -293,7 +293,7 @@ def fp_qlat_map(
     return qlat_g
 
 
-def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, upstream_inflows):
+def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     """
     Upstream boundary condition mapping between Python and Fortran
     
@@ -302,8 +302,8 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, upstream_inflows):
     frnw_g -- (nparray of int) Fortran-Python network mapping array
     pynw -- (dict) ordered reach head segments
     nrch_g -- (int) number of reaches in the network
-    geo_index -- (ndarray of int64) row indices for geomorphic parameters data array (geo_data)
-    upstream_inflows (ndarray of float32) upstream_inflows (m3/sec)
+    ds_seg -- (ndarray of int64) row indices for downstream segments recieving flows in upstream_flows
+    upstream_inflows (ndarray of float32) upstream_inflows (m3/sec) to segments in ds_seg
     
     Returns
     -------
@@ -321,13 +321,11 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, geo_index, upstream_inflows):
             
             head_segment = pynw[frj]
             
-            if head_segment in set(geo_index):
+            if head_segment in set(ds_seg):
                 
-                idx_segID = np.where(np.asarray(list(set(geo_index))) == head_segment)
-
+                idx_dssegID = np.where(np.asarray(list(set(ds_seg))) == head_segment)
                 for tsi in range(0, nts_ub_g):
-                    
-                    ubcd_g[tsi, frj] = upstream_inflows[idx_segID, tsi]  # [m^3/s]
+                    ubcd_g[tsi, frj] = upstream_inflows[idx_dssegID, tsi]  # [m^3/s]
 
     return ubcd_g
 
@@ -493,10 +491,10 @@ def diffusive_input_data_v02(
         nnodes = len(r) + 1
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
-
+    
     ds_seg = []
     offnet_segs = []
-    upstream_flow_array = np.zeros((len(ds_seg), nsteps))
+    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1))
     if upstream_results:
         
         # create a list of segments downstream of offnetwork upstreams [ds_seg]
@@ -505,30 +503,33 @@ def diffusive_input_data_v02(
         for seg in upstream_results:
             ds_seg.append(inv_map[seg][0])
             offnet_segs.append(seg)
-
+        
         # populate an array of upstream flows (boundary condtions)
-        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps))
+        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps+1))
         for j, seg in enumerate(set(ds_seg)):
             
             # offnetwork-upstream connections
             us_segs = rconn[seg]
             
-            # sum upstream flows
+            # sum upstream flows and initial conditions
             usq = np.zeros((len(us_segs), nsteps))
+            us_iniq = 0
             for k, s in enumerate(us_segs):
                 usq[k] = upstream_results[s]['results'][::3]
+                
+                if s in lake_segs:
+                    # initial conditions from wbody_param array
+                    idx_segID = np.where(np.asarray(lake_segs) == s)
+                    us_iniq += wbody_params[idx_segID,9]
+                else:
+                    # initial conditions from initial_conditions array
+                    idx_segID = np.where(geo_index == s)
+                    us_iniq += initial_conditions[idx_segID,0]
             
             # write upstream flows to upstream_flow_array
-            upstream_flow_array[j] = np.sum(usq, axis = 0)
-            
-#             # write upstream flows to upstream_flow_array
-#             for i, val in enumerate(usq_total):
-#                 if i%qts_subdivisions == 0:
-#                     upstream_flow_array[j, int(i/qts_subdivisions)] = val
-                
-            # TODO: why are we constraining upstream_flow_array time interval to that of q laterals?
-            # can we just use the same timestep as the simulations?
- 
+            upstream_flow_array[j,1:] = np.sum(usq, axis = 0)
+            upstream_flow_array[j,0] = us_iniq
+    
     # Order reaches by junction depth
     path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_segs), rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
