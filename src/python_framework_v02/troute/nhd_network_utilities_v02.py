@@ -438,7 +438,7 @@ def build_connections(supernetwork_parameters):
     param_df = param_df.sort_index()
 
     # TODO: Do we need this second, identical call to the one above?
-    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols)) 
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
 
     wbodies = {}
     if "waterbody" in cols:
