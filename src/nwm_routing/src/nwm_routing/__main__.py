@@ -1057,6 +1057,7 @@ def main_v03(argv):
         break_network_at_waterbodies,
         param_df.index,
         lastobs_df.index,
+        t0,
         showtiming,
         verbose,
         debuglevel,
@@ -1064,7 +1065,7 @@ def main_v03(argv):
 
     for run_set_iterator, run in enumerate(run_sets):
 
-        run["t0"] = t0
+        t0 = run.get("t0")
         dt = run.get("dt")
         nts = run.get("nts")
 
@@ -1114,6 +1115,7 @@ def main_v03(argv):
                 break_network_at_waterbodies,
                 param_df.index,
                 lastobs_df.index,
+                t0 + timedelta(seconds = dt * nts),
                 showtiming,
                 verbose,
                 debuglevel,
@@ -1141,7 +1143,6 @@ def main_v03(argv):
             verbose,
             debuglevel,
         )
-        t0 = t0 + timedelta(seconds = dt * nts)
 
     # nwm_final_output_generator()
 
