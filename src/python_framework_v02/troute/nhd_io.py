@@ -434,6 +434,9 @@ def get_nc_attributes(nc_list, attribute, file_selection=[0, -1]):
 
 
 def get_attribute(nc_file, attribute):
+    # TODO: consider naming as get_nc_attribute
+    # -- this is really specific to a netcdf file.
+
     with xr.open_dataset(nc_file) as xd:
         return xd.attrs[attribute]
 
@@ -789,14 +792,9 @@ def get_usgs_from_time_slices_folder(
     return usgs_df_new
 
 
-def get_param_str(
-    target_file,
-    param,
-):
-    with xr.open_dataset(target_file) as ds:
-        param_str = ds.attrs[param]
-
-    return param_str
+def get_param_str(target_file, param):
+    # TODO: remove this duplicate function
+    return get_attribute(target_file, param)
 
 
 # TODO: Move channel restart above usgs to keep order with execution script
