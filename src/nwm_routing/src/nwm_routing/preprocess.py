@@ -257,11 +257,18 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     lastobs_index,
+    warmstate_t0 = None,
     showtiming=False,
     verbose=False,
     debuglevel=0,
 ):
 
+    # TODO: Harmonize the t0 parameter -- this
+    # configuration permits the Warm-State derived
+    # t0 to carry as the default if no other value is
+    # provided -- we need to confirm this is
+    # desireable behavior.
+    t0 = forcing_parameters.get("t0", warmstate_t0)
     nts = forcing_parameters.get("nts", None)
     dt = forcing_parameters.get("dt", None)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", None)
@@ -270,6 +277,7 @@ def nwm_forcing_preprocess(
     qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
 
     # TODO: find a better way to deal with these defaults and overrides.
+    run["t0"] = run.get("t0", t0)
     run["nts"] = run.get("nts", nts)
     run["dt"] = run.get("dt", dt)
     run["qts_subdivisions"] = run.get("qts_subdivisions", qts_subdivisions)
@@ -325,7 +333,7 @@ def nwm_forcing_preprocess(
         if verbose:
             print("creating usgs time_slice data array ...")
 
-        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, lastobs_index)
+        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, lastobs_index, run["t0"])
 
         if verbose:
             print("usgs array complete")

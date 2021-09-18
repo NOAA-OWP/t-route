@@ -649,12 +649,16 @@ def get_usgs_from_time_slices_csv(routelink_subset_file, usgs_csv):
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
     usgs_files,
-    max_fill_1min = 14
+    max_fill_1min = 14,
+    t0 = None,
 ):
     """
     routelink_subset_file - provides the gage-->segment crosswalk
     usgs_files - list of "time-slice" files containing observed values
     max_fill_1min - sets the maximum interpolation length
+    t0 - optional date parameter to trim the front of the files -- if not provided,
+          the interpolated values are truncated so that the first value returned
+          corresponds to the first center date of the first provided file.
     """
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
@@ -770,6 +774,8 @@ def get_usgs_from_time_slices_folder(
     square-wave signals at gages reporting hourly...
     therefore, we use a 59 minute gap filling tolerance.
     """
+    if t0:
+        date_time_center_start = t0
     # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     usgs_df_T = (usgs_df_T.resample('min').
                  interpolate(limit = max_fill_1min, limit_direction = 'both').
