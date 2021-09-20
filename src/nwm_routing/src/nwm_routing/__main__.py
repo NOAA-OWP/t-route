@@ -374,6 +374,7 @@ def _run_everything_v02(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
     )
+    
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -1122,7 +1123,14 @@ def main_v03(argv):
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
-        import pdb;pdb.set_trace()
+        if run_set_iterator != 0:
+            lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
+            if lastobs_output_folder:
+                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+            else:
+                lastobs_string = "lastobs_df_"+str(run_set_iterator)+".csv"
+            lastobs_df.to_csv(lastobs_string,index=True)
+            lastobs_df = pd.read_csv(lastobs_string,index_col='link')
         run_results = nwm_route(
             connections,
             rconn,
@@ -1154,6 +1162,7 @@ def main_v03(argv):
             debuglevel,
         )
 
+        gages = lastobs_df['gages']
         if (
             run_set_iterator < len(run_sets) - 1
         ):  # No forcing to prepare for the last loop
@@ -1172,9 +1181,19 @@ def main_v03(argv):
             )
 
             q0 = new_nwm_q0(run_results)
-            import pdb; pdb.set_trace()
+
             if data_assimilation_parameters:
                 lastobs_df = new_lastobs(run_results, dt * nts)
+                lastobs_df.index.names = ['link']
+                lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
+                lastobs_df.insert(0, 'gages', gages)
+                lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
+                if lastobs_output_folder:
+                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+                else:
+                    lastobs_string = "lastobs_df_"+str(run_set_iterator)+".csv"
+                lastobs_df.to_csv(lastobs_string,index=True)
+                # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
 
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
