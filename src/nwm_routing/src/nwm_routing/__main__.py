@@ -1183,7 +1183,7 @@ def main_v03(argv):
             )
 
             q0 = new_nwm_q0(run_results)
-            import pdb; pdb.set_trace()
+
             if data_assimilation_parameters:
                 lastobs_df = new_lastobs(run_results, dt * nts)
                 lastobs_df.index.names = ['link']
