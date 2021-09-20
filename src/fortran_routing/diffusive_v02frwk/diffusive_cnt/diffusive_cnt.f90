@@ -420,19 +420,20 @@ contains
 		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		! Write and depth results to q_ev_g array
 		! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		do timestep = 1, repeatInterval
-                	ts_ev = ((ini_time*60.0/dtini) + timestep)
-               		do j = 1, nlinks
-                    	ncomp = frnw_g(j,1)
-                    		do i = 1, ncomp
-                        		q_ev_g(ts_ev, i, j) = newQ(i, timestep, j)
-                        		elv_ev_g(ts_ev, i, j) = newY(i, j) - z(i,j) ! depth (meters)
-					!print*, ts_ev, i, j,  q_ev_g(ts_ev, i, j), elv_ev_g(ts_ev, i, j)
-                    		end do
-                	end do
-            	end do
-		oldY = newY
-	end do ! end kkk loop
+			do timestep = 1, repeatInterval+1
+                ts_ev = ((ini_time*60.0/dtini) + timestep)
+                do j = 1, nlinks
+                    ncomp = frnw_g(j,1)
+                    do i = 1, ncomp
+                        q_ev_g(ts_ev, i, j) = newQ(i, timestep, j)
+                        elv_ev_g(ts_ev, i, j) = newY(i, j) - z(i,j) ! depth (meters)
+                    end do
+                end do
+            end do
+
+			oldY = newY
+
+		end do ! end kkk loop
         
         deallocate(frnw_g)
         deallocate(area, bo, pere, areap, qp, z, dqp, dqc, dap, dac, depth, sk, co, dx)
