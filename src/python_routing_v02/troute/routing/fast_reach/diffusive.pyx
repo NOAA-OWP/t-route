@@ -301,7 +301,7 @@ cpdef object compute_diffusive_tst(
                 dt,
                 da_decay_coefficient,
                 gage_maxtimestep,
-                NAN if timestep >= gage_maxtimestep else usgs_values[0,timestep+1],
+                NAN if timestep >= gage_maxtimestep else usgs_values[0,timestep],
                 flowveldepth[usgs_positions_i, ts_offset],
                 lastobs_time,
                 lastobs_value,
