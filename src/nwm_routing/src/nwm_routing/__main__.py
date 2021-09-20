@@ -567,7 +567,7 @@ def _run_everything_v02(
         "data_assimilation_timeslices_folder", None
     )
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-
+    
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
         if showtiming:
             start_time = time.time()
@@ -577,7 +577,7 @@ def _run_everything_v02(
             usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
                 data_assimilation_parameters
             )
-
+        
         if verbose:
             print("usgs array complete")
         if showtiming:
@@ -1011,6 +1011,7 @@ def new_lastobs(run_results, time_increment):
         copy=False,
     )
     df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+
     return df
 
 
@@ -1121,7 +1122,7 @@ def main_v03(argv):
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
-
+        import pdb;pdb.set_trace()
         run_results = nwm_route(
             connections,
             rconn,
@@ -1171,7 +1172,7 @@ def main_v03(argv):
             )
 
             q0 = new_nwm_q0(run_results)
-
+            import pdb; pdb.set_trace()
             if data_assimilation_parameters:
                 lastobs_df = new_lastobs(run_results, dt * nts)
 
