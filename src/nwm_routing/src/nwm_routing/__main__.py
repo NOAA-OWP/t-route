@@ -926,6 +926,10 @@ def nwm_route(
 
 
 def new_nwm_q0(run_results):
+    """
+    Prepare a new q0 dataframe with initial flow and depth to act as
+    a warmstate for the next simulation chunk.
+    """
     return pd.concat(
         # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
         # actually contains a field qu0, which is never used for restart (the qu0 can be obtained
@@ -945,15 +949,39 @@ def new_nwm_q0(run_results):
 
 
 def get_waterbody_water_elevation(waterbodies_df, q0):
-
-    # Update the starting water_elevation of each lake/reservoir
-    # with depth values from q0
+    """
+    Update the starting water_elevation of each lake/reservoir
+    with depth values from q0
+    """
     waterbodies_df.update(q0)
 
     return waterbodies_df
 
 
 def new_lastobs(run_results, time_increment):
+    """
+    Creates new "lastobs" dataframe for the next simulation chunk.
+
+    run_results - output from the compute kernel sequence, organized
+        (because that is how it comes out of the kernel) by network.
+        For each item in the result, there are four elements, the
+        fourth of which is a tuple containing: 1) a list of the
+        segments ids where data assimilation was performed (if any)
+        in that network; 2) a list of the last valid observation
+        applied at that segment; 3) a list of the time in seconds
+        from the beginning of the last simulation that the
+        observation was applied.
+    time_increment - length of the prior simulation. To prepare the
+        next lastobs state, we have to convert the time since the prior
+        simulation start to a time since the new simulation start.
+        If the most recent observation was right at the end of the
+        prior loop, then the value in the incoming run_result will
+        be equal to the time_increment and the output value will be
+        zero. If observations were not present at the last timestep,
+        the last obs time will be calculated to a negative value --
+        the number of seconds ago that the last valid observation
+        was used for assimilation.
+    """
     df = pd.concat(
         [
             pd.DataFrame(
@@ -971,6 +999,11 @@ def new_lastobs(run_results, time_increment):
     return df
 
 def main_v03(argv):
+    """
+    Handles the creation of the input parameter dictionaries
+    from an input file and then sequences the execution of the
+    t-route routing agorithm on a series of execution loops.
+    """
     args = _handle_args_v03(argv)
     (
         log_parameters,
