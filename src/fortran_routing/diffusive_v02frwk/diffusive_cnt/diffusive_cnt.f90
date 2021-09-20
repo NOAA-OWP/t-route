@@ -231,8 +231,6 @@ contains
 									leftBank(i,j), rightBank(i,j),timesDepth, j,&
 									z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
 
-				oldY(i,j) = ini_y(j) + z(i,j)
-                oldQ(i,j) = iniq(i,j)
             end do
 		end do
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -249,6 +247,47 @@ contains
         ! downstream boundary time
         do n=1, nts_db_g
             tarr_db(n)= t0_g*60.0 + dt_db_g*real(n-1,KIND(dt_db_g))/60.0 !* [min]
+        end do
+        
+        !!!! INSERT IC CODE !!!
+        ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        ! compute boundary conditions & initial water depth, celerity, and diffusivity using iniq
+        ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        
+        do j= 1, nlinks
+            ncomp= frnw_g(j,1)
+            do i=1, ncomp
+                oldQ(i,j) = iniq(i,j)
+                newQ(i,1,j) = iniq(i,j)
+                qp(i,1,j)= iniq(i,j)
+            end do
+        end do
+        
+        q_sk_multi=1.0
+        do j= nlinks, 1, -1
+            ncomp= frnw_g(j,1)
+            if (frnw_g(j,2)<0.0) then
+                ! normal depth as TW boundary condition
+                slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
+                if (slope .le. 0.0001) slope = 0.0001
+                call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
+            else            
+                !* Not TW reach -> water elev at bottom node of u/s reach is equal to that at top node of d/s reach
+                linknb=frnw_g(j,2) ! reach downstream of j
+                oldY(ncomp,j)= newY(1,linknb)   ! taking the WL from the d/s reach
+            end if            
+            !* compute water elev. from top to the second last node and celerity and diffusivity for all the nodes of reach j
+            newY(ncomp,j)= oldY(ncomp,j)
+            idmy1=0
+            call mesh_diffusive_backward(j,ntim, idmy1)
+            do i=1,ncomp-1
+                oldY(i,j)=newY(i,j)
+            end do
+            !*test
+            !do i=1,ncomp
+            !       print*, i, j, oldQ(i,j), oldY(i,j), celerity(i,j), diffusivity(i,j)
+            !end do
         end do
 
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -267,20 +306,20 @@ contains
                 newQ(1,1,j)= intp_y(nts_ub_g, tarr_ub, varr_ub, t) !* tarr_ub in min.
             end if
             
-            !* downstream boundary condition for TW reach
-            if (frnw_g(j,2)<0.0) then
-                !* 1. measured data
+!            !* downstream boundary condition for TW reach
+!            if (frnw_g(j,2)<0.0) then
+!                !* 1. measured data
 !                do n=1,nts_db_g
 !                    varr_db(n)= dbcd_g(n) + z(ncomp,j) !* when dbcd is water stage, channel bottom elev is added.
 !                enddo
 !                oldY(ncomp,j)= intp_y(nts_db_g, tarr_db, varr_db, t)
-                ! 2. normal depth as TW boundary condition
-                q_sk_multi=1.0
-                slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
-                if (slope .le. 0.0001) slope = 0.0001
-                !oldY below takes normal depth value as a result.
-                call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
-            end if
+!                ! 2. normal depth as TW boundary condition
+!                q_sk_multi=1.0
+!                slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
+!                if (slope .le. 0.0001) slope = 0.0001
+!                !oldY below takes normal depth value as a result.
+!                call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
+!            end if
         end do
         ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         ! correcting the WL initial condition based on the WL boundary
