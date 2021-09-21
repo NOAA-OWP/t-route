@@ -449,7 +449,7 @@ def build_connections(supernetwork_parameters):
 
     gages = {}
     if "gages" in cols:
-        gages = build_gages(param_df[["gages"]])
+        gages = nhd_io.build_filtered_gage_df(param_df[["gages"]])
         param_df = param_df.drop("gages", axis=1)
 
     # There can be an externally determined terminal code -- that's this first value
@@ -472,14 +472,6 @@ def build_connections(supernetwork_parameters):
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages
-
-
-def build_gages(segment_gage_df,):
-    gage_list = list(map(bytes.strip, segment_gage_df.gages.values))
-    gage_mask = list(map(bytes.isdigit, gage_list))
-    gages = segment_gage_df.loc[gage_mask, "gages"].to_dict()
-
-    return gages
 
 
 def build_waterbodies(
