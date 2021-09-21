@@ -442,6 +442,22 @@ def get_attribute(nc_file, attribute):
         return xd.attrs[attribute]
 
 
+def build_filtered_gage_df(segment_gage_df, gage_col="gages"):
+    """
+    segment_gage_df - dataframe indexed by segment with at least
+        one column, gage_col, with the gage ids by segment.
+    gage_col - the name of the column containing the gages
+        to filter.
+    """
+    # TODO: use this function to filter the inputs
+    # coming into the da read routines below.
+    gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))
+    gage_mask = list(map(bytes.isalnum, gage_list))
+    segment_gage_df = segment_gage_df.loc[gage_mask, [gage_col]]
+    segment_gage_df[gage_col] = segment_gage_df[gage_col].map(bytes.strip)
+    return segment_gage_df.to_dict()
+
+
 def build_lastobs_df(
         lastobsfile,
         routelink,
@@ -655,7 +671,7 @@ def get_usgs_from_time_slices_folder(
     t0 = None,
 ):
     """
-    routelink_subset_file - provides the gage-->segment crosswalk. 
+    routelink_subset_file - provides the gage-->segment crosswalk.
         Only gages that are represented in the
         crosswalk will be brought into the evaluation.
     usgs_files - list of "time-slice" files containing observed values
