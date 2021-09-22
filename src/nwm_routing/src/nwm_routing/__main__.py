@@ -576,6 +576,7 @@ def _run_everything_v02(
 
             usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
                 data_assimilation_parameters
+                data_assimilation_parameters,run_parameters
             )
 
         if verbose:
