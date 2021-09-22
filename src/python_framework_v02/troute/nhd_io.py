@@ -252,17 +252,20 @@ def get_ql_from_wrf_hydro_mf(
     ```
     """
 
-    with xr.open_mfdataset(
-        qlat_files,
-        combine="by_coords",
-        # combine="nested",
-        # concat_dim="time",
-        # data_vars="minimal",
-        # coords="minimal",
-        # compat="override",
-        preprocess=drop_all_coords,
-        # parallel=True,
-    ) as ds:
+    #ds_tmp = read_netcdfs(qlat_files, "feature_id", drop_all_coords)
+    ds = read_netcdfs(qlat_files, "time", drop_all_coords)
+    if 1 == 1:
+    # with xr.open_mfdataset(
+    #     qlat_files,
+    #     combine="by_coords",
+    #     # combine="nested",
+    #     # concat_dim="time",
+    #     # data_vars="minimal",
+    #     # coords="minimal",
+    #     # compat="override",
+    #     preprocess=drop_all_coords,
+    #     # parallel=True,
+    # ) as ds:
         try:
             ql = pd.DataFrame(
                 ds[value_col].values.T,
