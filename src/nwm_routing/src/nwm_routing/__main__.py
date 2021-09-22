@@ -1322,6 +1322,7 @@ async def main_v03_async(argv):
         debuglevel,
     )
 
+    run_set_iterator = 0
     for run_set_iterator, run in enumerate(run_sets[:-1]):
 
         t0 = run.get("t0")
