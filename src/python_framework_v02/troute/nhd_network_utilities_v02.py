@@ -711,12 +711,15 @@ def build_data_assimilation_folder(data_assimilation_parameters,run_parameters,t
     else:
         print("No Files Found for DA")
         # TODO: Handles this with a real exception
+    max_fill_1min = data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59)
+    qc_trehsh = data_assimilation_parameters.get("qc_threshold", 1)
 
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
         data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-        run_parameters,
+        run_parameters['dt'],
         usgs_files,
-        data_assimilation_parameters,
+        qc_trehsh,
+        max_fill_1min,
         t0,
     )
 
