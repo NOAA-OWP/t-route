@@ -83,7 +83,6 @@ contains
         double precision :: dmy1, dmy2
         integer :: ndata, idmy1, nts_db_g2, idxql
         double precision :: slope, y_norm, area_n, temp, tc_cnt, rmnd, saveinterval_min
-	open(unit=1, file="./forran diffusive discharge water depth.txt")
 	! simulation timestep
         dtini=dtini_g  !*[sec]
         dtini_given=dtini
