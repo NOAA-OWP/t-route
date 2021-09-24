@@ -36,99 +36,139 @@ def _produce_result_set(results):
             np.save(fid, results[net_i][values_list_j], allow_pickle = False)
 
 
-def test_run_everything_v02():
+
+def test_croton_ny_levelpool():
+
+    final_flow = run_everything_v02_test("../../test/input/yaml/Croton_NY_levelpool.yaml")
+
+    assert pytest.approx(final_flow) == 1.415740
+
+
+def test_croton_ny_hybrid_usgs():
+
+    final_flow = run_everything_v02_test("../../test/input/yaml/Croton_NY_hybrid_usgs.yaml")
+
+    assert pytest.approx(final_flow) == 1.084535
+
+
+#def test_croton_ny_hybrid_usgs_AnA():
+#    '''
+#    This hybrid usgs AnA test does not run correctly whenever the
+#    above hybrid usgs test is run first. This is because the Fortran
+#    singleton timeslice reader is initialized in memory from the 
+#    above test call with an input timeslice directory set, and that
+#    timeslice reader persists in memory for the below call.
+#    This test call when run by itself initializes the timeslice reader
+#    to a different input timeslice directory, but when run after
+#    the above test call, the timeslice reader will still search for 
+#    timeslice files in the directory specified in the above test call.
+#    '''
+
+#    final_flow = run_everything_v02_test("../../test/input/yaml/Croton_NY_hybrid_usgs_AnA.yaml")
+
+#    assert pytest.approx(final_flow) == 1.3
+
+
+def test_croton_ny_rfc():
+
+    final_flow = run_everything_v02_test("../../test/input/yaml/Croton_NY_rfc.yaml")
+
+    assert pytest.approx(final_flow) == 8.681314
+
+
+#def test_croton_ny_levelpool_diffusive():
+#    # TODO: Updates needed to verify parity for Croton_NY_levelpool_diffusive.yaml
+
+#    final_flow = run_everything_v02_test("../../test/input/yaml/Croton_NY_levelpool_diffusive.yaml")
+
+#    assert pytest.approx(final_flow) == 0.0
+
+
+def test_CustomInput_yaml():
+
+    final_flow = run_everything_v02_test("../../test/input/yaml/CustomInput.yaml")
+
+    assert pytest.approx(final_flow) == 0.870077
+
+
+def test_florence_benchmark():
+
+    final_flow = run_everything_v02_test("../../test/input/yaml/Florence_Benchmark.yaml")
+
+    assert pytest.approx(final_flow) == 0.0043528992
+
+
+#def test_florence_benchmark_da():
+
+#    final_flow = run_everything_v02_test("../../test/input/yaml/Florence_Benchmark_da.yaml")
+
+#    assert pytest.approx(final_flow) == 0.0
+
+
+def run_everything_v02_test(custom_input_file):
     """
-    Integration test for python_routing_v02. List of v02 YAML files with
-    final flow of the parity node.
+    Integration test for python_routing_v02 called by individual configurations 
     """
 
-    # The hybrid usgs AnA below does not run correctly whenever the
-    # above hybrid usgs is run first. This is because the Fortran
-    # singleton timeslice reader is initialized in memory from the 
-    # above call with an input timeslice directory set, and that
-    # timeslice reader persists in memory for the below call. The
-    # below call when run by itself initializes the timeslice reader
-    # to a different input timeslice directory, but when run after
-    # the above call, the timeslice reader will still search for 
-    # timeslice files in the directory specified in the above call.
-    input_file_and_result_tuple_list = [
-        ("../../test/input/yaml/Croton_NY_levelpool.yaml", 1.415740),
-        ("../../test/input/yaml/Croton_NY_hybrid_usgs.yaml", 1.084535),
-        #("../../test/input/yaml/Croton_NY_hybrid_usgs_AnA.yaml", 1.3),
-        ("../../test/input/yaml/Croton_NY_rfc.yaml", 8.681314),
-        # TODO: Updates needed to verify parity for Croton_NY_levelpool_diffusive.yaml
-        #("../../test/input/yaml/Croton_NY_levelpool_diffusive.yaml", 0.0)
-        ("../../test/input/yaml/CustomInput.yaml", 0.870077),
-        ("../../test/input/yaml/Florence_Benchmark.yaml", 0.0043528992)
-        #("../../test/input/yaml/Florence_Benchmark_da.yaml", 0.0)
-    ]
+    (
+        supernetwork_parameters,
+        waterbody_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+    ) = read_custom_input(custom_input_file)
 
-    for input_file_and_result_tuple in input_file_and_result_tuple_list:
+    results = _run_everything_v02(
+        supernetwork_parameters,
+        waterbody_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+    )
 
-        custom_input_file = input_file_and_result_tuple[0]
-        (
-            supernetwork_parameters,
-            waterbody_parameters,
-            forcing_parameters,
-            restart_parameters,
-            output_parameters,
-            run_parameters,
-            parity_parameters,
-            data_assimilation_parameters,
-            diffusive_parameters,
-            coastal_parameters,
-        ) = read_custom_input(custom_input_file)
+    nts = run_parameters["nts"] 
+    dt = run_parameters["dt"] 
 
-        results = _run_everything_v02(
-            supernetwork_parameters,
-            waterbody_parameters,
-            forcing_parameters,
-            restart_parameters,
-            output_parameters,
-            run_parameters,
-            parity_parameters,
-            data_assimilation_parameters,
-            diffusive_parameters,
-            coastal_parameters,
-        )
+    compare_node = parity_parameters["parity_check_compare_node"]
 
-        nts = run_parameters["nts"] 
-        dt = run_parameters["dt"] 
+    # construct a dataframe of simulated flows
+    fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
+    flowveldepth = pd.concat(
+        [pd.DataFrame(r[1], index=r[0], columns=fdv_columns) for r in results],
+        copy=False,
+    )
+    flowveldepth = flowveldepth.sort_index()
 
-        compare_node = parity_parameters["parity_check_compare_node"]
+    flows = flowveldepth.loc[:, (slice(None), "q")]
+    flows = flows.T.reset_index(level=[0, 1])
+    flows.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
+    flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
+    flows = flows.set_index("Time (d)")
 
-        # construct a dataframe of simulated flows
-        fdv_columns = pd.MultiIndex.from_product([range(nts), ["q", "v", "d"]])
-        flowveldepth = pd.concat(
-            [pd.DataFrame(r[1], index=r[0], columns=fdv_columns) for r in results],
-            copy=False,
-        )
-        flowveldepth = flowveldepth.sort_index()
+    depths = flowveldepth.loc[:, (slice(None), "d")]
+    depths = depths.T.reset_index(level=[0, 1])
+    depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
+    depths["Time (d)"] = ((depths.Timestep + 1) * dt) / (24 * 60 * 60)
+    depths = depths.set_index("Time (d)")
 
-        flows = flowveldepth.loc[:, (slice(None), "q")]
-        flows = flows.T.reset_index(level=[0, 1])
-        flows.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
-        flows["Time (d)"] = ((flows.Timestep + 1) * dt) / (24 * 60 * 60)
-        flows = flows.set_index("Time (d)")
+    # Construct dataframe for results from set compare_node.
+    # TODO: Consider testing reservoir water elevation also 
+    trt = pd.DataFrame(
+        flows.loc[:, compare_node].values,
+        columns=["flow, t-route (cms)"],
+    )
 
-        depths = flowveldepth.loc[:, (slice(None), "d")]
-        depths = depths.T.reset_index(level=[0, 1])
-        depths.rename(columns={"level_0": "Timestep", "level_1": "Parameter"}, inplace=True)
-        depths["Time (d)"] = ((depths.Timestep + 1) * dt) / (24 * 60 * 60)
-        depths = depths.set_index("Time (d)")
-
-        # Construct dataframe for results from set compare_node.
-        # TODO: Consider testing reservoir water elevation also 
-        trt = pd.DataFrame(
-            flows.loc[:, compare_node].values,
-            columns=["flow, t-route (cms)"],
-        )
-
-        final_flow = trt.iloc[-1][0]
-
-        expected_final_flow = input_file_and_result_tuple[1]
-        
-        assert expected_final_flow == pytest.approx(final_flow)
+    return trt.iloc[-1][0]
 
 
 def test_run_everything_v02_custom_input():
