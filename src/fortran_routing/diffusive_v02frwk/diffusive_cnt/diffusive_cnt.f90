@@ -83,7 +83,6 @@ contains
         double precision :: dmy1, dmy2
         integer :: ndata, idmy1, nts_db_g2, idxql
         double precision :: slope, y_norm, area_n, temp, tc_cnt, rmnd, saveinterval_min
-
 	! simulation timestep
         dtini=dtini_g  !*[sec]
         dtini_given=dtini
@@ -98,7 +97,7 @@ contains
         ! Total number of timesteps in the simulation
 	totalTimeSteps = floor((tfin - t0)/dtini*3600)+1
         repeatInterval = int(saveInterval/dtini_given)
-	ntim= repeatInterval+10  !*! number of timesteps per repeatInterval; +1 because of boundary effects, at least 1 extra necessary
+	ntim= repeatInterval+2  !*! number of timesteps per repeatInterval; +1 because of boundary effects, at least 1 extra necessary
 	num_time=ntim
 	! number of reaches in the network
 	nlinks=nrch_g
@@ -184,7 +183,6 @@ contains
         allocate(rightBank(num_points, totalChannels), leftBank(num_points, totalChannels))
         allocate(skLeft(num_points, totalChannels), skMain(num_points, totalChannels), skRight(num_points, totalChannels))
         allocate(currentSquareDepth(nel))
-        allocate(ini_y(nlinks))
         allocate(notSwitchRouting(nlinks))
         allocate(currentROutingDiffusive(nlinks))
         allocate(tarr_ql(nts_ql_g), varr_ql(nts_ql_g))
@@ -207,8 +205,7 @@ contains
         ! TO DO:
 	! * pass initial depth as initial conditions and dont arbitrarily intialize
 	z=z_ar_g
-        ini_y=0.05  !* [meter]
-  
+    
         oldQ = -999; oldY = -999; newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
@@ -462,7 +459,7 @@ contains
 				do i = 1, ncomp
 					q_ev_g(ts_ev, i, j) = newQ(i, timestep, j)
 					elv_ev_g(ts_ev, i, j) = newY(i, j) - z(i,j) ! depth (meters)
-				end do
+   				end do
 			end do
 		end do
 
@@ -481,7 +478,7 @@ contains
         deallocate(elevTable, areaTable, pereTable, rediTable, convTable, topwTable)
         deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
         deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
-        deallocate(currentSquareDepth, ini_y, notSwitchRouting, currentROutingDiffusive )
+        deallocate(currentSquareDepth, notSwitchRouting, currentROutingDiffusive )
         deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub)
         deallocate(ini_q_repeat, ini_E, ini_F, added_Q, velocity)
 
@@ -871,6 +868,14 @@ contains
             if (diffusivity(i,j) .lt. minDiffuLm) diffusivity(i,j) = minDiffuLm !!! Applying diffusivity lower limit
 !            write(21,*) "Y/C/D", i,j, newY(i,j),  celerity(i,j), diffusivity(i,j)
         end do
+
+	do i=1,ncomp-1
+            if (celerity(i,j)/diffusivity(i,j)*dx(i,j) .le. 0.1) diffusivity(1:ncomp,j) = celerity(i,j)/0.1*dx(i,j)
+            if (celerity(i,j)*celerity(i,j)/diffusivity(i,j)*dtini .le. 0.3) &
+                diffusivity(1:ncomp,j) = celerity(i,j)*celerity(i,j)/0.3*dtini
+        end do
+	
+
 	end subroutine mesh_diffusive_backward
     !**-----------------------------------------------------------------------------------------
     !*      Create lookup tables at each node storing computed values of channel geometries
