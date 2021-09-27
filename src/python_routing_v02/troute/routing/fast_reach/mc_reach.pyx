@@ -1130,7 +1130,7 @@ cpdef object compute_network_structured(
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
     for reach, reach_type in reaches_wTypes:
-        upstream_reach = upstream_connections.get(reach[0], ())
+        upstream_reach = upstream_connections.get(reach[0], [])
         upstream_ids = binary_find(data_idx, upstream_reach)
         #Check if reach_type is 1 for reservoir
         if (reach_type == 1):
