@@ -668,7 +668,7 @@ def get_usgs_from_time_slices_folder(
     routelink_subset_file,
     dt,
     usgs_files,
-    qc_trehsh,
+    qc_threshold,
     max_fill_1min,
     t0 = None,
 ):
@@ -677,10 +677,13 @@ def get_usgs_from_time_slices_folder(
         Only gages that are represented in the
         crosswalk will be brought into the evaluation.
     usgs_files - list of "time-slice" files containing observed values
+    qc_threshold - sets the lowest acceptable quality value;
+        lower values will cause the associated obs value to be discarded
+        and replaced with NaN.
     max_fill_1min - sets the maximum interpolation length
     t0 - optional date parameter to trim the front of the files -- if not provided,
-          the interpolated values are truncated so that the first value returned
-          corresponds to the first center date of the first provided file.
+        the interpolated values are truncated so that the first value returned
+        corresponds to the first center date of the first provided file.
     """
     frequency = str(int(dt/60))+"min"
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
@@ -781,9 +784,7 @@ def get_usgs_from_time_slices_folder(
     usgs_qual_df = usgs_qual_df.mask(usgs_qual_df > 1, np.nan)
 
     # screen-out poor quality flow observations
-    # TODO: Bring qc_thresh parameter in from yaml as user input
-    qc_trehsh = 1
-    usgs_df = usgs_df.mask(usgs_qual_df < qc_trehsh, np.nan)
+    usgs_df = usgs_df.mask(usgs_qual_df < qc_threshold, np.nan)
 
     # screen-out erroneous flow observations
     usgs_df = usgs_df.mask(usgs_df <= 0, np.nan)
