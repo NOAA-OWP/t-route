@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import math
-
+import xarray as xr 
 ## network and reach utilities
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
@@ -1126,11 +1126,13 @@ def main_v03(argv):
         if run_set_iterator != 0:
             lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
             if lastobs_output_folder:
-                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
             else:
-                lastobs_string = "lastobs_df_"+str(run_set_iterator)+".csv"
-            lastobs_df.to_csv(lastobs_string,index=True)
-            lastobs_df = pd.read_csv(lastobs_string,index_col='link')
+                lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
+            lastobs_df.to_xarray().to_netcdf(lastobs_string)
+            lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
+            lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8') 
+            # import pdb; pdb.set_trace()
         run_results = nwm_route(
             connections,
             rconn,
@@ -1189,10 +1191,10 @@ def main_v03(argv):
                 lastobs_df.insert(0, 'gages', gages)
                 lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
                 if lastobs_output_folder:
-                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
                 else:
-                    lastobs_string = "lastobs_df_"+str(run_set_iterator)+".csv"
-                lastobs_df.to_csv(lastobs_string,index=True)
+                    lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
+                lastobs_df.to_xarray().to_netcdf(lastobs_string)
                 # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
 
             # TODO: Confirm this works with Waterbodies turned off
