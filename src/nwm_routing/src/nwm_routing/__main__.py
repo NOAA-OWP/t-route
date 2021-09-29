@@ -1131,6 +1131,9 @@ def main_v03(argv):
                 lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
             if not 'modelTimeAtOutput' in lastobs_df.columns:
                 lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
+            if not 'Nudge' in lastobs_df.columns:
+                lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
+            lastobs_df['Nudge'] = np.NaN
             lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
             lastobs_df.to_xarray().to_netcdf(lastobs_string)
             lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
@@ -1199,6 +1202,9 @@ def main_v03(argv):
                     lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
                 if not 'modelTimeAtOutput' in lastobs_df.columns:
                     lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
+                if not 'Nudge' in lastobs_df.columns:
+                    lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
+                lastobs_df['Nudge'] = np.NaN
                 lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
                 lastobs_df.to_xarray().to_netcdf(lastobs_string)
                 # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
