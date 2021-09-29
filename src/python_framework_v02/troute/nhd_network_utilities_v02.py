@@ -635,7 +635,7 @@ def build_data_assimilation_usgs_df(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
-
+    # import pdb; pdb.set_trace()
     usgs_df = pd.DataFrame()
     if not isinstance(lastobs_index, pd.Index):
         lastobs_index = pd.Index()
@@ -712,7 +712,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, t0=None):
     else:
         print("No Files Found for DA")
         # TODO: Handles this with a real exception
-
+    
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
         data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
         usgs_files,

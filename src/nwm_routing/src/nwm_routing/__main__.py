@@ -568,13 +568,11 @@ def _run_everything_v02(
         "data_assimilation_timeslices_folder", None
     )
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-    
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
         if showtiming:
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
-
             usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
                 data_assimilation_parameters
             )
@@ -1099,7 +1097,6 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-
     qlats, usgs_df = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -1138,6 +1135,7 @@ def main_v03(argv):
             lastobs_df.to_xarray().to_netcdf(lastobs_string)
             lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
             lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8') 
+            
 
         run_results = nwm_route(
             connections,

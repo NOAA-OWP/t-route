@@ -667,9 +667,11 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
     usgs_files,
+    data_assimilation_interpolation_limit = 59,
     max_fill_1min = 14,
     t0 = None,
 ):
+    import pdb; pdb.set_trace()
     """
     routelink_subset_file - provides the gage-->segment crosswalk.
         Only gages that are represented in the

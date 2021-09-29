@@ -675,16 +675,29 @@ contains
             !        print*, t,i,j,newQ(i,j),newY(i,j)-z(i,j)
             !	 enddo
 	    !end do
+            ! write results, timestep 2 and beyond
             if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
                 do j = 1, nlinks
                     ncomp= frnw_g(j,1)
                     do i=1, ncomp
-                        q_ev_g(ts_ev, i, j)= newQ(i,j)
-                        elv_ev_g(ts_ev, i, j)= newY(i,j)
+                        q_ev_g(ts_ev+1, i, j)= newQ(i,j)
+                        elv_ev_g(ts_ev+1, i, j)= newY(i,j)
                     enddo
                 enddo
                 ts_ev=ts_ev+1
             end if
+            
+            ! write initial conditions - timestep 1
+            if ( ( t .eq. t0 + dtini/60 ) ) then
+                do j = 1, nlinks
+                    ncomp= frnw_g(j,1)
+                    do i=1, ncomp
+                        q_ev_g(1, i, j)= oldQ(i,j)
+                        elv_ev_g(1, i, j)= oldY(i,j)
+                    enddo
+                enddo
+            end if
+            
               ! update of Y, Q and Area vectors
             oldY   = newY
             newY=-999

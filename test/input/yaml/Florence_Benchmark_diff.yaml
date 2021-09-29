@@ -15,10 +15,10 @@ run_parameters:
     debuglevel: 1
     assume_short_ts: true
     subnetwork_target_size: 100
-    qts_subdivisions: 6
+    qts_subdivisions: 12
     return_courant: false
     # NOTE: diffusive_cnt does not work with dt < 600 secs
-    dt: 600
+    dt: 300
     nts: 4308 
     cpu_pool: 12
     #Use the parallel computation engine (omit flag for serial computation)
