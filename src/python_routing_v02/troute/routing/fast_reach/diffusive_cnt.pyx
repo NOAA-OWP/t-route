@@ -288,7 +288,7 @@ cpdef object compute_diffusive_tst(
         
         lastobs_times = np.full(gages_size, NAN, dtype="float32")
         lastobs_values = np.full(gages_size, NAN, dtype="float32")
-        
+
         lastobs_values[0] = lastobs_values_init[0]
         lastobs_times[0] = time_since_lastobs_init[0]
         usgs_positions_i = usgs_positions[0]
@@ -318,7 +318,7 @@ cpdef object compute_diffusive_tst(
             nudge[0, timestep] = da_buf[1]
             lastobs_times[0] = da_buf[2]
             lastobs_values[0] = da_buf[3]
-            
+
             timestep += 1
         
         # insert buffer
