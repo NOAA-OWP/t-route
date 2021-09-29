@@ -273,7 +273,7 @@ cpdef object compute_diffusive_tst(
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i, timestep
-    cdef float lastosbs_value, lastobs_time
+    cdef float lastobs_value, lastobs_time
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
     cdef float [:] lastobs_values, lastobs_times
     cdef (float, float, float, float) da_buf
