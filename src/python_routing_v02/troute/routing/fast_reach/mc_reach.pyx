@@ -1163,7 +1163,11 @@ cpdef object compute_network_structured(
                 ##print ("lake_numbers_col[wbody_index]")
                 ##print (lake_numbers_col[wbody_index])
 
-                '''
+
+
+                #Comment out this section for now for routing??? sept 29 
+                ###############################
+                #'''
                 #Add level pool reservoir object to reach_objects
                 reach_objects.append(
                     #tuple of MC_Reservoir, reach_type, and lp_reservoir
@@ -1171,7 +1175,8 @@ cpdef object compute_network_structured(
                                    array('l',upstream_ids),
                                    wbody_parameters[wbody_index])
                     )
-                '''
+                #'''
+                ##########################
                 wbody_index += 1
 
             else:

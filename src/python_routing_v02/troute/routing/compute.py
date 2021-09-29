@@ -892,8 +892,8 @@ def compute_nhd_routing_v02(
                 pd.set_option('display.max_columns', 50)
 
 
-                print ("param_df in compute.py &&&&&&&&&&&&&&&&&&&&")
-                print (param_df)
+                #print ("param_df in compute.py &&&&&&&&&&&&&&&&&&&&")
+                #print (param_df)
 
 
                 param_df_sub = param_df.loc[
@@ -908,14 +908,14 @@ def compute_nhd_routing_v02(
 
                 #print ("in compute.py at 636")
 
-                print("param_df_sub.index")
-                print(param_df_sub.index)
-                print("---------------------------------------------")
+                #print("param_df_sub.index")
+                #print(param_df_sub.index)
+                #print("---------------------------------------------")
 
-                print ("q0")
-                print (q0)
+                #print ("q0")
+                #print (q0)
 
-                print("@@@@@@@---------------------------------------------")
+                #print("@@@@@@@---------------------------------------------")
 
                 ##print ("qlats.Index.dtype")
                 ##print (qlats.Index.dtype)
@@ -924,9 +924,9 @@ def compute_nhd_routing_v02(
                 #print ("qlats.dtypes")
                 #print (qlats.dtypes)
 
-                print ("qlats in compute.py 906")
-                print (qlats)
-                print("---------------------------------------------")
+                #print ("qlats in compute.py 906")
+                #print (qlats)
+                #print("---------------------------------------------")
 
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
