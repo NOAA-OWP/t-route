@@ -398,9 +398,9 @@ def build_connections(supernetwork_parameters):
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
     pd.set_option('display.max_rows', 500)
-    print ("param_df after read")
-    print (param_df)
-    print ("$$$$$$$$$$$$$$$$$$$$$$$")
+    #print ("param_df after read")
+    #print (param_df)
+    #print ("$$$$$$$$$$$$$$$$$$$$$$$")
 
     #JDM: Might need to parse out the ints from the fp-id here like in
     #https://github.com/NOAA-OWP/t-route/blob/master/src/external_connections/next_gen_network.py#L82
@@ -420,8 +420,8 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.set_index("key")
 
-    print ("param_df after reindex")
-    print (param_df)
+    #print ("param_df after reindex")
+    #print (param_df)
 
 
     #ngen_nexus_id_to_downstream_comid_mapping_dict = {}
@@ -442,19 +442,19 @@ def build_connections(supernetwork_parameters):
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
 
-    print ("param_df after read1.5")
-    print (param_df)
-    print ("cols!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print (cols)
-    print ("******************")
+    #print ("param_df after read1.5")
+    #print (param_df)
+    #print ("cols!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #print (cols)
+    #print ("******************")
 
     #JDM: line below new??
     #param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     ####################################################
 
-    print ("param_df after read2")
-    print (param_df)
-    print ("$$$$$$$$$$$$$$$$$$$$$$$")
+    #print ("param_df after read2")
+    #print (param_df)
+    #print ("$$$$$$$$$$$$$$$$$$$$$$$")
 
     #if "ngen_nexus_id_to_downstream_comid_mapping_json" in supernetwork_parameters:
     #    ngen_nexus_id_to_downstream_comid_mapping_dict = nhd_io.read_ngen_nexus_id_to_downstream_comid_mapping(
@@ -498,8 +498,8 @@ def build_connections(supernetwork_parameters):
     # TODO: Do we need this second, identical call to the one above?
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     
-    print ("param_df after rename")
-    print (param_df)
+    #print ("param_df after rename")
+    #print (param_df)
 
     wbodies = {}
     if "waterbody" in cols:
