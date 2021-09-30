@@ -975,48 +975,6 @@ def update_lookback_hours(dt, nts, waterbody_parameters):
     return waterbody_parameters
 
 
-def new_lastobs(run_results, time_increment):
-    """
-    Creates new "lastobs" dataframe for the next simulation chunk.
-
-    run_results - output from the compute kernel sequence, organized
-        (because that is how it comes out of the kernel) by network.
-        For each item in the result, there are four elements, the
-        fourth of which is a tuple containing: 1) a list of the
-        segments ids where data assimilation was performed (if any)
-        in that network; 2) a list of the last valid observation
-        applied at that segment; 3) a list of the time in seconds
-        from the beginning of the last simulation that the
-        observation was applied.
-    time_increment - length of the prior simulation. To prepare the
-        next lastobs state, we have to convert the time since the prior
-        simulation start to a time since the new simulation start.
-        If the most recent observation was right at the end of the
-        prior loop, then the value in the incoming run_result will
-        be equal to the time_increment and the output value will be
-        zero. If observations were not present at the last timestep,
-        the last obs time will be calculated to a negative value --
-        the number of seconds ago that the last valid observation
-        was used for assimilation.
-    """
-    df = pd.concat(
-        [
-            pd.DataFrame(
-                # TODO: Add time_increment (or subtract?) from time_since_lastobs
-                np.array([rr[3][1],rr[3][2]]).T,
-                index=rr[3][0],
-                columns=["time_since_lastobs", "lastobs_discharge"]
-            )
-            for rr in run_results
-            if not rr[3][0].size == 0
-        ],
-        copy=False,
-    )
-    df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
-
-    return df
-
-
 def main_v03(argv):
     """
     Handles the creation of the input parameter dictionaries
@@ -1123,22 +1081,6 @@ def main_v03(argv):
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
-        if run_set_iterator != 0:
-            lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
-            if lastobs_output_folder:
-                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
-            else:
-                lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
-            if not 'modelTimeAtOutput' in lastobs_df.columns:
-                lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
-            if not 'Nudge' in lastobs_df.columns:
-                lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
-            lastobs_df['Nudge'] = np.NaN
-            lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
-            lastobs_df.to_xarray().to_netcdf(lastobs_string)
-            lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
-            lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8') 
-            
 
         run_results = nwm_route(
             connections,
@@ -1191,31 +1133,11 @@ def main_v03(argv):
 
             q0 = new_nwm_q0(run_results)
 
-            if data_assimilation_parameters:
-                lastobs_df = new_lastobs(run_results, dt * nts)
-                lastobs_df.index.names = ['link']
-                lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
-                lastobs_df.insert(0, 'gages', gages)
-                lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
-                if lastobs_output_folder:
-                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
-                else:
-                    lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
-                if not 'modelTimeAtOutput' in lastobs_df.columns:
-                    lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
-                if not 'Nudge' in lastobs_df.columns:
-                    lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
-                lastobs_df['Nudge'] = np.NaN
-                lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
-                lastobs_df.to_xarray().to_netcdf(lastobs_string)
-                # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
-
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
-
         nwm_output_generator(
             run,
             run_results,
@@ -1229,6 +1151,13 @@ def main_v03(argv):
             showtiming,
             verbose,
             debuglevel,
+            run_results,
+            data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+            q0,
+            gages,
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+            run_set_iterator,
+            main_start_time,
         )
 
     # nwm_final_output_generator()
@@ -1420,9 +1349,6 @@ async def main_v03_async(argv):
 
         q0 = new_nwm_q0(run_results)
 
-        if data_assimilation_parameters:
-            lastobs_df = new_lastobs(run_results, dt * nts)
-
         # TODO: Confirm this works with Waterbodies turned off
         waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
@@ -1444,6 +1370,13 @@ async def main_v03_async(argv):
             showtiming,
             verbose,
             debuglevel,
+            run_results,
+            data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+            q0,
+            gages,
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+            run_set_iterator,
+            main_start_time,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1501,9 +1434,6 @@ async def main_v03_async(argv):
     # should be availble for last outputs.
     q0 = new_nwm_q0(run_results)
 
-    if data_assimilation_parameters:
-        lastobs_df = new_lastobs(run_results, dt * nts)
-
     waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
     if waterbody_type_specified:
@@ -1524,6 +1454,13 @@ async def main_v03_async(argv):
         showtiming,
         verbose,
         debuglevel,
+        run_results,
+        data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+        q0,
+        gages,
+        data_assimilation_parameters.get('lastobs_output_folder',False),
+        run_set_iterator,
+        main_start_time,
     )
 
     if verbose:

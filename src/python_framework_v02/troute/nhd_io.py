@@ -11,6 +11,7 @@ import dask.array as da
 import sys
 import math
 from datetime import *
+import time
 
 from troute.nhd_network import reverse_dict
 
@@ -1086,3 +1087,72 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+def lastobs_df_output(main_start_time,
+    dt,
+    nts,
+    run_results,
+    wrf_hydro_lastobs_file,
+    q0,
+    gages,
+    run_set_iterator,
+    lastobs_output_folder=False,
+    ):
+    lastobs_df = new_lastobs(run_results, dt * nts)
+    lastobs_df.index.names = ['link']
+    lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
+    lastobs_df.insert(0, 'gages', gages)
+    if lastobs_output_folder:
+        lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
+    else:
+        lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
+    if not 'modelTimeAtOutput' in lastobs_df.columns:
+        lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
+    if not 'Nudge' in lastobs_df.columns:
+        lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
+    lastobs_df['Nudge'] = np.NaN
+    lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
+    lastobs_df.to_xarray().to_netcdf(lastobs_string)
+
+    return lastobs_df
+
+def new_lastobs(run_results, time_increment):
+    """
+    Creates new "lastobs" dataframe for the next simulation chunk.
+
+    run_results - output from the compute kernel sequence, organized
+        (because that is how it comes out of the kernel) by network.
+        For each item in the result, there are four elements, the
+        fourth of which is a tuple containing: 1) a list of the
+        segments ids where data assimilation was performed (if any)
+        in that network; 2) a list of the last valid observation
+        applied at that segment; 3) a list of the time in seconds
+        from the beginning of the last simulation that the
+        observation was applied.
+    time_increment - length of the prior simulation. To prepare the
+        next lastobs state, we have to convert the time since the prior
+        simulation start to a time since the new simulation start.
+        If the most recent observation was right at the end of the
+        prior loop, then the value in the incoming run_result will
+        be equal to the time_increment and the output value will be
+        zero. If observations were not present at the last timestep,
+        the last obs time will be calculated to a negative value --
+        the number of seconds ago that the last valid observation
+        was used for assimilation.
+    """
+    df = pd.concat(
+        [
+            pd.DataFrame(
+                # TODO: Add time_increment (or subtract?) from time_since_lastobs
+                np.array([rr[3][1],rr[3][2]]).T,
+                index=rr[3][0],
+                columns=["time_since_lastobs", "lastobs_discharge"]
+            )
+            for rr in run_results
+            if not rr[3][0].size == 0
+        ],
+        copy=False,
+    )
+    df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+
+    return df
