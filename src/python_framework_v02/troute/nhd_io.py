@@ -686,6 +686,7 @@ def get_usgs_from_time_slices_folder(
         the interpolated values are truncated so that the first value returned
         corresponds to the first center date of the first provided file.
     """
+    frequency = str(int(dt/60))+"min"
     with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
         # dataframe containing discharge observations
@@ -742,7 +743,7 @@ def get_usgs_from_time_slices_folder(
     date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    for j in pd.date_range(date_time_center_start, date_time_center_end, freq="5min"):
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
 
     """
@@ -804,7 +805,7 @@ def get_usgs_from_time_slices_folder(
     # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
     usgs_df_T = (usgs_df_T.resample('min').
                  interpolate(limit = max_fill_1min, limit_direction = 'both').
-                 resample('5min').
+                 resample(frequency).
                  asfreq().
                  loc[date_time_center_start:,:])
 
