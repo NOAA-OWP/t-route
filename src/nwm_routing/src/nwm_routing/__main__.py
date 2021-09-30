@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import math
+import xarray as xr
 
 import asyncio
 import concurrent.futures
@@ -377,7 +378,7 @@ def _run_everything_v02(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
     )
-    
+
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -571,7 +572,7 @@ def _run_everything_v02(
         "data_assimilation_timeslices_folder", None
     )
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-    
+
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
         if showtiming:
             start_time = time.time()
@@ -582,7 +583,7 @@ def _run_everything_v02(
                 data_assimilation_parameters,
                 run_parameters
             )
-        
+
         if verbose:
             print("usgs array complete")
         if showtiming:
@@ -1130,7 +1131,7 @@ def main_v03(argv):
         if run_set_iterator != 0:
             lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
             if lastobs_output_folder:
-                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
             else:
                 lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
             if not 'modelTimeAtOutput' in lastobs_df.columns:
@@ -1141,7 +1142,7 @@ def main_v03(argv):
             lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
             lastobs_df.to_xarray().to_netcdf(lastobs_string)
             lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
-            lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8') 
+            lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8')
 
         run_results = nwm_route(
             connections,
@@ -1199,7 +1200,7 @@ def main_v03(argv):
                 lastobs_df.insert(0, 'gages', gages)
                 lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
                 if lastobs_output_folder:
-                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".csv"
+                    lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
                 else:
                     lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
                 if not 'modelTimeAtOutput' in lastobs_df.columns:
@@ -1549,7 +1550,6 @@ async def main_v03_async(argv):
 
     pool_IO.shutdown(wait=True)
     pool_Processing.shutdown(wait=True)
-
 
 if __name__ == "__main__":
     v_parser = argparse.ArgumentParser(

@@ -623,6 +623,7 @@ def build_data_assimilation(data_assimilation_parameters, run_parameters):
     usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, run_parameters, lastobs_df.index)
     return usgs_df, lastobs_df, da_parameter_dict
 
+
 def build_data_assimilation_usgs_df(
     data_assimilation_parameters,
     run_parameters,

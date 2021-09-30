@@ -666,7 +666,6 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
-    dt,
     usgs_files,
     qc_threshold,
     max_fill_1min,
