@@ -273,21 +273,25 @@ cpdef object compute_diffusive_tst(
     cdef int gages_size = usgs_positions.shape[0]
     cdef int gage_maxtimestep = usgs_values.shape[1]
     cdef int gage_i, usgs_position_i, timestep
-    cdef float lastosbs_value, lastobs_time
+    cdef float[:] lastobs_value, lastobs_time
     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
-    cdef float [:] lastobs_values, lastobs_times
     cdef (float, float, float, float) da_buf
     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
-    cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
+    cdef float[:,:] nudge = np.zeros((1, ntss_ev_g), dtype="float32")
     cdef int qvd_ts_w = 3
     cdef int ts_offset
     cdef float[:,:] flowveldepth_row_fill_buf = np.zeros((1, ntss_ev_g), dtype="float32")
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     
+    lastobs_values = np.array([], dtype="float32")
+    lastobs_times = np.array([], dtype="float32")
     if gages_size:
         
-        lastobs_value = lastobs_values_init[0]
-        lastobs_time = time_since_lastobs_init[0]
+        lastobs_times = np.full(gages_size, NAN, dtype="float32")
+        lastobs_values = np.full(gages_size, NAN, dtype="float32")
+
+        lastobs_values[0] = lastobs_values_init[0]
+        lastobs_times[0] = time_since_lastobs_init[0]
         usgs_positions_i = usgs_positions[0]
                    
         # timestep 0 is the initial condition b/c diffusive wave writes out nsteps + 1 timesteps
@@ -303,14 +307,19 @@ cpdef object compute_diffusive_tst(
                 gage_maxtimestep,
                 NAN if timestep >= gage_maxtimestep else usgs_values[0,timestep],
                 flowveldepth[usgs_positions_i, ts_offset],
-                lastobs_time,
-                lastobs_value,
+                lastobs_times[0],
+                lastobs_values[0],
                 False,
             )
             
             # fill buffer for all timesteps at gage locations
             flowveldepth_row_fill_buf[0, timestep] = da_buf[0]
             
+            # record nudge magnitude and lastobs information
+            nudge[0, timestep] = da_buf[1]
+            lastobs_times[0] = da_buf[2]
+            lastobs_values[0] = da_buf[3]
+
             timestep += 1
         
         # insert buffer
@@ -322,5 +331,4 @@ cpdef object compute_diffusive_tst(
         fill_index = tmp["position_index"]
         fill_index_mask[fill_index] = False
         
-    # drop the initial conditions columns from the flowveldepth array before returning 
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,3:])[fill_index_mask]
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,3:])[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values))

@@ -1081,6 +1081,21 @@ def main_v03(argv):
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
+        if run_set_iterator != 0:
+            lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
+            if lastobs_output_folder:
+                lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
+            else:
+                lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
+            if not 'modelTimeAtOutput' in lastobs_df.columns:
+                lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
+            if not 'Nudge' in lastobs_df.columns:
+                lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
+            lastobs_df['Nudge'] = np.NaN
+            lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
+            lastobs_df.to_xarray().to_netcdf(lastobs_string)
+            lastobs_df = xr.open_dataset(lastobs_string).to_dataframe()
+            lastobs_df['gages'] = lastobs_df['gages'].astype(str).str.decode('utf-8')
 
         run_results = nwm_route(
             connections,
