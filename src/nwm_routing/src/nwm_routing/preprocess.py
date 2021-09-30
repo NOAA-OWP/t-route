@@ -262,7 +262,6 @@ def nwm_forcing_preprocess(
     verbose=False,
     debuglevel=0,
 ):
-
     # TODO: Harmonize the t0 parameter -- this
     # configuration permits the Warm-State derived
     # t0 to carry as the default if no other value is
