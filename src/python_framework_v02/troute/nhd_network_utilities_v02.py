@@ -714,10 +714,10 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
 
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
         data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-        run_parameters["dt"],
         usgs_files,
         data_assimilation_parameters.get("qc_threshold", 1),
         data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
+        run_parameters["dt"],
         run_parameters["t0"],
     )
 

@@ -670,6 +670,7 @@ def get_usgs_from_time_slices_folder(
     usgs_files,
     qc_threshold,
     max_fill_1min,
+    dt,
     t0 = None,
 ):
     """
