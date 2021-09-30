@@ -331,7 +331,6 @@ def nwm_forcing_preprocess(
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
-
         usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
 
         if verbose:
