@@ -8,7 +8,7 @@
 # Initial input parameters
 run_parameters:
 #     compute_kernel: "diffusive"
-    compute_kernel: "diffusive_cnt"
+    compute_kernel: "diffusive_cnx"
     parallel_compute_method: None
     verbose: true
     showtiming: true
@@ -145,6 +145,6 @@ diffusive_parameters:
     theta_parameter: 1.0 # internal parameter of Fortran diffusive model
     chgeo_computation_flag: 1 # In computing channel geometries and hydraulic features, value 0 leads to use lookup tables while value 1 to use explicit equations in Fortran model.
     water_elevation_computation_flag: 1 # **Temporary flag: For testing purpose, value 1 enforces normal depth all the time while value 2 diffusive depth. It will not need soon as new schemes will automatically switch between the two depth compuatations.
-    bed_slope_lower_limit: 0.0001 # To account for too small bed slopes in Route_Link.nc especially those of segments underlying ponds or reservoirs,  this limit replaces the small slopes.
+    bed_slope_lower_limit: 0.00001 # To account for too small bed slopes in Route_Link.nc especially those of segments underlying ponds or reservoirs,  this limit replaces the small slopes.
 
 
