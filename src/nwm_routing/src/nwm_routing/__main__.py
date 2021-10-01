@@ -1153,10 +1153,9 @@ def main_v03(argv):
             verbose,
             debuglevel,
             run_results,
-            data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+            data_assimilation_parameters,
             q0,
             gages,
-            data_assimilation_parameters.get('lastobs_output_folder',False),
             run_set_iterator,
             lastobs_output_title,
         )
@@ -1372,10 +1371,9 @@ async def main_v03_async(argv):
             verbose,
             debuglevel,
             run_results,
-            data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+            data_assimilation_parameters,
             q0,
             gages,
-            data_assimilation_parameters.get('lastobs_output_folder',False),
             run_set_iterator,
         )
 
@@ -1455,10 +1453,9 @@ async def main_v03_async(argv):
         verbose,
         debuglevel,
         run_results,
-        data_assimilation_parameters.get("wrf_hydro_lastobs_file",False),
+        data_assimilation_parameters,
         q0,
         gages,
-        data_assimilation_parameters.get('lastobs_output_folder',False),
         run_set_iterator,
     )
 
