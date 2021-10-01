@@ -8,7 +8,6 @@ import pandas as pd
 import math
 import asyncio
 import concurrent.futures
-import xarray as xr 
 ## network and reach utilities
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
