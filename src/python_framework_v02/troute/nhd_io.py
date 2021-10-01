@@ -746,7 +746,6 @@ def get_usgs_from_time_slices_folder(
     dates = []
     for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
-
     """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
     OR
@@ -1096,6 +1095,7 @@ def lastobs_df_output(main_start_time,
     q0,
     gages,
     run_set_iterator,
+    lastobs_output_title,
     lastobs_output_folder=False,
     ):
     lastobs_df = new_lastobs(run_results, dt * nts)
@@ -1103,9 +1103,11 @@ def lastobs_df_output(main_start_time,
     lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
     lastobs_df.insert(0, 'gages', gages)
     if lastobs_output_folder:
-        lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
+        lastobs_string = lastobs_output_folder+lastobs_output_title
+        # lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
     else:
-        lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
+        lastobs_string = lastobs_output_title
+        # lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
     if not 'modelTimeAtOutput' in lastobs_df.columns:
         lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
     if not 'Nudge' in lastobs_df.columns:

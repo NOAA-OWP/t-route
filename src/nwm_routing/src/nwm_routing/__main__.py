@@ -1045,7 +1045,7 @@ def main_v03(argv):
             da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
         else:
             da_sets = [{} for _ in run_sets]
-
+    
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
     else:
@@ -1138,6 +1138,8 @@ def main_v03(argv):
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
+        
+        lastobs_output_title = da_sets[run_set_iterator]['usgs_timeslice_files'][-1]
         nwm_output_generator(
             run,
             run_results,
@@ -1158,6 +1160,7 @@ def main_v03(argv):
             data_assimilation_parameters.get('lastobs_output_folder',False),
             run_set_iterator,
             main_start_time,
+            lastobs_output_title,
         )
 
     # nwm_final_output_generator()

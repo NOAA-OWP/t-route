@@ -26,6 +26,7 @@ def nwm_output_generator(
     lastobs_output_folder=False,
     run_set_iterator=False,
     main_start_time=False,
+    lastobs_output_title=False,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
@@ -235,5 +236,5 @@ def nwm_output_generator(
             print("... in %s seconds." % (time.time() - start_time))
             
     if wrf_hydro_lastobs_file:
-        lastobs_df = nhd_io.lastobs_df_output(main_start_time,dt,nts,run_results,wrf_hydro_lastobs_file,q0,gages,run_set_iterator,lastobs_output_folder)
+        lastobs_df = nhd_io.lastobs_df_output(main_start_time,dt,nts,run_results,wrf_hydro_lastobs_file,q0,gages,run_set_iterator,lastobs_output_title,lastobs_output_folder)
         # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
