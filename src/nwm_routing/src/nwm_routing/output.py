@@ -237,5 +237,3 @@ def nwm_output_generator(
     if wrf_hydro_lastobs_file:
         lastobs_df = nhd_io.lastobs_df_output(main_start_time,dt,nts,run_results,wrf_hydro_lastobs_file,q0,gages,run_set_iterator,lastobs_output_folder)
         # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
-
-
