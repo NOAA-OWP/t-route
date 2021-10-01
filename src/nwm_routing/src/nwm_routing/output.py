@@ -19,8 +19,14 @@ def nwm_output_generator(
     showtiming=False,
     verbose=False,
     debuglevel=0,
+    run_results=False,
+    wrf_hydro_lastobs_file=False,
+    q0=False,
+    gages=False,
+    lastobs_output_folder=False,
+    run_set_iterator=False,
+    main_start_time=False,
 ):
-
     dt = run.get("dt")
     nts = run.get("nts")
     t0 = run.get("t0")
@@ -227,3 +233,9 @@ def nwm_output_generator(
             print("parity check complete")
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
+            
+    if wrf_hydro_lastobs_file:
+        lastobs_df = nhd_io.lastobs_df_output(main_start_time,dt,nts,run_results,wrf_hydro_lastobs_file,q0,gages,run_set_iterator,lastobs_output_folder)
+        # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
+
+
