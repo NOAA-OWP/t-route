@@ -1,5 +1,5 @@
 import zipfile
-
+import warnings
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
@@ -11,8 +11,10 @@ import dask.array as da
 import sys
 import math
 from datetime import *
+import time
 
 from troute.nhd_network import reverse_dict
+
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -659,19 +661,21 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
         df = ds.to_dataframe()
 
     usgs_df = df.join(df2)
+    link_gage_df = usgs_df[['gages']]
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
 
-    return usgs_df
+    return usgs_df, link_gage_df
 
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
-    dt,
     usgs_files,
     qc_threshold,
     max_fill_1min,
+    dt,
     t0 = None,
 ):
+
     """
     routelink_subset_file - provides the gage-->segment crosswalk.
         Only gages that are represented in the
@@ -719,8 +723,12 @@ def get_usgs_from_time_slices_folder(
     usgs_df = (df.join(df2).
                reset_index().
                rename(columns={"index": "gages"}).
-               set_index("link").
-               drop(["gages", "ascendingIndex", "to"], axis=1))
+               set_index("link"))
+
+    # data frame containing link-gage crosswalk
+    link_gage_df = usgs_df[['gages']]
+
+    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
 
     usgs_qual_df = (df.join(df_qual).
                reset_index().
@@ -744,7 +752,6 @@ def get_usgs_from_time_slices_folder(
     dates = []
     for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
-
     """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
     OR
@@ -811,7 +818,7 @@ def get_usgs_from_time_slices_folder(
     # usgs_df_T.reindex(dates)
     usgs_df_new = usgs_df_T.transpose()
 
-    return usgs_df_new
+    return usgs_df_new, link_gage_df
 
 
 def get_param_str(target_file, param):
@@ -1085,3 +1092,46 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+
+def lastobs_df_output(dt,
+    nts,
+    t0,
+    run_results,
+    gages,
+    lastobs_output_folder=False,
+    ):
+
+    # create a new lastobs DataFrame from the last itteration of run results
+    lastobs_df = new_lastobs(run_results, dt * nts)
+    lastobs_df_copy = lastobs_df.copy()
+
+    # join gageIDs to lastobs_df
+    lastobs_df_copy = lastobs_df_copy.join(gages)
+
+    # timestamp of last simulation timestep
+    modelTimeAtOutput = t0 + timedelta(seconds = nts * dt)
+    modelTimeAtOutput_str = modelTimeAtOutput.strftime('%Y-%m-%d_%H:%M:%S')
+
+    # timestamp of last observation
+    var = [timedelta(seconds=d) for d in lastobs_df_copy.time_since_lastobs.fillna(0)]
+    lastobs_timestamp = [modelTimeAtOutput - d for d in var]
+    lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
+
+    # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
+    ds = xr.Dataset(
+        {
+            "stationId": (["stationIdInd"], lastobs_df_copy["gages"].to_numpy(dtype = '|S15')),
+            "time": (["stationIdInd"], np.asarray(lastobs_timestamp_str,dtype = '|S19')),
+            "discharge": (["stationIdInd"], lastobs_df_copy["lastobs_discharge"].to_numpy()),
+        }
+    )
+    ds.attrs["modelTimeAtOutput"] = "example attribute"
+
+    # write-out LastObs file as netcdf
+    if lastobs_output_folder:
+        ds.to_netcdf(lastobs_output_folder + "nudgingLastObs." + modelTimeAtOutput_str + ".nc")
+    else:
+        warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
+
+    return lastobs_df

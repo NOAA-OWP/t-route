@@ -15,7 +15,6 @@ import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-import sys
 
 import troute.routing.diffusive_utils as diff_utils
 
@@ -315,7 +314,7 @@ def main_v02(argv):
     if showtiming:
         main_start_time = time.time()
 
-    _results = _run_everything_v02(
+    _results, _link_gage_df = _run_everything_v02(
         supernetwork_parameters,
         waterbody_parameters,
         forcing_parameters,
@@ -335,6 +334,8 @@ def main_v02(argv):
         restart_parameters,
         output_parameters,
         parity_parameters,
+        data_assimilation_parameters,
+        _link_gage_df
     )
 
     if verbose:
@@ -377,6 +378,7 @@ def _run_everything_v02(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
     )
+
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -569,6 +571,7 @@ def _run_everything_v02(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
+
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
 
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
@@ -577,7 +580,7 @@ def _run_everything_v02(
         if verbose:
             print("creating usgs time_slice data array ...")
 
-            usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
+            usgs_df, lastobs_df, da_parameter_dict, link_gage_df = nnu.build_data_assimilation(
                 data_assimilation_parameters,
                 run_parameters
             )
@@ -590,6 +593,7 @@ def _run_everything_v02(
     else:
         usgs_df = pd.DataFrame()
         lastobs_df = pd.DataFrame()
+        link_gage_df = pd.DataFrame()
         da_parameter_dict = {}
 
     ################### Main Execution Loop across ordered networks
@@ -645,7 +649,7 @@ def _run_everything_v02(
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    return results
+    return results, link_gage_df
 
 
 def _handle_output_v02(
@@ -655,6 +659,8 @@ def _handle_output_v02(
     restart_parameters,
     output_parameters,
     parity_parameters,
+    data_assimilation_parameters,
+    link_gage_df
 ):
     ################### Output Handling
     dt = run_parameters.get("dt", None)
@@ -813,6 +819,19 @@ def _handle_output_v02(
             Path(chrtout_write_folder),
             run_parameters["qts_subdivisions"],
             wrf_hydro_channel_output_new_extension,
+        )
+
+    data_assimilation_folder = data_assimilation_parameters.get(
+    "data_assimilation_timeslices_folder", None
+    )
+    if data_assimilation_folder:
+        lastobs_df = nhd_io.lastobs_df_output(
+            dt,
+            nts,
+            t0,
+            results,
+            link_gage_df['gages'],
+            data_assimilation_parameters.get('lastobs_output_folder',False),
         )
 
     if verbose:
@@ -1015,6 +1034,7 @@ def new_lastobs(run_results, time_increment):
         copy=False,
     )
     df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+
     return df
 
 
@@ -1102,7 +1122,7 @@ def main_v03(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
 
-    qlats, usgs_df = nwm_forcing_preprocess(
+    qlats, usgs_df, link_gage_df = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
         da_sets[0] if data_assimilation_parameters else {},
@@ -1157,9 +1177,10 @@ def main_v03(argv):
             debuglevel,
         )
 
-        # No forcing to prepare for the last loop
-        if run_set_iterator < len(run_sets) - 1:
-            qlats, usgs_df = nwm_forcing_preprocess(
+        if (
+            run_set_iterator < len(run_sets) - 1
+        ):  # No forcing to prepare for the last loop
+            qlats, usgs_df, link_gage_df = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
@@ -1174,9 +1195,6 @@ def main_v03(argv):
             )
 
             q0 = new_nwm_q0(run_results)
-
-            if data_assimilation_parameters:
-                lastobs_df = new_lastobs(run_results, dt * nts)
 
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
@@ -1197,6 +1215,9 @@ def main_v03(argv):
             showtiming,
             verbose,
             debuglevel,
+            run_results,
+            data_assimilation_parameters,
+            link_gage_df,
         )
 
     # nwm_final_output_generator()
@@ -1205,7 +1226,6 @@ def main_v03(argv):
         print("process complete")
     if showtiming:
         print("%s seconds." % (time.time() - main_start_time))
-
 
 async def main_v03_async(argv):
     """
@@ -1329,7 +1349,7 @@ async def main_v03_async(argv):
         dt = run.get("dt")
         nts = run.get("nts")
 
-        qlats, usgs_df = await forcings_task
+        qlats, usgs_df, link_gage_df = await forcings_task
 
         # TODO: confirm utility of visual parity check in async execution
         if parity_sets:
@@ -1389,9 +1409,6 @@ async def main_v03_async(argv):
 
         q0 = new_nwm_q0(run_results)
 
-        if data_assimilation_parameters:
-            lastobs_df = new_lastobs(run_results, dt * nts)
-
         # TODO: Confirm this works with Waterbodies turned off
         waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
@@ -1413,6 +1430,9 @@ async def main_v03_async(argv):
             showtiming,
             verbose,
             debuglevel,
+            run_results,
+            data_assimilation_parameters,
+            link_gage_df,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1423,7 +1443,7 @@ async def main_v03_async(argv):
     dt = run.get("dt")
     nts = run.get("nts")
 
-    qlats, usgs_df = await forcings_task
+    qlats, usgs_df, link_gage_df = await forcings_task
 
     # TODO: confirm utility of visual parity check in async execution
     if parity_sets:
@@ -1470,9 +1490,6 @@ async def main_v03_async(argv):
     # should be availble for last outputs.
     q0 = new_nwm_q0(run_results)
 
-    if data_assimilation_parameters:
-        lastobs_df = new_lastobs(run_results, dt * nts)
-
     waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
     if waterbody_type_specified:
@@ -1493,6 +1510,9 @@ async def main_v03_async(argv):
         showtiming,
         verbose,
         debuglevel,
+        run_results,
+        data_assimilation_parameters,
+        link_gage_df,
     )
 
     if verbose:
