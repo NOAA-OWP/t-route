@@ -1108,13 +1108,12 @@ def lastobs_df_output(main_start_time,
     else:
         lastobs_string = lastobs_output_title
         # lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
-    if not 'modelTimeAtOutput' in lastobs_df.columns:
-        lastobs_df.insert(loc=0, column='modelTimeAtOutput', value=(time.time() - main_start_time))
     if not 'Nudge' in lastobs_df.columns:
         lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
     lastobs_df['Nudge'] = np.NaN
-    lastobs_df['modelTimeAtOutput'] = (time.time() - main_start_time)
-    lastobs_df.to_xarray().to_netcdf(lastobs_string)
+    lastobs_df = lastobs_df.to_xarray()
+    lastobs_df.attrs['modelTimeAtOutput'] = lastobs_output_title[:-19]
+    lastobs_df.to_netcdf(lastobs_string)
 
     return lastobs_df
 
