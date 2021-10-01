@@ -1087,8 +1087,7 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
 
-def lastobs_df_output(main_start_time,
-    dt,
+def lastobs_df_output(dt,
     nts,
     run_results,
     wrf_hydro_lastobs_file,

@@ -1158,7 +1158,6 @@ def main_v03(argv):
             gages,
             data_assimilation_parameters.get('lastobs_output_folder',False),
             run_set_iterator,
-            main_start_time,
             lastobs_output_title,
         )
 
@@ -1378,7 +1377,6 @@ async def main_v03_async(argv):
             gages,
             data_assimilation_parameters.get('lastobs_output_folder',False),
             run_set_iterator,
-            main_start_time,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1462,7 +1460,6 @@ async def main_v03_async(argv):
         gages,
         data_assimilation_parameters.get('lastobs_output_folder',False),
         run_set_iterator,
-        main_start_time,
     )
 
     if verbose:
