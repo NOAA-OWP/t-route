@@ -569,6 +569,7 @@ def _run_everything_v02(
         "data_assimilation_timeslices_folder", None
     )
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
+    
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
         if showtiming:
             start_time = time.time()
