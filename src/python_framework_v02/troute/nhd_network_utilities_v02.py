@@ -921,10 +921,10 @@ def build_qlateral_array(
                 ##print ("nexus_flows-------------")
                 ##print (nexus_flows)
 
-            print ("@@@@@@@@@@@@nexuses_flows_df")
-            print (nexuses_flows_df)
+            #print ("@@@@@@@@@@@@nexuses_flows_df")
+            #print (nexuses_flows_df)
 
-            print ("============================================")
+            #print ("============================================")
 
             #Map nexus flows to qlaterals
             #ngen_nexus_id_to_downstream_comid_mapping_dict

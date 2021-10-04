@@ -245,8 +245,8 @@ def read_nexus_file(nexus_file_path):
         json_data_list = json.load(data_file)
     
 
-    print ("json_data_list in read nexus")    
-    print (json_data_list)    
+    #print ("json_data_list in read nexus")    
+    #print (json_data_list)    
 
     #nexus_to_wb_list = []
     nexus_to_downstream_flowpath_dict_str = {}
@@ -254,25 +254,25 @@ def read_nexus_file(nexus_file_path):
 
     for id_dict in json_data_list:
         if "nex" in id_dict['ID']:
-            print ("####################") 
-            print ("YES")
-            print (id_dict)
-            print ("####################") 
+            #print ("####################") 
+            #print ("YES")
+            #print (id_dict)
+            #print ("####################") 
 
             nexus_to_downstream_flowpath_dict_str[id_dict['ID']] = id_dict['toID']
 
 
-        else:
-            print ("####################") 
-            print ("NO")
-            print (id_dict)
-            print ("####################") 
+        #else:
+        #    #print ("####################") 
+        #    #print ("NO")
+        #    #print (id_dict)
+        #    #print ("####################") 
 
 
-    print ("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+    #print ("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
-    print ("nexus_to_downstream_flowpath_dict_str")
-    print (nexus_to_downstream_flowpath_dict_str)
+    #print ("nexus_to_downstream_flowpath_dict_str")
+    #print (nexus_to_downstream_flowpath_dict_str)
 
     print ("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
@@ -293,8 +293,8 @@ def read_nexus_file(nexus_file_path):
     nexus_to_downstream_flowpath_dict = {node_key_func_nexus(k): node_key_func_wb(v) for k, v in nexus_to_downstream_flowpath_dict_str.items()}
 
 
-    print ("nexus_to_downstream_flowpath_dict")
-    print (nexus_to_downstream_flowpath_dict)
+    #print ("nexus_to_downstream_flowpath_dict")
+    #print (nexus_to_downstream_flowpath_dict)
 
     return nexus_to_downstream_flowpath_dict
 
