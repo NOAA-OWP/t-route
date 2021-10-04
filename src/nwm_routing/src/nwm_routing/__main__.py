@@ -1157,7 +1157,7 @@ def main_v03(argv):
             q0,
             gages,
             run_set_iterator,
-            lastobs_output_title,
+            t0 + timedelta(seconds = dt * nts),
         )
 
     # nwm_final_output_generator()

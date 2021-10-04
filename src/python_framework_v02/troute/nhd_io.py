@@ -1101,6 +1101,8 @@ def lastobs_df_output(dt,
     lastobs_df.index.names = ['link']
     lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
     lastobs_df.insert(0, 'gages', gages)
+    lastobs_df.attrs['modelTimeAtOutput'] = str(lastobs_output_title)
+    lastobs_output_title = "nudgingLastObs."+str(lastobs_output_title)[:10]+"_"+str(lastobs_output_title)[11:]
     if lastobs_output_folder:
         lastobs_string = lastobs_output_folder+lastobs_output_title
         # lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
@@ -1111,7 +1113,6 @@ def lastobs_df_output(dt,
         lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
     lastobs_df['Nudge'] = np.NaN
     lastobs_df = lastobs_df.to_xarray()
-    lastobs_df.attrs['modelTimeAtOutput'] = lastobs_output_title[:-19]
     lastobs_df.to_netcdf(lastobs_string)
 
     return lastobs_df
