@@ -696,7 +696,6 @@ def build_data_assimilation_csv(data_assimilation_parameters):
 
     return usgs_df
 
-
 def build_data_assimilation_folder(data_assimilation_parameters, run_parameters):
 
     usgs_timeslices_folder = pathlib.Path(

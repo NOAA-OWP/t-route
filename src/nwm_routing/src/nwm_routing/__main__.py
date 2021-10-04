@@ -1138,7 +1138,6 @@ def main_v03(argv):
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
         
-        lastobs_output_title = da_sets[run_set_iterator]['usgs_timeslice_files'][-1]
         nwm_output_generator(
             run,
             run_results,
