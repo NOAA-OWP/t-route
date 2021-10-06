@@ -568,6 +568,7 @@ def _run_everything_v02(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
+
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
     
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
@@ -637,6 +638,16 @@ def _run_everything_v02(
         waterbody_type_specified,
         diffusive_parameters,
     )
+
+    if data_assimilation_folder:
+        lastobs_df = nhd_io.lastobs_df_output(
+            dt,
+            nts,
+            t0,
+            results,
+            lastobs_df['gages'],
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+        )
 
     if verbose:
         print("ordered reach computation complete")
@@ -920,6 +931,16 @@ def nwm_route(
         diffusive_parameters,
     )
 
+    if data_assimilation_folder:
+        lastobs_df = nhd_io.lastobs_df_output(
+            dt,
+            nts,
+            t0,
+            results,
+            lastobs_df['gages'],
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+        )
+
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
@@ -1138,7 +1159,7 @@ def main_v03(argv):
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters) 
-        
+
         nwm_output_generator(
             run,
             run_results,
