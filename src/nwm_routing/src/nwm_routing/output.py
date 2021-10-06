@@ -202,6 +202,22 @@ def nwm_output_generator(
 
             # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
             # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+            
+        # build new lastobs_df and write out LastObs as netcdf. 
+        # Assumed that this capability is only needed for AnA simulations
+        # i.e. when timeslice files are provided to support DA
+        da_timeslice_folder = data_assimilation_parameters.get(
+        "data_assimilation_timeslices_folder", None
+        )
+        if da_timeslice_folder:
+            lastobs_df = nhd_io.lastobs_df_output(
+                dt,
+                nts,
+                t0,
+                run_results,
+                gages,
+                data_assimilation_parameters.get('lastobs_output_folder',False),
+            ) 
 
         if debuglevel <= -1:
             print(flowveldepth)
@@ -230,8 +246,4 @@ def nwm_output_generator(
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-    wrf_hydro_lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file",False)
-    lastobs_output_folder = data_assimilation_parameters.get('lastobs_output_folder',False)
-    lastobs_df = nhd_io.lastobs_df_output(dt,nts,run_results,wrf_hydro_lastobs_file,q0,gages,run_set_iterator,lastobs_output_title,lastobs_output_folder)
-    # lastobs_df = pd.read_csv(lastobs_string,index_col='link')
-    
+   
