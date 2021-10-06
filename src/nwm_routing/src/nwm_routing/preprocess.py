@@ -331,7 +331,7 @@ def nwm_forcing_preprocess(
             start_time = time.time()
         if verbose:
             print("creating usgs time_slice data array ...")
-        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
+        usgs_df, link_gage_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
 
         if verbose:
             print("usgs array complete")
@@ -340,6 +340,7 @@ def nwm_forcing_preprocess(
 
     else:
         usgs_df = pd.DataFrame()
+        link_gage_df = pd.DataFrame()
 
     # STEP 7
     coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
@@ -354,4 +355,4 @@ def nwm_forcing_preprocess(
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
-    return qlats_df, usgs_df
+    return qlats_df, usgs_df, link_gage_df

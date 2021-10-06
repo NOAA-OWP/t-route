@@ -21,7 +21,7 @@ def nwm_output_generator(
     debuglevel=0,
     run_results=False,
     data_assimilation_parameters=False,
-    gages=False,
+    link_gage_df=None,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
@@ -203,20 +203,20 @@ def nwm_output_generator(
             # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
             # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
             
-        # build new lastobs_df and write out LastObs as netcdf. 
-        # Assumed that this capability is only needed for AnA simulations
-        # i.e. when timeslice files are provided to support DA
+    # build new lastobs_df and write out LastObs as netcdf. 
+    # Assumed that this capability is only needed for AnA simulations
+    # i.e. when timeslice files are provided to support DA
     data_assimilation_folder = data_assimilation_parameters.get(
     "data_assimilation_timeslices_folder", None
     )
-
+    
     if data_assimilation_folder:
         lastobs_df = nhd_io.lastobs_df_output(
             dt,
             nts,
             t0,
             run_results,
-            gages,
+            link_gage_df['gages'],
             data_assimilation_parameters.get('lastobs_output_folder',False),
         ) 
 

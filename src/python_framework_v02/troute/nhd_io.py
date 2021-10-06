@@ -660,9 +660,10 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
         df = ds.to_dataframe()
 
     usgs_df = df.join(df2)
+    link_gage_df = usgs_df[['gages']]
     usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
 
-    return usgs_df
+    return usgs_df, link_gage_df
 
 
 def get_usgs_from_time_slices_folder(
@@ -717,12 +718,16 @@ def get_usgs_from_time_slices_folder(
             data_var_dict[v] = (["gages"], ds[v].values[gage_mask])
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
-
+    
     usgs_df = (df.join(df2).
                reset_index().
                rename(columns={"index": "gages"}).
-               set_index("link").
-               drop(["gages", "ascendingIndex", "to"], axis=1))
+               set_index("link"))
+    
+    # data frame containing link-gage crosswalk
+    link_gage_df = usgs_df[['gages']]
+    
+    usgs_df = usgs_df.drop(["gages", "ascendingIndex", "to"], axis=1)
 
     usgs_qual_df = (df.join(df_qual).
                reset_index().
@@ -812,7 +817,7 @@ def get_usgs_from_time_slices_folder(
     # usgs_df_T.reindex(dates)
     usgs_df_new = usgs_df_T.transpose()
 
-    return usgs_df_new
+    return usgs_df_new, link_gage_df
 
 
 def get_param_str(target_file, param):
