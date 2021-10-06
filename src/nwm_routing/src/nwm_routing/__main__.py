@@ -569,6 +569,7 @@ def _run_everything_v02(
         "data_assimilation_timeslices_folder", None
     )
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
+    
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
         if showtiming:
             start_time = time.time()
@@ -1153,10 +1154,7 @@ def main_v03(argv):
             debuglevel,
             run_results,
             data_assimilation_parameters,
-            q0,
             gages,
-            run_set_iterator,
-            t0 + timedelta(seconds = dt * nts),
         )
 
     # nwm_final_output_generator()
@@ -1225,6 +1223,9 @@ async def main_v03_async(argv):
         verbose=verbose,
         debuglevel=debuglevel,
     )
+    
+    # list of gages in simulation domain needed for output handling
+    gages = lastobs_df['gages']
 
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
@@ -1371,9 +1372,7 @@ async def main_v03_async(argv):
             debuglevel,
             run_results,
             data_assimilation_parameters,
-            q0,
             gages,
-            run_set_iterator,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1453,9 +1452,7 @@ async def main_v03_async(argv):
         debuglevel,
         run_results,
         data_assimilation_parameters,
-        q0,
         gages,
-        run_set_iterator,
     )
 
     if verbose:

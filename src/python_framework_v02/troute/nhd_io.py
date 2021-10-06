@@ -1,5 +1,5 @@
 import zipfile
-
+import warnings
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
@@ -1089,33 +1089,44 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
 
 def lastobs_df_output(dt,
     nts,
+    t0,
     run_results,
-    wrf_hydro_lastobs_file,
-    q0,
     gages,
-    run_set_iterator,
-    lastobs_output_title,
     lastobs_output_folder=False,
     ):
+    
+    # create a new lastobs DataFrame from the last itteration of run results
     lastobs_df = new_lastobs(run_results, dt * nts)
-    lastobs_df.index.names = ['link']
-    lastobs_df.insert(0, 'last_model_discharge', q0.loc[lastobs_df.index]['qu0'])
-    lastobs_df.insert(0, 'gages', gages)
-    lastobs_df_attrs = str(lastobs_output_title)
-    lastobs_output_title = "nudgingLastObs."+str(lastobs_output_title)[:10]+"_"+str(lastobs_output_title)[11:]+".nc"
+    lastobs_df_copy = lastobs_df.copy()
+    
+    # join gageIDs to lastobs_df
+    lastobs_df_copy = lastobs_df_copy.join(gages)
+    
+    # timestamp of last simulation timestep
+    modelTimeAtOutput = t0 + timedelta(seconds = nts * dt)
+    modelTimeAtOutput_str = modelTimeAtOutput.strftime('%Y-%m-%d_%H:%M:%S')
+    
+    # timestamp of last observation
+    var = [timedelta(seconds=d) for d in lastobs_df_copy.time_since_lastobs]
+    lastobs_timestamp = [modelTimeAtOutput - d for d in var]
+    lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
+    
+    # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
+    ds = xr.Dataset(
+        {
+            "stationId": (["stationIdInd"], lastobs_df_copy["gages"].to_numpy(dtype = '|S15')),
+            "time": (["stationIdInd"], np.asarray(lastobs_timestamp_str,dtype = '|S19')),
+            "discharge": (["stationIdInd"], lastobs_df_copy["lastobs_discharge"].to_numpy()),
+        }
+   )
+    ds.attrs["modelTimeAtOutput"] = "example attribute"
+    
+    # write-out LastObs file as netcdf
     if lastobs_output_folder:
-        lastobs_string = lastobs_output_folder+lastobs_output_title
-        # lastobs_string = lastobs_output_folder+"lastobs_df_"+str(run_set_iterator)+".nc"
+        ds.to_netcdf(lastobs_output_folder + modelTimeAtOutput_str + ".15min.usgsTimeSlice.ncdf")
     else:
-        lastobs_string = lastobs_output_title
-        # lastobs_string = "lastobs_df_"+str(run_set_iterator)+".nc"
-    if not 'Nudge' in lastobs_df.columns:
-        lastobs_df.insert(loc=0, column='Nudge', value=np.NaN)
-    lastobs_df['Nudge'] = np.NaN
-    lastobs_df = lastobs_df.to_xarray()
-    lastobs_df.attrs['modelTimeAtOutput'] = lastobs_df_attrs[:10]+"_"+lastobs_df_attrs[11:]
-    lastobs_df.to_netcdf(lastobs_string)
-
+        warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
+    
     return lastobs_df
 
 def new_lastobs(run_results, time_increment):
