@@ -1123,7 +1123,7 @@ def lastobs_df_output(dt,
     
     # write-out LastObs file as netcdf
     if lastobs_output_folder:
-        ds.to_netcdf(lastobs_output_folder + modelTimeAtOutput_str + ".15min.usgsTimeSlice.ncdf")
+        ds.to_netcdf(lastobs_output_folder + "nudgingLastObs." + modelTimeAtOutput_str + ".nc")
     else:
         warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
     

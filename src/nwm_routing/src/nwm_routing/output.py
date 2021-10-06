@@ -206,21 +206,22 @@ def nwm_output_generator(
         # build new lastobs_df and write out LastObs as netcdf. 
         # Assumed that this capability is only needed for AnA simulations
         # i.e. when timeslice files are provided to support DA
-        da_timeslice_folder = data_assimilation_parameters.get(
-        "data_assimilation_timeslices_folder", None
-        )
-        if da_timeslice_folder:
-            lastobs_df = nhd_io.lastobs_df_output(
-                dt,
-                nts,
-                t0,
-                run_results,
-                gages,
-                data_assimilation_parameters.get('lastobs_output_folder',False),
-            ) 
+    da_timeslice_folder = data_assimilation_parameters.get(
+    "data_assimilation_timeslices_folder", None
+    )
 
-        if debuglevel <= -1:
-            print(flowveldepth)
+    if da_timeslice_folder:
+        lastobs_df = nhd_io.lastobs_df_output(
+            dt,
+            nts,
+            t0,
+            run_results,
+            gages,
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+        ) 
+
+    if debuglevel <= -1:
+        print(flowveldepth)
 
     if verbose:
         print("output complete")
