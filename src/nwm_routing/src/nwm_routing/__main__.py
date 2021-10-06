@@ -1172,7 +1172,7 @@ def main_v03(argv):
             debuglevel,
             run_results,
             data_assimilation_parameters,
-            link_gage_df['gages'],
+            link_gage_df,
         )
 
     # nwm_final_output_generator()
@@ -1387,7 +1387,7 @@ async def main_v03_async(argv):
             debuglevel,
             run_results,
             data_assimilation_parameters,
-            link_gage_df['gages'],
+            link_gage_df,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1467,7 +1467,7 @@ async def main_v03_async(argv):
         debuglevel,
         run_results,
         data_assimilation_parameters,
-        link_gage_df['gages'],
+        link_gage_df,
     )
 
     if verbose:

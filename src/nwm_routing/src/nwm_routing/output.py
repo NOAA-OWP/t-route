@@ -21,7 +21,7 @@ def nwm_output_generator(
     debuglevel=0,
     run_results=False,
     data_assimilation_parameters=False,
-    gages=False,
+    link_gage_df=None,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
@@ -209,14 +209,14 @@ def nwm_output_generator(
     data_assimilation_folder = data_assimilation_parameters.get(
     "data_assimilation_timeslices_folder", None
     )
-
+    
     if data_assimilation_folder:
         lastobs_df = nhd_io.lastobs_df_output(
             dt,
             nts,
             t0,
             run_results,
-            gages,
+            link_gage_df['gages'],
             data_assimilation_parameters.get('lastobs_output_folder',False),
         ) 
 
