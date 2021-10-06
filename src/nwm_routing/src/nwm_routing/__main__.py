@@ -1223,6 +1223,9 @@ async def main_v03_async(argv):
         verbose=verbose,
         debuglevel=debuglevel,
     )
+    
+    # list of gages in simulation domain needed for output handling
+    gages = lastobs_df['gages']
 
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
