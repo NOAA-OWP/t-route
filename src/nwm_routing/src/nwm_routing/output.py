@@ -21,10 +21,7 @@ def nwm_output_generator(
     debuglevel=0,
     run_results=False,
     data_assimilation_parameters=False,
-    q0=False,
     gages=False,
-    run_set_iterator=False,
-    lastobs_output_title=False,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
