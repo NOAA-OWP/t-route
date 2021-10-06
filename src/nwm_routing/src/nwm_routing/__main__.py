@@ -639,16 +639,6 @@ def _run_everything_v02(
         diffusive_parameters,
     )
 
-    if data_assimilation_folder:
-        lastobs_df = nhd_io.lastobs_df_output(
-            dt,
-            nts,
-            t0,
-            results,
-            lastobs_df['gages'],
-            data_assimilation_parameters.get('lastobs_output_folder',False),
-        )
-
     if verbose:
         print("ordered reach computation complete")
     if showtiming:
@@ -857,6 +847,16 @@ def _handle_output_v02(
         if showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
+    if data_assimilation_folder:
+        lastobs_df = nhd_io.lastobs_df_output(
+            dt,
+            nts,
+            t0,
+            results,
+            lastobs_df['gages'],
+            data_assimilation_parameters.get('lastobs_output_folder',False),
+        )
+
 
 def nwm_route(
     downstream_connections,
@@ -930,16 +930,6 @@ def nwm_route(
         waterbody_type_specified,
         diffusive_parameters,
     )
-
-    if data_assimilation_folder:
-        lastobs_df = nhd_io.lastobs_df_output(
-            dt,
-            nts,
-            t0,
-            results,
-            lastobs_df['gages'],
-            data_assimilation_parameters.get('lastobs_output_folder',False),
-        )
 
     if verbose:
         print("ordered reach computation complete")
