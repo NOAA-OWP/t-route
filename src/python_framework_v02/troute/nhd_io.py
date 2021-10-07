@@ -1112,7 +1112,7 @@ def lastobs_df_output(dt,
     modelTimeAtOutput_str = modelTimeAtOutput.strftime('%Y-%m-%d_%H:%M:%S')
     
     # timestamp of last observation
-    var = [timedelta(seconds=d) for d in lastobs_df_copy.time_since_lastobs]
+    var = [timedelta(seconds=d) for d in lastobs_df_copy.time_since_lastobs.fillna(0)]
     lastobs_timestamp = [modelTimeAtOutput - d for d in var]
     lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
     
