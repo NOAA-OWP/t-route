@@ -64,13 +64,19 @@ def nwm_output_generator(
         print(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
+    csv_output_folder = None
+    rsrto = output_parameters.get("hydro_rst_output", None)
+    chrto = output_parameters.get("chrtout_output", None)
+
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
             "csv_output_folder", None
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
+        if not csv_output_folder:
+            print("Warning: Not writing results to .csv becuase csv_output_folder specified in control file.")
 
-    if (debuglevel <= -1) or csv_output:
+    if (debuglevel <= -1) or csv_output_folder or rsrto or chrto:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -93,116 +99,129 @@ def nwm_output_generator(
                 copy=False,
             )
 
-        # directory containing WRF Hydro restart files
-        rsrto = output_parameters.get("hydro_rst_output", None)
-        if rsrto:
-            wrf_hydro_restart_dir = rsrto.get(
-                "wrf_hydro_channel_restart_source_directory", None
+    if rsrto:
+        
+        if verbose:
+            print("- writing restart files")
+                
+        wrf_hydro_restart_dir = rsrto.get(
+            "wrf_hydro_channel_restart_source_directory", None
+        )
+        wrf_hydro_restart_write_dir = rsrto.get(
+            "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_dir
+        )
+        if wrf_hydro_restart_dir:
+
+            wrf_hydro_channel_restart_new_extension = rsrto.get(
+                "wrf_hydro_channel_restart_new_extension", "TRTE"
             )
-            wrf_hydro_restart_write_dir = rsrto.get(
-                "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_dir
-            )
-            if wrf_hydro_restart_dir:
 
-                wrf_hydro_channel_restart_new_extension = rsrto.get(
-                    "wrf_hydro_channel_restart_new_extension", "TRTE"
-                )
-
-                if rsrto.get("wrf_hydro_channel_restart_pattern_filter", None):
-                    # list of WRF Hydro restart files
-                    wrf_hydro_restart_files = sorted(
-                        Path(wrf_hydro_restart_dir).glob(
-                            rsrto["wrf_hydro_channel_restart_pattern_filter"]
-                            + "[!"
-                            + wrf_hydro_channel_restart_new_extension
-                            + "]"
-                        )
+            if rsrto.get("wrf_hydro_channel_restart_pattern_filter", None):
+                # list of WRF Hydro restart files
+                wrf_hydro_restart_files = sorted(
+                    Path(wrf_hydro_restart_dir).glob(
+                        rsrto["wrf_hydro_channel_restart_pattern_filter"]
+                        + "[!"
+                        + wrf_hydro_channel_restart_new_extension
+                        + "]"
                     )
-                else:
-                    wrf_hydro_restart_files = sorted(
-                        Path(wrf_hydro_restart_dir) / f for f in run["qlat_files"]
-                    )
-
-                if len(wrf_hydro_restart_files) > 0:
-                    nhd_io.write_channel_restart_to_wrf_hydro(
-                        flowveldepth,
-                        wrf_hydro_restart_files,
-                        Path(wrf_hydro_restart_write_dir),
-                        restart_parameters.get("wrf_hydro_channel_restart_file"),
-                        dt,
-                        nts,
-                        t0,
-                        restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
-                        restart_parameters.get(
-                            "wrf_hydro_channel_ID_crosswalk_file_field_name"
-                        ),
-                        wrf_hydro_channel_restart_new_extension,
-                    )
-                else:
-                    # print error and/or raise exception
-                    str = "WRF Hydro restart files not found - Aborting restart write sequence"
-                    raise AssertionError(str)
-
-        chrto = output_parameters.get("chrtout_output", None)
-        if chrto:
-            chrtout_read_folder = chrto.get(
-                "wrf_hydro_channel_output_source_folder", None
-            )
-            chrtout_write_folder = chrto.get(
-                "wrf_hydro_channel_final_output_folder", chrtout_read_folder
-            )
-            if chrtout_read_folder:
-                wrf_hydro_channel_output_new_extension = chrto.get(
-                    "wrf_hydro_channel_output_new_extension", "TRTE"
-                )
-                if chrto.get("wrf_hydro_channel_output_file_pattern_filter", None):
-                    chrtout_files = sorted(
-                        Path(chrtout_read_folder).glob(
-                            chrto["wrf_hydro_channel_output_file_pattern_filter"]
-                        )
-                    )
-                else:
-                    chrtout_files = sorted(
-                        Path(chrtout_read_folder) / f for f in run["qlat_files"]
-                    )
-
-                nhd_io.write_q_to_wrf_hydro(
-                    flowveldepth,
-                    chrtout_files,
-                    Path(chrtout_write_folder),
-                    qts_subdivisions,
-                    wrf_hydro_channel_output_new_extension,
-                )
-
-        if csv_output_folder:
-            # create filenames
-            # TO DO: create more descriptive filenames
-            if supernetwork_parameters.get("title_string", None):
-                filename_fvd = (
-                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
-                )
-                filename_courant = (
-                    "courant_" + supernetwork_parameters["title_string"] + ".csv"
                 )
             else:
-                run_time_stamp = datetime.now().isoformat()
-                filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
-                filename_courant = "courant_" + run_time_stamp + ".csv"
+                wrf_hydro_restart_files = sorted(
+                    Path(wrf_hydro_restart_dir) / f for f in run["qlat_files"]
+                )
 
-            output_path = Path(csv_output_folder).resolve()
+            if len(wrf_hydro_restart_files) > 0:
+                nhd_io.write_channel_restart_to_wrf_hydro(
+                    flowveldepth,
+                    wrf_hydro_restart_files,
+                    Path(wrf_hydro_restart_write_dir),
+                    restart_parameters.get("wrf_hydro_channel_restart_file"),
+                    dt,
+                    nts,
+                    t0,
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                    restart_parameters.get(
+                        "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                    ),
+                    wrf_hydro_channel_restart_new_extension,
+                )
+            else:
+                # print error and/or raise exception
+                str = "WRF Hydro restart files not found - Aborting restart write sequence"
+                raise AssertionError(str)
 
-            flowveldepth = flowveldepth.sort_index()
-            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+    if chrto:
+        
+        if verbose:
+            print("- writing results to CHRTOUT")
+        
+        chrtout_read_folder = chrto.get(
+            "wrf_hydro_channel_output_source_folder", None
+        )
+        chrtout_write_folder = chrto.get(
+            "wrf_hydro_channel_final_output_folder", chrtout_read_folder
+        )
+        if chrtout_read_folder:
+            wrf_hydro_channel_output_new_extension = chrto.get(
+                "wrf_hydro_channel_output_new_extension", "TRTE"
+            )
+            if chrto.get("wrf_hydro_channel_output_file_pattern_filter", None):
+                chrtout_files = sorted(
+                    Path(chrtout_read_folder).glob(
+                        chrto["wrf_hydro_channel_output_file_pattern_filter"]
+                    )
+                )
+            else:
+                chrtout_files = sorted(
+                    Path(chrtout_read_folder) / f for f in run["qlat_files"]
+                )
 
-            if return_courant:
-                courant = courant.sort_index()
-                courant.to_csv(output_path.joinpath(filename_courant))
+            nhd_io.write_q_to_wrf_hydro(
+                flowveldepth,
+                chrtout_files,
+                Path(chrtout_write_folder),
+                qts_subdivisions,
+                wrf_hydro_channel_output_new_extension,
+            )
 
-            # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
-            # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+    if csv_output_folder:
+        
+        if verbose:
+            print("- writing flow, velocity, and depth results to .csv")
 
-        if debuglevel <= -1:
-            print(flowveldepth)
+        # create filenames
+        # TO DO: create more descriptive filenames
+        if supernetwork_parameters.get("title_string", None):
+            filename_fvd = (
+                "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+            )
+            filename_courant = (
+                "courant_" + supernetwork_parameters["title_string"] + ".csv"
+            )
+        else:
+            run_time_stamp = datetime.now().isoformat()
+            filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
+            filename_courant = "courant_" + run_time_stamp + ".csv"
+
+        output_path = Path(csv_output_folder).resolve()
+
+        # no csv_output_segments are specified, then write results for all segments
+        if not csv_output_segments:
+            csv_output_segments = flowveldepth.index
+        
+        flowveldepth = flowveldepth.sort_index()
+        flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
+
+        if return_courant:
+            courant = courant.sort_index()
+            courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
+
+        # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+        # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+
+    if debuglevel <= -1:
+        print(flowveldepth)
 
     if verbose:
         print("output complete")
