@@ -1,6 +1,5 @@
-from libc.math cimport exp, isnan
+from libc.math cimport exp, isnan, NAN
 from libc.stdio cimport printf
-
 
 cpdef float simple_da_with_decay_py(
     const float last_valid_obs,
@@ -43,6 +42,8 @@ cdef (float, float, float, float) simple_da(
     if isnan(target_val):
         if da_check_gage:
             printf("THIS IS A NAN\t")
+    # If we are still within the DA timeseries and the value is not a NaN,
+    # then build the DA from the incoming value and update the lastobs arrays.
     if ((timestep <= gage_maxtimestep) and not (isnan(target_val))):
         if da_check_gage:
             printf("replace\t")
@@ -51,6 +52,16 @@ cdef (float, float, float, float) simple_da(
         # add/update lastobs_timestep
         lastobs_time = (timestep) * routing_period
         lastobs_val = target_val
+    # In the unusual case that the observation is missing and the lastobs is also
+    # missing, pass along the modeled value and flag the lastobs as still NaN.
+    elif ((isnan(target_val)) and (isnan(lastobs_val))):
+        replacement_val = model_val
+        nudge_val = 0.0
+        lastobs_val = NAN
+        lastobs_time = NAN
+    # When we are outside of the DA timeseries and/or the gage value is NaN
+    # AND the lastobs is not null, use the decay calculation to estimate the
+    # replacement value and leave the lastobs unmodified.
     else:
         if da_check_gage:
             printf("So we are fixing that...\t")
