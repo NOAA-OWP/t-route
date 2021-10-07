@@ -675,8 +675,8 @@ def _handle_output_v02(
             "csv_output_folder", None
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
-
-    if (debuglevel <= -1) or csv_output:
+        
+    if (debuglevel <= -1) or csv_output_folder:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -717,11 +717,16 @@ def _handle_output_v02(
             output_path = Path(csv_output_folder).resolve()
 
             flowveldepth = flowveldepth.sort_index()
-            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+            
+            # no csv_output_segments are specified, then write results for all segments
+            if not csv_output_segments:
+                csv_output_segments = flowveldepth.index
+                
+            flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
 
             if run_parameters.get("return_courant", False):
                 courant = courant.sort_index()
-                courant.to_csv(output_path.joinpath(filename_courant))
+                courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
 
             # TODO: need to identify the purpose of these outputs
             # if the need is to output the usgs_df dataframe,
