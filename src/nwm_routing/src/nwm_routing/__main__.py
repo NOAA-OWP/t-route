@@ -567,6 +567,16 @@ def _run_everything_v02(
         run_parameters.get("qts_subdivisions", 1),
     )
 
+    # If the below dictionary is not empty, change nts
+    # to the total number of columns (hours) times dt
+    if nexus_to_downstream_flowpath_dict:
+       run_parameters["nts"] = len(qlats.columns) * run_parameters.get("dt")
+
+    temp_nts = run_parameters.get("nts", 1)
+    print ("temp_nts")
+    print (temp_nts)
+    print ("==================")
+
     if verbose:
         print("qlateral array complete")
     if showtiming:
