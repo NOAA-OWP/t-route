@@ -1081,7 +1081,31 @@ def main_v03(argv):
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
-    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+    run_sets = nnu.build_forcing_sets(forcing_parameters)
+    
+    #-----------------------------------------------------------
+    '''
+    Inputs
+    - t0
+    - data_assimilation_parameters
+    - run_sets
+    Outputs
+    - da_sets
+    '''
+    
+    dt_timeslice = timedelta(minutes = 15)
+    
+    for i, set_dict in enumerate(run_sets):
+        
+        J = pd.date_range(t0, run_sets[i]['final_timestamp'], freq = dt_timeslice)
+        
+        
+        # list of file datetimes
+        
+    
+        import pdb; pdb.set_trace()
+    #-----------------------------------------------------------
+#     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
 
     if "data_assimilation_parameters" in compute_parameters:
         if "data_assimilation_sets" in data_assimilation_parameters:

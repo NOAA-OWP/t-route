@@ -2,6 +2,8 @@ import json
 import pathlib
 import pandas as pd
 from functools import partial
+from datetime import datetime, timedelta
+import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
@@ -550,6 +552,76 @@ def build_channel_initial_state(
 
     return q0
 
+
+def build_forcing_sets(
+    forcing_parameters
+):
+    
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    start_chrtout = forcing_parameters.get("start_chrtout", None)
+    nts = forcing_parameters.get("nts", None)
+    max_loop_size = forcing_parameters.get("max_loop_size", None)
+    dt = forcing_parameters.get("dt", None)
+    
+    # TODO throw error messages if required parameters are not specified in yaml
+    
+    # time of first chrtout
+    qlat_input_folder = pathlib.Path(qlat_input_folder)
+    start_chrtout = qlat_input_folder.joinpath(start_chrtout)
+    t_start_str = nhd_io.get_param_str(start_chrtout, "model_output_valid_time")
+    t_start = datetime.strptime(t_start_str, "%Y-%m-%d_%H:%M:%S")
+    
+    # time interval of forcing data - directly from CHRTOUT
+    dt_qlat = nhd_io.get_param_str(start_chrtout, "dev_NOAH_TIMESTEP").item()  
+    dt_qlat_timedelta = timedelta(seconds = dt_qlat)
+    
+    # determine qts_subdivisions
+    qts_subdivisions = dt_qlat / dt
+    if dt_qlat % dt == 0:
+        qts_subdivisions = dt_qlat / dt
+    else:
+        RaiseError("User selected dt is not evenly divisible into timeinterval of forcing data. Please specify a different dt value")
+        
+    # the number of files required for the simulation
+    nfiles = int(np.ceil(nts / qts_subdivisions))
+    
+    # list of file datetimes
+    datetime_list = [t_start + dt_qlat_timedelta*n for n in range(nfiles)]
+    datetime_list_str = [datetime.strftime(d, "%Y%m%d%H%M") for d in datetime_list]
+    
+    # list of forcinf files
+    forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
+    
+    # buidl run sets list
+    run_sets = []
+    k = 0
+    j = 0
+    nts_accum = 0
+    while k < len(forcing_filename_list):
+        run_sets.append({})
+        
+        if k + max_loop_size < len(forcing_filename_list):
+            run_sets[j]['qlat_files'] = forcing_filename_list[k:k+max_loop_size]
+        else:
+            run_sets[j]['qlat_files'] = forcing_filename_list[k:]
+        
+        nts_accum += len(run_sets[j]['qlat_files']) * qts_subdivisions
+        if nts_accum <= nts:
+            run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files']) * qts_subdivisions)
+        else:
+            run_sets[j]['nts'] = int(nts - nts_accum)
+            
+        final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1])
+        final_timestamp_str = nhd_io.get_param_str(
+            final_chrtout, 
+            "model_output_valid_time"
+        )
+        run_sets[j]['final_timestamp'] = datetime.strptime(final_timestamp_str, "%Y-%m-%d_%H:%M:%S")
+        
+        k += max_loop_size
+        j += 1
+    
+    return run_sets
 
 def build_qlateral_array(
     forcing_parameters,
