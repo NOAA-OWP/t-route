@@ -554,24 +554,25 @@ def build_channel_initial_state(
 
 
 def build_forcing_sets(
-    forcing_parameters
+    forcing_parameters,
+    t0
 ):
     
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    start_chrtout = forcing_parameters.get("start_chrtout", None)
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", None)
     dt = forcing_parameters.get("dt", None)
     
     # TODO throw error messages if required parameters are not specified in yaml
-    
-    # time of first chrtout
+        
+    # name of first CHRTOUT
     qlat_input_folder = pathlib.Path(qlat_input_folder)
     start_chrtout = qlat_input_folder.joinpath(start_chrtout)
     t_start_str = nhd_io.get_param_str(start_chrtout, "model_output_valid_time")
     t_start = datetime.strptime(t_start_str, "%Y-%m-%d_%H:%M:%S")
     
     # time interval of forcing data - directly from CHRTOUT
+    
     dt_qlat = nhd_io.get_param_str(start_chrtout, "dev_NOAH_TIMESTEP").item()  
     dt_qlat_timedelta = timedelta(seconds = dt_qlat)
     

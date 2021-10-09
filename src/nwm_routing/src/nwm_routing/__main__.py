@@ -1081,7 +1081,7 @@ def main_v03(argv):
     # The inputs below assume a very pedantic setup
     # with each run set explicitly defined, so...
     # TODO: Make this more flexible.
-    run_sets = nnu.build_forcing_sets(forcing_parameters)
+    run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
     
     #-----------------------------------------------------------
     '''
