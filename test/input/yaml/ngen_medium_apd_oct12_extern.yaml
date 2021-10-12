@@ -15,16 +15,18 @@ run_parameters:
     qts_subdivisions: 12  # number of timesteps per forcing (qlateral) timestep.
     dt: 300  # default timestep length, seconds
     #nts: 288  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
-    nts: 20  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
+    nts: 40  # number of timesteps to simulate. If used with ql_file or ql_folder, nts must be less than the number of ql inputs x qts_subdivisions.
     return_courant: false  # WARNING: true will only work with compute_kernel "V02-caching", therefore not currently compatible with simulation for waterbodies.
 #output file parameters
 output_parameters:
     #output location for csv file
     csv_output:
-        csv_output_folder: "../../test/output/text"
+        #csv_output_folder: "../../test/output/text"
+        csv_output_folder: "/apd_common/anthro/david_code/ngen_routing_test/medium_outputs"
         csv_output_segments: []
     #out location for nc file
-    nc_output_folder: "../../test/output/text"
+    #nc_output_folder: "../../test/output/text"
+    nc_output_folder: "/apd_common/anthro/david_code/ngen_routing_test/medium_outputs"
 #data column assignment inside supernetwork_parameters
 supernetwork_parameters:
     title_string: "Ngen1"

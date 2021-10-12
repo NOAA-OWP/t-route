@@ -568,9 +568,26 @@ def _run_everything_v02(
     )
 
     # If the below dictionary is not empty, change nts
-    # to the total number of columns (hours) times dt
+    # to the total number of rows (hours) minus 1 hour (the final hour)
+    # multiplied by qts_subdivisions, number of timesteps per forcing 
+    # (qlateral) timestep.
     if nexus_to_downstream_flowpath_dict:
-       run_parameters["nts"] = len(qlats.columns) * run_parameters.get("dt")
+       #run_parameters["nts"] = (len(qlats.columns) - 1) \
+       run_parameters["nts"] = (len(qlats.columns)) \
+       * run_parameters.get("qts_subdivisions", 1)
+
+    #run_parameters["nts"] = (len(qlats.rows) - 4) \
+    print ("len(qlats.columns)")
+    print (len(qlats.columns))
+
+    print ("qlats")
+    print (qlats)
+    print ("============================================")
+
+
+    print ('run_parameters.get("dt")')
+    print (run_parameters.get("dt"))
+
 
     temp_nts = run_parameters.get("nts", 1)
     print ("temp_nts")

@@ -876,10 +876,18 @@ def build_qlateral_array(
                     #Then map and reduce to DS segment ids
 
                     nexuses_flows_df = nexus_flows_transposed
+                    print ("nexuses_flows_df")
+                    print (nexuses_flows_df)
+                    print ("-----------------------------------------")
 
                     # Number of Timesteps plus one
                     # The number of columns in Qlat must be equal to or less than the number of routing timesteps
-                    nts = len(nexus_flows) + 1
+                    #number_of_qlats = len(nexus_flows) + 1
+                    number_of_qlats = len(nexus_flows)
+                    
+                    print ("number_of_qlats")
+                    print (number_of_qlats)
+                    print ("-----------------------------------------")
 
                     nexus_first_id = nexus_id
 
@@ -908,12 +916,14 @@ def build_qlateral_array(
 
                     # Number of Timesteps plus one
                     # The number of columns in Qlat must be equal to or less than the number of routing timesteps
-                    nts_for_row = len(nexus_flows) + 1
+                    #nts_for_row = len(nexus_flows) + 1
+                    number_of_qlats_for_row = len(nexus_flows)
 
-                    if nts_for_row != nts:
+                    #if nts_for_row != nts:
+                    if number_of_qlats_for_row != number_of_qlats:
                         raise ValueError('Nexus input files number of timesteps discrepancy for nexus-id ' 
-                        + str(nexus_first_id) + ' with ' + str(nts) + ' timesteps and nexus-id ' 
-                        + str(nexus_id) + ' with ' + str(nts_for_row) + ' timesteps.'
+                        + str(nexus_first_id) + ' with ' + str(number_of_qlats) + ' timesteps and nexus-id ' 
+                        + str(nexus_id) + ' with ' + str(number_of_qlats) + ' timesteps.'
                         )
 
 
@@ -921,10 +931,10 @@ def build_qlateral_array(
                 ##print ("nexus_flows-------------")
                 ##print (nexus_flows)
 
-            #print ("@@@@@@@@@@@@nexuses_flows_df")
-            #print (nexuses_flows_df)
+            print ("@@@@@@@@@@@@nexuses_flows_df")
+            print (nexuses_flows_df)
 
-            #print ("============================================")
+            print ("============================================")
 
             #Map nexus flows to qlaterals
             #ngen_nexus_id_to_downstream_comid_mapping_dict
@@ -1060,7 +1070,7 @@ def build_qlateral_array(
             full_qlat_df_segment = pd.DataFrame(
                 0.0,
                 index=segment_index,
-                columns=range(nts),
+                columns=range(number_of_qlats),
                 dtype="float32",
             )
 
@@ -1124,6 +1134,13 @@ def build_qlateral_array(
             qlat_df = qlat_df.sort_index()
 
 
+            # Set new nts based upon total nexus inputs
+            #nts = (number_of_qlats - 1) * qts_subdivisions
+            nts = (number_of_qlats) * qts_subdivisions
+            print ("new nts")
+            print (nts)
+            print ("^^^^^^^^^^^^^^^^^^^^^^^")
+
 
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
@@ -1138,13 +1155,13 @@ def build_qlateral_array(
     #print ("qlat_df1")
     #print (qlat_df)
 
-    #print ("nts: " + str(nts))
+    print ("nts: " + str(nts))
 
 
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
 
-    #print ("max_col: " + str(max_col))
+    print ("max_col: " + str(max_col))
 
     #print ("len(qlat_df.columns): " + str(len(qlat_df.columns)))
 
