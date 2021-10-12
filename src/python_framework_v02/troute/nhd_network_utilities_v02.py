@@ -766,11 +766,14 @@ def build_da_sets(data_assimilation_parameters, run_sets, t0):
     if da_sets:
         pass
         
-    else:
+    elif not data_assimilation_timeslices_folder:
+        da_sets = [{} for _ in run_sets]
         
+    else:
+        data_assimilation_timeslices_folder = pathlib.Path(data_assimilation_timeslices_folder)
         # the number of timeslice files appended to the front- and back-ends
         # of the TimeSlice file interpolation stack
-        timeslice_pad = data_assimilation_parameters.get("timeslice_pad",10)
+        timeslice_pad = data_assimilation_parameters.get("timeslice_pad",0)
 
         # timedelta of TimeSlice data - typically 15 minutes
         dt_timeslice = timedelta(minutes = 15)
