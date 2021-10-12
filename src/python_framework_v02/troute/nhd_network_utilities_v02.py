@@ -787,15 +787,24 @@ def build_da_sets(data_assimilation_parameters, run_sets, t0):
                                        + dt_timeslice * timeslice_pad,
                                        freq=dt_timeslice)
 
-            da_sets[i]['usgs_timeslice_files'] = \
-                (timestamps.strftime('%Y-%m-%d_%H:%M:%S')
-                 + '.15min.usgsTimeSlice.ncdf').to_list()
+            filenames = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
+                        + '.15min.usgsTimeSlice.ncdf').to_list()
+            
+            # check that all TimeSlice files in the set actually exist
+            for f in filenames:
+                try:
+                    J = pathlib.Path(data_assimilation_timeslices_folder.joinpath(f))     
+                    assert J.is_file() == True
+                except AssertionError:
+                    print("Aborting simulation because TimeSlice file", J, "cannot be not found.")
+                    raise
+            
+            da_sets[i]['usgs_timeslice_files'] = filenames
 
             t0 = run_sets[i]['final_timestamp']
 
     return da_sets
     
-
 def build_data_assimilation(data_assimilation_parameters, run_parameters):
     lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
     usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, run_parameters, lastobs_df.index)
