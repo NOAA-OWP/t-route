@@ -1078,40 +1078,18 @@ def main_v03(argv):
         debuglevel=debuglevel,
     )
 
-    # The inputs below assume a very pedantic setup
-    # with each run set explicitly defined, so...
-    # TODO: Make this more flexible.
+    # Create run_sets: sets of forcing files for each loop
     run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
-    
-    #-----------------------------------------------------------
-    '''
-    Inputs
-    - t0
-    - data_assimilation_parameters
-    - run_sets
-    Outputs
-    - da_sets
-    '''
-    
-    dt_timeslice = timedelta(minutes = 15)
-    
-    for i, set_dict in enumerate(run_sets):
-        
-        J = pd.date_range(t0, run_sets[i]['final_timestamp'], freq = dt_timeslice)
-        
-        
-        # list of file datetimes
-        
-    
-        import pdb; pdb.set_trace()
-    #-----------------------------------------------------------
-#     run_sets = forcing_parameters.get("qlat_forcing_sets", False)
 
-    if "data_assimilation_parameters" in compute_parameters:
-        if "data_assimilation_sets" in data_assimilation_parameters:
-            da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
-        else:
-            da_sets = [{} for _ in run_sets]
+    # Create da_sets: sets of TimeSlice files for each loop
+    da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
+    import pdb; pdb.set_trace()
+    
+#     if "data_assimilation_parameters" in compute_parameters:
+#         if "data_assimilation_sets" in data_assimilation_parameters:
+#             da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
+#         else:
+#             da_sets = [{} for _ in run_sets]
 
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])

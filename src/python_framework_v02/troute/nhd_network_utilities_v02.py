@@ -558,69 +558,99 @@ def build_forcing_sets(
     t0
 ):
     
+    run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     nts = forcing_parameters.get("nts", None)
-    max_loop_size = forcing_parameters.get("max_loop_size", None)
+    max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
+    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", None)
     
-    # TODO throw error messages if required parameters are not specified in yaml
+    # TODO: Throw errors if insufficient input data are available
+    '''
+    - if qlat_input_folder is not specified
+    - if nts or dt are not specified
+    - if forcing_glob_filter is not specifid
+    - if no max_loop size specified
+    '''
+    if run_sets:
         
-    # name of first CHRTOUT
-    qlat_input_folder = pathlib.Path(qlat_input_folder)
-    start_chrtout = qlat_input_folder.joinpath(start_chrtout)
-    t_start_str = nhd_io.get_param_str(start_chrtout, "model_output_valid_time")
-    t_start = datetime.strptime(t_start_str, "%Y-%m-%d_%H:%M:%S")
-    
-    # time interval of forcing data - directly from CHRTOUT
-    
-    dt_qlat = nhd_io.get_param_str(start_chrtout, "dev_NOAH_TIMESTEP").item()  
-    dt_qlat_timedelta = timedelta(seconds = dt_qlat)
-    
-    # determine qts_subdivisions
-    qts_subdivisions = dt_qlat / dt
-    if dt_qlat % dt == 0:
-        qts_subdivisions = dt_qlat / dt
-    else:
-        RaiseError("User selected dt is not evenly divisible into timeinterval of forcing data. Please specify a different dt value")
-        
-    # the number of files required for the simulation
-    nfiles = int(np.ceil(nts / qts_subdivisions))
-    
-    # list of file datetimes
-    datetime_list = [t_start + dt_qlat_timedelta*n for n in range(nfiles)]
-    datetime_list_str = [datetime.strftime(d, "%Y%m%d%H%M") for d in datetime_list]
-    
-    # list of forcinf files
-    forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
-    
-    # buidl run sets list
-    run_sets = []
-    k = 0
-    j = 0
-    nts_accum = 0
-    while k < len(forcing_filename_list):
-        run_sets.append({})
-        
-        if k + max_loop_size < len(forcing_filename_list):
-            run_sets[j]['qlat_files'] = forcing_filename_list[k:k+max_loop_size]
-        else:
-            run_sets[j]['qlat_files'] = forcing_filename_list[k:]
-        
-        nts_accum += len(run_sets[j]['qlat_files']) * qts_subdivisions
-        if nts_accum <= nts:
-            run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files']) * qts_subdivisions)
-        else:
-            run_sets[j]['nts'] = int(nts - nts_accum)
+        # append final_timestamp variable to each set_list
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        for (s, _) in enumerate(run_sets):
+            final_chrtout = qlat_input_folder.joinpath(run_sets[s]['qlat_files'
+                    ][-1])
+            final_timestamp_str = nhd_io.get_param_str(final_chrtout,
+                    'model_output_valid_time')
+            run_sets[s]['final_timestamp'] = \
+                datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
             
-        final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1])
-        final_timestamp_str = nhd_io.get_param_str(
-            final_chrtout, 
-            "model_output_valid_time"
-        )
-        run_sets[j]['final_timestamp'] = datetime.strptime(final_timestamp_str, "%Y-%m-%d_%H:%M:%S")
+    else:
         
-        k += max_loop_size
-        j += 1
+        # Construct run_set dictionary from user-specified parameters
+    
+        # get the first and seconded files from an ordered list of all forcing files
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
+        first_file = all_files[0]
+        second_file = all_files[1]
+
+        # Deduce the timeinterval of the forcing data from the output timestamps of the first
+        # two ordered CHRTOUT files
+        t1 = nhd_io.get_param_str(first_file, "model_output_valid_time")
+        t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
+        t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
+        t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
+        dt_qlat_timedelta = t2 - t1
+        dt_qlat = dt_qlat_timedelta.seconds
+
+        # determine qts_subdivisions
+        qts_subdivisions = dt_qlat / dt
+        if dt_qlat % dt == 0:
+            qts_subdivisions = dt_qlat / dt
+
+        # the number of files required for the simulation
+        nfiles = int(np.ceil(nts / qts_subdivisions))
+
+        # list of forcing file datetimes
+        datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
+                         range(nfiles)]
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                             datetime_list]
+
+        # list of forcing files
+        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
+                                 datetime_list_str]
+
+        # buidl run sets list
+        run_sets = []
+        k = 0
+        j = 0
+        nts_accum = 0
+        while k < len(forcing_filename_list):
+            run_sets.append({})
+
+            if k + max_loop_size < len(forcing_filename_list):
+                run_sets[j]['qlat_files'] = forcing_filename_list[k:k
+                    + max_loop_size]
+            else:
+                run_sets[j]['qlat_files'] = forcing_filename_list[k:]
+
+            nts_accum += len(run_sets[j]['qlat_files']) * qts_subdivisions
+            if nts_accum <= nts:
+                run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files'])
+                                         * qts_subdivisions)
+            else:
+                run_sets[j]['nts'] = int(nts - nts_accum)
+
+            final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'
+                    ][-1])
+            final_timestamp_str = nhd_io.get_param_str(final_chrtout,
+                    'model_output_valid_time')
+            run_sets[j]['final_timestamp'] = \
+                datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+
+            k += max_loop_size
+            j += 1
     
     return run_sets
 
@@ -690,6 +720,47 @@ def build_qlateral_array(
 
     return qlat_df
 
+
+def build_da_sets(data_assimilation_parameters, run_sets, t0):
+    
+    data_assimilation_timeslices_folder = data_assimilation_parameters.get(
+        "data_assimilation_timeslices_folder",
+        None
+    )
+    da_sets = data_assimilation_parameters.get(
+        "data_assimilation_sets",
+        None
+    )
+    
+    if da_sets:
+        pass
+        
+    else:
+        
+        # the number of timeslice files appended to the front- and back-ends
+        # of the TimeSlice file interpolation stack
+        timeslice_pad = data_assimilation_parameters.get("timeslice_pad",10)
+
+        # timedelta of TimeSlice data - typically 15 minutes
+        dt_timeslice = timedelta(minutes = 15)
+
+        da_sets = []
+        for (i, set_dict) in enumerate(run_sets):
+            da_sets.append({})
+
+            timestamps = pd.date_range(t0 - dt_timeslice * timeslice_pad,
+                                       run_sets[i]['final_timestamp']
+                                       + dt_timeslice * timeslice_pad,
+                                       freq=dt_timeslice)
+
+            da_sets[i]['usgs_timeslice_files'] = \
+                (timestamps.strftime('%Y-%m-%d_%H:%M:%S')
+                 + '.15min.usgsTimeSlice.ncdf').to_list()
+
+            t0 = run_sets[i]['final_timestamp']
+
+    return da_sets
+    
 
 def build_data_assimilation(data_assimilation_parameters, run_parameters):
     lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
