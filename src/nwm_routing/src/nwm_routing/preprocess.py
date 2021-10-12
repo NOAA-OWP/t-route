@@ -272,9 +272,9 @@ def nwm_forcing_preprocess(
     nts = forcing_parameters.get("nts", None)
     dt = forcing_parameters.get("dt", None)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", None)
-    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", ".")
+    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", "feature_id")
+    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
 
     # TODO: find a better way to deal with these defaults and overrides.
     run["t0"] = run.get("t0", t0)
