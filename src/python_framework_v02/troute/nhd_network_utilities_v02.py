@@ -736,6 +736,22 @@ def build_qlateral_array(
     return qlat_df
 
 
+def build_parity_sets(parity_parameters, run_sets):
+    
+    parity_sets = parity_parameters.get("parity_check_compare_file_sets", None)
+    
+    if parity_sets:
+        pass
+    
+    else:
+    
+        parity_sets = []
+        for (i, set_dict) in enumerate(run_sets):
+            parity_sets.append({})
+            parity_sets[i]['validation_files'] = run_sets[i]['qlat_files']
+    
+    return parity_sets
+
 def build_da_sets(data_assimilation_parameters, run_sets, t0):
     
     data_assimilation_timeslices_folder = data_assimilation_parameters.get(
