@@ -527,8 +527,10 @@ def _run_everything_v02(
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
     # STEP 4a: Set Channel States and T0
-    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
-        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
+    if restart_parameters.get("wrf_hydro_channel_restart_file", None):
+        channel_initial_states_file = restart_parameters[
+            "wrf_hydro_channel_restart_file"
+        ]
         t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
     else:
         t0_str = "2015-08-16_00:00:00"
@@ -578,8 +580,7 @@ def _run_everything_v02(
             print("creating usgs time_slice data array ...")
 
             usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
-                data_assimilation_parameters,
-                run_parameters
+                data_assimilation_parameters, run_parameters
             )
 
         if verbose:
@@ -970,9 +971,13 @@ def update_lookback_hours(dt, nts, waterbody_parameters):
     on the total hours ran in the prior loop.
     """
 
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
-    math.ceil((dt * nts) / 3600)
+    waterbody_parameters["hybrid_and_rfc"][
+        "reservoir_rfc_forecasts_lookback_hours"
+    ] = waterbody_parameters["hybrid_and_rfc"][
+        "reservoir_rfc_forecasts_lookback_hours"
+    ] + math.ceil(
+        (dt * nts) / 3600
+    )
 
     return waterbody_parameters
 
@@ -1005,9 +1010,9 @@ def new_lastobs(run_results, time_increment):
         [
             pd.DataFrame(
                 # TODO: Add time_increment (or subtract?) from time_since_lastobs
-                np.array([rr[3][1],rr[3][2]]).T,
+                np.array([rr[3][1], rr[3][2]]).T,
                 index=rr[3][0],
-                columns=["time_since_lastobs", "lastobs_discharge"]
+                columns=["time_since_lastobs", "lastobs_discharge"],
             )
             for rr in run_results
             if not rr[3][0].size == 0
@@ -1065,7 +1070,13 @@ def main_v03(argv):
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
+    (
+        waterbodies_df,
+        q0,
+        t0,
+        lastobs_df,
+        da_parameter_dict,
+    ) = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         data_assimilation_parameters,
@@ -1167,7 +1178,7 @@ def main_v03(argv):
                 break_network_at_waterbodies,
                 param_df.index,
                 lastobs_df.index,
-                t0 + timedelta(seconds = dt * nts),
+                t0 + timedelta(seconds=dt * nts),
                 showtiming,
                 verbose,
                 debuglevel,
@@ -1182,7 +1193,9 @@ def main_v03(argv):
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
             if waterbody_type_specified:
-                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
+                waterbody_parameters = update_lookback_hours(
+                    dt, nts, waterbody_parameters
+                )
 
         nwm_output_generator(
             run,
@@ -1254,7 +1267,13 @@ async def main_v03_async(argv):
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
+    (
+        waterbodies_df,
+        q0,
+        t0,
+        lastobs_df,
+        da_parameter_dict,
+    ) = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         data_assimilation_parameters,
@@ -1302,7 +1321,9 @@ async def main_v03_async(argv):
         pool_Processing = None
     else:
         pool_IO = concurrent.futures.ThreadPoolExecutor(max_workers=IO_cpu_pool)
-        pool_Processing = concurrent.futures.ThreadPoolExecutor(max_workers=COMPUTE_cpu_pool)
+        pool_Processing = concurrent.futures.ThreadPoolExecutor(
+            max_workers=COMPUTE_cpu_pool
+        )
 
     loop = asyncio.get_running_loop()
 
@@ -1379,7 +1400,7 @@ async def main_v03_async(argv):
             break_network_at_waterbodies,
             param_df.index,
             lastobs_df.index,
-            t0 + timedelta(seconds = dt * nts),
+            t0 + timedelta(seconds=dt * nts),
             showtiming,
             verbose,
             debuglevel,

@@ -2,6 +2,7 @@ import json
 import pathlib
 import pandas as pd
 from functools import partial
+
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
@@ -302,7 +303,10 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Cape Fear River Basin, NC",  # overwrites other title...
                 "mask_file_path": pathlib.Path(
-                    geo_input_folder, "Channels", "masks", "CapeFear_FULL_RES.txt",
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "CapeFear_FULL_RES.txt",
                 ).resolve(),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -320,7 +324,10 @@ def set_supernetwork_parameters(
             {
                 "title_string": "Hurricane Florence Domain, near Durham NC",  # overwrites other title...
                 "mask_file_path": pathlib.Path(
-                    geo_input_folder, "Channels", "masks", "Florence_FULL_RES.txt",
+                    geo_input_folder,
+                    "Channels",
+                    "masks",
+                    "Florence_FULL_RES.txt",
                 ).resolve(),
                 "mask_driver_string": "csv",
                 "mask_layer_string": "",
@@ -391,7 +398,9 @@ def build_connections(supernetwork_parameters):
     cols = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
     synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
-    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
+    synthetic_wb_id_offset = supernetwork_parameters.get(
+        "synthetic_wb_id_offset", 9.99e11
+    )
 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
@@ -399,14 +408,16 @@ def build_connections(supernetwork_parameters):
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     if synthetic_wb_segments:
         # rename the current key column to key32
-        key32_d = {"key":"key32"}
+        key32_d = {"key": "key32"}
         param_df = param_df.rename(columns=key32_d)
         # create a key index that is int64
         # copy the links into the new column
         param_df["key"] = param_df.key32.astype("int64")
         # update the values of the synthetic reservoir segments
         fix_idx = param_df.key.isin(set(synthetic_wb_segments))
-        param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
+        param_df.loc[fix_idx, "key"] = (
+            param_df[fix_idx].key + synthetic_wb_id_offset
+        ).astype("int64")
 
     param_df = param_df.set_index("key")
 
@@ -514,9 +525,7 @@ def organize_independent_networks(connections, wbodies=None):
     return independent_networks, reaches_bytw, rconn
 
 
-def build_channel_initial_state(
-    restart_parameters, segment_index=pd.Index([])
-):
+def build_channel_initial_state(restart_parameters, segment_index=pd.Index([])):
 
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
@@ -542,7 +551,10 @@ def build_channel_initial_state(
         # assume to be zero
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
-            0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+            0,
+            index=segment_index,
+            columns=["qu0", "qd0", "h0"],
+            dtype="float32",
         )
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
@@ -581,8 +593,8 @@ def build_qlateral_array(
 
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
-            #ts_iterator=ts_iterator,
-            #file_run_size=file_run_size,
+            # ts_iterator=ts_iterator,
+            # file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
         )
@@ -619,9 +631,14 @@ def build_qlateral_array(
 
 
 def build_data_assimilation(data_assimilation_parameters, run_parameters):
-    lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
-    usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, run_parameters, lastobs_df.index)
+    lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(
+        data_assimilation_parameters
+    )
+    usgs_df = build_data_assimilation_usgs_df(
+        data_assimilation_parameters, run_parameters, lastobs_df.index
+    )
     return usgs_df, lastobs_df, da_parameter_dict
+
 
 def build_data_assimilation_usgs_df(
     data_assimilation_parameters,
@@ -642,11 +659,15 @@ def build_data_assimilation_usgs_df(
     if data_assimilation_csv:
         usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
     elif data_assimilation_folder:
-        usgs_df = build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
+        usgs_df = build_data_assimilation_folder(
+            data_assimilation_parameters, run_parameters
+        )
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
-            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            print(
+                "USGS Dataframe Index Does Not Match Last Observations Dataframe Index"
+            )
             usgs_df = usgs_df.loc[lastobs_index]
 
     return usgs_df
@@ -681,7 +702,9 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
         )
 
     da_parameter_dict = {}
-    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get(
+        "da_decay_coefficient", 120
+    )
     # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
 
     return lastobs_df, da_parameter_dict

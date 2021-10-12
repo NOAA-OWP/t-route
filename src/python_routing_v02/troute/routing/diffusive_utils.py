@@ -8,17 +8,17 @@ def adj_alt1(
 ):
     """
     Adjust reach altitude data so that altitude of last node in reach is equal to that of the head segment of
-    the neighboring downstream reach. 
-    
+    the neighboring downstream reach.
+
     Parameters
     ----------
     mx_jorder -- (int) maximum network reach order
     geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
     geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
     geo_data --(ndarray of float32s) geomorphic parameters data arra
-    dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary 
+    dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary
     z_all -- (dict) adjusted altitude dictionary with placeholder values to be replaced
-    
+
     Returns
     ----------
     z_all -- (dict) adjusted altitude dictionary
@@ -65,7 +65,7 @@ def fp_network_map(
 ):
     """
     Channel network mapping between Python and Fortran
-    
+
     Parameters
     ----------
     mx_jorder -- (int) maximum network reach order
@@ -73,9 +73,9 @@ def fp_network_map(
     rchbottom_reaches -- (dict) reaches and reach metadata keyed by reach tail segment
     nrch_g -- (int) number of reaches in the network
     frnw_col -- (int) number of columns in the fortran network map
-    dbfskegID -- (str) segment ID of fake (ghost) node at network downstream boundary 
+    dbfskegID -- (str) segment ID of fake (ghost) node at network downstream boundary
     pynw -- (dict) ordered reach head segments
-    
+
     Returns
     -------
     frnw_g -- (nparray of int) Fortran-Python network mapping array
@@ -146,7 +146,7 @@ def fp_chgeo_map(
 ):
     """
     Channel geometry data mapping between Python and Fortran
-    
+
     Parameters
     ----------
     mx_jorder -- (int) maximum network reach order
@@ -157,7 +157,7 @@ def fp_chgeo_map(
     z_all -- (dict) adjusted altitude dictionary
     mxncomp_g -- (int) maximum number of nodes in a reach
     nrch_g -- (int) number of reaches in the network
-    
+
     Returns
     -------
     z_ar_g -- (numpy of float64s) altitude (meters)
@@ -246,7 +246,7 @@ def fp_qlat_map(
 ):
     """
     lateral inflow mapping between Python and Fortran
-    
+
     Parameters
     ----------
     mx_jorder -- (int) maximum network reach order
@@ -256,11 +256,11 @@ def fp_qlat_map(
     geo_data -- (ndarray of float32) geomorphic parameters data array
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
     qlat_g -- (ndarray of float32) empty qlateral array to be filled
-    
+
     Returns
     -------
     qlat_g -- (ndarray of float32) qlateral array (m3/sec/m)
-    
+
     Notes
     -----
     data in qlat_g are normalized by segment length with units of m2/sec = m3/sec/m
@@ -296,7 +296,7 @@ def fp_qlat_map(
 def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     """
     Upstream boundary condition mapping between Python and Fortran
-    
+
     Parameters
     ----------
     frnw_g -- (nparray of int) Fortran-Python network mapping array
@@ -304,7 +304,7 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     nrch_g -- (int) number of reaches in the network
     ds_seg -- (ndarray of int64) row indices for downstream segments recieving flows in upstream_flows
     upstream_inflows (ndarray of float32) upstream_inflows (m3/sec) to segments in ds_seg
-    
+
     Returns
     -------
     ubcd_g -- (ndarray of float32) upstream boundary data (m3/sec)
@@ -313,16 +313,16 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     ubcd_g = np.zeros((nts_ub_g, nrch_g))
     frj = -1
 
-    #loop over every segment in network
+    # loop over every segment in network
     for frj in range(nrch_g):
 
-        #if this is a head segment
+        # if this is a head segment
         if frnw_g[frj, 2] == 0:  # the number of upstream reaches is zero.
-            
+
             head_segment = pynw[frj]
-            
+
             if head_segment in set(ds_seg):
-                
+
                 idx_dssegID = np.where(np.asarray(list(set(ds_seg))) == head_segment)
                 for tsi in range(0, nts_ub_g):
                     ubcd_g[tsi, frj] = upstream_inflows[idx_dssegID, tsi]  # [m^3/s]
@@ -333,14 +333,14 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
 def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
     """
     Downststream boundary condition mapping between Python and Fortran using USGS stage observations
-    
+
     Parameters
     ----------
     usgsID2tw -- (str) usgs site ID
-    usgssDT -- (str) start data request date (yyyy-mm-dd) 
-    usgseDT -- (str) end data request date (yyyy-mm-dd) 
-    usgspCd --  (list of str) usgs parameter code 
-    
+    usgssDT -- (str) start data request date (yyyy-mm-dd)
+    usgseDT -- (str) end data request date (yyyy-mm-dd)
+    usgspCd --  (list of str) usgs parameter code
+
     Returns
     -------
     nts_db_g -- (int) number of timesteps in downstream boundary data
@@ -409,7 +409,7 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
     else:
         nts_db_g = 1
         dbcd_g = -np.ones(nts_db_g)
-        
+
     return nts_db_g, dbcd_g
 
 
@@ -433,7 +433,7 @@ def diffusive_input_data_v02(
 ):
     """
     Build input data objects for diffusive wave model
-    
+
     Parameters
     ----------
     tw -- (int) Tailwater segment ID
@@ -446,14 +446,14 @@ def diffusive_input_data_v02(
     geo_data --(ndarray of float32s) geomorphic parameters data array
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
     initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
-    upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth   
-    qts_subdivisions -- (int) number of qlateral timestep subdivisions 
- 
+    upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth
+    qts_subdivisions -- (int) number of qlateral timestep subdivisions
+
     Returns
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-    
+
     # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
     # upstream boundary condition timestep (sec)
@@ -468,7 +468,7 @@ def diffusive_input_data_v02(
     # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
-    tfin_g = (dt * nsteps)/60/60
+    tfin_g = (dt * nsteps) / 60 / 60
 
     # USGS data related info.
     usgsID = diffusive_parameters.get("usgsID", None)
@@ -476,7 +476,7 @@ def diffusive_input_data_v02(
     usgssDT = diffusive_parameters.get("usgs_start_date", None)
     usgseDT = diffusive_parameters.get("usgs_end_date", None)
     usgspCd = diffusive_parameters.get("usgs_parameterCd", None)
-    
+
     # diffusive parameters
     cfl_g = diffusive_parameters.get("courant_number_upper_limit", None)
     theta_g = diffusive_parameters.get("theta_parameter", None)
@@ -493,49 +493,51 @@ def diffusive_input_data_v02(
         nnodes = len(r) + 1
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
-    
+
     ds_seg = []
     offnet_segs = []
-    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1))
+    upstream_flow_array = np.zeros((len(ds_seg), nsteps + 1))
     if upstream_results:
-        
+
         # create a list of segments downstream of offnetwork upstreams [ds_seg]
         # and a list of offnetwork upstream segments [offnet_segs]
         inv_map = nhd_network.reverse_network(rconn)
         for seg in upstream_results:
             ds_seg.append(inv_map[seg][0])
             offnet_segs.append(seg)
-        
+
         # populate an array of upstream flows (boundary condtions)
-        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps+1))
+        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps + 1))
         for j, seg in enumerate(set(ds_seg)):
-            
+
             # offnetwork-upstream connections
             us_segs = rconn[seg]
-            
+
             # sum upstream flows and initial conditions
             usq = np.zeros((len(us_segs), nsteps))
             us_iniq = 0
             for k, s in enumerate(us_segs):
-                usq[k] = upstream_results[s]['results'][::3]
-                
+                usq[k] = upstream_results[s]["results"][::3]
+
                 if s in lake_segs:
                     # initial conditions from wbody_param array
                     idx_segID = np.where(np.asarray(lake_segs) == s)
-                    us_iniq += wbody_params[idx_segID,9]
+                    us_iniq += wbody_params[idx_segID, 9]
                 else:
                     # initial conditions from initial_conditions array
                     idx_segID = np.where(geo_index == s)
-                    us_iniq += initial_conditions[idx_segID,0]
-            
+                    us_iniq += initial_conditions[idx_segID, 0]
+
             # write upstream flows to upstream_flow_array
-            upstream_flow_array[j,1:] = np.sum(usq, axis = 0)
-            upstream_flow_array[j,0] = us_iniq
-    
+            upstream_flow_array[j, 1:] = np.sum(usq, axis=0)
+            upstream_flow_array[j, 0] = us_iniq
+
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_segs), rconn)
-    tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
-    
+    path_func = partial(
+        nhd_network.split_at_waterbodies_and_junctions, set(offnet_segs), rconn
+    )
+    tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)
+
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
 
@@ -553,7 +555,7 @@ def diffusive_input_data_v02(
         if any(j in rconn[rch[0]] for j in offnet_segs):
             fk_usbseg = []
         else:
-            fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]            
+            fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]
 
         if o not in ordered_reaches:
             ordered_reaches.update({o: []})
@@ -644,7 +646,7 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
-    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
     #                  Prepare initial conditions data
@@ -661,19 +663,19 @@ def diffusive_input_data_v02(
                     segID = seg_list[seg - 1]
                 else:
                     segID = seg_list[seg]
-                    
+
                 idx_segID = np.where(geo_index == segID)
                 iniq[seg, frj] = initial_conditions[idx_segID, 0]
-                if iniq[seg, frj]<0.0001:
-                    iniq[seg, frj]=0.0001
+                if iniq[seg, frj] < 0.0001:
+                    iniq[seg, frj] = 0.0001
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
-    nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
+    nts_ql_g = int(
+        (tfin_g - t0_g) * 3600.0 / dt_ql_g
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
@@ -688,8 +690,7 @@ def diffusive_input_data_v02(
         qlat_data,
         qlat_g,
     )
-    
-    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
@@ -698,8 +699,6 @@ def diffusive_input_data_v02(
     nts_ub_g = upstream_flow_array.shape[1]
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
 
-
-        
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
@@ -710,10 +709,10 @@ def diffusive_input_data_v02(
             ipos = seg2usgsID.index(tw)
             usgsID2tw = usgsID[ipos]
         else:
-            usgsID2tw=None
+            usgsID2tw = None
     else:
-        usgsID2tw=None
-    
+        usgsID2tw = None
+
     nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
 
     # ---------------------------------------------------------------------------------
@@ -736,7 +735,7 @@ def diffusive_input_data_v02(
     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
-    # TODO: Call uniform flow lookup table creation kernel    
+    # TODO: Call uniform flow lookup table creation kernel
     # ---------------------------------------------------------------------------------
     #                              Step 0-11
 
@@ -799,17 +798,17 @@ def diffusive_input_data_v02(
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
     """
     Unpack diffusive wave output arrays
-    
+
     Parameters
     ----------
     pynw -- (dict) ordered reach head segments
-    ordered_reaches -- 
+    ordered_reaches --
     out_q -- (diffusive._memoryviewslice of float64) diffusive wave model flow output (m3/sec)
     out_elv -- (diffusive._memoryviewslice of float64) diffusive wave model water surface elevation output (meters)
-    
+
     Returns
     -------
-    np.asarray(rch_list, dtype=np.intp) - segment indices 
+    np.asarray(rch_list, dtype=np.intp) - segment indices
     np.asarray(dat_all, dtype = 'float32') - flow, velocity, elevation array
     """
 
@@ -827,7 +826,7 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
             j = reach_heads.index(rch[0])
 
             if i == 1:
-                dat_all = np.empty((len(rch_segs)-1, nts * 3))
+                dat_all = np.empty((len(rch_segs) - 1, nts * 3))
                 dat_all[:] = np.nan
                 # flow result
                 dat_all[:, ::3] = np.transpose(np.array(out_q[:, 1 : len(rch_segs), j]))
@@ -837,7 +836,7 @@ def unpack_output(pynw, ordered_reaches, out_q, out_elv):
                 )
 
             else:
-                dat_all_c = np.empty((len(rch_segs)-1, nts * 3))
+                dat_all_c = np.empty((len(rch_segs) - 1, nts * 3))
                 dat_all_c[:] = np.nan
                 # flow result
                 dat_all_c[:, ::3] = np.transpose(

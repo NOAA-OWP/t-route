@@ -5,7 +5,8 @@ from test_suite_parameters import generate_conus_MC_parameters
 
 @pytest.fixture
 def random_mc_input_tuple():
-    return next(generate_conus_MC_parameters(1,16))
+    return next(generate_conus_MC_parameters(1, 16))
+
 
 """
 The input for the demo.compare methods is a tuple of values as follows:
@@ -37,4 +38,3 @@ def test_MC_kernel(random_mc_input_tuple):
     # print(out)
     qdc1, qdc2, velc1, velc2, depthc1, depthc2 = out
     assert (qdc1, velc1, depthc1) == (qdc2, velc2, depthc2)
-

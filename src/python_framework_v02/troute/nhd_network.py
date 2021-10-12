@@ -273,7 +273,7 @@ def dfs_decomposition_depth_tuple(RN, path_func, source_nodes=None):
                 "the source nodes *must* be members of the coalesced set..."
             )
     depth_tuples = dfs_count_depth(RN_coalesced, source_nodes)
-    return zip(pluck(0,depth_tuples), reach_list)
+    return zip(pluck(0, depth_tuples), reach_list)
 
 
 def dfs_count_depth(RN, source_nodes=None):
@@ -607,7 +607,9 @@ def build_subnetworks(connections, rconn, min_size, sources=None):
     return subnetwork_master
 
 
-def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, independent_networks, sources=None):
+def build_subnetworks_btw_reservoirs(
+    connections, rconn, wbodies, all_gages, independent_networks, sources=None
+):
     """
     Isolate subnetworks between reservoirs using a breadth-first-search
     Arguments:
@@ -618,11 +620,11 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
         sources (set): list of segments from which to begin breadth-first searches. Default to
                        network tailwaters
     Returns:
-        subnetwork_master (dict): {[subnetwork order]: 
-                                      {[subnetwork tail water]: 
+        subnetwork_master (dict): {[subnetwork order]:
+                                      {[subnetwork tail water]:
                                           [subnetwork segments]}}
-    """    
-    
+    """
+
     # if no sources provided, use tailwaters
     if sources is None:
         # identify tailwaters
@@ -634,7 +636,9 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
     gage_conns = {connections[s][0] for s in all_gages}.difference(all_wbodies)
 
     # search targets are all headwaters or water bodies that are not also sources
-    targets = {x for x in set.union(all_hws, all_wbodies, gage_conns) if x not in sources}
+    targets = {
+        x for x in set.union(all_hws, all_wbodies, gage_conns) if x not in sources
+    }
 
     networks_with_subnetworks_ordered = {}
     for net in sources:
@@ -650,18 +654,18 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
             reached_wbodies = set()
             reached_gage_conn = set()
             for h in new_sources:
-                
+
                 reached_segs = set()
                 Q = deque([h])
                 while Q:
                     x = Q.popleft()
-                    
+
                     if x not in set.union(all_wbodies, gage_conns):
                         reached_segs.add(x)
-                        
+
                     elif x in all_wbodies:
                         reached_wbodies.add(x)
-                        
+
                     else:
                         reached_gage_conn.add(x)
                         reached_segs.add(x)
@@ -672,11 +676,11 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                 rv[h] = reached_segs
 
             # append master dictionary
-            subnetworks[group_order].update(rv) # stream network
-            
+            subnetworks[group_order].update(rv)  # stream network
+
             # reset sources
             new_sources = set()
-            
+
             # in the event that both gages and water bodies are found in the previous search itteration
             # (group_order - 1), add water bodies to group_order include reservoir inflows as new sources
             # for the next search itteration
@@ -685,60 +689,60 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
                 for s in reached_wbodies_hold:
                     res_dict[s] = {s}
                     new_sources.update(rconn[s])
-                    
-                subnetworks[group_order].update(res_dict) # reservoirs
+
+                subnetworks[group_order].update(res_dict)  # reservoirs
                 reached_wbodies_hold = set()
-                
+
             # search itteration finds gages (and maybe reservoirs, but maybe not)
             if reached_gage_conn:
-                
+
                 # start next search itteration from found gages
                 for w in reached_gage_conn:
                     new_sources.update(rconn[w])
-                
+
                 # hold onto list of reached water bodies
                 if reached_wbodies:
                     reached_wbodies_hold = reached_wbodies
-                
+
                 # remove reached gages from search target set
                 targets = targets.difference(reached_gage_conn)
-                
+
                 # remove reached gages from all_gages set
                 gage_conns = gage_conns.difference(reached_gage_conn)
-                
+
                 # advance group order by 1 and initialize order dictionary
                 group_order += 1
                 subnetworks[group_order] = {}
-                
+
             # search itteration finds only water bodies
             elif not reached_gage_conn and reached_wbodies:
-                
+
                 # start next search itteration from inflows to found reservoirs
                 for w in reached_wbodies:
                     new_sources.update(rconn[w])
-                    
+
                 # add found reservoirs to next order
                 res_dict = {}
                 for s in reached_wbodies:
                     res_dict[s] = {s}
-                subnetworks[group_order + 1] = res_dict # reservoirs
-                
+                subnetworks[group_order + 1] = res_dict  # reservoirs
+
                 # advance order by 2 to hop over the order containing only reservoirs
                 group_order += 2
                 subnetworks[group_order] = {}
-            
+
             else:
-                
+
                 group_order += 1
                 if new_sources:
                     subnetworks[group_order] = {}
-                
-#             # if new sources contains gages, remove those gages from target and all_gages sets
-#             if new_sources.intersection(all_gages):
-#                 a = new_sources.intersection(all_gages)
-#                 targets = targets.difference(a)
-#                 all_gages = all_gages.difference(a)
-                
+
+        #             # if new sources contains gages, remove those gages from target and all_gages sets
+        #             if new_sources.intersection(all_gages):
+        #                 a = new_sources.intersection(all_gages)
+        #                 targets = targets.difference(a)
+        #                 all_gages = all_gages.difference(a)
+
         networks_with_subnetworks_ordered[net] = subnetworks
 
     # create a dictionary of ordered subnetworks
@@ -758,8 +762,8 @@ def build_subnetworks_btw_reservoirs(connections, rconn, wbodies, all_gages, ind
             conn_subn = {k: connections[k] for k in subnet if k in connections}
             rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
             path_func = partial(split_at_junction, rconn_subn)
-            reaches_ordered_bysubntw[order][
-                subn_tw
-            ] = dfs_decomposition(rconn_subn, path_func)
-            
+            reaches_ordered_bysubntw[order][subn_tw] = dfs_decomposition(
+                rconn_subn, path_func
+            )
+
     return reaches_ordered_bysubntw, subnetworks, subnetwork_master

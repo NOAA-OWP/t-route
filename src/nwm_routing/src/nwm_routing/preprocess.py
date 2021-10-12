@@ -75,14 +75,10 @@ def nwm_network_preprocess(
 
         # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype = "hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )
+        wb_params_hybrid_and_rfc = waterbody_parameters.get(wbtype, defaultdict(list))
 
         wbtype = "level_pool"
-        wb_params_level_pool = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )
+        wb_params_level_pool = waterbody_parameters.get(wbtype, defaultdict(list))
 
         # Determine if any data assimilation reservoirs are activated, and if so, read
         # the reservoir parameter file
@@ -257,7 +253,7 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     lastobs_index,
-    warmstate_t0 = None,
+    warmstate_t0=None,
     showtiming=False,
     verbose=False,
     debuglevel=0,
@@ -286,21 +282,48 @@ def nwm_forcing_preprocess(
     run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
 
     if data_assimilation_parameters:
-        data_assimilation_folder = data_assimilation_parameters.get("data_assimilation_timeslices_folder", None)
-        data_assimilation_csv = data_assimilation_parameters.get("data_assimilation_csv", None)
+        data_assimilation_folder = data_assimilation_parameters.get(
+            "data_assimilation_timeslices_folder", None
+        )
+        data_assimilation_csv = data_assimilation_parameters.get(
+            "data_assimilation_csv", None
+        )
         lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-        lastobs_start = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
-        lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
-        lastobs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_da_channel_ID_crosswalk_file", None)
-        da_decay_coefficient = data_assimilation_parameters.get("da_decay_coefficient", 120)
+        lastobs_start = data_assimilation_parameters.get(
+            "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0
+        )
+        lastobs_type = data_assimilation_parameters.get(
+            "wrf_lastobs_type", "error-based"
+        )
+        lastobs_crosswalk_file = data_assimilation_parameters.get(
+            "wrf_hydro_da_channel_ID_crosswalk_file", None
+        )
+        da_decay_coefficient = data_assimilation_parameters.get(
+            "da_decay_coefficient", 120
+        )
 
-        da_run["data_assimilation_timeslices_folder"] = da_run.get("data_assimilation_timeslices_folder", data_assimilation_folder)
-        da_run["data_assimilation_csv"] = da_run.get("data_assimilation_csv", data_assimilation_csv)
-        da_run["wrf_hydro_lastobs_file"] = da_run.get("wrf_hydro_lastobs_file", lastobs_file)
-        da_run["wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0] = da_run.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", lastobs_start)
+        da_run["data_assimilation_timeslices_folder"] = da_run.get(
+            "data_assimilation_timeslices_folder", data_assimilation_folder
+        )
+        da_run["data_assimilation_csv"] = da_run.get(
+            "data_assimilation_csv", data_assimilation_csv
+        )
+        da_run["wrf_hydro_lastobs_file"] = da_run.get(
+            "wrf_hydro_lastobs_file", lastobs_file
+        )
+        da_run[
+            "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0
+        ] = da_run.get(
+            "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",
+            lastobs_start,
+        )
         da_run["wrf_lastobs_type"] = da_run.get("wrf_lastobs_type", lastobs_type)
-        da_run["wrf_hydro_da_channel_ID_crosswalk_file"] = da_run.get("wrf_hydro_da_channel_ID_crosswalk_file", lastobs_crosswalk_file)
-        da_run["da_decay_coefficient"] = da_run.get("da_decay_coefficient", da_decay_coefficient)
+        da_run["wrf_hydro_da_channel_ID_crosswalk_file"] = da_run.get(
+            "wrf_hydro_da_channel_ID_crosswalk_file", lastobs_crosswalk_file
+        )
+        da_run["da_decay_coefficient"] = da_run.get(
+            "da_decay_coefficient", da_decay_coefficient
+        )
 
     # STEP 5: Read (or set) QLateral Inputs
     if showtiming:
