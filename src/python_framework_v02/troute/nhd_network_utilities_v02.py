@@ -626,8 +626,17 @@ def build_forcing_sets(
         # list of forcing files
         forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
                                  datetime_list_str]
-
-        # buidl run sets list
+        
+        # check that all forcing files exist
+        for f in forcing_filename_list:
+            try:
+                J = pathlib.Path(qlat_input_folder.joinpath(f))     
+                assert J.is_file() == True
+            except AssertionError:
+                print("Aborting simulation because forcing file", J, "cannot be not found.")
+                raise
+                
+        # build run sets list
         run_sets = []
         k = 0
         j = 0
