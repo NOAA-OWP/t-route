@@ -563,15 +563,21 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", None)
+
+    try:
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        assert qlat_input_folder.is_dir() == True
+    except TypeError:
+        print("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.")
+        raise
+    except AssertionError:
+        print("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file")
+        raise
     
+    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
+        
     # TODO: Throw errors if insufficient input data are available
-    '''
-    - if qlat_input_folder is not specified
-    - if nts or dt are not specified
-    - if forcing_glob_filter is not specifid
-    - if no max_loop size specified
-    '''
+
     if run_sets:
         
         # append final_timestamp variable to each set_list
