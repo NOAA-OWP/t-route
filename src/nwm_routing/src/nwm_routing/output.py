@@ -100,10 +100,10 @@ def nwm_output_generator(
             )
 
     if rsrto:
-        
+
         if verbose:
             print("- writing restart files")
-                
+
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
@@ -166,16 +166,10 @@ def nwm_output_generator(
             wrf_hydro_channel_output_new_extension = chrto.get(
                 "wrf_hydro_channel_output_new_extension", "TRTE"
             )
-            if chrto.get("wrf_hydro_channel_output_file_pattern_filter", None):
-                chrtout_files = sorted(
-                    Path(chrtout_read_folder).glob(
-                        chrto["wrf_hydro_channel_output_file_pattern_filter"]
-                    )
-                )
-            else:
-                chrtout_files = sorted(
-                    Path(chrtout_read_folder) / f for f in run["qlat_files"]
-                )
+
+            chrtout_files = sorted(
+                Path(chrtout_read_folder) / f for f in run["qlat_files"]
+            )
 
             nhd_io.write_q_to_wrf_hydro(
                 flowveldepth,
@@ -185,8 +179,8 @@ def nwm_output_generator(
                 wrf_hydro_channel_output_new_extension,
             )
 
-    if csv_output_folder:
-        
+    if csv_output_folder: 
+    
         if verbose:
             print("- writing flow, velocity, and depth results to .csv")
 
