@@ -1,0 +1,384 @@
+---------------
+# parameters controling logging messages throughout execution
+log_parameters:
+    ---------------
+    # logical operator controling print statements throughout execution
+    # optional, defaults to None and no printing occurs
+    verbose:
+    ---------------
+    # logical operator controling timing statements throughout execution
+    # optional, defaults to None and no timings are reported
+    showtiming: 
+    ---------------
+    # Integer value. If debuglevel <= -1, additional information is printed to logging file. 
+    # !! Mandatory, defaults to 0
+    debuglevel: 
+
+---------------
+# parameters controlling how the stream network is synthesized
+network_topology_parameters:
+    ---------------
+    supernetwork_parameters:
+        ---------------
+        # string, Used for simulation identification
+        # appears in csv filename, if csv oupt is used.
+        # otherwise, this variable is of little use. 
+        # optional
+        title_string: 
+        ---------------
+        # string, file path to directory containing channel geometry data
+        # !! mandatory
+        geo_file_path: 
+        ---------------
+        # string, path to file containing channel mask file
+        # optional. If no mask file path is specified, no mask is used.
+        mask_file_path: 
+        ---------------
+        # optional, defualts to ""
+        mask_layer_string:
+        ---------------
+        # string, file type of mask file.
+        # optional
+        mask_driver_string:
+        ---------------
+        # typically this should be zero
+        # if using a mask this is !! mandatory
+        # TODO: default to zero
+        mask_key: 
+        ---------------
+        # logical, if True gaged segments occupy a reach of their own
+        # defaults to False
+        # (!!) mandatory for DA simulations
+        break_network_at_gages: 
+        ---------------
+        # attribute names in channel geometry file (Route_Link.nc)
+        columns:
+            ---------------
+            # string, unique segment identifier
+            # (!!) mandatory
+            key:
+            ---------------
+            # string, unique identifier of downstream segment
+            # (!!) mandatory
+            downstream:
+            ---------------
+            # string, segment length
+            # (!!) mandatory
+            dx:
+            ---------------
+            # string, manning's roughness of main channel
+            # (!!) mandatory
+            n:
+            ---------------
+            # string, mannings roughness of compound channel
+            # (!!) mandatory
+            ncc:
+            ---------------
+            # string, channel slope
+            # (!!) mandatory
+            s0:
+            ---------------
+            # string, channel bottom width
+            # (!!) mandatory
+            bw:
+            ---------------
+            # string, waterbody identifier
+            # (!!) mandatory
+            waterbody:
+            ---------------
+            # string, channel top width
+            # (!!) mandatory
+            tw:
+            ---------------
+            # string, compound channel top width
+            # (!!) mandatory
+            twcc:
+            ---------------
+            # string, channel bottom altitude
+            # (!!) mandatory
+            alt:
+            ---------------
+            # string, muskingum K parameter
+            # (!!) mandatory
+            musk:
+            ---------------
+            # string, muskingum X parameter
+            # (!!) mandatory
+            musx:
+            ---------------
+            # string, channel sideslope
+            # (!!) mandatory
+            cs:
+            ---------------
+            # string, gage ID
+            # (!!) mandatory
+            gages:
+        ---------------
+        # coding in channel gemetry dataset for non waterbody segments
+        # under attribute named in `columns: waterbody` above
+        # (!!) mandatory
+        waterbody_null_code:
+        ---------------
+        # coding in channel geometry dataset for segments draining to oecan.
+        # under attribute named in `columns: downstream` above
+        # optional, defaults to 0
+        terminal_code:
+        ---------------
+        # string, channel geometry data filetype
+        # optional, defaults to NetCDF
+        driver_string:
+        ---------------
+        # optional, only needed if reading channel geometry data from a compressed csv file
+        layer_string: 0
+    ---------------
+    # parameters specifying how (if) waterbodies are handled
+    waterbody_parameters:
+        ---------------
+        # logical, if True then all segments belonging to a waterbody are collapsed into a single reach
+        # (!!) mandatory for simulations with waterbodies.
+        # if not specified, defaults to False and no waterbodies are simulated
+        break_network_at_waterbodies:
+        ---------------
+        # attributes of the lake geometry file for levelpool simulations
+        level_pool:
+            ---------------
+            # string, filepath to waterbody parameter file (LAKEPARM.nc)
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_waterbody_parameter_file_path: 
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_waterbody_id:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_waterbody_area:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_weir_elevation:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_waterbody_max_elevation:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_outfall_weir_coefficient:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_outfall_weir_length:
+            ---------------
+            level_pool_overall_dam_length:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_orifice_elevation:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_orifice_coefficient:
+            ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
+            level_pool_orifice_area:
+---------------
+# parameters specific to the routing simulation
+compute_parameters:
+    ---------------
+    # parallel computing scheme used during simulation, options below
+    # - "serial": no parallel
+    # - "by-network": parallelization across independent drainage basins
+    # - "by-subnetwork-jit": parallel across subnetworks 
+    # - "by-subnetwork-jit-clustered": parallelization across subnetworks, with clustering to optimize scaling
+    # - "by-subnetwork-diffusive": parallelization across subnetworks arranged between gages and waterbodies (only parallel option for diffusive wave)
+    # optional, defaults to "by-network"
+    parallel_compute_method:
+    ---------------
+    # routing engine used for simulation
+    # "V02-structured" - Muskingum Cunge
+    # "diffusive - Diffusive with adaptive timestepping
+    # "diffusice_cnt" - Diffusive with CNT numerical solution
+    # (!!) mandatory, defaults to a depricated MC compute function that cannot handle reservoirs
+    # TODO: change default compute kernel to "V02-structured"
+    compute_kernel:
+    ---------------
+    # logical. if True the short timestep assumption used in WRF hyro is used. if False, the assumption is dropped
+    # optional, defaults to False
+    assume_short_ts:
+    ---------------
+    # the target number of segments per subnetwork
+    # only needed for by-subnetwork... parallel schemes
+    # optional, defaults to 1
+    # NOTE: the magnitude of this parameter affects parallel scaling
+    subnetwork_target_size:
+    ---------------
+    # number of CPUs used for parallel computations
+    # (!!) optional, defaults to None
+    cpu-pool:
+    ---------------
+    # logical, if True Courant metrics are returnd with simulations
+    # this only works for MC simulations
+    # optional - defaults to False
+    return_courant:
+    ---------------
+    # parameters specifying warm-state simulation conditions
+    # optional, defaults to a cold-start
+    restart_parameters:
+        ---------------
+        # filepath to WRF Hydro HYDRO_RST file
+        # optional, defauls to None and channels are cold-started from zero flow and depth
+        wrf_hydro_channel_restart_file: 
+        ---------------
+        # filepath to channel geometry file
+        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        wrf_hydro_channel_ID_crosswalk_file: 
+        ---------------
+        # field name of segment IDs in restart file
+        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        wrf_hydro_channel_ID_crosswalk_file_field_name:
+        ---------------
+        # field name of upstream flow in restart file
+        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        wrf_hydro_channel_restart_upstream_flow_field_name:
+        ---------------
+        # field name of downstream flow in restart file
+        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        wrf_hydro_channel_restart_downstream_flow_field_name:
+        ---------------
+        # field name of depth in restart file
+        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        wrf_hydro_channel_restart_depth_flow_field_name:
+        ---------------
+        # filepath to waterbody restart file
+        # this is often the same as wrf_hydro_channel_restart_file
+        # optional, defaults to None and reservoirs are cold-started
+        wrf_hydro_waterbody_restart_file:
+        ---------------
+        # filepath to lake parameter file
+        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        wrf_hydro_waterbody_ID_crosswalk_file:
+        ---------------
+        # field name of waterbody ID
+        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name:
+        ---------------
+        # filepath to channel geometry file
+        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        wrf_hydro_waterbody_crosswalk_filter_file: 
+        ---------------
+        # fieldname of waterbody IDs in channel geometry file
+        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name: 
+    ---------------
+    # parameters controling model forcings, simulation duration, and simulation time discretization
+    forcing_parameters:
+        ---------------
+        # The number of routing simulation timesteps per qlateral time interval. 
+        # For example, if dt_qlateral = 3600 secs, and dt = 300 secs, then qts_subdivisions = 3600/300 = 12
+        # (!!) mandatory. defaults to 1, which is likely to be incorrect
+        qts_subdivisions:
+        ---------------
+        # routing simulation time interval.
+        # this may be the actual timestep of the numerical solution, but will definitely be the timestep at which flow and depth results are returned from the compute kernel
+        # (!!) mandatory
+        dt:
+        ---------------
+        # path to directory containing channel forcing data
+        # (!!) mandatory. defaults to None and zero-valued lateral inflows are used.
+        # TODO: thow an error or warning
+        qlat_input_folder:
+        ---------------
+        # field name of segment ID in qlateral data
+        # (!!) mandatory
+        # TODO: change default `feature_id`
+        qlat_file_index_col:
+        ---------------
+        # field name of lateral inflow in qlateral data
+        # (!!) mandatory
+        # TODO: change default `q_lateral`
+        qlat_file_value_col:
+        ---------------
+        # forcing files and number of timesteps associated with each simulation loop
+        qlat_forcing_sets:
+            ---------------
+            # number of timesteps in loop itteration 1
+            - nts:
+            ---------------
+            # list of forcing file names to be used in itteration 1
+              qlat_files: 
+              - filename1
+              - filename2
+            ---------------
+            # number of timesteps in loop itteration 2
+            - nts:
+            ---------------
+            # list of forcing file names to be used in itteration 2
+              qlat_files:
+              - filename3
+              - filename4
+            # ... above pattern repeats for however many loops the entire simulation is divided into
+            # For a non-looped simulation, a single set of nts and qlat_files variables are provided 
+    ---------------
+    # parameters conrtolling data assimilation scheme
+    data_assimilation_parameters:
+        ---------------
+        # path to directory containing TimeSlice files
+        data_assimilation_timeslices_folder: 
+        ---------------
+        # filepath to channel geometry file
+        wrf_hydro_da_channel_ID_crosswalk_file:
+        ---------------
+        # filepath to lastobs file
+        wrf_hydro_lastobs_file:
+        ---------------
+        # lead time of lastobs relative to simulation start time (secs)
+        wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time:
+        ---------------
+        # ???
+        wrf_lastobs_type:
+        ---------------
+        # sets of TimeSlice files to be with each simulation loop
+        data_assimilation_sets:
+            ---------------
+            - usgs_timeslice_files:
+                - TimeSlice_filename1
+                - Timeslice_filename2
+            ---------------
+            - usgs_timeslice_files:
+                - TimeSlice_filename3
+                - TimeSlice_filename4
+            
+---------------   
+# parameters controlling model outputs
+output_parameters:
+    ---------------
+    # (!!) mandatory
+    # TODO: remove output dependencies on csv_output field, here
+    csv_output: 
+        ---------------
+        csv_output_folder:
+    ---------------    
+    chrtout_output:
+        ---------------
+        wrf_hydro_channel_output_source_folder: 
+        ---------------
+        wrf_hydro_channel_final_output_folder: 
+    ---------------
+    wrf_hydro_parity_check:
+        ---------------
+        parity_check_input_folder: 
+        ---------------
+        parity_check_file_index_col:
+        ---------------
+        parity_check_file_value_col:
+        ---------------
+        parity_check_compare_node:
+        ---------------
+        parity_check_compare_file_sets:
+            ---------------
+            - validation_files:
+            ---------------
+            - validation_files:
+            
