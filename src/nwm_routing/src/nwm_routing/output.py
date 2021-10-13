@@ -74,8 +74,6 @@ def nwm_output_generator(
             "csv_output_folder", None
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
-        if not csv_output_folder:
-            print("Warning: Not writing results to .csv becuase csv_output_folder specified in control file.")
 
     if (debuglevel <= -1) or csv_output_folder or rsrto or chrto:
 
