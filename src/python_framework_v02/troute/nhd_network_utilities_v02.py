@@ -679,7 +679,7 @@ def build_qlateral_array(
 
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
-    qlat_input_folder = forcing_parameters.get("qlat_input_folder", ".")
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
