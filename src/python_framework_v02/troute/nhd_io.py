@@ -10,6 +10,7 @@ import dask.array as da
 import sys
 import math
 from datetime import *
+import pathlib
 
 from troute.nhd_network import reverse_dict
 
@@ -1119,4 +1120,5 @@ def lastobs_df_output(
     ds.attrs["modelTimeAtOutput"] = "example attribute"
 
     # write-out LastObs file as netcdf
-    ds.to_netcdf(lastobs_output_folder + "nudgingLastObs." + modelTimeAtOutput_str + ".nc")
+    output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
+    ds.to_netcdf(str(output_path))
