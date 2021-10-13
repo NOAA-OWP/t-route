@@ -1202,15 +1202,15 @@ def main_v03(argv):
 
             q0 = new_nwm_q0(run_results)
 
-            if data_assimilation_parameters:
-                lastobs_df = new_lastobs(run_results, dt * nts)
-
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
 
+        if data_assimilation_parameters:
+                lastobs_df = new_lastobs(run_results, dt * nts)
+                
         nwm_output_generator(
             run,
             run_results,
