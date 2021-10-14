@@ -376,6 +376,10 @@ compute_parameters:
     # each loop under data_assimilation_sets or having TimeSlice sets be created automatically. 
     #
     # For automatic set creation, do not include the data_assimilation_sets variable.
+    #
+    # For AnA simulation, data_assimilation_timeslices_folder is required
+    # For Forecast simulation, do not include data_assimilation_timeslices_folder
+    # For open-loop simulations omit the entire data_assimilation_parameters section 
     data_assimilation_parameters:
         # ---------------
         # path to directory containing TimeSlice files
@@ -401,7 +405,9 @@ compute_parameters:
         # ---------------
         # sets of TimeSlice files to be with each simulation loop.
         # optional, only include if explicitly listing TimeSlice files for each set
-        # This variable should not be included if using automatic loop creation.
+        # This variable should not be included if running an AnA simulation using 
+        # automatic loop creation.
+        #
         data_assimilation_sets:
             # ---------------
             - usgs_timeslice_files:
