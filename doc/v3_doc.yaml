@@ -1,3 +1,4 @@
+# > python -m nwm_routing -f -V3 <filename>.yaml
 # ---------------
 # parameters controling logging messages throughout execution
 log_parameters:
