@@ -119,6 +119,20 @@ network_topology_parameters:
         # (!!) mandatory
         waterbody_null_code:
         # ---------------
+        # "synthetic waterbody segment IDs that are used to construct the Great Lakes
+        # These segments appear in the NWM 2.1 and 3.0 Route_Link.nc files but are not
+        # needed in the routing computation.
+        # (!!) mandatory for CONUS-scale simulations with NWM 2.1 or 3.0 Route_Link.nc data
+        synthetic_wb_segments:
+        - 4800002
+        - 4800004
+        - 4800006
+        - 4800007
+        # ---------------
+        # arbitrary large number appended to synthetic_wb_segments in their handling process
+        # optional, defaults to 9.99e11
+        synthetic_wb_id_offset: 9.99e11
+        # ---------------
         # coding in channel geometry dataset for segments draining to oecan.
         # under attribute named in `columns: downstream` above
         # optional, defaults to 0
@@ -170,6 +184,8 @@ network_topology_parameters:
             # (!!) mandatory for simulations with waterbodies
             level_pool_outfall_weir_length:
             # ---------------
+            # string
+            # (!!) mandatory for simulations with waterbodies
             level_pool_overall_dam_length:
             # ---------------
             # string
@@ -183,15 +199,15 @@ network_topology_parameters:
             # string
             # (!!) mandatory for simulations with waterbodies
             level_pool_orifice_area:
-    # TODO: add parameters for other water body modules.
+    # TODO: add parameters for other waterbody modules.
 # ---------------
 # parameters specific to the routing simulation
 compute_parameters:
     # ---------------
     # parallel computing scheme used during simulation, options below
-    # - "serial": no parallel
+    # - "serial": no parallelization
     # - "by-network": parallelization across independent drainage basins
-    # - "by-subnetwork-jit": parallel across subnetworks 
+    # - "by-subnetwork-jit": parallelization across subnetworks 
     # - "by-subnetwork-jit-clustered": parallelization across subnetworks, with clustering to optimize scaling
     # - "by-subnetwork-diffusive": parallelization across subnetworks arranged between gages and waterbodies (only parallel option for diffusive wave)
     # optional, defaults to "by-network"
@@ -210,7 +226,7 @@ compute_parameters:
     assume_short_ts:
     # ---------------
     # the target number of segments per subnetwork
-    # only needed for by-subnetwork... parallel schemes
+    # only needed for "by-subnetwork..." parallel schemes
     # optional, defaults to 1
     # NOTE: the magnitude of this parameter affects parallel scaling
     subnetwork_target_size:
