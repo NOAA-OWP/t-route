@@ -588,7 +588,7 @@ def build_forcing_sets(
             run_sets[s]['final_timestamp'] = \
                 datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
             
-    else:
+    elif qlat_input_folder:
         
         # Construct run_set dictionary from user-specified parameters
     
