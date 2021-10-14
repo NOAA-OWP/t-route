@@ -77,8 +77,8 @@ else:
 
 
 def compute_mc_up2down_ReachbySegment():
-    """HANDLE LOOPING, 
-        Then call single segment routine for each segment"""
+    """HANDLE LOOPING,
+    Then call single segment routine for each segment"""
     pass
 
 
@@ -162,10 +162,10 @@ def singlesegment(
 
 def single_vs_double():
     """
-      No Inputs: 
-      Uses several sets of hard-coded test values to show the behavior
-      of the Muskingum Cunge routing calculation module under a low-flow 
-      and a high-flow condition.
+    No Inputs:
+    Uses several sets of hard-coded test values to show the behavior
+    of the Muskingum Cunge routing calculation module under a low-flow
+    and a high-flow condition.
     """
     print(
         "First test low-flow, showing expected result depending on precision of calculation."
@@ -362,6 +362,7 @@ def main():
             )
         )
 
+
 def compare_methods(
     precision,
     dt,
@@ -401,9 +402,9 @@ def compare_methods(
     )
 
     # print(
-        # "real {} precision computed via updated method wrapped in f2py q: {} vel: {} depth: {}".format(
-            # precision, qdc1, velc1, depthc1
-        # )
+    # "real {} precision computed via updated method wrapped in f2py q: {} vel: {} depth: {}".format(
+    # precision, qdc1, velc1, depthc1
+    # )
     # )
     # run M-C model
     qdc_t, velc_t, depthc_t = singlesegment_wrf(
@@ -425,9 +426,9 @@ def compare_methods(
     )
 
     # print(
-        # "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
-            # precision, qdc_t, velc_t, depthc_t
-        # )
+    # "real {} precision computed via WRF-Hydro method q: {} vel: {} depth: {}".format(
+    # precision, qdc_t, velc_t, depthc_t
+    # )
     # )
 
     # compare_func = reach.compute_reach_cython_kernel
@@ -455,9 +456,9 @@ def compare_methods(
     qdc2, velc2, depthc2 = rv["qdc"], rv["velc"], rv["depthc"]
 
     # print(
-        # "real {} precision computed via T-Route method q: {} vel: {} depth: {}".format(
-            # precision, qdc2, velc2, depthc2
-        # )
+    # "real {} precision computed via T-Route method q: {} vel: {} depth: {}".format(
+    # precision, qdc2, velc2, depthc2
+    # )
     # )
 
     # compare_func = reach.compute_reach_cython_kernel

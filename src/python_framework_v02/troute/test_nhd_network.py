@@ -35,7 +35,7 @@ network_clean = [
 ]
 # Should create independent networks with terminal nodes at 2800, 0, and 8
 
-# 50-21, 60-62, 70-73, 81-84 are sets of circular networks, 
+# 50-21, 60-62, 70-73, 81-84 are sets of circular networks,
 # which is an error and should be filtered
 network_circulars = [
     [50, 178, 51, 0],
@@ -83,7 +83,7 @@ network_circulars = [
     [26, 920, 25, 0],
     [27, 920, 26, 0],
     [28, 920, 27, 0],
-    [2800, 920, 2700, 0], 
+    [2800, 920, 2700, 0],
 ]
 
 test_key_col = 0
@@ -137,9 +137,50 @@ expected_connections = {
     2800: [],
 }
 
-expected_rconn = {0: [2, 4, 6], 1: [], 4: [1, 5], 2: [3, 7], 3: [], 5: [], 6: [], 7: [], 8: [9], 9: [10], 10: [11], 11: [12], 12: [13, 25], 13: [14], 14: [15], 15: [16], 16: [17, 21], 17: [18, 180], 18: [19], 180: [181], 181: [], 19: [20], 20: [], 21: [22], 22: [23], 23: [24], 24: [], 25: [26], 26: [27], 27: [28], 28: [], 2800: []}
+expected_rconn = {
+    0: [2, 4, 6],
+    1: [],
+    4: [1, 5],
+    2: [3, 7],
+    3: [],
+    5: [],
+    6: [],
+    7: [],
+    8: [9],
+    9: [10],
+    10: [11],
+    11: [12],
+    12: [13, 25],
+    13: [14],
+    14: [15],
+    15: [16],
+    16: [17, 21],
+    17: [18, 180],
+    18: [19],
+    180: [181],
+    181: [],
+    19: [20],
+    20: [],
+    21: [22],
+    22: [23],
+    23: [24],
+    24: [],
+    25: [26],
+    26: [27],
+    27: [28],
+    28: [],
+    2800: [],
+}
 
-expected_wbody_connections = {4: 403, 5: 403, 16: 401, 17: 401, 21: 401, 26: 402, 27: 402}
+expected_wbody_connections = {
+    4: 403,
+    5: 403,
+    16: 401,
+    17: 401,
+    21: 401,
+    26: 402,
+    27: 402,
+}
 
 # network_with_substituted_reservoirs = []
 # rconn = {"down":["up (is a reservoir)"]}
@@ -194,6 +235,7 @@ def test_reverse_network():
 
 
 def test_extract_waterbodies():
-    wbody_connections = nhd_network.extract_waterbody_connections(test_param_df, "waterbody", test_waterbody_null_code)
+    wbody_connections = nhd_network.extract_waterbody_connections(
+        test_param_df, "waterbody", test_waterbody_null_code
+    )
     assert wbody_connections == expected_wbody_connections
-

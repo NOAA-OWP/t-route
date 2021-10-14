@@ -26,16 +26,22 @@ def nwm_output_generator(
     t0 = run.get("t0")
 
     if parity_parameters:
-        parity_check_waterbody_file = parity_parameters.get("parity_check_waterbody_file", None)
+        parity_check_waterbody_file = parity_parameters.get(
+            "parity_check_waterbody_file", None
+        )
         parity_check_file = parity_parameters.get("parity_check_file", None)
-        parity_check_input_folder = parity_parameters.get("parity_check_input_folder", None)
+        parity_check_input_folder = parity_parameters.get(
+            "parity_check_input_folder", None
+        )
         parity_check_file_index_col = parity_parameters.get(
             "parity_check_file_index_col", None
         )
         parity_check_file_value_col = parity_parameters.get(
             "parity_check_file_value_col", None
         )
-        parity_check_compare_node = parity_parameters.get("parity_check_compare_node", None)
+        parity_check_compare_node = parity_parameters.get(
+            "parity_check_compare_node", None
+        )
 
         # TODO: find a better way to deal with these defaults and overrides.
         parity_set["parity_check_waterbody_file"] = parity_set.get(
@@ -220,7 +226,8 @@ def nwm_output_generator(
             start_time = time.time()
 
         parity_check(
-            parity_set, results,
+            parity_set,
+            results,
         )
 
         if verbose:

@@ -31,9 +31,9 @@ _compute_func_map = defaultdict(
 
 
 def _format_qlat_start_time(qlat_start_time):
-    if not isinstance(qlat_start_time,datetime):
+    if not isinstance(qlat_start_time, datetime):
         try:
-            return datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(qlat_start_time, "%Y-%m-%d %H:%M:%S")
         except:  # TODO: make sure this doesn't introduce a silent error
             return datetime.now()
 
@@ -44,8 +44,8 @@ def _format_qlat_start_time(qlat_start_time):
 def _build_reach_type_list(reach_list, wbodies_segs):
 
     reach_type_list = [
-                1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
-            ]
+        1 if (set(reaches) & wbodies_segs) else 0 for reaches in reach_list
+    ]
 
     return list(zip(reach_list, reach_type_list))
 
@@ -55,14 +55,14 @@ def _prep_da_dataframes(
     lastobs_df,
     param_df_sub_idx,
     exclude_segments=None,
-    ):
+):
     """
     Produce, based on the segments in the param_df_sub_idx (which is a subset
     representing a subnetwork of the larger collection of all segments),
     a subset of the relevant usgs gage observation time series
     and the relevant last-valid gage observation from any
     prior model execution.
-    
+
     exclude_segments (list): segments to exclude from param_df_sub when searching for gages
                              This catches and excludes offnetwork upstreams segments from being
                              realized as locations for DA substitution. Else, by-subnetwork
@@ -79,12 +79,12 @@ def _prep_da_dataframes(
     time series is as long as the simulation.
 
     """
-    
+
     subnet_segs = param_df_sub_idx
     # segments in the subnetwork ONLY, no offnetwork upstreams included
     if exclude_segments:
         subnet_segs = param_df_sub_idx.difference(set(exclude_segments))
-    
+
     # NOTE: Uncomment to easily test no observations...
     # usgs_df = pd.DataFrame()
     if not usgs_df.empty and not lastobs_df.empty:
@@ -100,14 +100,16 @@ def _prep_da_dataframes(
         # Create a completely empty list of gages -- the .shape[1] attribute
         # will be == 0, and that will trigger a reference to the lastobs.
         # in the compute kernel below.
-        usgs_df_sub = pd.DataFrame(index=lastobs_df_sub.index,columns=[])
+        usgs_df_sub = pd.DataFrame(index=lastobs_df_sub.index, columns=[])
         usgs_segs = lastobs_segs
         da_positions_list_byseg = param_df_sub_idx.get_indexer(lastobs_segs)
     elif not usgs_df.empty and lastobs_df.empty:
         usgs_segs = list(usgs_df.index.intersection(subnet_segs))
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
-        lastobs_df_sub = pd.DataFrame(index=usgs_df_sub.index,columns=["discharge","time","model_discharge"])
+        lastobs_df_sub = pd.DataFrame(
+            index=usgs_df_sub.index, columns=["discharge", "time", "model_discharge"]
+        )
     else:
         usgs_df_sub = pd.DataFrame()
         lastobs_df_sub = pd.DataFrame()
@@ -192,8 +194,8 @@ def compute_nhd_routing_v02(
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
                         set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
+                        rconn_subn,
+                    )
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
@@ -266,13 +268,13 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
-                    
+
                     common_segs = list(param_df.index.intersection(segs))
                     wbodies_segs = set(segs).symmetric_difference(common_segs)
-                    
-                    #Declare empty dataframe
+
+                    # Declare empty dataframe
                     waterbody_types_df_sub = pd.DataFrame()
-                
+
                     if not waterbodies_df.empty:
                         lake_segs = list(waterbodies_df.index.intersection(segs))
                         waterbodies_df_sub = waterbodies_df.loc[
@@ -291,8 +293,8 @@ def compute_nhd_routing_v02(
                                 "h0",
                             ],
                         ]
-                        
-                        #If reservoir types other than Level Pool are active
+
+                        # If reservoir types other than Level Pool are active
                         if not waterbody_types_df.empty:
                             waterbody_types_df_sub = waterbody_types_df.loc[
                                 lake_segs,
@@ -304,16 +306,16 @@ def compute_nhd_routing_v02(
                     else:
                         lake_segs = []
                         waterbodies_df_sub = pd.DataFrame()
-                    
+
                     param_df_sub = param_df.loc[
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
-                    
+
                     param_df_sub_super = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
-                    
+
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
                             subn_tw_sortposition = param_df_sub_super.index.get_loc(
@@ -326,29 +328,48 @@ def compute_nhd_routing_v02(
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
-                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(
+                        subn_reach_list, wbodies_segs
+                    )
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
+
+                    # Determine model_start_time from qlat_start_time
                     qlat_start_time = list(qlat_sub)[0]
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
+                    qlat_start_time_datetime_object = _format_qlat_start_time(
+                        qlat_start_time
+                    )
 
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
+                    model_start_time_datetime_object = (
+                        qlat_start_time_datetime_object
+                        - timedelta(seconds=qlat_time_step_seconds)
+                    )
 
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+                    model_start_time = model_start_time_datetime_object.strftime(
+                        "%Y-%m-%d_%H:%M:%S"
+                    )
 
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
+                    (
+                        usgs_df_sub,
+                        lastobs_df_sub,
+                        da_positions_list_byseg,
+                    ) = _prep_da_dataframes(
+                        usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams
+                    )
+                    (
+                        da_positions_list_byreach,
+                        da_positions_list_bygage,
+                    ) = _prep_da_positions_byreach(
+                        subn_reach_list, lastobs_df_sub.index
+                    )
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
@@ -367,7 +388,7 @@ def compute_nhd_routing_v02(
                             param_df_sub.values,
                             q0_sub.values.astype("float32"),
                             qlat_sub.values.astype("float32"),
-                            lake_segs, 
+                            lake_segs,
                             waterbodies_df_sub.values,
                             waterbody_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
@@ -451,8 +472,8 @@ def compute_nhd_routing_v02(
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
                         set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
+                        rconn_subn,
+                    )
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
@@ -482,13 +503,13 @@ def compute_nhd_routing_v02(
                                 offnetwork_upstreams.add(us)
 
                     segs.extend(offnetwork_upstreams)
-                    
+
                     common_segs = list(param_df.index.intersection(segs))
                     wbodies_segs = set(segs).symmetric_difference(common_segs)
-                    
-                    #Declare empty dataframe
+
+                    # Declare empty dataframe
                     waterbody_types_df_sub = pd.DataFrame()
-                
+
                     if not waterbodies_df.empty:
                         lake_segs = list(waterbodies_df.index.intersection(segs))
                         waterbodies_df_sub = waterbodies_df.loc[
@@ -507,8 +528,8 @@ def compute_nhd_routing_v02(
                                 "h0",
                             ],
                         ]
-                        
-                        #If reservoir types other than Level Pool are active
+
+                        # If reservoir types other than Level Pool are active
                         if not waterbody_types_df.empty:
                             waterbody_types_df_sub = waterbody_types_df.loc[
                                 lake_segs,
@@ -520,16 +541,16 @@ def compute_nhd_routing_v02(
                     else:
                         lake_segs = []
                         waterbodies_df_sub = pd.DataFrame()
-                    
+
                     param_df_sub = param_df.loc[
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
-                    
+
                     param_df_sub_super = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
-                    
+
                     if order < max(subnetworks_only_ordered_jit.keys()):
                         for us_subn_tw in offnetwork_upstreams:
                             subn_tw_sortposition = param_df_sub_super.index.get_loc(
@@ -539,29 +560,48 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(
+                        subn_reach_list, wbodies_segs
+                    )
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
+
+                    # Determine model_start_time from qlat_start_time
                     qlat_start_time = list(qlat_sub)[0]
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
+                    qlat_start_time_datetime_object = _format_qlat_start_time(
+                        qlat_start_time
+                    )
 
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
+                    model_start_time_datetime_object = (
+                        qlat_start_time_datetime_object
+                        - timedelta(seconds=qlat_time_step_seconds)
+                    )
 
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+                    model_start_time = model_start_time_datetime_object.strftime(
+                        "%Y-%m-%d_%H:%M:%S"
+                    )
 
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
+                    (
+                        usgs_df_sub,
+                        lastobs_df_sub,
+                        da_positions_list_byseg,
+                    ) = _prep_da_dataframes(
+                        usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams
+                    )
+                    (
+                        da_positions_list_byreach,
+                        da_positions_list_bygage,
+                    ) = _prep_da_positions_byreach(
+                        subn_reach_list, lastobs_df_sub.index
+                    )
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
@@ -637,10 +677,14 @@ def compute_nhd_routing_v02(
 
     elif parallel_compute_method == "by-subnetwork-diffusive":
         gages = set(usgs_df.index).intersection(set(param_df.index))
-        reaches_ordered_bysubntw, subnetworks, subnetworks_only_ordered_jit = nhd_network.build_subnetworks_btw_reservoirs(
+        (
+            reaches_ordered_bysubntw,
+            subnetworks,
+            subnetworks_only_ordered_jit,
+        ) = nhd_network.build_subnetworks_btw_reservoirs(
             connections, rconn, wbody_conn, gages, independent_networks, sources=None
         )
-        
+
         if 1 == 1:
             print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             print("starting Parallel JIT calculation")
@@ -669,18 +713,18 @@ def compute_nhd_routing_v02(
 
                     common_segs = list(param_df.index.intersection(segs))
                     wbodies_segs = set(segs).symmetric_difference(common_segs)
-                    
+
                     # Declare empty dataframe
                     waterbody_types_df_sub = pd.DataFrame()
 
                     # Set compute_func_switch to compute_func.
-                    # compute_func for this function should be set to "diffusive" 
+                    # compute_func for this function should be set to "diffusive"
                     compute_func_switch = compute_func
 
                     # Can comment out above statement and uncomment below
                     # if need to run compute_network_structured in mc_reach
                     # for every subnetwork for debugging purposes.
-                    #compute_func_switch = compute_network_structured
+                    # compute_func_switch = compute_network_structured
 
                     if not waterbodies_df.empty:
                         lake_segs = list(waterbodies_df.index.intersection(segs))
@@ -706,8 +750,8 @@ def compute_nhd_routing_v02(
                                 "h0",
                             ],
                         ]
-                        
-                        #If reservoir types other than Level Pool are active
+
+                        # If reservoir types other than Level Pool are active
                         if not waterbody_types_df.empty:
                             waterbody_types_df_sub = waterbody_types_df.loc[
                                 lake_segs,
@@ -719,12 +763,12 @@ def compute_nhd_routing_v02(
                     else:
                         lake_segs = []
                         waterbodies_df_sub = pd.DataFrame()
-                    
+
                     param_df_sub = param_df.loc[
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                     ].sort_index()
-                    
+
                     param_df_sub_super = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
@@ -738,29 +782,48 @@ def compute_nhd_routing_v02(
                                 "position_index"
                             ] = subn_tw_sortposition
 
-                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
+                    subn_reach_list_with_type = _build_reach_type_list(
+                        subn_reach_list, wbodies_segs
+                    )
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
+
+                    # Determine model_start_time from qlat_start_time
                     qlat_start_time = list(qlat_sub)[0]
 
                     qlat_time_step_seconds = qts_subdivisions * dt
 
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
+                    qlat_start_time_datetime_object = _format_qlat_start_time(
+                        qlat_start_time
+                    )
 
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
+                    model_start_time_datetime_object = (
+                        qlat_start_time_datetime_object
+                        - timedelta(seconds=qlat_time_step_seconds)
+                    )
 
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+                    model_start_time = model_start_time_datetime_object.strftime(
+                        "%Y-%m-%d_%H:%M:%S"
+                    )
 
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
 
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
+                    (
+                        usgs_df_sub,
+                        lastobs_df_sub,
+                        da_positions_list_byseg,
+                    ) = _prep_da_dataframes(
+                        usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams
+                    )
+                    (
+                        da_positions_list_byreach,
+                        da_positions_list_bygage,
+                    ) = _prep_da_positions_byreach(
+                        subn_reach_list, lastobs_df_sub.index
+                    )
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
@@ -787,8 +850,14 @@ def compute_nhd_routing_v02(
                             np.array(da_positions_list_byseg, dtype="int32"),
                             np.array(da_positions_list_byreach, dtype="int32"),
                             np.array(da_positions_list_bygage, dtype="int32"),
-                            lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                            lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                            lastobs_df_sub.get(
+                                "lastobs_discharge",
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                            ).values.astype("float32"),
+                            lastobs_df_sub.get(
+                                "time_since_lastobs",
+                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                            ).values.astype("float32"),
                             da_decay_coefficient,
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             {
@@ -841,7 +910,7 @@ def compute_nhd_routing_v02(
                 # Assumes everything else is a waterbody...
                 wbodies_segs = set(segs).symmetric_difference(common_segs)
 
-                #Declare empty dataframe
+                # Declare empty dataframe
                 waterbody_types_df_sub = pd.DataFrame()
 
                 # If waterbody parameters exist
@@ -866,7 +935,7 @@ def compute_nhd_routing_v02(
                         ],
                     ]
 
-                    #If reservoir types other than Level Pool are active
+                    # If reservoir types other than Level Pool are active
                     if not waterbody_types_df.empty:
                         waterbody_types_df_sub = waterbody_types_df.loc[
                             lake_segs,
@@ -884,31 +953,46 @@ def compute_nhd_routing_v02(
                     ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
                 ].sort_index()
 
-                reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
+                reaches_list_with_type = _build_reach_type_list(
+                    reach_list, wbodies_segs
+                )
 
                 # qlat_sub = qlats.loc[common_segs].sort_index()
                 # q0_sub = q0.loc[common_segs].sort_index()
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
-                #Determine model_start_time from qlat_start_time
+                # Determine model_start_time from qlat_start_time
                 qlat_start_time = list(qlat_sub)[0]
 
                 qlat_time_step_seconds = qts_subdivisions * dt
 
-                qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
+                qlat_start_time_datetime_object = _format_qlat_start_time(
+                    qlat_start_time
+                )
 
-                model_start_time_datetime_object = qlat_start_time_datetime_object \
-                - timedelta(seconds=qlat_time_step_seconds)
+                model_start_time_datetime_object = (
+                    qlat_start_time_datetime_object
+                    - timedelta(seconds=qlat_time_step_seconds)
+                )
 
-                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+                model_start_time = model_start_time_datetime_object.strftime(
+                    "%Y-%m-%d_%H:%M:%S"
+                )
 
                 param_df_sub = param_df_sub.reindex(
                     param_df_sub.index.tolist() + lake_segs
                 ).sort_index()
 
-                usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-                da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
+                (
+                    usgs_df_sub,
+                    lastobs_df_sub,
+                    da_positions_list_byseg,
+                ) = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+                (
+                    da_positions_list_byreach,
+                    da_positions_list_bygage,
+                ) = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
 
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
@@ -935,8 +1019,14 @@ def compute_nhd_routing_v02(
                         np.array(da_positions_list_byseg, dtype="int32"),
                         np.array(da_positions_list_byreach, dtype="int32"),
                         np.array(da_positions_list_bygage, dtype="int32"),
-                        lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                        lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                        lastobs_df_sub.get(
+                            "lastobs_discharge",
+                            pd.Series(index=lastobs_df_sub.index, name="Null"),
+                        ).values.astype("float32"),
+                        lastobs_df_sub.get(
+                            "time_since_lastobs",
+                            pd.Series(index=lastobs_df_sub.index, name="Null"),
+                        ).values.astype("float32"),
                         da_decay_coefficient,
                         {},
                         assume_short_ts,
@@ -959,7 +1049,7 @@ def compute_nhd_routing_v02(
             # Assumes everything else is a waterbody...
             wbodies_segs = set(segs).symmetric_difference(common_segs)
 
-            #Declare empty dataframe
+            # Declare empty dataframe
             waterbody_types_df_sub = pd.DataFrame()
 
             # If waterbody parameters exist
@@ -984,7 +1074,7 @@ def compute_nhd_routing_v02(
                     ],
                 ]
 
-                #If reservoir types other than Level Pool are active
+                # If reservoir types other than Level Pool are active
                 if not waterbody_types_df.empty:
                     waterbody_types_df_sub = waterbody_types_df.loc[
                         lake_segs,
@@ -1009,24 +1099,33 @@ def compute_nhd_routing_v02(
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
 
-            #Determine model_start_time from qlat_start_time
+            # Determine model_start_time from qlat_start_time
             qlat_start_time = list(qlat_sub)[0]
 
             qlat_time_step_seconds = qts_subdivisions * dt
 
-            qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
+            qlat_start_time_datetime_object = _format_qlat_start_time(qlat_start_time)
 
-            model_start_time_datetime_object = qlat_start_time_datetime_object \
-            - timedelta(seconds=qlat_time_step_seconds)
+            model_start_time_datetime_object = (
+                qlat_start_time_datetime_object
+                - timedelta(seconds=qlat_time_step_seconds)
+            )
 
-            model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
+            model_start_time = model_start_time_datetime_object.strftime(
+                "%Y-%m-%d_%H:%M:%S"
+            )
 
             param_df_sub = param_df_sub.reindex(
                 param_df_sub.index.tolist() + lake_segs
             ).sort_index()
 
-            usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
-            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
+            usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(
+                usgs_df, lastobs_df, param_df_sub.index
+            )
+            (
+                da_positions_list_byreach,
+                da_positions_list_bygage,
+            ) = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
@@ -1053,8 +1152,14 @@ def compute_nhd_routing_v02(
                     np.array(da_positions_list_byseg, dtype="int32"),
                     np.array(da_positions_list_byreach, dtype="int32"),
                     np.array(da_positions_list_bygage, dtype="int32"),
-                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                    lastobs_df_sub.get(
+                        "lastobs_discharge",
+                        pd.Series(index=lastobs_df_sub.index, name="Null"),
+                    ).values.astype("float32"),
+                    lastobs_df_sub.get(
+                        "time_since_lastobs",
+                        pd.Series(index=lastobs_df_sub.index, name="Null"),
+                    ).values.astype("float32"),
                     da_decay_coefficient,
                     {},
                     assume_short_ts,
