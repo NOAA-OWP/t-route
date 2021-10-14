@@ -374,14 +374,7 @@ def _run_everything_v02(
     if showtiming:
         start_time = time.time()
 
-
-    #import pdb; pdb.set_trace()
-
     # STEP 1: Build basic network connections graph
-    #connections, param_df, wbody_conn, gages = nnu.build_connections(
-    #    supernetwork_parameters
-    #)
-    #connections, param_df, wbody_conn, gages, ngen_nexus_id_to_downstream_comid_mapping_dict = nnu.build_connections(
     connections, param_df, wbody_conn, gages, nexus_to_downstream_flowpath_dict = nnu.build_connections(
         supernetwork_parameters
     )
@@ -568,31 +561,14 @@ def _run_everything_v02(
     )
 
     # If the below dictionary is not empty, change nts
-    # to the total number of rows (hours) minus 1 hour (the final hour)
-    # multiplied by qts_subdivisions, number of timesteps per forcing 
+    # to the total number of columns (hours) multiplied 
+    # by qts_subdivisions, number of timesteps per forcing 
     # (qlateral) timestep.
     if nexus_to_downstream_flowpath_dict:
+       #TODO: Should it be -1 instead??
        #run_parameters["nts"] = (len(qlats.columns) - 1) \
        run_parameters["nts"] = (len(qlats.columns)) \
        * run_parameters.get("qts_subdivisions", 1)
-
-    #run_parameters["nts"] = (len(qlats.rows) - 4) \
-    print ("len(qlats.columns)")
-    print (len(qlats.columns))
-
-    print ("qlats")
-    print (qlats)
-    print ("============================================")
-
-
-    print ('run_parameters.get("dt")')
-    print (run_parameters.get("dt"))
-
-
-    temp_nts = run_parameters.get("nts", 1)
-    print ("temp_nts")
-    print (temp_nts)
-    print ("==================")
 
     if verbose:
         print("qlateral array complete")
