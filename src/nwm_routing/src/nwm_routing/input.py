@@ -42,7 +42,18 @@ def _input_handler_v03(args):
     else:
         print("CLI input no longer supported")
         raise RuntimeError
-
+    check_inputs(
+            log_parameters,
+            supernetwork_parameters,
+            waterbody_parameters,
+            compute_parameters,
+            forcing_parameters,
+            restart_parameters,
+            diffusive_parameters,
+            output_parameters,
+            parity_parameters,
+            data_assimilation_parameters
+            )
     return (
         log_parameters,
         supernetwork_parameters,
@@ -197,3 +208,104 @@ def _input_handler_v02(args):
         diffusive_parameters,
         coastal_parameters,
     )
+
+
+def check_inputs(
+            log_parameters,
+            supernetwork_parameters,
+            waterbody_parameters,
+            compute_parameters,
+            forcing_parameters,
+            restart_parameters,
+            diffusive_parameters,
+            output_parameters,
+            parity_parameters,
+            data_assimilation_parameters
+            ):
+
+    #MANDATORY
+    try:
+        log_parameters['debuglevel']
+    except KeyError as err:
+        errmsg = 'No debuglevel selected. The default value is 0. Please enter a debuglevel inside log_parameters. Ex. debuglevel: 1'
+        print(errmsg)
+        raise err
+
+    try:
+        supernetwork_parameters['geo_file_path']
+    except KeyError as err:
+        errmsg = 'No geo_file_path selected. Select a string, file path to directory containing channel geometry data. Ex. "tmp_florence_run_nudging/run_nudging_nwm_channel-only/NWM/DOMAIN/Route_Link.nc"'
+        print(errmsg)
+        raise err
+
+    try:
+        supernetwork_parameters['geo_file_path']
+    except KeyError as err:
+        errmsg = 'No geo_file_path selected. Select a string, file path to directory containing channel geometry data. Ex. "tmp_florence_run_nudging/run_nudging_nwm_channel-only/NWM/DOMAIN/Route_Link.nc"'
+        print(errmsg)
+        raise err
+
+    columns = ['key', 'downstream', 'dx', 'n', 'ncc', 's0', 'bw', 'waterbody', 'gages', 'tw', 'twcc', 'alt', 'musk', 'musx', 'cs']   
+    col_definitions = ['unique segment identifier',
+    'unique identifier of downstream segment',
+    'segment length',
+    'manning roughness of main channel',
+    'mannings roughness of compound channel',
+    'channel slope',
+    'channel bottom width',
+    'waterbody identifier',
+    'channel top width',
+    'compound channel top width',
+    'channel bottom altitude',
+    'muskingum K parameter',
+    'muskingum X parameter',
+    'channel sideslope',
+    'gage ID']
+    col_examples = ['key: "link"',
+            'downstream: "to"',
+            'dx: "Length"',
+            'n: "n"',  
+            'ncc: "nCC"',  
+            's0: "So"',  
+            'bw: "BtmWdth"',  
+            'waterbody: "NHDWaterbodyComID"',
+            'gages: "gages"',
+            'tw: "TopWdth"',  
+            'twcc: "TopWdthCC"',  
+            'alt: "alt"',
+            'musk: "MusK"',
+            'musx: "MusX"',
+            'cs: "ChSlp"']
+    try:
+        for loc, i in enumerate(columns):
+            supernetwork_parameters['columns'][i]
+    except KeyError as err:
+        errmsg = '{} not selected. Select a string, {}. Ex. {}'.format(i,col_definitions[loc],col_examples[loc])
+        print(errmsg)
+        raise err
+    import pdb; pdb.set_trace()
+        # check that all forcing files exist
+# for f in forcing_filename_list:
+#     try:
+#         J = pathlib.Path(qlat_input_folder.joinpath(f))     
+#         assert J.is_file() == True
+#     except AssertionError:
+#         print("Aborting simulation because forcing file", J, "cannot be not found.")
+#         raise
+
+# try:
+#     qlat_input_folder = pathlib.Path(qlat_input_folder)
+#     assert qlat_input_folder.is_dir() == True
+# except TypeError:
+#     print("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.")
+#     raise
+# except AssertionError:
+#     print("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file")
+#     raise
+
+
+# try:
+#     do_something_that_might_raise_an_exception()
+# except ValueError as err:
+#     errmsg = 'My custom error message.'
+#     raise err(errmsg)
