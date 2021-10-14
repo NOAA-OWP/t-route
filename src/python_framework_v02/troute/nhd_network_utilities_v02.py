@@ -568,11 +568,9 @@ def build_forcing_sets(
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
     except TypeError:
-        print("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.")
-        raise
+        raise TypeError("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
     except AssertionError:
-        print("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file")
-        raise
+        raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
     
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
         
@@ -633,8 +631,7 @@ def build_forcing_sets(
                 J = pathlib.Path(qlat_input_folder.joinpath(f))     
                 assert J.is_file() == True
             except AssertionError:
-                print("Aborting simulation because forcing file", J, "cannot be not found.")
-                raise
+                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
                 
         # build run sets list
         run_sets = []
@@ -796,8 +793,7 @@ def build_da_sets(data_assimilation_parameters, run_sets, t0):
                     J = pathlib.Path(data_assimilation_timeslices_folder.joinpath(f))     
                     assert J.is_file() == True
                 except AssertionError:
-                    print("Aborting simulation because TimeSlice file", J, "cannot be not found.")
-                    raise
+                    raise AssertionError("Aborting simulation because TimeSlice file", J, "cannot be not found.") from None
             
             da_sets[i]['usgs_timeslice_files'] = filenames
 
