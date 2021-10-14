@@ -19,105 +19,30 @@ def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
-def read_json(geo_file_path):
-    #json_data = pd.read_json(geo_file_path)
+def read_json(file_path):
 
-    #return pd.json_normalize(json_data)
-
-    #return pd.read_json(geo_file_path, orient='split', typ='frame')
-
-    with open(geo_file_path) as data_file:
+    with open(file_path) as data_file:
         json_data = json.load(data_file)
 
-        #pd.set_option('display.max_rows', 500)
-        #pd.set_option('display.max_columns', 50)
-
-
-        #print ("json_data")
-        #print (json_data)
-
-        #Use on waterbody-params_change1.json
-        #df = pd.json_normalize(json_data, 'waterbodies')
-
-
-        '''
-        #df = pd.json_normalize(json_data, max_level=2)
-        df = pd.json_normalize(json_data)
-
-        df_transposed = df.T
-
-
-        #df = pd.json_normalize(json_data, max_level=2)
-
-        print ("df")
-        print (df)
-        print ("++++++++++++++++++++++++++++++")
-        print ("df_transposed")
-        print (df_transposed)
-        print ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-
-
-        df2 = df_transposed
-        '''
         def node_key_func(x):
             return int(x[3:])
 
         already_read_first_row = False
 
         for key_wb, value_params in json_data.items():
-
             key_wb = node_key_func(key_wb)
 
             if not already_read_first_row:
-                #print ("in 1")
-                #print ("key_wb")
-                #print (key_wb)
-                #print ("value_params")
-                #print (value_params)
-
                 df_main = pd.json_normalize(value_params)
                 df_main['ID'] = key_wb
-
                 already_read_first_row = True
 
-                #print ("df_main")
-                #print (df_main)
-
-                #print ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-
             else:
-                #print ("in 2")
-       
                 df = pd.json_normalize(value_params)
                 df['ID'] = key_wb
-                
-                #print ("df")
-                #print (df)
-
-                #df_main.append(df) 
-                #df_main.append(df, ignore_index=True) 
-
-
                 df_main = pd.concat([df_main, df], ignore_index=True)
 
-
-
-                #print ("df_main")
-                #print (df_main)
-              
- 
-
-    #print ("df_main ----------end")     
-    #print (df_main)     
-
-
     return df_main
-
-
-    #return df
-
-    #json_data = pd.read_json(geo_file_path)
-
 
 
 def read_csv(geo_file_path, header="infer", layer_string=None):
@@ -221,18 +146,14 @@ def read_custom_input(custom_input_file):
     )
 
 
-def read_ngen_nexus_id_to_downstream_comid_mapping(ngen_nexus_id_to_downstream_comid_mapping_file_path):
-    with open(ngen_nexus_id_to_downstream_comid_mapping_file_path) as json_file:
-        ngen_nexus_id_to_downstream_comid_mapping_dict = json.load(json_file)
+def read_nexus_to_downstream_flowpath_mapping(nexus_to_downstream_flowpath_mapping_file_path):
+    with open(nexus_to_downstream_flowpath_mapping_file_path) as json_file:
+        nexus_to_downstream_flowpath_mapping_dict = json.load(json_file)
 
-    return ngen_nexus_id_to_downstream_comid_mapping_dict
+    return nexus_to_downstream_flowpath_mapping_dict
 
 
 def read_nexus_file(nexus_file_path):
-    #with open(nexus_file_path) as json_file:
-    #    nexus_to_downstream_flowpath_dict = json.load(json_file)
-
-    #nexus_to_downstream_flowpath_df = gpd.read_file(nexus_file_path)
 
 
     #Currently reading data in format:
@@ -243,45 +164,12 @@ def read_nexus_file(nexus_file_path):
          #},
     with open(nexus_file_path) as data_file:
         json_data_list = json.load(data_file)
-    
 
-    #print ("json_data_list in read nexus")    
-    #print (json_data_list)    
-
-    #nexus_to_wb_list = []
     nexus_to_downstream_flowpath_dict_str = {}
-
 
     for id_dict in json_data_list:
         if "nex" in id_dict['ID']:
-            #print ("####################") 
-            #print ("YES")
-            #print (id_dict)
-            #print ("####################") 
-
             nexus_to_downstream_flowpath_dict_str[id_dict['ID']] = id_dict['toID']
-
-
-        #else:
-        #    #print ("####################") 
-        #    #print ("NO")
-        #    #print (id_dict)
-        #    #print ("####################") 
-
-
-    #print ("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
-    #print ("nexus_to_downstream_flowpath_dict_str")
-    #print (nexus_to_downstream_flowpath_dict_str)
-
-    print ("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
-    #for key, value in json_data.items():
-    #    print ("key: " + key)
-    #    print ("value: " + value)
-
-
-    #nexus_to_downstream_flowpath_dict_str = dict(zip(nexus_to_downstream_flowpath_df.id, nexus_to_downstream_flowpath_df.toid))
 
     def node_key_func_nexus(x):
         return int(x[4:])
@@ -291,10 +179,6 @@ def read_nexus_file(nexus_file_path):
 
     # Extract the ID integer values
     nexus_to_downstream_flowpath_dict = {node_key_func_nexus(k): node_key_func_wb(v) for k, v in nexus_to_downstream_flowpath_dict_str.items()}
-
-
-    #print ("nexus_to_downstream_flowpath_dict")
-    #print (nexus_to_downstream_flowpath_dict)
 
     return nexus_to_downstream_flowpath_dict
 
@@ -388,12 +272,7 @@ def get_nexus_flows_from_csv(nexus_input_file, index_col=0):
     col1: date-time
     col2: flows
     """
-    #nexus_flows = pd.read_csv(nexus_input_file, index_col=index_col)
-    #nexus_flows = pd.read_csv(nexus_input_file, index_col=1, header=None)
-    #nexus_flows = pd.read_csv(nexus_input_file, index_col=1, header=0)
-    #nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=0)
     nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=None)
-    #return ql.astype("float32")
     return nexus_flows
 
 
