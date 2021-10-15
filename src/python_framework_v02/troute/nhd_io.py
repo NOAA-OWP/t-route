@@ -1,5 +1,4 @@
 import zipfile
-
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
@@ -13,7 +12,6 @@ import math
 from datetime import *
 
 from troute.nhd_network import reverse_dict
-
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -287,7 +285,11 @@ def drop_all_coords(ds):
 
 
 def write_q_to_wrf_hydro(
-    flowveldepth, chrtout_files, output_folder, qts_subdivisions, new_extension="TRTE"
+    flowveldepth,
+    chrtout_files,
+    output_folder,
+    qts_subdivisions,
+    new_extension="TRTE"
 ):
     """
     Write t-route simulated flows to WRF-Hydro CHRTOUT files.
@@ -317,10 +319,7 @@ def write_q_to_wrf_hydro(
             data=da.from_array(qtrt),
             dims=["time", "feature_id"],
             coords=dict(time=chrtout.time.values, feature_id=chrtout.feature_id.values),
-            attrs=dict(
-                description="River Flow, t-route",
-                units="m3 s-1",
-            ),
+            attrs=dict(description="River Flow, t-route", units="m3 s-1",),
         )
 
         # add t-route DataArray to CHRTOUT dataset
@@ -385,7 +384,7 @@ def read_netcdfs(paths, dim, transform_func=None):
             return ds
 
     datasets = [process_one_path(p) for p in paths]
-    combined = xr.concat(datasets, dim, combine_attrs="override")
+    combined = xr.concat(datasets, dim, combine_attrs = "override")
     return combined
 
 
@@ -394,7 +393,7 @@ def preprocess_time_station_index(xd):
         map(compose(bytes.isalnum, bytes.strip), xd.stationId.values)
     )
     stationId = list(map(bytes.strip, xd.stationId[stationId_da_mask].values))
-    # stationId_int = xd.stationId[stationId_da_mask].values.astype(int)
+    #stationId_int = xd.stationId[stationId_da_mask].values.astype(int)
 
     unique_times_str = np.unique(xd.time.values).tolist()
 
@@ -413,9 +412,9 @@ def preprocess_time_station_index(xd):
     for v in data_vars:
         vals = []
         for i, t in enumerate(unique_times_str):
-            vals.append(np.where(tmask[i], xd[v].values[stationId_da_mask], np.nan))
+            vals.append(np.where(tmask[i],xd[v].values[stationId_da_mask],np.nan))
         combined = np.vstack(vals).T
-        data_var_dict[v] = (["stationId", "time"], combined)
+        data_var_dict[v] = (["stationId","time"], combined)
 
     return xr.Dataset(
         data_vars=data_var_dict,
@@ -459,29 +458,29 @@ def build_filtered_gage_df(segment_gage_df, gage_col="gages"):
 
 
 def build_lastobs_df(
-    lastobsfile,
-    routelink,
-    wrf_lastobs_flag,
-    time_shift=0,
-    gage_id="gages",
-    link_id="link",
-    model_discharge_id="model_discharge",
-    obs_discharge_id="discharge",
-    time_idx_id="timeInd",
-    station_id="stationId",
-    station_idx_id="stationIdInd",
-    time_id="time",
-    discharge_nan=-9999.0,
-    ref_t_attr_id="modelTimeAtOutput",
-    route_link_idx="feature_id",
-    # last_nudge_id = "last_nudge",
-):
+        lastobsfile,
+        routelink,
+        wrf_lastobs_flag,
+        time_shift = 0,
+        gage_id = "gages",
+        link_id = "link",
+        model_discharge_id = "model_discharge",
+        obs_discharge_id = "discharge",
+        time_idx_id = "timeInd",
+        station_id = "stationId",
+        station_idx_id = "stationIdInd",
+        time_id = "time",
+        discharge_nan = -9999.0,
+        ref_t_attr_id = "modelTimeAtOutput",
+        route_link_idx = "feature_id",
+        # last_nudge_id = "last_nudge",
+    ):
 
     standard_columns = {
         "lastobs_discharge": obs_discharge_id,
         "time_since_lastobs": time_id,
         "gages": gage_id,
-        "last_model_discharge": model_discharge_id,
+        "last_model_discharge": model_discharge_id
     }
 
     """
@@ -505,7 +504,7 @@ def build_lastobs_df(
         station_gage_df = ds1.to_dataframe()
 
     with xr.open_dataset(lastobsfile) as ds:
-        model_discharge_last_ts = ds[model_discharge_id][:, -1].to_dataframe()
+        model_discharge_last_ts = ds[model_discharge_id][:,-1].to_dataframe()
 
         # TODO: Determine if the df_discharges extractions can be performed
         # exclusively on the dataset with no
@@ -531,9 +530,9 @@ def build_lastobs_df(
         # lastobs_times = ds[time_id][:,-1]
         # lastobs_times = ds[time_id].str.decode("utf-8").to_dataframe()
         lastobs_times = pd.to_datetime(
-            ds[time_id][:, -1].to_dataframe()[time_id].str.decode("utf-8"),
+            ds[time_id][:,-1].to_dataframe()[time_id].str.decode("utf-8"),
             format="%Y-%m-%d_%H:%M:%S",
-            errors="coerce",
+            errors='coerce',
         )
         lastobs_times = (lastobs_times - ref_time).dt.total_seconds()
         lastobs_times = lastobs_times - time_shift
@@ -670,7 +669,7 @@ def get_usgs_from_time_slices_folder(
     usgs_files,
     qc_threshold,
     max_fill_1min,
-    t0=None,
+    t0 = None,
 ):
     """
     routelink_subset_file - provides the gage-->segment crosswalk.
@@ -685,12 +684,8 @@ def get_usgs_from_time_slices_folder(
         the interpolated values are truncated so that the first value returned
         corresponds to the first center date of the first provided file.
     """
-    frequency = str(int(dt / 60)) + "min"
-    with read_netcdfs(
-        usgs_files,
-        "time",
-        preprocess_time_station_index,
-    ) as ds2:
+    frequency = str(int(dt/60))+"min"
+    with read_netcdfs(usgs_files, "time", preprocess_time_station_index,) as ds2:
 
         # dataframe containing discharge observations
         df2 = pd.DataFrame(
@@ -701,7 +696,7 @@ def get_usgs_from_time_slices_folder(
 
         # dataframe containing discharge quality flags [0,1]
         df_qual = pd.DataFrame(
-            ds2["discharge_quality"].values / 100,
+            ds2["discharge_quality"].values/100,
             index=ds2["stationId"].values,
             columns=ds2.time.values,
         )
@@ -720,21 +715,17 @@ def get_usgs_from_time_slices_folder(
         ds = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
     df = ds.to_dataframe()
 
-    usgs_df = (
-        df.join(df2)
-        .reset_index()
-        .rename(columns={"index": "gages"})
-        .set_index("link")
-        .drop(["gages", "ascendingIndex", "to"], axis=1)
-    )
+    usgs_df = (df.join(df2).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
 
-    usgs_qual_df = (
-        df.join(df_qual)
-        .reset_index()
-        .rename(columns={"index": "gages"})
-        .set_index("link")
-        .drop(["gages", "ascendingIndex", "to"], axis=1)
-    )
+    usgs_qual_df = (df.join(df_qual).
+               reset_index().
+               rename(columns={"index": "gages"}).
+               set_index("link").
+               drop(["gages", "ascendingIndex", "to"], axis=1))
 
     # Start and end times of the data obtained from the timeslice dataset
     date_time_strs = usgs_df.columns.tolist()
@@ -745,16 +736,12 @@ def get_usgs_from_time_slices_folder(
     # TODO: Consider the case of missing timeslice files...
     # The current method could be fragile in the event of a
     # missing first or last file.
-    (first_center_time, last_center_time) = get_nc_attributes(
-        usgs_files, "sliceCenterTimeUTC", (0, -1)
-    )
+    (first_center_time, last_center_time) = get_nc_attributes(usgs_files, "sliceCenterTimeUTC", (0,-1))
     date_time_center_start = datetime.strptime(first_center_time, "%Y-%m-%d_%H:%M:%S")
     date_time_center_end = datetime.strptime(last_center_time, "%Y-%m-%d_%H:%M:%S")
 
     dates = []
-    for j in pd.date_range(
-        date_time_center_start, date_time_center_end, freq=frequency
-    ):
+    for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
 
     """
@@ -786,7 +773,7 @@ def get_usgs_from_time_slices_folder(
     ```
     """
 
-    # TODO: separate the interpolation into a function; eventually, the data source
+    #TODO: separate the interpolation into a function; eventually, the data source
     # could be something other than the time-slice files, but the interpolation
     # might be the same and the function would facilitate taking advantage of that.
 
@@ -803,7 +790,7 @@ def get_usgs_from_time_slices_folder(
 
     # ---- Interpolate USGS observations to time discretization of the simulation ----
     usgs_df_T = usgs_df.transpose()
-    usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format="%Y-%m-%d_%H:%M:%S")
+    usgs_df_T.index = pd.to_datetime(usgs_df_T.index, format = "%Y-%m-%d_%H:%M:%S")
 
     """
     Note: The max_fill is applied when the series is being considered at a 1 minute interval
@@ -814,13 +801,11 @@ def get_usgs_from_time_slices_folder(
     if t0:
         date_time_center_start = t0
     # TODO: Add reporting interval information to the gage preprocessing (timeslice generation)
-    usgs_df_T = (
-        usgs_df_T.resample("min")
-        .interpolate(limit=max_fill_1min, limit_direction="both")
-        .resample(frequency)
-        .asfreq()
-        .loc[date_time_center_start:, :]
-    )
+    usgs_df_T = (usgs_df_T.resample('min').
+                 interpolate(limit = max_fill_1min, limit_direction = 'both').
+                 resample(frequency).
+                 asfreq().
+                 loc[date_time_center_start:,:])
 
     # usgs_df_T.reindex(dates)
     usgs_df_new = usgs_df_T.transpose()
@@ -1002,16 +987,9 @@ def write_channel_restart_to_wrf_hydro(
                     .to_numpy()
                     .astype("float32")
                 )
-                qtrt = qtrt.reshape(
-                    (
-                        len(
-                            flowveldepth_reindex,
-                        )
-                    )
-                )
+                qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
                 qtrt_DataArray = xr.DataArray(
-                    data=qtrt,
-                    dims=[restart_file_dimension_var],
+                    data=qtrt, dims=[restart_file_dimension_var],
                 )
 
                 # pull depth data from flowveldepth array, package into DataArray
@@ -1022,16 +1000,9 @@ def write_channel_restart_to_wrf_hydro(
                     .to_numpy()
                     .astype("float32")
                 )
-                htrt = htrt.reshape(
-                    (
-                        len(
-                            flowveldepth_reindex,
-                        )
-                    )
-                )
+                htrt = htrt.reshape((len(flowveldepth_reindex,)))
                 htrt_DataArray = xr.DataArray(
-                    data=htrt,
-                    dims=[restart_file_dimension_var],
+                    data=htrt, dims=[restart_file_dimension_var],
                 )
 
                 # insert troute data into restart dataset
