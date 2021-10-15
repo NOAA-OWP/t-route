@@ -1098,22 +1098,19 @@ def main_v03(argv):
         debuglevel=debuglevel,
     )
 
-    # The inputs below assume a very pedantic setup
-    # with each run set explicitly defined, so...
-    # TODO: Make this more flexible.
-    run_sets = forcing_parameters.get("qlat_forcing_sets", False)
+    # Create run_sets: sets of forcing files for each loop
+    run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
 
-    if "data_assimilation_parameters" in compute_parameters:
-        if "data_assimilation_sets" in data_assimilation_parameters:
-            da_sets = data_assimilation_parameters.get("data_assimilation_sets", [])
-        else:
-            da_sets = [{} for _ in run_sets]
-
+    # Create da_sets: sets of TimeSlice files for each loop
+    if "data_assimilation_parameters" in compute_parameters: 
+        da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
+        
+    # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
     if "wrf_hydro_parity_check" in output_parameters:
-        parity_sets = parity_parameters.get("parity_check_compare_file_sets", [])
+        parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
     else:
         parity_sets = []
-
+    
     parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
     subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
     cpu_pool = compute_parameters.get("cpu_pool", None)
