@@ -670,13 +670,14 @@ def _handle_output_v02(
         print(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
+    csv_output_folder = None
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
             "csv_output_folder", None
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
-
-    if (debuglevel <= -1) or csv_output:
+        
+    if (debuglevel <= -1) or csv_output_folder:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -700,6 +701,10 @@ def _handle_output_v02(
             )
 
         if csv_output_folder:
+            
+            if verbose:
+                print("- writing flow, velocity, and depth results to .csv")
+                
             # create filenames
             # TO DO: create more descriptive filenames
             if supernetwork_parameters.get("title_string", None):
@@ -717,11 +722,16 @@ def _handle_output_v02(
             output_path = Path(csv_output_folder).resolve()
 
             flowveldepth = flowveldepth.sort_index()
-            flowveldepth.to_csv(output_path.joinpath(filename_fvd))
+            
+            # no csv_output_segments are specified, then write results for all segments
+            if not csv_output_segments:
+                csv_output_segments = flowveldepth.index
+                
+            flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
 
             if run_parameters.get("return_courant", False):
                 courant = courant.sort_index()
-                courant.to_csv(output_path.joinpath(filename_courant))
+                courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
 
             # TODO: need to identify the purpose of these outputs
             # if the need is to output the usgs_df dataframe,
@@ -756,6 +766,10 @@ def _handle_output_v02(
         )
 
         if len(wrf_hydro_restart_files) > 0:
+            
+            if verbose:
+                print("- writing restart files")
+                
             qvd_columns = pd.MultiIndex.from_product(
                 [range(nts), ["q", "v", "d"]]
             ).to_flat_index()
@@ -764,6 +778,7 @@ def _handle_output_v02(
                 [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
                 copy=False,
             )
+                
             nhd_io.write_channel_restart_to_wrf_hydro(
                 flowveldepth,
                 wrf_hydro_restart_files,
@@ -791,6 +806,10 @@ def _handle_output_v02(
         "wrf_hydro_channel_final_output_folder", chrtout_read_folder
     )
     if chrtout_read_folder:
+        
+        if verbose:
+            print("- writing results to CHRTOUT")
+        
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
@@ -807,6 +826,7 @@ def _handle_output_v02(
                 output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
             )
         )
+
         nhd_io.write_q_to_wrf_hydro(
             flowveldepth,
             chrtout_files,
