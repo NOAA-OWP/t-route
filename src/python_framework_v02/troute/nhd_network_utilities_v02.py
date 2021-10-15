@@ -2,6 +2,8 @@ import json
 import pathlib
 import pandas as pd
 from functools import partial
+from datetime import datetime, timedelta
+import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
@@ -551,6 +553,119 @@ def build_channel_initial_state(
     return q0
 
 
+def build_forcing_sets(
+    forcing_parameters,
+    t0
+):
+    
+    run_sets = forcing_parameters.get("qlat_forcing_sets", None)
+    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    nts = forcing_parameters.get("nts", None)
+    max_loop_size = forcing_parameters.get("max_loop_size", 12)
+    dt = forcing_parameters.get("dt", None)
+
+    try:
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        assert qlat_input_folder.is_dir() == True
+    except TypeError:
+        raise TypeError("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
+    except AssertionError:
+        raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
+    
+    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
+        
+    # TODO: Throw errors if insufficient input data are available
+
+    if run_sets:
+        
+        # append final_timestamp variable to each set_list
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        for (s, _) in enumerate(run_sets):
+            final_chrtout = qlat_input_folder.joinpath(run_sets[s]['qlat_files'
+                    ][-1])
+            final_timestamp_str = nhd_io.get_param_str(final_chrtout,
+                    'model_output_valid_time')
+            run_sets[s]['final_timestamp'] = \
+                datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+            
+    elif qlat_input_folder:
+        
+        # Construct run_set dictionary from user-specified parameters
+    
+        # get the first and seconded files from an ordered list of all forcing files
+        qlat_input_folder = pathlib.Path(qlat_input_folder)
+        all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
+        first_file = all_files[0]
+        second_file = all_files[1]
+
+        # Deduce the timeinterval of the forcing data from the output timestamps of the first
+        # two ordered CHRTOUT files
+        t1 = nhd_io.get_param_str(first_file, "model_output_valid_time")
+        t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
+        t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
+        t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
+        dt_qlat_timedelta = t2 - t1
+        dt_qlat = dt_qlat_timedelta.seconds
+
+        # determine qts_subdivisions
+        qts_subdivisions = dt_qlat / dt
+        if dt_qlat % dt == 0:
+            qts_subdivisions = dt_qlat / dt
+
+        # the number of files required for the simulation
+        nfiles = int(np.ceil(nts / qts_subdivisions))
+
+        # list of forcing file datetimes
+        datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
+                         range(nfiles)]
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                             datetime_list]
+
+        # list of forcing files
+        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
+                                 datetime_list_str]
+        
+        # check that all forcing files exist
+        for f in forcing_filename_list:
+            try:
+                J = pathlib.Path(qlat_input_folder.joinpath(f))     
+                assert J.is_file() == True
+            except AssertionError:
+                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+                
+        # build run sets list
+        run_sets = []
+        k = 0
+        j = 0
+        nts_accum = 0
+        while k < len(forcing_filename_list):
+            run_sets.append({})
+
+            if k + max_loop_size < len(forcing_filename_list):
+                run_sets[j]['qlat_files'] = forcing_filename_list[k:k
+                    + max_loop_size]
+            else:
+                run_sets[j]['qlat_files'] = forcing_filename_list[k:]
+
+            nts_accum += len(run_sets[j]['qlat_files']) * qts_subdivisions
+            if nts_accum <= nts:
+                run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files'])
+                                         * qts_subdivisions)
+            else:
+                run_sets[j]['nts'] = int(nts - nts_accum)
+
+            final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'
+                    ][-1])
+            final_timestamp_str = nhd_io.get_param_str(final_chrtout,
+                    'model_output_valid_time')
+            run_sets[j]['final_timestamp'] = \
+                datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+
+            k += max_loop_size
+            j += 1
+    
+    return run_sets
+
 def build_qlateral_array(
     forcing_parameters,
     segment_index=pd.Index([]),
@@ -618,6 +733,74 @@ def build_qlateral_array(
     return qlat_df
 
 
+def build_parity_sets(parity_parameters, run_sets):
+    
+    parity_sets = parity_parameters.get("parity_check_compare_file_sets", None)
+    
+    if parity_sets:
+        pass
+    
+    else:
+    
+        parity_sets = []
+        for (i, set_dict) in enumerate(run_sets):
+            parity_sets.append({})
+            parity_sets[i]['validation_files'] = run_sets[i]['qlat_files']
+    
+    return parity_sets
+
+def build_da_sets(data_assimilation_parameters, run_sets, t0):
+    
+    data_assimilation_timeslices_folder = data_assimilation_parameters.get(
+        "data_assimilation_timeslices_folder",
+        None
+    )
+    da_sets = data_assimilation_parameters.get(
+        "data_assimilation_sets",
+        None
+    )
+    
+    if da_sets:
+        pass
+        
+    elif not data_assimilation_timeslices_folder:
+        da_sets = [{} for _ in run_sets]
+        
+    else:
+        data_assimilation_timeslices_folder = pathlib.Path(data_assimilation_timeslices_folder)
+        # the number of timeslice files appended to the front- and back-ends
+        # of the TimeSlice file interpolation stack
+        timeslice_pad = data_assimilation_parameters.get("timeslice_pad",0)
+
+        # timedelta of TimeSlice data - typically 15 minutes
+        dt_timeslice = timedelta(minutes = 15)
+
+        da_sets = []
+        for (i, set_dict) in enumerate(run_sets):
+            da_sets.append({})
+
+            timestamps = pd.date_range(t0 - dt_timeslice * timeslice_pad,
+                                       run_sets[i]['final_timestamp']
+                                       + dt_timeslice * timeslice_pad,
+                                       freq=dt_timeslice)
+
+            filenames = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
+                        + '.15min.usgsTimeSlice.ncdf').to_list()
+            
+            # check that all TimeSlice files in the set actually exist
+            for f in filenames:
+                try:
+                    J = pathlib.Path(data_assimilation_timeslices_folder.joinpath(f))     
+                    assert J.is_file() == True
+                except AssertionError:
+                    raise AssertionError("Aborting simulation because TimeSlice file", J, "cannot be not found.") from None
+            
+            da_sets[i]['usgs_timeslice_files'] = filenames
+
+            t0 = run_sets[i]['final_timestamp']
+
+    return da_sets
+    
 def build_data_assimilation(data_assimilation_parameters, run_parameters):
     lastobs_df, da_parameter_dict = build_data_assimilation_lastobs(data_assimilation_parameters)
     usgs_df = build_data_assimilation_usgs_df(data_assimilation_parameters, run_parameters, lastobs_df.index)
