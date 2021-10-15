@@ -320,7 +320,7 @@ compute_parameters:
         # forcing files and number of timesteps associated with each simulation loop
         qlat_forcing_sets:
             # ---------------
-            # number of timesteps in loop itteration 1
+            # number of timesteps in loop iteration 1
             - nts:
             # ---------------
             # list of forcing file names to be used in itteration 1
