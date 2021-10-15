@@ -42,6 +42,7 @@ def _input_handler_v03(args):
     else:
         print("CLI input no longer supported")
         raise RuntimeError
+        
     if compute_parameters['yaml_check']:
         check_inputs(
                 log_parameters,
