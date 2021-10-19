@@ -10,8 +10,10 @@ import dask.array as da
 import sys
 import math
 from datetime import *
+import pathlib
 
 from troute.nhd_network import reverse_dict
+
 
 def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
@@ -665,12 +667,13 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
 
 def get_usgs_from_time_slices_folder(
     routelink_subset_file,
-    dt,
     usgs_files,
     qc_threshold,
     max_fill_1min,
+    dt,
     t0 = None,
 ):
+
     """
     routelink_subset_file - provides the gage-->segment crosswalk.
         Only gages that are represented in the
@@ -743,7 +746,6 @@ def get_usgs_from_time_slices_folder(
     dates = []
     for j in pd.date_range(date_time_center_start, date_time_center_end, freq=frequency):
         dates.append(j)
-
     """
     # dates_to_drop = ~usgs_df.columns.isin(dates)
     OR
@@ -1084,3 +1086,39 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+
+
+def lastobs_df_output(
+    lastobs_df,
+    dt,
+    nts,
+    t0,
+    gages,
+    lastobs_output_folder=False,
+):
+
+    # join gageIDs to lastobs_df
+    lastobs_df = lastobs_df.join(gages)
+
+    # timestamp of last simulation timestep
+    modelTimeAtOutput = t0 + timedelta(seconds = nts * dt)
+    modelTimeAtOutput_str = modelTimeAtOutput.strftime('%Y-%m-%d_%H:%M:%S')
+
+    # timestamp of last observation
+    var = [timedelta(seconds=d) for d in lastobs_df.time_since_lastobs.fillna(0)]
+    lastobs_timestamp = [modelTimeAtOutput - d for d in var]
+    lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
+
+    # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
+    ds = xr.Dataset(
+        {
+            "stationId": (["stationIdInd"], lastobs_df["gages"].to_numpy(dtype = '|S15')),
+            "time": (["stationIdInd"], np.asarray(lastobs_timestamp_str,dtype = '|S19')),
+            "discharge": (["stationIdInd"], lastobs_df["lastobs_discharge"].to_numpy()),
+        }
+    )
+    ds.attrs["modelTimeAtOutput"] = "example attribute"
+
+    # write-out LastObs file as netcdf
+    output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
+    ds.to_netcdf(str(output_path))

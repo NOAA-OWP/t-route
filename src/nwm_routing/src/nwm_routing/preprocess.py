@@ -144,6 +144,7 @@ def nwm_network_preprocess(
         independent_networks,
         reaches_bytw,
         rconn,
+        pd.DataFrame.from_dict(gages),
     )
 
 
