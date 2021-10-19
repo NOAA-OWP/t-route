@@ -18,6 +18,16 @@ from troute.routing.fast_reach import diffusive
 from troute.routing.fast_reach import diffusive_cnt
 from troute.routing.fast_reach import diffusive_cnx
 
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(levelname)7s: %(message)s',
+    stream=sys.stderr,
+)
+LOG = logging.getLogger('')
+
 _compute_func_map = defaultdict(
     compute_network,
     {
@@ -245,8 +255,8 @@ def compute_nhd_routing_v02(
                     }
 
         if 1 == 1:
-            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
-            print("starting Parallel JIT calculation")
+            LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            LOG.info("starting Parallel JIT calculation")
 
         start_para_time = time.time()
         # if 1 == 1:
@@ -427,7 +437,7 @@ def compute_nhd_routing_v02(
             results.extend(results_subn[order])
 
         if 1 == 1:
-            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+            LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-subnetwork-jit":
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
@@ -460,8 +470,8 @@ def compute_nhd_routing_v02(
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
 
         if 1 == 1:
-            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
-            print("starting Parallel JIT calculation")
+            LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            LOG.info("starting Parallel JIT calculation")
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
@@ -635,7 +645,7 @@ def compute_nhd_routing_v02(
             results.extend(results_subn[order])
 
         if 1 == 1:
-            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+            LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-subnetwork-diffusive":
         gages = set(usgs_df.index).intersection(set(param_df.index))
@@ -644,8 +654,8 @@ def compute_nhd_routing_v02(
         )
         
         if 1 == 1:
-            print("JIT Preprocessing time %s seconds." % (time.time() - start_time))
-            print("starting Parallel JIT calculation")
+            LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
+            LOG.info("starting Parallel JIT calculation")
 
         start_para_time = time.time()
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
@@ -828,7 +838,7 @@ def compute_nhd_routing_v02(
             results.extend(results_subn[order])
 
         if 1 == 1:
-            print("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
+            LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-network":
         with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
