@@ -5,7 +5,15 @@ from pathlib import Path
 from datetime import datetime
 import troute.nhd_io as nhd_io
 from build_tests import parity_check
+import logging
+import sys
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(levelname)7s: %(message)s',
+    stream=sys.stderr,
+)
+LOG = logging.getLogger('')
 
 def nwm_output_generator(
     run,
@@ -65,7 +73,7 @@ def nwm_output_generator(
     if showtiming:
         start_time = time.time()
     if verbose:
-        print(f"Handling output ...")
+        LOG.info(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
     csv_output_folder = None
@@ -104,7 +112,7 @@ def nwm_output_generator(
     if rsrto:
 
         if verbose:
-            print("- writing restart files")
+            LOG.info("- writing restart files")
 
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
@@ -156,7 +164,7 @@ def nwm_output_generator(
     if chrto:
         
         if verbose:
-            print("- writing results to CHRTOUT")
+            LOG.info("- writing results to CHRTOUT")
         
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
@@ -184,7 +192,7 @@ def nwm_output_generator(
     if csv_output_folder: 
     
         if verbose:
-            print("- writing flow, velocity, and depth results to .csv")
+            LOG.info("- writing flow, velocity, and depth results to .csv")
 
         # create filenames
         # TO DO: create more descriptive filenames
@@ -238,18 +246,18 @@ def nwm_output_generator(
         )
 
     if debuglevel <= -1:
-        print(flowveldepth)
+        LOG.info(flowveldepth)
 
     if verbose:
-        print("output complete")
+        LOG.info("output complete")
     if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
     if parity_set:
         if verbose:
-            print(
+            LOG.info(
                 "conducting parity check, comparing WRF Hydro results against t-route results"
             )
         if showtiming:
@@ -260,6 +268,6 @@ def nwm_output_generator(
         )
 
         if verbose:
-            print("parity check complete")
+            LOG.info("parity check complete")
         if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
+            LOG.info("... in %s seconds." % (time.time() - start_time))
