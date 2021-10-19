@@ -15,7 +15,6 @@ import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-import sys
 
 import troute.routing.diffusive_utils as diff_utils
 
@@ -315,7 +314,7 @@ def main_v02(argv):
     if showtiming:
         main_start_time = time.time()
 
-    _results = _run_everything_v02(
+    _results, _link_gage_df = _run_everything_v02(
         supernetwork_parameters,
         waterbody_parameters,
         forcing_parameters,
@@ -330,11 +329,13 @@ def main_v02(argv):
 
     _handle_output_v02(
         _results,
+        _link_gage_df,
         run_parameters,
         supernetwork_parameters,
         restart_parameters,
         output_parameters,
         parity_parameters,
+        data_assimilation_parameters,
     )
 
     if verbose:
@@ -377,6 +378,7 @@ def _run_everything_v02(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters
     )
+
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -569,6 +571,7 @@ def _run_everything_v02(
     data_assimilation_folder = data_assimilation_parameters.get(
         "data_assimilation_timeslices_folder", None
     )
+
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
 
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
@@ -645,16 +648,18 @@ def _run_everything_v02(
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    return results
+    return results, pd.DataFrame.from_dict(gages)
 
 
 def _handle_output_v02(
     results,
+    link_gage_df,
     run_parameters,
     supernetwork_parameters,
     restart_parameters,
     output_parameters,
     parity_parameters,
+    data_assimilation_parameters,
 ):
     ################### Output Handling
     dt = run_parameters.get("dt", None)
@@ -833,6 +838,26 @@ def _handle_output_v02(
             Path(chrtout_write_folder),
             run_parameters["qts_subdivisions"],
             wrf_hydro_channel_output_new_extension,
+        )
+
+    data_assimilation_folder = data_assimilation_parameters.get(
+    "data_assimilation_timeslices_folder", None
+    )
+    lastobs_output_folder = data_assimilation_parameters.get(
+    "lastobs_output_folder", None
+    )
+    if data_assimilation_folder and lastobs_output_folder:
+        # create a new lastobs DataFrame from the last itteration of run results
+        # lastobs_df = new_lastobs(run_results, dt * nts)
+        # lastobs_df_copy = lastobs_df.copy()
+        lastobs_df = new_lastobs(results, dt * nts)
+        nhd_io.lastobs_df_output(
+            lastobs_df,
+            dt,
+            nts,
+            t0,
+            link_gage_df['gages'],
+            lastobs_output_folder,
         )
 
     if verbose:
@@ -1035,6 +1060,7 @@ def new_lastobs(run_results, time_increment):
         copy=False,
     )
     df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+
     return df
 
 
@@ -1076,6 +1102,7 @@ def main_v03(argv):
         independent_networks,
         reaches_bytw,
         rconn,
+        link_gage_df,
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,
@@ -1192,15 +1219,15 @@ def main_v03(argv):
 
             q0 = new_nwm_q0(run_results)
 
-            if data_assimilation_parameters:
-                lastobs_df = new_lastobs(run_results, dt * nts)
-
             # TODO: Confirm this works with Waterbodies turned off
             waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
 
+        if data_assimilation_parameters:
+                lastobs_df = new_lastobs(run_results, dt * nts)
+                
         nwm_output_generator(
             run,
             run_results,
@@ -1214,6 +1241,9 @@ def main_v03(argv):
             showtiming,
             verbose,
             debuglevel,
+            data_assimilation_parameters,
+            lastobs_df,
+            link_gage_df,
         )
 
     # nwm_final_output_generator()
@@ -1262,6 +1292,7 @@ async def main_v03_async(argv):
         independent_networks,
         reaches_bytw,
         rconn,
+        link_gage_df,
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,
@@ -1430,6 +1461,9 @@ async def main_v03_async(argv):
             showtiming,
             verbose,
             debuglevel,
+            data_assimilation_parameters,
+            lastobs_df,
+            link_gage_df,
         )
 
     # For the last loop, no next forcing or warm state is needed for execution.
@@ -1510,6 +1544,9 @@ async def main_v03_async(argv):
         showtiming,
         verbose,
         debuglevel,
+        data_assimilation_parameters,
+        lastobs_df,
+        link_gage_df,
     )
 
     if verbose:

@@ -391,6 +391,10 @@ compute_parameters:
         # filepath to lastobs file
         wrf_hydro_lastobs_file:
         # ---------------
+        # path to directory where lastobs will be written to
+        # (!!) mandatory if lastobs are to be written out during and after simulations
+        lastobs_output_folder:
+        # ---------------
         # lead time of lastobs relative to simulation start time (secs)
         # optional, default to 0
         wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time:
