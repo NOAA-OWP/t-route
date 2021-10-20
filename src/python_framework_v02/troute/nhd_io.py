@@ -310,12 +310,12 @@ def write_q_to_wrf_hydro(
         # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
         # populates columns with NaN values.
         flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
-
+        
         # unpack, subset, and transpose t-route flow data
         qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
-        qtrt = qtrt[:, ::qts_subdivisions]
+        qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
         qtrt = np.transpose(qtrt)
-
+        
         # construct DataArray for t-route flows, dims, coords, and attrs consistent with CHRTOUT
         qtrt_DataArray = xr.DataArray(
             data=da.from_array(qtrt),
