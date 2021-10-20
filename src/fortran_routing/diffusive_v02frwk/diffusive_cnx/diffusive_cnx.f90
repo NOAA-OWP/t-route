@@ -104,16 +104,15 @@ contains
         doubleprecision :: x1, x2
         doubleprecision :: newx_s, oldq1, oldq2, oldelv1, oldelv2
 
-
         nrch=nrch_g
         mxncomp= mxncomp_g
         dtini= dtini_g
         nts_ub = nts_ub_g
-        mxncomp_mseg = 12 !* max.# of sub-nodes of a segment including ghost node
+        mxncomp_mseg = 12  !* max.# of sub-nodes of a segment including ghost node
         ncomp_ghost = 2
-        mn_cel=0.05 !* min.celerity [m/s]
+        mn_cel=0.05  !* min.celerity [m/s]
         courantN=0.95
-        mn_chbtslp_c = so_llm_g !0.001 !* lower limit of channel bottom slope for computing stable diffusivity
+        mn_chbtslp_c = so_llm_g  !* lower limit of channel bottom slope for computing stable diffusivity
 
         allocate(dx_ar(mxncomp_g, nrch_g), bo_ar(mxncomp_g, nrch_g), traps_ar(mxncomp_g, nrch_g))
         allocate(tw_ar(mxncomp_g, nrch_g), twcc_ar(mxncomp_g, nrch_g))
@@ -145,15 +144,6 @@ contains
         allocate ( q_mseg_btnode(mxncomp_g, nrch_g) )
         allocate(elv_diff_g(mxncomp_g,nrch_g))
 
-        !open(unit=2, file="./fortran diffusive discharge water depth.txt")
-        !open(unit=13,file="./output/CNXresult_Florence_30days.txt",status='unknown')
-        !open(unit=5, file="./q test.txt")
-        !open(unit=34, file="./input/pynw2.csv")
-        !write(2,"(3A10, 6A20)") "ts", "i", "j", "q_g", "depth", "C", "D" 
-!        allocate(pynw_g(nrch_g,mxncomp_g))
-!        do j=1, nrch_g
-!            read(34,*) (pynw_g(j,i),i=1,mxncomp_g)
-!        enddo
         !* time step series for lateral flow
         do n=1, nts_ql_g
             tarr_ql(n)= t0_g*60.0 + dt_ql_g*real(n-1,KIND(dt_ql_g))/60.0 !* [min]
@@ -172,7 +162,7 @@ contains
         !* Definition of abnormal slope:
         !*  1. slopes less than a chosen lower limit (=so_llm)
         !* Repair method:
-        !*  1. take average of slopes of adjacent segments
+        !*  1. if less than lower limit, take average of slopes of adjacent segments
         !**-----------------------------------------------------------------------------------*
         allocate(adjso_ar_g(mxncomp_g,nrch_g))
         adjso_ar_g= so_ar_g
@@ -378,23 +368,21 @@ contains
             end do
         end do
 
-        ts_ev=1 !* output time step index for recording q and elv
-        do j=1, nrch_g
+	ts=1        
+	do j=1, nrch_g
             do i=1,frnw_g(j,1)
-                q_ev_g(ts_ev, i, j)=q_g(i,j)
-                elv_ev_g(ts_ev, i, j)= z_ar_g(i,j)+ elv_g(i,j)-adjz_ar_g(i,j)
+                q_ev_g(ts, i, j)=q_g(i,j)
+                elv_ev_g(ts, i, j)= z_ar_g(i,j)+ elv_g(i,j)-adjz_ar_g(i,j)
             enddo
         end do
-
-        tc = t0_g*60.0  !* t0 is in hour. tc is in minutes
-        ts=1    !*simulation time step in parallel with tc.
-        ts_ev=ts_ev+1   !* time index for recording output
 
         allocate( c_mseg_g(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( d_mseg_g(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( p_mseg(mxncomp_mseg, mxncomp_g, nrch_g), qq_mseg(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( r_mseg(mxncomp_mseg, mxncomp_g, nrch_g), w_mseg(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( c_g(mxncomp_g,nrch_g), d_g(mxncomp_g,nrch_g) ) !* C and D variables of per matrix equation
+
+        tc = t0_g*60.0  !* t0 is in hour. tc is in minutes
 
         do while (tc .lt. tfin_g*60.0)
             !**---------------------------------------------------------------------------------------------
@@ -452,14 +440,6 @@ contains
                 enddo
                 q_g(ncomp,j)= q_mseg_btnode(ncomp-1,j)
             enddo
-            !* test
-!            do j=1, nrch_g
-!                do i=1, frnw_g(j,1)
-!                    write(5,*), "q", tc, i,j,q_g(i,j), dx_ar_g(i,j), c_g(i,j), d_g(i,j), &
-!                                ncomp_mseg_g(i,j), dtini_g, dx_mseg_g(i,j), courant_comp(i,j)
-!                end do
-!            enddo
-
             !*---------------------------------------------------------------------------------------
             !*                                       WATER DEPTH
 
@@ -482,37 +462,21 @@ contains
                     Qxs= q_g(ncomp,j)
                     y_norm= normdepth(ncomp, j, Qxs)
                     elv_g(ncomp,j) = y_norm + adjz_ar_g(ncomp,j)
-                    !*test
-                    !elv_diff_g(ncomp,j)= elv_g(ncomp,j)
                 else
                 !* downstream end node of a reach at a junction
                     !* 1. equal water depth at a juction
                     dsrchj= frnw_g(j,2)    !* j index for downstream reach
                     elv_g(ncomp,j)= elv_g(1,dsrchj)
-                    !*test
-                    !elv_diff_g(ncomp,j)= elv_diff_g(1,dsrchj)
                 endif
 
                 call elv_calc(ncomp, j) !* -> elv_g
             enddo
-            !* compute elv_mseg(ts+1) on the current sub-node configuration using normal depth
-            do j=1, nrch
-                do i =1, frnw_g(j,1)-1
-                    do isubnode=1, ncomp_mseg_g(i,j)
-                        Qxs= q_mseg_g(isubnode,i,j)
-                        y_norm= normdepth(i, j, Qxs)
-                        elv_mseg_g(isubnode,i,j) = y_norm + adjz_ar_g(i,j)
-                    enddo
-                enddo
-            enddo
-
             !* compute celerity(ts+1) and diffusivity(ts+1) on the current sub-node configuration
             call C_D_mseg
 
             oldncomp_mseg_g = ncomp_mseg_g
             olddx_mseg_g = dx_mseg_g
             oldq_mseg_g = q_mseg_g
-            oldelv_mseg_g = elv_mseg_g
 
             call chgeo_seg_courant(courantN)
 
@@ -530,14 +494,13 @@ contains
                         subnode =locate(oldx,newx_s) !* oldx(subnode)<newx_s<oldx(subnode+1)
 
                         if (subnode==oldncomp_mseg_g(i,j)) then
-                            x1= oldx(subnode-1); oldq1= oldq_mseg_g(subnode-1,i,j); oldelv1= oldelv_mseg_g(subnode-1,i,j)
-                            x2= oldx(subnode); oldq2= oldq_mseg_g(subnode,i,j); oldelv2= oldelv_mseg_g(subnode,i,j)
+                            x1= oldx(subnode-1); oldq1= oldq_mseg_g(subnode-1,i,j)
+                            x2= oldx(subnode); oldq2= oldq_mseg_g(subnode,i,j)
                         else
-                            x1= oldx(subnode); oldq1= oldq_mseg_g(subnode,i,j); oldelv1= oldelv_mseg_g(subnode,i,j)
-                            x2= oldx(subnode+1); oldq2= oldq_mseg_g(subnode+1,i,j); oldelv2= oldelv_mseg_g(subnode+1,i,j)
+                            x1= oldx(subnode); oldq1= oldq_mseg_g(subnode,i,j)
+                            x2= oldx(subnode+1); oldq2= oldq_mseg_g(subnode+1,i,j) 
                         endif
                         q_mseg_g(isubnode,i,j) = LInterpol(x1, oldq1, x2, oldq2, newx_s)
-                        elv_mseg_g(isubnode,i,j) = LInterpol(x1, oldelv1, x2, oldelv2, newx_s)
                     enddo
                     deallocate(oldx)
                 enddo
@@ -549,22 +512,11 @@ contains
             do j=1, nrch_g
                 ncomp= frnw_g(j,1)
                 do i=1, ncomp
-                    q_ev_g(ts_ev, i, j)=q_g(i,j)
-                    elv_ev_g(ts_ev, i, j)= z_ar_g(i,j)+ elv_g(i,j)-adjz_ar_g(i,j)
-                    !write(2,"(F8.1, 2I10, 2F20.4, 2f20.7)") tc,  i, j, q_g(i,j), elv_g(i,j)-adjz_ar_g(i,j), &
-                    !                                            c_g(i,j), d_g(i,j)
-                    !print*, tc,  i, j, q_g(i,j), elv_g(i,j)-adjz_ar_g(i,j), c_g(i,j), d_g(i,j)
+                    q_ev_g(ts, i, j)=q_g(i,j)
+                    elv_ev_g(ts, i, j)= z_ar_g(i,j)+ elv_g(i,j)-adjz_ar_g(i,j)
                 enddo
             enddo
-            ts_ev=ts_ev+1
         enddo !* end of simulation time loop
-        !* test
-!        do j=1,nrch_g
-!            ncomp = frnw_g(j,1)
-!            do i=1, ncomp-1
-!                write(13,*)  pynw_g(j,i), (q_ev_g(k, i, j), k=1, ts_ev-1) , (elv_ev_g(k, i, j), k=1, ts_ev-1)
-!            end do
-!        end do
 
         deallocate(dx_ar, bo_ar, traps_ar, tw_ar, twcc_ar, mann_ar, manncc_ar)
         deallocate(frnw_g)
@@ -607,61 +559,48 @@ contains
     subroutine C_D_mseg
         implicit none
         integer :: i, j
-        double precision ::  avec, aved
-        double precision :: x1, x2, y1, y2, y, sumx, hxs, Axs, Bxs, chbed_slp, emann
+        double precision ::  avec, aved, sumc, sumd
+        double precision ::  hxs, Axs, Bxs, Qxs, chbed_slp, emann 
         integer :: isubnode, subnode_last
-        doubleprecision :: c_nom, c_denom
+        double precision :: c_nom, c_denom
  
         do j=1, nrch
             do i=1, frnw_g(j,1)-1
-                !* use linear interpolation between z at node i and i+1 for computing z inbetween
-                x1=0.0
-                y1= adjz_ar_g(i,j)
-                x2= dx_ar(i,j)
-                y2= adjz_ar_g(i+1,j)
-
                 bo_g= bo_ar(i,j)
                 traps_g= traps_ar(i,j)
                 tw_g= tw_ar(i,j)
                 twcc_g= twcc_ar(i,j)
                 mann_g= mann_ar(i,j)
                 manncc_g= manncc_ar(i,j)
+                chbed_slp = max(mn_chbtslp_c, adjso_ar_g(i,j))
 
                 subnode_last = ncomp_mseg_g(i,j) -1
                 do isubnode= 1, subnode_last
-                    !* compute area at each sub-node of a segment
-                    sumx= dx_mseg_g(i,j)*real(isubnode-1)
-                    y= LInterpol(x1, y1, x2, y2, sumx)
-                    hxs = elv_mseg_g(isubnode,i,j) - y !* water depth
-                    hxs= max(hxs, mindepth_ns_ar_g(i,j))
+                    !* compute area and top width at each sub-node of a segment                   
+                    Qxs= q_mseg_g(isubnode,i,j)
+		    hxs= normdepth(i, j, Qxs)
+		    hxs= max(hxs, mindepth_ns_ar_g(i,j))
                     call areacalc(hxs, Axs)
-                    Bxs= topwidth(hxs)
-                    chbed_slp = max(mn_chbtslp_c, adjso_ar_g(i,j))
+                    Bxs= topwidth(hxs)                    
                     !* celerity at sub-node isubnode at i segment of j reach
                     !* option 1
-                    c_mseg_g(isubnode,i,j) = (5.0/3.0)*q_mseg_g(isubnode,i,j)/Axs
+                    c_mseg_g(isubnode,i,j) = (5.0/3.0)*Qxs/Axs
                     !* option 2: Celerity by a paper of Litrico et al.
 !                    emann= emann_tmrf(hxs) !* equivalent manning's N
 !                    c_nom = (chbed_slp**0.3)*(q_mseg_g(isubnode,i,j)**0.4)
 !                    c_denom = (Bxs**0.4)*(emann**0.6)
 !                    c_mseg_g(isubnode,i,j) = (5.0/3.0)*c_nom/c_denom
                     !* diffusivity at sub-node isubnode at i segment of j reach
-                    d_mseg_g(isubnode,i,j) = q_mseg_g(isubnode,i,j)/(2.0*Bxs*chbed_slp)
+                    d_mseg_g(isubnode,i,j) = Qxs/(2.0*Bxs*chbed_slp)
                 enddo
                 !* option 1
                 !* use diffusivity and celerity values averaged along all the sub-nodes of a segment
-!                sumc=  sum(c_mseg_g(1:subnode_last, i, j))
-!                avec= sumc/real(subnode_last)
-!                sumd= sum(d_mseg_g(1:subnode_last, i, j))
-!                aved= sumd/real(subnode_last)
-!                c_g(i,j) = max(avec, mn_cel)
-!                d_g(i,j) = aved
-!                !* option 2
-!                c_g(i,j) = c_mseg_g(1,i,j)
-!                d_g(i,j) = d_mseg_g(1,i,j)
-                !* option 3
-                c_g(i,j) = 0.5*(c_mseg_g(1,i,j) + c_mseg_g(2,i,j))
-                d_g(i,j) = 0.5*(d_mseg_g(1,i,j) + d_mseg_g(2,i,j))
+                sumc=  sum(c_mseg_g(1:subnode_last, i, j))
+                avec= sumc/real(subnode_last)
+                c_g(i,j) = max(avec, mn_cel)
+                sumd= sum(d_mseg_g(1:subnode_last, i, j))
+                aved= sumd/real(subnode_last)
+                d_g(i,j) = aved
             enddo
         enddo
     endsubroutine C_D_mseg
@@ -882,11 +821,6 @@ contains
             yi_tp1= normdepth(i, j, qi)
             !* make sure water depth larger than arbitrarily chosen minimum positive water depth.
             yi_tp1= max(yi_tp1, mindepth_ns_ar_g(i,j))
-            !* test for diffusive depth
-!            dip1= elv_g(i+1,j)- adjz_ar_g(i+1,j)
-!            convk=convey(i+1,j, dip1)
-!            sf=q_g(i+1,j)**2.0/convk**2.0
-!            elv_diff_g(i,j)= elv_diff_g(i+1,j) + sf*dx_ar(i,j)
             elv_g(i,j)= yi_tp1 + adjz_ar_g(i,j)
         end do
     end subroutine elv_calc
@@ -1146,9 +1080,6 @@ contains
                     totalx_mseg= delx_cr*real(isubnode-1)
                 enddo
                 ncomp_mseg_g(i,j) = isubnode + ncomp_ghost
-!                if (ncomp_mseg_g(i,j).gt.mxncomp_mseg) then
-!                    ncomp_mseg_g(i,j) = mxncomp_mseg
-!                endif
                 dx_mseg_g(i,j)= delx_cr
             enddo
         enddo

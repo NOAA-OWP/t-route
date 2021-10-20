@@ -19,7 +19,7 @@ run_parameters:
     return_courant: false
     # NOTE: diffusive_cnt does not work with dt < 600 secs
     dt: 300
-    nts: 4308 
+    nts: 8616 
     cpu_pool: 12
     #Use the parallel computation engine (omit flag for serial computation)
     #Verbose output (leave blank for quiet output)
