@@ -302,47 +302,54 @@ def write_q_to_wrf_hydro(
         output_folder (pathlib.Path): folder where updated chrtout files will be written
         qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps
     """
+    
+    # count the number of simulated timesteps
+    nsteps = len(flowveldepth.loc[:,::3].columns)
+    
+    # determine how many files to write results out to
+    nfiles_to_write = int(np.floor(nsteps / qts_subdivisions))
+    
+    if nfiles_to_write > 1:
+    
+        # open all CHRTOUT files as a single xarray dataset
+        with xr.open_mfdataset(chrtout_files[:nfiles_to_write], combine="by_coords") as chrtout:
 
-    # open all CHRTOUT files as a single xarray dataset
-    with xr.open_mfdataset(chrtout_files, combine="by_coords") as chrtout:
+            # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
+            # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
+            # populates columns with NaN values.
+            flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
 
-        # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
-        # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
-        # populates columns with NaN values.
-        flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
-        
-        # unpack, subset, and transpose t-route flow data
-        qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
-        qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
-        qtrt = np.transpose(qtrt)
-        
-        # construct DataArray for t-route flows, dims, coords, and attrs consistent with CHRTOUT
-        qtrt_DataArray = xr.DataArray(
-            data=da.from_array(qtrt),
-            dims=["time", "feature_id"],
-            coords=dict(time=chrtout.time.values, feature_id=chrtout.feature_id.values),
-            attrs=dict(description="River Flow, t-route", units="m3 s-1",),
-        )
+            # unpack, subset, and transpose t-route flow data
+            qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
+            qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
+            qtrt = np.transpose(qtrt)
 
-        # add t-route DataArray to CHRTOUT dataset
-        chrtout["streamflow_troute"] = qtrt_DataArray
+            # construct DataArray for t-route flows, dims, coords, and attrs consistent with CHRTOUT
+            qtrt_DataArray = xr.DataArray(
+                data=da.from_array(qtrt),
+                dims=["time", "feature_id"],
+                coords=dict(time=chrtout.time.values, feature_id=chrtout.feature_id.values),
+                attrs=dict(description="River Flow, t-route", units="m3 s-1",),
+            )
 
-        # group by time
-        grp_object = chrtout.groupby("time")
+            # add t-route DataArray to CHRTOUT dataset
+            chrtout["streamflow_troute"] = qtrt_DataArray
 
-    # build a list of datasets, one for each timestep
-    dataset_list = []
-    for grp, vals in iter(grp_object):
-        dataset_list.append(vals)
+            # group by time
+            grp_object = chrtout.groupby("time")
 
-    # save a new set of chrtout files to disk that contail t-route simulated flow
-    chrtout_files_new = [
-        output_folder / (s.name + "." + new_extension) for s in chrtout_files
-    ]
+        # build a list of datasets, one for each timestep
+        dataset_list = []
+        for grp, vals in iter(grp_object):
+            dataset_list.append(vals)
 
-    # mfdataset solution - can theoretically be parallelised via dask.distributed
-    xr.save_mfdataset(dataset_list, paths=chrtout_files_new)
+        # save a new set of chrtout files to disk that contail t-route simulated flow
+        chrtout_files_new = [
+            output_folder / (s.name + "." + new_extension) for s in chrtout_files
+        ]
 
+        # mfdataset solution - can theoretically be parallelised via dask.distributed
+        xr.save_mfdataset(dataset_list, paths=chrtout_files_new)
 
 #     # pure serial solution - saving for timing tests against mfdataset
 #     for i, dat in enumerate(dataset_list):
