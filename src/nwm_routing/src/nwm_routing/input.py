@@ -512,8 +512,7 @@ def check_inputs(
         lastobs_da_file = datetime.strptime(data_assimilation_parameters['wrf_hydro_lastobs_file'][-22:],'%Y-%m-%d_%H:%M:%S.nc')
         first_da_file = datetime.strptime(data_assimilation_parameters['data_assimilation_sets'][0]['usgs_timeslice_files'][0][:19],'%Y-%m-%d_%H:%M:%S')
         if first_da_file != lastobs_da_file:
-            LOG.error("Lastobs file does not match the first data assimilation file date/time. Please confirm file dates.")
-            sys.exit()
+            LOG.error("Lastobs file (wrf_hydro_lastobs_file) does not match the first data assimilation file date/time (data_assimilation_sets). Please confirm file dates.")
         else:
             pass
 
