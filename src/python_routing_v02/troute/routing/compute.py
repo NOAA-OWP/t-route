@@ -17,13 +17,7 @@ from troute.routing.fast_reach.mc_reach import (
 from troute.routing.fast_reach import diffusive
 from troute.routing.fast_reach import diffusive_cnt
 import logging
-import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
 LOG = logging.getLogger('')
 
 _compute_func_map = defaultdict(

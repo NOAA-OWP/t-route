@@ -6,13 +6,8 @@ from datetime import datetime
 import troute.nhd_io as nhd_io
 from build_tests import parity_check
 import logging
-import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
+
 LOG = logging.getLogger('')
 
 def nwm_output_generator(

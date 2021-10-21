@@ -7,14 +7,9 @@ import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import logging
-import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
 LOG = logging.getLogger('')
+
 
 def nwm_network_preprocess(
     supernetwork_parameters,
