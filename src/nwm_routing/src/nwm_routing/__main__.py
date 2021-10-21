@@ -319,8 +319,8 @@ def main_v02(argv):
     LOG = logging.getLogger('')
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
-    if showtiming:
-        main_start_time = time.time()
+    
+    main_start_time = time.time()
 
     _results, _link_gage_df = _run_everything_v02(
         supernetwork_parameters,
@@ -346,10 +346,10 @@ def main_v02(argv):
         data_assimilation_parameters,
     )
 
-    if verbose:
-        LOG.info("process complete")
-    if showtiming:
-        LOG.info("%s seconds." % (time.time() - main_start_time))
+    
+    LOG.info("process complete")
+
+    LOG.info("%s seconds." % (time.time() - main_start_time))
 
 
 def _run_everything_v02(
@@ -377,10 +377,10 @@ def _run_everything_v02(
         "break_network_at_gages", False
     )
 
-    if verbose:
-        LOG.info("creating supernetwork connections set")
-    if showtiming:
-        start_time = time.time()
+    
+    LOG.info("creating supernetwork connections set")
+
+    start_time = time.time()
 
     # STEP 1: Build basic network connections graph
     connections, param_df, wbody_conn, gages = nnu.build_connections(
@@ -392,10 +392,10 @@ def _run_everything_v02(
             connections, wbody_conn
         )
 
-    if verbose:
-        LOG.info("supernetwork connections set complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.info("supernetwork connections set complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     ################################
     ## STEP 3a: Read waterbody parameter file
@@ -461,10 +461,10 @@ def _run_everything_v02(
         waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        LOG.info("organizing connections into reaches ...")
+    
+    start_time = time.time()
+
+    LOG.info("organizing connections into reaches ...")
 
     network_break_segments = set()
     if break_network_at_waterbodies:
@@ -475,18 +475,18 @@ def _run_everything_v02(
         connections,
         network_break_segments,
     )
-    if verbose:
-        LOG.info("reach organization complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+
+    LOG.info("reach organization complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
         # TODO: move step 3c into function in nnu, like other functions wrapped in main()
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            LOG.info("setting waterbody initial states ...")
+    
+        start_time = time.time()
+    
+        LOG.info("setting waterbody initial states ...")
 
         if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
@@ -523,17 +523,17 @@ def _run_everything_v02(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
-        if verbose:
-            LOG.info("waterbody initial states complete")
-        if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
-            start_time = time.time()
+        
+        LOG.info("waterbody initial states complete")
+    
+        LOG.info("... in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
 
     # STEP 4: Handle Channel Initial States
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        LOG.info("setting channel initial states ...")
+    
+    start_time = time.time()
+
+    LOG.info("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
     # STEP 4a: Set Channel States and T0
@@ -546,17 +546,17 @@ def _run_everything_v02(
     t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
     run_parameters["t0"] = t0
 
-    if verbose:
-        LOG.info("channel initial states complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
-        start_time = time.time()
+    
+    LOG.info("channel initial states complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
+    start_time = time.time()
 
     # STEP 5: Read (or set) QLateral Inputs
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        LOG.info("creating qlateral array ...")
+    
+    start_time = time.time()
+
+    LOG.info("creating qlateral array ...")
 
     forcing_parameters["qts_subdivisions"] = run_parameters["qts_subdivisions"]
     forcing_parameters["nts"] = run_parameters["nts"]
@@ -567,10 +567,10 @@ def _run_everything_v02(
         run_parameters.get("qts_subdivisions", 1),
     )
 
-    if verbose:
-        LOG.info("qlateral array complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+
+    LOG.info("qlateral array complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
     data_assimilation_csv = data_assimilation_parameters.get(
@@ -583,20 +583,20 @@ def _run_everything_v02(
     lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
 
     if data_assimilation_csv or data_assimilation_folder or lastobs_file:
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            LOG.info("creating usgs time_slice data array ...")
+        
+        start_time = time.time()
+    
+        LOG.info("creating usgs time_slice data array ...")
 
-            usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
-                data_assimilation_parameters,
-                run_parameters
-            )
+        usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
+            data_assimilation_parameters,
+            run_parameters
+        )
 
-        if verbose:
-            LOG.info("usgs array complete")
-        if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+    
+        LOG.info("usgs array complete")
+    
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
     else:
         usgs_df = pd.DataFrame()
@@ -604,15 +604,15 @@ def _run_everything_v02(
         da_parameter_dict = {}
 
     ################### Main Execution Loop across ordered networks
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        if run_parameters.get("return_courant", False):
-            LOG.info(
-                f"executing routing computation, with Courant evaluation metrics returned"
-            )
-        else:
-            LOG.info(f"executing routing computation ...")
+    
+    start_time = time.time()
+    
+    if run_parameters.get("return_courant", False):
+        LOG.info(
+            f"executing routing computation, with Courant evaluation metrics returned"
+        )
+    else:
+        LOG.info(f"executing routing computation ...")
 
     # TODO: align compute_kernel and compute_method in run_parameters
     if run_parameters.get("compute_kernel", None):
@@ -651,10 +651,10 @@ def _run_everything_v02(
         diffusive_parameters,
     )
 
-    if verbose:
-        LOG.info("ordered reach computation complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.info("ordered reach computation complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     return results, pd.DataFrame.from_dict(gages)
 
@@ -676,11 +676,10 @@ def _handle_output_v02(
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
+    
+    start_time = time.time()
 
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        LOG.info(f"Handling output ...")
+    LOG.info(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
     csv_output_folder = None
@@ -690,7 +689,7 @@ def _handle_output_v02(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
         
-    if (debuglevel <= -1) or csv_output_folder:
+    if csv_output_folder:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -868,10 +867,10 @@ def _handle_output_v02(
             lastobs_output_folder,
         )
 
-    if verbose:
-        LOG.info("output complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.info("output complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
@@ -881,12 +880,12 @@ def _handle_output_v02(
         or "parity_check_waterbody_file" in parity_parameters
     ):
 
-        if verbose:
-            LOG.info(
-                "conducting parity check, comparing WRF Hydro results against t-route results"
-            )
-        if showtiming:
-            start_time = time.time()
+        
+        LOG.info(
+            "conducting parity check, comparing WRF Hydro results against t-route results"
+        )
+    
+        start_time = time.time()
 
         parity_parameters["nts"] = nts
         parity_parameters["dt"] = dt
@@ -896,10 +895,10 @@ def _handle_output_v02(
             results,
         )
 
-        if verbose:
-            LOG.info("parity check complete")
-        if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+        
+        LOG.info("parity check complete")
+    
+        LOG.info("... in %s seconds." % (time.time() - start_time))
 
 
 def nwm_route(
@@ -935,15 +934,15 @@ def nwm_route(
 
     ################### Main Execution Loop across ordered networks
     
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        if return_courant:
-            LOG.info(
-                f"executing routing computation, with Courant evaluation metrics returned"
-            )
-        else:
-            LOG.info(f"executing routing computation ...")
+    
+    start_time = time.time()
+
+    if return_courant:
+        LOG.info(
+            f"executing routing computation, with Courant evaluation metrics returned"
+        )
+    else:
+        LOG.info(f"executing routing computation ...")
 
     # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
@@ -976,10 +975,10 @@ def nwm_route(
         diffusive_parameters,
     )
 
-    if verbose:
-        LOG.info("ordered reach computation complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.info("ordered reach computation complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     return results
 
@@ -1099,8 +1098,8 @@ def main_v03(argv):
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
 
-    if showtiming:
-        main_start_time = time.time()
+    
+    main_start_time = time.time()
 
     (
         connections,
@@ -1259,10 +1258,10 @@ def main_v03(argv):
 
     # nwm_final_output_generator()
 
-    if verbose:
-        LOG.info("process complete")
-    if showtiming:
-        LOG.info("%s seconds." % (time.time() - main_start_time))
+    
+    LOG.info("process complete")
+
+    LOG.info("%s seconds." % (time.time() - main_start_time))
 
 
 async def main_v03_async(argv):
@@ -1289,8 +1288,8 @@ async def main_v03_async(argv):
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
 
-    if showtiming:
-        main_start_time = time.time()
+    
+    main_start_time = time.time()
 
     (
         connections,
@@ -1560,24 +1559,24 @@ async def main_v03_async(argv):
         link_gage_df,
     )
 
-    if verbose:
-        LOG.info("process complete")
-    if showtiming:
-        LOG.info("%s seconds." % (time.time() - main_start_time))
+    
+    LOG.info("process complete")
 
-        """
-        Asynchronous execution Psuedocode
-        Sync1: Prepare first warmstate from files
-        Sync1: Prepare first forcing from files
+    LOG.info("%s seconds." % (time.time() - main_start_time))
 
-        For first forcing set
-            Sync2a: run model
-            Sync2b: begin preparing next forcing
-            Sync3a - AFTER Sync2a, prepare next warmstate (last state of model run)
-            Sync3b: write any output from Sync2a
-            Loop has to wait for Sync2a+b+Sync3a, does not have to wait for Sync3b
-                  if next forcing prepared
-        """
+    """
+    Asynchronous execution Psuedocode
+    Sync1: Prepare first warmstate from files
+    Sync1: Prepare first forcing from files
+
+    For first forcing set
+        Sync2a: run model
+        Sync2b: begin preparing next forcing
+        Sync3a - AFTER Sync2a, prepare next warmstate (last state of model run)
+        Sync3b: write any output from Sync2a
+        Loop has to wait for Sync2a+b+Sync3a, does not have to wait for Sync3b
+                if next forcing prepared
+    """
 
     pool_IO.shutdown(wait=True)
     pool_Processing.shutdown(wait=True)
