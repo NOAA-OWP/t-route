@@ -18,14 +18,9 @@ import build_tests  # TODO: Determine whether and how to incorporate this into s
 
 import troute.routing.diffusive_utils as diff_utils
 import logging
+from .log_level_set import log_level_set
 import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
-LOG = logging.getLogger('')
 
 from .input import _input_handler_v02, _input_handler_v03
 from .preprocess import (
@@ -37,6 +32,8 @@ from .output import nwm_output_generator
 
 from troute.routing.compute import compute_nhd_routing_v02
 
+#needed for v03 looping when a new instance occurs
+LOG = logging.getLogger('')
 
 def _handle_args_v03(argv):
     parser = argparse.ArgumentParser(
@@ -318,6 +315,8 @@ def main_v02(argv):
         coastal_parameters,
     ) = _input_handler_v02(args)
 
+    log_level_set(run_parameters)
+    LOG = logging.getLogger('')
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     if showtiming:
@@ -935,6 +934,7 @@ def nwm_route(
 ):
 
     ################### Main Execution Loop across ordered networks
+    
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -1092,7 +1092,9 @@ def main_v03(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
-
+   
+    log_level_set(log_parameters)
+    LOG = logging.getLogger('')
     verbose = log_parameters.get("verbose", None)
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
