@@ -6,13 +6,8 @@ import build_tests  # TODO: Determine whether and how to incorporate this into s
 from datetime import *
 
 import logging
-import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
+
 LOG = logging.getLogger('')
 
 # FIXME
