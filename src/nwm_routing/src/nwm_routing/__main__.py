@@ -19,7 +19,6 @@ import build_tests  # TODO: Determine whether and how to incorporate this into s
 import troute.routing.diffusive_utils as diff_utils
 import logging
 from .log_level_set import log_level_set
-import sys
 
 
 from .input import _input_handler_v02, _input_handler_v03
