@@ -8,14 +8,9 @@ import numpy as np
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 import logging
-import sys
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
-    stream=sys.stderr,
-)
 LOG = logging.getLogger('')
+
 
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
