@@ -65,10 +65,10 @@ def nwm_output_generator(
         )
 
     ################### Output Handling
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        LOG.info(f"Handling output ...")
+    
+    start_time = time.time()
+
+    LOG.info(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
     csv_output_folder = None
@@ -243,26 +243,26 @@ def nwm_output_generator(
     if debuglevel <= -1:
         LOG.info(flowveldepth)
 
-    if verbose:
-        LOG.info("output complete")
-    if showtiming:
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+
+    LOG.info("output complete")
+
+    LOG.info("... in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
     if parity_set:
-        if verbose:
-            LOG.info(
-                "conducting parity check, comparing WRF Hydro results against t-route results"
-            )
-        if showtiming:
-            start_time = time.time()
+        
+        LOG.info(
+            "conducting parity check, comparing WRF Hydro results against t-route results"
+        )
+    
+        start_time = time.time()
 
         parity_check(
             parity_set, results,
         )
 
-        if verbose:
-            LOG.info("parity check complete")
-        if showtiming:
-            LOG.info("... in %s seconds." % (time.time() - start_time))
+        
+        LOG.info("parity check complete")
+    
+        LOG.info("... in %s seconds." % (time.time() - start_time))
