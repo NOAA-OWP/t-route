@@ -790,12 +790,17 @@ def build_da_sets(data_assimilation_parameters, run_sets, t0):
                         + '.15min.usgsTimeSlice.ncdf').to_list()
             
             # check that all TimeSlice files in the set actually exist
+            drop_list = []
             for f in filenames:
                 try:
                     J = pathlib.Path(data_assimilation_timeslices_folder.joinpath(f))     
                     assert J.is_file() == True
                 except AssertionError:
-                    raise AssertionError("Aborting simulation because TimeSlice file", J, "cannot be not found.") from None
+                    print("Missing TimeSlice file %s", J)
+                    drop_list.append(f)
+                    
+            if drop_list:
+                filenames = [x for x in filenames if x not in drop_list]
             
             da_sets[i]['usgs_timeslice_files'] = filenames
 
