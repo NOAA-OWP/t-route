@@ -16,12 +16,14 @@ from troute.routing.fast_reach.mc_reach import (
 )
 from troute.routing.fast_reach import diffusive
 from troute.routing.fast_reach import diffusive_cnt
+from troute.routing.fast_reach import diffusive_cnx
 
 _compute_func_map = defaultdict(
     compute_network,
     {
         "diffusive_cnt": diffusive_cnt.compute_diffusive_tst,
         "diffusive": diffusive.compute_diffusive_tst,
+       	"diffusive_cnx": diffusive_cnx.compute_diffusive_tst,
         "V02-caching": compute_network,
         "V02-diffusive-dummy": compute_network,
         "V02-structured": compute_network_structured,

@@ -8,6 +8,7 @@ REPOROOT=`pwd`
 build_mc_kernel=true
 build_diffusive_tulane_kernel=true
 build_diffusive_cnt_kernel=true
+build_diffusive_cnx_kernel=true
 build_reservoir_kernel=true
 build_framework=true
 build_routing=true
@@ -55,6 +56,15 @@ if  [[ "$build_diffusive_cnt_kernel" == true ]]; then
   make subtools.o
   make diffusive_cnt.o
   make pydiffusive_cnt.o
+  make install || exit
+fi
+
+if  [[ "$build_diffusive_cnx_kernel" == true ]]; then
+  #building reach and resevoir kernel files .o  
+  cd $REPOROOT/src/fortran_routing/diffusive_v02frwk/diffusive_cnx/
+  make clean
+  make diffusive_cnx.o
+  make pydiffusive_cnx.o
   make install || exit
 fi
 
