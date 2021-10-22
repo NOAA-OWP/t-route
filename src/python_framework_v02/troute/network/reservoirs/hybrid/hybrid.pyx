@@ -19,10 +19,15 @@ cdef extern from "hybrid_structs.c":
                             int observation_update_time_interval_seconds
   )
   void free_hybrid_reach(_Reach* reach)
-  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, 
+             float* outflow,  float* water_elevation, int* dynamic_reservoir_type,
+             float* assimilated_value) nogil
 
-cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow, float* water_elevation) nogil:
-    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
+cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, 
+                       float* outflow, float* water_elevation, int* dynamic_reservoir_type,
+                       float* assimilated_value) nogil:
+    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation, 
+          dynamic_reservoir_type, assimilated_value)
 
 cdef class MC_Hybrid(Reach):
   """
@@ -115,7 +120,7 @@ cdef class MC_Hybrid(Reach):
     """
     free_hybrid_reach(&self._reach)
 
-  cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
+  cpdef (float,float,int,float) run(self, float inflow, float lateral_inflow, float routing_period):
     """
       Run the hybrid routing function
       Params:
@@ -130,13 +135,29 @@ cdef class MC_Hybrid(Reach):
           flow rate out of the reservoir valid for routing_period seconds
         water_elevation:
           reservoir water surface elevation after routing_period seconds
+        dynamic_reservoir_type: int
+          Reservoir type at a current timestep. For a hybrid persistence level pool
+          reservoir, this will be 2 if the reservoir is assimilating USGS gage observations
+          and 3 if the reservoir is assimilating USACE gage observations at the given timestep.
+          Otherwise, this will be 1 if the reservoir is not assimilating any observations and
+          is instead using level pool calculations at the given timestep.
+        assimilated_value: float
+          Reservoir outflow assimilated from external observed or forecasted sources.
+          For a hybrid persistence level pool reservoir, this will be the gage observation
+          from either the USGS or USACE. If at the given timestep, the reservoir is not
+          assimilating any observations and is instead using level pool calculations, this
+          value will be set to the sentinel value of -9999.0.
+
     """
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
+    cdef int dynamic_reservoir_type = 1
+    cdef float assimilated_value = -9999.0
     with nogil:
-      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
+      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, 
+            &water_elevation, &dynamic_reservoir_type, &assimilated_value)
       #printf("outflow: %f\n", outflow)
-      return outflow, water_elevation
+      return outflow, water_elevation, dynamic_reservoir_type, assimilated_value
 
   @property
   def water_elevation(self):

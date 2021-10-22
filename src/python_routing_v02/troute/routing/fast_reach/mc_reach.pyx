@@ -969,7 +969,8 @@ cpdef object compute_network_structured_obj(
 
             #Check if reach_type is 1 for reservoir/waterbody
             if (reach_type == 1):
-                reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
+                reservoir_outflow, water_elevation, dynamic_reservoir_type, \
+                assimilated_value = r.run(upstream_flows, 0.0, routing_period)
 
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
@@ -1285,7 +1286,8 @@ cpdef object compute_network_structured(
     cdef _Reach* r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
-    cdef float reservoir_outflow, reservoir_water_elevation
+    cdef float reservoir_outflow, reservoir_water_elevation, assimilated_value
+    cdef int dynamic_reservoir_type
     cdef int id = 0
     #Run time
     with nogil:
@@ -1306,19 +1308,25 @@ cpdef object compute_network_structured(
                     upstream_flows = previous_upstream_flows
 
                 if r.type == compute_type.RESERVOIR_LP:
-                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, 
+                             &reservoir_water_elevation, &dynamic_reservoir_type, 
+                             &assimilated_value)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_HYBRID:
-                    run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                    run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, 
+                    &reservoir_water_elevation, &dynamic_reservoir_type,
+                    &assimilated_value)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
                 elif r.type == compute_type.RESERVOIR_RFC:
-                    run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                    run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, 
+                    &reservoir_water_elevation, &dynamic_reservoir_type, 
+                    &assimilated_value)
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation

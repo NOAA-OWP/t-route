@@ -13,7 +13,8 @@ extern void init_hybrid(void* handle, float *water_elevation, float *lake_area, 
                     int *observation_update_time_interval_seconds);
 
 extern void run_hybrid(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period);
+                    float *water_elevation, float *outflow, float *routing_period,
+                    int *dynamic_reservoir_type, float *assimilated_value);
 
 extern void free_hybrid(void* handle);
 
@@ -89,8 +90,11 @@ void free_hybrid_reach(_Reach* reach)
 }
 
 void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow,  float* water_elevation)
+           float* outflow,  float* water_elevation, int* dynamic_reservoir_type, 
+           float* assimilated_value)
 {
-  run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, &reach->reach.hybrid.water_elevation, outflow, &routing_period);
+  run_hybrid(reach->reach.hybrid.handle, &inflow, &lateral_inflow, 
+  &reach->reach.hybrid.water_elevation, outflow, &routing_period,
+  dynamic_reservoir_type, assimilated_value);
   *water_elevation = reach->reach.hybrid.water_elevation;
 }
