@@ -4,7 +4,7 @@ import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_io as nhd_io
 import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
 from datetime import *
-
+from .log_level_set import log_level_set
 import logging
 
 
@@ -31,7 +31,7 @@ def _input_handler_v03(args):
     parity_parameters = {}
     data_assimilation_parameters = {}
     diffusive_parameters = {}
-
+    
     if custom_input_file:
         (
             log_parameters,
@@ -48,8 +48,11 @@ def _input_handler_v03(args):
     else:
         LOG.error("CLI input no longer supported")
         raise RuntimeError
-        
-    if compute_parameters['yaml_check']:
+
+    log_level_set(log_parameters)
+    LOG = logging.getLogger('')
+
+    if LOG.level > 10:
         check_inputs(
                 log_parameters,
                 supernetwork_parameters,
@@ -203,6 +206,8 @@ def _input_handler_v02(args):
                 verbose=False,
                 debuglevel=debuglevel,
             )
+    log_level_set(run_parameters)
+    LOG = logging.getLogger('')
 
     return (
         supernetwork_parameters,
@@ -574,6 +579,6 @@ def check_inputs(
             LOG.error(errmsg)
             raise err
         
-        LOG.info("YAML check complete")
+    LOG.info("YAML check complete")
 
     

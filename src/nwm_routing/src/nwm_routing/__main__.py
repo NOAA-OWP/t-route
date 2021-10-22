@@ -314,8 +314,6 @@ def main_v02(argv):
         coastal_parameters,
     ) = _input_handler_v02(args)
 
-    log_level_set(run_parameters)
-    LOG = logging.getLogger('')
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     
@@ -1091,8 +1089,6 @@ def main_v03(argv):
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
    
-    log_level_set(log_parameters)
-    LOG = logging.getLogger('')
     verbose = log_parameters.get("verbose", None)
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
