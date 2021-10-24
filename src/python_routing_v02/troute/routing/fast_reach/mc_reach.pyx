@@ -1087,6 +1087,10 @@ cpdef object compute_network_structured(
         This version creates python objects for segments and reaches,
         but then uses only the C structures and access for efficiency
     """
+    print ("lake_numbers_col")
+    print (lake_numbers_col)
+
+
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
@@ -1102,6 +1106,9 @@ cpdef object compute_network_structured(
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
     cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
+    #cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, qvd_ts_w), dtype='float32')
+    cdef np.ndarray[long, ndim=2] dynamic_reservoir_types_nd = np.zeros((len(lake_numbers_col), nsteps+1), dtype='int64')
+    cdef np.ndarray[float, ndim=2] reservoir_assimilated_values_nd = np.zeros((len(lake_numbers_col), nsteps+1), dtype='float32')
     ###### Declare/type variables #####
     # Source columns
     cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
@@ -1421,4 +1428,4 @@ cpdef object compute_network_structured(
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values))
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values), lake_numbers_col, dynamic_reservoir_types_nd, reservoir_assimilated_values_nd)
