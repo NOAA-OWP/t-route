@@ -624,10 +624,10 @@ def build_forcing_sets(
         datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in datetime_list]
         
         file_dates = [datetime.strptime(nhd_io.get_param_str(current_file, "model_output_valid_time"),'%Y-%m-%d_%H:%M:%S') for current_file in all_files]
-        # import pdb; pdb.set_trace()
         # list of forcing files
-        forcing_filename_list = all_files[file_dates.index(datetime_list)]
-        indexed_locations = [all_files[file_dates.index(location)] for location in datetime_list]
+        forcing_filename_list = []
+        for element in datetime_list:
+            forcing_filename_list.append(all_files[file_dates.index(element)])
 
         # forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
         
