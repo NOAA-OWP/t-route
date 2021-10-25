@@ -1,3 +1,4 @@
+# > python -m nwm_routing -f -V3 <filename>.yaml
 # ---------------
 # parameters controling logging messages throughout execution
 log_parameters:
@@ -16,6 +17,18 @@ log_parameters:
 
 # ---------------
 # parameters controlling how the stream network is synthesized
+# Here, the user has a choice. They can either explicitly list sets of forcing files to be used
+# with each loop of the simulation. Or, they can opt to have loop sets constructed automatically.
+# 
+# If the user wishes to have loop sets build automatically, they should not include the qlat_forcing_sets
+# variable under forcing_parameters. If qlat_forcing_sets is present explicit loop structures are assumed.
+# Additional variables qlat_file_pattern_filter, max_loop_size, and nts are required under forcing_parameters
+# to guide automatic loop set construction.
+#
+# If the user wishes to explicitly list loop sets, they should do so with the qlat_forcing_sets variable
+# nts variables should be specified for each loop, and there is no need to include qlat_file_pattern_filter,
+# max_loop_size, and nts variables under forcing_parameters.
+#
 network_topology_parameters:
     # ---------------
     supernetwork_parameters:
@@ -328,6 +341,9 @@ compute_parameters:
         qlat_file_terrain_runoff_col:
         # ---------------
         # forcing files and number of timesteps associated with each simulation loop
+        # optional, only include if explicitly listing the forcing files in each set.
+        # If this variable is not present, make sure nts, qlat_file_pattern_filter, and 
+        # max_loop_size variables are listed above.
         qlat_forcing_sets:
             # ---------------
             # number of timesteps in loop iteration 1
@@ -348,7 +364,15 @@ compute_parameters:
             # ... above pattern repeats for however many loops the entire simulation is divided into
             # For a non-looped simulation, a single set of nts and qlat_files variables are provided 
     # ---------------
-    # parameters conrtolling data assimilation scheme
+    # parameters controlling data assimilation scheme
+    # Here, the user has a choice between explicitly listing the TimeSlice files to be used in 
+    # each loop under data_assimilation_sets or having TimeSlice sets be created automatically. 
+    #
+    # For automatic set creation, do not include the data_assimilation_sets variable.
+    #
+    # For AnA simulation, data_assimilation_timeslices_folder is required
+    # For Forecast simulation, do not include data_assimilation_timeslices_folder
+    # For open-loop simulations omit the entire data_assimilation_parameters section 
     data_assimilation_parameters:
         # ---------------
         # path to directory containing TimeSlice files
@@ -361,12 +385,28 @@ compute_parameters:
         wrf_hydro_lastobs_file:
         # ---------------
         # lead time of lastobs relative to simulation start time (secs)
+        # path to directory where lastobs will be written to
+        # (!!) mandatory if lastobs are to be written out during and after simulations
+        lastobs_output_folder:
+        # ---------------
+        # lead time of lastobs relative to simulation start time (secs)
+        # optional, default to 0
         wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time:
         # ---------------
         # ???
         wrf_lastobs_type:
         # ---------------
         # sets of TimeSlice files to be with each simulation loop
+        # The number of additional TimeSlice files added to the beginning and end of each
+        # DA timeslice sets. Padding is advised to reduce edge-effects of observation interpolation scheme
+        # optional, defaults to 0
+        timeslice_pad:
+        # ---------------
+        # sets of TimeSlice files to be with each simulation loop.
+        # optional, only include if explicitly listing TimeSlice files for each set
+        # This variable should not be included if running an AnA simulation using 
+        # automatic loop creation.
+        #
         data_assimilation_sets:
             # ---------------
             - usgs_timeslice_files:
@@ -458,6 +498,10 @@ output_parameters:
         parity_check_compare_node:
         # ---------------
         # lists of validation CHRTOUT files for each simulation loop set
+        # optional, if not included the same files used for forcing data are
+        # also used to validation. 
+        # TODO: remove this variable from the configuration file. Suggested that
+        # users do not include and parity sets are automatically constructed. 
         parity_check_compare_file_sets:
             # ---------------
             - validation_files:
