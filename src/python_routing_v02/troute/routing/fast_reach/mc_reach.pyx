@@ -1106,8 +1106,8 @@ cpdef object compute_network_structured(
     cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
     cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
     cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
-    #cdef np.ndarray[float, ndim=3] flowveldepth_nd = np.zeros((data_idx.shape[0], nsteps+1, qvd_ts_w), dtype='float32')
-    cdef np.ndarray[long, ndim=2] dynamic_reservoir_types_nd = np.zeros((len(lake_numbers_col), nsteps+1), dtype='int64')
+    cdef np.ndarray[long, ndim=1] reservoir_ids = np.zeros((len(lake_numbers_col)), dtype='int64')
+    cdef np.ndarray[int, ndim=2] dynamic_reservoir_types_nd = np.zeros((len(lake_numbers_col), nsteps+1), dtype='int32')
     cdef np.ndarray[float, ndim=2] reservoir_assimilated_values_nd = np.zeros((len(lake_numbers_col), nsteps+1), dtype='float32')
     ###### Declare/type variables #####
     # Source columns
@@ -1294,12 +1294,13 @@ cpdef object compute_network_structured(
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
     cdef float reservoir_outflow, reservoir_water_elevation, assimilated_value
-    cdef int dynamic_reservoir_type
+    cdef int dynamic_reservoir_type, reservoir_index
     cdef int id = 0
     #Run time
     with nogil:
         # printf("timestep, gage_maxtimestep, a, da_decay_minutes, lastobs_times[gage_i], da_weighted_shift, lastobs_val, original_val, replacement_val")
         while timestep < nsteps+1:
+            reservoir_index = 0
             for i in range(num_reaches):
                 r = &reach_structs[i]
                 #Need to get quc and qup
@@ -1321,6 +1322,11 @@ cpdef object compute_network_structured(
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                    if timestep == 1: 
+                        reservoir_ids[reservoir_index] = r.id
+                    dynamic_reservoir_types_nd[reservoir_index, timestep] = dynamic_reservoir_type
+                    reservoir_assimilated_values_nd[reservoir_index, timestep] = assimilated_value
+                    reservoir_index += 1
 
                 elif r.type == compute_type.RESERVOIR_HYBRID:
                     run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, 
@@ -1329,6 +1335,11 @@ cpdef object compute_network_structured(
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                    if timestep == 1: 
+                        reservoir_ids[reservoir_index] = r.id
+                    dynamic_reservoir_types_nd[reservoir_index, timestep] = dynamic_reservoir_type
+                    reservoir_assimilated_values_nd[reservoir_index, timestep] = assimilated_value
+                    reservoir_index += 1
 
                 elif r.type == compute_type.RESERVOIR_RFC:
                     run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, 
@@ -1337,6 +1348,11 @@ cpdef object compute_network_structured(
                     flowveldepth[r.id, timestep, 0] = reservoir_outflow
                     flowveldepth[r.id, timestep, 1] = 0.0
                     flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                    if timestep == 1: 
+                        reservoir_ids[reservoir_index] = r.id
+                    dynamic_reservoir_types_nd[reservoir_index, timestep] = dynamic_reservoir_type
+                    reservoir_assimilated_values_nd[reservoir_index, timestep] = assimilated_value
+                    reservoir_index += 1
 
                 else:
                     #Create compute reach kernel input buffer
@@ -1428,4 +1444,4 @@ cpdef object compute_network_structured(
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values), lake_numbers_col, dynamic_reservoir_types_nd, reservoir_assimilated_values_nd)
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values), reservoir_ids, dynamic_reservoir_types_nd, reservoir_assimilated_values_nd)
