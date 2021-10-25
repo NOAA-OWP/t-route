@@ -81,8 +81,20 @@ diffusive_cnt = Extension(
     libraries=["gfortran"],
 )
 
+diffusive_cnx = Extension(
+    "troute.routing.fast_reach.diffusive_cnx",
+    sources=["troute/routing/fast_reach/diffusive_cnx.{}".format(ext)],
+    extra_objects=[
+        "troute/routing/fast_reach/diffusive_cnx.o",
+        "troute/routing/fast_reach/pydiffusive_cnx.o",
+    ],
+    include_dirs=[np.get_include()],
+    extra_compile_args=["-g"],
+    libraries=["gfortran"],
+)
+
 package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
-ext_modules = [reach, mc_reach, diffusive, simple_da, diffusive_cnt]
+ext_modules = [reach, mc_reach, diffusive, simple_da, diffusive_cnt, diffusive_cnx]
 
 if USE_CYTHON:
     from Cython.Build import cythonize

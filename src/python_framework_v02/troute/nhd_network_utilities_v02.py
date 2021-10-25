@@ -641,6 +641,7 @@ def build_forcing_sets(
         k = 0
         j = 0
         nts_accum = 0
+        nts_last = 0
         while k < len(forcing_filename_list):
             run_sets.append({})
 
@@ -655,7 +656,7 @@ def build_forcing_sets(
                 run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files'])
                                          * qts_subdivisions)
             else:
-                run_sets[j]['nts'] = int(nts - nts_accum)
+                run_sets[j]['nts'] = int(nts - nts_last)
 
             final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'
                     ][-1])
@@ -664,6 +665,7 @@ def build_forcing_sets(
             run_sets[j]['final_timestamp'] = \
                 datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
 
+            nts_last = nts_accum
             k += max_loop_size
             j += 1
     
@@ -791,12 +793,17 @@ def build_da_sets(data_assimilation_parameters, run_sets, t0):
                         + '.15min.usgsTimeSlice.ncdf').to_list()
             
             # check that all TimeSlice files in the set actually exist
+            drop_list = []
             for f in filenames:
                 try:
                     J = pathlib.Path(data_assimilation_timeslices_folder.joinpath(f))     
                     assert J.is_file() == True
                 except AssertionError:
-                    raise AssertionError("Aborting simulation because TimeSlice file", J, "cannot be not found.") from None
+                    print("Missing TimeSlice file %s", J)
+                    drop_list.append(f)
+                    
+            if drop_list:
+                filenames = [x for x in filenames if x not in drop_list]
             
             da_sets[i]['usgs_timeslice_files'] = filenames
 
