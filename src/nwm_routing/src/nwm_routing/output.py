@@ -20,8 +20,6 @@ def nwm_output_generator(
     parity_set,
     qts_subdivisions,
     return_courant,
-    showtiming=False,
-    debuglevel=0,
     data_assimilation_parameters=False,
     lastobs_df=None,
     link_gage_df=None,
@@ -80,7 +78,7 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
-    if (debuglevel <= -1) or csv_output_folder or rsrto or chrto:
+    if csv_output_folder or rsrto or chrto:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -236,13 +234,10 @@ def nwm_output_generator(
             lastobs_output_folder,
         )
 
-    if debuglevel <= -1:
-        LOG.info(flowveldepth)
+    if 'flowveldepth' in locals():
+        LOG.debug(flowveldepth)
 
-
-    LOG.info("output complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("output complete in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 

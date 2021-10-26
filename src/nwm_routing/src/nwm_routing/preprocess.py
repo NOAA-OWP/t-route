@@ -14,8 +14,6 @@ LOG = logging.getLogger('')
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
-    showtiming=False,
-    debuglevel=0,
 ):
 
 
@@ -158,8 +156,6 @@ def nwm_initial_warmstate_preprocess(
     waterbodies_df,
     segment_list=None,
     wbodies_list=None,
-    showtiming=False,
-    debuglevel=0,
 ):
 
     if break_network_at_waterbodies:
@@ -260,8 +256,6 @@ def nwm_forcing_preprocess(
     segment_index,
     lastobs_index,
     warmstate_t0 = None,
-    showtiming=False,
-    debuglevel=0,
 ):
 
     # TODO: Harmonize the t0 parameter -- this
