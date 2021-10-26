@@ -45,9 +45,7 @@ def nwm_network_preprocess(
         )
 
     
-    LOG.info("supernetwork connections set complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
 
     ################################
     ## STEP 3a: Read waterbody parameter file
@@ -129,9 +127,7 @@ def nwm_network_preprocess(
         network_break_segments,
     )
     
-    LOG.info("reach organization complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
 
     return (
         connections,
@@ -202,9 +198,7 @@ def nwm_initial_warmstate_preprocess(
         )
 
         
-        LOG.info("waterbody initial states complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
@@ -232,9 +226,7 @@ def nwm_initial_warmstate_preprocess(
     )
 
     
-    LOG.info("channel initial states complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
     start_time = time.time()
 
     return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
@@ -312,10 +304,7 @@ def nwm_forcing_preprocess(
         segment_index,
     )
 
-
-    LOG.info("qlateral array complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("qlateral array complete in %s seconds." % (time.time() - start_time))
 
     # STEP 6
     data_assimilation_csv = da_run.get("data_assimilation_csv", None)
@@ -334,10 +323,7 @@ def nwm_forcing_preprocess(
 
         usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
 
-
-        LOG.info("usgs array complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("usgs array complete in %s seconds." % (time.time() - start_time))
 
     else:
         usgs_df = pd.DataFrame()

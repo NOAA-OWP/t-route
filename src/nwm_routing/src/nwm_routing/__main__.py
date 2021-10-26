@@ -328,9 +328,7 @@ def main_v02(argv):
     )
 
     
-    LOG.info("process complete")
-
-    LOG.info("%s seconds." % (time.time() - main_start_time))
+    LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
 
 
 def _run_everything_v02(
@@ -372,9 +370,7 @@ def _run_everything_v02(
         )
 
     
-    LOG.info("supernetwork connections set complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
 
     ################################
     ## STEP 3a: Read waterbody parameter file
@@ -455,9 +451,7 @@ def _run_everything_v02(
         network_break_segments,
     )
 
-    LOG.info("reach organization complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
 
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
@@ -503,9 +497,7 @@ def _run_everything_v02(
         )
 
         
-        LOG.info("waterbody initial states complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 4: Handle Channel Initial States
@@ -526,9 +518,7 @@ def _run_everything_v02(
     run_parameters["t0"] = t0
 
     
-    LOG.info("channel initial states complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
     start_time = time.time()
 
     # STEP 5: Read (or set) QLateral Inputs
@@ -547,9 +537,7 @@ def _run_everything_v02(
     )
 
 
-    LOG.info("qlateral array complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("qlateral array complete in %s seconds." % (time.time() - start_time))
 
     # STEP 6
     data_assimilation_csv = data_assimilation_parameters.get(
@@ -573,9 +561,7 @@ def _run_everything_v02(
         )
 
     
-        LOG.info("usgs array complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("usgs array complete in %s seconds." % (time.time() - start_time))
 
     else:
         usgs_df = pd.DataFrame()
@@ -631,9 +617,7 @@ def _run_everything_v02(
     )
 
     
-    LOG.info("ordered reach computation complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
     return results, pd.DataFrame.from_dict(gages)
 
@@ -841,9 +825,7 @@ def _handle_output_v02(
         )
 
     
-    LOG.info("output complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("output complete in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
@@ -869,9 +851,7 @@ def _handle_output_v02(
         )
 
         
-        LOG.info("parity check complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
 
 
 def nwm_route(
@@ -946,9 +926,7 @@ def nwm_route(
     )
 
     
-    LOG.info("ordered reach computation complete")
-
-    LOG.info("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
     return results
 
@@ -1063,11 +1041,17 @@ def main_v03(argv):
     ) = _input_handler_v03(args)
    
     showtiming = log_parameters.get("showtiming", None)
-    debuglevel = log_parameters.get("debuglevel", 0)
-
     
-    main_start_time = time.time()
+    if showtiming:
+        task_times = {}
+        task_times['initial_condition_time'] = 0
+        task_times['forcing_time'] = 0
+        task_times['route_time'] = 0
+        main_start_time = time.time()
 
+    if showtiming:
+        network_start_time = time.time()
+        
     (
         connections,
         param_df,
@@ -1150,6 +1134,9 @@ def main_v03(argv):
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
+        if showtiming:
+            route_start_time = time.time()
+        
         run_results = nwm_route(
             connections,
             rconn,
@@ -1206,9 +1193,20 @@ def main_v03(argv):
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
+                
+            if showtiming:
+                ic_end_time = time.time()
+                task_times['initial_condition_time'] += ic_end_time - forcing_end_time
 
+        if showtiming:
+            ic_start_time = time.time()
+        
         if data_assimilation_parameters:
-                lastobs_df = new_lastobs(run_results, dt * nts)
+            lastobs_df = new_lastobs(run_results, dt * nts)
+            
+        if showtiming:
+            ic_end_time = time.time()
+            task_times['initial_condition_time'] += ic_end_time - ic_start_time
                 
         nwm_output_generator(
             run,
@@ -1220,19 +1218,60 @@ def main_v03(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
-            showtiming,
-            debuglevel,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
         )
+        
+        if showtiming:
+            output_end_time = time.time()
+            task_times['output_time'] = output_end_time - ic_end_time
+            task_times['total_time'] = time.time() - main_start_time
 
     # nwm_final_output_generator()
 
+    LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
     
-    LOG.info("process complete")
-
-    LOG.info("%s seconds." % (time.time() - main_start_time))
+    if showtiming:
+        print('************ TIMING SUMMARY ************')
+        print('----------------------------------------')
+        print(
+            'Network graph construction: {} secs, {} %'\
+            .format(
+                round(task_times['network_time'],2),
+                round(task_times['network_time']/task_times['total_time'] * 100,2)
+            )
+        )
+        print(
+            'Initial condition handling: {} secs, {} %'\
+            .format(
+                round(task_times['initial_condition_time'],2),
+                round(task_times['initial_condition_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Forcing array construction: {} secs, {} %'\
+            .format(
+                round(task_times['forcing_time'],2),
+                round(task_times['forcing_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Routing computations: {} secs, {} %'\
+            .format(
+                round(task_times['route_time'],2),
+                round(task_times['route_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Output writing: {} secs, {} %'\
+            .format(
+                round(task_times['output_time'],2),
+                round(task_times['output_time']/task_times['total_time'] * 100,2)
+            )
+        )
+          
+    import pdb; pdb.set_trace()
 
 
 async def main_v03_async(argv):
@@ -1496,17 +1535,13 @@ async def main_v03_async(argv):
         parity_sets[run_set_iterator] if parity_parameters else {},
         qts_subdivisions,
         compute_parameters.get("return_courant", False),
-        showtiming,
-        debuglevel,
         data_assimilation_parameters,
         lastobs_df,
         link_gage_df,
     )
 
     
-    LOG.info("process complete")
-
-    LOG.info("%s seconds." % (time.time() - main_start_time))
+    LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
 
     """
     Asynchronous execution Psuedocode
