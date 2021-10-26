@@ -142,6 +142,7 @@ diffusive_parameters:
         chbed_slope_lower_limit: 0.0001 # lower limit of channel bed slope to prevent any numerical instability
         water_depth_compute_switch: 3 # 1: mid-point bisection method, 2: simple iterative method, 3: Newton Raphson, 4: normal depth
         ghost_timenode_number: 2 # the number of ghost nodes expanded from the existing time nodes (repeatinterval) for estimating temporal boundary condition of Q using Courant number being one.
+        multiplier2dt_saveinterval: 12.0 #multiplier for saveinterval which determines time window span where diffusivity and celerity stay constant at a given space node.
     cnx: 
         courant_number_upper_limit: 0.95 # the upper limit of courant number: strictly observed in simulation timestep changing method while less strictly in simulation timestep fixed method.
         celerity_lower_limit: 0.5 # lower limit of celerity value applied to all stream segments over entire simulation time.	

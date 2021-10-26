@@ -463,9 +463,6 @@ def diffusive_input_data_v02(
     dt_db_g = dt * qts_subdivisions
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
-    # time interval at which depth is written out by cnt model
-    saveinterval_cnt = dt * 12.0
-    # time interval at which flow is computed and written out by cnt model
     # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
@@ -497,6 +494,8 @@ def diffusive_input_data_v02(
         para_ar_g[8]= diffusive_parameters["cn_mod"].get("chbed_slope_lower_limit", None)  # lower limit of channel bed slope
         para_ar_g[9]= diffusive_parameters["cn_mod"].get("theta", None)  # theta in the numerical eqn. 0: purely explicit scheme. 1: purely implicit scheme.
     elif diffusive_func_name=="diffusive_cnt":
+        time_multiplier=diffusive_parameters["cnt"].get("multiplier2dt_saveinterval", None) # multiplier for saveinterval which determines time window span where diffusivity and celerity stay constant at a given space node.
+        saveinterval_cnt = dt * time_multiplier        
         timestep_ar_g[3]= saveinterval_cnt   
         paradim=9 
         para_ar_g= np.zeros(paradim)
