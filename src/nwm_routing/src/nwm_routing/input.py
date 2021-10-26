@@ -273,7 +273,7 @@ def check_inputs(
             data_assimilation_parameters
             ):
 
-    LOG.debug('Begining configuration file (.YAML) check')
+    LOG.debug('***** Begining configuration file (.YAML) check *****')
     
     _does_file_exist('geo_file_path', 
                      supernetwork_parameters['geo_file_path'])
@@ -497,7 +497,8 @@ def check_inputs(
     
     # TODO summarize simlation configuration
     
-    LOG.debug('Configuration file check complete')
+    
+    LOG.debug('***** Configuration file check complete *****')
 
 
 #     columns = ['key', 'downstream', 'dx', 'n', 'ncc', 's0', 'bw', 'waterbody', 'gages', 'tw', 'twcc', 'alt', 'musk', 'musx', 'cs']   
