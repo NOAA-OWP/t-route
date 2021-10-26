@@ -354,7 +354,6 @@ def _run_everything_v02(
         "break_network_at_gages", False
     )
 
-    
     LOG.info("creating supernetwork connections set")
 
     start_time = time.time()
@@ -369,7 +368,6 @@ def _run_everything_v02(
             connections, wbody_conn
         )
 
-    
     LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
 
     ################################
