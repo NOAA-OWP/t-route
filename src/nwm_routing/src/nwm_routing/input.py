@@ -46,13 +46,14 @@ def _input_handler_v03(args):
             data_assimilation_parameters,
         ) = nhd_io.read_custom_input_new(custom_input_file)
     else:
+        # TODO: clean _main_.py to remove command line argument comprehension
         LOG.error("CLI input no longer supported")
         raise RuntimeError
 
     log_level_set(log_parameters)
     LOG = logging.getLogger('')
 
-    if LOG.level > 10:
+    if LOG.level <= 10: # DEBUG
         check_inputs(
                 log_parameters,
                 supernetwork_parameters,
