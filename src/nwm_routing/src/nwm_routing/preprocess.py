@@ -15,7 +15,6 @@ def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
     showtiming=False,
-    verbose=False,
     debuglevel=0,
 ):
 
@@ -160,7 +159,6 @@ def nwm_initial_warmstate_preprocess(
     segment_list=None,
     wbodies_list=None,
     showtiming=False,
-    verbose=False,
     debuglevel=0,
 ):
 
@@ -263,7 +261,6 @@ def nwm_forcing_preprocess(
     lastobs_index,
     warmstate_t0 = None,
     showtiming=False,
-    verbose=False,
     debuglevel=0,
 ):
 

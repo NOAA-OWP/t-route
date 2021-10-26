@@ -21,7 +21,6 @@ def nwm_output_generator(
     qts_subdivisions,
     return_courant,
     showtiming=False,
-    verbose=False,
     debuglevel=0,
     data_assimilation_parameters=False,
     lastobs_df=None,
@@ -106,8 +105,7 @@ def nwm_output_generator(
 
     if rsrto:
 
-        if verbose:
-            LOG.info("- writing restart files")
+        LOG.info("- writing restart files")
 
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
@@ -158,8 +156,7 @@ def nwm_output_generator(
 
     if chrto:
         
-        if verbose:
-            LOG.info("- writing results to CHRTOUT")
+        LOG.info("- writing results to CHRTOUT")
         
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
@@ -186,8 +183,7 @@ def nwm_output_generator(
 
     if csv_output_folder: 
     
-        if verbose:
-            LOG.info("- writing flow, velocity, and depth results to .csv")
+        LOG.info("- writing flow, velocity, and depth results to .csv")
 
         # create filenames
         # TO DO: create more descriptive filenames
