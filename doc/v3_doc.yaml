@@ -3,6 +3,21 @@
 # parameters controling logging messages throughout execution
 log_parameters:
     # ---------------
+    # Python logging level. Can either be a string or an integer from the list below
+    # optional, defaults to DEBUG (10). All logging statements at or above the level
+    # specified will be displayed. 
+    #
+    # To check the contents of the YAML configuration file, set the logging level at or lower than DEBUG
+    # 
+    # CRITICAL - 50
+    # ERROR - 40
+    # WARNING - 30
+    # INFO - 20
+    # DEBUG - 10
+    # NOTSET - 0
+    #
+    log_level: 
+    # ---------------
     # logical controling print statements throughout execution
     # optional, defaults to None and no printing occurs
     verbose:
@@ -307,7 +322,8 @@ compute_parameters:
         # ---------------
         # The number of routing simulation timesteps per qlateral time interval. 
         # For example, if dt_qlateral = 3600 secs, and dt = 300 secs, then qts_subdivisions = 3600/300 = 12
-        # (!!) mandatory. defaults to 1, which is likely to be incorrect.
+        # (!!) mandatory. defaults to 1, which is likely to be incorrect. 
+        # TODO: remove the need for a user to specify this variable. It should be an internal calculation
         qts_subdivisions:
         # ---------------
         # routing simulation time interval.
@@ -320,10 +336,26 @@ compute_parameters:
         # TODO: thow an error or warning
         qlat_input_folder:
         # ---------------
+        # globbing pattern to identify files that contiain qlateral data in qlat_input_folder
+        # optional, defaults to "*CHRTOUT_DOMAIN1"
+        # only needed if using the automatic loop set creation capability
+        qlat_file_pattern_filter:
+        # ---------------
+        # number of total timesteps in the routing simulation
+        # (!!) mandatory if loop sets will be automatically created
+        # suggest that this variable is only included at this level if loop sets are being
+        # automatically generated. Else, if loop sets are explicitly defined, do not include
+        # this variable, here. Rather, there should be an nts variable for each of the qlat_forcing_sets
+        nts:
+        # ---------------
+        # maximum number of forcing files per loop.
+        # optional, defaults to 12, parameter not used if qlat_forcing_sets exists
+        max_loop_size:
+        # ---------------
         # field name of segment ID in qlateral data
         # (!!) mandatory
         # TODO: change default `feature_id`
-        qlat_file_index_col:
+        qlat_file_index_col: 
         # ---------------
         # lateral inflow variable name in forcing file
         # typical forcing files are WRF Hydro channel route out files (CHRTOUT)
@@ -349,15 +381,15 @@ compute_parameters:
             # number of timesteps in loop iteration 1
             - nts:
             # ---------------
-            # list of forcing file names to be used in itteration 1
+            # list of forcing file names to be used in iteration 1
               qlat_files: 
               - filename1
               - filename2
             # ---------------
-            # number of timesteps in loop itteration 2
+            # number of timesteps in loop iteration 2
             - nts:
             # ---------------
-            # list of forcing file names to be used in itteration 2
+            # list of forcing file names to be used in iteration 2
               qlat_files:
               - filename3
               - filename4
@@ -509,4 +541,3 @@ output_parameters:
             - validation_files:
                 - validation_file3
                 - validation_file4
-            
