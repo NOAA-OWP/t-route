@@ -307,7 +307,6 @@ def main_v02(argv):
         coastal_parameters,
     ) = _input_handler_v02(args)
 
-    verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     
     main_start_time = time.time()
