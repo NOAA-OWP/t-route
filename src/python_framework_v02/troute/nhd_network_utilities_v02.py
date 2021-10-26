@@ -627,16 +627,22 @@ def build_forcing_sets(
         # list of forcing files
         forcing_filename_list = []
         for element in datetime_list:
-            forcing_filename_list.append(all_files[file_dates.index(element)])
-
+            try:
+                J = all_files[file_dates.index(element)]
+                assert J.is_file() == True
+                forcing_filename_list.append(all_files[file_dates.index(element)])
+            except AssertionError:
+                raise AssertionError("Aborting simulation because forcing file with date", element, "cannot be found.") from None
+            except ValueError:
+                raise ValueError("Aborting simulation because forcing file with date", element, "cannot be found") from None
         # forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
         
         # check that all forcing files exist
-        for f in forcing_filename_list:
-            try:   
-                assert f.is_file() == True
-            except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+        # for f in forcing_filename_list:
+        #     try:   
+        #         assert f.is_file() == True
+        #     except AssertionError:
+        #         raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
                 
         # build run sets list
         run_sets = []
