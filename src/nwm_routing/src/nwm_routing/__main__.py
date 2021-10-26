@@ -60,13 +60,6 @@ def _handle_args_v02(argv):
         type=int,
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Verbose output (leave blank for quiet output)",
-        dest="verbose",
-        action="store_true",
-    )
-    parser.add_argument(
         "--qlat-dt",
         "--qlateral-time-step",
         help="Set the default qlateral timestep length",
@@ -364,7 +357,6 @@ def _run_everything_v02(
 
     dt = run_parameters.get("dt", None)
     nts = run_parameters.get("nts", None)
-    verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
     break_network_at_waterbodies = run_parameters.get(
@@ -670,7 +662,6 @@ def _handle_output_v02(
     dt = run_parameters.get("dt", None)
     nts = run_parameters.get("nts", None)
     t0 = run_parameters.get("t0", None)
-    verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
     
@@ -711,8 +702,7 @@ def _handle_output_v02(
 
         if csv_output_folder:
             
-            if verbose:
-                LOG.info("- writing flow, velocity, and depth results to .csv")
+            LOG.info("- writing flow, velocity, and depth results to .csv")
                 
             # create filenames
             # TO DO: create more descriptive filenames
@@ -776,8 +766,7 @@ def _handle_output_v02(
 
         if len(wrf_hydro_restart_files) > 0:
             
-            if verbose:
-                LOG.info("- writing restart files")
+            LOG.info("- writing restart files")
                 
             qvd_columns = pd.MultiIndex.from_product(
                 [range(nts), ["q", "v", "d"]]
@@ -816,8 +805,7 @@ def _handle_output_v02(
     )
     if chrtout_read_folder:
         
-        if verbose:
-            LOG.info("- writing results to CHRTOUT")
+        LOG.info("- writing results to CHRTOUT")
         
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -925,7 +913,6 @@ def nwm_route(
     waterbody_type_specified,
     diffusive_parameters,
     showtiming=False,
-    verbose=False,
     debuglevel=0,
 ):
 
@@ -1089,7 +1076,6 @@ def main_v03(argv):
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
    
-    verbose = log_parameters.get("verbose", None)
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
 
@@ -1112,7 +1098,6 @@ def main_v03(argv):
         supernetwork_parameters,
         waterbody_parameters,
         showtiming=showtiming,
-        verbose=verbose,
         debuglevel=debuglevel,
     )
 
@@ -1126,7 +1111,6 @@ def main_v03(argv):
         segment_list=None,
         wbodies_list=None,
         showtiming=showtiming,
-        verbose=verbose,
         debuglevel=debuglevel,
     )
 
@@ -1161,7 +1145,6 @@ def main_v03(argv):
         lastobs_df.index,
         t0,
         showtiming,
-        verbose,
         debuglevel,
     )
 
@@ -1202,7 +1185,6 @@ def main_v03(argv):
             waterbody_type_specified,
             diffusive_parameters,
             showtiming,
-            verbose,
             debuglevel,
         )
 
@@ -1218,7 +1200,6 @@ def main_v03(argv):
                 lastobs_df.index,
                 t0 + timedelta(seconds = dt * nts),
                 showtiming,
-                verbose,
                 debuglevel,
             )
 
@@ -1244,7 +1225,6 @@ def main_v03(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             showtiming,
-            verbose,
             debuglevel,
             data_assimilation_parameters,
             lastobs_df,
@@ -1279,7 +1259,6 @@ async def main_v03_async(argv):
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
 
-    verbose = log_parameters.get("verbose", None)
     showtiming = log_parameters.get("showtiming", None)
     debuglevel = log_parameters.get("debuglevel", 0)
 
@@ -1302,7 +1281,6 @@ async def main_v03_async(argv):
         supernetwork_parameters,
         waterbody_parameters,
         showtiming=showtiming,
-        verbose=verbose,
         debuglevel=debuglevel,
     )
 
@@ -1316,7 +1294,6 @@ async def main_v03_async(argv):
         segment_list=None,
         wbodies_list=None,
         showtiming=showtiming,
-        verbose=verbose,
         debuglevel=debuglevel,
     )
 
@@ -1371,7 +1348,6 @@ async def main_v03_async(argv):
         lastobs_df.index,
         t0,
         showtiming,
-        verbose,
         debuglevel,
     )
 
@@ -1418,7 +1394,6 @@ async def main_v03_async(argv):
             waterbody_type_specified,
             diffusive_parameters,
             showtiming,
-            verbose,
             debuglevel,
         )
 
@@ -1434,7 +1409,6 @@ async def main_v03_async(argv):
             lastobs_df.index,
             t0 + timedelta(seconds = dt * nts),
             showtiming,
-            verbose,
             debuglevel,
         )
 
@@ -1464,7 +1438,6 @@ async def main_v03_async(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             showtiming,
-            verbose,
             debuglevel,
             data_assimilation_parameters,
             lastobs_df,
@@ -1515,7 +1488,6 @@ async def main_v03_async(argv):
         waterbody_type_specified,
         diffusive_parameters,
         showtiming,
-        verbose,
         debuglevel,
     )
 
@@ -1547,7 +1519,6 @@ async def main_v03_async(argv):
         qts_subdivisions,
         compute_parameters.get("return_courant", False),
         showtiming,
-        verbose,
         debuglevel,
         data_assimilation_parameters,
         lastobs_df,
