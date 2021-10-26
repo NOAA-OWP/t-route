@@ -1268,9 +1268,6 @@ def main_v03(argv):
                 round(task_times['output_time']/task_times['total_time'] * 100,2)
             )
         )
-          
-    import pdb; pdb.set_trace()
-
 
 async def main_v03_async(argv):
     """
