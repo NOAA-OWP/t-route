@@ -8,7 +8,8 @@ log_parameters:
     # specified will be displayed. 
     #
     # To check the contents of the YAML configuration file, set the logging level at or lower than DEBUG
-    # 
+    # For the most verbose output, set log_level to DEBUG 
+    #
     # CRITICAL - 50
     # ERROR - 40
     # WARNING - 30
@@ -18,17 +19,10 @@ log_parameters:
     #
     log_level: 
     # ---------------
-    # logical controling print statements throughout execution
-    # optional, defaults to None and no printing occurs
-    verbose:
-    # ---------------
-    # logical controling timing statements throughout execution
-    # optional, defaults to None and no timings are reported
+    # logical, it True a timing summary is provided that reports the total time
+    # required for each major process in the simulation sequence.
+    # optional, defaults to None and no timing summary is reported
     showtiming: 
-    # ---------------
-    # Integer. If debuglevel <= -1, additional information is printed to logging file. 
-    # !! Mandatory, defaults to 0
-    debuglevel: 
 
 # ---------------
 # parameters controlling how the stream network is synthesized
