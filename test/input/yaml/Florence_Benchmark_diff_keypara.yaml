@@ -1,0 +1,151 @@
+# This test case simulates the diffusive wave model across a channel-only Falls Lake domain
+# The compute kernels can be changed between diffusive (Tulane), difffusive_cnt, and 
+# V02-structured for a Muskingum-Cunge simulation. 
+#
+# At this time (9/13/2021), the diffusive_cnt simulation is unstable with dt < ~450 secs.
+# We reccomend a dt=600 and qts_subdivisions = 6.
+---
+# Initial input parameters
+run_parameters:
+#     compute_kernel: "diffusive"
+    compute_kernel: "diffusive_cnt"
+    parallel_compute_method: None
+    verbose: true
+    showtiming: true
+    debuglevel: 1
+    assume_short_ts: true
+    subnetwork_target_size: 100
+    qts_subdivisions: 12
+    return_courant: false
+    # NOTE: diffusive_cnt does not work with dt < 600 secs
+    dt: 300
+    nts: 8616
+    cpu_pool: 12
+    #Use the parallel computation engine (omit flag for serial computation)
+    #Verbose output (leave blank for quiet output)
+    #Set the showtiming (omit flag for no timing information)
+    #Set the debuglevel
+    #Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)
+    #Use the previous timestep value for upstream flow
+    #number of simulation timesteps per qlateral timestep
+    #Set the default timestep length
+    #Set the default timestep length
+    #Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.
+# Output file parameters
+output_parameters:
+    #output location for csv file 
+    csv_output: 
+        csv_output_folder: "../../test/output/text"
+        csv_output_segments: []
+    #out location for nc file
+    nc_output_folder: None
+# Data column assignment inside supernetwork_parameters
+supernetwork_parameters:
+    title_string: cnt_test
+    geo_file_path: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    mask_file_path: "../../test/input/geo/Channels/masks/933020089_mask.csv"
+    mask_layer_string: ""
+    mask_driver_string: "csv"
+    mask_key: 0
+    columns:
+        key: "link"
+        downstream: "to"
+        dx: "Length"
+        n: "n"  # TODO: rename to `manningn`
+        ncc: "nCC"  # TODO: rename to `mannningncc`
+        s0: "So"  # TODO: rename to `bedslope`
+        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+        waterbody: "NHDWaterbodyComID"
+        tw: "TopWdth"  # TODO: rename to `topwidth`
+        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+        musk: "MusK"
+        musx: "MusX"
+        cs: "ChSlp"  # TODO: rename to `sideslope`
+        alt: "alt"   # added for diffusive routing
+    waterbody_null_code: -9999
+    terminal_code: 0
+    driver_string: NetCDF
+    layer_string: 0
+# Waterbody parameters and assignments from lake parm file
+waterbody_parameters:
+    level_pool:
+        #WRF-Hydro lake parm file
+        level_pool_waterbody_parameter_file_path: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
+        level_pool_waterbody_id: lake_id
+        level_pool_waterbody_area: LkArea
+        level_pool_weir_elevation: WeirE
+        level_pool_waterbody_max_elevation: LkMxE
+        level_pool_outfall_weir_coefficient: WeirC
+        level_pool_outfall_weir_length: WeirL
+        level_pool_overall_dam_length: DamL
+        level_pool_orifice_elevation: OrificeE
+        level_pool_orifice_coefficient: OrificeC
+        level_pool_orifice_area: OrificeA
+# Q-Lateral inputs from hydrology model
+forcing_parameters:
+    qlat_input_file: "../../test/input/florence_933020089/FORCING/SeptemberFlorenceQlateral_wDates.csv"
+    # WRF-Hydro files in comments below for example
+    # qlat_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+    # qlat_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+    # qlat_file_index_col: feature_id
+    # qlat_file_value_col: q_lateral
+# Warm state files from prior simulations
+restart_parameters:
+    channel_restart_file: "../../test/input/florence_933020089/RESTART/ChannelRestart_2018-09-01.csv"
+    # WRF-Hydro files in comments below for example
+    # wrf_hydro_channel_restart_file: "../../test/input/CONUS_benchmark/RESTART/RESTART.2018110100_DOMAIN1.znc"
+    # wrf_hydro_channel_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    # #WRF-Hydro channels ID crosswalk file
+    # #wrf_hydro_channel_ID_crosswalk_file: "../../test/input/CONUS_benchmark/DOMAIN/RouteLink_NWMv2.1z.nc"
+    # wrf_hydro_channel_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    # wrf_hydro_channel_ID_crosswalk_file_field_name: link
+    # wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+    # wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+    # wrf_hydro_channel_restart_depth_flow_field_name: hlink
+    # #WRF-Hydro waterbodies restart file
+    # wrf_hydro_waterbody_restart_file: "../../test/input/florence_933020089/RESTART/HYDRO_RST.2018-09-01_00_00_DOMAIN1"
+    # #WRF-Hydro waterbody ID crosswalk file
+    # wrf_hydro_waterbody_ID_crosswalk_file: "../../test/input/florence_933020089/DOMAIN/LAKEPARM.nc"
+    # wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+    # #WRF-Hydro waterbody crosswalk filter file
+    # wrf_hydro_waterbody_crosswalk_filter_file: "../../test/input/florence_933020089/DOMAIN/Route_Link.nc"
+    # wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+# Output files to check parity
+parity_parameters:
+#     parity_check_file: None
+    parity_check_compare_node: None
+    # WRF-Hydro files in comments below for example
+    # parity_check_input_folder: "../../test/input/florence_933020089/Full_Model_Run/OUTPUT/"
+    # parity_check_file_pattern_filter: "/201809*.CHRTOUT_DOMAIN1"
+    # parity_check_file_index_col: feature_id
+    # parity_check_file_value_col: streamflow
+diffusive_parameters:
+    #output location for csv file 
+    cn_mod: 
+        courant_number_upper_limit: 0.9 # the upper limit of courant number: strictly observed in simulation timestep changing method while less strictly in simulation timestep fixed method.
+        celerity_lower_limit: 0.5 # lower limit of celerity value applied to all stream segments over entire simulation time	
+        diffusivity_lower_limit: 50.0 # lower limit of diffusivity value applied to all stream segments over entire simulation time
+        diffusivity_upper_limit: 1000.0 # upper limit of diffusivity value applied to all stream segments over entire simulation time
+        dimensionless_diffusivity_lower_limit: -15.0 # lower limit of dimensionless diffusivity, used for selecting normal depth vs. diffusive depth
+        dimensionless_diffusivity_upper_limit: -10.0 # upper limit of dimensionless diffusivity, used for selecting normal depth vs. diffusive depth
+        newton_raphson_switch: 1 # 0: run bisection, 1: run Newton Raphon to compute water depth
+        discharge_lower_limit: 0.02831 # lower limit of discharge for numerical stability
+        chbed_slope_lower_limit: 0.0001 # lower limit of channel bottom slope 
+        theta: 1.0 #  theta in the numerical eqn. 0: purely explicit scheme. 1: purely implicit scheme.
+    cnt: 
+        celerity_lower_limit: 0.5 # lower limit of celerity value applied to all stream segments over entire simulation time        
+        diffusivity_lower_limit: 50.0 # lower limit of diffusivity value applied to all stream segments over entire simulation time
+        diffusivity_upper_limit: 400.0 # upper limit of diffusivity value applied to all stream segments over entire simulation time 	
+        dimensionless_dx_lower_limit: 0.1 # lower limit of dimensionless space step to reduce osciallation of hydrograph (higher, less oscillation but also less diffusivity)
+        dimensionless_dt_lower_limit: 0.3 # lower limit of dimensionless time step to reduce osciallation of hydrograph (higher, less oscillation but also less diffusivity)
+        discharge_lower_limit: 0.02831 # lower limit of discharge for numerical stability        
+        chbed_slope_lower_limit: 0.0001 # lower limit of channel bed slope to prevent any numerical instability
+        water_depth_compute_switch: 3 # 1: mid-point bisection method, 2: simple iterative method, 3: Newton Raphson, 4: normal depth
+        ghost_timenode_number: 2 # the number of ghost nodes expanded from the existing time nodes (repeatinterval) for estimating temporal boundary condition of Q using Courant number being one.
+    cnx: 
+        courant_number_upper_limit: 0.95 # the upper limit of courant number: strictly observed in simulation timestep changing method while less strictly in simulation timestep fixed method.
+        celerity_lower_limit: 0.5 # lower limit of celerity value applied to all stream segments over entire simulation time.	
+        discharge_lower_limit: 0.002 # lower limit of discharge for numerical stability.
+        chbed_slope_lower_limit: 0.00001 # lower limit of channel bed slope to prevent any numerical stability.
+        subnode_number_upper_limit: 12 #the number of uniformly distributed sub-nodes including ghost sub-nodes over or beyond each stream segment.
+        ghost_subnode_number: 2 #the number of ghost sub-nodes added to uniformly distributed sub-nodes for a stream segment, used to provide adequate discharge boudary condition.
