@@ -693,6 +693,25 @@ def _handle_output_v02(
             copy=False,
         )
 
+        print ("test44")
+
+        #print (results[3])
+        #print ("--------------------------------------------------")
+        #print (results[5])
+        #print ("--------------------------------------------------")
+        #print (results[6])
+        #print ("--------------------------------------------------")
+
+        for r in results:
+            print (r[4])
+            print ("--------------------------------------------------")
+            print (r[5])
+            print ("--------------------------------------------------")
+            print (r[6])
+            print ("--------------------------------------------------")
+
+
+
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
