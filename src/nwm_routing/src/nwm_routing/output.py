@@ -253,7 +253,4 @@ def nwm_output_generator(
             parity_set, results,
         )
 
-        
-        LOG.info("parity check complete")
-    
-        LOG.info("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
