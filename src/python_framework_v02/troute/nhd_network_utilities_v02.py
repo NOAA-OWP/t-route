@@ -492,7 +492,7 @@ def build_waterbodies(
     wbody_conn = nhd_network.extract_waterbody_connections(
         segment_reservoir_df,
         waterbody_crosswalk_column,
-        supernetwork_parameters["waterbody_null_code"],
+        supernetwork_parameters.get('waterbody_null_code', -9999),
     )
 
     # TODO: Add function to read LAKEPARM.nc here
