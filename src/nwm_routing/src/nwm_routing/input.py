@@ -498,7 +498,6 @@ def check_inputs(
     # TODO summarize simlation configuration
     
     LOG.debug('Configuration file check complete')
-    import pdb; pdb.set_trace()
 
 
 #     columns = ['key', 'downstream', 'dx', 'n', 'ncc', 's0', 'bw', 'waterbody', 'gages', 'tw', 'twcc', 'alt', 'musk', 'musx', 'cs']   
