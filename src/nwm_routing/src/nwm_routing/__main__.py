@@ -52,14 +52,6 @@ def _handle_args_v02(argv):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "--debuglevel",
-        help="Set the debuglevel",
-        dest="debuglevel",
-        choices=[0, 1, 2, 3],
-        default=0,
-        type=int,
-    )
-    parser.add_argument(
         "--qlat-dt",
         "--qlateral-time-step",
         help="Set the default qlateral timestep length",
@@ -357,7 +349,6 @@ def _run_everything_v02(
     dt = run_parameters.get("dt", None)
     nts = run_parameters.get("nts", None)
     showtiming = run_parameters.get("showtiming", None)
-    debuglevel = run_parameters.get("debuglevel", 0)
     break_network_at_waterbodies = run_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -662,7 +653,6 @@ def _handle_output_v02(
     nts = run_parameters.get("nts", None)
     t0 = run_parameters.get("t0", None)
     showtiming = run_parameters.get("showtiming", None)
-    debuglevel = run_parameters.get("debuglevel", 0)
     
     start_time = time.time()
 
@@ -737,8 +727,7 @@ def _handle_output_v02(
             # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
             # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
-        if debuglevel <= -1:
-            LOG.info(flowveldepth)
+        LOG.debug(flowveldepth)
 
     # directory containing WRF Hydro restart files
     wrf_hydro_restart_read_dir = output_parameters.get(
@@ -911,8 +900,6 @@ def nwm_route(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_parameters,
-    showtiming=False,
-    debuglevel=0,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -1096,9 +1083,11 @@ def main_v03(argv):
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,
-        showtiming=showtiming,
-        debuglevel=debuglevel,
     )
+    
+    if showtiming:
+        network_end_time = time.time()
+        task_times['network_time'] = network_end_time - network_start_time
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
@@ -1109,9 +1098,11 @@ def main_v03(argv):
         waterbodies_df,
         segment_list=None,
         wbodies_list=None,
-        showtiming=showtiming,
-        debuglevel=debuglevel,
     )
+    
+    if showtiming:
+        ic_end_time = time.time()
+        task_times['initial_condition_time'] += ic_end_time - network_end_time
 
     # Create run_sets: sets of forcing files for each loop
     run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
@@ -1143,9 +1134,11 @@ def main_v03(argv):
         param_df.index,
         lastobs_df.index,
         t0,
-        showtiming,
-        debuglevel,
     )
+    
+    if showtiming:
+        forcing_end_time = time.time()
+        task_times['forcing_time'] += forcing_end_time - ic_end_time
 
     for run_set_iterator, run in enumerate(run_sets):
 
@@ -1183,9 +1176,11 @@ def main_v03(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
-            showtiming,
-            debuglevel,
         )
+        
+        if showtiming:
+            route_end_time = time.time()
+            task_times['route_time'] += route_end_time - route_start_time
 
         # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
@@ -1198,9 +1193,11 @@ def main_v03(argv):
                 param_df.index,
                 lastobs_df.index,
                 t0 + timedelta(seconds = dt * nts),
-                showtiming,
-                debuglevel,
             )
+            
+            if showtiming:
+                forcing_end_time = time.time()
+                task_times['forcing_time'] += forcing_end_time - route_end_time
 
             q0 = new_nwm_q0(run_results)
 
@@ -1259,7 +1256,6 @@ async def main_v03_async(argv):
     ) = _input_handler_v03(args)
 
     showtiming = log_parameters.get("showtiming", None)
-    debuglevel = log_parameters.get("debuglevel", 0)
 
     
     main_start_time = time.time()
@@ -1279,8 +1275,6 @@ async def main_v03_async(argv):
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,
-        showtiming=showtiming,
-        debuglevel=debuglevel,
     )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
@@ -1292,8 +1286,6 @@ async def main_v03_async(argv):
         waterbodies_df,
         segment_list=None,
         wbodies_list=None,
-        showtiming=showtiming,
-        debuglevel=debuglevel,
     )
 
     # Create run_sets: sets of forcing files for each loop
@@ -1343,8 +1335,6 @@ async def main_v03_async(argv):
         param_df.index,
         lastobs_df.index,
         t0,
-        showtiming,
-        debuglevel,
     )
 
     run_set_iterator = 0
@@ -1389,8 +1379,6 @@ async def main_v03_async(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
-            showtiming,
-            debuglevel,
         )
 
         forcings_task = loop.run_in_executor(
@@ -1404,8 +1392,6 @@ async def main_v03_async(argv):
             param_df.index,
             lastobs_df.index,
             t0 + timedelta(seconds = dt * nts),
-            showtiming,
-            debuglevel,
         )
 
         run_results = await model_task
@@ -1433,8 +1419,6 @@ async def main_v03_async(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
-            showtiming,
-            debuglevel,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
@@ -1483,8 +1467,6 @@ async def main_v03_async(argv):
         waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
-        showtiming,
-        debuglevel,
     )
 
     # nwm_final_output_generator()
