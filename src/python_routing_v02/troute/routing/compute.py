@@ -801,6 +801,7 @@ def compute_nhd_routing_v02(
                             assume_short_ts,
                             return_courant,
                             diffusive_parameters,
+                            compute_func_name,
                         )
                     )
 
@@ -1062,6 +1063,7 @@ def compute_nhd_routing_v02(
                     assume_short_ts,
                     return_courant,
                     diffusive_parameters,
+                    compute_func_name,
                 )
             )
 
