@@ -108,12 +108,12 @@ contains
 	!*----------------------------
 	!* sensitive model parameters
 	!*----------------------------
-	cfl = para_ar_g(1)  		!* 0.95, upper limit of Courant number
-	C_llm = para_ar_g(2)  		!* 0.05, lower limit of Celerity
-	q_llm = para_ar_g(3) 		!* 0.002. lower limit of discharge
-	so_llm = para_ar_g(4) 		!* 0.00001, lower limit of channel bed slope
-	mxncomp_mseg= int(para_ar_g(5)) !* the upper limit of number of uniformly distributed sub-nodes on each stream segment including ghost nodes.
-	ncomp_ghost= int(para_ar_g(6))  !* the number of downstream sub-nodes added to existing sub-nodes on segment, used to provide proper discharge downstream boundary condition.
+	cfl = para_ar_g(1)  		!* upper limit of Courant number (default: 0.95) 
+	C_llm = para_ar_g(2)  		!* lower limit of Celerity (default: 0.95) 
+	q_llm = para_ar_g(3) 		!* lower limit of discharge (default: 0.002)
+	so_llm = para_ar_g(4) 		!* lower limit of channel bed slope (default: 0.00001)
+	mxncomp_mseg= int(para_ar_g(5)) !* the upper limit of number of uniformly distributed sub-nodes on each stream segment including ghost nodes (default:12)
+	ncomp_ghost= int(para_ar_g(6))  !* the number of downstream sub-nodes added to existing sub-nodes on segment, used to provide proper discharge downstream boundary condition (default: 2)
         nrch=nrch_g
         mxncomp= mxncomp_g
         nts_ub = nts_ub_g
