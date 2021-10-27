@@ -296,8 +296,8 @@ compute_parameters:
     # 
     # If the user wishes to have loop sets build automatically, they should not include the qlat_forcing_sets
     # variable under forcing_parameters. If qlat_forcing_sets is present explicit loop structures are assumed.
-    # Additional variables qlat_file_pattern_filter, max_loop_size, and nts are required under forcing_parameters
-    # to guide automatic loop set construction.
+    # Additional variables qlat_file_pattern_filter, max_loop_size, is_date_in_forcing_filename, and nts are 
+    # required under forcing_parameters to guide automatic loop set construction.
     #
     # If the user wishes to explicitly list loop sets, they should do so with the qlat_forcing_sets variable
     # nts variables should be specified for each loop, and there is no need to include qlat_file_pattern_filter,
@@ -337,6 +337,15 @@ compute_parameters:
         # optional, defaults to 12, parameter not used if qlat_forcing_sets exists
         max_loop_size:
         # ---------------
+        # Logical, True if an 12-digit datetime code appears in the channel forcing filename.
+        # optional, defaults to True. 
+        # only needed if using the automatic loop set creation capability
+        #
+        # While this is an optional parameter, we strongly encourage users to take advantage of it. 
+        # If, for whatever reason, forcing data are contained in files with unconventional names, 
+        # setting this parameter to False is required to successfully build forcing file sets.
+        is_date_in_forcing_filename:
+        # ---------------
         # field name of segment ID in qlateral data
         # (!!) mandatory
         # TODO: change default `feature_id`
@@ -349,8 +358,8 @@ compute_parameters:
         # ---------------
         # forcing files and number of timesteps associated with each simulation loop
         # optional, only include if explicitly listing the forcing files in each set.
-        # If this variable is not present, make sure nts, qlat_file_pattern_filter, and 
-        # max_loop_size variables are listed above.
+        # If this variable is not present, make sure nts, qlat_file_pattern_filter, 
+        # max_loop_size, and is_date_in_forcing_filename variables are listed above.
         qlat_forcing_sets:
             # ---------------
             # number of timesteps in loop itteration 1
