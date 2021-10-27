@@ -692,24 +692,40 @@ def _handle_output_v02(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+        
+        # dynamic_reservoir_types and reservoir_assimilated_values
+        # are currently only returned from V02-structured, and therefore,
+        # any other compute method would return out of bounds for the
+        # below indices.
+        if ('compute_kernel' in run_parameters \
+           and run_parameters['compute_kernel'] == 'V02-structured') \
+           or ('compute_method' in run_parameters \
+           and run_parameters['compute_method'] == 'V02-structured'):
 
-        print ("test44")
+            # dynamic_reservoir_types and reservoir_assimilated_values
+            # are needed as hourly outputs in the NWM Lake Out files
+            dynamic_reservoir_types_df = pd.concat(
+                [pd.DataFrame(r[5], index=r[4]) for r in results],
+                copy=False,
+            )
 
-        #print (results[3])
-        #print ("--------------------------------------------------")
-        #print (results[5])
-        #print ("--------------------------------------------------")
-        #print (results[6])
-        #print ("--------------------------------------------------")
+            reservoir_assimilated_values_df = pd.concat(
+                [pd.DataFrame(r[6], index=r[4]) for r in results],
+                copy=False,
+            )
 
-        for r in results:
-            print (r[4])
             print ("--------------------------------------------------")
-            print (r[5])
+            #print ("dynamic_reservoir_types_df")
+            #print (dynamic_reservoir_types_df)
             print ("--------------------------------------------------")
-            print (r[6])
+        
             print ("--------------------------------------------------")
-
+            #print ("reservoir_assimilated_values_df")
+            #print (reservoir_assimilated_values_df)
+            print ("--------------------------------------------------")
+       
+            #del dynamic_reservoir_types_df
+            #del reservoir_assimilated_values_df
 
 
         if run_parameters.get("return_courant", False):
@@ -797,12 +813,13 @@ def _handle_output_v02(
             qvd_columns = pd.MultiIndex.from_product(
                 [range(nts), ["q", "v", "d"]]
             ).to_flat_index()
-
+            print ("1------")
             flowveldepth = pd.concat(
                 [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
                 copy=False,
             )
-                
+            print ("2------")
+            print (flowveldepth) 
             nhd_io.write_channel_restart_to_wrf_hydro(
                 flowveldepth,
                 wrf_hydro_restart_files,
@@ -818,11 +835,13 @@ def _handle_output_v02(
                 ),
                 wrf_hydro_channel_restart_new_extension,
             )
+            print ("3------")
         else:
             # print error and raise exception
             str = "WRF Hydro restart files not found - Aborting restart write sequence"
             raise AssertionError(str)
 
+    print ("4------")
     chrtout_read_folder = output_parameters.get(
         "wrf_hydro_channel_output_source_folder", None
     )
@@ -831,6 +850,7 @@ def _handle_output_v02(
     )
     if chrtout_read_folder:
         
+        print ("5------")
         if verbose:
             print("- writing results to CHRTOUT")
         
@@ -851,6 +871,7 @@ def _handle_output_v02(
             )
         )
 
+        print ("6------")
         nhd_io.write_q_to_wrf_hydro(
             flowveldepth,
             chrtout_files,
@@ -858,6 +879,7 @@ def _handle_output_v02(
             run_parameters["qts_subdivisions"],
             wrf_hydro_channel_output_new_extension,
         )
+        print ("7------")
 
     data_assimilation_folder = data_assimilation_parameters.get(
     "data_assimilation_timeslices_folder", None
@@ -865,6 +887,7 @@ def _handle_output_v02(
     lastobs_output_folder = data_assimilation_parameters.get(
     "lastobs_output_folder", None
     )
+    print ("8------")
     if data_assimilation_folder and lastobs_output_folder:
         # create a new lastobs DataFrame from the last itteration of run results
         # lastobs_df = new_lastobs(run_results, dt * nts)
@@ -878,6 +901,7 @@ def _handle_output_v02(
             link_gage_df['gages'],
             lastobs_output_folder,
         )
+    print ("9------")
 
     if verbose:
         print("output complete")

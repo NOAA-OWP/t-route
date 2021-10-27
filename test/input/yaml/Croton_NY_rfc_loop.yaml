@@ -85,7 +85,7 @@ network_topology_parameters:
 compute_parameters:
     parallel_compute_method: by-network  # OPTIONS: <omit flag for serial execution>, "by-network", "by-subnetwork-jit", "by-subnetwork-jit-clustered"
     cpu_pool: 4
-    compute_kernel: V02-structured-obj  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
+    compute_kernel: V02-structured  # OPTIONS: "V02-caching", "V02-structured-obj", "V02-structured"
     assume_short_ts: true
     return_courant: false
     restart_parameters:

@@ -89,6 +89,27 @@ def nwm_output_generator(
             copy=False,
         )
 
+        # dynamic_reservoir_types and reservoir_assimilated_values
+        # are currently only returned from V02-structured, and therefore,
+        # any other compute method would return out of bounds for the
+        # below indices.
+        if ('compute_kernel' in run_parameters \
+           and run_parameters['compute_kernel'] == 'V02-structured') \
+           or ('compute_method' in run_parameters \
+           and run_parameters['compute_method'] == 'V02-structured'):
+
+            # dynamic_reservoir_types and reservoir_assimilated_values
+            # are needed as hourly outputs in the NWM Lake Out files
+            dynamic_reservoir_types_df = pd.concat(
+                [pd.DataFrame(r[5], index=r[4]) for r in results],
+                copy=False,
+            )
+
+            reservoir_assimilated_values_df = pd.concat(
+                [pd.DataFrame(r[6], index=r[4]) for r in results],
+                copy=False,
+            )
+
         if return_courant:
             courant_columns = pd.MultiIndex.from_product(
                 [range(nts), ["cn", "ck", "X"]]
