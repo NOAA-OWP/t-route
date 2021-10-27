@@ -563,19 +563,20 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
+    date_in_filename = forcing_parameters.get("is_date_in_forcing_filename", False)
+    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
 
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
     except TypeError:
-        raise TypeError("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
+        raise TypeError("Aborting simulation because no qlat_input_folder is \
+        specified in the forcing_parameters section of the .yaml control file.") from None
     except AssertionError:
-        raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
-    
-    forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
+        raise AssertionError("Aborting simulation because the qlat_input_folder\
+        :", qlat_input_folder,"does not exist. Please check the the qlat_input_folder\
+        variable is correctly entered in the .yaml control file") from None
         
-    # TODO: Throw errors if insufficient input data are available
-
     if run_sets:
         
         # append final_timestamp variable to each set_list
@@ -597,16 +598,19 @@ def build_forcing_sets(
         all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
         first_file = all_files[0]
         second_file = all_files[1]
-
+        
         # Deduce the timeinterval of the forcing data from the output timestamps of the first
         # two ordered CHRTOUT files
         t1 = nhd_io.get_param_str(first_file, "model_output_valid_time")
         t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
         t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
         t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
-        dt_qlat_timedelta = t2 - t1
+        if t1.time() < t2.time():
+            dt_qlat_timedelta = t2 - t1
+        else:
+            dt_qlat_timedelta = t1 - t2
         dt_qlat = dt_qlat_timedelta.seconds
-
+        
         # determine qts_subdivisions
         qts_subdivisions = dt_qlat / dt
         if dt_qlat % dt == 0:
@@ -614,24 +618,84 @@ def build_forcing_sets(
 
         # the number of files required for the simulation
         nfiles = int(np.ceil(nts / qts_subdivisions))
-
+        
         # list of forcing file datetimes
         datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
                          range(nfiles)]
-        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
-                             datetime_list]
-
-        # list of forcing files
-        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
-                                 datetime_list_str]
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in datetime_list]
         
-        # check that all forcing files exist
-        for f in forcing_filename_list:
-            try:
-                J = pathlib.Path(qlat_input_folder.joinpath(f))     
-                assert J.is_file() == True
-            except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+        # If a 12-digit date code (YYYYMMDDHHMM) is written in forcing filenames, then
+        # build forcing file list through filename comprehension. 
+        #
+        # Date codes most likely appear in channel forcing files constructed by WRF Hydro.
+        if date_in_filename:
+            
+            # find the location of numeric characters in an example filename string.
+            # the example filename used is the first in the list of ordered globbed
+            # channel route files in qlat_input_folder.
+            numeric_indices = [i for i, c in enumerate(first_file.name) if c.isdigit()]
+            
+            # identify the position location of the 12-digit date sequence: YYYYMMDDHHMM
+            def ranges(nums):
+                nums = sorted(set(nums))
+                gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s+1 < e]
+                edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
+                return list(zip(edges, edges))
+              
+            A = ranges(numeric_indices)
+            for i, r in enumerate(A):
+                if r[1] - r[0] ==  11:
+                    break
+            
+            # extract filename substrings that appear before and after the date code 
+            pre_date_string = first_file.name[0:A[i][0]]
+            post_date_string = first_file.name[A[i][1]+1:]
+            
+            forcing_filename_list = [pre_date_string + d_str + post_date_string for d_str in
+                                 datetime_list_str]
+            
+            # Check that each of the required forcing files exist
+            for f in forcing_filename_list:
+                try:
+                    J = pathlib.Path(qlat_input_folder.joinpath(f))     
+                    assert J.is_file() == True
+                except AssertionError:
+                    raise AssertionError("Aborting simulation because forcing file",
+                                         J,
+                                         "cannot be not found.") from None
+        
+        # If no 12-digit date code is present in filenames, then open each forcing file in the
+        # forcing file directory and note the model_output_valid_time attribute. Build forcing 
+        # file list based on model_output_valid_time. 
+        #
+        # NOTE: This case is potentially very time intensive because it requires that ALL forcing 
+        # files be opened so that attribute values can be read. 
+        #
+        # This approach to building a forcing file list is required for nwm operations, where 
+        # datetimes do not appear in file names, rather a time-minus hours code (e.g. tm00).
+        else:
+
+            # list of file model_output_valid_times taken from forcing file attribute field
+            file_dates = [datetime.strptime(nhd_io.get_param_str(current_file,
+                  'model_output_valid_time'), '%Y-%m-%d_%H:%M:%S')
+                  for current_file in all_files]
+
+            # Check that each required forcing files exist and construct an chronolgically
+            # ordered list of files
+            forcing_filename_list = []
+            for element in datetime_list:
+                try:
+                    J = all_files[file_dates.index(element)]
+                    assert J.is_file() == True
+                    forcing_filename_list.append(all_files[file_dates.index(element)])
+                except AssertionError:
+                    raise AssertionError("Aborting simulation because forcing file with date",
+                                         element,
+                                         "cannot be found.") from None
+                except ValueError:
+                    raise ValueError("Aborting simulation because forcing file with date",
+                                     element,
+                                     "cannot be found") from None
                 
         # build run sets list
         run_sets = []
@@ -665,7 +729,7 @@ def build_forcing_sets(
             nts_last = nts_accum
             k += max_loop_size
             j += 1
-    
+            
     return run_sets
 
 def build_qlateral_array(
