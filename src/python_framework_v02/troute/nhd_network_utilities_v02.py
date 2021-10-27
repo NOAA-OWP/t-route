@@ -563,7 +563,7 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-    date_in_filename = forcing_parameters.get("is_date_in_forcing_filename", False)
+    date_in_filename = forcing_parameters.get("is_date_in_forcing_filename", True)
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
 
     try:
