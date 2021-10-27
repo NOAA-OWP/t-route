@@ -94,17 +94,17 @@ contains
         doubleprecision :: cfl, avec, sumc, vel_norm
         integer :: isubnode, subnode
         doubleprecision :: x1, x2
-        doubleprecision :: newx_s, oldq1, oldq2, oldelv1, oldelv2  	
+        doubleprecision :: newx_s, oldq1, oldq2, oldelv1, oldelv2  
 	!*---------------------
 	!* time step variables
 	!*---------------------
-        dtini= timestep_ar_g(1) !* dtini_g  !*[sec]
-        t0= timestep_ar_g(2) 	!* t0_g, simulation intial time [hr]
-        tfin= timestep_ar_g(3) 	!* tfin_g, simulation final time [hr]
-        !** not used: saveInterval= timestep_ar_g(4) !* saveinterval_ev_g [sec]
-        dt_ql= timestep_ar_g(5) !* dt_ql_g
-        dt_ub= timestep_ar_g(6) !* dt_ub_g
-        dt_db= timestep_ar_g(7) !* dt_db_g
+        dtini= timestep_ar_g(1) 	!* simulation time step fixed throughout entire simulation time [sec]
+        t0= timestep_ar_g(2) 		!* simulation start time [hr]
+        tfin= timestep_ar_g(3) 		!* simulation end time [hr]
+        !** not used: saveInterval= timestep_ar_g(4)  [sec]
+        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
+        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
+        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
 	!*----------------------------
 	!* sensitive model parameters
 	!*----------------------------
@@ -517,10 +517,6 @@ contains
                 do i=1, ncomp
                     q_ev_g(ts, i, j)=q_g(i,j)
                     elv_ev_g(ts, i, j)= z_ar_g(i,j)+ elv_g(i,j)-adjz_ar_g(i,j)
-		    if (j==689) then
-		    	write(2,*) ts, tc, i, j, q_ev_g(ts, i, j)
-	   	    endif
-	            print*, tc, i, j, q_ev_g(ts, i, j), elv_g(i,j)-adjz_ar_g(i,j)
                 enddo
             enddo
         enddo !* end of simulation time loop

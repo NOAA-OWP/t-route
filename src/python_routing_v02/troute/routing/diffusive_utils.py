@@ -419,7 +419,6 @@ def diffusive_input_data_v02(
     rconn,
     reach_list,
     diffusive_parameters,
-    compute_func_name,
     geo_cols,
     geo_index,
     geo_data,
@@ -478,7 +477,9 @@ def diffusive_input_data_v02(
     timestep_ar_g[6]= dt_db_g
 
     # store sensitive parameter values of each diffusive kernel into a corresponding array    
-    diffusive_func_name= compute_func_name    
+    diffusive_func_name= diffusive_parameters["compute_func_name"]
+    #import pdb; pdb.set_trace()
+    
     if diffusive_func_name=="diffusive":        
         timestep_ar_g[3]= saveinterval_tu        
         paradim=10 

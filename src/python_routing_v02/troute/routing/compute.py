@@ -170,6 +170,8 @@ def compute_nhd_routing_v02(
 
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
+    diffusive_parameters['compute_func_name']=compute_func_name
+ 
     if parallel_compute_method == "by-subnetwork-jit-clustered":
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
             connections, rconn, subnetwork_target_size
@@ -801,8 +803,7 @@ def compute_nhd_routing_v02(
                             assume_short_ts,
                             return_courant,
                             diffusive_parameters,
-                            compute_func_name,
-                        )
+                          )
                     )
 
                 results_subn[order] = parallel(jobs)
@@ -1063,7 +1064,6 @@ def compute_nhd_routing_v02(
                     assume_short_ts,
                     return_courant,
                     diffusive_parameters,
-                    compute_func_name,
                 )
             )
 

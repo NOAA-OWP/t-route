@@ -107,38 +107,32 @@ contains
         frnw_g=int(dfrnw_g)
         mxncomp= mxncomp_g
         
-	dtini= timestep_ar_g(1) !* dtini_g
-        dtini_given= dtini
-        t0= timestep_ar_g(2) !* t0_g
-        tfin= timestep_ar_g(3) !* tfin_g
+	dtini= timestep_ar_g(1) 	!* initial simulation time step and changes with updated celerity values [sec]
+        dtini_given= dtini     
+        t0= timestep_ar_g(2) 		!* simulation start time [hr]
+        tfin= timestep_ar_g(3) 		!* simulation end time [hr]
         ntim = floor( (tfin - t0) / dtini * 3600)
         timesDepth= 4.0 !* water depth multiplier used in readXsection
         nel= 501 !nel_g
-        saveInterval= timestep_ar_g(4) !* saveInterval_ev_g
+        saveInterval= timestep_ar_g(4) 	!* recording time interval for finally computed discharge and water elevation [sec]
         saveFrequency = saveInterval / dtini_given
-        dt_ql= timestep_ar_g(5) !* dt_ql_g
-        dt_ub= timestep_ar_g(6) !* dt_ub_g
-        dt_db= timestep_ar_g(7) !* dt_db_g
+        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
+        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
+        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
         num_points= mxncomp
         totalChannels= nlinks
 
         ! Some essential parameters for Diffusive Wave
-        cfl= para_ar_g(1)  !* 0.9, Courant number
-	C_llm= para_ar_g(2) !* 0.5, lower limit of celerity
-	D_llm= para_ar_g(3) !* 50, lower limit of diffusivity
-	D_ulm= para_ar_g(4) !* 1000, upper limit of diffusivity
-        DD_llm = para_ar_g(5) !* -15. lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth  
-       	DD_ulm = para_ar_g(6) !* -10. upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth      
-	newtonRaphson = int(para_ar_g(7)) !* 1. 0: run Bisection to compute water level; 1: Newton Raphson
-	q_llm = para_ar_g(8) !* 0.02831. lower limit of discharge 
-	so_llm = para_ar_g(9) !* 0.0001
-	theta = para_ar_g(10) !* 1.0
-
-	print*, dtini, t0, tfin, saveInterval, dt_ql, dt_ub, dt_db
-        print*, cfl, C_llm, D_llm, D_ulm, DD_llm, DD_ulm, newtonRaphson, q_llm, so_llm, theta
-	do j=1, nlinks	    
-	    print*, j, frnw_g(j,1),frnw_g(j,2),frnw_g(j,3),frnw_g(j,4),frnw_g(j,5),frnw_g(j,6),frnw_g(j,7)
-	enddo    
+        cfl= para_ar_g(1)  	!* Courant number (default: 0.95)
+	C_llm= para_ar_g(2) 	!* lower limit of celerity (default: 0.5)
+	D_llm= para_ar_g(3) 	!* lower limit of diffusivity (default: 50)
+	D_ulm= para_ar_g(4) 	!* upper limit of diffusivity (default: 1000)
+        DD_llm = para_ar_g(5) 	!* lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -15.0)  
+       	DD_ulm = para_ar_g(6) 	!* upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -10.0)     
+	newtonRaphson = int(para_ar_g(7)) !* 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0) 
+	q_llm = para_ar_g(8) 	!* lower limit of discharge (default: 0.02831 cms)
+	so_llm = para_ar_g(9) 	!* lower limit of channel bed slope (default: 0.0001)
+	theta = para_ar_g(10) 	!* weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
 
         allocate(area(num_points))
         ! change for unsteady flow
@@ -374,7 +368,7 @@ contains
             end do
         end do
         
-	qpx = 0.
+	qpx = 0.  !* initial value of the first derivative of q
         width = 100. !   initialization
         !celerity = 1.0
         maxCelerity = 1.0
@@ -718,8 +712,9 @@ contains
                 endif
             end do
         else
-            print*, xt, ' is not within the limit'
-            print*, 'maxval(x)= ', maxval(x), 'and minval(x)=', minval(x),'so',  xt, ' is not within the limit'
+            print*, xt, ' is not within the range of known x data points, so linear interpolation cannot perform; '
+            print*, 'the available range of x for linear interpolation is that ', 'upper limit of x: ',&
+		     maxval(x), ' and lower limit of x: ', minval(x) 
             print*, 'jj', jj
             print*, 'x', (x(i), i=1, jj)
             print*, 'y', (y(i), i=1, jj)
@@ -1684,13 +1679,16 @@ contains
                 endif
             end do
         else if (xrt.ge.maxval(x)) then
-            !print*, xrt, ' is above the user defined limit'
+            print*, xrt, ' the given x data point is larger than the upper limit of the set of x data points'
+	    print*, 'the upper limit: ', maxval(x)
             yt=(xrt-x(kk-1))/(x(kk)-x(kk-1))*(y(kk)-y(kk-1))+y(kk-1) ! extrapolation
 
         else
-            print*, xrt, ' is below the user defined limit'
+            print*, xrt, ' the given x data point is less than lower limit of the range of known x data point, '
+	    print*, 'so linear interpolation cannot be performed.'
             yt = -9999.0
-            print*, 'maxval(x)= ', maxval(x), 'and minval(x)=', minval(x),'so',  xrt, ' is not within the limit'
+            print*, 'The proper range of x is that: ', 'the upper limit: ', maxval(x),&
+			 ' and lower limit: ', minval(x)
             print*, 'kk', kk
             print*, 't', dmyt, 'i', dmyi, 'j', dmyj
             print*, 'x', (x(k), k=1, kk)
@@ -1731,8 +1729,8 @@ contains
 
         call r_interpol(areaTable,elevTable,nel,area_c,y_crit)
         if (y_norm .eq. -9999) then
-!            print*, 'At j = ',j,', i = ',i, 'interpolation of y_norm in calculating normal area was not possible, Q', &
-!            dsc,'slope',So !,'lateralFlow', lateralFlow(1:nx1(j),j)
+            print*, 'At j = ',j,', i = ',i, 'interpolation of y_norm in calculating normal area was not possible, Q', &
+            dsc,'slope',So 
 !            stop
         end if
     end subroutine normal_crit_y

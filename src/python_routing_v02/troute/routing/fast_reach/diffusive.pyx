@@ -105,7 +105,6 @@ cpdef object compute_diffusive_tst(
     bint assume_short_ts=False,
     bint return_courant=False,
     dict diffusive_parameters=False,
-    str compute_func_name=False,
     ):
 
     # segment connections dictionary
@@ -126,7 +125,6 @@ cpdef object compute_diffusive_tst(
         rconn,
         reach_list,
         diffusive_parameters,
-        compute_func_name,
         np.asarray(data_cols),
         np.asarray(data_idx),
         np.asarray(data_values),

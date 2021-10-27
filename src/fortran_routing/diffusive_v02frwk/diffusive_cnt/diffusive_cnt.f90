@@ -76,27 +76,28 @@ contains
 	!*---------------------
 	!* time step variables
 	!*---------------------
-        dtini= timestep_ar_g(1) 	!* dtini_g  !*[sec]
+        dtini= timestep_ar_g(1) 	!* actual simulation time step [sec]
         dtini_given=dtini
-        t0= timestep_ar_g(2) 		!* t0_g, simulation intial time [hr]	
-        tfin= timestep_ar_g(3) 	  	!* tfin_g, simulation final time [hr]
-        saveInterval= timestep_ar_g(4) 	!* saveinterval_ev_g  !*[sec]
-        dt_ql= timestep_ar_g(5) 	!* dt_ql_g
-        dt_ub= timestep_ar_g(6) 	!* dt_ub_g
-        dt_db= timestep_ar_g(7) 	!* dt_db_g
+        t0= timestep_ar_g(2) 		!* simulation start time [hr]	
+        tfin= timestep_ar_g(3) 	  	!* simulation end time [hr]
+        saveInterval= timestep_ar_g(4) 	!* simulation time block where celerity and diffusivity values are assumed to be constant. [sec]
+					!* Within each time block, CNT executes discharge computation at each dtini time step.  
+        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
+        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
+        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
 	!*----------------------------
 	!* sensitive model parameters
 	!*----------------------------
-	C_llm = para_ar_g(1)  		     !* 0.5, lower limit of celerity
-	D_llm = para_ar_g(2)  		     !* 50.0, lower limit of diffusivity
-        D_ulm = para_ar_g(3)  		     !* 400.0, upper limit of diffusivity
-	Ddx_llm= para_ar_g(4) 		     !* 0.1, lower limit of dimensionless space step, used to reduce ocillation of hydrograph
-	Ddt_llm= para_ar_g(5) 		     !* 0.3, lower limit of dimensionless time step, used to reduce ociallation of hydrograph
+	C_llm = para_ar_g(1)  		     !* lower limit of celerity (default: 0.5) 
+	D_llm = para_ar_g(2)  		     !* lower limit of diffusivity (default: 50.0) 
+        D_ulm = para_ar_g(3)  		     !* upper limit of diffusivity (default: 400.0)
+	Ddx_llm= para_ar_g(4) 		     !* lower limit of dimensionless space step, used to reduce ocillation of hydrograph (default: 0.1)
+	Ddt_llm= para_ar_g(5) 		     !* 0.3, lower limit of dimensionless time step, used to reduce ociallation of hydrograph (default: 0.3)
 		 	      		     !* These two variables get larger, upper limit of diffusivity gets smaller, comprosing diffusion.	
-	q_llm = para_ar_g(6) 		     !* 0.02831. lower limit of discharge
-	so_llm = para_ar_g(7) 		     !* 0.0001, lower limit of channel bed slope
-	wlCalcMethod = int(para_ar_g(8))     !3 !* 1: bisection, 2: simple iterative with contribution from dU/dX, 3: Newton Raphson for water depth
-	ghost_timenode_n = int(para_ar_g(9)) !* the number of ghost time node, used to get adequate dischage boundary condition in time.
+	q_llm = para_ar_g(6) 		     !* lower limit of discharge (default: 0.02831 cms)
+	so_llm = para_ar_g(7) 		     !* lower limit of channel bed slope (default: 0.0001)
+	wlCalcMethod = int(para_ar_g(8))     !* 1: bisection, 2: simple iterative with contribution from dU/dX, 3: Newton Raphson for water depth (default: 3)
+	ghost_timenode_n = int(para_ar_g(9)) !* the number of ghost time node, used to get adequate dischage boundary condition in time (default: 2)
 	!*------------------------------
 	!* resulting time step variables
 	!*------------------------------
@@ -105,7 +106,7 @@ contains
         ! Total number of timesteps in the simulation
 	totalTimeSteps = floor((tfin - t0)/dtini*3600)+1
         repeatInterval = int(saveInterval/dtini_given)
-	ntim= repeatInterval+ ghost_timenode_n  !*! number of timesteps per repeatInterval; +1 because of boundary effects, at least 1 extra necessary
+	ntim= repeatInterval+ ghost_timenode_n  !* number of timesteps per repeatInterval; +1 because of boundary effects, at least 1 extra necessary
 	num_time=ntim
 	!*---------------------------------------------
 	!* channel connectivity, node, reach variables
