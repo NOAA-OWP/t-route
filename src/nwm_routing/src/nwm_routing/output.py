@@ -88,7 +88,6 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
-
         # dynamic_reservoir_types and reservoir_assimilated_values
         # are currently only returned from V02-structured, and therefore,
         # any other compute method would return out of bounds for the

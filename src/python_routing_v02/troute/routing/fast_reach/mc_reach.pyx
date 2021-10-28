@@ -1087,9 +1087,6 @@ cpdef object compute_network_structured(
         This version creates python objects for segments and reaches,
         but then uses only the C structures and access for efficiency
     """
-    print ("lake_numbers_col")
-    print (lake_numbers_col)
-
 
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
@@ -1442,8 +1439,5 @@ cpdef object compute_network_structured(
     free(reach_structs)
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
-    #dynamic_reservoir_types_array = np.asarray(dynamic_reservoir_types_nd[:,:], dtype='int32')
-    #reservoir_assimilated_values_array = np.asarray(reservoir_assimilated_values_nd[:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    #return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), np.asarray(reservoir_ids, dtype=np.intp), dynamic_reservoir_types_array.reshape(dynamic_reservoir_types_array.shape[0], -1), reservoir_assimilated_values_array.reshape(reservoir_assimilated_values_array.shape[0], -1)
     return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), np.asarray(reservoir_ids, dtype=np.intp), dynamic_reservoir_types_nd, reservoir_assimilated_values_nd
