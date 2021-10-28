@@ -114,19 +114,20 @@ contains
         END SUBROUTINE init_hybrid
 
 
-        SUBROUTINE run_hybrid(handle, inflow, lateral_inflow, water_elevation, outflow, routing_period) BIND(C, NAME='run_hybrid')
+        SUBROUTINE run_hybrid(handle, inflow, lateral_inflow, water_elevation, outflow, &
+        routing_period, dynamic_reservoir_type, assimilated_value) BIND(C, NAME='run_hybrid')
 
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER, C_CHAR, C_LOC, C_NULL_CHAR
 
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
-            real, intent(in)    :: inflow                   ! cubic meters per second (cms)
-            real, intent(in)    :: lateral_inflow           ! cubic meters per second (cms)
-            real, intent(inout) :: water_elevation          ! meters AMSL 
-            real, intent(out)   :: outflow                  ! cubic meters per second (cms)
-            real, intent(in)    :: routing_period           ! seconds
-            integer :: dynamic_reservoir_type               ! dynamic reservoir type sent to lake out files
-            real  :: assimilated_value                      ! value assimilated from observation or forecast
-            character(len=256) :: assimilated_source_file   ! source file of assimilated value
+            real, intent(in)     :: inflow                   ! cubic meters per second (cms)
+            real, intent(in)     :: lateral_inflow           ! cubic meters per second (cms)
+            real, intent(inout)  :: water_elevation          ! meters AMSL 
+            real, intent(out)    :: outflow                  ! cubic meters per second (cms)
+            real, intent(in)     :: routing_period           ! seconds
+            integer, intent(out) :: dynamic_reservoir_type   ! dynamic reservoir type sent to lake out files
+            real, intent(out)    :: assimilated_value        ! value assimilated from observation or forecast
+            character(len=256)   :: assimilated_source_file  ! source file of assimilated value
 
             type (persistence_levelpool_hybrid), POINTER :: hybrid_ptr ! ptr to hybrid object
 

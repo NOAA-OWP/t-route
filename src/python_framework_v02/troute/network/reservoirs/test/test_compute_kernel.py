@@ -496,7 +496,8 @@ def test_lp_run(lp_reservoir):
     routing_period = 300.0
 
     for inflow in inflow_list:
-        out, water_elevation = lp_reservoir.run(inflow, 0.0, routing_period)
+        out, water_elevation, dynamic_reservoir_type, \
+        assimilated_value = lp_reservoir.run(inflow, 0.0, routing_period)
 
         #print(out)
         #print(water_elevation)
@@ -507,6 +508,8 @@ def test_lp_run(lp_reservoir):
     assert lp_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
+    assert dynamic_reservoir_type == 1
+    assert assimilated_value == pytest.approx(-9999.0)
 
 
 def test_lp2_run(lp_reservoir2):
@@ -628,7 +631,8 @@ def test_lp2_run(lp_reservoir2):
     routing_period = 300.0
 
     for inflow in inflow_list:
-        out, water_elevation = lp_reservoir2.run(inflow, 0.0, routing_period)
+        out, water_elevation, dynamic_reservoir_type, \
+        assimilated_value = lp_reservoir2.run(inflow, 0.0, routing_period)
 
         #print(out)
         #print(water_elevation)
@@ -639,6 +643,8 @@ def test_lp2_run(lp_reservoir2):
     assert lp_reservoir2 is not None
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
+    assert dynamic_reservoir_type == 1
+    assert assimilated_value == pytest.approx(-9999.0)
 
 
 def test_lp3_run(lp_reservoir3):
@@ -940,7 +946,8 @@ def test_lp3_run(lp_reservoir3):
     routing_period = 300.0
 
     for inflow in inflow_list:
-        out, water_elevation = lp_reservoir3.run(inflow, 0.0, routing_period)
+        out, water_elevation, dynamic_reservoir_type, \
+        assimilated_value = lp_reservoir3.run(inflow, 0.0, routing_period)
 
         #print(out)
         #print(water_elevation)
@@ -951,6 +958,9 @@ def test_lp3_run(lp_reservoir3):
     assert lp_reservoir3 is not None
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
+    assert dynamic_reservoir_type == 1
+    assert assimilated_value == pytest.approx(-9999.0)
+
 
 def test_compute_hybrid_run(hybrid_reservoir):
     """
@@ -1083,7 +1093,8 @@ def test_compute_hybrid_run(hybrid_reservoir):
     routing_period = 300.0
 
     for inflow in inflow_list:
-        out, water_elevation = hybrid_reservoir.run(inflow, 0.0, routing_period)
+        out, water_elevation, dynamic_reservoir_type, \
+        assimilated_value = hybrid_reservoir.run(inflow, 0.0, routing_period)
         #print(out)
         #print(water_elevation)
 
@@ -1093,6 +1104,9 @@ def test_compute_hybrid_run(hybrid_reservoir):
     assert hybrid_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
+    assert dynamic_reservoir_type == 2
+    assert assimilated_value == pytest.approx(13.73367)
+
 
 def test_compute_rfc_run(rfc_reservoir):
     """
@@ -1185,7 +1199,8 @@ def test_compute_rfc_run(rfc_reservoir):
     routing_period = 3600.0
 
     for inflow in inflow_list:
-        out, water_elevation = rfc_reservoir.run(inflow, 0.0, routing_period)
+        out, water_elevation, dynamic_reservoir_type, \
+        assimilated_value = rfc_reservoir.run(inflow, 0.0, routing_period)
         #print(out)
         #print(water_elevation)
 
@@ -1195,3 +1210,5 @@ def test_compute_rfc_run(rfc_reservoir):
     assert rfc_reservoir is not None
     assert expected_final_outflow == pytest.approx(out)
     assert expected_final_water_elevation == pytest.approx(water_elevation)
+    assert dynamic_reservoir_type == 4
+    assert assimilated_value == pytest.approx(3.6)

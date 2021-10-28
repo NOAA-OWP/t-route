@@ -16,10 +16,14 @@ cdef extern from "levelpool_structs.c":
   )
   void free_levelpool_reach(_Reach* reach)
 
-  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
+  void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, 
+             float* outflow,  float* water_elevation, int* dynamic_reservoir_type,
+             float* assimilated_value) nogil
 
-cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
-    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
+cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, 
+                   float* outflow,  float* water_elevation, int* dynamic_reservoir_type,
+                   float* assimilated_value) nogil:
+    route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation, dynamic_reservoir_type, assimilated_value)
 
 cdef class MC_Levelpool(Reach):
   """
@@ -82,7 +86,7 @@ cdef class MC_Levelpool(Reach):
     """
     free_levelpool_reach(&self._reach)
 
-  cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period):
+  cpdef (float,float,int,float) run(self, float inflow, float lateral_inflow, float routing_period):
     """
       Run the levelpool routing function
 
@@ -92,20 +96,30 @@ cdef class MC_Levelpool(Reach):
         lateral_inflow: float
           lateral flows into the reservoir
         routing_period: float
-          amount of time to simulatie reservoir operation for, outflow if valid until this time
+          amount of time to simulate reservoir operation for, outflow if valid until this time
 
       Return:
         outflow: float
           flow rate out of the reservoir valid for routing_period seconds
         water_elevation:
           reservoir water surface elevation after routing_period seconds
+        dynamic_reservoir_type: int
+          Reservoir type at a current timestep. For a level pool reservoir,
+          this will be set to 1 and will not change.
+        assimilated_value: float
+          Reservoir outflow assimilated from external observed or forecasted sources.
+          Since level pool reservoirs do not assimilate any external data, these will
+          always be set to the sentinel value of -9999.0.
     """
     cdef float outflow = 0.0
     cdef float water_elevation = 0.0
+    cdef int dynamic_reservoir_type = 1
+    cdef float assimilated_value = -9999.0
     with nogil:
-      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
+      route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation, 
+            &dynamic_reservoir_type, &assimilated_value)
       #printf("outflow: %f\n", outflow)
-      return outflow, water_elevation
+      return outflow, water_elevation, dynamic_reservoir_type, assimilated_value
 
   @property
   def water_elevation(self):

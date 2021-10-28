@@ -668,7 +668,7 @@ def _handle_output_v02(
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
-
+    
     if showtiming:
         start_time = time.time()
     if verbose:
@@ -692,6 +692,27 @@ def _handle_output_v02(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+        
+        # dynamic_reservoir_types and reservoir_assimilated_values
+        # are currently only returned from V02-structured, and therefore,
+        # any other compute method would return out of bounds for the
+        # below indices.
+        if ('compute_kernel' in run_parameters \
+           and run_parameters['compute_kernel'] == 'V02-structured') \
+           or ('compute_method' in run_parameters \
+           and run_parameters['compute_method'] == 'V02-structured'):
+
+            # dynamic_reservoir_types and reservoir_assimilated_values
+            # are needed as hourly outputs in the NWM Lake Out files
+            dynamic_reservoir_types_df = pd.concat(
+                [pd.DataFrame(r[5], index=r[4]) for r in results],
+                copy=False,
+            )
+
+            reservoir_assimilated_values_df = pd.concat(
+                [pd.DataFrame(r[6], index=r[4]) for r in results],
+                copy=False,
+            )
 
         if run_parameters.get("return_courant", False):
             courant_columns = pd.MultiIndex.from_product(
@@ -778,12 +799,12 @@ def _handle_output_v02(
             qvd_columns = pd.MultiIndex.from_product(
                 [range(nts), ["q", "v", "d"]]
             ).to_flat_index()
-
+            
             flowveldepth = pd.concat(
                 [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
                 copy=False,
             )
-                
+            
             nhd_io.write_channel_restart_to_wrf_hydro(
                 flowveldepth,
                 wrf_hydro_restart_files,
@@ -799,6 +820,7 @@ def _handle_output_v02(
                 ),
                 wrf_hydro_channel_restart_new_extension,
             )
+
         else:
             # print error and raise exception
             str = "WRF Hydro restart files not found - Aborting restart write sequence"
@@ -846,6 +868,7 @@ def _handle_output_v02(
     lastobs_output_folder = data_assimilation_parameters.get(
     "lastobs_output_folder", None
     )
+    
     if data_assimilation_folder and lastobs_output_folder:
         # create a new lastobs DataFrame from the last itteration of run results
         # lastobs_df = new_lastobs(run_results, dt * nts)

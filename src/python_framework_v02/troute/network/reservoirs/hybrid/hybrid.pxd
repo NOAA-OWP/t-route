@@ -5,7 +5,9 @@ Declaring C types for Hybrid Class variables and functions
 from troute.network.reach cimport Reach, compute_type
 
 ############ Other Reservoir Interface ############
-cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow, float* water_elevation) nogil
+cdef void run_hybrid_c(_Reach* reach, float inflow, float lateral_inflow, 
+                       float routing_period, float* outflow, float* water_elevation,
+                       int* dynamic_reservoir_type, float* assimilated_value) nogil
 
 cdef extern from "hybrid_structs.h":
   ctypedef struct _MC_Hybrid:
@@ -28,4 +30,4 @@ cdef class MC_Hybrid(Reach):
   """
   C type for MC_Hybrid which is a reservoir subclass of a Reach
   """
-  cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)
+  cpdef (float,float,int,float) run(self, float inflow, float lateral_inflow, float routing_period)

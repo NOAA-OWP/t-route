@@ -9,7 +9,8 @@ extern void init_lp(void* handle, float *water_elevation, float *lake_area, floa
                     float *orifice_coefficient, float *orifice_area, float *max_depth, int *lake_number);
 
 extern void run_lp(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period);
+                    float *water_elevation, float *outflow, float *routing_period,
+                    int *dynamic_reservoir_type, float *assimilated_value);
 
 extern void free_lp(void* handle);
 
@@ -58,8 +59,10 @@ void free_levelpool_reach(_Reach* reach)
 }
 
 void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow, float* water_elevation)
+           float* outflow, float* water_elevation, int* dynamic_reservoir_type, 
+           float* assimilated_value)
 {
-  run_lp(reach->reach.lp.handle, &inflow, &lateral_inflow, &reach->reach.lp.water_elevation, outflow, &routing_period);
+  run_lp(reach->reach.lp.handle, &inflow, &lateral_inflow, &reach->reach.lp.water_elevation, 
+         outflow, &routing_period, dynamic_reservoir_type, assimilated_value);
   *water_elevation = reach->reach.lp.water_elevation;
 }

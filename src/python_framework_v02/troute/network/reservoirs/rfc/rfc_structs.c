@@ -12,7 +12,8 @@ extern void init_rfc(void* handle, float *water_elevation, float *lake_area, flo
                     int *forecast_lookback_hours);
 
 extern void run_rfc(void* handle, float *inflow, float *lateral_inflow,
-                    float *water_elevation, float *outflow, float *routing_period);
+                    float *water_elevation, float *outflow, float *routing_period,
+                    int *dynamic_reservoir_type, float *assimilated_value);
 
 extern void free_rfc(void* handle);
 
@@ -81,8 +82,10 @@ void free_rfc_reach(_Reach* reach)
 }
 
 void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
-           float* outflow,  float* water_elevation)
+           float* outflow,  float* water_elevation, int* dynamic_reservoir_type, 
+           float* assimilated_value)
 {
-  run_rfc(reach->reach.rfc.handle, &inflow, &lateral_inflow, &reach->reach.rfc.water_elevation, outflow, &routing_period);
+  run_rfc(reach->reach.rfc.handle, &inflow, &lateral_inflow, &reach->reach.rfc.water_elevation, 
+  outflow, &routing_period, dynamic_reservoir_type, assimilated_value);
   *water_elevation = reach->reach.rfc.water_elevation;
 }
