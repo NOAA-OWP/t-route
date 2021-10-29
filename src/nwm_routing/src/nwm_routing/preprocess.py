@@ -274,8 +274,10 @@ def nwm_forcing_preprocess(
     dt = forcing_parameters.get("dt", None)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", None)
-    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", None)
+    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", "feature_id")
+    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+    qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
+    qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
 
     # TODO: find a better way to deal with these defaults and overrides.
     run["t0"] = run.get("t0", t0)
@@ -285,6 +287,8 @@ def nwm_forcing_preprocess(
     run["qlat_input_folder"] = run.get("qlat_input_folder", qlat_input_folder)
     run["qlat_file_index_col"] = run.get("qlat_file_index_col", qlat_file_index_col)
     run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
+    run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
+    run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
 
     if data_assimilation_parameters:
         data_assimilation_folder = data_assimilation_parameters.get("data_assimilation_timeslices_folder", None)
