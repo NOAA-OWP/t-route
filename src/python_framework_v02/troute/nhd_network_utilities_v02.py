@@ -695,6 +695,8 @@ def build_qlateral_array(
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+        gw_bucket_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col","qBucket")
+        terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
 
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
@@ -702,6 +704,8 @@ def build_qlateral_array(
             #file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
+            gw_col = gw_bucket_col,
+            runoff_col = terrain_ro_col,
         )
 
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]

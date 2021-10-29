@@ -213,11 +213,15 @@ def get_ql_from_wrf_hydro_mf(
     qlat_files,
     index_col="feature_id",
     value_col="q_lateral",
+    gw_col="qBucket",
+    runoff_col = "qSfcLatRunoff",
 ):
     """
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
     value_col: column/field in the CHRTOUT files with the lateral inflow value
+    gw_col: column/field in the CHRTOUT files with the groundwater bucket flux value
+    runoff_col: column/field in the CHRTOUT files with the runoff from terrain routing value
 
     In general the CHRTOUT files contain one value per time step. At present, there is
     no capability for handling non-uniform timesteps in the qlaterals.
@@ -255,7 +259,7 @@ def get_ql_from_wrf_hydro_mf(
 
     with xr.open_mfdataset(
         qlat_files,
-#         combine="by_coords",
+        # combine="by_coords",
         combine="nested",
         concat_dim="time",
         # data_vars="minimal",
@@ -264,16 +268,24 @@ def get_ql_from_wrf_hydro_mf(
         preprocess=drop_all_coords,
         # parallel=True,
     ) as ds:
+        
+        # if forcing file contains a variable with the specified value_col name, 
+        # then use it, otherwise compute q_lateral as the sum of qBucket and qSfcLatRunoff
+        try:
+            qlateral_data = ds[value_col].values.T
+        except:
+            qlateral_data = ds[gw_col].values.T + ds[runoff_col].values.T
+            
         try:
             ql = pd.DataFrame(
-                ds['qBucket'].values.T + ds['qSfcLatRunoff'].values.T,
+                qlateral_data,
                 index=ds[index_col].values[0],
                 columns=ds.time.values,
                 # dtype=float,
             )
         except:
             ql = pd.DataFrame(
-                ds['qBucket'].values.T + ds['qSfcLatRunoff'].values.T,
+                qlateral_data,
                 index=ds[index_col].values,
                 columns=ds.time.values,
                 # dtype=float,
