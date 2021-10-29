@@ -324,7 +324,11 @@ def write_q_to_wrf_hydro(
     if nfiles_to_write > 1:
     
         # open all CHRTOUT files as a single xarray dataset
-        with xr.open_mfdataset(chrtout_files[:nfiles_to_write], combine="by_coords") as chrtout:
+        with xr.open_mfdataset(
+            chrtout_files[:nfiles_to_write], 
+            combine="nested",
+            concat_dim="time"
+        ) as chrtout:
 
             # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
             # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
