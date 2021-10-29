@@ -266,14 +266,14 @@ def get_ql_from_wrf_hydro_mf(
     ) as ds:
         try:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds['qBucket'].values.T + ds['qSfcLatRunoff'].values.T,
                 index=ds[index_col].values[0],
                 columns=ds.time.values,
                 # dtype=float,
             )
         except:
             ql = pd.DataFrame(
-                ds[value_col].values.T,
+                ds['qBucket'].values.T + ds['qSfcLatRunoff'].values.T,
                 index=ds[index_col].values,
                 columns=ds.time.values,
                 # dtype=float,
