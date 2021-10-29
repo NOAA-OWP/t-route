@@ -255,9 +255,9 @@ def get_ql_from_wrf_hydro_mf(
 
     with xr.open_mfdataset(
         qlat_files,
-        combine="by_coords",
-        # combine="nested",
-        # concat_dim="time",
+#         combine="by_coords",
+        combine="nested",
+        concat_dim="time",
         # data_vars="minimal",
         # coords="minimal",
         # compat="override",
