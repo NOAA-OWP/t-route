@@ -271,9 +271,9 @@ def get_ql_from_wrf_hydro_mf(
 
         # if forcing file contains a variable with the specified value_col name, 
         # then use it, otherwise compute q_lateral as the sum of qBucket and qSfcLatRunoff
-        if ds.variables.get(value_col, None):
+        try:
             qlateral_data = ds[value_col].values.T
-        else:
+        except:
             qlateral_data = ds[gw_col].values.T + ds[runoff_col].values.T
             
         try:
