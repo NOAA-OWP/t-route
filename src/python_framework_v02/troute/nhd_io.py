@@ -327,7 +327,7 @@ def write_q_to_wrf_hydro(
         with xr.open_mfdataset(
             chrtout_files[:nfiles_to_write], 
             combine="nested",
-            concat_dim="time"
+            concat_dim="time",
         ) as chrtout:
 
             # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
