@@ -20,7 +20,6 @@ def read_netcdf(geo_file_path):
         return ds.to_dataframe()
 
 def read_json(file_path):
-
     with open(file_path) as data_file:
         json_data = json.load(data_file)
 
@@ -155,7 +154,6 @@ def read_nexus_to_downstream_flowpath_mapping(nexus_to_downstream_flowpath_mappi
 
 def read_nexus_file(nexus_file_path):
 
-
     #Currently reading data in format:
     #[
        #{
@@ -274,7 +272,6 @@ def get_nexus_flows_from_csv(nexus_input_file, index_col=0):
     """
     nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=None)
     return nexus_flows
-
 
 
 def read_qlat(path):

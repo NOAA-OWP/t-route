@@ -397,9 +397,6 @@ def build_connections(supernetwork_parameters):
 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
-    #JDM: Might need to parse out the ints from the fp-id here like in
-    #https://github.com/NOAA-OWP/t-route/blob/master/src/external_connections/next_gen_network.py#L82
-
     param_df = param_df[list(cols.values())]
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     if synthetic_wb_segments:
@@ -422,22 +419,15 @@ def build_connections(supernetwork_parameters):
             pathlib.Path(supernetwork_parameters["mask_file_path"]),
             layer_string=supernetwork_parameters["mask_layer_string"],
         )
-
         param_df = param_df.filter(
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
-
-    #JDM: line below new??
-    #param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
-    ####################################################
 
     if "ngen_nexus_file" in supernetwork_parameters:
         nexus_to_downstream_flowpath_dict = nhd_io.read_nexus_file(
             pathlib.Path(supernetwork_parameters["ngen_nexus_file"])
         )
 
-    #JDM: old param_df line below
-    #param_df = param_df.rename(columns=reverse_dict(cols))
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
@@ -689,7 +679,6 @@ def build_qlateral_array(
     forcing_parameters,
     segment_index=pd.Index([]),
     ts_iterator=None,
-    #supernetwork_parameters, #adding this for now, might remove later. Just need to read data_mask
     nexus_to_downstream_flowpath_dict=None,
     file_run_size=None,
 ):
@@ -737,7 +726,6 @@ def build_qlateral_array(
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
 
-
     elif nexus_input_folder:
 
         using_nexus_flows = True
@@ -750,11 +738,9 @@ def build_qlateral_array(
             )
             nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
 
-            #Declare empty dataframe
-            #nexuses_flows_df = pd.DataFrame()
-
             have_read_in_first_nexus_file = False
 
+            # Iterate over nexus files in directory to map nexus flows to qlaterals
             for nexus_file in nexus_files:
 
                 split_list = str(nexus_file).split("/")
@@ -763,44 +749,34 @@ def build_qlateral_array(
 
                 nexus_file_name_split = re.split('-|_', nexus_file_name)
 
+                # Extract the nexus id from the file name
                 nexus_id = int(nexus_file_name_split[1])
 
+                # Call function to read nexus csv
                 nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
 
-                #if nexus_id in ngen_nexus_id_to_downstream_comid_mapping_dict.keys():
                 nexus_flows = nexus_flows.set_index(nexus_flows.columns[0])
-                
-                # Drop original integer index column
-                #nexus_flows.drop(nexus_flows.columns[[0]], axis=1, inplace=True)
 
                 nexus_flows = nexus_flows.rename(columns={2: nexus_id})
 
+                # Nexus flows need to be transposed from columns to rows in
+                # order to be added to a qlateral dataframe
                 nexus_flows_transposed = nexus_flows.transpose()
 
-                # Maybe can change logic for initializing dataframe with append
+                # TODO: Maybe can change logic for initializing dataframe with append
                 if not have_read_in_first_nexus_file:
                     have_read_in_first_nexus_file = True
 
-                    #Need to make the date the index and then do a transformation
-                    #to have the date as the header and nex id as the index.
-                    #Then append or join each following nexus one.
-                    #Then map and reduce to DS segment ids
-
                     nexuses_flows_df = nexus_flows_transposed
 
-                    # Number of Timesteps plus one
-                    # The number of columns in Qlat must be equal to or less than the number of routing timesteps
-                    #number_of_qlats = len(nexus_flows) + 1
                     number_of_qlats = len(nexus_flows)
 
                     nexus_first_id = nexus_id
 
                 else:
-                    #TODO: Check on copying and duplication of memory on this??
+                    #TODO: Check on copying and duplication of memory on this?
                     nexuses_flows_df = nexuses_flows_df.append(nexus_flows_transposed)
 
-                    # Number of Timesteps plus one
-                    # The number of columns in Qlat must be equal to or less than the number of routing timesteps
                     number_of_qlats_for_row = len(nexus_flows)
 
                     if number_of_qlats_for_row != number_of_qlats:
@@ -810,129 +786,78 @@ def build_qlateral_array(
                         )
 
 
-            #Map nexus flows to qlaterals
-            #ngen_nexus_id_to_downstream_comid_mapping_dict
-
+            # List of flowpaths downstream of nexuses 
             flowpath_list = []
 
+            # Iterate over nexus_to_downstream_flowpath_dict to create list of flowpaths.
             for nexus_key, flowpath_value in nexus_to_downstream_flowpath_dict.items():
 
                 if flowpath_value not in flowpath_list:
                     flowpath_list.append(flowpath_value)
 
-                #if flowpath_value not in segment_index:
-                #    print ("Not in segment_index: " + str(flowpath_value))
-                #    delme = 1
-
-
-            # Might already be sorted?
-            #sorting problem???
-
             already_read_first_nexus_values = False
 
+            # Iterate over nexus_to_downstream_flowpath_dict to assign nexus flows
+            # to their corresponding downstream flowpaths
             for nexus_key, flowpath_value in nexus_to_downstream_flowpath_dict.items():
 
-                #TODO: simplify below to reduce redundancy in code
+                qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
+
+                qlat_df_single_transpose = qlat_df_single.transpose()
+
+                qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): flowpath_value})
+
                 if not already_read_first_nexus_values:
                     already_read_first_nexus_values = True
-
-                    qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
-                    #qlat_df = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)].transpose())
-
-                    qlat_df_single_transpose = qlat_df_single.transpose()
-
-                    qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): flowpath_value})
-
-                    #comid_df = comid_df.set_index(comid_df.columns[0])
-                    #qlat_df_single_transpose = qlat_df_single_transpose.set_index('1')
-                    #qlat_df_single_transpose = qlat_df_single_transpose.set_index(qlat_df_single_transpose.columns[0])
 
                     qlat_df = qlat_df_single_transpose
 
                 else: 
-
-                    qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
-                    #qlat_df = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)].transpose())
-
-                    qlat_df_single_transpose = qlat_df_single.transpose()
-
-                    qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): flowpath_value})
-
-                    #qlat_df_single_transpose = qlat_df_single_transpose.set_index('1')
-
-                    #Copying df, memory duplicate????
+                    # TODO: Copying df, memory duplicate?
                     qlat_df = qlat_df.append(qlat_df_single_transpose)
 
-                    #qlat_df = pd.merge(qlat_df, qlat_df_single_transpose
-                    
-                    #qlat_df = qlat_df.join(qlat_df_single_transpose, how='left')
-                    #qlat_df = qlat_df.join(qlat_df_single_transpose, how='outer')
-                    
-                    #qlat_df = qlat_df.merge(qlat_df_single_transpose, how='outer')
+            # The segment_index has the full network set of segments/flowpaths. 
+            # Whereas the set of flowpaths that are downstream of nexuses is a 
+            # subset of the segment_index. Therefore, all of the segments/flowpaths
+            # that are not accounted for in the set of flowpaths downstream of
+            # nexuses need to be added to the qlateral dataframe and padded with
+            # zeros.
 
-                    pd.set_option('display.max_rows', 500)
-
-
-            #Need to sort qlats
-            #Take this out because sorting below???
-            qlat_df = qlat_df.sort_index()
-
-            ############
-            #segment_index has full network of segments whereas the downstream segs is a subset of that
-  
-            full_qlat_df_segment = pd.DataFrame(
-                0.0,
-                index=segment_index,
-                columns=range(number_of_qlats),
-                dtype="float32",
-            )
-
-
-            #qlat_df = qlat_df.merge(full_qlat_df_segment, how='right')
-
-            #connection_df['comid'] = connection_df.apply(lambda x: crosswalk_data['cat-' + str(x.name)]['COMID'], axis
-            #Need to zero out the values here
+            # Take single qlat row and zero out the values
             qlat_df_single_transpose_zeros = qlat_df_single_transpose.apply(lambda x: 0.0, axis=0)
-            #qlat_df_single_transpose_zeros = qlat_df_single_transpose.apply(np.zeros, axis=1)
 
-            #qlat_df_single_transpose_zeros = qlat_df_single_transpose_zeros.transpose()
-
-            #maybe transpose in teh to_frame
             qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros.to_frame()
 
             qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros_df.transpose()
 
+            # Segment index list to check for duplicate segments
             a_segment_index_list = []
-            #print ("segment_indexes")
-            for a_segment_index in segment_index:
-                ##print (a_segment_index)
 
+            # Iterate over all segments in the segment_index set
+            for a_segment_index in segment_index:
+
+                # Check if the individual segment index has already
+                # been added to a_segment_index_list
                 if a_segment_index not in a_segment_index_list:
                     a_segment_index_list.append(a_segment_index)
 
-                else:    
-                    #print ("repeat segment in mask")
-                    #print (a_segment_index)
-                    delme = 1
-
+                # Check if the individual segment index is not in the
+                # flowpath_list, which is the list of flowpaths 
+                # downstream of nexuses. If the segment index is not
+                # in the flowpath_list, then add a zero padded row
+                # with that index to qlat_df to account for this 
+                # segment index.
                 if a_segment_index not in flowpath_list:
-                    #add a qlat_df_single_transpose_zeros to qlat_df with the comid          
-                    #Copying df, memory duplicate????
-                    #qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): comid_value})
+                    # TODO: Copying df, memory duplicate?
                     qlat_df_single_transpose_zeros_df_renamed = qlat_df_single_transpose_zeros_df.rename(index={0: a_segment_index})
 
                     qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df_renamed)
 
-            #Need to sort qlats
+            # Sort qlats
             qlat_df = qlat_df.sort_index()
 
             # Set new nts based upon total nexus inputs
-            #nts = (number_of_qlats - 1) * qts_subdivisions
             nts = (number_of_qlats) * qts_subdivisions
-            print ("new nts")
-            print (nts)
-            print ("^^^^^^^^^^^^^^^^^^^^^^^")
-
 
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
@@ -943,15 +868,8 @@ def build_qlateral_array(
             dtype="float32",
         )
 
-    print ("nts: " + str(nts))
-
-
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
-
-    print ("max_col: " + str(max_col))
-
-    #print ("len(qlat_df.columns): " + str(len(qlat_df.columns)))
 
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)

@@ -15,7 +15,6 @@ def nwm_network_preprocess(
     verbose=False,
     debuglevel=0,
 ):
-    print ("nwm_network_preprocess")
 
     if verbose:
         print("creating supernetwork connections set")
@@ -264,8 +263,6 @@ def nwm_forcing_preprocess(
     verbose=False,
     debuglevel=0,
 ):
-    print ("nwm_forcing_preprocess")
-
 
     # TODO: Harmonize the t0 parameter -- this
     # configuration permits the Warm-State derived
@@ -313,8 +310,8 @@ def nwm_forcing_preprocess(
         print("creating qlateral array ...")
 
     qlats_df = nnu.build_qlateral_array(
-        run, 
-        segment_index, 
+        run,
+        segment_index,
         ngen_nexus_id_to_downstream_comid_mapping_dict)
 
     if verbose:
