@@ -23,10 +23,11 @@ def nwm_network_preprocess(
 
     # STEP 1: Build basic network connections graph,
     # read network parameters, identify waterbodies and gages, if any.
-    connections, param_df, wbody_conn, gages = nnu.build_connections(
+
+    connections, param_df, wbody_conn, gages, hybrid_connections, hybrid_param_df, hybrid_wbody_conn, hybrid_gages = nnu.build_connections(
         supernetwork_parameters,
     )
-
+    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -43,7 +44,10 @@ def nwm_network_preprocess(
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
         )
-
+        if hybrid_connections:
+            hybrid_connections = nhd_network.replace_waterbodies_connections(
+            hybrid_connections, hybrid_wbody_conn
+        )
     if verbose:
         print("supernetwork connections set complete")
     if showtiming:
@@ -72,7 +76,7 @@ def nwm_network_preprocess(
 
         # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
-
+        hybrid_waterbody_types_df = pd.DataFrame()
         # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
         wbtype = "hybrid_and_rfc"
         wb_params_hybrid_and_rfc = waterbody_parameters.get(
@@ -84,6 +88,20 @@ def nwm_network_preprocess(
             wbtype, defaultdict(list)
         )
 
+        if hybrid_wbody_conn:
+            hybrid_waterbodies_df = nhd_io.read_waterbody_df(
+                waterbody_parameters, {"level_pool": hybrid_wbody_conn.values()}
+            )
+
+            # Remove duplicate lake_ids and rows
+            hybrid_waterbodies_df = (
+                hybrid_waterbodies_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+            )
+        if not hybrid_wbody_conn:
+            hybrid_waterbodies_df = {}
+        
         # Determine if any data assimilation reservoirs are activated, and if so, read
         # the reservoir parameter file
         if (
@@ -99,19 +117,32 @@ def nwm_network_preprocess(
                 wb_params_level_pool["level_pool_waterbody_id"],
                 wbody_conn.values(),
             )
-
+            
+            if hybrid_wbody_conn:
+                hybrid_waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
+                wb_params_level_pool["level_pool_waterbody_id"],
+                hybrid_wbody_conn.values(),
+                )
+                hybrid_waterbody_types_df = (
+                hybrid_waterbody_types_df.reset_index()
+                .drop_duplicates(subset="lake_id")
+                .set_index("lake_id")
+                )
+            
             # Remove duplicate lake_ids and rows
             waterbody_types_df = (
                 waterbody_types_df.reset_index()
                 .drop_duplicates(subset="lake_id")
                 .set_index("lake_id")
             )
-
+        
     else:
         # Declare empty dataframes
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
-
+        hybrid_waterbody_types_df = pd.DataFrame()
+        hybrid_waterbodies_df = pd.DataFrame()
     # STEP 2: Identify Independent Networks and Reaches by Network
     if showtiming:
         start_time = time.time()
@@ -128,6 +159,19 @@ def nwm_network_preprocess(
         connections,
         network_break_segments,
     )
+    if hybrid_connections:
+        hybrid_network_break_segments = set()
+        if break_network_at_waterbodies:
+            hybrid_network_break_segments = hybrid_network_break_segments.union(hybrid_wbody_conn.values())
+        if break_network_at_gages:
+            hybrid_network_break_segments = hybrid_network_break_segments.union(hybrid_gages.keys())
+
+        hybrid_independent_networks, hybrid_reaches_bytw, hybrid_rconn = nnu.organize_independent_networks(
+            hybrid_connections,
+            hybrid_network_break_segments,
+        )
+    if not hybrid_connections:
+        hybrid_wbody_conn, hybrid_independent_networks, hybrid_reaches_bytw, hybrid_rconn, = None, None, None, None, 
     if verbose:
         print("reach organization complete")
     if showtiming:
@@ -145,6 +189,15 @@ def nwm_network_preprocess(
         reaches_bytw,
         rconn,
         pd.DataFrame.from_dict(gages),
+        hybrid_connections,
+        hybrid_param_df,
+        hybrid_wbody_conn, 
+        hybrid_waterbodies_df,
+        hybrid_waterbody_types_df,
+        hybrid_independent_networks,
+        hybrid_reaches_bytw,
+        hybrid_rconn,
+        pd.DataFrame.from_dict(hybrid_gages),
     )
 
 

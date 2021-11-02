@@ -171,6 +171,7 @@ def compute_nhd_routing_v02(
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
     if parallel_compute_method == "by-subnetwork-jit-clustered":
+        import pdb; pdb.set_trace()
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
             connections, rconn, subnetwork_target_size
         )
@@ -948,7 +949,8 @@ def compute_nhd_routing_v02(
                 )
 
             results = parallel(jobs)
-
+    # elif parallel_compute_method == "hybrid":
+        
     else:  # Execute in serial
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):

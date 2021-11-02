@@ -375,10 +375,10 @@ def _run_everything_v02(
         start_time = time.time()
 
     # STEP 1: Build basic network connections graph
-    connections, param_df, wbody_conn, gages = nnu.build_connections(
+    connections, param_df, wbody_conn, gages, hybrid_connections, hybrid_param_df, hybrid_gages = nnu.build_connections(
         supernetwork_parameters
     )
-
+    
     if break_network_at_waterbodies:
         connections = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -1097,12 +1097,21 @@ def main_v03(argv):
         wbody_conn,
         waterbodies_df,
         waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
+        break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
+        waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
         independent_networks,
         reaches_bytw,
         rconn,
         link_gage_df,
+        hybrid_connections,
+        hybrid_param_df,
+        hybrid_wbody_conn, 
+        hybrid_waterbodies_df,
+        hybrid_waterbody_types_df,
+        hybrid_independent_networks,
+        hybrid_reaches_bytw,
+        hybrid_rconn,
+        hybrid_link_gage_df,
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,
@@ -1110,7 +1119,7 @@ def main_v03(argv):
         verbose=verbose,
         debuglevel=debuglevel,
     )
-
+    import pdb; pdb.set_trace()
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
@@ -1287,12 +1296,21 @@ async def main_v03_async(argv):
         wbody_conn,
         waterbodies_df,
         waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
+        break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
+        waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
         independent_networks,
         reaches_bytw,
         rconn,
         link_gage_df,
+        hybrid_connections,
+        hybrid_param_df,
+        hybrid_wbody_conn, 
+        hybrid_waterbodies_df,
+        hybrid_waterbody_types_df,
+        hybrid_independent_networks,
+        hybrid_reaches_bytw,
+        hybrid_rconn,
+        hybrid_link_gage_df,
     ) = nwm_network_preprocess(
         supernetwork_parameters,
         waterbody_parameters,

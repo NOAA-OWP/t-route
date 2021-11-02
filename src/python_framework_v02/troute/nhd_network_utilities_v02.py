@@ -7,6 +7,9 @@ import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
+import logging
+
+LOG = logging.getLogger('')
 
 
 def set_supernetwork_parameters(
@@ -36,11 +39,11 @@ def set_supernetwork_parameters(
     }
 
     if supernetwork not in supernetwork_options:
-        print(
+        LOG.warning(
             "Note: please call function with supernetworks set to one of the following:"
         )
         for s in supernetwork_options:
-            print(f"'{s}'")
+            LOG.warning(f"'{s}'")
         raise ValueError
 
     elif supernetwork == "Pocono_TEST1":
@@ -420,7 +423,16 @@ def build_connections(supernetwork_parameters):
         param_df = param_df.filter(
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
         )
-
+    if "hybrid_mask_file_path" in supernetwork_parameters:
+        hybrid_data_mask = nhd_io.read_mask(pathlib.Path(supernetwork_parameters['hybrid_mask_file_path']),layer_string=supernetwork_parameters['mask_layer_string'],)
+        hybrid_param_df = param_df.filter(
+            hybrid_data_mask.iloc[:, supernetwork_parameters["hybrid_mask_key"]], axis=0
+        )
+        hybrid_param_df = hybrid_param_df.sort_index()
+        hybrid_param_df = hybrid_param_df.rename(columns=nhd_network.reverse_dict(cols))
+    elif "hybrid_mask_file_path" not in supernetwork_parameters:
+           hybrid_connections, hybrid_param_df, hybrid_wbodies, hybrid_gages = None, None, None, None
+    
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
     #        downstream: "to"
@@ -438,7 +450,7 @@ def build_connections(supernetwork_parameters):
     #        musx: "MusX"
     #        cs: "ChSlp"  # TODO: rename to `sideslope`
     param_df = param_df.sort_index()
-
+    
     # TODO: Do we need this second, identical call to the one above?
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
 
@@ -472,8 +484,41 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.astype("float32")
 
+    if "hybrid_mask_file_path" in supernetwork_parameters:
+        hybrid_param_df = hybrid_param_df.sort_index()
+
+        # TODO: Do we need this second, identical call to the one above?
+        hybrid_param_df = hybrid_param_df.rename(columns=nhd_network.reverse_dict(cols))
+
+        if "waterbody" in cols:
+            hybrid_wbodies = build_waterbodies(
+                hybrid_param_df[["waterbody"]], supernetwork_parameters, "waterbody"
+            )
+            hybrid_param_df = hybrid_param_df.drop("waterbody", axis=1)
+
+        if "gages" in cols:
+            hybrid_gages = nhd_io.build_filtered_gage_df(hybrid_param_df[["gages"]])
+            hybrid_param_df = hybrid_param_df.drop("gages", axis=1)
+
+        # There can be an externally determined terminal code -- that's this first value
+        hybrid_terminal_codes = set()
+        hybrid_terminal_codes.add(terminal_code)
+        # ... but there may also be off-domain nodes that are not explicitly identified
+        # but which are terminal (i.e., off-domain) as a result of a mask or some other
+        # an interior domain truncation that results in a
+        # otherwise valid node value being pointed to, but which is masked out or
+        # being intentionally separated into another domain.
+        hybrid_terminal_codes = hybrid_terminal_codes | set(
+            hybrid_param_df[~hybrid_param_df["downstream"].isin(hybrid_param_df.index)]["downstream"].values
+        )
+        hybrid_connections = nhd_network.extract_connections(
+            hybrid_param_df, "downstream", terminal_codes=terminal_codes
+        )
+        hybrid_param_df = hybrid_param_df.drop("downstream", axis=1)
+
+        hybrid_param_df = hybrid_param_df.astype("float32")
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df, wbodies, gages
+    return connections, param_df, wbodies, gages, hybrid_connections, hybrid_param_df, hybrid_wbodies, hybrid_gages
 
 
 def build_waterbodies(
@@ -618,20 +663,28 @@ def build_forcing_sets(
         # list of forcing file datetimes
         datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
                          range(nfiles)]
-        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
-                             datetime_list]
-
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in datetime_list]
+        
+        file_dates = [datetime.strptime(nhd_io.get_param_str(current_file, "model_output_valid_time"),'%Y-%m-%d_%H:%M:%S') for current_file in all_files]
         # list of forcing files
-        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
-                                 datetime_list_str]
+        forcing_filename_list = []
+        for element in datetime_list:
+            try:
+                J = all_files[file_dates.index(element)]
+                assert J.is_file() == True
+                forcing_filename_list.append(all_files[file_dates.index(element)])
+            except AssertionError:
+                raise AssertionError("Aborting simulation because forcing file with date", element, "cannot be found.") from None
+            except ValueError:
+                raise ValueError("Aborting simulation because forcing file with date", element, "cannot be found") from None
+        # forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
         
         # check that all forcing files exist
-        for f in forcing_filename_list:
-            try:
-                J = pathlib.Path(qlat_input_folder.joinpath(f))     
-                assert J.is_file() == True
-            except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+        # for f in forcing_filename_list:
+        #     try:   
+        #         assert f.is_file() == True
+        #     except AssertionError:
+        #         raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
                 
         # build run sets list
         run_sets = []
@@ -743,7 +796,6 @@ def build_parity_sets(parity_parameters, run_sets):
         pass
     
     else:
-    
         parity_sets = []
         for (i, set_dict) in enumerate(run_sets):
             parity_sets.append({})
@@ -837,7 +889,7 @@ def build_data_assimilation_usgs_df(
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
-            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            LOG.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[lastobs_index]
 
     return usgs_df
@@ -900,7 +952,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
         usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
     else:
-        print("No Files Found for DA")
+        LOG.warning("No Files Found for DA")
         # TODO: Handle this with a real exception
 
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
