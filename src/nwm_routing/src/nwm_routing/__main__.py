@@ -565,8 +565,6 @@ def _run_everything_v02(
     # by qts_subdivisions, number of timesteps per forcing 
     # (qlateral) timestep.
     if nexus_to_downstream_flowpath_dict:
-       #TODO: Should it be -1 instead??
-       #run_parameters["nts"] = (len(qlats.columns) - 1) \
        run_parameters["nts"] = (len(qlats.columns)) \
        * run_parameters.get("qts_subdivisions", 1)
 
