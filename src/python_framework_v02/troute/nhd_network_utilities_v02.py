@@ -7,9 +7,6 @@ import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
-import logging
-
-LOG = logging.getLogger('')
 
 
 def set_supernetwork_parameters(
@@ -39,11 +36,11 @@ def set_supernetwork_parameters(
     }
 
     if supernetwork not in supernetwork_options:
-        LOG.warning(
+        print(
             "Note: please call function with supernetworks set to one of the following:"
         )
         for s in supernetwork_options:
-            LOG.warning(f"'{s}'")
+            print.warning(f"'{s}'")
         raise ValueError
 
     elif supernetwork == "Pocono_TEST1":
@@ -663,24 +660,25 @@ def build_forcing_sets(
         # list of forcing file datetimes
         datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
                          range(nfiles)]
-        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in datetime_list]
-        
-        file_dates = [datetime.strptime(nhd_io.get_param_str(current_file, "model_output_valid_time"),'%Y-%m-%d_%H:%M:%S') for current_file in all_files]
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                             datetime_list]
+
         # list of forcing files
-        forcing_filename_list = []
-        for element in datetime_list:
+        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
+                                 datetime_list_str]
+        
+        # check that all forcing files exist
+        for f in forcing_filename_list:
             try:
-                J = all_files[file_dates.index(element)]
+                J = pathlib.Path(qlat_input_folder.joinpath(f))
                 assert J.is_file() == True
-                forcing_filename_list.append(all_files[file_dates.index(element)])
             except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file with date", element, "cannot be found.") from None
-            except ValueError:
-                raise ValueError("Aborting simulation because forcing file with date", element, "cannot be found") from None
+                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+                
         # forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
         
         # check that all forcing files exist
-        # for f in forcing_filename_list:
+#         for f in forcing_filename_list:
         #     try:   
         #         assert f.is_file() == True
         #     except AssertionError:
@@ -889,7 +887,7 @@ def build_data_assimilation_usgs_df(
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
-            LOG.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            print.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[lastobs_index]
 
     return usgs_df
@@ -952,7 +950,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
         usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
     else:
-        LOG.warning("No Files Found for DA")
+        print.warning("No Files Found for DA")
         # TODO: Handle this with a real exception
 
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
