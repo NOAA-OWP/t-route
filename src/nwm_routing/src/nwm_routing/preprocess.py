@@ -207,6 +207,8 @@ def nwm_initial_warmstate_preprocess(
     data_assimilation_parameters,
     segment_index,
     waterbodies_df,
+    hybrid_segment_index=None,
+    hybrid_waterbodies_df=None,
     segment_list=None,
     wbodies_list=None,
     showtiming=False,
@@ -256,7 +258,10 @@ def nwm_initial_warmstate_preprocess(
         waterbodies_df = pd.merge(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
-
+        if hybrid_waterbodies_df:
+            hybrid_waterbodies_df = pd.merge(
+            hybrid_waterbodies_df, waterbodies_initial_states_df, on="lake_id"
+        )
         if verbose:
             print("waterbody initial states complete")
         if showtiming:
@@ -293,7 +298,7 @@ def nwm_initial_warmstate_preprocess(
         print("... in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
-    return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
+    return waterbodies_df, hybrid_waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
     # TODO: This returns a full dataframe (waterbodies_df) with the
     # merged initial states for waterbodies, but only the
     # initial state values (q0; not merged with the channel properties)

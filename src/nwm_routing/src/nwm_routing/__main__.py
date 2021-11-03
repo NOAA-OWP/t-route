@@ -613,7 +613,7 @@ def _run_everything_v02(
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
+    
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -920,6 +920,16 @@ def nwm_route(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_parameters,
+    hybrid_connections=None,
+    hybrid_rconn=None,
+    hybrid_wbody_conn=None,
+    hybrid_reaches_bytw=None,
+    hybrid_independent_networks=None,
+    hybrid_param_df=None,
+    hybrid_qlats=None,
+    hybrid_usgs_df=None,
+    hybrid_waterbodies_df=None,
+    hybrid_waterbody_types_df=None,
     showtiming=False,
     verbose=False,
     debuglevel=0,
@@ -938,7 +948,6 @@ def nwm_route(
 
     # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
     results = compute_nhd_routing_v02(
         downstream_connections,
         upstream_connections,
@@ -965,6 +974,16 @@ def nwm_route(
         waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
+        hybrid_connections,
+        hybrid_rconn,
+        hybrid_wbody_conn,
+        hybrid_reaches_bytw,
+        hybrid_independent_networks,
+        hybrid_param_df,
+        hybrid_qlats,
+        hybrid_usgs_df,
+        hybrid_waterbodies_df,
+        hybrid_waterbody_types_df,
     )
 
     if verbose:
@@ -1119,21 +1138,22 @@ def main_v03(argv):
         verbose=verbose,
         debuglevel=debuglevel,
     )
-    import pdb; pdb.set_trace()
+
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-    waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
+    waterbodies_df, hybrid_waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         data_assimilation_parameters,
         param_df.index,
         waterbodies_df,
+        hybrid_param_df.index,
+        hybrid_waterbodies_df,
         segment_list=None,
         wbodies_list=None,
         showtiming=showtiming,
         verbose=verbose,
         debuglevel=debuglevel,
     )
-
     # Create run_sets: sets of forcing files for each loop
     run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
 
@@ -1154,7 +1174,7 @@ def main_v03(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-
+    
     qlats, usgs_df = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -1162,6 +1182,19 @@ def main_v03(argv):
         data_assimilation_parameters,
         break_network_at_waterbodies,
         param_df.index,
+        lastobs_df.index,
+        t0,
+        showtiming,
+        verbose,
+        debuglevel,
+    )
+    hybrid_qlats, hybrid_usgs_df = nwm_forcing_preprocess(
+        run_sets[0],
+        forcing_parameters,
+        da_sets[0] if data_assimilation_parameters else {},
+        data_assimilation_parameters,
+        break_network_at_waterbodies,
+        hybrid_param_df.index,
         lastobs_df.index,
         t0,
         showtiming,
@@ -1205,6 +1238,16 @@ def main_v03(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
+            hybrid_connections,
+            hybrid_rconn,
+            hybrid_wbody_conn,
+            hybrid_reaches_bytw,
+            hybrid_independent_networks,
+            hybrid_param_df,
+            hybrid_qlats,
+            hybrid_usgs_df,
+            hybrid_waterbodies_df,
+            hybrid_waterbody_types_df,
             showtiming,
             verbose,
             debuglevel,

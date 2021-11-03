@@ -162,8 +162,17 @@ def compute_nhd_routing_v02(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_parameters=None,
+    hybrid_connections=None,
+    hybrid_rconn=None,
+    hybrid_wbody_conn=None,
+    hybrid_reaches_bytw=None,
+    hybrid_independent_networks=None,
+    hybrid_param_df=None,
+    hybrid_qlats=None,
+    hybrid_usgs_df=None,
+    hybrid_waterbodies_df=None,
+    hybrid_waterbody_types_df=None,
 ):
-
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
     param_df = param_df.astype("float32")
@@ -171,7 +180,6 @@ def compute_nhd_routing_v02(
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
     if parallel_compute_method == "by-subnetwork-jit-clustered":
-        import pdb; pdb.set_trace()
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
             connections, rconn, subnetwork_target_size
         )
