@@ -40,7 +40,7 @@ def set_supernetwork_parameters(
             "Note: please call function with supernetworks set to one of the following:"
         )
         for s in supernetwork_options:
-            print.warning(f"'{s}'")
+            print(f"'{s}'")
         raise ValueError
 
     elif supernetwork == "Pocono_TEST1":
@@ -887,7 +887,7 @@ def build_data_assimilation_usgs_df(
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
-            print.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[lastobs_index]
 
     return usgs_df
@@ -950,7 +950,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
         usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
     else:
-        print.warning("No Files Found for DA")
+        print("No Files Found for DA")
         # TODO: Handle this with a real exception
 
     usgs_df = nhd_io.get_usgs_from_time_slices_folder(
