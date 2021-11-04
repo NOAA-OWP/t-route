@@ -23,7 +23,7 @@ def nwm_network_preprocess(
 
     # STEP 1: Build basic network connections graph,
     # read network parameters, identify waterbodies and gages, if any.
-    connections, param_df, wbodies, gages, ngen_nexus_id_to_downstream_comid_mapping_dict = nnu.build_connections(
+    connections, param_df, wbody_conn, gages, nexus_to_downstream_flowpath_dict = nnu.build_connections(
         supernetwork_parameters,
     )
 
