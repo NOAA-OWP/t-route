@@ -907,13 +907,16 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         print("No Files Found for DA")
         # TODO: Handle this with a real exception
 
-    usgs_df = nhd_io.get_usgs_from_time_slices_folder(
-        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-        usgs_files,
-        data_assimilation_parameters.get("qc_threshold", 1),
-        data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
-        run_parameters["dt"],
-        run_parameters["t0"],
-    )
+    if usgs_files:
+        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
+            data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
+            usgs_files,
+            data_assimilation_parameters.get("qc_threshold", 1),
+            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
+            run_parameters["dt"],
+            run_parameters["t0"],
+        )
+    else:
+        usgs_df = pd.DataFrame()
 
     return usgs_df
