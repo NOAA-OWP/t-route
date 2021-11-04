@@ -738,6 +738,10 @@ def build_qlateral_array(
             )
             nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
 
+            if len(list(nexus_files)) == 0:
+                raise ValueError('No nexus input files found. Recommend checking \
+                nexus_input_folder path in YAML configuration.')
+
             have_read_in_first_nexus_file = False
 
             # Iterate over nexus files in directory to map nexus flows to qlaterals
