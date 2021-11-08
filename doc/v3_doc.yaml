@@ -234,7 +234,7 @@ compute_parameters:
     # ---------------
     # number of CPUs used for parallel computations
     # (!!) optional, defaults to None
-    cpu-pool:
+    cpu_pool:
     # ---------------
     # logical, if True Courant metrics are returnd with simulations
     # this only works for MC simulations
