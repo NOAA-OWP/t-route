@@ -695,6 +695,8 @@ def build_qlateral_array(
             "qlat_file_index_col", "feature_id"
         )
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+        gw_bucket_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col","qBucket")
+        terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
 
         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
             qlat_files=qlat_files,
@@ -702,6 +704,8 @@ def build_qlateral_array(
             #file_run_size=file_run_size,
             index_col=qlat_file_index_col,
             value_col=qlat_file_value_col,
+            gw_col = gw_bucket_col,
+            runoff_col = terrain_ro_col,
         )
 
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
@@ -903,13 +907,16 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         print("No Files Found for DA")
         # TODO: Handle this with a real exception
 
-    usgs_df = nhd_io.get_usgs_from_time_slices_folder(
-        data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-        usgs_files,
-        data_assimilation_parameters.get("qc_threshold", 1),
-        data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
-        run_parameters["dt"],
-        run_parameters["t0"],
-    )
+    if usgs_files:
+        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
+            data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
+            usgs_files,
+            data_assimilation_parameters.get("qc_threshold", 1),
+            data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
+            run_parameters["dt"],
+            run_parameters["t0"],
+        )
+    else:
+        usgs_df = pd.DataFrame()
 
     return usgs_df

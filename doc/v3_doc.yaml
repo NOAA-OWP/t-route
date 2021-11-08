@@ -234,7 +234,7 @@ compute_parameters:
     # ---------------
     # number of CPUs used for parallel computations
     # (!!) optional, defaults to None
-    cpu-pool:
+    cpu_pool:
     # ---------------
     # logical, if True Courant metrics are returnd with simulations
     # this only works for MC simulations
@@ -340,12 +340,22 @@ compute_parameters:
         # field name of segment ID in qlateral data
         # (!!) mandatory
         # TODO: change default `feature_id`
-        qlat_file_index_col: qlat_forcing_sets
+        qlat_file_index_col:
         # ---------------
-        # field name of lateral inflow in qlateral data
-        # (!!) mandatory
-        # TODO: change default `q_lateral`
+        # lateral inflow variable name in forcing file
+        # typical forcing files are WRF Hydro channel route out files (CHRTOUT)
+        # optional, defaults to `q_lateral`
         qlat_file_value_col:
+        # ---------------
+        # Groundwater bucket flux (to channel) variable name in forcing file
+        # typical forcing files are WRF Hydro channel route out files (CHRTOUT)
+        # optional, defaults to 'qBucket'
+        qlat_file_gw_bucket_flux_col:
+        # ---------------
+        # Surface terrain runoff (to channel) variable name in forcing file
+        # typical forcing files are WRF Hydro channel route out files (CHRTOUT)
+        # optional, defaults to `qSfcLatRunoff`
+        qlat_file_terrain_runoff_col:
         # ---------------
         # forcing files and number of timesteps associated with each simulation loop
         # optional, only include if explicitly listing the forcing files in each set.
