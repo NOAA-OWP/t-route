@@ -614,7 +614,7 @@ def _run_everything_v02(
         compute_func = run_parameters.get("compute_method", None)
     # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
     # compute_func = fast_reach.compute_network_structured_obj
-
+    
     results = compute_nhd_routing_v02(
         connections,
         rconn,
@@ -1071,6 +1071,7 @@ def main_v03(argv):
     from an input file and then sequences the execution of the
     t-route routing agorithm on a series of execution loops.
     """
+    
     args = _handle_args_v03(argv)
     (
         log_parameters,
@@ -1084,20 +1085,47 @@ def main_v03(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
-    save_preprocessing = log_parameters.get("save_preprocessing",None)
-    if save_preprocessing:
-        preprocessed_outputs = {}
-        preprocess_output_folder = '/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/'
-        preprocessed_outputs.update({'run_sets':run_sets,'connections': connections,'rconn': rconn,'wbody_conn':wbody_conn,'reaches_bytw':reaches_bytw,'parallel_compute_method':parallel_compute_method,
-        'compute_kernel':compute_kernel,'subnetwork_target_size':subnetwork_target_size,'cpu_pool':cpu_pool,'qts_subdivisions':qts_subdivisions,
-        'independent_networks':independent_networks,'param_df':param_df,'q0':q0,'qlats':qlats,'usgs_df':usgs_df,'lastobs_df':lastobs_df,'da_parameter_dict':da_parameter_dict,
-        'assume_short_ts':assume_short_ts,'return_courant':return_courant,'waterbodies_df':waterbodies_df,'waterbody_parameters':waterbody_parameters,'waterbody_types_df':waterbody_types_df,
-        'waterbody_type_specified':waterbody_type_specified,'diffusive_parameters':diffusive_parameters,'showtiming':showtiming,'verbose':verbose,'debuglevel':debuglevel})
-        np.save(preprocess_output_folder+'/preprocessed_outputs.npy', preprocessed_outputs)
-        print("Saving preprocessed components to file.")
-        sys.exit()
     # read_dictionary = np.load('/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/preprocessed_outputs.npy',allow_pickle='TRUE').item()
-    
+    load_preprocessing = log_parameters.get("load_preprocessing",None)
+    if load_preprocessing:
+        preprocess_output_folder = '/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/'
+        preprocessed_outputs = np.load(preprocess_output_folder+'/preprocessed_outputs.npy',allow_pickle='TRUE').item()
+        run_sets = preprocessed_outputs.get('run_sets', None)
+        connections = preprocessed_outputs.get('connections', None)
+        rconn = preprocessed_outputs.get('rconn', None)
+        wbody_conn = preprocessed_outputs.get('wbody_conn', None)
+        reaches_bytw = preprocessed_outputs.get('reaches_bytw', None)
+        parallel_compute_method = preprocessed_outputs.get('parallel_compute_method', None)
+        compute_kernel = preprocessed_outputs.get('compute_kernel', None)
+        subnetwork_target_size = preprocessed_outputs.get('subnetwork_target_size', None)
+        cpu_pool = preprocessed_outputs.get('cpu_pool', None)
+        qts_subdivisions = preprocessed_outputs.get('qts_subdivisions', None)
+        verbose = preprocessed_outputs.get('verbose', None)
+        showtiming = preprocessed_outputs.get('showtiming', None)
+        independent_networks = preprocessed_outputs.get('independent_networks', None)
+        param_df = preprocessed_outputs.get('param_df', None)
+        q0 = preprocessed_outputs.get('q0', None)
+        qlats = preprocessed_outputs.get('qlats', None)
+        usgs_df = preprocessed_outputs.get('usgs_df', None)
+        lastobs_df = preprocessed_outputs.get('lastobs_df', None)
+        da_parameter_dict = preprocessed_outputs.get('da_parameter_dict', None)
+        assume_short_ts = preprocessed_outputs.get('assume_short_ts', None)
+        return_courant = preprocessed_outputs.get('return_courant', None)
+        waterbodies_df = preprocessed_outputs.get('waterbodies_df', None)
+        waterbody_parameters = preprocessed_outputs.get('waterbody_parameters', None)
+        waterbody_type_specified = preprocessed_outputs.get('waterbody_type_specified', None)
+        diffusive_parameters = preprocessed_outputs.get('diffusive_parameters', None)
+        showtiming = preprocessed_outputs.get('showtiming', None)
+        verbose = preprocessed_outputs.get('verbose', None)
+        debuglevel = preprocessed_outputs.get('debuglevel', None)
+        parity_sets = preprocessed_outputs.get('parity_sets', None)
+        waterbody_types_df = preprocessed_outputs.get('waterbody_types_df',None)
+        da_sets = preprocessed_outputs.get('da_sets',None)
+        break_network_at_waterbodies = preprocessed_outputs.get('break_network_at_waterbodies',None)
+        link_gage_df = preprocessed_outputs.get('link_gage_df',None)
+        print("Loaded preprocessed components to file.")
+        if showtiming:
+            main_start_time = time.time()
     else:
         verbose = log_parameters.get("verbose", None)
         showtiming = log_parameters.get("showtiming", None)
@@ -1175,7 +1203,25 @@ def main_v03(argv):
             debuglevel,
         )
 
-for run_set_iterator, run in enumerate(run_sets):
+        verbose = log_parameters.get("verbose", None)
+        showtiming = log_parameters.get("showtiming", None)
+        debuglevel = log_parameters.get("debuglevel", 0)
+    
+    save_preprocessing = log_parameters.get("save_preprocessing",None)
+    if save_preprocessing:
+        preprocessed_outputs = {}
+        preprocess_output_folder = '/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/'
+        preprocessed_outputs.update({'run_sets':run_sets,'connections': connections,'rconn': rconn,'wbody_conn':wbody_conn,'reaches_bytw':reaches_bytw,'parallel_compute_method':parallel_compute_method,
+        'compute_kernel':compute_kernel,'subnetwork_target_size':subnetwork_target_size,'cpu_pool':cpu_pool,'qts_subdivisions':qts_subdivisions, 'verbose':verbose,'showtiming':showtiming,'debuglevel':debuglevel,
+        'independent_networks':independent_networks,'param_df':param_df,'q0':q0,'qlats':qlats,'usgs_df':usgs_df,'lastobs_df':lastobs_df,'da_parameter_dict':da_parameter_dict,
+        'assume_short_ts':assume_short_ts,'return_courant':return_courant,'waterbodies_df':waterbodies_df,'waterbody_parameters':waterbody_parameters,'waterbody_types_df':waterbody_types_df,
+        'waterbody_type_specified':waterbody_type_specified,'diffusive_parameters':diffusive_parameters,'showtiming':showtiming,'verbose':verbose,'debuglevel':debuglevel,'parity_sets':parity_sets,
+        'da_sets':da_sets,'break_network_at_waterbodies':break_network_at_waterbodies,'link_gage_df':link_gage_df})
+        np.save(preprocess_output_folder+'/preprocessed_outputs.npy', preprocessed_outputs)
+        print("Saved preprocessed components to file.")
+        sys.exit()
+
+    for run_set_iterator, run in enumerate(run_sets):
 
         t0 = run.get("t0")
         dt = run.get("dt")
@@ -1242,7 +1288,7 @@ for run_set_iterator, run in enumerate(run_sets):
 
         if data_assimilation_parameters:
                 lastobs_df = new_lastobs(run_results, dt * nts)
-                
+               
         nwm_output_generator(
             run,
             run_results,
