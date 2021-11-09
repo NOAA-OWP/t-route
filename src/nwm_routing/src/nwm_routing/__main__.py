@@ -1268,6 +1268,17 @@ def main_v03(argv):
                 round(task_times['output_time']/task_times['total_time'] * 100,2)
             )
         )
+        print('----------------------------------------')
+        print(
+            'Total execution time: {} secs'\
+            .format(
+                round(task_times['network_time'],2) +
+                round(task_times['initial_condition_time'],2) +
+                round(task_times['forcing_time'],2) +
+                round(task_times['route_time'],2) +
+                round(task_times['output_time'],2)
+            )
+        )
 
 async def main_v03_async(argv):
     """
