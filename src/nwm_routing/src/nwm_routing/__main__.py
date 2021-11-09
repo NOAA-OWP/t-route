@@ -1571,10 +1571,12 @@ if __name__ == "__main__":
     )
     v_args = v_parser.parse_known_args()
     if v_args[0].input_version == 4:
+        LOG.info("Running main v03 - async looping")
         coroutine = main_v03_async(v_args[1])
         asyncio.run(coroutine)
         # loop.run_until_complete(coroutine)
     if v_args[0].input_version == 3:
+        LOG.info("Running main v03 - looping")
         main_v03(v_args[1])
     if v_args[0].input_version == 2:
         LOG.info("Running main v02")
