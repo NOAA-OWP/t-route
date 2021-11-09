@@ -462,28 +462,67 @@ def diffusive_input_data_v02(
     dt_db_g = dt * qts_subdivisions
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
-    # time interval at which depth is written out by cnt model
-    saveinterval_cnt = dt * (qts_subdivisions)
-    # time interval at which flow is computed and written out by cnt model
     # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (dt * nsteps)/60/60
-
-    # USGS data related info.
-    usgsID = diffusive_parameters.get("usgsID", None)
-    seg2usgsID = diffusive_parameters.get("link2usgsID", None)
-    usgssDT = diffusive_parameters.get("usgs_start_date", None)
-    usgseDT = diffusive_parameters.get("usgs_end_date", None)
-    usgspCd = diffusive_parameters.get("usgs_parameterCd", None)
     
-    # diffusive parameters
-    cfl_g = diffusive_parameters.get("courant_number_upper_limit", None)
-    theta_g = diffusive_parameters.get("theta_parameter", None)
-    tzeq_flag_g = diffusive_parameters.get("chgeo_computation_flag", None)
-    y_opt_g = diffusive_parameters.get("water_elevation_computation_flag", None)
-    so_llm_g = diffusive_parameters.get("bed_slope_lower_limit", None)
+    # store the time variable values in the above to an array
+    timestep_ar_g = np.zeros(7)
+    timestep_ar_g[0]= dtini_g
+    timestep_ar_g[1]= t0_g
+    timestep_ar_g[2]= tfin_g
+    timestep_ar_g[4]= dt_ql_g
+    timestep_ar_g[5]= dt_ub_g
+    timestep_ar_g[6]= dt_db_g
 
+    # store sensitive parameter values of each diffusive kernel into a corresponding array    
+    diffusive_func_name= diffusive_parameters["compute_func_name"]
+    #import pdb; pdb.set_trace()
+    
+    if diffusive_func_name=="diffusive":        
+        timestep_ar_g[3]= saveinterval_tu        
+        paradim=10 
+        para_ar_g= np.zeros(paradim)
+        para_ar_g[0]= diffusive_parameters["cn_mod"].get("courant_number_upper_limit", None) # Courant number <1.0
+        para_ar_g[1]= diffusive_parameters["cn_mod"].get("celerity_lower_limit", None)     # lower limit of celerity
+        para_ar_g[2]= diffusive_parameters["cn_mod"].get("diffusivity_lower_limit", None)  # lower limit of diffusivity
+        para_ar_g[3]= diffusive_parameters["cn_mod"].get("diffusivity_upper_limit", None)  # upper limit of diffusivity
+        para_ar_g[4]= diffusive_parameters["cn_mod"].get("dimensionless_diffusivity_lower_limit", None)  # lower limit of dimensionless diffusivity, used to determine b/t normal and diffusive depth
+        para_ar_g[5]= diffusive_parameters["cn_mod"].get("dimensionless_diffusivity_upper_limit", None)  # upper limit of dimensionless diffusivity, used to determine b/t normal and diffusive depth
+        para_ar_g[6]= diffusive_parameters["cn_mod"].get("newton_raphson_switch", None)  # 0: Bisection method. 1: Newton Raphson method to compute water depth
+        para_ar_g[7]= diffusive_parameters["cn_mod"].get("discharge_lower_limit", None)  # lower limit of discharge
+        para_ar_g[8]= diffusive_parameters["cn_mod"].get("chbed_slope_lower_limit", None)  # lower limit of channel bed slope
+        para_ar_g[9]= diffusive_parameters["cn_mod"].get("theta", None)  # theta in the numerical eqn. 0: purely explicit scheme. 1: purely implicit scheme.
+    elif diffusive_func_name=="diffusive_cnt":
+        time_multiplier=diffusive_parameters["cnt"].get("multiplier2dt_saveinterval", None) # multiplier for saveinterval which determines time window span where diffusivity and celerity stay constant at a given space node.
+        saveinterval_cnt = dt * time_multiplier        
+        timestep_ar_g[3]= saveinterval_cnt   
+        paradim=9 
+        para_ar_g= np.zeros(paradim)
+        para_ar_g[0]= diffusive_parameters["cnt"].get("celerity_lower_limit", None)     # lower limit of celerity
+        para_ar_g[1]= diffusive_parameters["cnt"].get("diffusivity_lower_limit", None)  # lower limit of diffusivity
+        para_ar_g[2]= diffusive_parameters["cnt"].get("diffusivity_upper_limit", None)  # upper limit of diffusivity
+        para_ar_g[3]= diffusive_parameters["cnt"].get("dimensionless_dx_lower_limit", None)  # lower limit of dimensionless space step, used to reduce osciallation of hydrograph while compromising diffusivity.
+        para_ar_g[4]= diffusive_parameters["cnt"].get("dimensionless_dt_lower_limit", None)  # lower limit of dimensionless time step, used to reduce osciallation of hydrograph while compromising diffusivity.
+        para_ar_g[5]= diffusive_parameters["cnt"].get("discharge_lower_limit", None)  # lower limit of discharge
+        para_ar_g[6]= diffusive_parameters["cnt"].get("chbed_slope_lower_limit", None)  # lower limit of channel bed slope
+        para_ar_g[7]= diffusive_parameters["cnt"].get("water_depth_compute_switch", None)  # 1: Bisection method, 2: simple iterative method, 3: Newton Raphson method to compute water depth.
+        para_ar_g[8]= diffusive_parameters["cnt"].get("ghost_timenode_number", None) # number of ghost nodes for proper discharge boundary condition in time.
+    elif diffusive_func_name=="diffusive_cnx":
+        timestep_ar_g[3]= 0.0 # not used   
+        paradim=6 
+        para_ar_g= np.zeros(paradim)
+        para_ar_g[0]= diffusive_parameters["cnx"].get("courant_number_upper_limit", None) #lower limit of Courant number.
+        para_ar_g[1]= diffusive_parameters["cnx"].get("celerity_lower_limit", None)  # lower limit of celerity.
+        para_ar_g[2]= diffusive_parameters["cnx"].get("discharge_lower_limit", None)  # lower limit of discharge.
+        para_ar_g[3]= diffusive_parameters["cnx"].get("chbed_slope_lower_limit", None)  # lower limit of channel bed slope.
+        para_ar_g[4]= diffusive_parameters["cnx"].get("subnode_number_upper_limit", None)  # upper limit of the number of uniformly distributed sub-nodes, including ghost nodes, on each stream segment.
+        para_ar_g[5]= diffusive_parameters["cnx"].get("ghost_subnode_number", None)  # number of sub-nodes added to existing uniformly distributed sub-nodes, used to provide adequate discharge downstream boundary condition. 
+    else:
+        print(f"diffusive kernel input required")
+       
+    
     # number of reaches in network
     nrch_g = len(reach_list)
 
@@ -609,7 +648,7 @@ def diffusive_input_data_v02(
             frj = frj + 1
             pynw[frj] = head_segment
 
-    frnw_col = diffusive_parameters.get("fortran_nework_map_col_number", None)
+    frnw_col = 10 # diffusive_parameters.get("fortran_nework_map_col_number", None)
     frnw_g = fp_network_map(
         mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
     )
@@ -705,38 +744,28 @@ def diffusive_input_data_v02(
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
     # ---------------------------------------------------------------------------------
-    if seg2usgsID:
-        if tw in seg2usgsID:
-            ipos = seg2usgsID.index(tw)
-            usgsID2tw = usgsID[ipos]
-        else:
-            usgsID2tw=None
-    else:
-        usgsID2tw=None
+    #if seg2usgsID:
+    #    if tw in seg2usgsID:
+    #        ipos = seg2usgsID.index(tw)
+    #        usgsID2tw = usgsID[ipos]
+    #    else:
+    #        usgsID2tw=None
+    #else:
+    #    usgsID2tw=None
     
-    nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
+    #nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
+    nts_db_g = 1
+    dbcd_g = -np.ones(nts_db_g)
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
     #                 Prepare uniform flow lookup tables
     # ---------------------------------------------------------------------------------
-
-    nhincr_m_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_main_increment_number", None
-    )
-    nhincr_f_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_floodplain_increment_number", None
-    )
-    timesdepth_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_depth_multiplier", None
-    )
-    ufqlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-    ufhlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-    ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
-    ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
-
-    # TODO: Call uniform flow lookup table creation kernel    
+    # TODO: Call uniform flow lookup table creation kernel 
+    
+    
+   
     # ---------------------------------------------------------------------------------
     #                              Step 0-11
 
@@ -748,17 +777,11 @@ def diffusive_input_data_v02(
     diff_ins = {}
 
     # model input parameters
-    diff_ins["dtini_g"] = dtini_g
-    diff_ins["t0_g"] = t0_g
-    diff_ins["tfin_g"] = tfin_g
-    diff_ins["saveinterval_tu"] = saveinterval_tu
-    diff_ins["saveinterval_cnt"] = saveinterval_cnt
-    diff_ins["dt_ql_g"] = dt_ql_g
-    diff_ins["dt_ub_g"] = dt_ub_g
-    diff_ins["dt_db_g"] = dt_db_g
+    diff_ins["timestep_ar_g"]= timestep_ar_g  
     diff_ins["nts_ql_g"] = nts_ql_g
     diff_ins["nts_ub_g"] = nts_ub_g
     diff_ins["nts_db_g"] = nts_db_g
+    diff_ins["ntss_ev_g"] = ntss_ev_g
     diff_ins["mxncomp_g"] = mxncomp_g
     diff_ins["nrch_g"] = nrch_g
     diff_ins["z_ar_g"] = z_ar_g
@@ -770,25 +793,14 @@ def diffusive_input_data_v02(
     diff_ins["manncc_ar_g"] = manncc_ar_g
     diff_ins["so_ar_g"] = so_ar_g
     diff_ins["dx_ar_g"] = dx_ar_g
-    diff_ins["nhincr_m_g"] = nhincr_m_g
-    diff_ins["nhincr_f_g"] = nhincr_f_g
-    diff_ins["ufhlt_m_g"] = ufhlt_m_g
-    diff_ins["ufqlt_m_g"] = ufqlt_m_g
-    diff_ins["ufhlt_f_g"] = ufhlt_f_g
-    diff_ins["ufqlt_f_g"] = ufqlt_f_g
     diff_ins["frnw_col"] = frnw_col
     diff_ins["frnw_g"] = dfrnw_g
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g
     diff_ins["dbcd_g"] = dbcd_g
-    diff_ins["cfl_g"] = cfl_g
-    diff_ins["theta_g"] = theta_g
-    diff_ins["tzeq_flag_g"] = tzeq_flag_g
-    diff_ins["y_opt_g"] = y_opt_g
-    diff_ins["so_llm_g"] = so_llm_g
-    diff_ins["ntss_ev_g"] = ntss_ev_g
+    diff_ins["paradim"] = paradim 
+    diff_ins["para_ar_g"] = para_ar_g   
     diff_ins["iniq"] = iniq
-
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw
     diff_ins["ordered_reaches"] = ordered_reaches

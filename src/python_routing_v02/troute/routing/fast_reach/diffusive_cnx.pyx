@@ -13,16 +13,12 @@ from troute.routing.fast_reach.simple_da cimport obs_persist_shift, simple_da_wi
 # TO DO load some example inputs to test the module
 
 @cython.boundscheck(False)
-cdef void diffnw_cnx(double dtini_g,
-             double t0_g,
-             double tfin_g,
-             double saveinterval_ev_g,
-             double dt_ql_g,
-             double dt_ub_g,
-             double dt_db_g,
+cdef void diffnw_cnx(
+             double[::1] timestep_ar_g,
              int nts_ql_g,
              int nts_ub_g,
              int nts_db_g,
+	     int ntss_ev_g,
              int mxncomp_g,
              int nrch_g,
              double[::1,:] z_ar_g,
@@ -35,41 +31,25 @@ cdef void diffnw_cnx(double dtini_g,
              double[::1,:] so_ar_g,
              double[::1,:] dx_ar_g,
              double[::1,:] iniq,    
-             int nhincr_m_g,
-             int nhincr_f_g,
-             double[::1,:,:] ufhlt_m_g,
-             double[::1,:,:] ufqlt_m_g,
-             double[::1,:,:] ufhlt_f_g,
-             double[::1,:,:] ufqlt_f_g,
              int frnw_col,
-             double[::1,:] dfrnw_g,
+             double[::1,:] frnw_g,
              double[::1,:,:] qlat_g,
              double[::1,:] ubcd_g,
              double[::1] dbcd_g,
-             double cfl_g,
-             double theta_g,
-             int tzeq_flag_g,
-             int y_opt_g,
-             double so_llm_g,
-             int ntss_ev_g,
+             int paradim,
+             double[::1] para_ar_g,
              double[:,:,:] out_q,
              double[:,:,:] out_elv):
-
     cdef:
         double[::1,:,:] q_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
         double[::1,:,:] elv_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
 
     c_diffnw_cnx(
-            &dtini_g,
-            &t0_g,
-            &tfin_g,
-            &saveinterval_ev_g,
-            &dt_ql_g,
-            &dt_ub_g,
-            &dt_db_g,
+            &timestep_ar_g[0],
             &nts_ql_g,
             &nts_ub_g,
             &nts_db_g,
+            &ntss_ev_g,
             &mxncomp_g,
             &nrch_g,
             &z_ar_g[0,0],
@@ -82,25 +62,15 @@ cdef void diffnw_cnx(double dtini_g,
             &so_ar_g[0,0],
             &dx_ar_g[0,0],
             &iniq[0,0],
-            &nhincr_m_g,
-            &nhincr_f_g,
-            &ufhlt_m_g[0,0,0],
-            &ufqlt_m_g[0,0,0],
-            &ufhlt_f_g[0,0,0],
-            &ufqlt_f_g[0,0,0],
             &frnw_col,
-            &dfrnw_g[0,0],
+            &frnw_g[0,0],
             &qlat_g[0,0,0],
             &ubcd_g[0,0],
             &dbcd_g[0],
-            &cfl_g,
-            &theta_g,
-            &tzeq_flag_g,
-            &y_opt_g,
-            &so_llm_g,
-            &ntss_ev_g,
+            &paradim, 
+            &para_ar_g[0],	    
             &q_ev_g[0,0,0],
-            &elv_ev_g[0,0,0])
+            &elv_ev_g[0,0,0]) 
 
     # copy data from Fortran to Python memory view
     out_q[:,:,:] = q_ev_g[::1,:,:]
@@ -169,16 +139,11 @@ cpdef object compute_diffusive_tst(
 
     # unpack/declare diffusive input variables
     cdef:
-        double dtini_g = diff_inputs["dtini_g"]
-        double t0_g = diff_inputs["t0_g"]
-        double tfin_g  = diff_inputs["tfin_g"]
-        double saveinterval_ev_g = diff_inputs["saveinterval_cnt"]
-        double dt_ql_g = diff_inputs["dt_ql_g"]
-        double dt_ub_g = diff_inputs["dt_ub_g"]
-        double dt_db_g = diff_inputs["dt_db_g"]
+        double[::1] timestep_ar_g = np.asfortranarray(diff_inputs["timestep_ar_g"])
         int nts_ql_g = diff_inputs["nts_ql_g"]
         int nts_ub_g = diff_inputs["nts_ub_g"]
         int nts_db_g = diff_inputs["nts_db_g"]
+        int ntss_ev_g = diff_inputs["ntss_ev_g"]
         int mxncomp_g = diff_inputs["mxncomp_g"]
         int nrch_g = diff_inputs["nrch_g"]
         double[::1,:] z_ar_g = np.asfortranarray(diff_inputs["z_ar_g"])
@@ -190,69 +155,44 @@ cpdef object compute_diffusive_tst(
         double[::1,:] manncc_ar_g = np.asfortranarray(diff_inputs["manncc_ar_g"])
         double[::1,:] so_ar_g = np.asfortranarray(diff_inputs["so_ar_g"])
         double[::1,:] dx_ar_g = np.asfortranarray(diff_inputs["dx_ar_g"])
-        int nhincr_m_g = diff_inputs["nhincr_m_g"]
-        int nhincr_f_g = diff_inputs["nhincr_f_g"]
-        double[::1,:,:] ufhlt_m_g = np.asfortranarray(diff_inputs["ufhlt_m_g"])
-        double[::1,:,:] ufqlt_m_g = np.asfortranarray(diff_inputs["ufqlt_m_g"])
-        double[::1,:,:] ufhlt_f_g = np.asfortranarray(diff_inputs["ufhlt_f_g"])
-        double[::1,:,:] ufqlt_f_g = np.asfortranarray(diff_inputs["ufqlt_f_g"])
         int frnw_col = diff_inputs["frnw_col"]
-        double[::1,:] dfrnw_g = np.asfortranarray(diff_inputs["frnw_g"], dtype = np.double)
+        double[::1,:] frnw_g = np.asfortranarray(diff_inputs["frnw_g"], dtype = np.double)
         double[::1,:,:] qlat_g = np.asfortranarray(diff_inputs["qlat_g"])
         double[::1,:] ubcd_g = np.asfortranarray(diff_inputs["ubcd_g"])
         double[::1] dbcd_g = np.asfortranarray(diff_inputs["dbcd_g"])
-        double cfl_g = diff_inputs["cfl_g"]
-        double theta_g = diff_inputs["theta_g"]
-        int tzeq_flag_g = diff_inputs["tzeq_flag_g"]
-        int y_opt_g = diff_inputs["y_opt_g"]
-        double so_llm_g = diff_inputs["so_llm_g"]
-        int ntss_ev_g = diff_inputs["ntss_ev_g"]
+        int paradim = diff_inputs["paradim"]
+        double[::1] para_ar_g = np.asfortranarray(diff_inputs["para_ar_g"])  
         double[::1,:] iniq = np.asfortranarray(diff_inputs["iniq"])
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
     # call diffusive compute kernel
-    diffnw_cnx(dtini_g,
-     t0_g,
-     tfin_g,
-     saveinterval_ev_g,
-     dt_ql_g,
-     dt_ub_g,
-     dt_db_g,
-     nts_ql_g,
-     nts_ub_g,
-     nts_db_g,
-     mxncomp_g,
-     nrch_g,
-     z_ar_g,
-     bo_ar_g,
-     traps_ar_g,
-     tw_ar_g,
-     twcc_ar_g,
-     mann_ar_g,
-     manncc_ar_g,
-     so_ar_g,
-     dx_ar_g,
-     iniq,
-     nhincr_m_g,
-     nhincr_f_g,
-     ufhlt_m_g,
-     ufqlt_m_g,
-     ufhlt_f_g,
-     ufqlt_f_g,
-     frnw_col,
-     dfrnw_g,
-     qlat_g,
-     ubcd_g,
-     dbcd_g,
-     cfl_g,
-     theta_g,
-     tzeq_flag_g,
-     y_opt_g,
-     so_llm_g,
-     ntss_ev_g,
-     out_q,
-     out_elv)
+    diffnw_cnx(timestep_ar_g,
+               nts_ql_g,
+               nts_ub_g,
+               nts_db_g,
+               ntss_ev_g,
+               mxncomp_g,
+               nrch_g,
+               z_ar_g,
+               bo_ar_g,
+               traps_ar_g,
+               tw_ar_g,
+               twcc_ar_g,
+               mann_ar_g,
+               manncc_ar_g,
+               so_ar_g,
+               dx_ar_g,
+               iniq,
+               frnw_col,
+               frnw_g,
+               qlat_g,
+               ubcd_g,
+               dbcd_g,
+               paradim,
+               para_ar_g,
+               out_q,
+               out_elv)
 
     # re-format outputs from the diffusive Fortran kernel
     index_array, flowveldepth_unorder = diff_utils.unpack_output(

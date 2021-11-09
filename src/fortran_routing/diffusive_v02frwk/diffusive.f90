@@ -1,30 +1,26 @@
 module diffusive
     !*-------------------------------------------------------------------------------------------------
     !*       A diffusive model developed by Tulane University (Prof.Ehab Meselhe and
-    !*       Dr.Md Nazmul Azim Beg) and integrated into a Python routing framework by Dong Ha Kim at
-    !*       the National Water Center. Basically, the partial differential equation of diffusive
+    !*       Dr.Md Nazmul Azim Beg) and integrated into a Python routing framework by Dong Ha Kim, 
+    !*       Adam Wlostowski, James Halgren, Jacob Hreha at the National Water Center. 
+    !*       Basically, the partial differential equation of diffusive
     !*       wave is numerically solved using Crank-Nicoloson and Hermite Interpolation techniques.
     !*       Water depth computation produces either normal depth or diffusive depth, the selection
     !*       of which is determined mainly by dimensionless diffusion coefficient.
     !*-------------------------------------------------------------------------------------------------
     implicit none
-!    !* symbolic names for kind types of 4-, 2-, and 1-byte integers:
-!    integer, parameter :: i4b = selected_int_kind(9)
-!    integer, parameter :: i2b = selected_int_kind(4)
-!    integer, parameter :: i1b = selected_int_kind(2)
-!    !* symbolic names for kind types of single- and double-precision reals:
-!    integer, parameter :: sp = kind(1.0)
-!    integer, parameter :: dp = kind(1.0d0)
 
     double precision, parameter :: grav = 9.81
     double precision, parameter :: TOLERANCE = 1e-8
     integer :: nlinks, mxncomp, maxTableLength, nel
     double precision :: dtini, dxini, cfl, minDx, maxCelerity,  theta
+    double precision :: C_llm, D_llm, D_ulm, DD_ulm, DD_llm, q_llm, so_llm
+    integer :: newtonRaphson
     double precision :: frus2, minNotSwitchRouting, minNotSwitchRouting2
 
     double precision, dimension(:), allocatable :: area, depth, co, froud, courant
     double precision, dimension(:,:), allocatable :: bo, dx
-	!**arrays for branching channel application
+    !**arrays for branching channel application
     double precision, dimension(:,:), allocatable :: areap, qp, z, sk
     double precision, dimension(:,:), allocatable :: dqp, dap, dqc, dac
     double precision, dimension(:,:), allocatable :: celerity, diffusivity, qpx
@@ -60,41 +56,28 @@ contains
     !*          with diffusive routing engines
     !
     !*--------------------------------------------------------------------------------
-    subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
-                        nts_ql_g, nts_ub_g, nts_db_g, &
-                        mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
-                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
-                        nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g, &
-                        frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
-                        cfl_g, theta_g, tzeq_flag_g, y_opt_g, so_llm_g, &
-                        ntss_ev_g, q_ev_g, elv_ev_g)
-
+    subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, &
+                      mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
+                      mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
+                      frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
+  		      paradim, para_ar_g, q_ev_g, elv_ev_g)
         implicit none
 
         integer, intent(in) :: mxncomp_g, nrch_g
         integer, intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g
-        integer, intent(in) :: nhincr_m_g, nhincr_f_g, frnw_col
-        double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g
-
+        integer, intent(in) ::  frnw_col 
+        double precision, dimension(:), intent(in) :: timestep_ar_g(7)
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, iniq
-        double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
-        double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
-
         double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g !* set frnw_col=10
         double precision, dimension(nts_ql_g, mxncomp_g, nrch_g), intent(in) :: qlat_g
         double precision, dimension(nts_ub_g, nrch_g), intent(in) :: ubcd_g
-        !double precision, dimension(nts_db_g,6), intent(in) :: dbcd_g
         double precision, dimension(nts_db_g), intent(in) :: dbcd_g
-
-        double precision, intent(in) :: cfl_g, theta_g, so_llm_g
-        integer, intent(in) :: tzeq_flag_g !* 0 for lookup tabale; 1 for using procedures to compute trapz.ch.geo.
-        integer, intent(in) :: y_opt_g  !* 1 for normal depth(kinematic); 2 for dept of diffusive wave.
-
+	integer, intent(in) :: paradim	
+	double precision, dimension(paradim), intent(in) :: para_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(inout) :: so_ar_g
         double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g, elv_ev_g
         integer :: ncomp
-
         integer :: i, j, k, ppn, qqn, n, ntim, igate, pp, boundaryFileMaxEntry, saveFrequency
         integer :: linknb_ds, linknb_us
         double precision :: qnp1_ds, qnp1_us, qsum, y_ds
@@ -102,8 +85,8 @@ contains
         double precision :: qn, xt, maxCourant, dtini_given, nodenb, linknb
         double precision :: frds, areasum, yk_ncomp, yav, areak_ncomp, areav, sumOldQ, currentQ, area_ds
         double precision :: arean, areac, hyrdn, hyrdc, perimn, perimc, qcrit, s0ds, timesDepth
-        doubleprecision :: latFlowValue, latFlowValue2
-        double precision :: t, r_interpol_time, tfin, t1, t2, t0 !t0 start time
+        double precision :: latFlowValue, latFlowValue2
+        double precision :: t, r_interpol_time, tfin, t1, t2, t0 
         integer :: tableLength, timestep, kkk
         double precision :: area_0, width_0, errorY, hydR_0, q_sk_multi, sumCelerity
         double precision :: r_interpo_nn
@@ -117,24 +100,40 @@ contains
         double precision :: dmy1, dmy2
         integer :: ndata, idmy1, nts_db_g2
         double precision :: slope, y_norm, area_n, temp
-
-        !open(unit=101, file="./output/simulated discharge depth elev.txt")
+	double precision :: dt_ql, dt_ub, dt_db
 
         nlinks=nrch_g
         allocate(frnw_g(nlinks,frnw_col))
-        frnw_g=dfrnw_g
+        frnw_g=int(dfrnw_g)
         mxncomp= mxncomp_g
-        dtini= dtini_g
-        dtini_given= dtini
-        t0=t0_g
-        tfin= tfin_g
+        
+	dtini= timestep_ar_g(1) 	!* initial simulation time step and changes with updated celerity values [sec]
+        dtini_given= dtini     
+        t0= timestep_ar_g(2) 		!* simulation start time [hr]
+        tfin= timestep_ar_g(3) 		!* simulation end time [hr]
         ntim = floor( (tfin - t0) / dtini * 3600)
         timesDepth= 4.0 !* water depth multiplier used in readXsection
         nel= 501 !nel_g
-        saveInterval= saveInterval_ev_g
+        saveInterval= timestep_ar_g(4) 	!* recording time interval for finally computed discharge and water elevation [sec]
         saveFrequency = saveInterval / dtini_given
+        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
+        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
+        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
         num_points= mxncomp
         totalChannels= nlinks
+
+        ! Some essential parameters for Diffusive Wave
+        cfl= para_ar_g(1)  	!* Courant number (default: 0.95)
+	C_llm= para_ar_g(2) 	!* lower limit of celerity (default: 0.5)
+	D_llm= para_ar_g(3) 	!* lower limit of diffusivity (default: 50)
+	D_ulm= para_ar_g(4) 	!* upper limit of diffusivity (default: 1000)
+        DD_llm = para_ar_g(5) 	!* lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -15.0)  
+       	DD_ulm = para_ar_g(6) 	!* upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -10.0)     
+	newtonRaphson = int(para_ar_g(7)) !* 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0) 
+	q_llm = para_ar_g(8) 	!* lower limit of discharge (default: 0.02831 cms)
+	so_llm = para_ar_g(9) 	!* lower limit of channel bed slope (default: 0.0001)
+	theta = para_ar_g(10) 	!* weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
+
         allocate(area(num_points))
         ! change for unsteady flow
         allocate(bo(num_points,totalChannels))
@@ -149,7 +148,6 @@ contains
         allocate(depth(num_points))
         allocate(sk(num_points,totalChannels))
         allocate(co(num_points))
-        !allocate(dt(num_points))
         allocate(dx(num_points,totalChannels))
         allocate(volRemain(num_points-1,totalChannels))
         allocate(froud(num_points))
@@ -203,15 +201,6 @@ contains
         allocate(tarr_ql(nts_ql_g), varr_ql(nts_ql_g))
         allocate(tarr_ub(nts_ub_g), varr_ub(nts_ub_g))
 
-        !* for dbcd_g, find the actual length of array without missing data
-!        nts_db_g2=0
-!        do i=1, nts_db_g
-!            if (dbcd_g(i).ge.0.0) then
-!                nts_db_g2= nts_db_g2+1
-!            end if
-!        enddo
-!        allocate(tarr_db(nts_db_g2), varr_db(nts_db_g2))
-
         dx = 0.
         minDx = 1e10
         do j = 1,nlinks
@@ -223,9 +212,7 @@ contains
         end do
 
         z=z_ar_g
-        !ini_y=0.05  !* [meter]
-        !ini_q=0.5   !*[m^3/sec]
-        !oldQ = -999; oldY = -999; 
+
 	newQ = -999; newY = -999
         dimensionless_Cr = -999; dimensionless_Fo = -999; dimensionless_Fi = -999
         dimensionless_Di = -999; dimensionless_Fc = -999; dimensionless_D = -999
@@ -255,16 +242,10 @@ contains
                     call readXsection(i,(1.0/skLeft(i,j)),(1.0/skMain(i,j)),(1.0/skRight(i,j)),&
                                         leftBank(i,j), rightBank(i,j),timesDepth, j,&
                                         z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
-
-                    !oldY(i,j) = ini_y(j) + z(i,j)
-                    !oldQ(i,j) = ini_q(j)
                 end do
             end if
         end do
-        
-        ! use initial conditions array
-        !oldQ = iniq
-        
+               
         ! reading Q-Strickler's coefficient multiplier table
         do j = 1,nlinks
             ncomp= frnw_g(j,1)
@@ -274,11 +255,11 @@ contains
 
         !* time step series for lateral flow
         do n=1, nts_ql_g
-            tarr_ql(n)= t0_g*60.0 + dt_ql_g*real(n-1,KIND(dt_ql_g))/60.0 !* [min]
+            tarr_ql(n)= t0*60.0 + dt_ql*real(n-1,KIND(dt_ql))/60.0 !* [min]
         end do
         !* time step series for upstream boundary data
         do n=1, nts_ub_g
-            tarr_ub(n)= t0_g*60.0 + dt_ub_g*real(n-1,KIND(dt_ub_g))/60.0 !* [min]
+            tarr_ub(n)= t0*60.0 + dt_ub*real(n-1,KIND(dt_ub))/60.0 !* [min]
         enddo
         !* time step series for downstream boundary data
 !        do n=1, nts_db_g2
@@ -321,7 +302,7 @@ contains
                 ! 2. normal depth as TW boundary condition
                 q_sk_multi=1.0
                 slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
-                if (slope .le. 0.0001) slope = 0.0001
+                if (slope .le. so_llm) slope = so_llm
 		oldQ(ncomp,j)= iniq(ncomp,j)
                 call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
             end if
@@ -336,7 +317,7 @@ contains
                 if (i==ncomp) then
                     !* normal depth
                     slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
-                    if (slope .le. 0.0001) slope = 0.0001
+                    if (slope .le. so_llm) slope = so_llm
                     if ((frnw_g(j,2)<0.0).and.(i==ncomp)) then
                         !*use TW boundary water elevation data
                         oldY(ncomp,j)=oldY(ncomp,j)
@@ -352,11 +333,6 @@ contains
             do i=1,ncomp
                 oldY(i,j)=newY(i,j)
             end do
-
-            !do i=1,ncomp
-                !write(14,*) i, j, oldQ(i,j), oldY(i,j), newY(i,j), celerity(i,j), diffusivity(i,j)
-                !print*, i, j, oldQ(i,j), oldY(i,j), celerity(i,j), diffusivity(i,j)
-            !enddo
         enddo        
 	!* correcting the WL initial condition based on the WL boundary
         !* so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
@@ -377,7 +353,7 @@ contains
                     areaTable = xsec_tab(2,1:nel,i,j)
                     call r_interpol(elevTable,areaTable,nel,oldY(i,j),oldArea(i,j))
                     if (oldArea(i,j) .eq. -9999) then
-                        !print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of oldArea(i,j) was not possible'
+                        print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of oldArea(i,j) was not possible'
                         !stop
                     end if
                 end if
@@ -391,10 +367,8 @@ contains
                 volRemain(i,j) = (oldArea(i,j)+oldArea(i+1,j))/2.0*dx(i,j)
             end do
         end do
-        ! Some essential initial parameters for Diffusive Wave
-        theta = 1.0
-        qpx = 0.
-        cfl=0.9
+        
+	qpx = 0.  !* initial value of the first derivative of q
         width = 100. !   initialization
         !celerity = 1.0
         maxCelerity = 1.0
@@ -610,7 +584,7 @@ contains
                     ! 2. normal depth as TW boundary condition
                     q_sk_multi=1.0
                     slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
-                    if (slope .le. 0.0001) slope = 0.0001
+                    if (slope .le. so_llm) slope = so_llm
                     call normal_crit_y(ncomp, j, q_sk_multi, slope, newQ(ncomp,j), newY(ncomp,j), temp, newArea(ncomp,j), temp)
 
                     areap(ncomp,j) = areap(ncomp,j) - dap(ncomp,j) + (newArea(ncomp,j) - oldArea(ncomp,j)) !! change 20210311 !! the calculated areap is now corrected from dac(ncomp)
@@ -624,7 +598,7 @@ contains
                 elseif (currentROutingDiffusive(j) .eq. 1) then
                     call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j,leftBank, rightBank)
                 else
-                    !print*, 'Something is wrong in reach ', j
+                    print*, 'Something is wrong in reach ', j
                     !stop
                 end if
 
@@ -668,13 +642,7 @@ contains
                 ncomp= frnw_g(j,1)
                 call calc_dimensionless_numbers(j)
             enddo
-            !* test		
-            !do j=1,nlinks
-            !    ncomp=frnw_g(j,1)
-            !	 do i=1,ncomp
-            !        print*, t,i,j,newQ(i,j),newY(i,j)-z(i,j)
-            !	 enddo
-	    !end do
+
             ! write results, timestep 2 and beyond
             if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
                 do j = 1, nlinks
@@ -682,7 +650,7 @@ contains
                     do i=1, ncomp
                         q_ev_g(ts_ev+1, i, j)= newQ(i,j)
                         elv_ev_g(ts_ev+1, i, j)= newY(i,j)
-                    enddo
+                    enddo                
                 enddo
                 ts_ev=ts_ev+1
             end if
@@ -698,7 +666,7 @@ contains
                 enddo
             end if
             
-              ! update of Y, Q and Area vectors
+            ! update of Y, Q and Area vectors
             oldY   = newY
             newY=-999
             oldQ   = newQ
@@ -744,11 +712,12 @@ contains
                 endif
             end do
         else
-!            print*, xt, ' is not within the limit'
-!            print*, 'maxval(x)= ', maxval(x), 'and minval(x)=', minval(x),'so',  xt, ' is not within the limit'
-!            print*, 'jj', jj
-!            print*, 'x', (x(i), i=1, jj)
-!            print*, 'y', (y(i), i=1, jj)
+            print*, xt, ' is not within the range of known x data points, so linear interpolation cannot perform; '
+            print*, 'the available range of x for linear interpolation is that ', 'upper limit of x: ',&
+		     maxval(x), ' and lower limit of x: ', minval(x) 
+            print*, 'jj', jj
+            print*, 'x', (x(i), i=1, jj)
+            print*, 'y', (y(i), i=1, jj)
 !            stop
         end if
         r_interpol_time = yt
@@ -1018,8 +987,8 @@ contains
         qp(1,j) = qp(1,j) + allqlat
 
         do i=1,ncomp
-            if (abs(qp(i,j)) .lt. 0.02831) then
-                qp(i,j) = 0.02831
+            if (abs(qp(i,j)) .lt. q_llm) then
+                qp(i,j) = q_llm
             end if
         end do
 
@@ -1043,8 +1012,8 @@ contains
         double precision, dimension(mxncomp, nlinks) :: leftBank, rightBank
         double precision :: a1, a2, a3, a4, b1, b2, b3, b4, dd1, dd2, dd3, dd4, h1, h2, h3, h4, xt
         double precision :: qy, qxy, qxxy, qxxxy, ppi, qqi, rri, ssi, sxi, mannings, Sb, width, slope
-        double precision :: cour, cour2, q_sk_multi, sfi, temp, dkdh !r_interpol_time, r_interpo_nn,
-        double precision :: D_lim1, D_lim2, y_norm, y_crit, area_n, area_c, chnWidth, vel
+        double precision :: cour, cour2, q_sk_multi, sfi, temp, dkdh 
+        double precision :: y_norm, y_crit, area_n, area_c, chnWidth, vel 
         double precision :: y_norm_ds, y_crit_ds, S_ncomp, frds, area_0, width_0, hydR_0, errorY, currentQ, stg1, stg2
         integer :: tableLength, jj, newMassBalance, iii
         double precision :: elevTable_1(nel),areaTable_1(nel),rediTable_1(nel),convTable_1(nel),topwTable_1(nel)
@@ -1053,12 +1022,9 @@ contains
         double precision :: ffy_1, ffy_2, ffy_3, tempCo_2, tempCo_3, tempsfi_2, tempsfi_3
         double precision :: ffprime,tempDepthi_1_new,tempsfi_1,toll, dkda
         doubleprecision :: tempPere_1, tempsk_1, tempY_2, tempY_3, tempdKdA_1               ! change Nazmul 20210601
-        integer :: depthCalOk(mxncomp), newtonRaphson
+        integer :: depthCalOk(mxncomp) 
         integer :: i, pp, ncomp
 
-        D_lim1 = -10.
-        D_lim2 = -15.
-        newtonRaphson = 1
         ncomp= frnw_g(j,1)
         S_ncomp = (-z(ncomp,j)+z(ncomp-1,j))/dx(ncomp-1,j)
         elevTable = xsec_tab(1,:,ncomp,j)
@@ -1068,13 +1034,13 @@ contains
 
         call r_interpol(elevTable,areaTable,nel,newY(ncomp,j),newArea(ncomp,j))
         if (newArea(ncomp,j) .eq. -9999) then
-!            print*, 'At j = ',j,', i = ',ncomp, 'time =',t, 'interpolation of newArea was not possible'
+            print*, 'At j = ',j,', i = ',ncomp, 'time =',t, 'interpolation of newArea was not possible'
 !            stop
         end if
 
         call r_interpol(elevTable,topwTable,nel,newY(ncomp,j),bo(ncomp,j))
         if (bo(ncomp,j) .eq. -9999) then
-!            print*, 'At j = ',j,', i = ',ncomp, 'time =',t, 'interpolation of bo was not possible'
+            print*, 'At j = ',j,', i = ',ncomp, 'time =',t, 'interpolation of bo was not possible'
 !            stop
         end if
 
@@ -1095,9 +1061,9 @@ contains
             call r_interpol(currentSquareDepth,convTable,nel,(newY(i,j)-z(i,j))**2.0,co(i))
 
             if (co(i) .eq. -9999) then
-!                print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of conveyence was not possible, wl', &
-!                newY(i,j), 'z',z(i,j),'previous wl',newY(i+1,j), 'previous z',z(i+1,j), 'dimensionless_D(i,j)', &
-!                dimensionless_D(i,j)
+                print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of conveyence was not possible, wl', &
+                newY(i,j), 'z',z(i,j),'previous wl',newY(i+1,j), 'previous z',z(i+1,j), 'dimensionless_D(i,j)', &
+                dimensionless_D(i,j)
 !                stop
             end if
             co(i) =q_sk_multi * co(i)
@@ -1105,7 +1071,7 @@ contains
             call r_interpol(elevTable,areaTable,nel,xt,newArea(i,j))
 
             if (newArea(i,j) .eq. -9999) then
-!                print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of newArea was not possible'
+                print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of newArea was not possible'
 !                stop
             end if
             call r_interpol(elevTable,pereTable,nel,xt,pere(i,j))
@@ -1123,7 +1089,7 @@ contains
                 if (celerity2(i) .gt. 3.0*vel) celerity2(i) = vel*3.0
             else
                 if (qp(i,j) .lt. 1) then
-                    celerity2(i)=0.5
+                    celerity2(i)=C_llm
                 else
                     celerity2(i)=1.0
                 end if
@@ -1152,16 +1118,16 @@ contains
                             newY(i-1,j) = newY(i,j) + sfi * dx(i-1,j)
                         else if (currentRoutingNormal(i-1,j) .eq. 1) then
                             slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
-                            if (slope .le. 0.0001) slope = 0.0001
+                            if (slope .le. so_llm) slope = so_llm
                             q_sk_multi= 1.0
                             ! applying normal depth to all the nodes
                             call normal_crit_y(i-1, j, q_sk_multi, slope, qp(i-1,j), newY(i-1,j), temp, newArea(i-1,j), temp)
                         end if
                     else
                         !! If DSP: D is below 1.0, we switch to partial diffusive routing
-                        if (dimensionless_D(i-1,j) .lt. D_lim1) then
+                        if (dimensionless_D(i-1,j) .lt. DD_ulm) then
                             slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
-                            if (slope .le. 0.0001) slope = 0.0001
+                            if (slope .le. so_llm) slope = so_llm
                                 q_sk_multi= 1.0
                                 ! applying normal depth to all the nodes
                                 call normal_crit_y(i-1, j, q_sk_multi, slope, qp(i-1,j), newY(i-1,j), temp, newArea(i-1,j), temp)
@@ -1169,17 +1135,17 @@ contains
                                 if ( currentRoutingNormal(i-1,j) .ne. 1 ) routingNotChanged(i-1,j) = 0
                                 currentRoutingNormal(i-1,j) = 1
                             !! If DSP: D is not below 1.0, we switch to full diffusive routing
-                            elseif ( (dimensionless_D(i-1,j) .ge. D_lim1) .and. (dimensionless_D(i-1,j) .lt. D_lim2) ) then
+                            elseif ( (dimensionless_D(i-1,j) .ge. DD_ulm) .and. (dimensionless_D(i-1,j) .lt. DD_llm) ) then
 !                                print*, 'partial diffusive at j', j, 'i-1',i-1
                                 slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
-                                if (slope .le. 0.0001) slope = 0.0001
+                                if (slope .le. so_llm) slope = so_llm
                                 q_sk_multi=1.0
                                 ! applying normal depth to all the nodes
                                 call normal_crit_y(i-1, j, q_sk_multi, slope, qp(i-1,j), stg1, temp, newArea(i-1,j), temp)
 
                                 stg2 = newY(i,j) + sfi * dx(i-1,j)
-                                newY(i-1,j) = ( stg2 * (dimensionless_D(i-1,j) - D_lim1) + &
-                                                stg1 * (D_lim2 - dimensionless_D(i-1,j)) ) / (D_lim2 - D_lim1)
+                                newY(i-1,j) = ( stg2 * (dimensionless_D(i-1,j) - DD_ulm) + &
+                                                stg1 * (DD_llm - dimensionless_D(i-1,j)) ) / (DD_llm - DD_ulm)
                                  ! Book-keeping: changing from full diffusive to partial diffusive
                                 if ( currentRoutingNormal(i-1,j) .ne. 3 ) routingNotChanged(i-1,j) = 0
                                 currentRoutingNormal(i-1,j) = 3
@@ -1231,9 +1197,9 @@ contains
 
                                         ! Change Nazmul 20210601
                                         if(iii .gt. 30)then
-!                                            print*, 'Warning: Depth iteration reached maximum trial at j=', j, 'i=', i-1 , &
-!                                            'and',i,'depths are',tempDepthi_1, tempDepthi_1_new, 'slope=', slope, &
-!                                            'dx=', dx(i-1,j), 'depth at d/s',depthYi, 'Q-s are', qp(i-1,j), qp(i,j)
+                                            print*, 'Warning: Depth iteration reached maximum trial at j=', j, 'i=', i-1 , &
+                                            'and',i,'depths are',tempDepthi_1, tempDepthi_1_new, 'slope=', slope, &
+                                            'dx=', dx(i-1,j), 'depth at d/s',depthYi, 'Q-s are', qp(i-1,j), qp(i,j)
                                             depthCalOk(i-1) = 0
                                             EXIT
                                         endif
@@ -1291,11 +1257,11 @@ contains
                         end if
 
                         if (newY(i-1,j)-z(i-1,j) .le. 0.) then
-                            !print*, 'depth is negative at time=,', t,'j= ', j,'i=',i-1,'newY=',(newY(jj,j),jj=1,ncomp)
-!                            print*, 'dimensionless_D',(dimensionless_D(jj,j),jj=1,ncomp)
-!                            print*, 'newQ',(newQ(jj,j),jj=1,ncomp)
-!                            print*, 'Bed',(z(jj,j),jj=1,ncomp)
-!                            print*, 'dx',(dx(jj,j),jj=1,ncomp-1)
+                            print*, 'depth is negative at time=,', t,'j= ', j,'i=',i-1,'newY=',(newY(jj,j),jj=1,ncomp)
+                            print*, 'dimensionless_D',(dimensionless_D(jj,j),jj=1,ncomp)
+                            print*, 'newQ',(newQ(jj,j),jj=1,ncomp)
+                            print*, 'Bed',(z(jj,j),jj=1,ncomp)
+                            print*, 'dx',(dx(jj,j),jj=1,ncomp-1)
                             !pause 777
                         end if
                     end if
@@ -1308,11 +1274,11 @@ contains
             end do
 
             celerity(1:ncomp,j) =  sum(celerity2(1:ncomp)) / ncomp  ! change Nazmul 20210601
-            if (celerity(1,j) .lt. 0.5) celerity(1:ncomp,j) = 0.5
+            if (celerity(1,j) .lt. C_llm) celerity(1:ncomp,j) = C_llm
             diffusivity(1:ncomp,j)=sum(diffusivity2(1:ncomp)) / ncomp
             do i = 1, ncomp
-                if (diffusivity(i,j) .gt. 1000.) diffusivity(i,j) = 1000. !!! Test
-                if (diffusivity(i,j) .lt. 50.) diffusivity(i,j) = 50. !!! Test
+                if (diffusivity(i,j) .gt. D_ulm) diffusivity(i,j) = D_ulm !!! Test
+                if (diffusivity(i,j) .lt. D_llm) diffusivity(i,j) = D_llm !!! Test
             end do
     end subroutine mesh_diffusive_backward
     !**-----------------------------------------------------------------------------------------
@@ -1713,17 +1679,20 @@ contains
                 endif
             end do
         else if (xrt.ge.maxval(x)) then
-            !print*, xrt, ' is above the user defined limit'
+            print*, xrt, ' the given x data point is larger than the upper limit of the set of x data points'
+	    print*, 'the upper limit: ', maxval(x)
             yt=(xrt-x(kk-1))/(x(kk)-x(kk-1))*(y(kk)-y(kk-1))+y(kk-1) ! extrapolation
 
         else
-!            print*, xrt, ' is below the user defined limit'
-!            yt = -9999.0
-!            print*, 'maxval(x)= ', maxval(x), 'and minval(x)=', minval(x),'so',  xrt, ' is not within the limit'
-!            print*, 'kk', kk
-!            print*, 't', dmyt, 'i', dmyi, 'j', dmyj
-!            print*, 'x', (x(k), k=1, kk)
-!            print*, 'y', (y(k), k=1, kk)
+            print*, xrt, ' the given x data point is less than lower limit of the range of known x data point, '
+	    print*, 'so linear interpolation cannot be performed.'
+            yt = -9999.0
+            print*, 'The proper range of x is that: ', 'the upper limit: ', maxval(x),&
+			 ' and lower limit: ', minval(x)
+            print*, 'kk', kk
+            print*, 't', dmyt, 'i', dmyi, 'j', dmyj
+            print*, 'x', (x(k), k=1, kk)
+            print*, 'y', (y(k), k=1, kk)
         end if
     end subroutine r_interpol
     !*----------------------------------------------------------------
@@ -1760,8 +1729,8 @@ contains
 
         call r_interpol(areaTable,elevTable,nel,area_c,y_crit)
         if (y_norm .eq. -9999) then
-!            print*, 'At j = ',j,', i = ',i, 'interpolation of y_norm in calculating normal area was not possible, Q', &
-!            dsc,'slope',So !,'lateralFlow', lateralFlow(1:nx1(j),j)
+            print*, 'At j = ',j,', i = ',i, 'interpolation of y_norm in calculating normal area was not possible, Q', &
+            dsc,'slope',So 
 !            stop
         end if
     end subroutine normal_crit_y

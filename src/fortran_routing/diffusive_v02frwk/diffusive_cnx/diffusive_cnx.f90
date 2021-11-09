@@ -15,7 +15,7 @@ module diffusive
     double precision, parameter :: grav = 9.81
     double precision, parameter :: TOLERANCE = 1e-8
     integer :: nrch, mxncomp
-    doubleprecision :: dtini
+    double precision :: dtini, t0, tfin, dt_ql, dt_ub, dt_db
     double precision, dimension(:,:), allocatable :: q_g, elv_g, qpx_g, q_pre_g, elv_pre_g
     double precision, dimension(:), allocatable :: tarr_ql, tarr_ub, tarr_db, varr_ql, varr_ub, varr_db
     integer, dimension(:,:), allocatable :: frnw_g
@@ -33,7 +33,7 @@ module diffusive
     double precision, dimension(:,:), allocatable :: q_m_g
     double precision, dimension(:,:), allocatable :: elv_m_g
     double precision, dimension(:,:), allocatable ::  qlatn_m_g
-    double precision :: minq_ns_g  !* minimum Q for numerical stability
+    double precision :: q_llm  !* minimum Q for numerical stability
     double precision, dimension(:,:), allocatable ::  mindepth_ns_ar_g
     double precision, dimension(:,:), allocatable :: mnq_drainql_g
     integer :: dim_nmLT_g
@@ -49,7 +49,7 @@ module diffusive
     double precision, dimension(:,:,:), allocatable :: p_mseg, qq_mseg, r_mseg, w_mseg
     integer :: nts_ub, mxncomp_mseg, ncomp_ghost
     double precision, dimension(:,:), allocatable :: qlat_tc, courant_comp
-    double precision :: mn_chbtslp_c, mn_cel
+    double precision ::  C_llm, so_llm  !mn_chbtslp_c,
     double precision, dimension(:,:), allocatable :: q_mseg_btnode
     double precision, dimension(:), allocatable :: oldx, newx
 
@@ -57,33 +57,25 @@ contains
     !** Courant condition is applied to each segment so as to make uniform grid domain only within a segment not a reach to
     !** utilize the prismatic channel properties of a segment. Also, C and D are based on single-valued, stage-discharge
     !** relationship, P122,RM5.
-    subroutine diffnw(dtini_g, t0_g, tfin_g, saveinterval_ev_g, dt_ql_g, dt_ub_g, dt_db_g, &
-                        nts_ql_g, nts_ub_g, nts_db_g, &
-                        mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
-                        mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
-                        nhincr_m_g, nhincr_f_g, ufhlt_m_g,  ufqlt_m_g, ufhlt_f_g, ufqlt_f_g, &
-                        frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
-                        cfl_g, theta_g, tzeq_flag_g, y_opt_g, so_llm_g, &
-                        ntss_ev_g, q_ev_g, elv_ev_g)
+    subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, &
+                      mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, &
+                      mann_ar_g, manncc_ar_g, so_ar_g, dx_ar_g, iniq, &
+                      frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, &
+  		      paradim, para_ar_g, q_ev_g, elv_ev_g)
         implicit none
 
         integer, intent(in) :: mxncomp_g, nrch_g
         integer, intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g
         integer, intent(in) :: frnw_col
-        integer, intent(in) :: nhincr_m_g, nhincr_f_g
-        double precision,intent(in) :: dtini_g, t0_g, tfin_g, saveinterval_ev_g
-        double precision,intent(in) :: dt_ql_g, dt_ub_g, dt_db_g
+        double precision, dimension(:), intent(in) :: timestep_ar_g(7)
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(in) :: mann_ar_g, manncc_ar_g, dx_ar_g, iniq
-        double precision, dimension(mxncomp_g, nrch_g, nhincr_m_g), intent(in) :: ufhlt_m_g,  ufqlt_m_g
-        double precision, dimension(mxncomp_g, nrch_g, nhincr_f_g), intent(in) :: ufhlt_f_g, ufqlt_f_g
         double precision, dimension(nrch_g, frnw_col), intent(in) :: dfrnw_g
         double precision, dimension(nts_ql_g, mxncomp_g, nrch_g), intent(in) :: qlat_g
         double precision, dimension(nts_ub_g, nrch_g), intent(in) :: ubcd_g
         double precision, dimension(nts_db_g), intent(in) :: dbcd_g
-        double precision, intent(in) :: cfl_g, theta_g, so_llm_g
-        integer, intent(in) :: tzeq_flag_g !* 0 for lookup tabale; 1 for using procedures to compute trapz.ch.geo.
-        integer, intent(in) :: y_opt_g  !* 1 for normal depth(kinematic); 2 for dept of diffusive wave.
+	integer, intent(in) :: paradim
+	double precision, dimension(paradim), intent(in) :: para_ar_g
         double precision, dimension(mxncomp_g, nrch_g), intent(inout) :: so_ar_g
         double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g, elv_ev_g
         integer :: ncomp
@@ -99,20 +91,32 @@ contains
         double precision :: Qxs, y_norm
         integer, dimension(:,:), allocatable :: pynw_g
         doubleprecision :: areai
-        doubleprecision :: courantN, avec, sumc, vel_norm
+        doubleprecision :: cfl, avec, sumc, vel_norm
         integer :: isubnode, subnode
         doubleprecision :: x1, x2
-        doubleprecision :: newx_s, oldq1, oldq2, oldelv1, oldelv2
-
+        doubleprecision :: newx_s, oldq1, oldq2, oldelv1, oldelv2  
+	!*---------------------
+	!* time step variables
+	!*---------------------
+        dtini= timestep_ar_g(1) 	!* simulation time step fixed throughout entire simulation time [sec]
+        t0= timestep_ar_g(2) 		!* simulation start time [hr]
+        tfin= timestep_ar_g(3) 		!* simulation end time [hr]
+        !** not used: saveInterval= timestep_ar_g(4)  [sec]
+        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
+        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
+        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
+	!*----------------------------
+	!* sensitive model parameters
+	!*----------------------------
+	cfl = para_ar_g(1)  		!* upper limit of Courant number (default: 0.95) 
+	C_llm = para_ar_g(2)  		!* lower limit of Celerity (default: 0.95) 
+	q_llm = para_ar_g(3) 		!* lower limit of discharge (default: 0.002)
+	so_llm = para_ar_g(4) 		!* lower limit of channel bed slope (default: 0.00001)
+	mxncomp_mseg= int(para_ar_g(5)) !* the upper limit of number of uniformly distributed sub-nodes on each stream segment including ghost nodes (default:12)
+	ncomp_ghost= int(para_ar_g(6))  !* the number of downstream sub-nodes added to existing sub-nodes on segment, used to provide proper discharge downstream boundary condition (default: 2)
         nrch=nrch_g
         mxncomp= mxncomp_g
-        dtini= dtini_g
         nts_ub = nts_ub_g
-        mxncomp_mseg = 12  !* max.# of sub-nodes of a segment including ghost node
-        ncomp_ghost = 2
-        mn_cel=0.05  !* min.celerity [m/s]
-        courantN=0.95
-        mn_chbtslp_c = so_llm_g  !* lower limit of channel bottom slope for computing stable diffusivity
 
         allocate(dx_ar(mxncomp_g, nrch_g), bo_ar(mxncomp_g, nrch_g), traps_ar(mxncomp_g, nrch_g))
         allocate(tw_ar(mxncomp_g, nrch_g), twcc_ar(mxncomp_g, nrch_g))
@@ -126,7 +130,6 @@ contains
         manncc_ar= manncc_ar_g
         allocate(frnw_g(nrch_g,frnw_col))
         frnw_g=int(dfrnw_g)
-        minq_ns_g=0.002 !* absolute minimum discharge (lower limit) for numerical stability [m^3/sec]
 
         allocate(q_g(mxncomp_g, nrch_g), elv_g(mxncomp_g, nrch_g))
         allocate(q_pre_g(mxncomp_g, nrch_g), elv_pre_g(mxncomp_g, nrch_g))
@@ -141,20 +144,20 @@ contains
         allocate(elv_mseg_g(mxncomp_mseg, mxncomp_g, nrch_g))
         allocate( oldq_mseg_g(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( oldelv_mseg_g(mxncomp_mseg, mxncomp_g, nrch_g) )
-        allocate ( q_mseg_btnode(mxncomp_g, nrch_g) )
+        allocate( q_mseg_btnode(mxncomp_g, nrch_g) )
         allocate(elv_diff_g(mxncomp_g,nrch_g))
 
         !* time step series for lateral flow
         do n=1, nts_ql_g
-            tarr_ql(n)= t0_g*60.0 + dt_ql_g*real(n-1,KIND(dt_ql_g))/60.0 !* [min]
+            tarr_ql(n)= t0*60.0 + dt_ql*real(n-1,KIND(dt_ql))/60.0 !* [min]
         end do
         !* time step series for upstream boundary data
         do n=1, nts_ub_g
-            tarr_ub(n)= t0_g*60.0 + dt_ub_g*real(n-1,KIND(dt_ub_g))/60.0 !* [min]
+            tarr_ub(n)= t0*60.0 + dt_ub*real(n-1,KIND(dt_ub))/60.0 !* [min]
         enddo
         !* when measured data is used, time step series for downstream boundary data
 !        do n=1, nts_db_g
-!            tarr_db(n)= t0_g*60.0 + dt_db_g*real(n-1,KIND(dt_db_g))/60.0 !* [min]
+!            tarr_db(n)= t0*60.0 + dt_db*real(n-1,KIND(dt_db))/60.0 !* [min]
 !        enddo
         !**-----------------------------------------------------------------------------------*
         !*                  Adjust abnormally small channel bottom slope
@@ -174,13 +177,13 @@ contains
             do j=1,nrch_g
                 ncomp=frnw_g(j,1)
                 do i=1, ncomp-1
-                    if (so_ar_g(i,j).lt.so_llm_g) then
+                    if (so_ar_g(i,j).lt.so_llm) then
                         !* adjacent upstream segment's slope
                         so_us=0.0
                         c_us=0.0
                         i2=i-1
                         do while (i2.ge.1)
-                            if (so_ar_g(i2,j).ge.so_llm_g) then
+                            if (so_ar_g(i2,j).ge.so_llm) then
                                 so_us= so_ar_g(i2,j)
                                 c_us=1.0
                                 exit
@@ -192,7 +195,7 @@ contains
                         c_ds=0.0
                         i2=i+1
                         do while (i2.le.ncomp-1)
-                            if (so_ar_g(i2,j).ge.so_llm_g) then
+                            if (so_ar_g(i2,j).ge.so_llm) then
                                 so_ds= so_ar_g(i2,j)
                                 c_ds=1.0
                                 exit
@@ -203,7 +206,7 @@ contains
                             adjso= (so_us+so_ds)/(c_us+c_ds)
                             adjso_ar_g(i,j)= adjso
                         else
-                            adjso_ar_g(i,j)= so_llm_g
+                            adjso_ar_g(i,j)= so_llm
                         endif
                     endif
                 enddo
@@ -325,11 +328,11 @@ contains
             sumc=  sum(c_g(1:frnw_g(j,1),j))
             avec= sumc/real(frnw_g(j,1))
             do i=1, frnw_g(j,1)
-                c_g(i,j)=max(avec, mn_cel)
+                c_g(i,j)=max(avec, C_llm)
             enddo
         enddo
 
-        call chgeo_seg_courant(courantN)
+        call chgeo_seg_courant(cfl)
 
         deallocate(c_g)
         !**-----------------------------------------------------------------------------------*
@@ -364,7 +367,7 @@ contains
         allocate(mindepth_ns_ar_g(mxncomp_g, nrch_g))
         do j=1, nrch_g
             do i=1, frnw_g(j,1)
-                mindepth_ns_ar_g(i,j)= normdepth(i, j, minq_ns_g)
+                mindepth_ns_ar_g(i,j)= normdepth(i, j, q_llm)
             end do
         end do
 
@@ -382,9 +385,9 @@ contains
         allocate( r_mseg(mxncomp_mseg, mxncomp_g, nrch_g), w_mseg(mxncomp_mseg, mxncomp_g, nrch_g) )
         allocate( c_g(mxncomp_g,nrch_g), d_g(mxncomp_g,nrch_g) ) !* C and D variables of per matrix equation
 
-        tc = t0_g*60.0  !* t0 is in hour. tc is in minutes
+        tc = t0*60.0  !* t0 is in hour. tc is in minutes
 
-        do while (tc .lt. tfin_g*60.0)
+        do while (tc .lt. tfin*60.0)
             !**---------------------------------------------------------------------------------------------
             !*   discharge is computed by solving CNX with resolution technique on uniform grid, p91, RM5
             !**---------------------------------------------------------------------------------------------
@@ -405,7 +408,7 @@ contains
             !* compute actual value of Courant number
             do j=1, nrch_g
                 do i=1, frnw_g(j,1)-1
-                    courant_comp(i,j) = c_g(i,j)*dtini_g/dx_mseg_g(i,j)
+                    courant_comp(i,j) = c_g(i,j)*dtini/dx_mseg_g(i,j)
                 enddo
             end do
 
@@ -455,7 +458,7 @@ contains
 !                    do n=1,nts_db_g
 !                        varr_db(n)= dbcd_g(n) + adjz_ar_g(ncomp,j) !* when dbcd is water stage, channel bottom elev is added.
 !                    enddo
-!                    tf0= tc+dtini_g/60.0
+!                    tf0= tc+dtini/60.0
 !                    elv_g(ncomp,j)= intp_y(nts_db_g, tarr_db, varr_db, tf0)
                 !* 2. use normal depth at  TW node
                     ncomp=frnw_g(j,1)
@@ -478,7 +481,7 @@ contains
             olddx_mseg_g = dx_mseg_g
             oldq_mseg_g = q_mseg_g
 
-            call chgeo_seg_courant(courantN)
+            call chgeo_seg_courant(cfl)
 
             !* compute q_mseg(t+1) and elv_mseg(t+1) on the new(ts+1) sub-node configuration by linear interpolation
             !* q_mseg needs to be computed upto ghost nodes, which is used in resolution method.
@@ -506,7 +509,7 @@ contains
                 enddo
             enddo
 
-            tc= tc + dtini_g/60.0 !* [min]
+            tc= tc + dtini/60.0 !* [min]
             ts= ts+1
 
             do j=1, nrch_g
@@ -546,7 +549,6 @@ contains
         call C_D_mseg
         !* Compute p, q, r, and w coefficients for entire network at time n
         call p_q_r_w_mseg
-        !* option 1
         !* Compute Q using resolution technique
         call Q_mseg_resoltech(tc, ubcd_g)
 
@@ -572,7 +574,7 @@ contains
                 twcc_g= twcc_ar(i,j)
                 mann_g= mann_ar(i,j)
                 manncc_g= manncc_ar(i,j)
-                chbed_slp = max(mn_chbtslp_c, adjso_ar_g(i,j))
+                chbed_slp = max(so_llm, adjso_ar_g(i,j))
 
                 subnode_last = ncomp_mseg_g(i,j) -1
                 do isubnode= 1, subnode_last
@@ -597,7 +599,7 @@ contains
                 !* use diffusivity and celerity values averaged along all the sub-nodes of a segment
                 sumc=  sum(c_mseg_g(1:subnode_last, i, j))
                 avec= sumc/real(subnode_last)
-                c_g(i,j) = max(avec, mn_cel)
+                c_g(i,j) = max(avec, C_llm)
                 sumd= sum(d_mseg_g(1:subnode_last, i, j))
                 aved= sumd/real(subnode_last)
                 d_g(i,j) = aved
@@ -681,7 +683,7 @@ contains
                          q_mseg_g(1,i,j)= qjt
                     endif
                     !* check against min.q for stability
-                    q_mseg_g(1,i,j)= max(q_mseg_g(1,i,j), minq_ns_g)
+                    q_mseg_g(1,i,j)= max(q_mseg_g(1,i,j), q_llm)
                 endif
                 !* Q at the top sub-node of from 2nd segment to onward is equal to Q at the last sub-node of its own upstream segment.
                 if (i.ge.2) then
@@ -699,7 +701,7 @@ contains
                 !* Q computation at time n+1 in forward-sweep
                 do isubnode=2, ncomp_ms
                     q_mseg_g(isubnode,i,j)= x(isubnode)*q_mseg_g(isubnode-1,i,j) + y(isubnode)
-                    q_mseg_g(isubnode,i,j)= max(q_mseg_g(isubnode,i,j), minq_ns_g)
+                    q_mseg_g(isubnode,i,j)= max(q_mseg_g(isubnode,i,j), q_llm)
                 enddo
                 deallocate(x, y)
 
