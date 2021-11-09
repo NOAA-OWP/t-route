@@ -1045,6 +1045,7 @@ def main_v03(argv):
         task_times['initial_condition_time'] = 0
         task_times['forcing_time'] = 0
         task_times['route_time'] = 0
+        task_times['output_time'] = 0
         main_start_time = time.time()
 
     if showtiming:
@@ -1223,10 +1224,10 @@ def main_v03(argv):
         
         if showtiming:
             output_end_time = time.time()
-            task_times['output_time'] = output_end_time - ic_end_time
-            task_times['total_time'] = time.time() - main_start_time
-
-    # nwm_final_output_generator()
+            task_times['output_time'] += output_end_time - ic_end_time
+            
+    if showtiming:
+        task_times['total_time'] = time.time() - main_start_time
 
     LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
     
