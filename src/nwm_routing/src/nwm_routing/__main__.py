@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import math
-import sys
 import asyncio
 import concurrent.futures
 
@@ -23,6 +22,8 @@ from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
     nwm_forcing_preprocess,
+    nwm_save_preprocessing,
+    nwm_load_preprocessing,
 )
 from .output import nwm_output_generator
 
@@ -1088,138 +1089,95 @@ def main_v03(argv):
     # read_dictionary = np.load('/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/preprocessed_outputs.npy',allow_pickle='TRUE').item()
     load_preprocessing = log_parameters.get("load_preprocessing",None)
     if load_preprocessing:
-        preprocess_output_folder = '/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/'
-        preprocessed_outputs = np.load(preprocess_output_folder+'/preprocessed_outputs.npy',allow_pickle='TRUE').item()
-        run_sets = preprocessed_outputs.get('run_sets', None)
-        connections = preprocessed_outputs.get('connections', None)
-        rconn = preprocessed_outputs.get('rconn', None)
-        wbody_conn = preprocessed_outputs.get('wbody_conn', None)
-        reaches_bytw = preprocessed_outputs.get('reaches_bytw', None)
-        parallel_compute_method = preprocessed_outputs.get('parallel_compute_method', None)
-        compute_kernel = preprocessed_outputs.get('compute_kernel', None)
-        subnetwork_target_size = preprocessed_outputs.get('subnetwork_target_size', None)
-        cpu_pool = preprocessed_outputs.get('cpu_pool', None)
-        qts_subdivisions = preprocessed_outputs.get('qts_subdivisions', None)
-        verbose = preprocessed_outputs.get('verbose', None)
-        showtiming = preprocessed_outputs.get('showtiming', None)
-        independent_networks = preprocessed_outputs.get('independent_networks', None)
-        param_df = preprocessed_outputs.get('param_df', None)
-        q0 = preprocessed_outputs.get('q0', None)
-        qlats = preprocessed_outputs.get('qlats', None)
-        usgs_df = preprocessed_outputs.get('usgs_df', None)
-        lastobs_df = preprocessed_outputs.get('lastobs_df', None)
-        da_parameter_dict = preprocessed_outputs.get('da_parameter_dict', None)
-        assume_short_ts = preprocessed_outputs.get('assume_short_ts', None)
-        return_courant = preprocessed_outputs.get('return_courant', None)
-        waterbodies_df = preprocessed_outputs.get('waterbodies_df', None)
-        waterbody_parameters = preprocessed_outputs.get('waterbody_parameters', None)
-        waterbody_type_specified = preprocessed_outputs.get('waterbody_type_specified', None)
-        diffusive_parameters = preprocessed_outputs.get('diffusive_parameters', None)
-        showtiming = preprocessed_outputs.get('showtiming', None)
-        verbose = preprocessed_outputs.get('verbose', None)
-        debuglevel = preprocessed_outputs.get('debuglevel', None)
-        parity_sets = preprocessed_outputs.get('parity_sets', None)
-        waterbody_types_df = preprocessed_outputs.get('waterbody_types_df',None)
-        da_sets = preprocessed_outputs.get('da_sets',None)
-        break_network_at_waterbodies = preprocessed_outputs.get('break_network_at_waterbodies',None)
-        link_gage_df = preprocessed_outputs.get('link_gage_df',None)
-        print("Loaded preprocessed components to file.")
-        if showtiming:
-            main_start_time = time.time()
-    else:
-        verbose = log_parameters.get("verbose", None)
-        showtiming = log_parameters.get("showtiming", None)
-        debuglevel = log_parameters.get("debuglevel", 0)
+        (connections,rconn, wbody_conn,reaches_bytw,independent_networks,param_df,waterbodies_df,waterbody_parameters,waterbody_type_specified,diffusive_parameters
+        ,showtiming,verbose,debuglevel,waterbody_types_df,break_network_at_waterbodies,link_gage_df) = nwm_load_preprocessing(load_preprocessing)
 
-        if showtiming:
-            main_start_time = time.time()
 
-        (
-            connections,
-            param_df,
-            wbody_conn,
-            waterbodies_df,
-            waterbody_types_df,
-            break_network_at_waterbodies,
-            waterbody_type_specified,
-            independent_networks,
-            reaches_bytw,
-            rconn,
-            link_gage_df,
-        ) = nwm_network_preprocess(
-            supernetwork_parameters,
-            waterbody_parameters,
-            showtiming=showtiming,
-            verbose=verbose,
-            debuglevel=debuglevel,
-        )
+    verbose = log_parameters.get("verbose", None)
+    showtiming = log_parameters.get("showtiming", None)
+    debuglevel = log_parameters.get("debuglevel", 0)
 
-        # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
-        waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
-            break_network_at_waterbodies,
-            restart_parameters,
-            data_assimilation_parameters,
-            param_df.index,
-            waterbodies_df,
-            segment_list=None,
-            wbodies_list=None,
-            showtiming=showtiming,
-            verbose=verbose,
-            debuglevel=debuglevel,
-        )
+    if showtiming:
+        main_start_time = time.time()
 
-        # Create run_sets: sets of forcing files for each loop
-        run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
-
-        # Create da_sets: sets of TimeSlice files for each loop
-        if "data_assimilation_parameters" in compute_parameters: 
-            da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
-            
-        # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
-        if "wrf_hydro_parity_check" in output_parameters:
-            parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
-        else:
-            parity_sets = []
-        
-        parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
-        subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
-        cpu_pool = compute_parameters.get("cpu_pool", None)
-        qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
-        compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
-        assume_short_ts = compute_parameters.get("assume_short_ts", False)
-        return_courant = compute_parameters.get("return_courant", False)
-
-        qlats, usgs_df = nwm_forcing_preprocess(
-            run_sets[0],
-            forcing_parameters,
-            da_sets[0] if data_assimilation_parameters else {},
-            data_assimilation_parameters,
-            break_network_at_waterbodies,
-            param_df.index,
-            lastobs_df.index,
-            t0,
-            showtiming,
-            verbose,
-            debuglevel,
-        )
-
-        verbose = log_parameters.get("verbose", None)
-        showtiming = log_parameters.get("showtiming", None)
-        debuglevel = log_parameters.get("debuglevel", 0)
-    
+    (
+        connections,
+        param_df,
+        wbody_conn,
+        waterbodies_df,
+        waterbody_types_df,
+        break_network_at_waterbodies,
+        waterbody_type_specified,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+        link_gage_df,
+    ) = nwm_network_preprocess(
+        supernetwork_parameters,
+        waterbody_parameters,
+        showtiming=showtiming,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
     save_preprocessing = log_parameters.get("save_preprocessing",None)
     if save_preprocessing:
-        preprocessed_outputs = {}
-        preprocess_output_folder = '/glade/u/home/jhreha/t-route/src/python_routing_v02/troute/routing/'
-        preprocessed_outputs.update({'run_sets':run_sets,'connections': connections,'rconn': rconn,'wbody_conn':wbody_conn,'reaches_bytw':reaches_bytw,'parallel_compute_method':parallel_compute_method,
-        'compute_kernel':compute_kernel,'subnetwork_target_size':subnetwork_target_size,'cpu_pool':cpu_pool,'qts_subdivisions':qts_subdivisions, 'verbose':verbose,'showtiming':showtiming,'debuglevel':debuglevel,
-        'independent_networks':independent_networks,'param_df':param_df,'q0':q0,'qlats':qlats,'usgs_df':usgs_df,'lastobs_df':lastobs_df,'da_parameter_dict':da_parameter_dict,
-        'assume_short_ts':assume_short_ts,'return_courant':return_courant,'waterbodies_df':waterbodies_df,'waterbody_parameters':waterbody_parameters,'waterbody_types_df':waterbody_types_df,
-        'waterbody_type_specified':waterbody_type_specified,'diffusive_parameters':diffusive_parameters,'showtiming':showtiming,'verbose':verbose,'debuglevel':debuglevel,'parity_sets':parity_sets,
-        'da_sets':da_sets,'break_network_at_waterbodies':break_network_at_waterbodies,'link_gage_df':link_gage_df})
-        np.save(preprocess_output_folder+'/preprocessed_outputs.npy', preprocessed_outputs)
-        print("Saved preprocessed components to file.")
-        sys.exit()
+        nwm_save_preprocessing(save_preprocessing,connections,rconn,wbody_conn,reaches_bytw,verbose,showtiming,debuglevel,independent_networks,param_df,waterbody_parameters,
+    waterbody_types_df,waterbody_type_specified,diffusive_parameters,break_network_at_waterbodies,link_gage_df)
+
+ 
+    # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
+    waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
+        break_network_at_waterbodies,
+        restart_parameters,
+        data_assimilation_parameters,
+        param_df.index,
+        waterbodies_df,
+        segment_list=None,
+        wbodies_list=None,
+        showtiming=showtiming,
+        verbose=verbose,
+        debuglevel=debuglevel,
+    )
+
+    # Create run_sets: sets of forcing files for each loop
+    run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
+
+    # Create da_sets: sets of TimeSlice files for each loop
+    if "data_assimilation_parameters" in compute_parameters: 
+        da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
+        
+    # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
+    if "wrf_hydro_parity_check" in output_parameters:
+        parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
+    else:
+        parity_sets = []
+    
+    parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
+    subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
+    cpu_pool = compute_parameters.get("cpu_pool", None)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
+    assume_short_ts = compute_parameters.get("assume_short_ts", False)
+    return_courant = compute_parameters.get("return_courant", False)
+
+    qlats, usgs_df = nwm_forcing_preprocess(
+        run_sets[0],
+        forcing_parameters,
+        da_sets[0] if data_assimilation_parameters else {},
+        data_assimilation_parameters,
+        break_network_at_waterbodies,
+        param_df.index,
+        lastobs_df.index,
+        t0,
+        showtiming,
+        verbose,
+        debuglevel,
+    )
+
+    verbose = log_parameters.get("verbose", None)
+    showtiming = log_parameters.get("showtiming", None)
+    debuglevel = log_parameters.get("debuglevel", 0)
+
 
     for run_set_iterator, run in enumerate(run_sets):
 

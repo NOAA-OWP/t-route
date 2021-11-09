@@ -6,7 +6,8 @@ from collections import defaultdict
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
-
+import numpy as np
+import sys
 
 def nwm_network_preprocess(
     supernetwork_parameters,
@@ -358,3 +359,61 @@ def nwm_forcing_preprocess(
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
     return qlats_df, usgs_df
+    parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
+    subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
+    cpu_pool = compute_parameters.get("cpu_pool", None)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
+    assume_short_ts = compute_parameters.get("assume_short_ts", False)
+    return_courant = compute_parameters.get("return_courant", False)
+
+def nwm_save_preprocessing(save_preprocessing,connections,rconn,wbody_conn,reaches_bytw,verbose,showtiming,debuglevel,independent_networks,param_df,waterbody_parameters,
+    waterbody_types_df,waterbody_type_specified,diffusive_parameters,break_network_at_waterbodies,link_gage_df=None):
+    preprocessed_outputs = {}
+    preprocessed_outputs.update({'connections': connections,'rconn': rconn,'wbody_conn':wbody_conn,'reaches_bytw':reaches_bytw, 
+    'independent_networks':independent_networks,'param_df':param_df,
+    'waterbody_parameters':waterbody_parameters,'waterbody_types_df':waterbody_types_df,
+    'waterbody_type_specified':waterbody_type_specified,'diffusive_parameters':diffusive_parameters,'showtiming':showtiming,'verbose':verbose,'debuglevel':debuglevel,
+    'break_network_at_waterbodies':break_network_at_waterbodies,'link_gage_df':link_gage_df})
+    np.save(save_preprocessing+'/preprocessed_outputs.npy', preprocessed_outputs)
+    print("Saved preprocessed components to file.")
+    sys.exit()
+    #'q0':q0,'waterbodies_df':waterbodies_df,'lastobs_df':lastobs_df,'da_parameter_dict':da_parameter_dict,'run_sets':run_sets,'da_sets':da_sets,'parity_sets':parity_sets,
+def nwm_load_preprocessing(load_preprocessing):
+        preprocessed_outputs = np.load(load_preprocessing+'/preprocessed_outputs.npy',allow_pickle='TRUE').item()
+        # run_sets = preprocessed_outputs.get('run_sets', None)
+        connections = preprocessed_outputs.get('connections', None)
+        rconn = preprocessed_outputs.get('rconn', None)
+        wbody_conn = preprocessed_outputs.get('wbody_conn', None)
+        reaches_bytw = preprocessed_outputs.get('reaches_bytw', None)
+        # parallel_compute_method = preprocessed_outputs.get('parallel_compute_method', None)
+        # compute_kernel = preprocessed_outputs.get('compute_kernel', None)
+        # subnetwork_target_size = preprocessed_outputs.get('subnetwork_target_size', None)
+        # cpu_pool = preprocessed_outputs.get('cpu_pool', None)
+        # qts_subdivisions = preprocessed_outputs.get('qts_subdivisions', None)
+        independent_networks = preprocessed_outputs.get('independent_networks', None)
+        param_df = preprocessed_outputs.get('param_df', None)
+        # q0 = preprocessed_outputs.get('q0', None)
+        # qlats = preprocessed_outputs.get('qlats', None)
+        # usgs_df = preprocessed_outputs.get('usgs_df', None)
+        # lastobs_df = preprocessed_outputs.get('lastobs_df', None)
+        # da_parameter_dict = preprocessed_outputs.get('da_parameter_dict', None)
+        # assume_short_ts = preprocessed_outputs.get('assume_short_ts', None)
+        # return_courant = preprocessed_outputs.get('return_courant', None)
+        waterbodies_df = preprocessed_outputs.get('waterbodies_df', None)
+        waterbody_parameters = preprocessed_outputs.get('waterbody_parameters', None)
+        waterbody_type_specified = preprocessed_outputs.get('waterbody_type_specified', None)
+        diffusive_parameters = preprocessed_outputs.get('diffusive_parameters', None)
+        showtiming = preprocessed_outputs.get('showtiming', None)
+        verbose = preprocessed_outputs.get('verbose', None)
+        debuglevel = preprocessed_outputs.get('debuglevel', None)
+        # parity_sets = preprocessed_outputs.get('parity_sets', None)
+        waterbody_types_df = preprocessed_outputs.get('waterbody_types_df',None)
+        # da_sets = preprocessed_outputs.get('da_sets',None)
+        break_network_at_waterbodies = preprocessed_outputs.get('break_network_at_waterbodies',None)
+        link_gage_df = preprocessed_outputs.get('link_gage_df',None)
+        print("Loaded preprocessed components to file.")
+        if showtiming:
+            main_start_time = time.time()
+        return (connections,rconn, wbody_conn,reaches_bytw,independent_networks,param_df,waterbodies_df,waterbody_parameters,waterbody_type_specified,diffusive_parameters
+        ,showtiming,verbose,debuglevel,waterbody_types_df,break_network_at_waterbodies,link_gage_df)
