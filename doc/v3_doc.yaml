@@ -3,17 +3,26 @@
 # parameters controling logging messages throughout execution
 log_parameters:
     # ---------------
-    # logical controling print statements throughout execution
-    # optional, defaults to None and no printing occurs
-    verbose:
+    # Python logging level. Can either be a string or an integer from the list below
+    # optional, defaults to DEBUG (10). All logging statements at or above the level
+    # specified will be displayed. 
+    #
+    # To check the contents of the YAML configuration file, set the logging level at or lower than DEBUG
+    # For the most verbose output, set log_level to DEBUG 
+    #
+    # CRITICAL - 50
+    # ERROR - 40
+    # WARNING - 30
+    # INFO - 20
+    # DEBUG - 10
+    # NOTSET - 0
+    #
+    log_level: 
     # ---------------
-    # logical controling timing statements throughout execution
-    # optional, defaults to None and no timings are reported
+    # logical, it True a timing summary is provided that reports the total time
+    # required for each major process in the simulation sequence.
+    # optional, defaults to None and no timing summary is reported
     showtiming: 
-    # ---------------
-    # Integer. If debuglevel <= -1, additional information is printed to logging file. 
-    # !! Mandatory, defaults to 0
-    debuglevel: 
 
 # ---------------
 # parameters controlling how the stream network is synthesized
@@ -340,7 +349,7 @@ compute_parameters:
         # field name of segment ID in qlateral data
         # (!!) mandatory
         # TODO: change default `feature_id`
-        qlat_file_index_col:
+        qlat_file_index_col: 
         # ---------------
         # lateral inflow variable name in forcing file
         # typical forcing files are WRF Hydro channel route out files (CHRTOUT)
@@ -363,25 +372,25 @@ compute_parameters:
         # max_loop_size variables are listed above.
         qlat_forcing_sets:
             # ---------------
-            # number of timesteps in loop itteration 1
+            # number of timesteps in loop iteration 1
             - nts:
             # ---------------
-            # list of forcing file names to be used in itteration 1
+            # list of forcing file names to be used in iteration 1
               qlat_files: 
               - filename1
               - filename2
             # ---------------
-            # number of timesteps in loop itteration 2
+            # number of timesteps in loop iteration 2
             - nts:
             # ---------------
-            # list of forcing file names to be used in itteration 2
+            # list of forcing file names to be used in iteration 2
               qlat_files:
               - filename3
               - filename4
             # ... above pattern repeats for however many loops the entire simulation is divided into
             # For a non-looped simulation, a single set of nts and qlat_files variables are provided 
     # ---------------
-    # parameters conrtolling data assimilation scheme
+    # parameters controlling data assimilation scheme
     # Here, the user has a choice between explicitly listing the TimeSlice files to be used in 
     # each loop under data_assimilation_sets or having TimeSlice sets be created automatically. 
     #
@@ -526,4 +535,3 @@ output_parameters:
             - validation_files:
                 - validation_file3
                 - validation_file4
-            

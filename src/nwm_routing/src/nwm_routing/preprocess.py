@@ -6,20 +6,20 @@ from collections import defaultdict
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
+import logging
+
+LOG = logging.getLogger('')
 
 
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
-    showtiming=False,
-    verbose=False,
-    debuglevel=0,
 ):
 
-    if verbose:
-        print("creating supernetwork connections set")
-    if showtiming:
-        start_time = time.time()
+
+    LOG.info("creating supernetwork connections set")
+
+    start_time = time.time()
 
     # STEP 1: Build basic network connections graph,
     # read network parameters, identify waterbodies and gages, if any.
@@ -44,10 +44,8 @@ def nwm_network_preprocess(
             connections, wbody_conn
         )
 
-    if verbose:
-        print("supernetwork connections set complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
 
     ################################
     ## STEP 3a: Read waterbody parameter file
@@ -113,10 +111,10 @@ def nwm_network_preprocess(
         waterbodies_df = pd.DataFrame()
 
     # STEP 2: Identify Independent Networks and Reaches by Network
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("organizing connections into reaches ...")
+    
+    start_time = time.time()
+
+    LOG.info("organizing connections into reaches ...")
 
     network_break_segments = set()
     if break_network_at_waterbodies:
@@ -128,10 +126,8 @@ def nwm_network_preprocess(
         connections,
         network_break_segments,
     )
-    if verbose:
-        print("reach organization complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+    
+    LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
 
     return (
         connections,
@@ -156,18 +152,15 @@ def nwm_initial_warmstate_preprocess(
     waterbodies_df,
     segment_list=None,
     wbodies_list=None,
-    showtiming=False,
-    verbose=False,
-    debuglevel=0,
 ):
 
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
         # TODO: move step 3c into function in nnu, like other functions wrapped in main()
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print("setting waterbody initial states ...")
+      
+        start_time = time.time()
+    
+        LOG.info("setting waterbody initial states ...")
 
         if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
@@ -204,17 +197,15 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
-        if verbose:
-            print("waterbody initial states complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
-            start_time = time.time()
+        
+        LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
+        start_time = time.time()
 
     # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("setting channel initial states ...")
+
+    start_time = time.time()
+
+    LOG.info("setting channel initial states ...")
 
     q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
@@ -234,11 +225,9 @@ def nwm_initial_warmstate_preprocess(
         data_assimilation_parameters
     )
 
-    if verbose:
-        print("channel initial states complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-        start_time = time.time()
+    
+    LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
+    start_time = time.time()
 
     return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
     # TODO: This returns a full dataframe (waterbodies_df) with the
@@ -259,9 +248,6 @@ def nwm_forcing_preprocess(
     segment_index,
     lastobs_index,
     warmstate_t0 = None,
-    showtiming=False,
-    verbose=False,
-    debuglevel=0,
 ):
 
     # TODO: Harmonize the t0 parameter -- this
@@ -308,20 +294,17 @@ def nwm_forcing_preprocess(
         da_run["da_decay_coefficient"] = da_run.get("da_decay_coefficient", da_decay_coefficient)
 
     # STEP 5: Read (or set) QLateral Inputs
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("creating qlateral array ...")
+   
+    start_time = time.time()
+
+    LOG.info("creating qlateral array ...")
 
     qlats_df = nnu.build_qlateral_array(
         run,
         segment_index,
     )
 
-    if verbose:
-        print("qlateral array complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("qlateral array complete in %s seconds." % (time.time() - start_time))
 
     # STEP 6
     data_assimilation_csv = da_run.get("data_assimilation_csv", None)
@@ -329,21 +312,18 @@ def nwm_forcing_preprocess(
     if data_assimilation_csv or data_assimilation_folder:
 
         if data_assimilation_folder and data_assimilation_csv:
-            print(
+            LOG.info(
                 "Please select data_assimilation_parameters_folder + data_assimilation_filter or data_assimilation_csv not both."
             )
 
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print("creating usgs time_slice data array ...")
+
+        start_time = time.time()
+    
+        LOG.info("creating usgs time_slice data array ...")
 
         usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
 
-        if verbose:
-            print("usgs array complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("usgs array complete in %s seconds." % (time.time() - start_time))
 
     else:
         usgs_df = pd.DataFrame()
@@ -353,11 +333,11 @@ def nwm_forcing_preprocess(
     coastal_ncdf = forcing_parameters.get("coastal_ncdf", None)
 
     if coastal_boundary_elev:
-        print("creating coastal dataframe ...")
+        LOG.info("creating coastal dataframe ...")
         coastal_df = nhd_io.build_coastal_dataframe(coastal_boundary_elev)
 
     if coastal_ncdf:
-        print("creating coastal ncdf dataframe ...")
+        LOG.info("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
     # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns

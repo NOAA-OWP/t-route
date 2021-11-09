@@ -7,6 +7,9 @@ import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
+import logging
+
+LOG = logging.getLogger('')
 
 
 def set_supernetwork_parameters(
@@ -36,11 +39,11 @@ def set_supernetwork_parameters(
     }
 
     if supernetwork not in supernetwork_options:
-        print(
+        LOG.warning(
             "Note: please call function with supernetworks set to one of the following:"
         )
         for s in supernetwork_options:
-            print(f"'{s}'")
+            LOG.warning(f"'{s}'")
         raise ValueError
 
     elif supernetwork == "Pocono_TEST1":
@@ -489,7 +492,7 @@ def build_waterbodies(
     wbody_conn = nhd_network.extract_waterbody_connections(
         segment_reservoir_df,
         waterbody_crosswalk_column,
-        supernetwork_parameters["waterbody_null_code"],
+        supernetwork_parameters.get('waterbody_null_code', -9999),
     )
 
     # TODO: Add function to read LAKEPARM.nc here
@@ -841,7 +844,7 @@ def build_data_assimilation_usgs_df(
 
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
-            print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
+            LOG.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
             usgs_df = usgs_df.loc[lastobs_index]
 
     return usgs_df
@@ -904,7 +907,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
         usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
     else:
-        print("No Files Found for DA")
+        LOG.warning("No Files Found for DA")
         # TODO: Handle this with a real exception
 
     if usgs_files:

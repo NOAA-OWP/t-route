@@ -5,7 +5,10 @@ from pathlib import Path
 from datetime import datetime
 import troute.nhd_io as nhd_io
 from build_tests import parity_check
+import logging
 
+
+LOG = logging.getLogger('')
 
 def nwm_output_generator(
     run,
@@ -17,9 +20,6 @@ def nwm_output_generator(
     parity_set,
     qts_subdivisions,
     return_courant,
-    showtiming=False,
-    verbose=False,
-    debuglevel=0,
     data_assimilation_parameters=False,
     lastobs_df=None,
     link_gage_df=None,
@@ -62,10 +62,10 @@ def nwm_output_generator(
         )
 
     ################### Output Handling
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print(f"Handling output ...")
+    
+    start_time = time.time()
+
+    LOG.info(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
     csv_output_folder = None
@@ -78,7 +78,7 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
-    if (debuglevel <= -1) or csv_output_folder or rsrto or chrto:
+    if csv_output_folder or rsrto or chrto:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -103,8 +103,7 @@ def nwm_output_generator(
 
     if rsrto:
 
-        if verbose:
-            print("- writing restart files")
+        LOG.info("- writing restart files")
 
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
@@ -155,8 +154,7 @@ def nwm_output_generator(
 
     if chrto:
         
-        if verbose:
-            print("- writing results to CHRTOUT")
+        LOG.info("- writing results to CHRTOUT")
         
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
@@ -183,8 +181,7 @@ def nwm_output_generator(
 
     if csv_output_folder: 
     
-        if verbose:
-            print("- writing flow, velocity, and depth results to .csv")
+        LOG.info("- writing flow, velocity, and depth results to .csv")
 
         # create filenames
         # TO DO: create more descriptive filenames
@@ -237,29 +234,23 @@ def nwm_output_generator(
             lastobs_output_folder,
         )
 
-    if debuglevel <= -1:
-        print(flowveldepth)
+    if 'flowveldepth' in locals():
+        LOG.debug(flowveldepth)
 
-    if verbose:
-        print("output complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
+    LOG.debug("output complete in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
     if parity_set:
-        if verbose:
-            print(
-                "conducting parity check, comparing WRF Hydro results against t-route results"
-            )
-        if showtiming:
-            start_time = time.time()
+        
+        LOG.info(
+            "conducting parity check, comparing WRF Hydro results against t-route results"
+        )
+    
+        start_time = time.time()
 
         parity_check(
             parity_set, results,
         )
 
-        if verbose:
-            print("parity check complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
+        LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
