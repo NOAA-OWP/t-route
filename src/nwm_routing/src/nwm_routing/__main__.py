@@ -1027,6 +1027,7 @@ def main_v03(argv):
     args = _handle_args_v03(argv)
     (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,

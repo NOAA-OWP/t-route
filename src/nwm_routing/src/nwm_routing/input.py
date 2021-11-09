@@ -35,6 +35,7 @@ def _input_handler_v03(args):
     if custom_input_file:
         (
             log_parameters,
+            preprocessing_parameters,
             supernetwork_parameters,
             waterbody_parameters,
             compute_parameters,
@@ -54,6 +55,7 @@ def _input_handler_v03(args):
     LOG = logging.getLogger('')
 
     if LOG.level <= 10: # DEBUG
+        # don't forget to add input checks on user's preprocessing_parameters
         check_inputs(
                 log_parameters,
                 supernetwork_parameters,
@@ -68,6 +70,7 @@ def _input_handler_v03(args):
                 )
     return (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,

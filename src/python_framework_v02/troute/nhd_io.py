@@ -60,6 +60,9 @@ def read_custom_input_new(custom_input_file):
     supernetwork_parameters = network_topology_parameters.get(
         "supernetwork_parameters", None
     )
+    preprocessing_parameters = network_topology_parameters.get(
+        "preprocessing_parameters", None
+    )
     waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
@@ -74,6 +77,7 @@ def read_custom_input_new(custom_input_file):
     # TODO: add error trapping for potentially missing files
     return (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,
