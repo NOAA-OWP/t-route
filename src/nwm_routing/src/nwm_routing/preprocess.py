@@ -192,6 +192,48 @@ def nwm_network_preprocess(
         pd.DataFrame.from_dict(gages),
     )
 
+def unpack_nwm_preprocess_data(preprocessing_parameters):
+    
+    preprocess_filepath = preprocessing_parameters.get('preprocess_source_file',None)
+    if preprocess_filepath:
+        try:
+            inputs = np.load(pathlib.Path(preprocess_filepath),allow_pickle='TRUE').item()
+        except:
+            LOG.critical('Canonot find %s' % pathlib.Path(preprocess_filepath))
+            quit()
+              
+        connections = inputs.get('connections',None)            
+        param_df = inputs.get('param_df',None)
+        wbody_conn = inputs.get('wbody_conn',None)
+        waterbodies_df = inputs.get('waterbodies_df',None)
+        waterbody_types_df = inputs.get('waterbody_types_df',None)
+        break_network_at_waterbodies = inputs.get('break_network_at_waterbodies',None)
+        waterbody_type_specified = inputs.get('waterbody_type_specified',None)
+        independent_networks = inputs.get('independent_networks',None)
+        reaches_bytw = inputs.get('reaches_bytw',None)
+        rconn = inputs.get('rconn',None)
+        gages = inputs.get('gages',None)
+        
+        # todo: if any of the abocve variables are none, throw a critical error and quit the simulation. 
+        
+    else:
+        LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
+        quit()
+                         
+    return (
+        connections,
+        param_df,
+        wbody_conn,
+        waterbodies_df,
+        waterbody_types_df,
+        break_network_at_waterbodies,
+        waterbody_type_specified,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+        gages,
+    )
+
 
 def nwm_initial_warmstate_preprocess(
     break_network_at_waterbodies,

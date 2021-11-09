@@ -26,6 +26,7 @@ from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
     nwm_forcing_preprocess,
+    unpack_nwm_preprocess_data,
 )
 from .output import nwm_output_generator
 
