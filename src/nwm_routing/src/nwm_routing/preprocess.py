@@ -16,6 +16,7 @@ LOG = logging.getLogger('')
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
+    preprocessing_parameters,
 ):
 
 
@@ -130,6 +131,52 @@ def nwm_network_preprocess(
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
+    
+    if preprocessing_parameters:
+        if preprocessing_parameters.get('preprocess_only', False):
+            
+            LOG.debug("saving preprocessed network data to disk for future use")
+            # todo: consider a better default than None
+            destination_folder = preprocessing_parameters.get('preprocess_output_folder', None)
+            if destination_folder:
+                
+                output_filename = preprocessing_parameters.get(
+                    'preprocess_output_filename', 
+                    'preprocess_output'
+                )
+                
+                outputs = {}
+                outputs.update(
+                    {'connections': connections,
+                     'param_df': param_df,
+                     'wbody_conn': wbody_conn,
+                     'waterbodies_df': waterbodies_df,
+                     'waterbody_types_df': waterbody_types_df,
+                     'break_network_at_waterbodies': break_network_at_waterbodies,
+                     'waterbody_type_specified': waterbody_type_specified,
+                     'independent_networks': independent_networks,
+                     'reaches_bytw': reaches_bytw,
+                     'rconn': rconn,
+                     'link_gage_df': pd.DataFrame.from_dict(gages)
+                    }
+                )
+                np.save(
+                    pathlib.Path(destination_folder).joinpath(output_filename),
+                    outputs
+                )
+                LOG.debug(
+                    "writing preprocessed network data to %s"\
+                    % pathlib.Path(destination_folder).joinpath(output_filename + '.npy'))
+                LOG.critical(
+                    "Preprocessed network data written do %s aborting preprocessing sequence" \
+                    % pathlib.Path(destination_folder).joinpath(output_filename + '.npy'))
+                quit()
+                
+            else:
+                LOG.critical(
+                    "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file"
+                )
+                quit()
 
     return (
         connections,
