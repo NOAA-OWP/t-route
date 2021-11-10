@@ -63,6 +63,8 @@ def read_custom_input_new(custom_input_file):
     preprocessing_parameters = network_topology_parameters.get(
         "preprocessing_parameters", {}
     )
+    if not preprocessing_parameters:
+        preprocessing_parameters = {}
     waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})

@@ -23,6 +23,7 @@ def _input_handler_v03(args):
     custom_input_file = args.custom_input_file
     log_parameters = {}
     supernetwork_parameters = None
+    preprocessing_parameters = {}
     waterbody_parameters = {}
     compute_parameters = {}
     forcing_parameters = {}
