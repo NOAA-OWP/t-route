@@ -28,6 +28,37 @@ log_parameters:
 # parameters controlling how the stream network is synthesized
 network_topology_parameters:
     # ---------------
+    # Parameters controlling the creation and use of preprocessed network graph data
+    preprocessing_parameters:
+        # ---------------
+        # boolean. If True, then network graph objects will be created, saved to disk
+        # and then the execution will stop. 
+        # optional, defaults to False
+        preprocess_only:
+        # ---------------
+        # string. path to folder where preprocessed data will be saved as .npy
+        # mandatory if preprocess_only = True. Unnecessary if preprocess_only = False
+        preprocess_output_folder:
+        # ---------------
+        # string. Name of preprocessed file created by preprocessing routine. 
+        # Do not include a file extension, just the name.
+        # optional, defaults to 'preprocess_output'. Unecessary if preprocess_only = False 
+        preprocess_output_filename:
+        # ---------------
+        # boolean. If True, then the simulation will attempt to get network graph data directly
+        # from an existing preprocessd .npy file.
+        # optional, defaults to False.
+        #
+        # if use_preprocessed_data = True and preprocess_only = True, then the execution will ignore 
+        # preprocess_only and try to find and use existing preprocessed data. However, this condition is
+        # caught in the input check routine (log_level = DEBUG) and the execution is terminated early. 
+        use_preprocessed_data:
+        # ---------------
+        # string. Name of file containing preprocessed network graph objects. Must be a .npy file
+        # created by the t-route preprocessing routine.
+        # mandatory if use_preprocessed_data = True. Unnecessary if use_preprocessed_data = False
+        preprocess_source_file:
+    # ---------------
     supernetwork_parameters:
         # ---------------
         # string, Used for simulation identification
