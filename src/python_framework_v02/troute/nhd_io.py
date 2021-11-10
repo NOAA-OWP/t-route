@@ -61,7 +61,7 @@ def read_custom_input_new(custom_input_file):
         "supernetwork_parameters", None
     )
     preprocessing_parameters = network_topology_parameters.get(
-        "preprocessing_parameters", None
+        "preprocessing_parameters", {}
     )
     waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
     compute_parameters = data.get("compute_parameters", {})
