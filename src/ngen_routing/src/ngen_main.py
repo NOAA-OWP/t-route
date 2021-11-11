@@ -14,4 +14,5 @@ def ngen_main(argv):
     from nwm_routing.__main__ import main_v02
     main_v02(argv)
 
-
+if __name__ == "__main__":
+    ngen_main(sys.argv[1:])
