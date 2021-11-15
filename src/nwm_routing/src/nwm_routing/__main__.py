@@ -26,6 +26,7 @@ from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
     nwm_forcing_preprocess,
+    unpack_nwm_preprocess_data,
 )
 from .output import nwm_output_generator
 
@@ -1027,6 +1028,7 @@ def main_v03(argv):
     args = _handle_args_v03(argv)
     (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,
@@ -1051,22 +1053,40 @@ def main_v03(argv):
     if showtiming:
         network_start_time = time.time()
         
-    (
-        connections,
-        param_df,
-        wbody_conn,
-        waterbodies_df,
-        waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
-        independent_networks,
-        reaches_bytw,
-        rconn,
-        link_gage_df,
-    ) = nwm_network_preprocess(
-        supernetwork_parameters,
-        waterbody_parameters,
-    )
+    if preprocessing_parameters.get('use_preprocessed_data', False): 
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = unpack_nwm_preprocess_data(
+            preprocessing_parameters
+        )
+    else:
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = nwm_network_preprocess(
+            supernetwork_parameters,
+            waterbody_parameters,
+            preprocessing_parameters,
+        )
     
     if showtiming:
         network_end_time = time.time()

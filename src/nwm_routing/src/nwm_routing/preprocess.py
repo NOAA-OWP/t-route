@@ -1,5 +1,7 @@
 import time
 import pandas as pd
+import numpy as np
+import pathlib
 import xarray as xr
 from datetime import datetime
 from collections import defaultdict
@@ -14,6 +16,7 @@ LOG = logging.getLogger('')
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
+    preprocessing_parameters,
 ):
 
 
@@ -128,6 +131,56 @@ def nwm_network_preprocess(
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
+    
+    if preprocessing_parameters.get('preprocess_only', False):
+
+        LOG.debug("saving preprocessed network data to disk for future use")
+        # todo: consider a better default than None
+        destination_folder = preprocessing_parameters.get('preprocess_output_folder', None)
+        if destination_folder:
+
+            output_filename = preprocessing_parameters.get(
+                'preprocess_output_filename', 
+                'preprocess_output'
+            )
+
+            outputs = {}
+            outputs.update(
+                {'connections': connections,
+                 'param_df': param_df,
+                 'wbody_conn': wbody_conn,
+                 'waterbodies_df': waterbodies_df,
+                 'waterbody_types_df': waterbody_types_df,
+                 'break_network_at_waterbodies': break_network_at_waterbodies,
+                 'waterbody_type_specified': waterbody_type_specified,
+                 'independent_networks': independent_networks,
+                 'reaches_bytw': reaches_bytw,
+                 'rconn': rconn,
+                 'link_gage_df': pd.DataFrame.from_dict(gages)
+                }
+            )
+            try:
+                np.save(
+                    pathlib.Path(destination_folder).joinpath(output_filename),
+                    outputs
+                )
+            except:
+                LOG.critical('Canonot find %s. Aborting preprocessing routine' % pathlib.Path(destination_folder))
+                quit()
+                
+            LOG.debug(
+                "writing preprocessed network data to %s"\
+                % pathlib.Path(destination_folder).joinpath(output_filename + '.npy'))
+            LOG.critical(
+                "Preprocessed network data written to %s aborting preprocessing sequence" \
+                % pathlib.Path(destination_folder).joinpath(output_filename + '.npy'))
+            quit()
+
+        else:
+            LOG.critical(
+                "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file. Aborting preprocessing routine"
+            )
+            quit()
 
     return (
         connections,
@@ -141,6 +194,48 @@ def nwm_network_preprocess(
         reaches_bytw,
         rconn,
         pd.DataFrame.from_dict(gages),
+    )
+
+def unpack_nwm_preprocess_data(preprocessing_parameters):
+    
+    preprocess_filepath = preprocessing_parameters.get('preprocess_source_file',None)
+    if preprocess_filepath:
+        try:
+            inputs = np.load(pathlib.Path(preprocess_filepath),allow_pickle='TRUE').item()
+        except:
+            LOG.critical('Canonot find %s' % pathlib.Path(preprocess_filepath))
+            quit()
+              
+        connections = inputs.get('connections',None)            
+        param_df = inputs.get('param_df',None)
+        wbody_conn = inputs.get('wbody_conn',None)
+        waterbodies_df = inputs.get('waterbodies_df',None)
+        waterbody_types_df = inputs.get('waterbody_types_df',None)
+        break_network_at_waterbodies = inputs.get('break_network_at_waterbodies',None)
+        waterbody_type_specified = inputs.get('waterbody_type_specified',None)
+        independent_networks = inputs.get('independent_networks',None)
+        reaches_bytw = inputs.get('reaches_bytw',None)
+        rconn = inputs.get('rconn',None)
+        gages = inputs.get('gages',None)
+        
+        # todo: if any of the abocve variables are none, throw a critical error and quit the simulation. 
+        
+    else:
+        LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
+        quit()
+                         
+    return (
+        connections,
+        param_df,
+        wbody_conn,
+        waterbodies_df,
+        waterbody_types_df,
+        break_network_at_waterbodies,
+        waterbody_type_specified,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+        gages,
     )
 
 

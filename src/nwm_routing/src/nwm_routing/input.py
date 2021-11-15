@@ -23,6 +23,7 @@ def _input_handler_v03(args):
     custom_input_file = args.custom_input_file
     log_parameters = {}
     supernetwork_parameters = None
+    preprocessing_parameters = {}
     waterbody_parameters = {}
     compute_parameters = {}
     forcing_parameters = {}
@@ -35,6 +36,7 @@ def _input_handler_v03(args):
     if custom_input_file:
         (
             log_parameters,
+            preprocessing_parameters,
             supernetwork_parameters,
             waterbody_parameters,
             compute_parameters,
@@ -54,8 +56,10 @@ def _input_handler_v03(args):
     LOG = logging.getLogger('')
 
     if LOG.level <= 10: # DEBUG
+        # don't forget to add input checks on user's preprocessing_parameters
         check_inputs(
                 log_parameters,
+                preprocessing_parameters,
                 supernetwork_parameters,
                 waterbody_parameters,
                 compute_parameters,
@@ -68,6 +72,7 @@ def _input_handler_v03(args):
                 )
     return (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,
@@ -262,6 +267,7 @@ def _does_path_exist(parameter_name, directory_path_input):
     
 def check_inputs(
             log_parameters,
+            preprocessing_parameters,
             supernetwork_parameters,
             waterbody_parameters,
             compute_parameters,
@@ -274,6 +280,53 @@ def check_inputs(
             ):
 
     LOG.debug('***** Begining configuration file (.YAML) check *****')
+    
+    if preprocessing_parameters.get('preprocess_only', None):
+        
+        LOG.debug('Preparing a preprocessing only execution: preprocess_only = True')
+        
+        # if pre-processing the network graph data, check to make sure the destination
+        # folder is specified
+        if preprocessing_parameters.get('preprocess_output_folder',False):
+            pass
+        else:
+            LOG.error(
+                "No destination folder specified for preprocessing. Please specify preprocess_output_folder in the configuration file"
+            )
+            quit()
+            
+        # ... and check to make sure the destination folder exists
+        _does_path_exist(
+            'preprocess_output_folder', 
+            preprocessing_parameters['preprocess_output_folder']
+        )
+        
+    if preprocessing_parameters.get('preprocess_only', None) and preprocessing_parameters.get('use_preprocessed_data', None):
+        
+        LOG.critical(
+            "preprocess_only = True and use_preprocessed_data = True. Aborting execution. Both variables cannot be True"
+        )
+        quit
+        
+    if preprocessing_parameters.get('use_preprocessed_data', None):
+        
+        LOG.debug('Preparing a simlation that uses already preprocessed network graph data: use_preprocessed_data = True')
+        
+        # if user requests to use ready preprocessed data, check to make sure that the .npy file
+        # containing network graph objects is specified.
+        if preprocessing_parameters.get('preprocess_source_file',False):
+            pass
+        else:
+            LOG.error(
+                "No preprocessed data file specified. Please specify preprocess_source_file in the configuration file"
+            )
+            quit()
+        
+        # ... and check to make sure the source file exists
+        _does_file_exist(
+            'preprocess_source_file', 
+            preprocessing_parameters['preprocess_source_file']
+        )
     
     _does_file_exist('geo_file_path', 
                      supernetwork_parameters['geo_file_path'])
