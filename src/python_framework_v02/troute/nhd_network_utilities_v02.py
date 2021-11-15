@@ -753,39 +753,12 @@ def build_qlateral_array(
             missing = nexuses_flows_df[ nexuses_flows_df.isna().any(axis=1) ]
             if  not missing.empty:
                 raise ValueError("The following nexus inputs are incomplete: "+str(missing.index))
-
             
-            """
-            # List of flowpaths downstream of nexuses 
-            flowpath_list = []
-
-            # Iterate over nexus_to_downstream_flowpath_dict to create list of flowpaths.
-            for nexus_key, flowpath_value in nexus_to_downstream_flowpath_dict.items():
-
-                if flowpath_value not in flowpath_list:
-                    flowpath_list.append(flowpath_value)
-
-            already_read_first_nexus_values = False
-
-            # Iterate over nexus_to_downstream_flowpath_dict to assign nexus flows
-            # to their corresponding downstream flowpaths
-            for nexus_key, flowpath_value in nexus_to_downstream_flowpath_dict.items():
-
-                qlat_df_single = pd.DataFrame(nexuses_flows_df.loc[int(nexus_key)])
-
-                qlat_df_single_transpose = qlat_df_single.transpose()
-
-                qlat_df_single_transpose = qlat_df_single_transpose.rename(index={int(nexus_key): flowpath_value})
-
-                if not already_read_first_nexus_values:
-                    already_read_first_nexus_values = True
-
-                    qlat_df = qlat_df_single_transpose
-
-                else: 
-                    # TODO: Copying df, memory duplicate?
-                    qlat_df = qlat_df.append(qlat_df_single_transpose)
-
+            # assign nexus flows to their corresponding downstream flowpaths
+            qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(index={int(k):v})
+                for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
+                ).T
+            
             # The segment_index has the full network set of segments/flowpaths. 
             # Whereas the set of flowpaths that are downstream of nexuses is a 
             # subset of the segment_index. Therefore, all of the segments/flowpaths
