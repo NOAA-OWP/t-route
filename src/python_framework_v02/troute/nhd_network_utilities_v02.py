@@ -775,6 +775,8 @@ def build_qlateral_array(
 
             # Set new nts based upon total nexus inputs
             nts = (qlat_df.shape[1]) * qts_subdivisions
+        else:
+            raise( RuntimeError("No value for nexus file pattern in config" ) )
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
