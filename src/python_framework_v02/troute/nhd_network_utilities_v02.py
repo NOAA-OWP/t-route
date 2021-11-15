@@ -742,54 +742,20 @@ def build_qlateral_array(
                 raise ValueError('No nexus input files found. Recommend checking \
                 nexus_input_folder path in YAML configuration.')
 
-            have_read_in_first_nexus_file = False
+            id_regex = re.compile(r".*nex-(\d+)_.*.csv")
+            nexuses_flows_df = pd.concat(
+                    #Read the nexus csv file
+                    (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(
+                        #Rename the flow column to the id of the nexus
+                        columns={2:int(id_regex.match(f.name).group(1))})
+                    for f in nexus_files #Build the generator for each required file
+                    ),  axis=1).T #Have now concatenated a single df (along axis 1).  Transpose it.
+            missing = nexuses_flows_df[ nexuses_flows_df.isna().any(axis=1) ]
+            if  not missing.empty:
+                raise ValueError("The following nexus inputs are incomplete: "+str(missing.index))
 
-            # Iterate over nexus files in directory to map nexus flows to qlaterals
-            for nexus_file in nexus_files:
-
-                split_list = str(nexus_file).split("/")
-
-                nexus_file_name = split_list[-1]
-
-                nexus_file_name_split = re.split('-|_', nexus_file_name)
-
-                # Extract the nexus id from the file name
-                nexus_id = int(nexus_file_name_split[1])
-
-                # Call function to read nexus csv
-                nexus_flows = nhd_io.get_nexus_flows_from_csv(nexus_file)
-
-                nexus_flows = nexus_flows.set_index(nexus_flows.columns[0])
-
-                nexus_flows = nexus_flows.rename(columns={2: nexus_id})
-
-                # Nexus flows need to be transposed from columns to rows in
-                # order to be added to a qlateral dataframe
-                nexus_flows_transposed = nexus_flows.transpose()
-
-                # TODO: Maybe can change logic for initializing dataframe with append
-                if not have_read_in_first_nexus_file:
-                    have_read_in_first_nexus_file = True
-
-                    nexuses_flows_df = nexus_flows_transposed
-
-                    number_of_qlats = len(nexus_flows)
-
-                    nexus_first_id = nexus_id
-
-                else:
-                    #TODO: Check on copying and duplication of memory on this?
-                    nexuses_flows_df = nexuses_flows_df.append(nexus_flows_transposed)
-
-                    number_of_qlats_for_row = len(nexus_flows)
-
-                    if number_of_qlats_for_row != number_of_qlats:
-                        raise ValueError('Nexus input files number of timesteps discrepancy for nexus-id ' 
-                        + str(nexus_first_id) + ' with ' + str(number_of_qlats) + ' timesteps and nexus-id ' 
-                        + str(nexus_id) + ' with ' + str(number_of_qlats) + ' timesteps.'
-                        )
-
-
+            
+            """
             # List of flowpaths downstream of nexuses 
             flowpath_list = []
 
