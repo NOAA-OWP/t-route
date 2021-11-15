@@ -721,17 +721,19 @@ def _handle_output_v02(
                 
             # create filenames
             # TO DO: create more descriptive filenames
+            extension = ".csv"
+            extension = ".h5"
             if supernetwork_parameters.get("title_string", None):
                 filename_fvd = (
-                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + extension
                 )
                 filename_courant = (
-                    "courant_" + supernetwork_parameters["title_string"] + ".csv"
+                    "courant_" + supernetwork_parameters["title_string"] + extension
                 )
             else:
                 run_time_stamp = datetime.now().isoformat()
-                filename_fvd = "flowveldepth_" + run_time_stamp + ".csv"
-                filename_courant = "courant_" + run_time_stamp + ".csv"
+                filename_fvd = "flowveldepth_" + run_time_stamp + extension
+                filename_courant = "courant_" + run_time_stamp + extension
 
             output_path = Path(csv_output_folder).resolve()
 
@@ -740,9 +742,9 @@ def _handle_output_v02(
             # no csv_output_segments are specified, then write results for all segments
             if not csv_output_segments:
                 csv_output_segments = flowveldepth.index
-                
-            flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
-
+            
+            #flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
+            flowveldepth.loc[csv_output_segments].to_hdf(output_path.joinpath(filename_fvd), key="qvd")
             if run_parameters.get("return_courant", False):
                 courant = courant.sort_index()
                 courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
