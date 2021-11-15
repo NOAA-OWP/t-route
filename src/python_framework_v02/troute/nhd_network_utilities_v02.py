@@ -766,42 +766,15 @@ def build_qlateral_array(
             # nexuses need to be added to the qlateral dataframe and padded with
             # zeros.
 
-            # Take single qlat row and zero out the values
-            qlat_df_single_transpose_zeros = qlat_df_single_transpose.apply(lambda x: 0.0, axis=0)
-
-            qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros.to_frame()
-
-            qlat_df_single_transpose_zeros_df = qlat_df_single_transpose_zeros_df.transpose()
-
-            # Segment index list to check for duplicate segments
-            a_segment_index_list = []
-
-            # Iterate over all segments in the segment_index set
-            for a_segment_index in segment_index:
-
-                # Check if the individual segment index has already
-                # been added to a_segment_index_list
-                if a_segment_index not in a_segment_index_list:
-                    a_segment_index_list.append(a_segment_index)
-
-                # Check if the individual segment index is not in the
-                # flowpath_list, which is the list of flowpaths 
-                # downstream of nexuses. If the segment index is not
-                # in the flowpath_list, then add a zero padded row
-                # with that index to qlat_df to account for this 
-                # segment index.
-                if a_segment_index not in flowpath_list:
-                    # TODO: Copying df, memory duplicate?
-                    qlat_df_single_transpose_zeros_df_renamed = qlat_df_single_transpose_zeros_df.rename(index={0: a_segment_index})
-
-                    qlat_df = qlat_df.append(qlat_df_single_transpose_zeros_df_renamed)
+            all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlat_df.columns)) ), index=segment_index,
+                    columns=qlat_df.columns )
+            all_df.loc[ qlat_df.index ] = qlat_df
 
             # Sort qlats
-            qlat_df = qlat_df.sort_index()
+            qlat_df = all_df.sort_index()
 
             # Set new nts based upon total nexus inputs
-            nts = (number_of_qlats) * qts_subdivisions
-
+            nts = (qlat_df.shape[1]) * qts_subdivisions
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
