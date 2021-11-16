@@ -171,7 +171,7 @@ def nwm_output_generator(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
             )
 
-            nhd_io.write_q_to_wrf_hydro(
+            nhd_io.write_chrtout(
                 flowveldepth,
                 chrtout_files,
                 Path(chrtout_write_folder),
