@@ -302,7 +302,118 @@ def get_ql_from_wrf_hydro_mf(
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
+def write_to_netcdf(filename, variables, datatype = 'f4'):
+    
+    '''
+    Quickly append or overwrite variable data in NetCDF files by leveraging the netCDF4 library. 
+    For additional documentation on netCDF4: https://unidata.github.io/netcdf4-python/#version-157
+    
+    Arguments:
+    ----------
+    filename (Path): Name of netCDF file to hold dataset. Can also be a python 3 pathlib instance
+    variables (dict): dictionary keys are variable names (strings), dictionary values are tuples:
+                           (
+                               variable data (numpy array - 1D must be same size as variable dimension), 
+                               variable dimension name (string) that already exist in netCDF file, 
+                               variable attributes (dict, keys are attribute names and values are attribute contents),
+                           )
+    datatype: numpy datatype object, or a string that describes a numpy dtype object.
+              Supported specifiers include: 'S1' or 'c' (NC_CHAR), 'i1' or 'b' or 'B' (NC_BYTE),
+              'u1' (NC_UBYTE), 'i2' or 'h' or 's' (NC_SHORT), 'u2' (NC_USHORT), 'i4' or 'i' or 'l' (NC_INT),
+              'u4' (NC_UINT), 'i8' (NC_INT64), 'u8' (NC_UINT64), 'f4' or 'f' (NC_FLOAT), 'f8' or 'd' (NC_DOUBLE)
+    
+    NOTES:
+    - the netCDF files we want to append/edit must have write permission!
+    '''
+    
+    with netCDF4.Dataset(
+        filename = filename,
+        mode = 'r+',
+        format = "NETCDF4"
+    ) as ds:
 
+        for varname, (vardata, dim, attrs) in variables.items():
+            
+            # check that dimension exists
+            if dim not in list(ds.dimensions.keys()):
+                print("ERROR & abort file writing sequence")
+
+            # size of variable dimensions
+            dim_size = ds.dimensions[dim].size
+            
+            # check that dimension size and variable data size agree
+            if vardata.size != dim_size:
+                print("HEY!: You the array you are trying to write to netCDF is the wrong size!")
+                print("ERROR & abort the file writing sequence")
+            
+            # check that varname doesn't already exist
+            # if it does, then overwrite it
+            if varname in list(ds.variables.keys()):
+
+                # here, we are overwiting the already existing variable, 'new'. 
+                # again, making sure that the data we write to it is of the same size.
+                ds[varname][:] = vardata
+
+            # if variable does not exist, create new one
+            else: 
+
+                # create a new variable called 'new'
+                y = ds.createVariable(
+                    varname = varname,
+                    datatype = datatype,
+                    dimensions = (dim,)
+                )
+                # populate variable with an numpy empty array for now. 
+                # Of course, we want to insert actual t-route data from the simulation results, here.
+                y = vardata
+
+                # we will also need to add the appropriate variable attributes
+                ds[varname].setncatts(attrs)
+                
+def write_chrtout(    
+    flowveldepth,
+    chrtout_files,
+    output_folder,
+    qts_subdivisions,
+    new_extension="TRTE"
+):
+    
+    # count the number of simulated timesteps
+    nsteps = len(flowveldepth.loc[:,::3].columns)
+    
+    # determine how many files to write results out to
+    nfiles_to_write = int(np.floor(nsteps / qts_subdivisions))
+    
+    if nfiles_to_write >= 1:
+        
+        # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
+        # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
+        # populates columns with NaN values.
+        with xr.open_dataset(chrtout_files[0]) as ds:
+            newindex = ds.feature_id.values
+        
+        flowveldepth_reindex = flowveldepth.reindex(newindex)
+
+        # unpack, subset, and transpose t-route flow data
+        qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
+        qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
+        
+        varname = 'streamflow_troute'
+        dim = 'feature_id'
+        attrs = {
+            'long_name': 'River Flow',
+            'units': 'm3 s-1',
+            'coordinates': 'latitude longitude',
+            'grid_mapping': 'crs',
+            'valid_range': np.array([0,50000], dtype = 'float32'),
+        }
+        for i, f in enumerate(chrtout_files[:nfiles_to_write]):
+            
+            variables = {
+                varname: (qtrt[:,i], dim, attrs)
+            }
+            write_to_netcdf(f, variables)
+            
 def write_q_to_wrf_hydro(
     flowveldepth,
     chrtout_files,
