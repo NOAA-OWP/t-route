@@ -11,6 +11,7 @@ import sys
 import math
 from datetime import *
 import pathlib
+import netCDF4
 
 from troute.nhd_network import reverse_dict
 
