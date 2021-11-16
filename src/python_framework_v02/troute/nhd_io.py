@@ -392,7 +392,7 @@ def write_chrtout(
         
         flowveldepth_reindex = flowveldepth.reindex(newindex)
 
-        # unpack, subset, and transpose t-route flow data
+        # unpack and subset t-route flow data
         qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
         qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
         
