@@ -108,35 +108,22 @@ def nwm_output_generator(
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
-        wrf_hydro_restart_write_dir = rsrto.get(
-            "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_dir
-        )
+
         if wrf_hydro_restart_dir:
 
-            wrf_hydro_channel_restart_new_extension = rsrto.get(
-                "wrf_hydro_channel_restart_new_extension", "TRTE"
+            restart_pattern_filter = rsrto.get("wrf_hydro_channel_restart_pattern_filter", "HYRDO_RST*")
+            
+            # list of WRF Hydro restart files
+            wrf_hydro_restart_files = sorted(
+                Path(wrf_hydro_restart_dir).glob(
+                    restart_pattern_filter
+                )
             )
 
-            if rsrto.get("wrf_hydro_channel_restart_pattern_filter", None):
-                # list of WRF Hydro restart files
-                wrf_hydro_restart_files = sorted(
-                    Path(wrf_hydro_restart_dir).glob(
-                        rsrto["wrf_hydro_channel_restart_pattern_filter"]
-                        + "[!"
-                        + wrf_hydro_channel_restart_new_extension
-                        + "]"
-                    )
-                )
-            else:
-                wrf_hydro_restart_files = sorted(
-                    Path(wrf_hydro_restart_dir) / f for f in run["qlat_files"]
-                )
-
             if len(wrf_hydro_restart_files) > 0:
-                nhd_io.write_channel_restart_to_wrf_hydro(
+                nhd_io.write_hydro_rst(
                     flowveldepth,
                     wrf_hydro_restart_files,
-                    Path(wrf_hydro_restart_write_dir),
                     restart_parameters.get("wrf_hydro_channel_restart_file"),
                     dt,
                     nts,
@@ -145,7 +132,6 @@ def nwm_output_generator(
                     restart_parameters.get(
                         "wrf_hydro_channel_ID_crosswalk_file_field_name"
                     ),
-                    wrf_hydro_channel_restart_new_extension,
                 )
             else:
                 # print error and/or raise exception
