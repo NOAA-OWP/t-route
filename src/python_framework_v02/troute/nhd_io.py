@@ -266,16 +266,14 @@ def get_ql_from_wrf_hydro_mf(
 
     with xr.open_mfdataset(
         qlat_files,
-        # combine="by_coords",
         combine="nested",
         concat_dim="time",
-        # data_vars="minimal",
-        # coords="minimal",
-        # compat="override",
-        preprocess=drop_all_coords,
+        data_vars=["q_lateral","qBucket","qSfcLatRunoff"],
+        coords="minimal",
+        compat="override",
         # parallel=True,
     ) as ds:
-
+        
         # if forcing file contains a variable with the specified value_col name, 
         # then use it, otherwise compute q_lateral as the sum of qBucket and qSfcLatRunoff
         try:
