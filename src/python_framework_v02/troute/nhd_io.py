@@ -373,9 +373,7 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
 def write_chrtout(    
     flowveldepth,
     chrtout_files,
-    output_folder,
     qts_subdivisions,
-    new_extension="TRTE"
 ):
     
     # count the number of simulated timesteps

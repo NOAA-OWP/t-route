@@ -159,13 +159,8 @@ def nwm_output_generator(
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
-        chrtout_write_folder = chrto.get(
-            "wrf_hydro_channel_final_output_folder", chrtout_read_folder
-        )
+
         if chrtout_read_folder:
-            wrf_hydro_channel_output_new_extension = chrto.get(
-                "wrf_hydro_channel_output_new_extension", "TRTE"
-            )
 
             chrtout_files = sorted(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
@@ -174,9 +169,7 @@ def nwm_output_generator(
             nhd_io.write_chrtout(
                 flowveldepth,
                 chrtout_files,
-                Path(chrtout_write_folder),
                 qts_subdivisions,
-                wrf_hydro_channel_output_new_extension,
             )
 
     if csv_output_folder: 
