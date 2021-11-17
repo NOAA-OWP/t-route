@@ -103,7 +103,7 @@ def nwm_output_generator(
                 copy=False,
             )
             
-    LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
+        LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 
     if rsrto:
 
