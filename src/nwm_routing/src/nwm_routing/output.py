@@ -78,11 +78,14 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
+    start = time.time()
     if csv_output_folder or rsrto or chrto:
 
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
+
+        import pdb; pdb.set_trace()
 
         flowveldepth = pd.concat(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
@@ -101,9 +104,12 @@ def nwm_output_generator(
                 copy=False,
             )
 
+    LOG.debug("building FVD array took %s seconds." % (time.time() - start))
+
     if rsrto:
 
         LOG.info("- writing restart files")
+        start = time.time()
 
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
@@ -137,11 +143,13 @@ def nwm_output_generator(
                 # print error and/or raise exception
                 str = "WRF Hydro restart files not found - Aborting restart write sequence"
                 raise AssertionError(str)
+                
+        LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
     if chrto:
         
         LOG.info("- writing results to CHRTOUT")
-        
+        start = time.time()
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
@@ -157,6 +165,8 @@ def nwm_output_generator(
                 chrtout_files,
                 qts_subdivisions,
             )
+        
+        LOG.debug("writing CHRTOUT files took %s seconds." % (time.time() - start))
 
     if csv_output_folder: 
     

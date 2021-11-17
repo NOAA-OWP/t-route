@@ -12,6 +12,7 @@ import math
 from datetime import *
 import pathlib
 import netCDF4
+import time
 
 from troute.nhd_network import reverse_dict
 
@@ -268,7 +269,7 @@ def get_ql_from_wrf_hydro_mf(
         qlat_files,
         combine="nested",
         concat_dim="time",
-        data_vars=["q_lateral","qBucket","qSfcLatRunoff"],
+#         data_vars=["q_lateral","qBucket","qSfcLatRunoff"],
         coords="minimal",
         compat="override",
         # parallel=True,
@@ -387,14 +388,22 @@ def write_chrtout(
         # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
         # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
         # populates columns with NaN values.
+        start = time.time()
+        
         with xr.open_dataset(chrtout_files[0]) as ds:
             newindex = ds.feature_id.values
         
-        flowveldepth_reindex = flowveldepth.reindex(newindex)
-
-        # unpack and subset t-route flow data
-        qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
-        qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
+        flow = flowveldepth.loc[:, ::3].iloc[:, qts_subdivisions-1::qts_subdivisions]
+        
+#         s = time.time()
+#         flowveldepth_reindex = flowveldepth.reindex(newindex)
+#         print("reindexing flowveldepth array:", time.time() - s)
+        
+#         s = time.time()
+#         # unpack and subset t-route flow data
+#         qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
+#         qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
+#         print("unpacking and subsetting:",time.time() - s)
         
         varname = 'streamflow_troute'
         dim = 'feature_id'
@@ -405,6 +414,14 @@ def write_chrtout(
             'grid_mapping': 'crs',
             'valid_range': np.array([0,50000], dtype = 'float32'),
         }
+        
+        print("preprocessing data for chrtout took:", time.time() - start)
+        
+        s = time.time()
+        qtrt = flow.reindex(newindex).to_numpy().astype("float32")
+        print("subset AND reindex", time.time() - s)
+        
+        start = time.time()
         # TODO: Include parallel write option on this loop
         for i, f in enumerate(chrtout_files[:nfiles_to_write]):
             
@@ -412,6 +429,7 @@ def write_chrtout(
                 varname: (qtrt[:,i], dim, attrs)
             }
             write_to_netcdf(f, variables)
+        print("the actual writing of CHRTOUT files took:", time.time() - start)
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
@@ -1020,9 +1038,6 @@ def write_hydro_rst(
         xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
-    
-    # reindex flowveldepth array
-    flowveldepth_reindex = data.reindex(xdf.link)
 
     for f in restart_files:
         
@@ -1034,11 +1049,12 @@ def write_hydro_rst(
         
         if a:
             qtrt = (
-                flowveldepth_reindex.iloc[:, ::3]
+                data.iloc[:,::3]
                 .iloc[:, a]
+                .reindex(xdf.link)
                 .to_numpy()
                 .astype("float32")
-                .reshape(len(flowveldepth_reindex,))
+                .reshape(len(xdf.link,))
             )
 
             htrt = (
@@ -1046,7 +1062,7 @@ def write_hydro_rst(
                 .iloc[:, a]
                 .to_numpy()
                 .astype("float32")
-                .reshape(len(flowveldepth_reindex,))
+                .reshape(len(xdf.link,))
             )
 
             variables = {
