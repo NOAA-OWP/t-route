@@ -1025,59 +1025,87 @@ def write_hydro_rst(
     -------
     """
     
-    # create t-route simulation timestamp array
-    # TODO: Replace this with a more general function to identify
-    # the model timesteps of a particular run.
-    # consider as a candidate something like:
-    # pd.date_range(start = datetime.strptime('2017-12-31T06:00:00',"%Y-%m-%dT%H:%M:%S"), periods = nts_troute, freq = '300s')
-    # or the equivalent resulting from
-    # pd.date_range(start = np.datetime64('2017-12-31T06:00:00'), periods = nts_troute, freq = '300s')
+    # Assemble the simulation tme domain
     t0_array = np.array(t0, dtype=np.datetime64)
     troute_dt = np.timedelta64(dt_troute, "s")
     troute_timestamps = (t0_array + troute_dt) + np.arange(nts_troute) * troute_dt
-
-    # extract ordered feature_ids from crosswalk file
-    # TODO: Find out why we re-index this dataset when it
-    # already has a segment index.
-    with xr.open_dataset(crosswalk_file) as xds:
-        xdf = xds[channel_ID_column].to_dataframe()
-    xdf = xdf.reset_index()
-    xdf = xdf[[channel_ID_column]]
-
+    
+    LOG.debug('t-route intialized at %s' % (np.datetime_as_string(t0_array)))
+    LOG.debug('t-route first simulated time at %s' % (np.datetime_as_string(troute_timestamps[0])))
+    LOG.debug('t-route final simulated time at %s' % (np.datetime_as_string(troute_timestamps[-1])))
+    
+    # check the Restart_Time of each restart file in the restart directory
+    LOG.debug("Looking for restart files that need to be appended")
+    start = time.time()
+    files_to_append = []
+    write_index = []
     for f in restart_files:
         
+        # open the restart file and get the Restart_Time attribute
         with xr.open_dataset(f) as ds:
             t = np.array(ds.Restart_Time.replace("_", " "), dtype=np.datetime64)
             
-        # find index troute_timestamp value that matches restart file timestamp
+        # check if the Restart_Time is within the t-route model domain
         a = np.where(troute_timestamps == t)[0].tolist()
-        
         if a:
+            files_to_append.append(f)
+            write_index.append(a[0])
+            
+    LOG.debug('Found %d restart files to append.' % len(files_to_append))
+    LOG.debug('It took %s seconds to find restart files that need to be appended' % (time.time() - start))
+
+    if len(files_to_append) == 0:
+        return
+    else: # contune on to append restart files
+        
+        LOG.debug('Retrieving index ordering used restart files')
+        start = time.time()
+        # extract ordered feature_ids from crosswalk file
+        # TODO: Find out why we re-index this dataset when it
+        # already has a segment index.
+        with xr.open_dataset(crosswalk_file) as xds:
+            xdf = xds[channel_ID_column].to_dataframe()
+        xdf = xdf.reset_index()
+        xdf = xdf[[channel_ID_column]]
+        LOG.debug('Retrieving index ordering took %s seconds' % (time.time() - start))
+
+        LOG.debug('Begining the restart writing process')
+        start = time.time()
+        for i, f in enumerate(files_to_append):
+            
+            LOG.debug('Preparing data for- and writing data to- %s' % f)
+            # extract and reindex depth data
             qtrt = (
                 data.iloc[:,::3]
-                .iloc[:, a]
+                .iloc[:, a[i]]
                 .reindex(xdf.link)
                 .to_numpy()
                 .astype("float32")
                 .reshape(len(xdf.link,))
             )
 
+            # extract and reindex depth data
             htrt = (
-                flowveldepth_reindex.iloc[:, 2::3]
-                .iloc[:, a]
+                data.iloc[:, 2::3]
+                .iloc[:, a[i]]
+                .reindex(xdf.link)
                 .to_numpy()
                 .astype("float32")
                 .reshape(len(xdf.link,))
             )
-
+            
+            # assemble variables dictionary with content to be written out
             variables = {
                 troute_us_flow_var_name: (qtrt, restart_file_dimension_var, {}),
                 troute_ds_flow_var_name: (qtrt, restart_file_dimension_var, {}),
                 troute_depth_var_name: (htrt, restart_file_dimension_var, {}),
             }
-
+            
+            # append restart data to netcdf restart files
             write_to_netcdf(f, variables)
-
+        
+        LOG.debug('Restart writing process completed in % seconds.' % (time.time() - start))
+            
 def get_reservoir_restart_from_wrf_hydro(
     waterbody_intial_states_file,
     crosswalk_file,
