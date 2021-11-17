@@ -116,8 +116,7 @@ def nwm_output_generator(
 
         if wrf_hydro_restart_dir:
 
-            restart_pattern_filter = rsrto.get("wrf_hydro_channel_restart_pattern_filter", "HYRDO_RST*")
-            
+            restart_pattern_filter = rsrto.get("wrf_hydro_channel_restart_pattern_filter", "HYDRO_RST.*")
             # list of WRF Hydro restart files
             wrf_hydro_restart_files = sorted(
                 Path(wrf_hydro_restart_dir).glob(
