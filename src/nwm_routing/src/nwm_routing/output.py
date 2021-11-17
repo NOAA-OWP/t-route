@@ -138,10 +138,10 @@ def nwm_output_generator(
                     ),
                 )
             else:
-                LOG.info('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
+                LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
                 
         else:
-            LOG.info('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
+            LOG.critical('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
             
         LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
