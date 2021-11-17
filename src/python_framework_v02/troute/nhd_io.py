@@ -13,6 +13,10 @@ from datetime import *
 import pathlib
 import netCDF4
 import time
+import logging
+
+
+LOG = logging.getLogger('')
 
 from troute.nhd_network import reverse_dict
 
@@ -377,6 +381,8 @@ def write_chrtout(
     qts_subdivisions,
 ):
     
+    LOG.debug("Starting the write_chrtout function") 
+    
     # count the number of simulated timesteps
     nsteps = len(flowveldepth.loc[:,::3].columns)
     
@@ -385,25 +391,13 @@ def write_chrtout(
     
     if nfiles_to_write >= 1:
         
-        # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
-        # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
-        # populates columns with NaN values.
+        LOG.debug("%d CHRTOUT files will be written." % (nfiles_to_write))
+        LOG.debug("Extracting flow DataFrame on qts_subdivisions from FVD DataFrame")
         start = time.time()
-        
-        with xr.open_dataset(chrtout_files[0]) as ds:
-            newindex = ds.feature_id.values
         
         flow = flowveldepth.loc[:, ::3].iloc[:, qts_subdivisions-1::qts_subdivisions]
         
-#         s = time.time()
-#         flowveldepth_reindex = flowveldepth.reindex(newindex)
-#         print("reindexing flowveldepth array:", time.time() - s)
-        
-#         s = time.time()
-#         # unpack and subset t-route flow data
-#         qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
-#         qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
-#         print("unpacking and subsetting:",time.time() - s)
+        LOG.debug("Extracting flow DataFrame took %s seconds." % (time.time() - start))
         
         varname = 'streamflow_troute'
         dim = 'feature_id'
@@ -415,21 +409,32 @@ def write_chrtout(
             'valid_range': np.array([0,50000], dtype = 'float32'),
         }
         
-        print("preprocessing data for chrtout took:", time.time() - start)
+        LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
+        start = time.time()
         
-        s = time.time()
+        with xr.open_dataset(chrtout_files[0]) as ds:
+            newindex = ds.feature_id.values
+            
         qtrt = flow.reindex(newindex).to_numpy().astype("float32")
-        print("subset AND reindex", time.time() - s)
         
+        LOG.debug("Reindexing the flow DataFrame took %s seconds." % (time.time() - start))
+        
+        LOG.debug("Writing t-route data to %d CHRTOUT files" % (nfiles_to_write))
         start = time.time()
         # TODO: Include parallel write option on this loop
         for i, f in enumerate(chrtout_files[:nfiles_to_write]):
             
+            s = time.time()
             variables = {
                 varname: (qtrt[:,i], dim, attrs)
             }
             write_to_netcdf(f, variables)
-        print("the actual writing of CHRTOUT files took:", time.time() - start)
+            LOG.debug("Writing %s took %s seconds." % (f, (time.time() - s)))
+            
+        LOG.debug("Writing t-route data to %d CHRTOUT files took %s seconds." % (nfiles_to_write, (time.time() - start)))
+        
+    else:
+        LOG.debug("Simulation duration is less than one qts_subdivision. No CHRTOUT files written.")
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """

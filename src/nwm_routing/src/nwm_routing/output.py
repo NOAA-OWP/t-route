@@ -78,14 +78,13 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
-    start = time.time()
+    
     if csv_output_folder or rsrto or chrto:
-
+        
+        start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
-
-        import pdb; pdb.set_trace()
 
         flowveldepth = pd.concat(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
@@ -103,14 +102,14 @@ def nwm_output_generator(
                 ],
                 copy=False,
             )
-
-    LOG.debug("building FVD array took %s seconds." % (time.time() - start))
+            
+    LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 
     if rsrto:
 
         LOG.info("- writing restart files")
         start = time.time()
-
+        
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
@@ -148,8 +147,9 @@ def nwm_output_generator(
 
     if chrto:
         
-        LOG.info("- writing results to CHRTOUT")
+        LOG.info("- writing t-route flow results to CHRTOUT files")
         start = time.time()
+        
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
@@ -166,11 +166,12 @@ def nwm_output_generator(
                 qts_subdivisions,
             )
         
-        LOG.debug("writing CHRTOUT files took %s seconds." % (time.time() - start))
+        LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
 
     if csv_output_folder: 
     
         LOG.info("- writing flow, velocity, and depth results to .csv")
+        start = time.time()
 
         # create filenames
         # TO DO: create more descriptive filenames
@@ -199,6 +200,7 @@ def nwm_output_generator(
             courant = courant.sort_index()
             courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
 
+        LOG.debug("writing CSV file took %s seconds." % (time.time() - start))
         # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
@@ -214,6 +216,10 @@ def nwm_output_generator(
     # if lastobs_output_folder:
     #     warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
     if data_assimilation_folder and lastobs_output_folder:
+        
+        LOG.info("- writing lastobs files")
+        start = time.time()
+        
         nhd_io.lastobs_df_output(
             lastobs_df,
             dt,
@@ -222,6 +228,8 @@ def nwm_output_generator(
             link_gage_df['gages'],
             lastobs_output_folder,
         )
+        
+        LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)
