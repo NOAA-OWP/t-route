@@ -396,7 +396,7 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
                 ds[varname][:] = vardata
 
             # if variable does not exist, create new one
-            else: 
+            else: #!!!! something is wrong here! 
 
                 # create a new variable called 'new'
                 y = ds.createVariable(
