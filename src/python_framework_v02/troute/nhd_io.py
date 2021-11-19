@@ -219,6 +219,42 @@ def read_qlat(path):
     """
     return get_ql_from_csv(path)
 
+def get_ql_from_chrtout(
+    f,
+    qlateral_varname = "q_lateral",
+    qbucket_varname="qBucket",
+    runoff_varname = "qSfcLatRunoff",
+):
+    '''
+    Return an array of qlateral data from a single CHRTOUT netCDF4 file.
+    If the lateral inflow variable is not present in the file, then calculate
+    lateral inflow as the sum of qbucket and surface runoff.
+    
+    Arguments
+    ---------
+    f (Path): 
+    qlateral_varname (string): lateral inflow variable name
+    qbucket_varname (string): Groundwater bucket flux variable name
+    runoff_varname (string): surface runoff variable name
+    
+    NOTES:
+    - This is very bespoke to WRF-Hydro
+    '''
+    with netCDF4.Dataset(
+        filename = f,
+        mode = 'r',
+        format = "NETCDF4"
+    ) as ds:
+        
+        all_variables = list(ds.variables.keys())
+        if qlateral_varname in all_variables:
+            dat = ds.variables[qlateral_varname][:].filled()
+        
+        else:
+            dat = ds.variables[qbucket_varname][:].filled() + \
+                ds.variables[runoff_varname][:].filled()
+        
+    return dat
 
 # TODO: Generalize this name -- perhaps `read_wrf_hydro_chrt_mf()`
 def get_ql_from_wrf_hydro_mf(
