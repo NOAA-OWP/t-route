@@ -377,38 +377,38 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
             
             # check that dimension exists
             if dim not in list(ds.dimensions.keys()):
-                print("ERROR & abort file writing sequence")
-
-            # size of variable dimensions
-            dim_size = ds.dimensions[dim].size
+                LOG.error("The dimensions %s could not be found in file %s" % (dim, filename))
+                LOG.error("Aborting writing process for %s. No data were written to this file" % filename)
+                return        
             
             # check that dimension size and variable data size agree
+            dim_size = ds.dimensions[dim].size
             if vardata.size != dim_size:
-                print("HEY!: You the array you are trying to write to netCDF is the wrong size!")
-                print("ERROR & abort the file writing sequence")
+                LOG.error("Cannot write data of size %d to variable with dimension size of %d" % (vardata.size, dim_size))
+                LOG.error("Aborting writing process for %s. No data were written to this file" % filename)
+                return
             
             # check that varname doesn't already exist
             # if it does, then overwrite it
             if varname in list(ds.variables.keys()):
 
-                # here, we are overwiting the already existing variable, 'new'. 
-                # again, making sure that the data we write to it is of the same size.
                 ds[varname][:] = vardata
 
             # if variable does not exist, create new one
-            else: #!!!! something is wrong here! 
+            else:
 
-                # create a new variable called 'new'
+                # create a new variable
                 y = ds.createVariable(
                     varname = varname,
                     datatype = datatype,
-                    dimensions = (dim,)
+                    dimensions = (dim,),
+                    fill_value = np.nan
                 )
-                # populate variable with an numpy empty array for now. 
-                # Of course, we want to insert actual t-route data from the simulation results, here.
-                y = vardata
 
-                # we will also need to add the appropriate variable attributes
+                # write data to new variable
+                y[:] = vardata
+
+                # include variable attributes
                 ds[varname].setncatts(attrs)
                 
 def write_chrtout(    
