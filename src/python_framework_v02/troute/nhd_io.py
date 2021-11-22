@@ -345,7 +345,7 @@ def get_ql_from_wrf_hydro_mf(
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
-def write_to_netcdf(filename, variables, datatype = 'f4'):
+def write_to_netcdf(f, variables, datatype = 'f4'):
     
     '''
     Quickly append or overwrite variable data in NetCDF files by leveraging the netCDF4 library. 
@@ -353,7 +353,7 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
     
     Arguments:
     ----------
-    filename (Path): Name of netCDF file to hold dataset. Can also be a python 3 pathlib instance
+    f (Path): Name of netCDF file to hold dataset. Can also be a python 3 pathlib instance
     variables (dict): dictionary keys are variable names (strings), dictionary values are tuples:
                            (
                                variable data (numpy array - 1D must be same size as variable dimension), 
@@ -370,7 +370,7 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
     '''
     
     with netCDF4.Dataset(
-        filename = filename,
+        filename = f,
         mode = 'r+',
         format = "NETCDF4"
     ) as ds:
@@ -379,15 +379,15 @@ def write_to_netcdf(filename, variables, datatype = 'f4'):
             
             # check that dimension exists
             if dim not in list(ds.dimensions.keys()):
-                LOG.error("The dimensions %s could not be found in file %s" % (dim, filename))
-                LOG.error("Aborting writing process for %s. No data were written to this file" % filename)
+                LOG.error("The dimensions %s could not be found in file %s" % (dim, f))
+                LOG.error("Aborting writing process for %s. No data were written to this file" % f)
                 return        
             
             # check that dimension size and variable data size agree
             dim_size = ds.dimensions[dim].size
             if vardata.size != dim_size:
                 LOG.error("Cannot write data of size %d to variable with dimension size of %d" % (vardata.size, dim_size))
-                LOG.error("Aborting writing process for %s. No data were written to this file" % filename)
+                LOG.error("Aborting writing process for %s. No data were written to this file" % f)
                 return
             
             # check that varname doesn't already exist
