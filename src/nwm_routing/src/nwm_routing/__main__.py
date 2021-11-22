@@ -1136,6 +1136,7 @@ def main_v03(argv):
         break_network_at_waterbodies,
         param_df.index,
         lastobs_df.index,
+        cpu_pool,
         t0,
     )
     
@@ -1237,6 +1238,7 @@ def main_v03(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
+            cpu_pool,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,

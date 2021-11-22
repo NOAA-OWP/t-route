@@ -675,6 +675,7 @@ def build_forcing_sets(
 
 def build_qlateral_array(
     forcing_parameters,
+    cpu_pool,
     segment_index=pd.Index([]),
     ts_iterator=None,
     file_run_size=None,
@@ -704,7 +705,7 @@ def build_qlateral_array(
         terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
         
         # Parallel reading of qlateral data from CHRTOUT
-        with Parallel(n_jobs=36) as parallel:
+        with Parallel(n_jobs=cpu_pool) as parallel:
 
             jobs = []
             for f in qlat_files:
@@ -722,24 +723,6 @@ def build_qlateral_array(
             columns = range(len(qlat_files))
         )    
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-
-#         qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
-#             qlat_files=qlat_files,
-#             #ts_iterator=ts_iterator,
-#             #file_run_size=file_run_size,
-#             index_col=qlat_file_index_col,
-#             value_col=qlat_file_value_col,
-#             gw_col = gw_bucket_col,
-#             runoff_col = terrain_ro_col,
-#         )
-
-#         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-
-    # TODO: These four lines seem extraneous
-    #    df_length = len(qlat_df.columns)
-    #    for x in range(df_length, 144):
-    #        qlat_df[str(x)] = 0
-    #        qlat_df = qlat_df.astype("float32")
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)

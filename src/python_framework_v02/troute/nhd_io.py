@@ -14,6 +14,8 @@ import pathlib
 import netCDF4
 import time
 import logging
+from joblib import delayed, Parallel
+
 
 
 LOG = logging.getLogger('')
@@ -415,6 +417,7 @@ def write_chrtout(
     flowveldepth,
     chrtout_files,
     qts_subdivisions,
+    cpu_pool,
 ):
     
     LOG.debug("Starting the write_chrtout function") 
@@ -457,16 +460,20 @@ def write_chrtout(
         
         LOG.debug("Writing t-route data to %d CHRTOUT files" % (nfiles_to_write))
         start = time.time()
-        # TODO: Include parallel write option on this loop
-        for i, f in enumerate(chrtout_files[:nfiles_to_write]):
-            
-            s = time.time()
-            variables = {
-                varname: (qtrt[:,i], dim, attrs)
-            }
-            write_to_netcdf(f, variables)
-            LOG.debug("Writing %s took %s seconds." % (f, (time.time() - s)))
-            
+        with Parallel(n_jobs=cpu_pool) as parallel:
+        
+            jobs = []
+            for i, f in enumerate(chrtout_files[:nfiles_to_write]):
+
+                s = time.time()
+                variables = {
+                    varname: (qtrt[:,i], dim, attrs)
+                }
+                jobs.append(delayed(write_to_netcdf)(f, variables))
+                LOG.debug("Writing %s." % (f))
+                
+            parallel(jobs)
+               
         LOG.debug("Writing t-route data to %d CHRTOUT files took %s seconds." % (nfiles_to_write, (time.time() - start)))
         
     else:

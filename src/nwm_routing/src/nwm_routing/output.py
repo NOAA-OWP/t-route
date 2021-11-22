@@ -20,6 +20,7 @@ def nwm_output_generator(
     parity_set,
     qts_subdivisions,
     return_courant,
+    cpu_pool,
     data_assimilation_parameters=False,
     lastobs_df=None,
     link_gage_df=None,
@@ -164,6 +165,7 @@ def nwm_output_generator(
                 flowveldepth,
                 chrtout_files,
                 qts_subdivisions,
+                cpu_pool,
             )
         
         LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
