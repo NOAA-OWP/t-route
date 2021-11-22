@@ -1313,6 +1313,7 @@ async def main_v03_async(argv):
     args = _handle_args_v03(argv)  # async shares input framework with non-async
     (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,
@@ -1329,22 +1330,40 @@ async def main_v03_async(argv):
     
     main_start_time = time.time()
 
-    (
-        connections,
-        param_df,
-        wbody_conn,
-        waterbodies_df,
-        waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
-        independent_networks,
-        reaches_bytw,
-        rconn,
-        link_gage_df,
-    ) = nwm_network_preprocess(
-        supernetwork_parameters,
-        waterbody_parameters,
-    )
+    if preprocessing_parameters.get('use_preprocessed_data', False): 
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = unpack_nwm_preprocess_data(
+            preprocessing_parameters
+        )
+    else:
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = nwm_network_preprocess(
+            supernetwork_parameters,
+            waterbody_parameters,
+            preprocessing_parameters,
+        )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
