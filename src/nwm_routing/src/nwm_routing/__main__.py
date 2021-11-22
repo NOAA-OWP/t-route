@@ -1402,6 +1402,7 @@ async def main_v03_async(argv):
         break_network_at_waterbodies,
         param_df.index,
         lastobs_df.index,
+        IO_cpu_pool,
         t0,
     )
 
@@ -1459,6 +1460,7 @@ async def main_v03_async(argv):
             break_network_at_waterbodies,
             param_df.index,
             lastobs_df.index,
+            IO_cpu_pool,
             t0 + timedelta(seconds = dt * nts),
         )
 
@@ -1487,6 +1489,7 @@ async def main_v03_async(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
+            IO_cpu_pool,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
@@ -1564,6 +1567,7 @@ async def main_v03_async(argv):
         parity_sets[run_set_iterator] if parity_parameters else {},
         qts_subdivisions,
         compute_parameters.get("return_courant", False),
+        IO_cpu_pool,
         data_assimilation_parameters,
         lastobs_df,
         link_gage_df,
