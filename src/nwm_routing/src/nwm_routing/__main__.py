@@ -1199,6 +1199,7 @@ def main_v03(argv):
                 break_network_at_waterbodies,
                 param_df.index,
                 lastobs_df.index,
+                cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
             )
             
