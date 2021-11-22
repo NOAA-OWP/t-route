@@ -1428,13 +1428,12 @@ async def main_v03_async(argv):
 
     run_set_iterator = 0
     for run_set_iterator, run in enumerate(run_sets[:-1]):
-
-        t0 = run.get("t0")
-        dt = run.get("dt")
+                    
+        dt = forcing_parameters.get("dt", None)
         nts = run.get("nts")
-
+        
         qlats, usgs_df = await forcings_task
-
+        
         # TODO: confirm utility of visual parity check in async execution
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
@@ -1519,8 +1518,7 @@ async def main_v03_async(argv):
     run_set_iterator += 1
     run = run_sets[run_set_iterator]
 
-    t0 = run.get("t0")
-    dt = run.get("dt")
+    dt = forcing_parameters.get("dt", None)
     nts = run.get("nts")
 
     qlats, usgs_df = await forcings_task
