@@ -250,11 +250,11 @@ def get_ql_from_chrtout(
         
         all_variables = list(ds.variables.keys())
         if qlateral_varname in all_variables:
-            dat = ds.variables[qlateral_varname][:].filled()
+            dat = ds.variables[qlateral_varname][:].filled(fill_value = 0.0)
         
         else:
-            dat = ds.variables[qbucket_varname][:].filled() + \
-                ds.variables[runoff_varname][:].filled()
+            dat = ds.variables[qbucket_varname][:].filled(fill_value = 0.0) + \
+                ds.variables[runoff_varname][:].filled(fill_value = 0.0)
         
     return dat
 
