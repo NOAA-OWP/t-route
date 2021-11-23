@@ -1136,6 +1136,7 @@ def main_v03(argv):
         break_network_at_waterbodies,
         param_df.index,
         lastobs_df.index,
+        cpu_pool,
         t0,
     )
     
@@ -1198,6 +1199,7 @@ def main_v03(argv):
                 break_network_at_waterbodies,
                 param_df.index,
                 lastobs_df.index,
+                cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
             )
             
@@ -1237,6 +1239,7 @@ def main_v03(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
+            cpu_pool,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
@@ -1310,6 +1313,7 @@ async def main_v03_async(argv):
     args = _handle_args_v03(argv)  # async shares input framework with non-async
     (
         log_parameters,
+        preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
         compute_parameters,
@@ -1326,22 +1330,40 @@ async def main_v03_async(argv):
     
     main_start_time = time.time()
 
-    (
-        connections,
-        param_df,
-        wbody_conn,
-        waterbodies_df,
-        waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
-        independent_networks,
-        reaches_bytw,
-        rconn,
-        link_gage_df,
-    ) = nwm_network_preprocess(
-        supernetwork_parameters,
-        waterbody_parameters,
-    )
+    if preprocessing_parameters.get('use_preprocessed_data', False): 
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = unpack_nwm_preprocess_data(
+            preprocessing_parameters
+        )
+    else:
+        (
+            connections,
+            param_df,
+            wbody_conn,
+            waterbodies_df,
+            waterbody_types_df,
+            break_network_at_waterbodies,
+            waterbody_type_specified,
+            independent_networks,
+            reaches_bytw,
+            rconn,
+            link_gage_df,
+        ) = nwm_network_preprocess(
+            supernetwork_parameters,
+            waterbody_parameters,
+            preprocessing_parameters,
+        )
 
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
@@ -1400,18 +1422,18 @@ async def main_v03_async(argv):
         break_network_at_waterbodies,
         param_df.index,
         lastobs_df.index,
+        IO_cpu_pool,
         t0,
     )
 
     run_set_iterator = 0
     for run_set_iterator, run in enumerate(run_sets[:-1]):
-
-        t0 = run.get("t0")
-        dt = run.get("dt")
+                    
+        dt = forcing_parameters.get("dt", None)
         nts = run.get("nts")
-
+        
         qlats, usgs_df = await forcings_task
-
+        
         # TODO: confirm utility of visual parity check in async execution
         if parity_sets:
             parity_sets[run_set_iterator]["dt"] = dt
@@ -1457,6 +1479,7 @@ async def main_v03_async(argv):
             break_network_at_waterbodies,
             param_df.index,
             lastobs_df.index,
+            IO_cpu_pool,
             t0 + timedelta(seconds = dt * nts),
         )
 
@@ -1485,6 +1508,7 @@ async def main_v03_async(argv):
             parity_sets[run_set_iterator] if parity_parameters else {},
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
+            IO_cpu_pool,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
@@ -1494,8 +1518,7 @@ async def main_v03_async(argv):
     run_set_iterator += 1
     run = run_sets[run_set_iterator]
 
-    t0 = run.get("t0")
-    dt = run.get("dt")
+    dt = forcing_parameters.get("dt", None)
     nts = run.get("nts")
 
     qlats, usgs_df = await forcings_task
@@ -1562,6 +1585,7 @@ async def main_v03_async(argv):
         parity_sets[run_set_iterator] if parity_parameters else {},
         qts_subdivisions,
         compute_parameters.get("return_courant", False),
+        IO_cpu_pool,
         data_assimilation_parameters,
         lastobs_df,
         link_gage_df,

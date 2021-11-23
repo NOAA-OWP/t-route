@@ -342,6 +342,7 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     lastobs_index,
+    cpu_pool,
     warmstate_t0 = None,
 ):
 
@@ -396,6 +397,7 @@ def nwm_forcing_preprocess(
 
     qlats_df = nnu.build_qlateral_array(
         run,
+        cpu_pool,
         segment_index,
     )
 

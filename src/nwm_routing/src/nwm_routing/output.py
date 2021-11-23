@@ -20,6 +20,7 @@ def nwm_output_generator(
     parity_set,
     qts_subdivisions,
     return_courant,
+    cpu_pool,
     data_assimilation_parameters=False,
     lastobs_df=None,
     link_gage_df=None,
@@ -78,8 +79,10 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
+    
     if csv_output_folder or rsrto or chrto:
-
+        
+        start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
@@ -100,43 +103,32 @@ def nwm_output_generator(
                 ],
                 copy=False,
             )
+            
+        LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 
     if rsrto:
 
         LOG.info("- writing restart files")
-
+        start = time.time()
+        
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
-        wrf_hydro_restart_write_dir = rsrto.get(
-            "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_dir
-        )
+
         if wrf_hydro_restart_dir:
 
-            wrf_hydro_channel_restart_new_extension = rsrto.get(
-                "wrf_hydro_channel_restart_new_extension", "TRTE"
+            restart_pattern_filter = rsrto.get("wrf_hydro_channel_restart_pattern_filter", "HYDRO_RST.*")
+            # list of WRF Hydro restart files
+            wrf_hydro_restart_files = sorted(
+                Path(wrf_hydro_restart_dir).glob(
+                    restart_pattern_filter
+                )
             )
 
-            if rsrto.get("wrf_hydro_channel_restart_pattern_filter", None):
-                # list of WRF Hydro restart files
-                wrf_hydro_restart_files = sorted(
-                    Path(wrf_hydro_restart_dir).glob(
-                        rsrto["wrf_hydro_channel_restart_pattern_filter"]
-                        + "[!"
-                        + wrf_hydro_channel_restart_new_extension
-                        + "]"
-                    )
-                )
-            else:
-                wrf_hydro_restart_files = sorted(
-                    Path(wrf_hydro_restart_dir) / f for f in run["qlat_files"]
-                )
-
             if len(wrf_hydro_restart_files) > 0:
-                nhd_io.write_channel_restart_to_wrf_hydro(
+                nhd_io.write_hydro_rst(
                     flowveldepth,
                     wrf_hydro_restart_files,
-                    Path(wrf_hydro_restart_write_dir),
                     restart_parameters.get("wrf_hydro_channel_restart_file"),
                     dt,
                     nts,
@@ -145,43 +137,43 @@ def nwm_output_generator(
                     restart_parameters.get(
                         "wrf_hydro_channel_ID_crosswalk_file_field_name"
                     ),
-                    wrf_hydro_channel_restart_new_extension,
                 )
             else:
-                # print error and/or raise exception
-                str = "WRF Hydro restart files not found - Aborting restart write sequence"
-                raise AssertionError(str)
+                LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
+                
+        else:
+            LOG.critical('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
+            
+        LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
     if chrto:
         
-        LOG.info("- writing results to CHRTOUT")
+        LOG.info("- writing t-route flow results to CHRTOUT files")
+        start = time.time()
         
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
-        chrtout_write_folder = chrto.get(
-            "wrf_hydro_channel_final_output_folder", chrtout_read_folder
-        )
+
         if chrtout_read_folder:
-            wrf_hydro_channel_output_new_extension = chrto.get(
-                "wrf_hydro_channel_output_new_extension", "TRTE"
-            )
 
             chrtout_files = sorted(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
             )
 
-            nhd_io.write_q_to_wrf_hydro(
+            nhd_io.write_chrtout(
                 flowveldepth,
                 chrtout_files,
-                Path(chrtout_write_folder),
                 qts_subdivisions,
-                wrf_hydro_channel_output_new_extension,
+                cpu_pool,
             )
+        
+        LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
 
     if csv_output_folder: 
     
         LOG.info("- writing flow, velocity, and depth results to .csv")
+        start = time.time()
 
         # create filenames
         # TO DO: create more descriptive filenames
@@ -210,6 +202,7 @@ def nwm_output_generator(
             courant = courant.sort_index()
             courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
 
+        LOG.debug("writing CSV file took %s seconds." % (time.time() - start))
         # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
 
@@ -225,6 +218,10 @@ def nwm_output_generator(
     # if lastobs_output_folder:
     #     warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
     if data_assimilation_folder and lastobs_output_folder:
+        
+        LOG.info("- writing lastobs files")
+        start = time.time()
+        
         nhd_io.lastobs_df_output(
             lastobs_df,
             dt,
@@ -233,6 +230,8 @@ def nwm_output_generator(
             link_gage_df['gages'],
             lastobs_output_folder,
         )
+        
+        LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)

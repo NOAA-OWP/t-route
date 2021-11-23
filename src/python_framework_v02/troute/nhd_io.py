@@ -11,6 +11,14 @@ import sys
 import math
 from datetime import *
 import pathlib
+import netCDF4
+import time
+import logging
+from joblib import delayed, Parallel
+
+
+
+LOG = logging.getLogger('')
 
 from troute.nhd_network import reverse_dict
 
@@ -213,6 +221,42 @@ def read_qlat(path):
     """
     return get_ql_from_csv(path)
 
+def get_ql_from_chrtout(
+    f,
+    qlateral_varname = "q_lateral",
+    qbucket_varname="qBucket",
+    runoff_varname = "qSfcLatRunoff",
+):
+    '''
+    Return an array of qlateral data from a single CHRTOUT netCDF4 file.
+    If the lateral inflow variable is not present in the file, then calculate
+    lateral inflow as the sum of qbucket and surface runoff.
+    
+    Arguments
+    ---------
+    f (Path): 
+    qlateral_varname (string): lateral inflow variable name
+    qbucket_varname (string): Groundwater bucket flux variable name
+    runoff_varname (string): surface runoff variable name
+    
+    NOTES:
+    - This is very bespoke to WRF-Hydro
+    '''
+    with netCDF4.Dataset(
+        filename = f,
+        mode = 'r',
+        format = "NETCDF4"
+    ) as ds:
+        
+        all_variables = list(ds.variables.keys())
+        if qlateral_varname in all_variables:
+            dat = ds.variables[qlateral_varname][:].filled(fill_value = 0.0)
+        
+        else:
+            dat = ds.variables[qbucket_varname][:].filled(fill_value = 0.0) + \
+                ds.variables[runoff_varname][:].filled(fill_value = 0.0)
+        
+    return dat
 
 # TODO: Generalize this name -- perhaps `read_wrf_hydro_chrt_mf()`
 def get_ql_from_wrf_hydro_mf(
@@ -265,16 +309,14 @@ def get_ql_from_wrf_hydro_mf(
 
     with xr.open_mfdataset(
         qlat_files,
-        # combine="by_coords",
         combine="nested",
         concat_dim="time",
-        # data_vars="minimal",
-        # coords="minimal",
-        # compat="override",
-        preprocess=drop_all_coords,
+#         data_vars=["q_lateral","qBucket","qSfcLatRunoff"],
+        coords="minimal",
+        compat="override",
         # parallel=True,
     ) as ds:
-
+        
         # if forcing file contains a variable with the specified value_col name, 
         # then use it, otherwise compute q_lateral as the sum of qBucket and qSfcLatRunoff
         try:
@@ -303,23 +345,82 @@ def get_ql_from_wrf_hydro_mf(
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
+def write_to_netcdf(f, variables, datatype = 'f4'):
+    
+    '''
+    Quickly append or overwrite variable data in NetCDF files by leveraging the netCDF4 library. 
+    For additional documentation on netCDF4: https://unidata.github.io/netcdf4-python/#version-157
+    
+    Arguments:
+    ----------
+    f (Path): Name of netCDF file to hold dataset. Can also be a python 3 pathlib instance
+    variables (dict): dictionary keys are variable names (strings), dictionary values are tuples:
+                           (
+                               variable data (numpy array - 1D must be same size as variable dimension), 
+                               variable dimension name (string) that already exist in netCDF file, 
+                               variable attributes (dict, keys are attribute names and values are attribute contents),
+                           )
+    datatype: numpy datatype object, or a string that describes a numpy dtype object.
+              Supported specifiers include: 'S1' or 'c' (NC_CHAR), 'i1' or 'b' or 'B' (NC_BYTE),
+              'u1' (NC_UBYTE), 'i2' or 'h' or 's' (NC_SHORT), 'u2' (NC_USHORT), 'i4' or 'i' or 'l' (NC_INT),
+              'u4' (NC_UINT), 'i8' (NC_INT64), 'u8' (NC_UINT64), 'f4' or 'f' (NC_FLOAT), 'f8' or 'd' (NC_DOUBLE)
+    
+    NOTES:
+    - the netCDF files we want to append/edit must have write permission!
+    '''
+    
+    with netCDF4.Dataset(
+        filename = f,
+        mode = 'r+',
+        format = "NETCDF4"
+    ) as ds:
 
-def write_q_to_wrf_hydro(
+        for varname, (vardata, dim, attrs) in variables.items():
+            
+            # check that dimension exists
+            if dim not in list(ds.dimensions.keys()):
+                LOG.error("The dimensions %s could not be found in file %s" % (dim, f))
+                LOG.error("Aborting writing process for %s. No data were written to this file" % f)
+                return        
+            
+            # check that dimension size and variable data size agree
+            dim_size = ds.dimensions[dim].size
+            if vardata.size != dim_size:
+                LOG.error("Cannot write data of size %d to variable with dimension size of %d" % (vardata.size, dim_size))
+                LOG.error("Aborting writing process for %s. No data were written to this file" % f)
+                return
+            
+            # check that varname doesn't already exist
+            # if it does, then overwrite it
+            if varname in list(ds.variables.keys()):
+
+                ds[varname][:] = vardata
+
+            # if variable does not exist, create new one
+            else:
+
+                # create a new variable
+                y = ds.createVariable(
+                    varname = varname,
+                    datatype = datatype,
+                    dimensions = (dim,),
+                    fill_value = np.nan
+                )
+
+                # write data to new variable
+                y[:] = vardata
+
+                # include variable attributes
+                ds[varname].setncatts(attrs)
+                
+def write_chrtout(    
     flowveldepth,
     chrtout_files,
-    output_folder,
     qts_subdivisions,
-    new_extension="TRTE"
+    cpu_pool,
 ):
-    """
-    Write t-route simulated flows to WRF-Hydro CHRTOUT files.
-
-    Arguments:
-        flowveldepth (pandas Data Frame): t-route simulated flow, velocity and depth
-        chrtout_files (list): chrtout filepaths
-        output_folder (pathlib.Path): folder where updated chrtout files will be written
-        qts_subdivisions (int): number of t-route timesteps per WRF-hydro timesteps
-    """
+    
+    LOG.debug("Starting the write_chrtout function") 
     
     # count the number of simulated timesteps
     nsteps = len(flowveldepth.loc[:,::3].columns)
@@ -327,56 +428,56 @@ def write_q_to_wrf_hydro(
     # determine how many files to write results out to
     nfiles_to_write = int(np.floor(nsteps / qts_subdivisions))
     
-    if nfiles_to_write > 1:
-    
-        # open all CHRTOUT files as a single xarray dataset
-        with xr.open_mfdataset(
-            chrtout_files[:nfiles_to_write], 
-            combine="nested",
-            concat_dim="time",
-        ) as chrtout:
+    if nfiles_to_write >= 1:
+        
+        LOG.debug("%d CHRTOUT files will be written." % (nfiles_to_write))
+        LOG.debug("Extracting flow DataFrame on qts_subdivisions from FVD DataFrame")
+        start = time.time()
+        
+        flow = flowveldepth.loc[:, ::3].iloc[:, qts_subdivisions-1::qts_subdivisions]
+        
+        LOG.debug("Extracting flow DataFrame took %s seconds." % (time.time() - start))
+        
+        varname = 'streamflow_troute'
+        dim = 'feature_id'
+        attrs = {
+            'long_name': 'River Flow',
+            'units': 'm3 s-1',
+            'coordinates': 'latitude longitude',
+            'grid_mapping': 'crs',
+            'valid_range': np.array([0,50000], dtype = 'float32'),
+        }
+        
+        LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
+        start = time.time()
+        
+        with xr.open_dataset(chrtout_files[0]) as ds:
+            newindex = ds.feature_id.values
+            
+        qtrt = flow.reindex(newindex).to_numpy().astype("float32")
+        
+        LOG.debug("Reindexing the flow DataFrame took %s seconds." % (time.time() - start))
+        
+        LOG.debug("Writing t-route data to %d CHRTOUT files" % (nfiles_to_write))
+        start = time.time()
+        with Parallel(n_jobs=cpu_pool) as parallel:
+        
+            jobs = []
+            for i, f in enumerate(chrtout_files[:nfiles_to_write]):
 
-            # !!NOTE: If break_at_waterbodies == True, segment feature_ids coincident with water bodies do
-            # not show up in the flowveldepth dataframe. Re-indexing inserts these missing feature_ids and
-            # populates columns with NaN values.
-            flowveldepth_reindex = flowveldepth.reindex(chrtout.feature_id.values)
-
-            # unpack, subset, and transpose t-route flow data
-            qtrt = flowveldepth_reindex.loc[:, ::3].to_numpy().astype("float32")
-            qtrt = qtrt[:, qts_subdivisions-1::qts_subdivisions]
-            qtrt = np.transpose(qtrt)
-
-            # construct DataArray for t-route flows, dims, coords, and attrs consistent with CHRTOUT
-            qtrt_DataArray = xr.DataArray(
-                data=da.from_array(qtrt),
-                dims=["time", "feature_id"],
-                coords=dict(time=chrtout.time.values, feature_id=chrtout.feature_id.values),
-                attrs=dict(description="River Flow, t-route", units="m3 s-1",),
-            )
-
-            # add t-route DataArray to CHRTOUT dataset
-            chrtout["streamflow_troute"] = qtrt_DataArray
-
-            # group by time
-            grp_object = chrtout.groupby("time")
-
-        # build a list of datasets, one for each timestep
-        dataset_list = []
-        for grp, vals in iter(grp_object):
-            dataset_list.append(vals)
-
-        # save a new set of chrtout files to disk that contail t-route simulated flow
-        chrtout_files_new = [
-            output_folder / (s.name + "." + new_extension) for s in chrtout_files
-        ]
-
-        # mfdataset solution - can theoretically be parallelised via dask.distributed
-        xr.save_mfdataset(dataset_list, paths=chrtout_files_new)
-
-#     # pure serial solution - saving for timing tests against mfdataset
-#     for i, dat in enumerate(dataset_list):
-#         dat.to_netcdf(chrtout_files_new[i])
-
+                s = time.time()
+                variables = {
+                    varname: (qtrt[:,i], dim, attrs)
+                }
+                jobs.append(delayed(write_to_netcdf)(f, variables))
+                LOG.debug("Writing %s." % (f))
+                
+            parallel(jobs)
+               
+        LOG.debug("Writing t-route data to %d CHRTOUT files took %s seconds." % (nfiles_to_write, (time.time() - start)))
+        
+    else:
+        LOG.debug("Simulation duration is less than one qts_subdivision. No CHRTOUT files written.")
 
 def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_lateral"):
     """
@@ -933,38 +1034,32 @@ def get_channel_restart_from_wrf_hydro(
     return q_initial_states
 
 
-def write_channel_restart_to_wrf_hydro(
+def write_hydro_rst(
     data,
     restart_files,
-    output_folder,
     channel_initial_states_file,
     dt_troute,
     nts_troute,
     t0,
     crosswalk_file,
     channel_ID_column,
-    new_extension,
     restart_file_dimension_var="links",
     troute_us_flow_var_name="qlink1_troute",
     troute_ds_flow_var_name="qlink2_troute",
     troute_depth_var_name="hlink_troute",
 ):
     """
-    Write t-route flow and depth data to WRF-Hydro restart files. New WRF-Hydro restart
-    files are created that contain all of the data in the original files, plus t-route
-    flow and depth data.
+    Write t-route flow and depth data to WRF-Hydro restart files. 
 
     Agruments
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
         restart_files (list): globbed list of WRF-Hydro restart files
-        output_folder (pathlib.Path): folder where updated restart files will be written
         channel_initial_states_file (str): WRF-HYDRO standard restart file used to initiate t-route simulation
         dt_troute (int): timestep of t-route simulation (seconds)
         nts_troute (int): number of t-route simulation timesteps
         crosswalk_file (str): File containing reservoir IDs IN THE ORDER of the Restart File
         channel_ID_column (str): field in the crosswalk file to assign as the index of the restart values
-        restart_file_dimension_var (str): name of flow and depth data dimension in the Restart File
         troute_us_flow_var_name (str):
         troute_ds_flow_var_name (str):
         troute_depth_var_name (str):
@@ -972,79 +1067,88 @@ def write_channel_restart_to_wrf_hydro(
     Returns
     -------
     """
-    # create t-route simulation timestamp array
-    # TODO: Replace this with a more general function to identify
-    # the model timesteps of a particular run.
-    # consider as a candidate something like:
-    # pd.date_range(start = datetime.strptime('2017-12-31T06:00:00',"%Y-%m-%dT%H:%M:%S"), periods = nts_troute, freq = '300s')
-    # or the equivalent resulting from
-    # pd.date_range(start = np.datetime64('2017-12-31T06:00:00'), periods = nts_troute, freq = '300s')
-    t_array = np.array(t0, dtype=np.datetime64)
+    
+    # Assemble the simulation tme domain
+    t0_array = np.array(t0, dtype=np.datetime64)
     troute_dt = np.timedelta64(dt_troute, "s")
-    troute_timestamps = t_array + np.arange(nts_troute) * troute_dt
-
-    # extract ordered feature_ids from crosswalk file
-    # TODO: Find out why we re-index this dataset when it
-    # already has a segment index.
-    with xr.open_dataset(crosswalk_file) as xds:
-        xdf = xds[channel_ID_column].to_dataframe()
-    xdf = xdf.reset_index()
-    xdf = xdf[[channel_ID_column]]
-
-    # reindex flowveldepth array
-    flowveldepth_reindex = data.reindex(xdf.link)
-
-    # TODO: The comment "revise do this one at a time" appears to be done... is it?
-    # get restart timestamps - revise do this one at a time
+    troute_timestamps = (t0_array + troute_dt) + np.arange(nts_troute) * troute_dt
+    
+    LOG.debug('t-route intialized at %s' % (np.datetime_as_string(t0_array)))
+    LOG.debug('t-route first simulated time at %s' % (np.datetime_as_string(troute_timestamps[0])))
+    LOG.debug('t-route final simulated time at %s' % (np.datetime_as_string(troute_timestamps[-1])))
+    
+    # check the Restart_Time of each restart file in the restart directory
+    LOG.debug("Looking for restart files that need to be appended")
+    start = time.time()
+    files_to_append = []
+    write_index = []
     for f in restart_files:
+        
+        # open the restart file and get the Restart_Time attribute
         with xr.open_dataset(f) as ds:
-
-            # get timestamp from restart file
             t = np.array(ds.Restart_Time.replace("_", " "), dtype=np.datetime64)
+            
+        # check if the Restart_Time is within the t-route model domain
+        a = np.where(troute_timestamps == t)[0].tolist()
+        if a:
+            files_to_append.append(f)
+            write_index.append(a[0])
+            
+    LOG.debug('Found %d restart files to append.' % len(files_to_append))
+    LOG.debug('It took %s seconds to find restart files that need to be appended' % (time.time() - start))
 
-            # find index troute_timestamp value that matches restart file timestamp
-            a = np.where(troute_timestamps == t)[0].tolist()
+    if len(files_to_append) == 0:
+        return
+    else: # contune on to append restart files
+        
+        LOG.debug('Retrieving index ordering used restart files')
+        start = time.time()
+        # extract ordered feature_ids from crosswalk file
+        # TODO: Find out why we re-index this dataset when it
+        # already has a segment index.
+        with xr.open_dataset(crosswalk_file) as xds:
+            xdf = xds[channel_ID_column].to_dataframe()
+        xdf = xdf.reset_index()
+        xdf = xdf[[channel_ID_column]]
+        LOG.debug('Retrieving index ordering took %s seconds' % (time.time() - start))
 
-            # if the restart timestamp exists in the t-route simulatuion
-            if len(a) > 0:
+        LOG.debug('Begining the restart writing process')
+        start = time.time()
+        for i, f in enumerate(files_to_append):
+            
+            LOG.debug('Preparing data for- and writing data to- %s' % f)
+            # extract and reindex depth data
+            qtrt = (
+                data.iloc[:,::3]
+                .iloc[:, a[i]]
+                .reindex(xdf.link)
+                .to_numpy()
+                .astype("float32")
+                .reshape(len(xdf.link,))
+            )
 
-                # TODO: consider Packaging the following into a function
-                # e.g., def get_restart_vals_from_fvd(a, flowveldepth, idx=0,):
-                # pull flow data from flowveldepth array, package into DataArray
-                # !! TO DO - is there a more percise way to slice flowveldepth array?
-                qtrt = (
-                    flowveldepth_reindex.iloc[:, ::3]
-                    .iloc[:, a]
-                    .to_numpy()
-                    .astype("float32")
-                )
-                qtrt = qtrt.reshape((len(flowveldepth_reindex,)))
-                qtrt_DataArray = xr.DataArray(
-                    data=qtrt, dims=[restart_file_dimension_var],
-                )
-
-                # pull depth data from flowveldepth array, package into DataArray
-                # !! TO DO - is there a more percise way to slice flowveldepth array?
-                htrt = (
-                    flowveldepth_reindex.iloc[:, 2::3]
-                    .iloc[:, a]
-                    .to_numpy()
-                    .astype("float32")
-                )
-                htrt = htrt.reshape((len(flowveldepth_reindex,)))
-                htrt_DataArray = xr.DataArray(
-                    data=htrt, dims=[restart_file_dimension_var],
-                )
-
-                # insert troute data into restart dataset
-                ds[troute_us_flow_var_name] = qtrt_DataArray
-                ds[troute_ds_flow_var_name] = qtrt_DataArray
-                ds[troute_depth_var_name] = htrt_DataArray
-
-                # write edited to disk with new filename
-                ds.to_netcdf(output_folder / (f.name + "." + new_extension))
-
-
+            # extract and reindex depth data
+            htrt = (
+                data.iloc[:, 2::3]
+                .iloc[:, a[i]]
+                .reindex(xdf.link)
+                .to_numpy()
+                .astype("float32")
+                .reshape(len(xdf.link,))
+            )
+            
+            # assemble variables dictionary with content to be written out
+            variables = {
+                troute_us_flow_var_name: (qtrt, restart_file_dimension_var, {}),
+                troute_ds_flow_var_name: (qtrt, restart_file_dimension_var, {}),
+                troute_depth_var_name: (htrt, restart_file_dimension_var, {}),
+            }
+            
+            # append restart data to netcdf restart files
+            write_to_netcdf(f, variables)
+        
+        LOG.debug('Restart writing process completed in % seconds.' % (time.time() - start))
+            
 def get_reservoir_restart_from_wrf_hydro(
     waterbody_intial_states_file,
     crosswalk_file,

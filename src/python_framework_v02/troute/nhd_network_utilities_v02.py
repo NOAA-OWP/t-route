@@ -3,6 +3,8 @@ import pathlib
 import pandas as pd
 from functools import partial
 from datetime import datetime, timedelta
+from joblib import delayed, Parallel
+import netCDF4
 import numpy as np
 # TODO: Consider nio and nnw as aliases for these modules...
 import troute.nhd_io as nhd_io
@@ -673,6 +675,7 @@ def build_forcing_sets(
 
 def build_qlateral_array(
     forcing_parameters,
+    cpu_pool,
     segment_index=pd.Index([]),
     ts_iterator=None,
     file_run_size=None,
@@ -700,24 +703,26 @@ def build_qlateral_array(
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
         gw_bucket_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col","qBucket")
         terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
+        
+        # Parallel reading of qlateral data from CHRTOUT
+        with Parallel(n_jobs=cpu_pool) as parallel:
 
-        qlat_df = nhd_io.get_ql_from_wrf_hydro_mf(
-            qlat_files=qlat_files,
-            #ts_iterator=ts_iterator,
-            #file_run_size=file_run_size,
-            index_col=qlat_file_index_col,
-            value_col=qlat_file_value_col,
-            gw_col = gw_bucket_col,
-            runoff_col = terrain_ro_col,
-        )
+            jobs = []
+            for f in qlat_files:
+                jobs.append(delayed(nhd_io.get_ql_from_chrtout)(f))
+            ql_list = parallel(jobs)
 
+        # get feature_id from a single CHRTOUT file
+        with netCDF4.Dataset(qlat_files[0]) as ds:
+            idx = ds.variables[qlat_file_index_col][:].filled()
+
+        # package data into a DataFrame
+        qlat_df = pd.DataFrame(
+            np.stack(ql_list).T,
+            index = idx,
+            columns = range(len(qlat_files))
+        )    
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-
-    # TODO: These four lines seem extraneous
-    #    df_length = len(qlat_df.columns)
-    #    for x in range(df_length, 144):
-    #        qlat_df[str(x)] = 0
-    #        qlat_df = qlat_df.astype("float32")
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)

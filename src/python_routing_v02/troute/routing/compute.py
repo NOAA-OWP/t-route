@@ -254,7 +254,7 @@ def compute_nhd_routing_v02(
 
         start_para_time = time.time()
         # if 1 == 1:
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
@@ -468,7 +468,7 @@ def compute_nhd_routing_v02(
             LOG.info("starting Parallel JIT calculation")
 
         start_para_time = time.time()
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
@@ -652,7 +652,7 @@ def compute_nhd_routing_v02(
             LOG.info("starting Parallel JIT calculation")
 
         start_para_time = time.time()
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
             results_subn = defaultdict(list)
             flowveldepth_interorder = {}
 
@@ -835,7 +835,7 @@ def compute_nhd_routing_v02(
             LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-network":
-        with Parallel(n_jobs=cpu_pool, backend="threading") as parallel:
+        with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
             jobs = []
             for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
                 # The X_sub lines use SEGS...

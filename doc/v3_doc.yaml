@@ -499,17 +499,6 @@ output_parameters:
         # CHRTOUT files used are the ones we'd want to write results to.
         # (!!) mandatory if writing results to CHRTOUT. Default is to None and results will not be written.
         wrf_hydro_channel_output_source_folder: 
-        # ---------------
-        # path to the directory where edited CHRTOUT files will be written to
-        # optional, defaults to wrf_hydro_channel_output_source_folder
-        wrf_hydro_channel_final_output_folder: 
-        # ---------------
-        # tag appended to CHRTOUT filenames after t-route results have been written
-        # For example, if wrf_hydro_channel_output_new_extension = TROUTE and the
-        # CHRTOUT file being edited is named 777777.CHRTOUT_DOMAIN1, then the edited file
-        # name will be 777777.CHRTOUT_DOMAIN1.TROUTE
-        # optional, defaults to "TRTE"
-        wrf_hydro_channel_output_new_extension:
     # ---------------
     # parameters controlling the writing of restart data to HYDRO_RST netcdf files
     # optional, defauls is None and results restart data is not written
@@ -519,17 +508,8 @@ output_parameters:
         # (!!) mandatory if writing restart data to HYDRO_RST Default is to None and results will not be written.
         wrf_hydro_restart_dir:
         # ---------------
-        # path to the directory where edited HYDRO_RST files will be written to
-        # optional, defaults to wrf_hydro_restart_dir
-        wrf_hydro_restart_write_dir:
-        # ---------------
-        # tag appended to HYDRO_RST filenames after t-route results have been written
-        # optional, defaults to "TRTE"
-        wrf_hydro_channel_restart_new_extension:
-        # ---------------
-        # !!!!!! DEPRICATED
-        # TODO: this parameter is completely unnecessary in a V3 execution and should
-        # be taken out of consideration with a forthcoming PR
+        # string. Unique file pattern of restart files (e.g. HYDRO_RST.*)
+        # optional, defaults to 'HYDRO_RST*'
         wrf_hydro_channel_restart_pattern_filter:
     # ---------------
     # paramters controlling a single-segment parity assessment between t-route and WRF-hydro
