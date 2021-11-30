@@ -16,7 +16,25 @@ def node_key_func_nexus(x):
 
 def node_key_func_wb(x):
     return int(x[3:])
-    
+
+def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    Reads lake.json file and prepares a dataframe, filtered
+    to the relevant reservoirs, to provide the parameters
+    for level-pool reservoir computation.
+    """
+    def node_key_func(x):
+        return int(x[3:])
+    df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
+    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+    return df
+
 def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
     # STEP 5: Read (or set) QLateral Inputs
     if __showtiming__:
@@ -195,7 +213,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 raise(RuntimeError("No supplied levelpool parameters in routing config"))
             
             lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
-            self._waterbody_df = nhd_io.read_ngen_waterbody_df(
+            self._waterbody_df = read_ngen_waterbody_df(
                 levelpool_params["level_pool_waterbody_parameter_file_path"],
                 lake_id,
                 #self.waterbody_connections.values()
