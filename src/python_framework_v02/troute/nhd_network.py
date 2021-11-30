@@ -3,7 +3,9 @@ from itertools import chain
 from functools import reduce, partial
 from collections.abc import Iterable
 from toolz import pluck
-
+from deprecated import deprecated
+#Consider using sphinx for inlining deprecation into docstrings
+#from deprecated.sphinx import deprecated
 
 def reverse_dict(d):
     """
@@ -76,7 +78,7 @@ def extract_connections(rows, target_col, terminal_codes=None):
             network[src].append(dst)
     return network
 
-
+@deprecated(version='2.0', reason="Functionality moved to Network classes")
 def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
     """Extract waterbody mapping from dataframe."""
     return (
