@@ -19,30 +19,6 @@ def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
-def read_json(file_path):
-    with open(file_path) as data_file:
-        json_data = json.load(data_file)
-
-        def node_key_func(x):
-            return int(x[3:])
-
-        already_read_first_row = False
-
-        for key_wb, value_params in json_data.items():
-            key_wb = node_key_func(key_wb)
-
-            if not already_read_first_row:
-                df_main = pd.json_normalize(value_params)
-                df_main['ID'] = key_wb
-                already_read_first_row = True
-
-            else:
-                df = pd.json_normalize(value_params)
-                df['ID'] = key_wb
-                df_main = pd.concat([df_main, df], ignore_index=True)
-
-    return df_main
-
 
 def read_csv(geo_file_path, header="infer", layer_string=None):
     if geo_file_path.suffix == ".zip":
@@ -62,8 +38,6 @@ def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
 def read(geo_file_path, layer_string=None, driver_string=None):
     if geo_file_path.suffix == ".nc":
         return read_netcdf(geo_file_path)
-    elif geo_file_path.suffix == ".json":
-        return read_json(geo_file_path)
     else:
         return read_geopandas(
             geo_file_path, layer_string=layer_string, driver_string=driver_string
@@ -145,42 +119,6 @@ def read_custom_input(custom_input_file):
     )
 
 
-def read_nexus_to_downstream_flowpath_mapping(nexus_to_downstream_flowpath_mapping_file_path):
-    with open(nexus_to_downstream_flowpath_mapping_file_path) as json_file:
-        nexus_to_downstream_flowpath_mapping_dict = json.load(json_file)
-
-    return nexus_to_downstream_flowpath_mapping_dict
-
-
-def read_nexus_file(nexus_file_path):
-
-    #Currently reading data in format:
-    #[
-       #{
-         #"ID": "wb-44",
-         #"toID": "nex-45"
-         #},
-    with open(nexus_file_path) as data_file:
-        json_data_list = json.load(data_file)
-
-    nexus_to_downstream_flowpath_dict_str = {}
-
-    for id_dict in json_data_list:
-        if "nex" in id_dict['ID']:
-            nexus_to_downstream_flowpath_dict_str[id_dict['ID']] = id_dict['toID']
-
-    def node_key_func_nexus(x):
-        return int(x[4:])
-
-    def node_key_func_wb(x):
-        return int(x[3:])
-
-    # Extract the ID integer values
-    nexus_to_downstream_flowpath_dict = {node_key_func_nexus(k): node_key_func_wb(v) for k, v in nexus_to_downstream_flowpath_dict_str.items()}
-
-    return nexus_to_downstream_flowpath_dict
-
-
 def replace_downstreams(data, downstream_col, terminal_code):
     ds0_mask = data[downstream_col] == terminal_code
     new_data = data.copy()
@@ -196,8 +134,9 @@ def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_po
     General waterbody dataframe reader. At present, only level-pool
     capability exists.
     """
+
+    wb_params = waterbody_parameters[wbtype]
     if wbtype == "level_pool":
-        wb_params = waterbody_parameters[wbtype]
         return read_level_pool_waterbody_df(
             wb_params["level_pool_waterbody_parameter_file_path"],
             wb_params["level_pool_waterbody_id"],
@@ -261,17 +200,6 @@ def get_ql_from_csv(qlat_input_file, index_col=0):
     ql.index = ql.index.astype(int)
     ql = ql.sort_index(axis="index")
     return ql.astype("float32")
-
-
-def get_nexus_flows_from_csv(nexus_input_file, index_col=0):
-    """
-    nexus_input_file: comma delimted file for a single nexus flow with timestep rows
-    index_col = 0:
-    col1: date-time
-    col2: flows
-    """
-    nexus_flows = pd.read_csv(nexus_input_file, index_col=0, header=None)
-    return nexus_flows
 
 
 def read_qlat(path):
