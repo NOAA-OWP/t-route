@@ -288,6 +288,10 @@ class HYFeaturesNetwork(AbstractNetwork):
           print("... in %s seconds." % (time.time() - start_time))
         
         self._qlateral = read_qlats(forcing_parameters, self._dataframe.index, self.downstream_flowpath_dict)
+        #Mask out all non-simulated waterbodies
+        self._dataframe['waterbody'] = self.waterbody_null
+        #This also remaps the initial NHDComID identity to the HY_Features Waterbody ID for the reservoir...
+        self._dataframe.loc[self._waterbody_df.index, 'waterbody'] = self._waterbody_df.index.name
 
         #FIXME should waterbody_df and param_df overlap IDS?  Doesn't seem like it should...
         #self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
@@ -321,14 +325,14 @@ class HYFeaturesNetwork(AbstractNetwork):
             #Drop the nan, then check for waterbody_null just in case
             #waterbody_null happens to be NaN
             #FIXME this drops ALL nan, not just `waterbody`
-            waterbody_segments = self._dataframe.dropna().loc[
-                self._dataframe["waterbody"] != self.waterbody_null, "waterbody"
-            ]
-            waterbody_segments = waterbody_segments.loc[self.waterbody_dataframe.index]
-            self._waterbody_connections = waterbody_segments.index\
-                .to_series(name = waterbody_segments.name)\
-                .astype("int")\
-                .to_dict()
+            #waterbody_segments = self._dataframe.dropna().loc[
+            #    self._dataframe["waterbody"] != self.waterbody_null, "waterbody"
+            #]
+            #waterbody_segments = waterbody_segments.loc[self.waterbody_dataframe.index]
+            #self._waterbody_connections = waterbody_segments.index\
+            #    .to_series(name = waterbody_segments.name)\
+            #    .astype("int")\
+            #    .to_dict()
             #If we identify as a waterbody, drop from the main dataframe
             #Ugh, but this drops everything that that MIGHT be a "lake"
             #without knowing if it was defined as a lake in the lake params
@@ -336,6 +340,8 @@ class HYFeaturesNetwork(AbstractNetwork):
             #In fact, these waterbody connections should probably be entirely reworked
             #with that in mind...
             self._waterbody_connections = self._waterbody_df.index.to_series(name = self._waterbody_df.index.name).astype("int").to_dict()
+            #FIXME seems way more appropriate to do this in the constructor so the property doesn't side effect
+            #the param df..., but then it breaks down the connection property...so for now, leave it here and fix later
             self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
         return self._waterbody_connections
 
@@ -352,4 +358,4 @@ class HYFeaturesNetwork(AbstractNetwork):
     
     @property
     def waterbody_null(self):
-        return pd.NA
+        return np.nan#pd.NA
