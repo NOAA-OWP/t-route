@@ -936,28 +936,6 @@ def new_nwm_q0(run_results):
     a warmstate for the next simulation chunk.
     """
     
-    A = pd.concat(
-        [
-            pd.DataFrame(
-                r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
-            )
-            for r in run_results
-        ],
-        copy=False,
-    )
-    
-    
-    idx_max = np.argmax(run_results[0][1][:, -3])
-    print("max final flow from results array:", run_results[0][1][idx_max, -3])
-    
-    print(" NUMPY <-----------> PANDAS ")
-    
-    print("max final flow from q0 df:", A.loc[run_results[0][0][idx_max], "qd0"])
-    
-
-    
-    import pdb; pdb.set_trace()
-    
     return pd.concat(
         # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
         # actually contains a field qu0, which is never used for restart (the qu0 can be obtained
