@@ -247,6 +247,15 @@ class HYFeaturesNetwork(AbstractNetwork):
                 #FIXME any reservoir operations requires some type
                 #So make this default to 1 (levelpool)
         #At this point, need to adjust some waterbody/channel parameters based on lakes/reservoirs
+        #HACK for bad hydrofabric
+        def make_list(s):
+            if isinstance(s, list):
+                return s
+            else:
+                return [s]
+
+        self._waterbody_df['member_wbs'] = self._waterbody_df['member_wbs'].apply(make_list)
+        self._waterbody_df['partial_length_percent'] = self._waterbody_df['partial_length_percent'].apply(make_list)
         adjust = [ zip(x, y) 
                    for x, y in 
                    zip(self._waterbody_df['member_wbs'], self._waterbody_df['partial_length_percent'])
@@ -258,8 +267,9 @@ class HYFeaturesNetwork(AbstractNetwork):
             #shouldn't they just not be in the topology???
             wb = node_key_func_wb(wb)
             #Need to adjust waterbodys/channels that  interact with this waterbody
-            #print(self._dataframe.loc[wb, 'dx'])
-            self._dataframe.loc[wb, 'dx'] = self._dataframe.loc[wb, 'dx'] - self._dataframe.loc[wb, 'dx']*percent
+            #Hack for wonky hydrofabric
+            if percent != 'NA':
+                self._dataframe.loc[wb, 'dx'] = self._dataframe.loc[wb, 'dx'] - self._dataframe.loc[wb, 'dx']*float(percent)
             #print(self._dataframe.loc[wb, 'dx'])
 
         if __verbose__:
@@ -302,6 +312,8 @@ class HYFeaturesNetwork(AbstractNetwork):
         #    .drop_duplicates(subset="key")
         #    .set_index("key")
         #)
+        self._dataframe.sort_index(inplace=True)
+        self._waterbody_df.sort_index(inplace=True)
 
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
         """Extract waterbody mapping from dataframe.
