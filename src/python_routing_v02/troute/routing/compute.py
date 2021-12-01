@@ -167,10 +167,6 @@ def compute_nhd_routing_v02(
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
 
-    #Temp value for ngen
-    param_df["alt"] = 1.0
-    ###############
-
     param_df = param_df.astype("float32")
 
     start_time = time.time()
@@ -1021,22 +1017,12 @@ def compute_nhd_routing_v02(
 
             qlat_time_step_seconds = qts_subdivisions * dt
 
-            # Original
-            #qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
-
-            # Temp for ngen
-            # Quick fix for now for nexus time because has an extra space at the beginning of the string
-            qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, ' %Y-%m-%d %H:%M:%S')
+            qlat_start_time_datetime_object = datetime.strptime(qlat_start_time, '%Y-%m-%d %H:%M:%S')
 
             model_start_time_datetime_object = qlat_start_time_datetime_object \
             - timedelta(seconds=qlat_time_step_seconds)
 
-            # Original
-            #model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
-            # Temp for ngen
-            # Quick fix for now for nexus time because has an extra space at the beginning of the string
-            model_start_time = model_start_time_datetime_object.strftime(' %Y-%m-%d_%H:%M:%S')
+            model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
 
             param_df_sub = param_df_sub.reindex(
                 param_df_sub.index.tolist() + lake_segs
