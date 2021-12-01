@@ -80,7 +80,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto:
+    if csv_output_folder or rsrto or chrto or True:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -91,6 +91,7 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+        flowveldepth.to_pickle('/glade/scratch/adamw/dev_test')
 
         if return_courant:
             courant_columns = pd.MultiIndex.from_product(
