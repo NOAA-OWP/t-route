@@ -10,6 +10,10 @@ import math
 import asyncio
 import concurrent.futures
 
+from troute.NHDNetwork import NHDNetwork
+from troute.HYFeaturesNetwork import HYFeaturesNetwork
+from troute.DataAssimilation import NudgingDA
+
 ## network and reach utilities
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
@@ -357,252 +361,67 @@ def _run_everything_v02(
     coastal_parameters,
 ):
 
-    dt = run_parameters.get("dt", None)
-    nts = run_parameters.get("nts", None)
     verbose = run_parameters.get("verbose", None)
     showtiming = run_parameters.get("showtiming", None)
     debuglevel = run_parameters.get("debuglevel", 0)
     break_network_at_waterbodies = run_parameters.get(
         "break_network_at_waterbodies", False
     )
-    break_network_at_gages = supernetwork_parameters.get(
-        "break_network_at_gages", False
-    )
-
-    if verbose:
-        print("creating supernetwork connections set")
-    if showtiming:
-        start_time = time.time()
-
-    # STEP 1: Build basic network connections graph
-    connections, param_df, wbody_conn, gages, nexus_to_downstream_flowpath_dict = nnu.build_connections(
-        supernetwork_parameters
-    )
-
-    if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(
-            connections, wbody_conn
-        )
-
-    if verbose:
-        print("supernetwork connections set complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-
-    ################################
-    ## STEP 3a: Read waterbody parameter file
-    # waterbodies_values = supernetwork_values[12]
-    # waterbodies_segments = supernetwork_values[13]
-    # connections_tailwaters = supernetwork_values[4]
-
-    waterbody_type_specified = False
-
-    if break_network_at_waterbodies:
-        # Read waterbody parameters
-        waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbody_conn.values()}
-        )
-
-        # Remove duplicate lake_ids and rows
-        waterbodies_df = (
-            waterbodies_df.reset_index()
-            .drop_duplicates(subset="lake_id")
-            .set_index("lake_id")
-        )
-
-        # Declare empty dataframe
-        waterbody_types_df = pd.DataFrame()
-
-        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype = "hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )  # TODO: Convert these to `get` statments
-
-        wbtype = "level_pool"
-        wb_params_level_pool = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )  # TODO: Convert these to `get` statments
-
-        waterbody_type_specified = False
-
-        if (
-            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
-            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
-            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
-        ):
-
-            waterbody_type_specified = True
-
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
-                wb_params_level_pool["level_pool_waterbody_id"],
-                wbody_conn.values(),
-            )
-
-            # Remove duplicate lake_ids and rows
-            waterbody_types_df = (
-                waterbody_types_df.reset_index()
-                .drop_duplicates(subset="lake_id")
-                .set_index("lake_id")
-            )
-
-    else:
-        # Declare empty dataframe
-        waterbody_types_df = pd.DataFrame()
-        waterbodies_df = pd.DataFrame()
-
-    # STEP 2: Identify Independent Networks and Reaches by Network
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("organizing connections into reaches ...")
-
-    network_break_segments = set()
-    if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbody_conn.values())
-    if break_network_at_gages:
-        network_break_segments = network_break_segments.union(gages.keys())
-    independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
-        connections,
-        network_break_segments,
-    )
-    if verbose:
-        print("reach organization complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-
-    if break_network_at_waterbodies:
-        ## STEP 3c: Handle Waterbody Initial States
-        # TODO: move step 3c into function in nnu, like other functions wrapped in main()
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print("setting waterbody initial states ...")
-
-        if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
-            waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
-                restart_parameters["wrf_hydro_waterbody_restart_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
-                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                restart_parameters[
-                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
-                ],
-            )
-        else:
-            # TODO: Consider adding option to read cold state from route-link file
-            waterbodies_initial_ds_flow_const = 0.0
-            waterbodies_initial_depth_const = -1e9
-            # Set initial states from cold-state
-            waterbodies_initial_states_df = pd.DataFrame(
-                0,
-                index=waterbodies_df.index,
-                columns=[
-                    "qd0",
-                    "h0",
-                ],
-                dtype="float32",
-            )
-            # TODO: This assignment could probably by done in the above call
-            waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
-            waterbodies_initial_states_df["h0"] = waterbodies_initial_depth_const
-            waterbodies_initial_states_df["index"] = range(
-                len(waterbodies_initial_states_df)
-            )
-
-        waterbodies_df = pd.merge(
-            waterbodies_df, waterbodies_initial_states_df, on="lake_id"
-        )
-
-        if verbose:
-            print("waterbody initial states complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
-            start_time = time.time()
-
-    # STEP 4: Handle Channel Initial States
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("setting channel initial states ...")
-
-    q0 = nnu.build_channel_initial_state(restart_parameters, param_df.index)
-    # STEP 4a: Set Channel States and T0
-    if restart_parameters.get("wrf_hydro_channel_restart_file",None):
-        channel_initial_states_file = restart_parameters["wrf_hydro_channel_restart_file"]
-        t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
-    else:
-        t0_str = "2015-08-16_00:00:00"
-
-    t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-    run_parameters["t0"] = t0
-
-    if verbose:
-        print("channel initial states complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
-        start_time = time.time()
-
-    # STEP 5: Read (or set) QLateral Inputs
-    if showtiming:
-        start_time = time.time()
-    if verbose:
-        print("creating qlateral array ...")
-
+    #NJF hacking this into supernetwork parameters to
+    #avoid having to pass runtime params to network init, which deosn't seem quite right...
+    supernetwork_parameters["break_network_at_waterbodies"] = break_network_at_waterbodies
     forcing_parameters["qts_subdivisions"] = run_parameters["qts_subdivisions"]
     forcing_parameters["nts"] = run_parameters["nts"]
-    qlats = nnu.build_qlateral_array(
-        forcing_parameters,
-        param_df.index,
-        nts,
-        nexus_to_downstream_flowpath_dict,
-        run_parameters.get("qts_subdivisions", 1),
-    )
+    
+    # STEP 1: Build network
+    if "ngen_nexus_file" in supernetwork_parameters:
+        network = HYFeaturesNetwork(supernetwork_parameters,
+                                    waterbody_parameters=waterbody_parameters,
+                                    restart_parameters=restart_parameters,
+                                    forcing_parameters=forcing_parameters,
+                                    verbose=verbose, showtiming=showtiming)
+    else:
+        network = NHDNetwork(supernetwork_parameters,
+                             waterbody_parameters=waterbody_parameters,
+                             restart_parameters=restart_parameters,
+                             forcing_parameters=forcing_parameters,
+                             verbose=verbose, showtiming=showtiming)
 
-    # If the below dictionary is not empty, change nts
+    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
+    if synthetic_wb_segments:
+        network.set_synthetic_wb_segments( synthetic_wb_segments, synthetic_wb_id_offset )
+    #FIXME
+    network.astype("float32", ["dx", "n", "ncc", "s0", "bw", "tw", "twcc", "musk", "musx", "cs", "alt"])
+
+    #TODO: This could probably done in networkwork construction,
+    #But requires a hefty refactoring of network construction to get everything
+    #built in the correct order...for now just leave it as is...
+    if break_network_at_waterbodies:
+        network.replace_waterbodies()
+    
+    run_parameters["t0"] = network.t0
+
     # to the total number of columns (hours) multiplied 
     # by qts_subdivisions, number of timesteps per forcing 
     # (qlateral) timestep.
-    if nexus_to_downstream_flowpath_dict:
-       run_parameters["nts"] = (len(qlats.columns)) \
-       * run_parameters.get("qts_subdivisions", 1)
+    # NJF adjusted based on ngen usage.  This probably isn't
+    # appropriate in all situations.
+    # TODO allow a network to "override" nts
+    qlats = network.qlateral
+    if "ngen_nexus_file" in supernetwork_parameters:
+        if len(network.qlateral.columns) != run_parameters["nts"] * run_parameters.get("qts_subdivisions", 1):
+            print("WARNING: Lateral flow time series is larger than provided nts. Adjusting nts.\n"+\
+                "If this was unintended, double check the configuration number of time steps and the "+
+                "lateral flow input time series")
+            run_parameters["nts"] = (len(network.qlateral.columns)) \
+        * run_parameters.get("qts_subdivisions", 1)
 
-    if verbose:
-        print("qlateral array complete")
-    if showtiming:
-        print("... in %s seconds." % (time.time() - start_time))
 
     # STEP 6
-    data_assimilation_csv = data_assimilation_parameters.get(
-        "data_assimilation_csv", None
-    )
-    data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_timeslices_folder", None
-    )
-
-    lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-
-    if data_assimilation_csv or data_assimilation_folder or lastobs_file:
-        if showtiming:
-            start_time = time.time()
-        if verbose:
-            print("creating usgs time_slice data array ...")
-
-            usgs_df, lastobs_df, da_parameter_dict = nnu.build_data_assimilation(
-                data_assimilation_parameters,
-                run_parameters
-            )
-
-        if verbose:
-            print("usgs array complete")
-        if showtiming:
-            print("... in %s seconds." % (time.time() - start_time))
-
-    else:
-        usgs_df = pd.DataFrame()
-        lastobs_df = pd.DataFrame()
-        da_parameter_dict = {}
+    #TODO factory create the DA object from params to pick the right one
+    #i.e. EmptyDA, NudgingDA, NewAndImprovedDA...
+    data_assimilation = NudgingDA(data_assimilation_parameters, run_parameters)
 
     ################### Main Execution Loop across ordered networks
     if showtiming:
@@ -624,10 +443,10 @@ def _run_everything_v02(
     # compute_func = fast_reach.compute_network_structured_obj
 
     results = compute_nhd_routing_v02(
-        connections,
-        rconn,
-        wbody_conn,
-        reaches_bytw,
+        network.connections,
+        network.reverse_network,
+        network.waterbody_connections,
+        network.reaches_by_tailwater,
         compute_func,
         run_parameters.get("parallel_compute_method", None),
         run_parameters.get("subnetwork_target_size", 1),
@@ -636,19 +455,19 @@ def _run_everything_v02(
         run_parameters.get("dt"),
         run_parameters.get("nts", 1),
         run_parameters.get("qts_subdivisions", 1),
-        independent_networks,
-        param_df,
-        q0,
-        qlats,
-        usgs_df,
-        lastobs_df,
-        da_parameter_dict,
+        network.independent_networks,
+        network.dataframe,
+        network.q0,
+        network.qlateral,
+        data_assimilation.usgs_df,
+        data_assimilation.last_obs,
+        data_assimilation.asssimilation_parameters,
         run_parameters.get("assume_short_ts", False),
         run_parameters.get("return_courant", False),
-        waterbodies_df,
+        network.waterbody_dataframe,
         waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
-        waterbody_types_df,
-        waterbody_type_specified,
+        network.waterbody_types_dataframe,
+        not network.waterbody_types_dataframe.index.empty,
         diffusive_parameters,
     )
 
@@ -657,7 +476,7 @@ def _run_everything_v02(
     if showtiming:
         print("... in %s seconds." % (time.time() - start_time))
 
-    return results, pd.DataFrame.from_dict(gages)
+    return results, pd.DataFrame.from_dict(network.gages)
 
 
 def _handle_output_v02(
