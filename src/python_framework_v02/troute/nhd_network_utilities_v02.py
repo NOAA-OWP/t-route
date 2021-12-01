@@ -412,8 +412,6 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.set_index("key")
 
-    nexus_to_downstream_flowpath_dict = {}
-
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
             pathlib.Path(supernetwork_parameters["mask_file_path"]),
@@ -421,11 +419,6 @@ def build_connections(supernetwork_parameters):
         )
         param_df = param_df.filter(
             data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
-        )
-
-    if "ngen_nexus_file" in supernetwork_parameters:
-        nexus_to_downstream_flowpath_dict = nhd_io.read_nexus_file(
-            pathlib.Path(supernetwork_parameters["ngen_nexus_file"])
         )
 
     # Rename parameter columns to standard names: from route-link names
@@ -480,7 +473,7 @@ def build_connections(supernetwork_parameters):
     param_df = param_df.astype("float32")
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
-    return connections, param_df, wbodies, gages, nexus_to_downstream_flowpath_dict
+    return connections, param_df, wbodies, gages
 
 
 def build_waterbodies(
@@ -679,18 +672,15 @@ def build_qlateral_array(
     forcing_parameters,
     segment_index=pd.Index([]),
     ts_iterator=None,
-    nexus_to_downstream_flowpath_dict=None,
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
-
-    using_nexus_flows = False
 
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-    nexus_input_folder = forcing_parameters.get("nexus_input_folder", None)
+
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         if "qlat_files" in forcing_parameters:
@@ -726,57 +716,6 @@ def build_qlateral_array(
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
 
-    elif nexus_input_folder:
-
-        using_nexus_flows = True
-
-        nexus_input_folder = pathlib.Path(nexus_input_folder)
-
-        if "nexus_file_pattern_filter" in forcing_parameters:
-            nexus_file_pattern_filter = forcing_parameters.get(
-                "nexus_file_pattern_filter", "nex-*"
-            )
-            nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
-
-            if len(list(nexus_files)) == 0:
-                raise ValueError('No nexus input files found. Recommend checking \
-                nexus_input_folder path in YAML configuration.')
-
-            id_regex = re.compile(r".*nex-(\d+)_.*.csv")
-            nexuses_flows_df = pd.concat(
-                    #Read the nexus csv file
-                    (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(
-                        #Rename the flow column to the id of the nexus
-                        columns={2:int(id_regex.match(f.name).group(1))})
-                    for f in nexus_files #Build the generator for each required file
-                    ),  axis=1).T #Have now concatenated a single df (along axis 1).  Transpose it.
-            missing = nexuses_flows_df[ nexuses_flows_df.isna().any(axis=1) ]
-            if  not missing.empty:
-                raise ValueError("The following nexus inputs are incomplete: "+str(missing.index))
-            
-            # assign nexus flows to their corresponding downstream flowpaths
-            qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(index={int(k):v})
-                for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
-                ).T
-            
-            # The segment_index has the full network set of segments/flowpaths. 
-            # Whereas the set of flowpaths that are downstream of nexuses is a 
-            # subset of the segment_index. Therefore, all of the segments/flowpaths
-            # that are not accounted for in the set of flowpaths downstream of
-            # nexuses need to be added to the qlateral dataframe and padded with
-            # zeros.
-
-            all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlat_df.columns)) ), index=segment_index,
-                    columns=qlat_df.columns )
-            all_df.loc[ qlat_df.index ] = qlat_df
-
-            # Sort qlats
-            qlat_df = all_df.sort_index()
-
-            # Set new nts based upon total nexus inputs
-            nts = (qlat_df.shape[1]) * qts_subdivisions
-        else:
-            raise( RuntimeError("No value for nexus file pattern in config" ) )
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
@@ -792,7 +731,7 @@ def build_qlateral_array(
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
 
-    if not segment_index.empty and not using_nexus_flows:
+    if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
 
     return qlat_df
