@@ -1094,10 +1094,15 @@ def write_lite_restart(
         q0_out = q0.copy()
         q0_out['time'] = t0
         q0_out.to_pickle(pathlib.Path.joinpath(output_path, channel_restart_filename))
+        LOG.debug('Dropped lite channel restart file %s' % pathlib.Path.joinpath(output_path, channel_restart_filename))
 
-        wbody_initial_states = waterbodies_df.loc[:,['qd0','h0']]
-        wbody_initial_states['time'] = t0
-        wbody_initial_states.to_pickle(pathlib.Path.joinpath(output_path, waterbody_restart_filename))
+        if not waterbodies_df.empty:
+            wbody_initial_states = waterbodies_df.loc[:,['qd0','h0']]
+            wbody_initial_states['time'] = t0
+            wbody_initial_states.to_pickle(pathlib.Path.joinpath(output_path, waterbody_restart_filename))
+            LOG.debug('Dropped lite waterbody restart file %s' % pathlib.Path.joinpath(output_path, channel_restart_filename))
+        else:
+            LOG.debug('No lite waterbody restart file dropped becuase waterbodies are either turned off or do not exist in this domain.')
         
     else:
         LOG.error("Not writing lite restart files. No lite_restart_output_directory variable was not specified in configuration file.")
