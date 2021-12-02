@@ -80,7 +80,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or True:
+    if csv_output_folder or rsrto or chrto:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -91,7 +91,10 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
-        flowveldepth.to_pickle('/glade/scratch/adamw/dev_test')
+        
+        # todo: create a unit test by saving FVD array to disk and then checking that
+        # it matches FVD array from parent branch or other configurations. 
+        # flowveldepth.to_pickle(output_parameters['test_output'])
 
         if return_courant:
             courant_columns = pd.MultiIndex.from_product(
