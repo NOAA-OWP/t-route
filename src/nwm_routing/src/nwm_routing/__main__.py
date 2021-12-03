@@ -1192,6 +1192,8 @@ def main_v03(argv):
         # create initial conditions for next loop itteration
         q0 = new_nwm_q0(run_results)
         waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
+        
+        # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
                 q0, 
