@@ -935,7 +935,6 @@ def new_nwm_q0(run_results):
     Prepare a new q0 dataframe with initial flow and depth to act as
     a warmstate for the next simulation chunk.
     """
-    
     return pd.concat(
         # TODO: we only need two fields, technically, and the restart file produced by WRF-Hydro
         # actually contains a field qu0, which is never used for restart (the qu0 can be obtained
