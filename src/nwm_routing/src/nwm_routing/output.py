@@ -91,6 +91,10 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+        
+        # todo: create a unit test by saving FVD array to disk and then checking that
+        # it matches FVD array from parent branch or other configurations. 
+        # flowveldepth.to_pickle(output_parameters['test_output'])
 
         if return_courant:
             courant_columns = pd.MultiIndex.from_product(

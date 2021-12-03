@@ -285,6 +285,18 @@ compute_parameters:
     # optional, defaults to a cold-start
     restart_parameters:
         # ---------------
+        # filepath to a 'lite' channel restart file create by a previous t-route simulation
+        # if a file is specified, then it will be given preference over WRF restart files 
+        # for a simulation restart.
+        # optional, defauls to None and channels are cold-started from zero flow and depth
+        lite_channel_restart_file: 
+        # ---------------
+        # filepath to a 'lite' waterbody restart file create by a previous t-route simulation
+        # if a file is specified, then it will be given preference over WRF restart files 
+        # for a simulation restart.
+        # optional, defauls to None and channels are cold-started from zero flow and depth
+        lite_waterbody_restart_file: 
+        # ---------------
         # filepath to WRF Hydro HYDRO_RST file
         # optional, defauls to None and channels are cold-started from zero flow and depth
         wrf_hydro_channel_restart_file: 
@@ -499,6 +511,14 @@ output_parameters:
         # CHRTOUT files used are the ones we'd want to write results to.
         # (!!) mandatory if writing results to CHRTOUT. Default is to None and results will not be written.
         wrf_hydro_channel_output_source_folder: 
+    # ---------------
+    # parameters controlling the writing of lite restart files
+    # optional, default is None and no lite restart data are created
+    lite_restart:
+        # ---------------
+        # path to directory where channel and waterbody lite restart files will be written to
+        # (!!) mandatory if writing restart data lite files. Default is to None and results will not be written.
+        lite_restart_output_directory:
     # ---------------
     # parameters controlling the writing of restart data to HYDRO_RST netcdf files
     # optional, defauls is None and results restart data is not written

@@ -252,12 +252,16 @@ def nwm_initial_warmstate_preprocess(
     if break_network_at_waterbodies:
         ## STEP 3c: Handle Waterbody Initial States
         # TODO: move step 3c into function in nnu, like other functions wrapped in main()
-      
         start_time = time.time()
-    
         LOG.info("setting waterbody initial states ...")
 
-        if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
+        if restart_parameters.get("lite_waterbody_restart_file", None):
+            
+            waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
+                restart_parameters['lite_waterbody_restart_file']
+            )
+            
+        elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
@@ -292,35 +296,37 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
-        
         LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
         start_time = time.time()
 
     # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
-
     start_time = time.time()
-
     LOG.info("setting channel initial states ...")
 
-    q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
-
     # STEP 4a: Set Channel States and T0
-    if restart_parameters.get("wrf_hydro_channel_restart_file", None):
-        channel_initial_states_file = restart_parameters[
-            "wrf_hydro_channel_restart_file"
-        ]
-        t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+    if restart_parameters.get("lite_channel_restart_file", None):
+        
+        q0, t0 = nhd_io.read_lite_restart(
+            restart_parameters['lite_channel_restart_file']
+        )
     else:
-        t0_str = "2015-08-16_00:00:00"
+        q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
-    t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
+        if restart_parameters.get("wrf_hydro_channel_restart_file", None):
+            channel_initial_states_file = restart_parameters[
+                "wrf_hydro_channel_restart_file"
+            ]
+            t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+        else:
+            t0_str = "2015-08-16_00:00:00"
+
+        t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
 
     # STEP 4b: Set LastObs
     lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
         data_assimilation_parameters
     )
 
-    
     LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
     start_time = time.time()
 

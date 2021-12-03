@@ -1189,6 +1189,19 @@ def main_v03(argv):
             route_end_time = time.time()
             task_times['route_time'] += route_end_time - route_start_time
 
+        # create initial conditions for next loop itteration
+        q0 = new_nwm_q0(run_results)
+        waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
+        
+        # TODO move the conditional call to write_lite_restart to nwm_output_generator.
+        if "lite_restart" in output_parameters:
+            nhd_io.write_lite_restart(
+                q0, 
+                waterbodies_df, 
+                t0 + timedelta(seconds = dt * nts), 
+                output_parameters['lite_restart']
+            )
+        
         # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
             qlats, usgs_df = nwm_forcing_preprocess(
@@ -1206,11 +1219,6 @@ def main_v03(argv):
             if showtiming:
                 forcing_end_time = time.time()
                 task_times['forcing_time'] += forcing_end_time - route_end_time
-
-            q0 = new_nwm_q0(run_results)
-
-            # TODO: Confirm this works with Waterbodies turned off
-            waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
 
             if waterbody_type_specified:
                 waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
