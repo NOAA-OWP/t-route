@@ -72,6 +72,7 @@ def nwm_output_generator(
     csv_output_folder = None
     rsrto = output_parameters.get("hydro_rst_output", None)
     chrto = output_parameters.get("chrtout_output", None)
+    test = output_parameters.get("test_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -80,7 +81,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or True:
+    if csv_output_folder or rsrto or chrto or test:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -91,7 +92,6 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
-        flowveldepth.to_pickle('/glade/scratch/adamw/master_test')
 
         if return_courant:
             courant_columns = pd.MultiIndex.from_product(
@@ -107,6 +107,9 @@ def nwm_output_generator(
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 
+    if test:
+        flowveldepth.to_pickle(Path(test))
+    
     if rsrto:
 
         LOG.info("- writing restart files")
