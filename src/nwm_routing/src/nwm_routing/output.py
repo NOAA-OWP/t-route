@@ -2,7 +2,7 @@ import time
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import troute.nhd_io as nhd_io
 from build_tests import parity_check
 import logging
@@ -73,6 +73,7 @@ def nwm_output_generator(
     rsrto = output_parameters.get("hydro_rst_output", None)
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
+    chano = output_parameters.get("chanobs_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -81,7 +82,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or test:
+    if csv_output_folder or rsrto or chrto or chano or test:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -213,6 +214,111 @@ def nwm_output_generator(
         LOG.debug("writing CSV file took %s seconds." % (time.time() - start))
         # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+        
+    if chano:
+        
+        LOG.info("- writing t-route flow results to CHANOBS file")
+        
+        gage_feature_id = link_gage_df.index.to_numpy(dtype = "int32")
+        gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+        
+        gage_flow_time = [t0 + timedelta(seconds = (i+1) * dt) for i in range(nts)]
+#         gage_flow_time = np.arange(
+#             np.datetime64(t0 + timedelta(seconds = dt)),
+#             np.datetime64(t0 + timedelta(seconds = (nts+1)*dt)),
+#             np.timedelta64(dt, 's')
+#         )
+        
+        import netCDF4
+        from cftime import date2num
+        
+        with netCDF4.Dataset(
+            filename = '/glade/scratch/adamw/chanobs_dump/chanobs_test',
+            mode = 'w',
+            format = "NETCDF4"
+        ) as f:
+            
+            # =========== DIMENSIONS ===============
+            _ = f.createDimension("time", nts)
+            _ = f.createDimension("feature_id", len(gage_feature_id))
+            _ = f.createDimension("reference_time", 1)
+            
+            # =========== reference_time VARIABLE ===============
+            REF_TIME = f.createVariable(
+                varname = "reference_time",
+                datatype = 'int32',
+                dimensions = ("reference_time",),
+            )
+            REF_TIME[:] = date2num(
+                t0, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['reference_time'].setncatts(
+                {
+                    'long_name': 'vaild output time',
+                    'standard_name': 'time',
+                    'units': 'minutes since 1970-01-01 00:00:00 UTC'
+                }
+            )
+            
+            # =========== time VARIABLE ===============
+            TIME = f.createVariable(
+                varname = "time",
+                datatype = 'int32',
+                dimensions = ("time",),
+            )
+            TIME[:] = date2num(
+                gage_flow_time, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['time'].setncatts(
+                {
+                    'long_name': 'model initialization time',
+                    'standard_name': 'forecast_reference_time',
+                    'units': 'minutes since 1970-01-01 00:00:00 UTC'
+                }
+            )
+            
+            # =========== feature_id VARIABLE ===============
+            FEATURE_ID = f.createVariable(
+                varname = "feature_id",
+                datatype = 'int32',
+                dimensions = ("feature_id",),
+            )
+            FEATURE_ID[:] = gage_feature_id
+            f['feature_id'].setncatts(
+                {
+                    'long_name': 'Reach ID',
+                    'comment': 'NHDPlusv2 ComIDs within CONUS, arbitrary Reach IDs outside of CONUS',
+                    'cf_role:': 'timeseries_id'
+                }
+            )
+            
+            # =========== streamflow VARIABLE ===============            
+            y = f.createVariable(
+                    varname = "streamflow",
+                    datatype = "f4",
+                    dimensions = ("time", "feature_id"),
+                    fill_value = np.nan
+                )
+            y[:] = gage_flow_data
+            
+            # =========== GLOBAL ATTRIBUTES ===============  
+            f.setncatts(
+                {
+                    'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                    'model_output_valid_time': gage_flow_time[0].strftime('%Y-%m-%d_%H:%M:%S'),
+                    'model_total_valid_times': len(gage_flow_time)
+                }
+            )
+            
+        
+        import pdb; pdb.set_trace()
+        # find gage locations
+        
+        
 
     # Write out LastObs as netcdf.
     # Assumed that this capability is only needed for AnA simulations
