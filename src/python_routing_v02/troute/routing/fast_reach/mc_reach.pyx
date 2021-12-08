@@ -1151,7 +1151,6 @@ cpdef object compute_network_structured(
                                    array('l',upstream_ids),
                                    wbody_parameters[wbody_index])
                     )
-                wbody_index += 1
 
             else:
                 #If reservoir_type is 1, then initialize Level Pool reservoir
