@@ -54,10 +54,16 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     )
     nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
     #TODO Find a way to test that we found some files
-    #without consuming the generator...Otherwise, if nuxus_files
+    #without consuming the generator...Otherwise, if nexus_files
     #is empty, the following concat raises a ValueError which
     #It may be sufficient to catch this exception and warn that
     #there may not be any pattern matching files in the dir
+
+    nexus_files_list = list(nexus_files)
+
+    if len(nexus_files_list) == 0:
+        raise ValueError('No nexus input files found. Recommend checking \
+        nexus_input_folder path in YAML configuration.')
 
     #pd.concat((pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(columns={2:id_regex.match(f).group(1)}) for f in all_files[0:2]), axis=1).T
     id_regex = re.compile(r".*nex-(\d+)_.*.csv")
@@ -66,7 +72,7 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
             (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(
                 #Rename the flow column to the id of the nexus
                 columns={2:int(id_regex.match(f.name).group(1))})
-            for f in nexus_files #Build the generator for each required file
+            for f in nexus_files_list #Build the generator for each required file
             ),  axis=1).T #Have now concatenated a single df (along axis 1).  Transpose it.
     missing = nexuses_flows_df[ nexuses_flows_df.isna().any(axis=1) ]
     if  not missing.empty:
