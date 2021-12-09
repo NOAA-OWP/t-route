@@ -488,8 +488,22 @@ compute_parameters:
 # parameters controlling model outputs
 output_parameters:
     # ---------------
+    # chanobs writing parameters
+    # "CHANOBS" netCDF files contain timeseries of t-route simulated routed flow results
+    # at gage locations only. 
+    # optional, only needed if writing data to CHANOBS (netCDF) files
+    chanobs_output:
+        # ---------------
+        # path to directory where chanobs files will be written
+        # (!!) mandatory if writing chanobs files
+        chanobs_output_directory: 
+        # ---------------
+        # name of netCDF file where chanobs data will be written
+        # (!!) mandatory if writng chanobs files
+        chanobs_filepath:
+    # ---------------
     # csv writing parameters
-    # (!!) mandatory
+    # optional, only needed if writing data to CSV
     # TODO: remove output dependencies on csv_output field, here
     csv_output: 
         # ---------------

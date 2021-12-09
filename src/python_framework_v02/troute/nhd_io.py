@@ -15,6 +15,7 @@ import netCDF4
 import time
 import logging
 from joblib import delayed, Parallel
+from cftime import date2num
 
 
 
@@ -345,6 +346,158 @@ def get_ql_from_wrf_hydro_mf(
 def drop_all_coords(ds):
     return ds.reset_coords(drop=True)
 
+def write_chanobs(
+    chanobs_filepath, 
+    flowveldepth, 
+    link_gage_df, 
+    t0, 
+    dt, 
+    nts
+):
+    
+    '''
+    Write results at gage locations to netcdf.
+    If the user specified file does not exist, create it. 
+    If the user specified file already exiss, append it. 
+    
+    Arguments
+    -------------
+        chanobs_filepath (Path or string) - 
+        flowveldepth (DataFrame) - t-route flow velocity and depth results
+        link_gage_df (DataFrame) - linkIDs of gages in network
+        t0 (datetime) - initial time
+        dt (int) - timestep duration (seconds)
+        nts (int) - number of timesteps in simulation
+        
+    Returns
+    -------------
+    
+    '''
+    
+    # array of segment linkIDs at gage locations. Results from these segments will be written
+    gage_feature_id = link_gage_df.index.to_numpy(dtype = "int32")
+    
+    # array of simulated flow data at gage locations
+    gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+    
+    # array of simulation time
+    gage_flow_time = [t0 + timedelta(seconds = (i+1) * dt) for i in range(nts)]
+    
+    if not chanobs_filepath.is_file():
+        
+        # if no chanobs file exists, create a new one
+        # open netCDF4 Dataset in write mode
+        with netCDF4.Dataset(
+            filename = chanobs_filepath,
+            mode = 'w',
+            format = "NETCDF4"
+        ) as f:
+
+            # =========== DIMENSIONS ===============
+            _ = f.createDimension("time", None)
+            _ = f.createDimension("feature_id", len(gage_feature_id))
+            _ = f.createDimension("reference_time", 1)
+
+            # =========== time VARIABLE ===============
+            TIME = f.createVariable(
+                varname = "time",
+                datatype = 'int32',
+                dimensions = ("time",),
+            )
+            TIME[:] = date2num(
+                gage_flow_time, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['time'].setncatts(
+                {
+                    'long_name': 'model initialization time',
+                    'standard_name': 'forecast_reference_time',
+                    'units': 'minutes since 1970-01-01 00:00:00 UTC'
+                }
+            )
+
+            # =========== reference_time VARIABLE ===============
+            REF_TIME = f.createVariable(
+                varname = "reference_time",
+                datatype = 'int32',
+                dimensions = ("reference_time",),
+            )
+            REF_TIME[:] = date2num(
+                t0, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['reference_time'].setncatts(
+                {
+                    'long_name': 'vaild output time',
+                    'standard_name': 'time',
+                    'units': 'minutes since 1970-01-01 00:00:00 UTC'
+                }
+            )
+
+            # =========== feature_id VARIABLE ===============
+            FEATURE_ID = f.createVariable(
+                varname = "feature_id",
+                datatype = 'int32',
+                dimensions = ("feature_id",),
+            )
+            FEATURE_ID[:] = gage_feature_id
+            f['feature_id'].setncatts(
+                {
+                    'long_name': 'Reach ID',
+                    'comment': 'NHDPlusv2 ComIDs within CONUS, arbitrary Reach IDs outside of CONUS',
+                    'cf_role:': 'timeseries_id'
+                }
+            )
+
+            # =========== streamflow VARIABLE ===============            
+            y = f.createVariable(
+                    varname = "streamflow",
+                    datatype = "f4",
+                    dimensions = ("time", "feature_id"),
+                    fill_value = np.nan
+                )
+            y[:] = gage_flow_data.reshape(
+                len(gage_flow_time),
+                len(gage_feature_id)
+            )
+
+            # =========== GLOBAL ATTRIBUTES ===============  
+            f.setncatts(
+                {
+                    'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                    'model_output_valid_time': gage_flow_time[0].strftime('%Y-%m-%d_%H:%M:%S'),
+                }
+            )
+            
+    else:
+        
+        # append data to chanobs file
+        # open netCDF4 Dataset in r+ mode to append
+        with netCDF4.Dataset(
+            filename = chanobs_filepath,
+            mode = 'r+',
+            format = "NETCDF4"
+        ) as f:
+
+            # =========== format variable data to be appended =============== 
+            time_new = date2num(
+                gage_flow_time, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+
+            flow_new = gage_flow_data.reshape(
+                len(gage_flow_time),
+                len(gage_feature_id)
+            )
+            
+            # =========== append new flow data =============== 
+            tshape = len(f.dimensions['time'])
+            f['time'][tshape:(tshape+nts)] = time_new
+            f['streamflow'][tshape:(tshape+nts)] = flow_new
+            
 def write_to_netcdf(f, variables, datatype = 'f4'):
     
     '''

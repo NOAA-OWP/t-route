@@ -2,7 +2,7 @@ import time
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import troute.nhd_io as nhd_io
 from build_tests import parity_check
 import logging
@@ -73,6 +73,7 @@ def nwm_output_generator(
     rsrto = output_parameters.get("hydro_rst_output", None)
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
+    chano = output_parameters.get("chanobs_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -81,7 +82,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or test:
+    if csv_output_folder or rsrto or chrto or chano or test:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -213,6 +214,24 @@ def nwm_output_generator(
         LOG.debug("writing CSV file took %s seconds." % (time.time() - start))
         # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+        
+    if chano:
+        
+        LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
+        start = time.time()
+                
+        nhd_io.write_chanobs(
+            Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 
+            flowveldepth, 
+            link_gage_df, 
+            t0, 
+            dt, 
+            nts,
+            # TODO allow user to pass a list of segments at which they would like to print results
+            # rather than just printing at gages. 
+        )
+        
+        LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
 
     # Write out LastObs as netcdf.
     # Assumed that this capability is only needed for AnA simulations
