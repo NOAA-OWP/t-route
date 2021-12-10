@@ -30,8 +30,6 @@ else:
     
     print("The largest flow difference in flow is: ", diff.max().max(), "cms")
     print("at link ID", s1_q.index[col_idx], "and timestep", row_idx)
-    print("simulation 1 reports a flow value of", s1_q.iloc[row_idx, col_idx])
-    print("simulation 2 reports a flow value of", s2_q.iloc[row_idx, col_idx])
     print("\n")
        
     print("****************************************")
@@ -39,23 +37,19 @@ else:
     print(" ** (... > .99 of the Nash–Sutcliffe model efficiency coefficient (max 1)...) **")
     print("****************************************")
     print("\n")
-    diff_frac = abs(s1_q - s2_q)/s1_q
-    col_idx = diff_frac.max().argmax()
-    row_idx = diff_frac.iloc[:,col_idx].argmax()
 
     nse_list = []
-    for id in s2_q.index: nse_list.append(he.evaluator(he.nse,s2_q.loc[id].dropna().to_numpy().flatten(), s1_q.loc[id].dropna().to_numpy().flatten())[0])
+    for id in s2_q.index: 
+        nse_list.append(he.evaluator(he.nse,s2_q.loc[id].dropna().to_numpy().flatten(), s1_q.loc[id].dropna().to_numpy().flatten()))
     nse_list_filtered = [x for x in nse_list if math.isnan(x) == False]
-
-    if min(nse_list_filtered) > .99:
+    
+    if min(nse_list) > .99:
         print("YES! - Simulation results are very close")
         print("Minimum nse:", min(nse_list_filtered))
     else:
         print("NO. Simulation results are unacceptably different.")
         print("The smallest Nash–Sutcliffe model efficiency coefficient is: ", min(nse_list_filtered)) 
-        print("at link ID", s1_q.index[col_idx], "and timestep", row_idx)
-        print("simulation 1 reports a flow value of", s1_q.iloc[row_idx, col_idx])
-        print("simulation 2 reports a flow value of", s2_q.iloc[row_idx, col_idx])
+        print("at link ID", nse_list.index(min(nse_list_filtered)))
 
     # plt.hist(nse_list_filtered, density=True, bins=30)
     # plt.ylabel('NSE')
