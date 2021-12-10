@@ -19,13 +19,13 @@ rm $yaml2_output
 #         chanobs_output_directory: ../../t-route/test/jobs/parity_check/chanobs_output/chanobs_output_test.ncdf
 
 #Creates master branch outputs to use for benchmark.
-# git checkout master #master
-python -m nwm_routing -f -V3 parity_florence_example1.yaml 
+git checkout master #master
+python -m nwm_routing -f -V3 $yaml1 
 
 #Creates test branch outputs for comparison against benchmark. 
-# git checkout adam/make_chanobs #test branch
+git checkout adam/make_chanobs #test branch
 # Please specify a test yaml used to run the test branch code. 
-python -m nwm_routing -f -V3 parity_florence_example2.yaml 
+python -m nwm_routing -f -V3 $yaml2
 
 
 # #Runs the hydrotools Nash–Sutcliffe model efficiency coefficient tests to check for acceptable parity levels. 
