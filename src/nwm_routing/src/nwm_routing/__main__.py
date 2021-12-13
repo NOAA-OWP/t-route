@@ -1066,6 +1066,7 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            diffusive_network_data,
         ) = unpack_nwm_preprocess_data(
             preprocessing_parameters
         )
@@ -1082,10 +1083,12 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            diffusive_network_data,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
             preprocessing_parameters,
+            compute_parameters,
         )
     
     if showtiming:

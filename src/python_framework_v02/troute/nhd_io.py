@@ -100,6 +100,15 @@ def read_custom_input_new(custom_input_file):
         data_assimilation_parameters,
     )
 
+def read_diffusive_domain(domain_file):
+    if domain_file[-4:] == "yaml":
+        with open(domain_file) as domain:
+            data = yaml.load(domain, Loader=yaml.SafeLoader)
+    else:
+        with open(domain_file) as domain:
+            data = json.load(domain)
+            
+    return data
 
 def read_custom_input(custom_input_file):
     if custom_input_file[-4:] == "yaml":

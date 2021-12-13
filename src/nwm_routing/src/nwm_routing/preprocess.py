@@ -17,8 +17,29 @@ def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
     preprocessing_parameters,
+    compute_parameters,
 ):
 
+
+    hybrid_params = compute_parameters.get("hybrid_parameters", False)
+    if hybrid_params:
+        
+        domain_file = hybrid_params.get("diffusive_domain", None)
+        if domain_file:
+            diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
+            
+            diffusive_segs = []
+            [diffusive_segs.append(s) for sublist in diffusive_domain.values() for s in sublist]
+            
+            # initialize a dictionary to hold network data for each of the diffusive domains
+            diffusive_network_data = {}
+        
+        else:
+            diffusive_domain = None
+            LOG.debug('No diffusive domain file spefified in configuration file.')
+    else:
+        diffusive_domain = None
+        diffusive_network_data = None
 
     LOG.info("creating supernetwork connections set")
 
@@ -29,7 +50,7 @@ def nwm_network_preprocess(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-
+    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -123,8 +144,56 @@ def nwm_network_preprocess(
     if break_network_at_waterbodies:
         network_break_segments = network_break_segments.union(wbody_conn.values())
     if break_network_at_gages:
-        network_break_segments = network_break_segments.union(gages.keys())
+        network_break_segments = network_break_segments.union(gages['gages'].keys())
 
+    if diffusive_domain:
+        
+        
+        rconn = nhd_network.reverse_network(connections)
+        for tw in diffusive_domain:
+            
+            # ===== build diffusive network data objects ==== 
+            diffusive_network_data[tw] = {}
+            
+            # diffusive domain tributary segments
+            trib_segs = []
+            for s in diffusive_domain[tw]:
+                us_list = rconn[s]
+                for u in us_list:
+                    if u not in diffusive_domain[tw]:
+                        trib_segs.append(u)
+            diffusive_network_data[tw]['tributary_segments'] = trib_segs
+            
+            # diffusive domain connections object
+            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
+            
+            # diffusive domain reaches and upstream connections
+            _, reaches, rconn_diff = nnu.organize_independent_networks(
+                diffusive_network_data[tw]['connections'],
+                set(),
+            )
+            diffusive_network_data[tw]['rconn'] = rconn_diff
+            diffusive_network_data[tw]['reaches'] = reaches[tw]
+            
+            # RouteLink parameters
+            diffusive_network_data[tw]['param_df'] = param_df.filter(
+                (diffusive_domain[tw] + trib_segs),
+                axis = 0,
+            )
+        
+            # ==== remove diffusive domain segs from MC domain ====
+        
+            # drop indices from param_df
+            param_df = param_df.drop(diffusive_domain[tw])
+        
+            # remove keys from connections dictionary
+            for s in diffusive_domain[tw]:
+                connections.pop(s)
+            
+            # update downstream connections of trib segs
+            for us in trib_segs:
+                connections[us] = []
+    
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
         network_break_segments,
@@ -156,7 +225,8 @@ def nwm_network_preprocess(
                  'independent_networks': independent_networks,
                  'reaches_bytw': reaches_bytw,
                  'rconn': rconn,
-                 'link_gage_df': pd.DataFrame.from_dict(gages)
+                 'link_gage_df': pd.DataFrame.from_dict(gages),
+                 'diffusive_network_data': diffusive_network_data,
                 }
             )
             try:
@@ -194,6 +264,7 @@ def nwm_network_preprocess(
         reaches_bytw,
         rconn,
         pd.DataFrame.from_dict(gages),
+        diffusive_network_data,
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
@@ -216,7 +287,8 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         independent_networks = inputs.get('independent_networks',None)
         reaches_bytw = inputs.get('reaches_bytw',None)
         rconn = inputs.get('rconn',None)
-        gages = inputs.get('gages',None)
+        gages = inputs.get('link_gage_df',None)
+        diffusive_network_data = inputs.get('diffusive_network_data',None)
         
         # todo: if any of the abocve variables are none, throw a critical error and quit the simulation. 
         
@@ -236,6 +308,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         reaches_bytw,
         rconn,
         gages,
+        diffusive_network_data,
     )
 
 
