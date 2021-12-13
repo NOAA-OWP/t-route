@@ -50,7 +50,7 @@ else:
         print("NO. Simulation results are unacceptably different.")
         print("The smallest Nash–Sutcliffe model efficiency coefficient is: ", min(nse_list_filtered)) 
         print("at link ID", nse_list_filtered.index(min(nse_list_filtered)))
-
+   
     # plt.hist(nse_list_filtered, density=True, bins=30)
     # plt.ylabel('NSE')
     # plt.xlabel('Data')
