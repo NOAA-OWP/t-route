@@ -26,16 +26,16 @@ def nwm_network_preprocess(
         
         domain_file = hybrid_params.get("diffusive_domain", None)
         if domain_file:
-            diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
-            diffusive_segs = []
-            [diffusive_segs.append(s) for sublist in diffusive_domain.values() for s in sublist]
+            # read diffusive domain dictionary from yaml or json
+            diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
         
         else:
             diffusive_domain = None
+            diffusive_network_data = None
             LOG.debug('No diffusive domain file spefified in configuration file.')
     else:
         diffusive_domain = None
@@ -134,20 +134,8 @@ def nwm_network_preprocess(
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
-    # STEP 2: Identify Independent Networks and Reaches by Network
-    
-    start_time = time.time()
-
-    LOG.info("organizing connections into reaches ...")
-
-    network_break_segments = set()
-    if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbody_conn.values())
-    if break_network_at_gages:
-        network_break_segments = network_break_segments.union(gages['gages'].keys())
-
+    # build diffusive domain data and edit MC domain data for hybrid simulation
     if diffusive_domain:
-        
         
         rconn = nhd_network.reverse_network(connections)
         for tw in diffusive_domain:
@@ -194,6 +182,18 @@ def nwm_network_preprocess(
             for us in trib_segs:
                 connections[us] = []
     
+    # STEP 2: Identify Independent Networks and Reaches by Network
+    
+    start_time = time.time()
+
+    LOG.info("organizing connections into reaches ...")
+
+    network_break_segments = set()
+    if break_network_at_waterbodies:
+        network_break_segments = network_break_segments.union(wbody_conn.values())
+    if break_network_at_gages:
+        network_break_segments = network_break_segments.union(gages['gages'].keys())
+        
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
         network_break_segments,
