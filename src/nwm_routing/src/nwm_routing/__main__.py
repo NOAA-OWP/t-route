@@ -944,7 +944,6 @@ def nwm_route(
             diffusive_parameters,
             waterbodies_df,
         )
-        import pdb; pdb.set_trace()
         
         # append diffusive and mc results
         
