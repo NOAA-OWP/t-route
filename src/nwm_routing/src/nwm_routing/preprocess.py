@@ -143,6 +143,9 @@ def nwm_network_preprocess(
             # ===== build diffusive network data objects ==== 
             diffusive_network_data[tw] = {}
             
+            # add diffusive domain segments
+            diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
+            
             # diffusive domain tributary segments
             trib_segs = []
             for s in diffusive_domain[tw]:
