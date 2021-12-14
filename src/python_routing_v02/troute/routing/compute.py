@@ -14,6 +14,7 @@ from troute.routing.fast_reach.mc_reach import (
     compute_network_structured,
     compute_network_structured_obj,
 )
+import troute.routing.diffusive_utils as diff_utils
 from troute.routing.fast_reach import diffusive
 from troute.routing.fast_reach import diffusive_cnt
 from troute.routing.fast_reach import diffusive_cnx
@@ -1070,3 +1071,60 @@ def compute_nhd_routing_v02(
             )
 
     return results
+
+def compute_diffusive_routing(
+    results,
+    diffusive_network_data,
+    cpu_pool,
+    dt,
+    nts,
+    q0,
+    qlats,
+    qts_subdivisions,
+    usgs_df,
+    lastobs_df,
+    da_parameter_dict,
+    diffusive_parameters,
+    waterbodies_df,
+):
+    
+    for tw in diffusive_network_data:
+
+        # extract junction inflows from results array
+        for j, i in enumerate(results):
+            x = np.in1d(i[0], diffusive_network_data[tw]['tributary_segments'])
+            if sum(x) > 0:
+                if j == 0:
+                    trib_segs = i[0][x]
+                    trib_flow = i[1][x, ::3]
+                else:
+                    trib_segs = np.append(trib_segs, i[0][x])
+                    trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+                    
+        # create DataFrame of junction inflow data            
+        junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
+
+        # build diffusive inputs
+        diffusive_inputs = diff_utils.diffusive_input_data_v02(
+            tw,
+            diffusive_network_data[tw]['connections'],
+            diffusive_network_data[tw]['rconn'],
+            diffusive_network_data[tw]['reaches'],
+            diffusive_network_data[tw]['mainstem_segs'],
+            None, # place holder for diffusive parameters
+            diffusive_network_data[tw]['param_df'],
+            qlats,
+            q0,
+            junction_inflows,
+            qts_subdivisions,
+            nts,
+            dt,
+            waterbodies_df,
+        )
+        import pdb; pdb.set_trace()
+        
+        # run the simulation
+        
+        # orgnaize and return results array
+    
+    return None
