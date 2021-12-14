@@ -1119,12 +1119,20 @@ def main_v03(argv):
         network_end_time = time.time()
         task_times['network_time'] = network_end_time - network_start_time
 
+    # list of all segments in the domain (MC + diffusive)
+    segment_index = param_df.index
+    if diffusive_network_data:
+        for tw in diffusive_network_data:
+            segment_index = segment_index.append(
+                pd.Index(diffusive_network_data[tw]['mainstem_segs'])
+            ) 
+    
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         data_assimilation_parameters,
-        param_df.index,
+        segment_index,
         waterbodies_df,
         segment_list=None,
         wbodies_list=None,
@@ -1161,12 +1169,12 @@ def main_v03(argv):
         da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
-        param_df.index,
+        segment_index,
         lastobs_df.index,
         cpu_pool,
         t0,
     )
-    
+        
     if showtiming:
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - ic_end_time
@@ -1210,6 +1218,7 @@ def main_v03(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
+            diffusive_network_data,
         )
         
         if showtiming:
