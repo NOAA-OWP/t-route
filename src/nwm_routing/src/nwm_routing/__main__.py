@@ -30,7 +30,7 @@ from .preprocess import (
 )
 from .output import nwm_output_generator
 
-from troute.routing.compute import compute_nhd_routing_v02
+from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
 
 #needed for v03 looping when a new instance occurs
 LOG = logging.getLogger('')
@@ -879,6 +879,7 @@ def nwm_route(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_parameters,
+    diffusive_network_data,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -923,7 +924,30 @@ def nwm_route(
         waterbody_type_specified,
         diffusive_parameters,
     )
-
+    
+    if diffusive_network_data: # run diffusive side of a hybrid simulation
+                
+        # call diffusive wave simulation
+        
+        results_diffusive = compute_diffusive_routing(
+            results,
+            diffusive_network_data,
+            cpu_pool,
+            dt,
+            nts,
+            q0,
+            qlats,
+            qts_subdivisions,
+            usgs_df,
+            lastobs_df,
+            da_parameter_dict,
+            diffusive_parameters,
+            waterbodies_df,
+        )
+        import pdb; pdb.set_trace()
+        
+        # append diffusive and mc results
+        
     
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
