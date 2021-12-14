@@ -4,7 +4,7 @@ import troute.nhd_network as nhd_network
 
 
 def adj_alt1(
-    mx_jorder, ordered_reaches, geo_cols, geo_index, geo_data, dbfksegID, z_all
+    mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
 ):
     """
     Adjust reach altitude data so that altitude of last node in reach is equal to that of the head segment of
@@ -13,9 +13,7 @@ def adj_alt1(
     Parameters
     ----------
     mx_jorder -- (int) maximum network reach order
-    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
-    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
-    geo_data --(ndarray of float32s) geomorphic parameters data arra
+    param_df --(DataFrame) geomorphic parameters
     dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary 
     z_all -- (dict) adjusted altitude dictionary with placeholder values to be replaced
     
@@ -36,38 +34,32 @@ def adj_alt1(
 
                     # head segment id of downstream reach from a junction
                     dsrchID = reach["downstream_head_segment"]
-
-                    idx_dsrchID = np.where(geo_index == dsrchID)
-                    idx_alt = np.where(geo_cols == "alt")
-                    z_all[segID]["adj.alt"][0] = geo_data[idx_dsrchID, idx_alt]
+                    
+                    z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
 
                 elif seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
                     # Terminal downstream fakesegment
                     ## AD HOC: need to be corrected later
                     segID2 = seg_list[seg - 1]
-                    idx_segID2 = np.where(geo_index == segID2)
-                    idx_so = np.where(geo_cols == "s0")
-                    idx_dx = np.where(geo_cols == "dx")
-
-                    So = geo_data[idx_segID2, idx_so]
-                    dx = geo_data[idx_segID2, idx_dx]
-                    z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - So * dx
+                    
+                    z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'] * param_df.loc[segID2, 'dx']
+                    
                 else:
-                    idx_segID = np.where(geo_index == segID)
-                    idx_alt = np.where(geo_cols == "alt")
-                    z_all[segID]["adj.alt"][0] = geo_data[idx_segID, idx_alt]
+                    
+                    z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt']
 
     return z_all
 
 
 def fp_network_map(
-    mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+    mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
 ):
     """
     Channel network mapping between Python and Fortran
     
     Parameters
     ----------
+    mainstem_headseg_list - 
     mx_jorder -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     rchbottom_reaches -- (dict) reaches and reach metadata keyed by reach tail segment
@@ -101,6 +93,7 @@ def fp_network_map(
                 nusrch = len(reach["upstream_bottom_segments"])
                 frnw_g[frj, 2] = nusrch  # the number of upstream reaches
                 usrch_bseg_list = list(reach["upstream_bottom_segments"])
+                usrch_hseg_mainstem_j=-100 # ini.value of frj* of reach on mainstem that is just upstream of the current reach of frj
                 i = 0
                 for usrch in range(0, nusrch):
                     usrch_bseg_id = usrch_bseg_list[
@@ -112,6 +105,11 @@ def fp_network_map(
                         if sid == usrch_hseg_id:
                             i = i + 1
                             frnw_g[frj, 2 + i] = j
+                            # find if the selected headseg ID of an upstream reach belong to mainstem segment
+                            if mainstem_headseg_list.count(usrch_hseg_id) > 0:
+                                usrch_hseg_mainstem_j=j
+                # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
+                frnw_g[frj, 2 + nusrch + 1] = usrch_hseg_mainstem_j
 
             if seg_list.count(dbfksegID) > 0:
                 # a reach where downstream boundary condition is set.
@@ -142,7 +140,7 @@ def fp_network_map(
 
 
 def fp_chgeo_map(
-    mx_jorder, ordered_reaches, geo_cols, geo_index, geo_data, z_all, mxncomp_g, nrch_g
+    mx_jorder, ordered_reaches, param_df, z_all, mxncomp_g, nrch_g
 ):
     """
     Channel geometry data mapping between Python and Fortran
@@ -151,9 +149,7 @@ def fp_chgeo_map(
     ----------
     mx_jorder -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
-    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
-    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
-    geo_data --(ndarray of float32s) geomorphic parameters data array
+    param_df
     z_all -- (dict) adjusted altitude dictionary
     mxncomp_g -- (int) maximum number of nodes in a reach
     nrch_g -- (int) number of reaches in the network
@@ -191,32 +187,15 @@ def fp_chgeo_map(
                     segID = seg_list[seg - 1]
                 else:
                     segID = seg_list[seg]
-
-                idx_segID = np.where(geo_index == segID)
-
-                idx_par = np.where(geo_cols == "bw")
-                bo_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "cs")
-                traps_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "tw")
-                tw_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "twcc")
-                twcc_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "n")
-                mann_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "ncc")
-                manncc_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "s0")
-                so_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
-
-                idx_par = np.where(geo_cols == "dx")
-                dx_ar_g[seg, frj] = geo_data[idx_segID, idx_par]
+                
+                bo_ar_g[seg, frj] = param_df.loc[segID, 'bw']
+                traps_ar_g[seg, frj] = param_df.loc[segID, 'cs']
+                tw_ar_g[seg, frj] = param_df.loc[segID, 'tw']
+                twcc_ar_g[seg, frj] = param_df.loc[segID, 'twcc']
+                mann_ar_g[seg, frj] = param_df.loc[segID, 'n']
+                manncc_ar_g[seg, frj] = param_df.loc[segID, 'ncc']
+                so_ar_g[seg, frj] = param_df.loc[segID, 's0']
+                dx_ar_g[seg, frj] = param_df.loc[segID, 'dx']
 
                 segID1 = seg_list[seg]
                 z_ar_g[seg, frj] = z_all[segID1]["adj.alt"][0]
@@ -238,10 +217,8 @@ def fp_qlat_map(
     mx_jorder,
     ordered_reaches,
     nts_ql_g,
-    geo_cols,
-    geo_index,
-    geo_data,
-    qlat_data,
+    param_df,
+    qlat,
     qlat_g,
 ):
     """
@@ -251,10 +228,8 @@ def fp_qlat_map(
     ----------
     mx_jorder -- (int) maximum network reach order
     nts_ql_g -- (int) numer of qlateral timesteps
-    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
-    geo_index -- (ndarray of int64) row indices for geomorphic parameters data array (geo_data)
-    geo_data -- (ndarray of float32) geomorphic parameters data array
-    qlat_data -- (ndarray of float32) qlateral data (m3/sec)
+    param_df -- (DataFrame)
+    qlat -- (DataFrame) qlateral data (m3/sec)
     qlat_g -- (ndarray of float32) empty qlateral array to be filled
     
     Returns
@@ -276,12 +251,9 @@ def fp_qlat_map(
                 segID = seg_list[seg]
                 for tsi in range(0, nts_ql_g):
                     if seg < ncomp - 1:
-
-                        idx_segID = np.where(geo_index == segID)
-                        idx_par = np.where(geo_cols == "dx")
-
-                        tlf = qlat_data[idx_segID, tsi]  # [m^3/sec]
-                        dx = geo_data[idx_segID, idx_par]  # [meter]
+                        
+                        tlf = qlat.loc[segID, tsi]
+                        dx = param_df.loc[segID, 'dx']
                         qlat_g[tsi, seg, frj] = tlf / dx  # [m^2/sec]
 
                     else:
@@ -418,18 +390,16 @@ def diffusive_input_data_v02(
     connections,
     rconn,
     reach_list,
+    mainstem_headseg_list,
     diffusive_parameters,
-    geo_cols,
-    geo_index,
-    geo_data,
-    qlat_data,
+    param_df,
+    qlat,
     initial_conditions,
-    upstream_results,
+    junction_inflows,
     qts_subdivisions,
     nsteps,
     dt,
-    lake_segs,
-    wbody_params,
+    waterbodies_df,
 ):
     """
     Build input data objects for diffusive wave model
@@ -460,6 +430,8 @@ def diffusive_input_data_v02(
     dt_ub_g = dt
     # downstream boundary condition timestep (sec)
     dt_db_g = dt * qts_subdivisions
+    # tributary inflow timestep (sec)
+    dt_qtrib_g = dt
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
     # time interval at which depth is written out by cnt model
@@ -469,20 +441,31 @@ def diffusive_input_data_v02(
     dtini_g = dt
     t0_g = 0.0  # simulation start hr **set to zero for Fortran computation
     tfin_g = (dt * nsteps)/60/60
-
-    # USGS data related info.
-    usgsID = diffusive_parameters.get("usgsID", None)
-    seg2usgsID = diffusive_parameters.get("link2usgsID", None)
-    usgssDT = diffusive_parameters.get("usgs_start_date", None)
-    usgseDT = diffusive_parameters.get("usgs_end_date", None)
-    usgspCd = diffusive_parameters.get("usgs_parameterCd", None)
     
-    # diffusive parameters
-    cfl_g = diffusive_parameters.get("courant_number_upper_limit", None)
-    theta_g = diffusive_parameters.get("theta_parameter", None)
-    tzeq_flag_g = diffusive_parameters.get("chgeo_computation_flag", None)
-    y_opt_g = diffusive_parameters.get("water_elevation_computation_flag", None)
-    so_llm_g = diffusive_parameters.get("bed_slope_lower_limit", None)
+    # package timestep variables into single array
+    timestep_ar_g = np.zeros(8)
+    timestep_ar_g[0]= dtini_g
+    timestep_ar_g[1]= t0_g
+    timestep_ar_g[2]= tfin_g
+    timestep_ar_g[3]= 0.0 # not used  
+    timestep_ar_g[4]= dt_ql_g
+    timestep_ar_g[5]= dt_ub_g
+    timestep_ar_g[6]= dt_db_g
+    timestep_ar_g[7]= dt_qtrib_g   
+    
+    # CN-mod parameters
+    paradim = 10
+    para_ar_g= np.zeros(10)
+    para_ar_g[0]= 0.95    # Courant number (default: 0.95)
+    para_ar_g[1]= 0.5     # lower limit of celerity (default: 0.5)
+    para_ar_g[2]= 50.0    # lower limit of diffusivity (default: 50)
+    para_ar_g[3]= 5000.0  # upper limit of diffusivity (default: 1000)
+    para_ar_g[4]= -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
+    para_ar_g[5]= -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
+    para_ar_g[6]= 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
+    para_ar_g[7]= 0.02831   # lower limit of discharge (default: 0.02831 cms)
+    para_ar_g[8]= 0.0001    # lower limit of channel bed slope (default: 0.0001)
+    para_ar_g[9]= 1.0     # weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
 
     # number of reaches in network
     nrch_g = len(reach_list)
@@ -494,69 +477,70 @@ def diffusive_input_data_v02(
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
     
-    ds_seg = []
-    offnet_segs = []
-    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1))
-    if upstream_results:
+# TODO: How do we plan to utilize upstream boundary condition data object?
+#     ds_seg = []
+#     offnet_segs = []
+#     upstream_flow_array = np.zeros((len(ds_seg), nsteps+1))
+#     if upstream_results:
         
-        # create a list of segments downstream of offnetwork upstreams [ds_seg]
-        # and a list of offnetwork upstream segments [offnet_segs]
-        inv_map = nhd_network.reverse_network(rconn)
-        for seg in upstream_results:
-            ds_seg.append(inv_map[seg][0])
-            offnet_segs.append(seg)
+#         # create a list of segments downstream of offnetwork upstreams [ds_seg]
+#         # and a list of offnetwork upstream segments [offnet_segs]
+#         inv_map = nhd_network.reverse_network(rconn)
+#         for seg in upstream_results:
+#             ds_seg.append(inv_map[seg][0])
+#             offnet_segs.append(seg)
         
-        # populate an array of upstream flows (boundary condtions)
-        upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps+1))
-        for j, seg in enumerate(set(ds_seg)):
+#         # populate an array of upstream flows (boundary condtions)
+#         upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps+1))
+#         for j, seg in enumerate(set(ds_seg)):
             
-            # offnetwork-upstream connections
-            us_segs = rconn[seg]
+#             # offnetwork-upstream connections
+#             us_segs = rconn[seg]
             
-            # sum upstream flows and initial conditions
-            usq = np.zeros((len(us_segs), nsteps))
-            us_iniq = 0
-            for k, s in enumerate(us_segs):
-                usq[k] = upstream_results[s]['results'][::3]
+#             # sum upstream flows and initial conditions
+#             usq = np.zeros((len(us_segs), nsteps))
+#             us_iniq = 0
+#             for k, s in enumerate(us_segs):
+#                 usq[k] = upstream_results[s]['results'][::3]
                 
-                if s in lake_segs:
-                    # initial conditions from wbody_param array
-                    idx_segID = np.where(np.asarray(lake_segs) == s)
-                    us_iniq += wbody_params[idx_segID,9]
-                else:
-                    # initial conditions from initial_conditions array
-                    idx_segID = np.where(geo_index == s)
-                    us_iniq += initial_conditions[idx_segID,0]
+#                 if s in lake_segs:
+#                     # initial conditions from wbody_param array
+#                     idx_segID = np.where(np.asarray(lake_segs) == s)
+#                     us_iniq += wbody_params[idx_segID,9]
+#                 else:
+#                     # initial conditions from initial_conditions array
+#                     idx_segID = np.where(geo_index == s)
+#                     us_iniq += initial_conditions[idx_segID,0]
             
-            # write upstream flows to upstream_flow_array
-            upstream_flow_array[j,1:] = np.sum(usq, axis = 0)
-            upstream_flow_array[j,0] = us_iniq
+#             # write upstream flows to upstream_flow_array
+#             upstream_flow_array[j,1:] = np.sum(usq, axis = 0)
+#             upstream_flow_array[j,0] = us_iniq
     
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(offnet_segs), rconn)
+    path_func = partial(nhd_network.split_at_junction, rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
+    
 
     ordered_reaches = {}
     rchhead_reaches = {}
     rchbottom_reaches = {}
     z_all = {}
     for o, rch in jorder_reaches:
-
+        
         # add one more segment(fake) to the end of a list of segments to account for node configuration.
         fksegID = int(str(rch[-1]) + str(2))
         rch.append(fksegID)
 
         # additional segment(fake) to upstream bottom segments
-        if any(j in rconn[rch[0]] for j in offnet_segs):
-            fk_usbseg = []
-        else:
-            fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]]            
+        fk_usbseg = [int(str(x) + str(2)) for x in rconn[rch[0]]] 
 
         if o not in ordered_reaches:
             ordered_reaches.update({o: []})
+        
+        # populate the ordered_reaches dictionary with node connection information
         ordered_reaches[o].append(
             [
                 rch[0],
@@ -570,21 +554,22 @@ def diffusive_input_data_v02(
         )
 
         if rch[0] not in rchhead_reaches:
-            # a list of segments for a given head segment
+            
+            # a list of segments for a given reach-head segment
             rchhead_reaches.update(
                 {rch[0]: {"number_segments": len(rch), "segments_list": rch}}
             )
-            # a list of segments for a given bottom segment
+            # a list of segments for a given reach-bottom segment
             rchbottom_reaches.update(
                 {rch[-1]: {"number_segments": len(rch), "segments_list": rch}}
             )
+            
         # for channel altitude adjustment
         z_all.update({seg: {"adj.alt": np.zeros(1)} for seg in rch})
-
-        # cahnnel geometry data
-        a = np.where(geo_cols == "cs")
-        geo_data[:, a] = 1.0 / geo_data[:, a]
-
+    
+    # take the reciprical of cs - this seems out of place, where should this be located?
+    param_df.loc[:,'cs'] = 1/param_df.loc[:,'cs']
+    
     # --------------------------------------------------------------------------------------
     #                                 Step 0-3
     #    Adjust altitude so that altitude of the last sement of a reach is equal to that
@@ -593,9 +578,9 @@ def diffusive_input_data_v02(
     dbfksegID = int(str(tw) + str(2))
 
     adj_alt1(
-        mx_jorder, ordered_reaches, geo_cols, geo_index, geo_data, dbfksegID, z_all
+        mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
     )
-
+    
     # --------------------------------------------------------------------------------------
     #                                 Step 0-4
     #     Make Fortran-Python channel network mapping variables.
@@ -609,16 +594,13 @@ def diffusive_input_data_v02(
             frj = frj + 1
             pynw[frj] = head_segment
 
-    frnw_col = diffusive_parameters.get("fortran_nework_map_col_number", None)
+    frnw_col = 8
     frnw_g = fp_network_map(
-        mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+        mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
     )
 
-    # covert data type from integer to float for frnw
-    dfrnw_g = np.zeros((nrch_g, frnw_col), dtype=float)
-    for j in range(0, nrch_g):
-        for col in range(0, frnw_col):
-            dfrnw_g[j, col] = float(frnw_g[j, col])
+    # covert data type from integer to float for frnw  
+    dfrnw_g = frnw_g.astype('float')
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
@@ -637,9 +619,7 @@ def diffusive_input_data_v02(
     ) = fp_chgeo_map(
         mx_jorder,
         ordered_reaches,
-        geo_cols,
-        geo_index,
-        geo_data,
+        param_df,
         z_all,
         mxncomp_g,
         nrch_g,
@@ -661,9 +641,11 @@ def diffusive_input_data_v02(
                     segID = seg_list[seg - 1]
                 else:
                     segID = seg_list[seg]
-                    
-                idx_segID = np.where(geo_index == segID)
-                iniq[seg, frj] = initial_conditions[idx_segID, 0]
+                
+                # retrieve initial condition from initial_conditions DataFrame
+                iniq[seg, frj] = initial_conditions.loc[segID, 'qu0']
+                
+                # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
 
@@ -682,39 +664,46 @@ def diffusive_input_data_v02(
         mx_jorder,
         ordered_reaches,
         nts_ql_g,
-        geo_cols,
-        geo_index,
-        geo_data,
-        qlat_data,
+        param_df,
+        qlat,
         qlat_g,
     )
-    
     
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
-    nts_ub_g = upstream_flow_array.shape[1]
+    ds_seg = []
+    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <------ this is a place holder until we figure out what to do with upstream boundary 
+    nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
 
-
-        
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
     # ---------------------------------------------------------------------------------
-    if seg2usgsID:
-        if tw in seg2usgsID:
-            ipos = seg2usgsID.index(tw)
-            usgsID2tw = usgsID[ipos]
-        else:
-            usgsID2tw=None
-    else:
-        usgsID2tw=None
+
+    # this is a place holder that uses normal depth and the lower boundary.
+    # we will need to revisit this 
+    nts_db_g = 1
+    dbcd_g = -np.ones(nts_db_g)  
+
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-9-2
+
+    #       Prepare tributary q time series data generated by MC that flow into a juction boundary  
+    # ---------------------------------------------------------------------------------------------
+    nts_qtrib_g = int((tfin_g - t0_g) * 3600.0 / dt_qtrib_g)
     
-    nts_db_g, dbcd_g = fp_dbcd_map(usgsID2tw, usgssDT, usgseDT, usgspCd)
+    qtrib_g = np.zeros((nts_qtrib_g, nrch_g))
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            frj = frj + 1
+            if head_segment not in mainstem_headseg_list:                 
+                qtrib_g[:,frj] = junction_inflows.loc[head_segment]
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
@@ -722,19 +711,19 @@ def diffusive_input_data_v02(
     #                 Prepare uniform flow lookup tables
     # ---------------------------------------------------------------------------------
 
-    nhincr_m_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_main_increment_number", None
-    )
-    nhincr_f_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_floodplain_increment_number", None
-    )
-    timesdepth_g = diffusive_parameters.get(
-        "normaldepth_lookuptable_depth_multiplier", None
-    )
-    ufqlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-    ufhlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-    ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
-    ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
+#     nhincr_m_g = diffusive_parameters.get(
+#         "normaldepth_lookuptable_main_increment_number", None
+#     )
+#     nhincr_f_g = diffusive_parameters.get(
+#         "normaldepth_lookuptable_floodplain_increment_number", None
+#     )
+#     timesdepth_g = diffusive_parameters.get(
+#         "normaldepth_lookuptable_depth_multiplier", None
+#     )
+#     ufqlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
+#     ufhlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
+#     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
+#     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
@@ -748,19 +737,16 @@ def diffusive_input_data_v02(
     diff_ins = {}
 
     # model input parameters
-    diff_ins["dtini_g"] = dtini_g
-    diff_ins["t0_g"] = t0_g
-    diff_ins["tfin_g"] = tfin_g
-    diff_ins["saveinterval_tu"] = saveinterval_tu
-    diff_ins["saveinterval_cnt"] = saveinterval_cnt
-    diff_ins["dt_ql_g"] = dt_ql_g
-    diff_ins["dt_ub_g"] = dt_ub_g
-    diff_ins["dt_db_g"] = dt_db_g
+    diff_ins["timestep_ar_g"]= timestep_ar_g  
     diff_ins["nts_ql_g"] = nts_ql_g
     diff_ins["nts_ub_g"] = nts_ub_g
     diff_ins["nts_db_g"] = nts_db_g
+    diff_ins["nts_qtrib_g"] = nts_qtrib_g
+    diff_ins["ntss_ev_g"] = ntss_ev_g
+    
     diff_ins["mxncomp_g"] = mxncomp_g
     diff_ins["nrch_g"] = nrch_g
+    
     diff_ins["z_ar_g"] = z_ar_g
     diff_ins["bo_ar_g"] = bo_ar_g
     diff_ins["traps_ar_g"] = traps_ar_g
@@ -770,23 +756,18 @@ def diffusive_input_data_v02(
     diff_ins["manncc_ar_g"] = manncc_ar_g
     diff_ins["so_ar_g"] = so_ar_g
     diff_ins["dx_ar_g"] = dx_ar_g
-    diff_ins["nhincr_m_g"] = nhincr_m_g
-    diff_ins["nhincr_f_g"] = nhincr_f_g
-    diff_ins["ufhlt_m_g"] = ufhlt_m_g
-    diff_ins["ufqlt_m_g"] = ufqlt_m_g
-    diff_ins["ufhlt_f_g"] = ufhlt_f_g
-    diff_ins["ufqlt_f_g"] = ufqlt_f_g
+
     diff_ins["frnw_col"] = frnw_col
     diff_ins["frnw_g"] = dfrnw_g
+    
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g
     diff_ins["dbcd_g"] = dbcd_g
-    diff_ins["cfl_g"] = cfl_g
-    diff_ins["theta_g"] = theta_g
-    diff_ins["tzeq_flag_g"] = tzeq_flag_g
-    diff_ins["y_opt_g"] = y_opt_g
-    diff_ins["so_llm_g"] = so_llm_g
-    diff_ins["ntss_ev_g"] = ntss_ev_g
+    diff_ins["qtrib_g"] = qtrib_g
+    
+    diff_ins["paradim"] = paradim 
+    diff_ins["para_ar_g"] = para_ar_g   
+    
     diff_ins["iniq"] = iniq
 
     # python-fortran crosswalk data
@@ -794,7 +775,6 @@ def diffusive_input_data_v02(
     diff_ins["ordered_reaches"] = ordered_reaches
 
     return diff_ins
-
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
     """
