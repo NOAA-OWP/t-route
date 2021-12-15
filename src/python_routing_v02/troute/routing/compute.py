@@ -1121,10 +1121,14 @@ def compute_diffusive_routing(
             dt,
             waterbodies_df,
         )
-        import pdb; pdb.set_trace()
         
         # run the simulation
+        out_q, out_elv = diffusive.compute_diffusive_tst(diffusive_inputs)
         
+        # unpack results
+        rch_list, dat_all = diff_utils.unpack_output(diffusive_inputs['pynw'], diffusive_inputs['ordered_reaches'], out_q, out_elv)
+        
+        import pdb; pdb.set_trace()
         # orgnaize and return results array
     
     return None
