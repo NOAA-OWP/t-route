@@ -447,7 +447,7 @@ def diffusive_input_data_v02(
     timestep_ar_g[0]= dtini_g
     timestep_ar_g[1]= t0_g
     timestep_ar_g[2]= tfin_g
-    timestep_ar_g[3]= 0.0 # not used  
+    timestep_ar_g[3]= saveinterval_tu 
     timestep_ar_g[4]= dt_ql_g
     timestep_ar_g[5]= dt_ub_g
     timestep_ar_g[6]= dt_db_g
