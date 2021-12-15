@@ -419,7 +419,7 @@ contains
         !**--------------------------------------------------------------------------------------------------*
         t = t0*60.0  !* t0 is in hour. tc is in minutes
         ts_ev=1
-        do while (t .lt. tfin*60.0)
+        do while (t .le. tfin*60.0)
             if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
                 do j=1, nlinks
                     if (all(mstem_frj/=j)) then

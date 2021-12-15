@@ -1127,6 +1127,7 @@ def compute_diffusive_routing(
         
         # unpack results
         rch_list, dat_all = diff_utils.unpack_output(diffusive_inputs['pynw'], diffusive_inputs['ordered_reaches'], out_q, out_elv)
+        diff_df = pd.DataFrame(data = dat_all, index = rch_list)
         
         import pdb; pdb.set_trace()
         # orgnaize and return results array
