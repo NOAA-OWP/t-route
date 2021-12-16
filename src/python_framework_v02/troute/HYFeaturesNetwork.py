@@ -252,31 +252,31 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._waterbody_types_df['reservoir_type'] = 1
                 #FIXME any reservoir operations requires some type
                 #So make this default to 1 (levelpool)
-            #At this point, need to adjust some waterbody/channel parameters based on lakes/reservoirs
-            #HACK for bad hydrofabric
-            def make_list(s):
-                if isinstance(s, list):
-                    return s
-                else:
-                    return [s]
+                #At this point, need to adjust some waterbody/channel parameters based on lakes/reservoirs
+                #HACK for bad hydrofabric
+                def make_list(s):
+                    if isinstance(s, list):
+                        return s
+                    else:
+                        return [s]
 
-            self._waterbody_df['member_wbs'] = self._waterbody_df['member_wbs'].apply(make_list)
-            self._waterbody_df['partial_length_percent'] = self._waterbody_df['partial_length_percent'].apply(make_list)
-            adjust = [ zip(x, y) 
-                       for x, y in 
-                       zip(self._waterbody_df['member_wbs'], self._waterbody_df['partial_length_percent'])
-                    ]
-            #adjust is a generator of a list of list of tuples...use chain to flatten
-            for wb, percent in chain.from_iterable(adjust):
-                #print(wb, percent)
-                #FIXME not sure why some of these are 100%, if that  is the case
-                #shouldn't they just not be in the topology???
-                wb = node_key_func_wb(wb)
-                #Need to adjust waterbodys/channels that  interact with this waterbody
-                #Hack for wonky hydrofabric
-                if percent != 'NA':
-                    self._dataframe.loc[wb, 'dx'] = self._dataframe.loc[wb, 'dx'] - self._dataframe.loc[wb, 'dx']*float(percent)
-                #print(self._dataframe.loc[wb, 'dx'])
+                self._waterbody_df['member_wbs'] = self._waterbody_df['member_wbs'].apply(make_list)
+                self._waterbody_df['partial_length_percent'] = self._waterbody_df['partial_length_percent'].apply(make_list)
+                adjust = [ zip(x, y) 
+                        for x, y in 
+                        zip(self._waterbody_df['member_wbs'], self._waterbody_df['partial_length_percent'])
+                        ]
+                #adjust is a generator of a list of list of tuples...use chain to flatten
+                for wb, percent in chain.from_iterable(adjust):
+                    #print(wb, percent)
+                    #FIXME not sure why some of these are 100%, if that  is the case
+                    #shouldn't they just not be in the topology???
+                    wb = node_key_func_wb(wb)
+                    #Need to adjust waterbodys/channels that  interact with this waterbody
+                    #Hack for wonky hydrofabric
+                    if percent != 'NA':
+                        self._dataframe.loc[wb, 'dx'] = self._dataframe.loc[wb, 'dx'] - self._dataframe.loc[wb, 'dx']*float(percent)
+                    #print(self._dataframe.loc[wb, 'dx'])
 
         if __verbose__:
             print("supernetwork connections set complete")
