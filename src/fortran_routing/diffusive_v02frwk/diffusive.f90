@@ -209,6 +209,9 @@ contains
         allocate( tarr_qtrib(nts_qtrib), varr_qtrib(nts_qtrib))
         allocate(qtrib(nts_qtrib, nlinks))
         allocate(dmy_frj(nlinks))
+        
+        ! initialize b/c it matters for initial depth estimate
+        routingNotChanged = 0
 
         !* sort out mainstem row index
         nmstem_rch=0
