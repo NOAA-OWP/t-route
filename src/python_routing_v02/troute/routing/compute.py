@@ -1126,10 +1126,14 @@ def compute_diffusive_routing(
         out_q, out_elv = diffusive.compute_diffusive_tst(diffusive_inputs)
         
         # unpack results
-        rch_list, dat_all = diff_utils.unpack_output(diffusive_inputs['pynw'], diffusive_inputs['ordered_reaches'], out_q, out_elv)
-        diff_df = pd.DataFrame(data = dat_all, index = rch_list)
+        rch_list, dat_all = diff_utils.unpack_output(
+            diffusive_inputs['pynw'], 
+            diffusive_inputs['ordered_reaches'], 
+            out_q, 
+            out_elv
+        )
         
-        import pdb; pdb.set_trace()
-        # orgnaize and return results array
+        # mask segments for which we already have MC solution
+        x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
     
-    return None
+    return rch_list[~x], dat_all[~x,3:] # also need a return for DA variables?
