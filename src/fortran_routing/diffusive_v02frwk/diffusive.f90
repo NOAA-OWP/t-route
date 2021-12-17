@@ -382,9 +382,6 @@ contains
             end do
         end do
         
-        ! BREAK FOR DEBUGGING
-        stop
-        
         !* correcting the WL initial condition based on the WL boundary
         !* so that the initial WL is higher than or equal to the WL boundary, at j = nlinks, i=ncomp
         !do j = 1,nlinks
