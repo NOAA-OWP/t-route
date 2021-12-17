@@ -1087,8 +1087,8 @@ def compute_diffusive_routing(
     diffusive_parameters,
     waterbodies_df,
 ):
-    
-    for tw in diffusive_network_data:
+
+    for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
 
         # extract junction inflows from results array
         for j, i in enumerate(results):
