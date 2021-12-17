@@ -928,26 +928,24 @@ def nwm_route(
     if diffusive_network_data: # run diffusive side of a hybrid simulation
                 
         # call diffusive wave simulation
-        
-        results_diffusive = compute_diffusive_routing(
-            results,
-            diffusive_network_data,
-            cpu_pool,
-            dt,
-            nts,
-            q0,
-            qlats,
-            qts_subdivisions,
-            usgs_df,
-            lastobs_df,
-            da_parameter_dict,
-            diffusive_parameters,
-            waterbodies_df,
+        results.append(
+            compute_diffusive_routing(
+                results,
+                diffusive_network_data,
+                cpu_pool,
+                dt,
+                nts,
+                q0,
+                qlats,
+                qts_subdivisions,
+                usgs_df,
+                lastobs_df,
+                da_parameter_dict,
+                diffusive_parameters,
+                waterbodies_df,
+            )
         )
-        
-        # append diffusive and mc results
-        
-    
+
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
     return results
