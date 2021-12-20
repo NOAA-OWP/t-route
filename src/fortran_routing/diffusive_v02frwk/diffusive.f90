@@ -429,10 +429,8 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
 ! Initialize water surface elevation, channel area, and volume
 
   do jm = 1, nmstem_rch
-  
-    j     = mstem_frj(jm) ! reach index
-    ncomp = frnw_g(j, 1)   ! number of nodes in reach j
-        
+    j     = mstem_frj(jm)  ! reach index
+    ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
     if (frnw_g(j, 2) < 0.0) then
     
       ! Initial depth at bottom node of tail water reach
@@ -445,8 +443,7 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
       slope = (z(ncomp-1, j) - z(ncomp, j)) / dx(ncomp-1, j)
       if (slope .le. so_llm) slope = so_llm
       call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp, j), &
-                         oldY(ncomp, j), temp,  temp, temp)
-                                       
+                         oldY(ncomp, j), temp,  temp, temp)                                   
     else
     
       ! Initial depth at botton node of interror reach
@@ -455,15 +452,13 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
       slope = (z(ncomp-1, j) - z(ncomp, j)) / dx(ncomp-1, j)
       if (slope .le. so_llm) slope = so_llm
       call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp, j), &
-                         oldY(ncomp, j), temp, temp, temp)
-          
+                         oldY(ncomp, j), temp, temp, temp)       
     end if
             
     ! compute initial depth at interrior nodes
     newY(ncomp, j) = oldY(ncomp, j)
     call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, &
                                  j, leftBank, rightBank)
-
     do i = 1,ncomp
     
       ! copy computed initial depths to initial depth array for first timestep
@@ -480,47 +475,45 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
         elevTable = xsec_tab(1, 1:nel, i, j)
         areaTable = xsec_tab(2, 1:nel, i, j)
         call r_interpol(elevTable, areaTable, nel, oldY(i, j), oldArea(i, j))
-        
         if (oldArea(i, j) .eq. -9999) then
           print*, 'At j = ',j,', i = ',i, 'time =',t, &
                   'interpolation of (initial) oldArea(i,j) was not possible'
           stop
-        end if
-        
+        end if   
       end if
     end do
     
     ! Initialize channel volume
     do i = 1, ncomp - 1
       volRemain(i, j) = (oldArea(i, j) + oldArea(i+1, j)) / 2.0 * dx(i, j) 
-    end do
-      
+    end do  
   end do
 
 !-----------------------------------------------------------------------------
-
+! Write tributary results to output arrays
+! TODO: consider if this is necessary - output arrays are immediately trimmed
+! to exclude triburay results (from MC) and pass-out only diffusive-calculated
+! flow and depth on mainstem segments.
         
-        !**--------------------------------------------------------------------------------------------------*
-        !*       move MC results of tributary (including mainstem upstream boundary) into q_ev_g and elv_ev_g
-        !*
-        !**--------------------------------------------------------------------------------------------------*
-        t = t0*60.0  !* t0 is in hour. tc is in minutes
-        ts_ev=1
-        do while (t .le. tfin*60.0)
-            if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
-                do j=1, nlinks
-                    if (all(mstem_frj/=j)) then
-                        do n=1,nts_qtrib_g
-                            varr_qtrib(n)= qtrib_g(n,j) !* qlat_g(n,i,j) in unit of m2/sec
-                        enddo
-                        q_ev_g(ts_ev, frnw_g(j,1), j)= intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, t)
-                        q_ev_g(ts_ev, 1, j)= q_ev_g(ts_ev, frnw_g(j,1), j)
-                    endif
-                enddo
-                ts_ev=ts_ev+1
-            endif
-            t = t + dtini/60. !* [min]
-        enddo
+  ts_ev=1
+  do while (t .le. tfin*60.0)
+    if ( (mod( (t - t0 * 60.) * 60., saveInterval) .le. TOLERANCE) &
+          .or. (t .eq. tfin * 60.) ) then
+      do j=1, nlinks
+        if (all(mstem_frj/=j)) then ! NOT a mainstem reach
+          do n = 1, nts_qtrib_g
+            varr_qtrib(n) = qtrib_g(n, j)
+          end do
+            q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, t)
+            q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)
+        end if
+      end do
+      ts_ev=ts_ev+1
+    end if
+    t = t + dtini/60. !* [min]
+  end do
+  
+!-----------------------------------------------------------------------------
 
         qpx = 0.  !* initial value of the first derivative of q
         width = 100. !   initialization
