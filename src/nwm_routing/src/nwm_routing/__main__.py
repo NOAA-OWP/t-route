@@ -1243,7 +1243,7 @@ def main_v03(argv):
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
-                param_df.index,
+                segment_index,
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),

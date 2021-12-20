@@ -67,6 +67,8 @@ contains
                     frnw_col, dfrnw_g, qlat_g, ubcd_g, dbcd_g, qtrib_g, &
                     paradim, para_ar_g, q_ev_g, elv_ev_g)
         implicit none
+        
+        ! TODO: docstrings...
 
         integer, intent(in) :: mxncomp_g, nrch_g
         integer, intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g
@@ -111,39 +113,78 @@ contains
         integer :: jm, nusrch, rch, usrchj, ts
         double precision :: wdepth, q_usrch, tf0, sumdmy1, sumdmy2
 
+
+        !* Initial simulation time step duration [sec]. 
+        !* Time step duration changes after each time step to maintain numerical stability.
+        dtini= timestep_ar_g(1)
+        dtini_given= dtini
+        !* Simulation start time [hr]
+        t0= timestep_ar_g(2)
+        !* Simulation end time [hr]
+        tfin= timestep_ar_g(3)
+        !* recording time interval for flow and depth outputs [sec]
+        saveInterval= timestep_ar_g(4) 
+        !* lateral inflow data time step [sec]
+        dt_ql= timestep_ar_g(5)
+        !* upstream boundary discharge data time step [sec]
+        dt_ub= timestep_ar_g(6)
+        !* downstream boundary stage data time step [sec]
+        dt_db= timestep_ar_g(7)
+        !* tributary (including mainstem upstream boundary) data time step [sec]
+        dt_qtrib= timestep_ar_g(8)
+        ! Number of simulation timesteps
+        ! ****** TODO: Can remove this variable - it is not used
+        ntim = floor( (tfin - t0) / dtini * 3600)
+        !* Number of time steps in the qlateral data array
+        ! ****** TODO: No need to redefine this variable, just use nts_qtrib_g
+        nts_qtrib=nts_qtrib_g
+        
+        ! water depth multiplier used in readXsection
+        timesDepth= 4.0
+        
+        !* ??????? what is this ???????
+        nel= 501
+
+        !* maximum number of nodes in a single reach
+        ! ******* TODO: condense to use of one variable, either num_points, or mcncomp.
+        ! ******* TODO: consider renaming to something that has to do with "nodes"
+        mxncomp= mxncomp_g
+        num_points= mxncomp
+        
+        !* number of reaches in the network
+        !* includes both mainstem and tributary reaches - note: routing only conducted on mainstem reaches
+        ! ******* TODO: condense to use of one variable, either totalChannels, or nlinks.
+        ! ******* TODO: consider renaming to something that has to do with "reaches"
         nlinks=nrch_g
+        totalChannels= nlinks
+        
+        !* network mapping matrix
+        ! ****** TODO: pass in matrix of integers, avoid recasting as integer from double
         allocate(frnw_g(nlinks,frnw_col))
         frnw_g=int(dfrnw_g)
-        mxncomp= mxncomp_g
-        nts_qtrib=nts_qtrib_g
-
-        dtini= timestep_ar_g(1) 	!* initial simulation time step and changes with updated celerity values [sec]
-        dtini_given= dtini
-        t0= timestep_ar_g(2) 		!* simulation start time [hr]
-        tfin= timestep_ar_g(3) 		!* simulation end time [hr]
-        ntim = floor( (tfin - t0) / dtini * 3600)
-        timesDepth= 4.0 !* water depth multiplier used in readXsection
-        nel= 501 !nel_g
-        saveInterval= timestep_ar_g(4) 	!* recording time interval for finally computed discharge and water elevation [sec]
-        !saveFrequency = saveInterval / dtini_given
-        dt_ql= timestep_ar_g(5) 	!* lateral inflow data time step [sec]
-        dt_ub= timestep_ar_g(6) 	!* upstream boundary discharge data time step [sec]
-        dt_db= timestep_ar_g(7) 	!* downstream boundary stage data time step [sec]
-        dt_qtrib= timestep_ar_g(8)  !* tributary (including mainstem upstream boundary) data time step [sec]
-        num_points= mxncomp
-        totalChannels= nlinks
 
         ! Some essential parameters for Diffusive Wave
-        cfl= para_ar_g(1)  	!* Courant number (default: 0.95)
-        C_llm= para_ar_g(2) 	!* lower limit of celerity (default: 0.5)
-        D_llm= para_ar_g(3) 	!* lower limit of diffusivity (default: 50)
-        D_ulm= para_ar_g(4) 	!* upper limit of diffusivity (default: 1000)
-        DD_llm = para_ar_g(5) 	!* lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -15.0)
-       	DD_ulm = para_ar_g(6) 	!* upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -10.0)
-        newtonRaphson = int(para_ar_g(7)) !* 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
-        q_llm = para_ar_g(8) 	!* lower limit of discharge (default: 0.02831 cms)
-        so_llm = para_ar_g(9) 	!* lower limit of channel bed slope (default: 0.0001)
-        theta = para_ar_g(10) 	!* weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
+        !* maximum allowable Courant number value (default: 0.95)
+        cfl= para_ar_g(1)
+        !* lower limit of celerity (default: 0.5)
+        C_llm= para_ar_g(2)
+        !* lower limit of diffusivity (default: 50)
+        D_llm= para_ar_g(3)
+        !* upper limit of diffusivity (default: 1000)
+        D_ulm= para_ar_g(4)
+        !* lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -15.0)
+        DD_llm = para_ar_g(5)
+        !* upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth (default: -10.0)
+       	DD_ulm = para_ar_g(6)
+        !* root-finding technique used to compute diffusive depth
+        !* 0: Bisection to compute water level; 1: Newton Raphson (default: 1.0)
+        newtonRaphson = int(para_ar_g(7))
+        !* lower limit of discharge (default: 0.02831 cms)
+        q_llm = para_ar_g(8)
+        !* lower limit of channel bed slope (default: 0.0001)
+        so_llm = para_ar_g(9)
+        !* weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
+        theta = para_ar_g(10)
 
         allocate(area(num_points))
         allocate(bo(num_points,totalChannels))
@@ -221,10 +262,12 @@ contains
                 dmy_frj(nmstem_rch) = j
             end if
         end do
+        
         allocate (mstem_frj(nmstem_rch))
         do jm=1, nmstem_rch
             mstem_frj(jm)= dmy_frj(jm)
         end do
+                
         !* MC results to tributary (including mainstem upstream boundary) flow data
         qtrib= qtrib_g
 
@@ -476,9 +519,11 @@ contains
             !+-------------------------------------------------------------------------------------
             !do j = 1, nlinks
             do jm=1, nmstem_rch !* mainstem reach only
+            
                 j= mstem_frj(jm)
                 ncomp= frnw_g(j,1)
-                !+++-- Checking the dtini for possible diffusive wave model and applying it to the model.
+                
+                ! Calculate the duration of this timestep (dtini)
                 !if (j .eq. 1) call calculateDT(t0, t,saveInterval, cfl, tfin, maxCelDx,dtini_given)
                 if (j .eq. mstem_frj(1)) call calculateDT(t0, t,saveInterval, cfl, tfin, maxCelDx,dtini_given)
 
@@ -486,9 +531,10 @@ contains
                 do i=1,ncomp-1
                     do n=1,nts_ql_g
                         varr_ql(n)= qlat_g(n,i,j) !* qlat_g(n,i,j) in unit of m2/sec
-                    enddo
+                    end do
                     lateralFlow(i,j)= intp_y(nts_ql_g, tarr_ql, varr_ql, t)
-                enddo
+                end do
+                
                 !+++----------------------------------------------------------------
                 !+ Hand over water from upstream to downstream properly according
                 !+ to the nature of link connections, i.e., serial or branching.
@@ -497,29 +543,49 @@ contains
                 if (frnw_g(j,3)>0) then !* frnw_g(j,3) indicates the number of upstream reaches.
                     !* total water areas at n+1 at the end nodes of upstream links that join link j
                     !* option 3: junction boundary for routing only mainstem reaches
+                    
                     newQ(1,j)=0.0
-                    do k=1, frnw_g(j,3)
+                    do k=1, frnw_g(j,3) !1 - # us reaches
+                    
                         usrchj= frnw_g(j,3+k) !* js corresponding to upstream reaches
                         if (any(mstem_frj==usrchj)) then
-                            !* mainstem upstream reach
-                            q_usrch= newQ(frnw_g(usrchj,1), usrchj)
+                        
+                            !* flow from upsteram mainstem reach
+                            q_usrch = newQ(frnw_g(usrchj,1), usrchj)
+                            !print *, 'added flow from upstream mainstem'
+                            
                         else
-                            !* tributary upstream reach
+                        
+                            !* flow from upstream tributary reach
                             do n=1,nts_qtrib
                                 varr_qtrib(n)= qtrib(n,usrchj)
-                            enddo
+                            end do
                             tf0= t +  dtini/60.0
                             q_usrch= intp_y(nts_qtrib, tarr_qtrib, varr_qtrib, tf0)
+                            !print *, 'added flow from tributary'
+                            
                         endif
+                        
+                        ! add upstream flows to reach head
                         newQ(1,j)= newQ(1,j) + q_usrch
-                    enddo
+                        
+                    end do
+                    
+                    !print *, 'sum of upstream reach inflows:', newQ(1,j)
+                    
+                    
                 else        ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
                  !* head water reach <- ** no head-water reach exists among mainstem reach
 
                 end if
 
+                ! Add lateral inflows to the reach head
                 newQ(1,j) = newQ(1,j)+lateralFlow(1,j)*dx(1,j)
-               !* checking the value of Fc and Fi in each river reach
+                !print *, 'dx(1,j):', dx(1,j)
+                !print *, 'lateralFlow(:,j):', lateralFlow(:,j)
+                !print *, 'sum of upstream reach inflows and lateral inflows:', newQ(1,j)
+                
+                !* checking the value of Fc and Fi in each river reach
                 lowerLimitCount = 0; higherLimitCount = 0
 
                 do i=1,ncomp-1
@@ -621,17 +687,20 @@ contains
                     !stop
                 end if
 
-                if (j .eq. 1) then
+                if (j .eq. mstem_frj(1)) then
                     maxCelDx = 0.
                     maxCelerity = 0.
-                    do i=1,nlinks
-                        do kkk = 2, frnw_g(i,1)
-                            maxCelDx = max(maxCelDx,celerity(kkk,i)/dx(kkk-1,i)) ! correction 20210408
+                    do i=1,nmstem_rch
+                        do kkk = 2, frnw_g(mstem_frj(i),1)
+                            maxCelDx = max(maxCelDx,celerity(kkk,mstem_frj(i))/dx(kkk-1,mstem_frj(i))) ! correction 20210408
                             maxCelerity = max(maxCelerity,celerity(kkk,i))
                         end do
                     end do
                 endif
-            enddo  ! end of j loop
+
+                !print *, 'dtini:', dtini
+                
+            end do  ! end of j loop
 
             !do j = 1, nlinks
             do jm= 1, nmstem_rch  !* mainstem reach only
@@ -678,7 +747,7 @@ contains
                     do i=1, ncomp
                         q_ev_g(ts_ev+1, i, j)= newQ(i,j)
                         elv_ev_g(ts_ev+1, i, j)= newY(i,j)
-                    enddo
+                    end do
                     !* water elevation for tributary/mainstem upstream boundary at a junction point
                     do k=1, frnw_g(j,3) !* then number of upstream reaches
                         usrchj= frnw_g(j,3+k) !* js corresponding to upstream reaches
@@ -688,7 +757,7 @@ contains
                             elv_ev_g(ts_ev+1, frnw_g(usrchj,1), usrchj)= newY(1,j)
                             elv_ev_g(ts_ev+1, 1, usrchj)= wdepth + z(1, usrchj)!* test only
                         endif
-                    enddo
+                    end do
                 enddo
                 ts_ev=ts_ev+1
             end if
@@ -760,7 +829,8 @@ contains
         deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
         deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
         deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
-        deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub)
+        deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib, qtrib)
+        deallocate(mstem_frj)
 
 
     endsubroutine diffnw
@@ -946,12 +1016,19 @@ contains
         exi(1) = 0.
         fxi(1) = 0.
 
+        !print *, '****** DIFFUSIVE FORWARD *****'
+        !print *, '---------'
         ncomp= frnw_g(j,1)
         do i = 2,ncomp
             !!!------ Calculation a1...a4, up to h4...
             cour = dtini / dx(i-1,j)
             cour2= abs( celerity(i,j) ) * cour
-
+            
+            !print *, 'i:', i
+            !print *, 'j:', j
+            !print *, 'courant:',cour2
+            !print *, '---------'
+            
             a1 = 3.0 * cour2 ** 2.0 - 2.0 * cour2 ** 3.0
             a2 = 1 - a1
             a3 = ( cour2 ** 2.0 - cour2 ** 3.0 ) * dx(i-1,j)
@@ -1062,6 +1139,30 @@ contains
             end if
         end do
 
+! ============== DEBUG to find unstable flow calcls =================
+!        do i= ncomp, 1, -1
+!            if (abs(qp(i,j)) .gt. 2E4) then
+!                print *, 'j:', j
+!                print *, 'i:', i
+!                print *, 'ncomp', ncomp
+!                print *, 't:', t
+!                print *, 'calculated flow value:', qp(i,j)
+!                print *, 'previous upstream flow', oldQ(i-1,j)
+!                print *, 'diffusivity(i,j):', diffusivity(i,j)
+!                print *, 'eei(i):', eei(i)
+!                print *, 'qp(i+1,j):', qp(i+1,j)
+!                print *, 'ffi(i):', ffi(i)
+!                print *, 'qp_ghost:', qp_ghost
+!                print *, 'ffi(ncomp):', ffi(ncomp)
+!                print *, 'eei(ncomp):', eei(ncomp)
+!                print *, 'cour2:', cour2
+!                print *, 'qp(ncomp,j):', qp(ncomp,j)
+!                print *, 'allqlat:', allqlat
+!                print *, 'upstream inflow newQ(1,j):', newQ(1,j)
+!                stop
+!            end if
+!        end do
+        
         newQ(1:ncomp,j) = qp(1:ncomp,j)
 
     end subroutine mesh_diffusive_forward
@@ -1243,7 +1344,9 @@ contains
                             ! =====================================
                             !print *, 'PURE DIFFUSIVE DEPTH CALCULATION'
 
-                            slope = (z(i-1,j)-z(i,j))/dx(i-1,j)
+                            slope = (z(i-1,j)-z(i,j))/dx(i-1,j) ! <------- why are we not imposing the slope limit, here?
+                            !if (slope .le. so_llm) slope = so_llm
+                            
                             depthYi = newY(i,j) - z(i,j)
                             tempDepthi_1 = oldY(i-1,j)-z(i-1,j)
                             elevTable_1 = xsec_tab(1,:,i-1,j)

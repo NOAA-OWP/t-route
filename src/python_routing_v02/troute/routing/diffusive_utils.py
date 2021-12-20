@@ -94,7 +94,9 @@ def fp_network_map(
                 frnw_g[frj, 2] = nusrch  # the number of upstream reaches
                 usrch_bseg_list = list(reach["upstream_bottom_segments"])
                 usrch_hseg_mainstem_j=-100 # ini.value of frj* of reach on mainstem that is just upstream of the current reach of frj
+                frnw_g[frj, 2 + nusrch + 1] = usrch_hseg_mainstem_j + 1
                 i = 0
+                r = 0
                 for usrch in range(0, nusrch):
                     usrch_bseg_id = usrch_bseg_list[
                         usrch
@@ -107,9 +109,10 @@ def fp_network_map(
                             frnw_g[frj, 2 + i] = j
                             # find if the selected headseg ID of an upstream reach belong to mainstem segment
                             if mainstem_headseg_list.count(usrch_hseg_id) > 0:
+                                r = r+1
                                 usrch_hseg_mainstem_j=j
-                # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
-                frnw_g[frj, 2 + nusrch + 1] = usrch_hseg_mainstem_j
+                                # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
+                                frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
 
             if seg_list.count(dbfksegID) > 0:
                 # a reach where downstream boundary condition is set.
