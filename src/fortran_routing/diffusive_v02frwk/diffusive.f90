@@ -420,67 +420,43 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
                     real(n-1,KIND(dt_qtrib)) / 60.0 ! [min]
   end do
   
-  ! time step series for upstream boundary data
-  ! COMING SOON
+  ! time step series for downstream boundary data
+  ! needed for coastal coupling
+  ! **** COMING SOON ****
 
 !-----------------------------------------------------------------------------
-! Flow and depth initialization
+! Depth initialization
 
-  ! initial values of Q at tailwater segments
-  do jm = 1, nmstem_rch !* mainstem reach only
-    j     = mstem_frj(jm)
-    ncomp = frnw_g(j,1)
+  do jm = 1, nmstem_rch
+  
+    j     = mstem_frj(jm) ! reach index
+    ncomp = frnw_g(j,1)   ! number of nodes in reach j
+        
+    if (frnw_g(j,2) < 0.0) then
     
-    if (frnw_g(j,2) < 0.0) then ! tailwater segments
-    
-      ! downstream boundary node at TW
-      ! **** COMING SOON ****
+      ! Initial depth at bottom node of tail water reach
       
+      ! use tailwater downstream boundary observations
+      ! needed for coastal coupling
+      ! **** COMING SOON ****
+          
       ! normal depth as TW boundary condition
-      q_sk_multi = 1.0
       slope = (z(ncomp-1,j) - z(ncomp,j)) / dx(ncomp-1,j)
       if (slope .le. so_llm) slope = so_llm
       call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), &
                          oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
-                         
-    end if
-  end do
-        
-  ! initialize depth at all network nodes
-  do jm = 1, nmstem_rch !* mainstem reach only
-    j     = mstem_frj(jm) ! reach index
-    ncomp = frnw_g(j,1)   ! number of nodes in reach j
+                                       
+    else
     
-    do i = 1, ncomp ! loop over nodes in reach j [upstream-to-downstream]
+      ! Initial depth at botton node of interror reach
       
-      if (i == ncomp) then ! reach bottom segments
-        
-        if (frnw_g(j,2) < 0.0) then ! network tailwater reach, bottom node
-        
-          ! use tailwater downstream boundary observations
-          ! needed for coastal coupling
-          ! **** COMING SOON ****
+      ! calculate initial depth as normal depth
+      slope = (z(ncomp-1,j) - z(ncomp,j)) / dx(ncomp-1,j)
+      if (slope .le. so_llm) slope = so_llm
+      call normal_crit_y(ncomp, j, q_sk_multi, slope, oldQ(ncomp,j), &
+                         oldY(ncomp,j), temp, temp, temp)
           
-          ! normal depth as TW boundary condition
-          slope = (z(i-1,j) - z(i,j)) / dx(i-1,j)
-          if (slope .le. so_llm) slope = so_llm
-          call normal_crit_y(i, j, q_sk_multi, slope, oldQ(ncomp,j), &
-                             oldY(ncomp,j), temp,  oldArea(ncomp,j), temp)
-                             
-!          !*use TW boundary water elevation data
-!          oldY(ncomp,j) = oldY(ncomp,j)
-          
-        else ! interrior reach
-        
-          ! calculate initial depth as normal depth
-          slope = (z(i-1,j) - z(i,j)) / dx(i-1,j)
-          if (slope .le. so_llm) slope = so_llm
-          call normal_crit_y(i, j, q_sk_multi, slope, oldQ(i,j), &
-                             oldY(i,j), temp, temp, temp)
-          
-        endif
-      endif
-    end do
+    end if
             
     ! compute initial depth at interrior nodes
     newY(ncomp,j) = oldY(ncomp,j)
