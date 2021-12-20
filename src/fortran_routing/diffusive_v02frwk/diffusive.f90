@@ -46,7 +46,7 @@ module diffusive
     double precision :: z_g, bo_g, traps_g, tw_g, twcc_g, so_g, mann_g, manncc_g
     integer :: applyNaturalSection
     integer :: nel_g
-    double precision :: dmyt, dmyi, dmyj
+    double precision :: dmyi, dmyj
     !* mainstem variables
     integer :: nmstem_rch
     integer, dimension(:), allocatable :: mstem_frj
@@ -504,7 +504,8 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
           do n = 1, nts_qtrib_g
             varr_qtrib(n) = qtrib_g(n, j)
           end do
-            q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, t)
+            q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
+                                                    varr_qtrib, t)
             q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)
         end if
       end do
@@ -514,353 +515,271 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
   end do
   
 !-----------------------------------------------------------------------------
+! Initializations and re-initializations
+  qpx                     = 0.
+  width                   = 100.
+  maxCelerity             = 1.0
+  maxCelDx                = maxCelerity / minDx
+  dimensionless_Fi        = 10.1
+  dimensionless_Fc        = 10.1
+  dimensionless_D         = 0.1
+  currentROutingDiffusive = 1
+  currentRoutingNormal    = 0
+  routingNotChanged       = 0
+  frus2                   = 9999.
+  notSwitchRouting        = 0
+  minNotSwitchRouting     = 10000
+  minNotSwitchRouting2    = 000
+  timestep                = 0
+  ts_ev                   = 1
+  t                       = t0 * 60.0
 
-        qpx = 0.  !* initial value of the first derivative of q
-        width = 100. !   initialization
-        !celerity = 1.0
-        maxCelerity = 1.0
-        !diffusivity = 10.
-        maxCelDx = maxCelerity / minDx
-        !!! setting initial values of dimensionless parameters
-        !dimensionless_Cr, dimensionless_Fo, dimensionless_Fi, dimensionless_Fc, dimensionless_Di, dimensionless_D
-        dimensionless_Fi = 10.1
-        dimensionless_Fc = 10.1
-        dimensionless_D  = 0.1
-        currentROutingDiffusive = 1
-        ! parameters for diffusive vs partial diffusive
-        currentRoutingNormal = 0
-        routingNotChanged = 0
-        frus2 = 9999.
-        notSwitchRouting=0
-        minNotSwitchRouting = 10000         ! works between Dynamic and Diffusive switching
-        minNotSwitchRouting2 = 000        ! works between full Diffusive and partial Diffusive switching
-        timestep = 0
-        ts_ev=1 !* time step for outputting q and elv at evaluation time
-        t = t0*60.0  !* t0 is in hour. tc is in minutes
+!-----------------------------------------------------------------------------
+! Ordered network routing computations
 
-        do while ( t .lt. tfin *60.)
-            timestep = timestep + 1
-            !+-------------------------------------------------------------------------------------
-            !+                                      PREDICTOR
-            !+
-            !+-------------------------------------------------------------------------------------
-            !do j = 1, nlinks
-            do jm=1, nmstem_rch !* mainstem reach only
-            
-                j= mstem_frj(jm)
-                ncomp= frnw_g(j,1)
-                
-                ! Calculate the duration of this timestep (dtini)
-                !if (j .eq. 1) call calculateDT(t0, t,saveInterval, cfl, tfin, maxCelDx,dtini_given)
-                if (j .eq. mstem_frj(1)) call calculateDT(t0, t,saveInterval, cfl, tfin, maxCelDx,dtini_given)
+  do while ( t .lt. tfin * 60.)
+    timestep = timestep + 1 ! advance timestep
+    !+-------------------------------------------------------------------------
+    !+                             PREDICTOR
+    !+
+    !+-------------------------------------------------------------------------
+    do jm = 1, nmstem_rch   ! loop over mainstem reaches [upstream-to-downstream]
+      j     = mstem_frj(jm) ! reach index
+      ncomp = frnw_g(j,1)   ! number of nodes in reach j
 
-                !* estimate lateral flow at current time t
-                do i=1,ncomp-1
-                    do n=1,nts_ql_g
-                        varr_ql(n)= qlat_g(n,i,j) !* qlat_g(n,i,j) in unit of m2/sec
-                    end do
-                    lateralFlow(i,j)= intp_y(nts_ql_g, tarr_ql, varr_ql, t)
-                end do
-                
-                !+++----------------------------------------------------------------
-                !+ Hand over water from upstream to downstream properly according
-                !+ to the nature of link connections, i.e., serial or branching.
-                !+ Refer to p.52,RM1_MESH
-                !+++----------------------------------------------------------------
-                if (frnw_g(j,3)>0) then !* frnw_g(j,3) indicates the number of upstream reaches.
-                    !* total water areas at n+1 at the end nodes of upstream links that join link j
-                    !* option 3: junction boundary for routing only mainstem reaches
-                    
-                    newQ(1,j)=0.0
-                    do k=1, frnw_g(j,3) !1 - # us reaches
-                    
-                        usrchj= frnw_g(j,3+k) !* js corresponding to upstream reaches
-                        if (any(mstem_frj==usrchj)) then
-                        
-                            !* flow from upsteram mainstem reach
-                            q_usrch = newQ(frnw_g(usrchj,1), usrchj)
-                            !print *, 'added flow from upstream mainstem'
-                            
-                        else
-                        
-                            !* flow from upstream tributary reach
-                            do n=1,nts_qtrib_g
-                                varr_qtrib(n)= qtrib_g(n,usrchj)
-                            end do
-                            tf0= t +  dtini/60.0
-                            q_usrch= intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
-                            !print *, 'added flow from tributary'
-                            
-                        endif
-                        
-                        ! add upstream flows to reach head
-                        newQ(1,j)= newQ(1,j) + q_usrch
-                        
-                    end do
-                    
-                    !print *, 'sum of upstream reach inflows:', newQ(1,j)
-                    
-                    
-                else        ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
-                 !* head water reach <- ** no head-water reach exists among mainstem reach
+      ! Calculate the duration of this timestep (dtini)
+      ! Timestep duration is selected to maintain numerical stability
+      if (j .eq. mstem_frj(1)) call calculateDT(t0, t, saveInterval, cfl, &
+                                              tfin, maxCelDx, dtini_given)
 
-                end if
+      ! estimate lateral flow at current time t
+      do i = 1, ncomp - 1
+        do n = 1, nts_ql_g
+          varr_ql(n) = qlat_g(n, i, j)
+        end do
+        lateralFlow(i, j) = intp_y(nts_ql_g, tarr_ql, varr_ql, t)
+      end do
 
-                ! Add lateral inflows to the reach head
-                newQ(1,j) = newQ(1,j)+lateralFlow(1,j)*dx(1,j)
-                !print *, 'dx(1,j):', dx(1,j)
-                !print *, 'lateralFlow(:,j):', lateralFlow(:,j)
-                !print *, 'sum of upstream reach inflows and lateral inflows:', newQ(1,j)
-                
-                !* checking the value of Fc and Fi in each river reach
-                lowerLimitCount = 0; higherLimitCount = 0
+      !+++----------------------------------------------------------------
+      !+ Hand over water from upstream to downstream properly according
+      !+ to network connections, i.e., serial or branching.
+      !+ Refer to p.52, RM1_MESH
+      !+++----------------------------------------------------------------
+      if (frnw_g(j, 3) > 0) then        ! reach j is not a headwater
+        newQ(1, j) = 0.0
+        do k = 1, frnw_g(j, 3)          ! loop over ustream connected reaches
+          usrchj = frnw_g(j, 3 + k) 
+          if (any(mstem_frj == usrchj)) then
 
-                do i=1,ncomp-1
-                    if ((dimensionless_Fi(i,j) .ge. 5.) .or. (dimensionless_Fc(i,j)  .ge. 5.))then
-                        higherLimitCount(j) = higherLimitCount(j) + 1
-                    elseif ((dimensionless_Fi(i,j) .le. 3.) .or. (dimensionless_Fc(i,j)  .le. 3.))then
-                        lowerLimitCount(j) = lowerLimitCount(j) + 1
-                    end if
-                end do
-                !** new switching algorithm
-                !* for now, auto switching of routing is disabled
-                !* manual routing selection:
-                !* For dynamic, higherLimitCount(j) = 0; lowerLimitCount(j) = ncomp
-                !* For diffusive, higherLimitCount(j) = ncomp; lowerLimitCount(j) = ncomp
-                !* Forcing all computation to diffusive routing
-                higherLimitCount = ncomp; lowerLimitCount = ncomp;
-                currentROutingDiffusive(j)=1 !* added by DongHa to force diffusive all the time.
-                !* running either dynamic or diffusive wave routing at each river reach
-                if (higherLimitCount(j) .ge. ncomp/2.) then
-                    if ( (currentROutingDiffusive(j) .eq. 0) .and. (notSwitchRouting(j) .lt. minNotSwitchRouting)) then
-                        currentROutingDiffusive(j) = 0
-                    else
-                        call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval,j)
-                        if (currentROutingDiffusive(j) .eq. 0) notSwitchRouting(j) = 0
-                        currentROutingDiffusive(j) = 1
-                    end if
-                elseif (lowerLimitCount(j) .ge. ncomp/2.) then
+            ! inflow from upstream mainstem reach
+            q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
+            !print *, 'added flow from upstream mainstem'
+          else
 
-                    if ( (currentROutingDiffusive(j) .eq. 1) .and. (notSwitchRouting(j) .lt. minNotSwitchRouting)) then
-                        call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval,j)
-                        currentROutingDiffusive(j) = 1
-                    else
-                        if (currentROutingDiffusive(j) .eq. 1) notSwitchRouting(j) = 0
-                        currentROutingDiffusive(j) = 0
-                    end if
-                else
-                    if (currentROutingDiffusive(j) .eq. 1) then
-                        call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval,j)
-                        currentROutingDiffusive(j) = 1
-                    else
-                        currentROutingDiffusive(j) = 0
-                    end if
-                end if
-
-                notSwitchRouting(j) = notSwitchRouting(j) + 1
-
-            end do  ! end off j loop for predictor
-            !+-------------------------------------------------------------------------------------
-            !+                                      CORRECTOR
-            !+
-            !+-------------------------------------------------------------------------------------
-            !do j =  nlinks,1,-1
-            do jm= nmstem_rch, 1, -1  !* mainstem reach only
-                j= mstem_frj(jm)
-                ncomp= frnw_g(j,1)
-                !+++------------------------------------------------------------+
-                !+ Downstream boundary condition for water elevation either at
-                !+ a junction or TW.
-                !+ Refer to p.53-1,RM1_MESH
-                !+++------------------------------------------------------------+
-                if (frnw_g(j,2).ge.0.0) then !* frnw_g(j,2) gives j of a downstream reach
-                !* NOT TW reach
-                    linknb= frnw_g(j,2)
-                    newY(ncomp,j)= newY(1,linknb)
-                else
-                !* TW reach
-                     !* 1. measured data at TW
-!                    do n=1,nts_db_g2
-!                        varr_db(n)= dbcd_g(n) + z(ncomp,j) !* when dbcd is water stage, channel bottom elev is added.
-!                    enddo
-!                    newY(ncomp,j)= intp_y(nts_db_g2, tarr_db, varr_db, t+dtini/60.0)
-!
-!                    xt=newY(ncomp,j)
-!
-!                    if (applyNaturalSection .eq. 0) then
-!                        newArea(ncomp,j) = (newY(ncomp,j) - z(ncomp,j)) * bo(ncomp,j)
-!                    else
-!                        ncompElevTable = xsec_tab(1,:,ncomp,j)
-!                        ncompAreaTable = xsec_tab(2,:,ncomp,j)
-!                        call r_interpol(ncompElevTable,ncompAreaTable,nel,xt,newArea(ncomp,j))
-!                        if (newArea(ncomp,j) .eq. -9999) then
-!!                            print*, 'At j = ',j,', i = ',i, 'time =',t, 'interpolation of newArea(ncomp,j) was not possible'
-!!                            stop
-!                        end if
-!                    end if
-                    ! 2. normal depth as TW boundary condition
-                    q_sk_multi=1.0
-                    slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
-                    if (slope .le. so_llm) slope = so_llm
-                    call normal_crit_y(ncomp, j, q_sk_multi, slope, newQ(ncomp,j), newY(ncomp,j), temp, newArea(ncomp,j), temp)
-                end if
-
-                if (currentROutingDiffusive(j) .eq. 0) then
-
-                elseif (currentROutingDiffusive(j) .eq. 1) then
-                    call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval,j,leftBank, rightBank)
-                else
-                    print*, 'Something is wrong in reach ', j
-                    !stop
-                end if
-
-                if (j .eq. mstem_frj(1)) then
-                    maxCelDx = 0.
-                    maxCelerity = 0.
-                    do i=1,nmstem_rch
-                        do kkk = 2, frnw_g(mstem_frj(i),1)
-                            maxCelDx = max(maxCelDx,celerity(kkk,mstem_frj(i))/dx(kkk-1,mstem_frj(i)))
-                            maxCelerity = max(maxCelerity,celerity(kkk,i))
-                        end do
-                    end do
-                endif
-
-                !print *, 'dtini:', dtini
-                
-            end do  ! end of j loop
-
-            !do j = 1, nlinks
-            do jm= 1, nmstem_rch  !* mainstem reach only
-                j= mstem_frj(jm)
-                ncomp= frnw_g(j,1)
-                do i=1,ncomp
-                    froud(i)=abs(newQ(i,j))/sqrt(grav*newArea(i,j)**3.0/bo(i,j))
-                    if (i .lt. ncomp) then
-                        courant(i)=(newQ(i,j)+newQ(i+1,j))/(newArea(i,j)+newArea(i+1,j))*dtini/dx(i,j)
-                    endif
-                enddo
-                if (maxCourant .lt. maxval (courant(1:ncomp-1))) then
-                    maxCourant = maxval (courant(1:ncomp-1))
-                endif
-            enddo
-
-            !do j=1, nlinks
-            do jm= 1, nmstem_rch  !* mainstem reach only
-                j= mstem_frj(jm)
-                ncomp= frnw_g(j,1)
-                do i=1,ncomp-1
-                    volRemain(i,j) = (newArea(i,j)+newArea(i+1,j))/2.0*dx(i,j)
-                end do
+            ! inflow from upstream tributary reach
+            do n = 1, nts_qtrib_g
+              varr_qtrib(n) = qtrib_g(n, usrchj)
             end do
+            tf0 = t +  dtini / 60.0
+            q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
+            !print *, 'added flow from tributary'
+          end if
 
-            dmyt=t
-            t = t + dtini/60.
-            !* after a warm up of 24hours, the model will not be forced to run in partial diffusive mode
-            if ((t-t0*60.) .ge. 24.*60.) minNotSwitchRouting2 = 100
+          ! add upstream flows to reach head
+          newQ(1,j)= newQ(1,j) + q_usrch
 
-            !do j = 1, nlinks
-            do jm= 1, nmstem_rch  !* mainstem reach only
-                j= mstem_frj(jm)
-                ncomp= frnw_g(j,1)
-                call calc_dimensionless_numbers(j)
-            enddo
+        end do
+        !print *, 'sum of upstream reach inflows:', newQ(1,j)
+      else
+      
+        ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
+      end if
 
-            ! write results, timestep 2 and beyond
-            if ( (mod( (t-t0*60.)*60.  ,saveInterval) .le. TOLERANCE) .or. ( t .eq. tfin *60. ) ) then
-                !do j = 1, nlinks
-                do jm= 1, nmstem_rch  !* mainstem reach only
-                    j= mstem_frj(jm)
-                    ncomp= frnw_g(j,1)
-                    do i=1, ncomp
-                        q_ev_g(ts_ev+1, i, j)= newQ(i,j)
-                        elv_ev_g(ts_ev+1, i, j)= newY(i,j)
-                    end do
-                    !* water elevation for tributary/mainstem upstream boundary at a junction point
-                    do k=1, frnw_g(j,3) !* then number of upstream reaches
-                        usrchj= frnw_g(j,3+k) !* js corresponding to upstream reaches
-                        if (all(mstem_frj/=usrchj)) then
-                            !* tributary upstream reach or mainstem upstream boundary reach
-                            wdepth= newY(1,j) - z(1,j)
-                            elv_ev_g(ts_ev+1, frnw_g(usrchj,1), usrchj)= newY(1,j)
-                            elv_ev_g(ts_ev+1, 1, usrchj)= wdepth + z(1, usrchj)!* test only
-                        endif
-                    end do
-                enddo
-                ts_ev=ts_ev+1
-            end if
+      ! Add lateral inflows to the reach head
+      newQ(1,j) = newQ(1,j)+lateralFlow(1,j)*dx(1,j)
+      !print *, 'sum of upstream reach inflows and lateral inflows:', newQ(1,j)
+      
+      call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval,j)
 
-            ! write initial conditions - timestep 1
-            if ( ( t .eq. t0 + dtini/60 ) ) then
-                !do j = 1, nlinks
-                do jm= 1, nmstem_rch  !* mainstem reach only
-                    j= mstem_frj(jm)
-                    ncomp= frnw_g(j,1)
-                    do i=1, ncomp
-                        q_ev_g(1, i, j)= oldQ(i,j)
-                        elv_ev_g(1, i, j)= oldY(i,j)
-                        !write(101,"(F8.1, 2I10, 3F20.4)") t,i,j,newQ(i,j),newY(i,j)-z(i,j), newY(i,j)
-                    enddo
-                    !* water elevation for tributary/mainstem upstream boundary at a junction point
-                    do k=1, frnw_g(j,3) !* then number of upstream reaches
-                        usrchj= frnw_g(j,3+k) !* js corresponding to upstream reaches
-                        if (all(mstem_frj/=usrchj)) then
-                            !* tributary upstream reach or mainstem upstream boundary reach
-                            wdepth= oldY(1,j) - z(1,j)
-                            elv_ev_g(1, frnw_g(usrchj,1), usrchj)= oldY(1,j)
-                            elv_ev_g(1, 1, usrchj)= wdepth + z(1, usrchj)!* test only
-                        endif
-                    enddo
-                enddo
-            end if
+    end do  ! end of j loop for predictor
+    
+    !+-------------------------------------------------------------------------
+    !+                             CORRECTOR
+    !+
+    !+-------------------------------------------------------------------------
+    do jm = nmstem_rch, 1, -1 ! loop over mainstem reaches [downstream-to-upstream]
+      j     = mstem_frj(jm)
+      ncomp = frnw_g(j,1)
+        
+      !+++------------------------------------------------------------+
+      !+ Downstream boundary condition for water elevation either at
+      !+ a junction or TW.
+      !+ Refer to p.53-1,RM1_MESH
+      !+++------------------------------------------------------------+
+       if (frnw_g(j, 2) .ge. 0.0) then 
+       
+          ! Downstream boundary at JUNCTION
+          ! reach index j has a downstream connection (is NOT a tailwater reach)
+            
+          ! set bottom node WSEL equal WSEL in top node of downstream reach
+          linknb         = frnw_g(j,2)
+          newY(ncomp, j) = newY(1, int(linknb)) 
+      else
+      
+        ! Downstream boundary at TAILWATER
+        ! reach index j has NO downstream connection (it IS a tailwater reach)
+          
+        ! use downstream boundary data source to set bottom node WSEL value
+        ! ***** COMING SOON *****
 
-            ! update of Y, Q and Area vectors
-            oldY   = newY
-            newY=-999
-            oldQ   = newQ
-            newQ=-999
-            oldArea= newArea
-            newArea=-999
-            pere=-999
-        enddo  ! end of time loop
+        ! Assume normal depth at tailwater downstream boundary
+        slope = (z(ncomp-1,j)-z(ncomp,j))/dx(ncomp-1,j)
+        if (slope .le. so_llm) slope = so_llm
+        call normal_crit_y(ncomp, j, q_sk_multi, slope, newQ(ncomp,j), &
+                           newY(ncomp,j), temp, newArea(ncomp,j), temp)
+      end if
 
-            !* test
-!            sumdmy1=0.0
-!            sumdmy2=0.0
-!            do ts=1, ntss_ev_g
-!            do j=1, nrch_g
-!            do i=1, frnw_g(j,1)
-!                write(101,"(f10.1, 2I10, 2F20.4)") dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
-!                print*, dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
-!                !if (i==2) then
-!                    if (j==2) then
-!                        sumdmy1= sumdmy1 + q_ev_g(ts, 2, j)
-!                    end if
-!                    if (j==3) then
-!                        sumdmy2= sumdmy2 + q_ev_g(ts, 2, j)
-!                    end if
-!                !endif
-!            enddo
-!            enddo
-!            enddo
-!            print*, sumdmy1, sumdmy2
+      ! Calculate WSEL at interrior reach nodes
+      call mesh_diffusive_backward(dtini_given, t0, t, tfin, &
+                                   saveInterval,j,leftBank, rightBank)
+      
+      ! Identify the maximum calculated celerity/dx ratio at this timestep
+      ! maxCelDx is used to determine the duration of the next timestep
+      if (j .eq. mstem_frj(1)) then
+        maxCelDx = 0.
+        maxCelerity = 0.
+        do i  =1, nmstem_rch
+          do kkk = 2, frnw_g(mstem_frj(i), 1)
+            maxCelDx = max(maxCelDx, &
+                           celerity(kkk, mstem_frj(i)) / &
+                           dx(kkk-1, mstem_frj(i)))
+            maxCelerity = max(maxCelerity, celerity(kkk,i))
+          end do
+        end do
+      endif
+    end do  ! end of corrector j loop
 
-        deallocate(frnw_g)
-        deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) !dqp, dqc, dap, dac,
-        deallocate(volRemain, froud, courant, oldQ, newQ, oldArea, newArea, oldY, newY)
-        deallocate(lateralFlow, celerity, diffusivity, celerity2, diffusivity2)
-        deallocate(eei, ffi, exi, fxi, qpx, qcx)
-        deallocate(dimensionless_Cr, dimensionless_Fo, dimensionless_Fi)
-        deallocate(dimensionless_Di, dimensionless_Fc, dimensionless_D)
-        deallocate(lowerLimitCount, higherLimitCount, currentRoutingNormal, routingNotChanged)
-        deallocate(elevTable, areaTable, pereTable, rediTable, convTable, topwTable)
-        deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
-        deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
-        deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
-        deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib)
-        deallocate(mstem_frj)
+    !+-------------------------------------------------------------------------
+    !+                             BOOK KEEPING
+    !+
+    !+-------------------------------------------------------------------------
+    
+    ! Calculate Froud and maximum Courant number
+    do jm = 1, nmstem_rch
+      j = mstem_frj(jm)
+      ncomp = frnw_g(j,1)
+      do i = 1, ncomp
+        froud(i) = abs(newQ(i, j)) / sqrt(grav * newArea(i, j) ** 3.0 / bo(i, j))
+        if (i .lt. ncomp) then
+          courant(i) = (newQ(i, j) + newQ(i+1, j)) / (newArea(i, j) + newArea(i+1, j)) * dtini / dx(i, j)
+        endif
+      end do
+      if (maxCourant .lt. maxval(courant(1:ncomp - 1))) then
+        maxCourant = maxval(courant(1:ncomp-1))
+      end if
+    end do
+
+    ! Calculate volume
+    do jm = 1, nmstem_rch
+      j = mstem_frj(jm)
+      ncomp = frnw_g(j, 1)
+      do i = 1, ncomp - 1
+        volRemain(i, j) = (newArea(i, j) + newArea(i+1, j)) / 2.0 * dx(i, j)
+      end do
+    end do
+
+    ! Advance model time
+    t = t + dtini/60.
+    
+    !* after a warm up of 24hours, the model will not be forced to run in partial diffusive mode
+    if ((t - t0 * 60.) .ge. 24. * 60.) minNotSwitchRouting2 = 100
+
+    ! Calculate dimensionless numbers for each reach
+    do jm = 1, nmstem_rch  !* mainstem reach only
+      j = mstem_frj(jm)
+      call calc_dimensionless_numbers(j)
+    end do
+
+    ! write results to output arrays
+    if ( (mod((t - t0 * 60.) * 60., saveInterval) .le. TOLERANCE) .or. (t .eq. tfin * 60.)) then
+      do jm = 1, nmstem_rch
+        j     = mstem_frj(jm)
+        ncomp = frnw_g(j, 1)
+        do i = 1, ncomp
+          q_ev_g  (ts_ev + 1, i, j) = newQ(i,j)
+          elv_ev_g(ts_ev + 1, i, j) = newY(i,j)
+        end do
+            
+        !* water elevation for tributary/mainstem upstream boundary at a junction point
+        do k = 1, frnw_g(j, 3)
+          usrchj = frnw_g(j, 3 + k)
+          if (all(mstem_frj /= usrchj)) then
+                
+            !* tributary upstream reach or mainstem upstream boundary reach
+            wdepth = newY(1,j) - z(1,j)
+            elv_ev_g(ts_ev+1, frnw_g(usrchj,1), usrchj) = newY(1,j)
+            elv_ev_g(ts_ev+1, 1, usrchj) = wdepth + z(1, usrchj)!* test only
+          endif
+        end do
+      end do
+      
+      ! Advance recording timestep
+      ts_ev = ts_ev+1
+    end if
+
+    ! write initial conditions to output arrays
+    if ( ( t .eq. t0 + dtini / 60 ) ) then
+      do jm = 1, nmstem_rch  !* mainstem reach only
+        j = mstem_frj(jm)
+        ncomp = frnw_g(j, 1)
+        do i = 1, ncomp
+          q_ev_g  (1, i, j) = oldQ(i, j)
+          elv_ev_g(1, i, j) = oldY(i, j)
+        end do
+            
+        !* water elevation for tributary/mainstem upstream boundary at a junction point
+        do k = 1, frnw_g(j,3) !* then number of upstream reaches
+          usrchj = frnw_g(j, 3 + k) !* js corresponding to upstream reaches
+          if (all(mstem_frj /= usrchj)) then
+                
+            !* tributary upstream reach or mainstem upstream boundary reach
+            wdepth = oldY(1, j) - z(1, j)
+            elv_ev_g(1, frnw_g(usrchj,1), usrchj) = oldY(1,j)
+            elv_ev_g(1, 1,                usrchj) = wdepth + z(1, usrchj)!* test only
+          end if
+        end do
+      end do
+    end if
+
+    ! update of Y, Q and Area vectors
+    oldY    = newY
+    newY    = -999
+    oldQ    = newQ
+    newQ    = -999
+    oldArea = newArea
+    newArea = -999
+    pere    = -999
+    
+  end do  ! end of time loop
+
+  deallocate(frnw_g)
+  deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) !dqp, dqc, dap, dac,
+  deallocate(volRemain, froud, courant, oldQ, newQ, oldArea, newArea, oldY, newY)
+  deallocate(lateralFlow, celerity, diffusivity, celerity2, diffusivity2)
+  deallocate(eei, ffi, exi, fxi, qpx, qcx)
+  deallocate(dimensionless_Cr, dimensionless_Fo, dimensionless_Fi)
+  deallocate(dimensionless_Di, dimensionless_Fc, dimensionless_D)
+  deallocate(lowerLimitCount, higherLimitCount, currentRoutingNormal, routingNotChanged)
+  deallocate(elevTable, areaTable, pereTable, rediTable, convTable, topwTable)
+  deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
+  deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
+  deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
+  deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib)
+  deallocate(mstem_frj)
 
 
-    end subroutine diffnw
+end subroutine diffnw
+
     !*--------------------------------------------
     !          Interpolate in time
     !
@@ -1923,7 +1842,7 @@ subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g,       
 !            print*, 'The proper range of x is that: ', 'the upper limit: ', maxval(x),&
 !			 ' and lower limit: ', minval(x)
 !            print*, 'kk', kk
-!            print*, 't', dmyt, 'i', dmyi, 'j', dmyj
+!            print*, 't', 'i', dmyi, 'j', dmyj
 !            print*, 'x', (x(k), k=1, kk)
 !            print*, 'y', (y(k), k=1, kk)
         end if
