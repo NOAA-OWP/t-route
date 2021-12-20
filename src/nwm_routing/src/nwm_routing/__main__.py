@@ -927,7 +927,7 @@ def nwm_route(
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
                 
-        # call diffusive wave simulation
+        # call diffusive wave simulation and append results to MC results
         results.append(
             compute_diffusive_routing(
                 results,
