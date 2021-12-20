@@ -76,7 +76,7 @@ def fp_network_map(
     #  Store headwater reach and upstream reaches above a junction
     #  as well as downstream reach after a junction
     #  into python-extension-fortran variables.
-    frnw_g = np.zeros((nrch_g, frnw_col), dtype=int)
+    frnw_g = np.zeros((nrch_g, frnw_col), dtype='int32')
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -766,7 +766,7 @@ def diffusive_input_data_v02(
     diff_ins["dx_ar_g"] = dx_ar_g
 
     diff_ins["frnw_col"] = frnw_col
-    diff_ins["frnw_g"] = dfrnw_g
+    diff_ins["frnw_g"] = frnw_g
     
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g

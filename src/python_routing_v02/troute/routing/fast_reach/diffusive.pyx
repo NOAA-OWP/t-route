@@ -33,7 +33,7 @@ cdef void diffnw(
         double[::1,:] dx_ar_g,
         double[::1,:] iniq,
         int frnw_col,
-        double[::1,:] frnw_g,
+        int[::1,:] frnw_g,
         double[::1,:,:] qlat_g,
         double[::1,:] ubcd_g,
         double[::1] dbcd_g,
@@ -108,7 +108,7 @@ cpdef object compute_diffusive_tst(
         double[::1,:] dx_ar_g = np.asfortranarray(diff_inputs["dx_ar_g"])
         double[::1,:] iniq = np.asfortranarray(diff_inputs["iniq"])
         int frnw_col = diff_inputs["frnw_col"]
-        double[::1,:] frnw_g = np.asfortranarray(diff_inputs["frnw_g"])
+        int[::1,:] frnw_g = np.asfortranarray(diff_inputs["frnw_g"])
         double[::1,:,:] qlat_g = np.asfortranarray(diff_inputs["qlat_g"])
         double[::1,:] ubcd_g = np.asfortranarray(diff_inputs["ubcd_g"])
         double[::1] dbcd_g = np.asfortranarray(diff_inputs["dbcd_g"])

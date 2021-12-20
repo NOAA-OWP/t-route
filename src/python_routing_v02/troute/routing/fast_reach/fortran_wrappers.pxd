@@ -59,7 +59,7 @@ cdef extern from "pydiffusive.h":
                      double *dx_ar_g,
                      double *iniq,
                      int *frnw_col,
-                     double *dfrnw_g,
+                     int *frnw_g,
                      double *qlat_g,
                      double *ubcd_g,
                      double *dbcd_g,
