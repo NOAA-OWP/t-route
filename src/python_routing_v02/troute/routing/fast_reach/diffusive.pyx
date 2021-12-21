@@ -1,16 +1,8 @@
 import cython
 import numpy as np
-import pandas as pd
 cimport numpy as np
-from libc.math cimport isnan, NAN
 
 from .fortran_wrappers cimport c_diffnw
-from .. import diffusive_utils as diff_utils
-import troute.nhd_network_utilities_v02 as nnu
-import troute.nhd_network as nhd_network
-from troute.routing.fast_reach.simple_da cimport obs_persist_shift, simple_da_with_decay, simple_da
-
-# TO DO load some example inputs to test the module
 
 @cython.boundscheck(False)
 cdef void diffnw(
@@ -83,7 +75,7 @@ cdef void diffnw(
     out_q[:,:,:] = q_ev_g[::1,:,:]
     out_elv[:,:,:] = elv_ev_g[::1,:,:]
 
-cpdef object compute_diffusive_tst(
+cpdef object compute_diffusive(
     dict diff_inputs
     ):
 
@@ -149,84 +141,5 @@ cpdef object compute_diffusive_tst(
         out_q,
         out_elv
     )
-
-#     # re-format outputs from the diffusive Fortran kernel
-#     index_array, flowveldepth_unorder = diff_utils.unpack_output(
-#                                 diff_inputs["pynw"],
-#                                 diff_inputs["ordered_reaches"],
-#                                 out_q,
-#                                 out_elv
-#                                 )
-        
-#     # re-index the flowveldepth_unorder array returned by diff_utils
-#     # TODO return depth not elevation from Tulane model
-#     flowveldepth_test = np.zeros((data_idx.shape[0], ntss_ev_g*3), dtype='float32')
-#     flowveldepth_test = (pd.DataFrame(data = flowveldepth_unorder, index = index_array).
-#                     reindex(index = data_idx).
-#                     to_numpy(dtype = 'float32'))
     
-#     cdef float[:,:] flowveldepth = flowveldepth_test
-#     cdef int gages_size = usgs_positions.shape[0]
-#     cdef int gage_maxtimestep = usgs_values.shape[1]
-#     cdef int gage_i, usgs_position_i, timestep
-#     cdef float[:] lastobs_value, lastobs_time
-#     cdef float a, da_decay_minutes, da_weighted_shift, replacement_val  # , original_val, lastobs_val,
-#     cdef (float, float, float, float) da_buf
-#     cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
-#     cdef float[:,:] nudge = np.zeros((1, ntss_ev_g), dtype="float32")
-#     cdef int qvd_ts_w = 3
-#     cdef int ts_offset
-#     cdef float[:,:] flowveldepth_row_fill_buf = np.zeros((1, ntss_ev_g), dtype="float32")
-#     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
-    
-#     lastobs_values = np.array([], dtype="float32")
-#     lastobs_times = np.array([], dtype="float32")
-#     if gages_size:
-        
-#         lastobs_times = np.full(gages_size, NAN, dtype="float32")
-#         lastobs_values = np.full(gages_size, NAN, dtype="float32")
-
-#         lastobs_values[0] = lastobs_values_init[0]
-#         lastobs_times[0] = time_since_lastobs_init[0]
-#         usgs_positions_i = usgs_positions[0]
-                   
-#         # timestep 0 is the initial condition b/c diffusive wave writes out nsteps + 1 timesteps
-#         timestep = 0
-#         while timestep <= ntss_ev_g-1:
-            
-#             ts_offset = timestep * qvd_ts_w
-
-#             da_buf = simple_da(
-#                 timestep,
-#                 dt,
-#                 da_decay_coefficient,
-#                 gage_maxtimestep,
-#                 NAN if timestep >= gage_maxtimestep else usgs_values[0,timestep],
-#                 flowveldepth[usgs_positions_i, ts_offset],
-#                 lastobs_times[0],
-#                 lastobs_values[0],
-#                 False,
-#             )
-            
-#             # fill buffer for all timesteps at gage locations
-#             flowveldepth_row_fill_buf[0, timestep] = da_buf[0]
-            
-#             # record nudge magnitude and lastobs information
-#             nudge[0, timestep] = da_buf[1]
-#             lastobs_times[0] = da_buf[2]
-#             lastobs_values[0] = da_buf[3]
-
-#             timestep += 1
-        
-#         # insert buffer
-#         flowveldepth[usgs_positions_i,::3] = flowveldepth_row_fill_buf
-        
-#     # create mask array
-#     for upstream_tw_id in upstream_results:
-#         tmp = upstream_results[upstream_tw_id]
-#         fill_index = tmp["position_index"]
-#         fill_index_mask[fill_index] = False
-        
-#     return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,3:])[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values))
-
     return np.asarray(out_q), np.asarray(out_elv)

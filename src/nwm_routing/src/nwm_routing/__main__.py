@@ -612,7 +612,6 @@ def _run_everything_v02(
         waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
         waterbody_types_df,
         waterbody_type_specified,
-        diffusive_parameters,
     )
 
     
@@ -922,7 +921,6 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
-        diffusive_parameters,
     )
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
