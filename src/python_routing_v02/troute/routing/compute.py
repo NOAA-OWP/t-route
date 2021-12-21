@@ -884,6 +884,7 @@ def compute_diffusive_routing(
     waterbodies_df,
 ):
 
+    results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
 
         # extract junction inflows from results array
@@ -931,5 +932,7 @@ def compute_diffusive_routing(
         
         # mask segments for which we already have MC solution
         x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
-    
-    return rch_list[~x], dat_all[~x,3:] # also need a return for DA variables?
+        
+        results_diffusive.append((rch_list[~x], dat_all[~x,3:]))
+
+    return results_diffusive
