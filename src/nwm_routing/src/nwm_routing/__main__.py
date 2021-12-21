@@ -893,9 +893,7 @@ def nwm_route(
     else:
         LOG.info(f"executing routing computation ...")
 
-    # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
-    # compute_func = fast_reach.compute_network_structured_obj
-
+    start_time_mc = time.time()
     results = compute_nhd_routing_v02(
         downstream_connections,
         upstream_connections,
@@ -924,6 +922,9 @@ def nwm_route(
     )
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
+        
+        LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
+        start_time_diff = time.time()
                 
         # call diffusive wave simulation and append results to MC results
         results.extend(
@@ -943,6 +944,7 @@ def nwm_route(
                 waterbodies_df,
             )
         )
+        LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
 
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
