@@ -14,9 +14,8 @@ from troute.routing.fast_reach.mc_reach import (
     compute_network_structured,
     compute_network_structured_obj,
 )
+import troute.routing.diffusive_utils as diff_utils
 from troute.routing.fast_reach import diffusive
-from troute.routing.fast_reach import diffusive_cnt
-from troute.routing.fast_reach import diffusive_cnx
 
 import logging
 
@@ -25,11 +24,7 @@ LOG = logging.getLogger('')
 _compute_func_map = defaultdict(
     compute_network,
     {
-        "diffusive_cnt": diffusive_cnt.compute_diffusive_tst,
-        "diffusive": diffusive.compute_diffusive_tst,
-       	"diffusive_cnx": diffusive_cnx.compute_diffusive_tst,
         "V02-caching": compute_network,
-        "V02-diffusive-dummy": compute_network,
         "V02-structured": compute_network_structured,
         "V02-structured-obj": compute_network_structured_obj,
     },
@@ -165,7 +160,6 @@ def compute_nhd_routing_v02(
     waterbody_parameters,
     waterbody_types_df,
     waterbody_type_specified,
-    diffusive_parameters=None,
 ):
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
@@ -400,7 +394,6 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
-                            diffusive_parameters,
                         )
                     )
 
@@ -611,200 +604,6 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
-                            diffusive_parameters,
-                        )
-                    )
-
-                results_subn[order] = parallel(jobs)
-
-                if order > 0:  # This is not needed for the last rank of subnetworks
-                    flowveldepth_interorder = {}
-                    for twi, subn_tw in enumerate(reaches_ordered_bysubntw[order]):
-                        # TODO: This index step is necessary because we sort the segment index
-                        # TODO: I think there are a number of ways we could remove the sorting step
-                        #       -- the binary search could be replaced with an index based on the known topology
-                        flowveldepth_interorder[subn_tw] = {}
-                        subn_tw_sortposition = (
-                            results_subn[order][twi][0].tolist().index(subn_tw)
-                        )
-                        flowveldepth_interorder[subn_tw]["results"] = results_subn[
-                            order
-                        ][twi][1][subn_tw_sortposition]
-                        # what will it take to get just the tw FVD values into an array to pass to the next loop?
-                        # There will be an empty array initialized at the top of the loop, then re-populated here.
-                        # we don't have to bother with populating it after the last group
-
-        results = []
-        for order in subnetworks_only_ordered_jit:
-            results.extend(results_subn[order])
-
-        if 1 == 1:
-            LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
-
-    elif parallel_compute_method == "by-subnetwork-diffusive":
-        gages = set(usgs_df.index).intersection(set(param_df.index))
-        reaches_ordered_bysubntw, subnetworks, subnetworks_only_ordered_jit = nhd_network.build_subnetworks_btw_reservoirs(
-            connections, rconn, wbody_conn, gages, independent_networks, sources=None
-        )
-        
-        if 1 == 1:
-            LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
-            LOG.info("starting Parallel JIT calculation")
-
-        start_para_time = time.time()
-        with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
-            results_subn = defaultdict(list)
-            flowveldepth_interorder = {}
-
-            for order in range(max(reaches_ordered_bysubntw.keys()), -1, -1):
-                jobs = []
-                for twi, (subn_tw, subn_reach_list) in enumerate(
-                    reaches_ordered_bysubntw[order].items(), 1
-                ):
-                    # TODO: Confirm that a list here is best -- we are sorting,
-                    # so a set might be sufficient/better
-                    segs = list(chain.from_iterable(subn_reach_list))
-                    offnetwork_upstreams = set()
-                    segs_set = set(segs)
-                    for seg in segs:
-                        for us in rconn[seg]:
-                            if us not in segs_set:
-                                offnetwork_upstreams.add(us)
-
-                    segs.extend(offnetwork_upstreams)
-
-                    common_segs = list(param_df.index.intersection(segs))
-                    wbodies_segs = set(segs).symmetric_difference(common_segs)
-                    
-                    # Declare empty dataframe
-                    waterbody_types_df_sub = pd.DataFrame()
-
-                    # Set compute_func_switch to compute_func.
-                    # compute_func for this function should be set to "diffusive" 
-                    compute_func_switch = compute_func
-
-                    # Can comment out above statement and uncomment below
-                    # if need to run compute_network_structured in mc_reach
-                    # for every subnetwork for debugging purposes.
-                    #compute_func_switch = compute_network_structured
-
-                    if not waterbodies_df.empty:
-                        lake_segs = list(waterbodies_df.index.intersection(segs))
-
-                        if subn_tw in waterbodies_df.index:
-                            # Since this subn_tw is a resevoir, set compute_func_switch
-                            # to compute_network_structured.
-                            compute_func_switch = compute_network_structured
-
-                        waterbodies_df_sub = waterbodies_df.loc[
-                            lake_segs,
-                            [
-                                "LkArea",
-                                "LkMxE",
-                                "OrificeA",
-                                "OrificeC",
-                                "OrificeE",
-                                "WeirC",
-                                "WeirE",
-                                "WeirL",
-                                "ifd",
-                                "qd0",
-                                "h0",
-                            ],
-                        ]
-                        
-                        #If reservoir types other than Level Pool are active
-                        if not waterbody_types_df.empty:
-                            waterbody_types_df_sub = waterbody_types_df.loc[
-                                lake_segs,
-                                [
-                                    "reservoir_type",
-                                ],
-                            ]
-
-                    else:
-                        lake_segs = []
-                        waterbodies_df_sub = pd.DataFrame()
-                    
-                    param_df_sub = param_df.loc[
-                        common_segs,
-                        ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
-                    ].sort_index()
-                    
-                    param_df_sub_super = param_df_sub.reindex(
-                        param_df_sub.index.tolist() + lake_segs
-                    ).sort_index()
-
-                    if order < max(reaches_ordered_bysubntw.keys()):
-                        for us_subn_tw in offnetwork_upstreams:
-                            subn_tw_sortposition = param_df_sub_super.index.get_loc(
-                                us_subn_tw
-                            )
-                            flowveldepth_interorder[us_subn_tw][
-                                "position_index"
-                            ] = subn_tw_sortposition
-
-                    subn_reach_list_with_type = _build_reach_type_list(subn_reach_list, wbodies_segs)
-
-                    qlat_sub = qlats.loc[param_df_sub.index]
-                    q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
-                    qlat_start_time = list(qlat_sub)[0]
-
-                    qlat_time_step_seconds = qts_subdivisions * dt
-
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
-
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
-                    param_df_sub = param_df_sub.reindex(
-                        param_df_sub.index.tolist() + lake_segs
-                    ).sort_index()
-
-                    usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index, offnetwork_upstreams)
-                    da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(subn_reach_list, lastobs_df_sub.index)
-
-                    qlat_sub = qlat_sub.reindex(param_df_sub.index)
-                    q0_sub = q0_sub.reindex(param_df_sub.index)
-
-                    jobs.append(
-                        delayed(compute_func_switch)(
-                            nts,
-                            dt,
-                            qts_subdivisions,
-                            subn_reach_list_with_type,
-                            subnetworks[subn_tw],
-                            param_df_sub.index.values,
-                            param_df_sub.columns.values,
-                            param_df_sub.values,
-                            q0_sub.values.astype("float32"),
-                            qlat_sub.values.astype("float32"),
-                            lake_segs,
-                            waterbodies_df_sub.values,
-                            waterbody_parameters,
-                            waterbody_types_df_sub.values.astype("int32"),
-                            waterbody_type_specified,
-                            model_start_time,
-                            usgs_df_sub.values.astype("float32"),
-                            np.array(da_positions_list_byseg, dtype="int32"),
-                            np.array(da_positions_list_byreach, dtype="int32"),
-                            np.array(da_positions_list_bygage, dtype="int32"),
-                            lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                            lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                            da_decay_coefficient,
-                            # flowveldepth_interorder,  # obtain keys and values from this dataset
-                            {
-                                us: fvd
-                                for us, fvd in flowveldepth_interorder.items()
-                                if us in offnetwork_upstreams
-                            },
-                            assume_short_ts,
-                            return_courant,
-                            diffusive_parameters,
                         )
                     )
 
@@ -947,7 +746,6 @@ def compute_nhd_routing_v02(
                         {},
                         assume_short_ts,
                         return_courant,
-                        diffusive_parameters,
                     )
                 )
 
@@ -1065,8 +863,76 @@ def compute_nhd_routing_v02(
                     {},
                     assume_short_ts,
                     return_courant,
-                    diffusive_parameters,
                 )
             )
 
     return results
+
+def compute_diffusive_routing(
+    results,
+    diffusive_network_data,
+    cpu_pool,
+    dt,
+    nts,
+    q0,
+    qlats,
+    qts_subdivisions,
+    usgs_df,
+    lastobs_df,
+    da_parameter_dict,
+    diffusive_parameters,
+    waterbodies_df,
+):
+
+    results_diffusive = []
+    for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
+
+        # extract junction inflows from results array
+        for j, i in enumerate(results):
+            x = np.in1d(i[0], diffusive_network_data[tw]['tributary_segments'])
+            if sum(x) > 0:
+                if j == 0:
+                    trib_segs = i[0][x]
+                    trib_flow = i[1][x, ::3]
+                else:
+                    trib_segs = np.append(trib_segs, i[0][x])
+                    trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+                    
+        # create DataFrame of junction inflow data            
+        junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
+
+        # build diffusive inputs
+        diffusive_inputs = diff_utils.diffusive_input_data_v02(
+            tw,
+            diffusive_network_data[tw]['connections'],
+            diffusive_network_data[tw]['rconn'],
+            diffusive_network_data[tw]['reaches'],
+            diffusive_network_data[tw]['mainstem_segs'],
+            None, # place holder for diffusive parameters
+            diffusive_network_data[tw]['param_df'],
+            qlats,
+            q0,
+            junction_inflows,
+            qts_subdivisions,
+            nts,
+            dt,
+            waterbodies_df,
+        )
+        
+        # run the simulation
+        out_q, out_elv = diffusive.compute_diffusive(diffusive_inputs)
+        
+        # unpack results
+        rch_list, dat_all = diff_utils.unpack_output(
+            diffusive_inputs['pynw'], 
+            diffusive_inputs['ordered_reaches'], 
+            out_q, 
+            out_elv
+        )
+        
+        # mask segments for which we already have MC solution
+        x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
+        
+        results_diffusive.append((rch_list[~x], dat_all[~x,3:]))
+
+    return results_diffusive

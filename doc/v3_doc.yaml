@@ -342,6 +342,17 @@ compute_parameters:
         # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
         wrf_hydro_waterbody_crosswalk_filter_file_field_name: 
     # ---------------
+    # Parameters controlling the use of MC/diffusive hybrid simulations
+    # Only include/populate these parameters if an MC/diffusive hybrid
+    # simulations is desired.
+    hybrid_parameters:
+        # ---------------
+        # filepath to diffusive domain dictionary file. 
+        # This file can be either JSON or yaml and contain a dictionary
+        # of diffusive network segments, organized by tailwater ID (keys).
+        # (!!) mandatory for hybrid simulations
+        diffusive_domain:
+    # ---------------
     # parameters controling model forcings, simulation duration, and simulation time discretization
     # Here, the user has a choice. They can either explicitly list sets of forcing files to be used
     # with each loop of the simulation. Or, they can opt to have loop sets constructed automatically.

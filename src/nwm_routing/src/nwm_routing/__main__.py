@@ -30,7 +30,7 @@ from .preprocess import (
 )
 from .output import nwm_output_generator
 
-from troute.routing.compute import compute_nhd_routing_v02
+from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
 
 #needed for v03 looping when a new instance occurs
 LOG = logging.getLogger('')
@@ -612,7 +612,6 @@ def _run_everything_v02(
         waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
         waterbody_types_df,
         waterbody_type_specified,
-        diffusive_parameters,
     )
 
     
@@ -879,6 +878,7 @@ def nwm_route(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_parameters,
+    diffusive_network_data,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -893,9 +893,7 @@ def nwm_route(
     else:
         LOG.info(f"executing routing computation ...")
 
-    # TODO: Remove below. --compute-kernel=V02-structured-obj did not work on command line
-    # compute_func = fast_reach.compute_network_structured_obj
-
+    start_time_mc = time.time()
     results = compute_nhd_routing_v02(
         downstream_connections,
         upstream_connections,
@@ -921,10 +919,33 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
-        diffusive_parameters,
     )
-
     
+    if diffusive_network_data: # run diffusive side of a hybrid simulation
+        
+        LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
+        start_time_diff = time.time()
+                
+        # call diffusive wave simulation and append results to MC results
+        results.extend(
+            compute_diffusive_routing(
+                results,
+                diffusive_network_data,
+                cpu_pool,
+                dt,
+                nts,
+                q0,
+                qlats,
+                qts_subdivisions,
+                usgs_df,
+                lastobs_df,
+                da_parameter_dict,
+                diffusive_parameters,
+                waterbodies_df,
+            )
+        )
+        LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
+
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
     return results
@@ -1066,6 +1087,7 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            diffusive_network_data,
         ) = unpack_nwm_preprocess_data(
             preprocessing_parameters
         )
@@ -1082,22 +1104,32 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            diffusive_network_data,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
             preprocessing_parameters,
+            compute_parameters,
         )
     
     if showtiming:
         network_end_time = time.time()
         task_times['network_time'] = network_end_time - network_start_time
 
+    # list of all segments in the domain (MC + diffusive)
+    segment_index = param_df.index
+    if diffusive_network_data:
+        for tw in diffusive_network_data:
+            segment_index = segment_index.append(
+                pd.Index(diffusive_network_data[tw]['mainstem_segs'])
+            ) 
+    
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
         restart_parameters,
         data_assimilation_parameters,
-        param_df.index,
+        segment_index,
         waterbodies_df,
         segment_list=None,
         wbodies_list=None,
@@ -1134,12 +1166,12 @@ def main_v03(argv):
         da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
-        param_df.index,
+        segment_index,
         lastobs_df.index,
         cpu_pool,
         t0,
     )
-    
+        
     if showtiming:
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - ic_end_time
@@ -1183,6 +1215,7 @@ def main_v03(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
+            diffusive_network_data,
         )
         
         if showtiming:
@@ -1210,7 +1243,7 @@ def main_v03(argv):
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
-                param_df.index,
+                segment_index,
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),

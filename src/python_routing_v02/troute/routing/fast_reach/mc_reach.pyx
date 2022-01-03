@@ -186,7 +186,6 @@ cpdef object compute_network(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
-    dict diffusive_parameters=False,
     int da_check_gage = -1,
     ):
     """
@@ -767,7 +766,6 @@ cpdef object compute_network_structured_obj(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
-    dict diffusive_parameters=False,
     int da_check_gage = -1,
     ):
     """
@@ -1067,7 +1065,6 @@ cpdef object compute_network_structured(
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
-    dict diffusive_parameters=False,
     int da_check_gage = -1,
     ):
     """
