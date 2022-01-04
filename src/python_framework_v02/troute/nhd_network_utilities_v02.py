@@ -623,20 +623,28 @@ def build_forcing_sets(
         # list of forcing file datetimes
         datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
                          range(nfiles)]
-        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
-                             datetime_list]
-
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in datetime_list]
+        
+        file_dates = [datetime.strptime(nhd_io.get_param_str(current_file, "model_output_valid_time"),'%Y-%m-%d_%H:%M:%S') for current_file in all_files]
         # list of forcing files
-        forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
-                                 datetime_list_str]
+        forcing_filename_list = []
+        for element in datetime_list:
+            try:
+                J = all_files[file_dates.index(element)]
+                assert J.is_file() == True
+                forcing_filename_list.append(all_files[file_dates.index(element)])
+            except AssertionError:
+                raise AssertionError("Aborting simulation because forcing file with date", element, "cannot be found.") from None
+            except ValueError:
+                raise ValueError("Aborting simulation because forcing file with date", element, "cannot be found") from None
+        # forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in datetime_list_str]
         
         # check that all forcing files exist
-        for f in forcing_filename_list:
-            try:
-                J = pathlib.Path(qlat_input_folder.joinpath(f))     
-                assert J.is_file() == True
-            except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+        # for f in forcing_filename_list:
+        #     try:   
+        #         assert f.is_file() == True
+        #     except AssertionError:
+        #         raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
                 
         # build run sets list
         run_sets = []
