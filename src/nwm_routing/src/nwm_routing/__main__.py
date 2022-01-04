@@ -861,6 +861,7 @@ def nwm_route(
     compute_kernel,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
@@ -903,6 +904,7 @@ def nwm_route(
         parallel_compute_method,
         subnetwork_target_size,  # The default here might be the whole network or some percentage...
         cpu_pool,
+        t0,
         dt,
         nts,
         qts_subdivisions,
@@ -1198,6 +1200,7 @@ def main_v03(argv):
             compute_kernel,
             subnetwork_target_size,
             cpu_pool,
+            t0,
             dt,
             nts,
             qts_subdivisions,

@@ -144,6 +144,7 @@ def compute_nhd_routing_v02(
     parallel_compute_method,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
@@ -330,19 +331,7 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
-                    qlat_start_time = list(qlat_sub)[0]
-
-                    qlat_time_step_seconds = qts_subdivisions * dt
-
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
-
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
+                                        
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
@@ -372,7 +361,7 @@ def compute_nhd_routing_v02(
                             waterbody_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
-                            model_start_time,
+                            t0.strftime('%Y-%m-%d_%H:%M:%S'),
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(da_positions_list_byseg, dtype="int32"),
@@ -542,18 +531,6 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
-                    qlat_start_time = list(qlat_sub)[0]
-
-                    qlat_time_step_seconds = qts_subdivisions * dt
-
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
-
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
 
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
@@ -582,7 +559,7 @@ def compute_nhd_routing_v02(
                             waterbody_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
-                            model_start_time,
+                            t0.strftime('%Y-%m-%d_%H:%M:%S'),
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(da_positions_list_byseg, dtype="int32"),
@@ -696,18 +673,6 @@ def compute_nhd_routing_v02(
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
-                #Determine model_start_time from qlat_start_time
-                qlat_start_time = list(qlat_sub)[0]
-
-                qlat_time_step_seconds = qts_subdivisions * dt
-
-                qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                model_start_time_datetime_object = qlat_start_time_datetime_object \
-                - timedelta(seconds=qlat_time_step_seconds)
-
-                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
                 param_df_sub = param_df_sub.reindex(
                     param_df_sub.index.tolist() + lake_segs
                 ).sort_index()
@@ -735,7 +700,7 @@ def compute_nhd_routing_v02(
                         waterbody_parameters,
                         waterbody_types_df_sub.values.astype("int32"),
                         waterbody_type_specified,
-                        model_start_time,
+                        t0.strftime('%Y-%m-%d_%H:%M:%S'),
                         usgs_df_sub.values.astype("float32"),
                         np.array(da_positions_list_byseg, dtype="int32"),
                         np.array(da_positions_list_byreach, dtype="int32"),
@@ -813,18 +778,6 @@ def compute_nhd_routing_v02(
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
 
-            #Determine model_start_time from qlat_start_time
-            qlat_start_time = list(qlat_sub)[0]
-
-            qlat_time_step_seconds = qts_subdivisions * dt
-
-            qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-            model_start_time_datetime_object = qlat_start_time_datetime_object \
-            - timedelta(seconds=qlat_time_step_seconds)
-
-            model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
             param_df_sub = param_df_sub.reindex(
                 param_df_sub.index.tolist() + lake_segs
             ).sort_index()
@@ -852,7 +805,7 @@ def compute_nhd_routing_v02(
                     waterbody_parameters,
                     waterbody_types_df_sub.values.astype("int32"),
                     waterbody_type_specified,
-                    model_start_time,
+                    t0.strftime('%Y-%m-%d_%H:%M:%S'),
                     usgs_df_sub.values.astype("float32"),
                     np.array(da_positions_list_byseg, dtype="int32"),
                     np.array(da_positions_list_byreach, dtype="int32"),
