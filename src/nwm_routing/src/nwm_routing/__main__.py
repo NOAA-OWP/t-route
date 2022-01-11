@@ -1160,13 +1160,19 @@ def main_v03(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
 
-    qlats, usgs_df = nwm_forcing_preprocess(
+    (
+        qlats, 
+        usgs_df, 
+        reservoir_usgs_df, 
+        reservoir_usace_df
+    ) = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
         da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
         segment_index,
+        link_gage_df,
         lastobs_df.index,
         cpu_pool,
         t0,
@@ -1238,13 +1244,19 @@ def main_v03(argv):
         
         # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
-            qlats, usgs_df = nwm_forcing_preprocess(
+            (
+                qlats, 
+                usgs_df, 
+                reservoir_usgs_df, 
+                reservoir_usace_df
+            ) = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
                 segment_index,
+                link_gage_df,
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
