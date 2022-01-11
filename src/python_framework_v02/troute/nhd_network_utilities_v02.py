@@ -907,27 +907,66 @@ def build_data_assimilation(data_assimilation_parameters, run_parameters):
     return usgs_df, lastobs_df, da_parameter_dict
 
 
-def build_data_assimilation_usgs_df(
-    data_assimilation_parameters,
+def build_streamflow_da_data(
+    streamflow_da_parameters,
     run_parameters,
     lastobs_index=None,
 ):
-    data_assimilation_csv = data_assimilation_parameters.get(
-        "data_assimilation_csv", None
-    )
-    data_assimilation_folder = data_assimilation_parameters.get(
-        "data_assimilation_timeslices_folder", None
+    """
+    Construct DataFrame of USGS gage observations for streamflow DA.
+    
+    Arguments
+    ---------
+    - streamflow_da_parameters (dict): Parameters controlling DA data assembly
+    - run_parameters           (dict): Simulation run parameters
+    - lastobs_index    (Pandas Index): ????
+    
+    Returns
+    -------
+    - usgs_df (DataFrame): qa/qc'd and interpolated USGS gage observations from 
+                           USGS TimeSlice files for streamflow DA
+    
+    Notes
+    -----
+    
+    """
+
+    # directory containing USGS TimeSlice files
+    usgs_timeslices_folder = streamflow_da_parameters.get(
+        "usgs_timeslices_folder", None
     )
 
+    # initialize empty dataframe to contain gage observations
     usgs_df = pd.DataFrame()
+
+    if usgs_timeslices_folder:
+        
+        # convert timeslices_folder from str to PosixPath
+        usgs_timeslices_folder = pathlib.Path(
+            usgs_timeslices_folder
+        )
+        
+        if "usgs_timeslice_files" in streamflow_da_parameters:
+                
+            usgs_files = streamflow_da_parameters.get("usgs_timeslice_files", None)
+            usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
+            
+            if usgs_files: 
+
+                usgs_df = nhd_io.get_obs_from_timeslices(
+                    streamflow_da_parameters["crosswalk_file"],
+                    streamflow_da_parameters["crosswalk_gage_field"],
+                    streamflow_da_parameters["crosswalk_segID_field"],
+                    usgs_files,
+                    streamflow_da_parameters["qc_threshold"],
+                    streamflow_da_parameters["interpolation_limit"],
+                    run_parameters["dt"],
+                    run_parameters["t0"],
+                )
+        
     if not isinstance(lastobs_index, pd.Index):
         lastobs_index = pd.Index()
-
-    if data_assimilation_csv:
-        usgs_df = build_data_assimilation_csv(data_assimilation_parameters)
-    elif data_assimilation_folder:
-        usgs_df = build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
-
+        
     if not lastobs_index.empty:
         if not usgs_df.empty and not usgs_df.index.equals(lastobs_index):
             LOG.warning("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
@@ -937,8 +976,30 @@ def build_data_assimilation_usgs_df(
 
 
 def build_data_assimilation_lastobs(data_assimilation_parameters):
-    # TODO: Fix the Logic here according to the following.
-
+    '''
+    A middle man function that assembles inputs for and calls
+    nhd_io.build_lastobs_df, which constructs the lastobs dataframe used for 
+    streamflow data assimilation. 
+    
+    Also, this function creates a dictionary of data assimilation parameters
+    that gets passed down to the compute kernels. 
+    
+    Arguments
+    ---------
+    - data_assimilation_parameters (dict): user-input data assimilation parameters
+    
+    Returns
+    -------
+    - lastobs_df (Pandas DataFrame):
+    
+    - da_parameter_dict      (dict):
+    
+    Notes
+    -----
+    - TODO: package additional parameters into da_parameter_dict
+    '''
+    
+    # TODO: Fix the Logic here according to the following:
     # If there are any observations for data assimilation, there
     # needs to be a complete set in the first time set or else
     # there must be a "LastObs". If there is a complete set in
@@ -947,25 +1008,54 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
     # with an empty usgs dataframe.
 
     lastobs_df = pd.DataFrame()
-    lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-    lastobs_start = data_assimilation_parameters.get(
-        "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0
+    
+    streamflow_da_parameters = data_assimilation_parameters.get(
+        'streamflow_da',
+        None
     )
-    lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
-    lastobs_crosswalk_file = data_assimilation_parameters.get(
-        "wrf_hydro_da_channel_ID_crosswalk_file", None
-    )
-
-    if lastobs_file:
-        lastobs_df = nhd_io.build_lastobs_df(
-            lastobs_file,
-            lastobs_crosswalk_file,
-            lastobs_type,  # TODO: Confirm that we are using this; delete it if not.
-            lastobs_start,
+    
+    if streamflow_da_parameters:
+        
+        # determine if user explictly requests streamflow DA
+        nudging = streamflow_da_parameters.get(
+            'streamflow_nudging', 
+            False
         )
+            
+        if nudging:
+            
+            lastobs_file = streamflow_da_parameters.get(
+                "wrf_hydro_lastobs_file",
+                None
+            )
+            
+            lastobs_start = streamflow_da_parameters.get(
+                "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",
+                0
+            )
+            
+            lastobs_type = streamflow_da_parameters.get(
+                "wrf_lastobs_type", 
+                "error-based"
+            )
+        
+            lastobs_crosswalk_file = streamflow_da_parameters.get(
+                "gage_segID_crosswalk_file",
+                None
+            )
+
+            if lastobs_file:
+                lastobs_df = nhd_io.build_lastobs_df(
+                    lastobs_file,
+                    lastobs_crosswalk_file,
+                    lastobs_start,
+                )
 
     da_parameter_dict = {}
-    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+    da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get(
+        "da_decay_coefficient", 
+        120
+    )
     # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
 
     return lastobs_df, da_parameter_dict
@@ -997,7 +1087,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         # TODO: Handle this with a real exception
 
     if usgs_files:
-        usgs_df = nhd_io.get_usgs_from_time_slices_folder(
+        usgs_df = nhd_io.get_obs_from_timeslices(
             data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
             usgs_files,
             data_assimilation_parameters.get("qc_threshold", 1),
