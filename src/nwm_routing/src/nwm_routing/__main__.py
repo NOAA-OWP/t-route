@@ -1143,7 +1143,7 @@ def main_v03(argv):
     run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
 
     # Create da_sets: sets of TimeSlice files for each loop
-    if "data_assimilation_parameters" in compute_parameters: 
+    if "data_assimilation_parameters" in compute_parameters:
         da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
         
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
