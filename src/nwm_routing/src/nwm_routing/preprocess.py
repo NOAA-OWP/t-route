@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+import pathlib
 import numpy as np
 import pathlib
 import xarray as xr
@@ -321,22 +322,72 @@ def nwm_initial_warmstate_preprocess(
     data_assimilation_parameters,
     segment_index,
     waterbodies_df,
-    segment_list=None,
-    wbodies_list=None,
 ):
+#--------------------------------------------------------------------------------
+    '''
+    Assemble model initial condition data:
+        - waterbody inital states (outflow and pool elevation)
+        - channel initial states (flow and depth)
+        - initial time
+        - most recent gage observations
+    Additionally, a dictionary of data assimilation parameters is assembled.
+    
+    Arguments
+    ---------
+    - break_network_at_waterbodies (bool): If True, waterbody initial states will
+                                           be appended to the waterbody parameter
+                                           dataframe. If False, waterbodies will
+                                           not be simulated and the waterbody
+                                           parameter datataframe wil not be changed
+    
+    - restart_parameters           (dict): User-input simulation restart 
+                                           parameters
+    
+    - data_assimilation_parameters (dict): User-input data assimilation 
+                                           parameters
+    
+    - segment_index        (Pandas Index): All segment IDs in the simulation 
+                                           doamin
+    
+    - waterbodies_df   (Pandas DataFrame): Waterbody parameters   
+    
+    Returns
+    -------
+    - waterbodies_df (Pandas DataFrame): Waterbody parameters with initial
+                                         states (outflow and pool elevation)
+    
+    - q0             (Pandas DataFrame): Initial flow and depth states for each
+                                         segment in the model domain
+    
+    - t0                     (datetime): Datetime of the model initialization
+    
+    - lastobs_df     (Pandas DataFrame): Last gage observations data for DA
+    
+    - da_parameter_dict          (dict): Data assimilation parameters
+    
+    Notes
+    -----
+    - I don't know if it makes sense to create the da_parameter_dict, here. 
+      Consider moving the creation to another location..
+    '''
 
+    #----------------------------------------------------------------------------
+    # Assemble waterbody initial states (outflow and pool elevation
+    #----------------------------------------------------------------------------
+    
     if break_network_at_waterbodies:
-        ## STEP 3c: Handle Waterbody Initial States
-        # TODO: move step 3c into function in nnu, like other functions wrapped in main()
+
         start_time = time.time()
         LOG.info("setting waterbody initial states ...")
 
+        # if a lite restart file is provided, read initial states from it.
         if restart_parameters.get("lite_waterbody_restart_file", None):
             
             waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
                 restart_parameters['lite_waterbody_restart_file']
             )
             
+        # read waterbody initial states from WRF-Hydro type restart file
         elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
@@ -347,6 +398,8 @@ def nwm_initial_warmstate_preprocess(
                     "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
                 ],
             )
+        
+        # if no restart file is provided, default initial states
         else:
             # TODO: Consider adding option to read cold state from route-link file
             waterbodies_initial_ds_flow_const = 0.0
@@ -372,38 +425,57 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
-        LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
+        LOG.debug(
+            "waterbody initial states complete in %s seconds."\
+            % (time.time() - start_time))
         start_time = time.time()
 
-    # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
+    #----------------------------------------------------------------------------
+    # Assemble channel initial states (flow and depth)
+    # also establish simulation initialization timestamp
+    #----------------------------------------------------------------------------
+    
     start_time = time.time()
     LOG.info("setting channel initial states ...")
 
-    # STEP 4a: Set Channel States and T0
+    # if lite restart file is provided, the read channel initial states from it
     if restart_parameters.get("lite_channel_restart_file", None):
         
         q0, t0 = nhd_io.read_lite_restart(
             restart_parameters['lite_channel_restart_file']
         )
+    
+    # build initial states from user-provided restart parameters
     else:
         q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
+        # get initialization time
         if restart_parameters.get("wrf_hydro_channel_restart_file", None):
             channel_initial_states_file = restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ]
-            t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+            t0_str = nhd_io.get_param_str(
+                channel_initial_states_file, 
+                "Restart_Time"
+            )
         else:
             t0_str = "2015-08-16_00:00:00"
 
+        # convert timestamp from string to datetime
         t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
 
-    # STEP 4b: Set LastObs
+    #----------------------------------------------------------------------------
+    # Assemble streamflow DA lastobs data
+    #----------------------------------------------------------------------------
+    
     lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
         data_assimilation_parameters
     )
 
-    LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
+    LOG.debug(
+        "channel initial states complete in %s seconds."\
+        % (time.time() - start_time)
+    )
     start_time = time.time()
 
     return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict

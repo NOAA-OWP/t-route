@@ -1133,8 +1133,6 @@ def main_v03(argv):
         data_assimilation_parameters,
         segment_index,
         waterbodies_df,
-        segment_list=None,
-        wbodies_list=None,
     )
     
     if showtiming:

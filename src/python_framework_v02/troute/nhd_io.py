@@ -753,164 +753,113 @@ def build_filtered_gage_df(segment_gage_df, gage_col="gages"):
 
 def build_lastobs_df(
         lastobsfile,
-        routelink,
-        wrf_lastobs_flag,
-        time_shift = 0,
-        gage_id = "gages",
-        link_id = "link",
-        model_discharge_id = "model_discharge",
-        obs_discharge_id = "discharge",
-        time_idx_id = "timeInd",
-        station_id = "stationId",
-        station_idx_id = "stationIdInd",
-        time_id = "time",
-        discharge_nan = -9999.0,
-        ref_t_attr_id = "modelTimeAtOutput",
-        route_link_idx = "feature_id",
-        # last_nudge_id = "last_nudge",
+        crosswalk_file,
+        time_shift           = 0,
+        crosswalk_gage_field = "gages",
+        crosswalk_link_field = "link",
+        model_discharge_id   = "model_discharge",
+        obs_discharge_id     = "discharge",
+        time_idx_id          = "timeInd",
+        station_id           = "stationId",
+        station_idx_id       = "stationIdInd",
+        time_id              = "time",
+        discharge_nan        = -9999.0,
+        ref_t_attr_id        = "modelTimeAtOutput",
+        route_link_idx       = "feature_id",
     ):
-
-    standard_columns = {
-        "lastobs_discharge": obs_discharge_id,
-        "time_since_lastobs": time_id,
-        "gages": gage_id,
-        "last_model_discharge": model_discharge_id
-    }
-
-    """
-    Open lastobs file, import the segment keys from the routelink_file
-    and extract discharges.
-    """
-    # TODO: We should already know the link/gage relationship by this point and can require that as an input
-    # TODO: ... so we could get rid of the following handful of lines.
-    with xr.open_dataset(routelink) as ds1:
-        gage_list = list(map(bytes.strip, ds1.gages.values))
+    '''
+    Constructs a DataFame of "lastobs" data used in streamflow DA routine
+    "lastobs" information is just like it sounds. It is the magnitude and
+    timing of the last valid observation at each gage in the model domain. 
+    We use this information to jump start initialize the DA process, both 
+    for forecast and AnA simulations. 
+    
+    Arguments
+    ---------
+    
+    Returns
+    -------
+    
+    Notes
+    -----
+    
+    '''
+    
+    # open crosswalking file and construct dataframe relating gageID to segmentID
+    with xr.open_dataset(crosswalk_file) as ds:
+        gage_list = list(map(bytes.strip, ds[crosswalk_gage_field].values))
         gage_mask = list(map(bytes.isalnum, gage_list))
-
-        gage_da = list(map(bytes.strip, ds1.gages[gage_mask].values))
-        # gage_da = ds1.gages[gage_mask].values.astype(int)
-
-        data_var_dict = {}
-        data_vars = ("link", "to", "ascendingIndex")
-        for v in data_vars:
-            data_var_dict[v] = (["gages"], ds1[v].values[gage_mask])
-        ds1 = xr.Dataset(data_vars=data_var_dict, coords={"gages": gage_da})
-        station_gage_df = ds1.to_dataframe()
-
+        gage_da   = list(map(bytes.strip, ds[crosswalk_gage_field][gage_mask].values))
+        data_var_dict = {
+            crosswalk_gage_field: gage_da,
+            crosswalk_link_field: ds[crosswalk_link_field].values[gage_mask],
+        }
+        gage_link_df = pd.DataFrame(data = data_var_dict).set_index([crosswalk_gage_field])
+            
     with xr.open_dataset(lastobsfile) as ds:
-        model_discharge_last_ts = ds[model_discharge_id][:,-1].to_dataframe()
-
-        # TODO: Determine if the df_discharges extractions can be performed
-        # exclusively on the dataset with no
-        # transformation to dataframe.
-        # ... like how we are doing for the model_discharge_last_ts
-        # NOTE: The purpose of the interpolation is to pull the last non-nan
-        # value in the time series forward to the end of the series for easy extraction.
-        # Caution should be exercised not to compare modeled values from the last
-        # time step with the last valid observed values, as these may not
-        # correspond to the same times. (See additional comment below...)
-
-        df_discharges = ds[obs_discharge_id].to_dataframe()
-        last_ts = df_discharges.index.get_level_values(time_idx_id)[-1]
-        df_discharges[df_discharges[obs_discharge_id] != discharge_nan] = df_discharges[
-            df_discharges[obs_discharge_id] != discharge_nan
-        ].interpolate(method="linear", axis=1)
-
-        discharge_last_ts = df_discharges[
-            df_discharges.index.get_level_values(time_idx_id) == last_ts
-        ]
-        # ref_time = ds.attrs[ref_t_attr_id]
+        
+        gages    = np.char.strip(ds[station_id].values)
+        
         ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
-        # lastobs_times = ds[time_id][:,-1]
-        # lastobs_times = ds[time_id].str.decode("utf-8").to_dataframe()
-        lastobs_times = pd.to_datetime(
-            ds[time_id][:,-1].to_dataframe()[time_id].str.decode("utf-8"),
-            format="%Y-%m-%d_%H:%M:%S",
-            errors='coerce',
+        
+        last_model = ds[model_discharge_id][:,-1].values
+        last_model[np.where(last_model == discharge_nan)] = np.nan
+        
+        last_ts = ds[time_idx_id].values[-1]
+        
+        df_discharge = (
+            ds[obs_discharge_id].to_dataframe().                 # discharge to MultiIndex DF
+            replace(to_replace = discharge_nan, value = np.nan). # replace null values with nan
+            unstack(level = 0)                                   # unstack to single Index (timeInd)    
         )
-        lastobs_times = (lastobs_times - ref_time).dt.total_seconds()
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(ds.time.values[i, idx].decode('utf-8'))
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
+
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
         lastobs_times = lastobs_times - time_shift
 
-        lastobs_stations = ds[station_id].to_dataframe()
-        lastobs_stations[station_id] = lastobs_stations[station_id].map(bytes.strip)
+    data_var_dict = {
+        'gages'               : gages,
+        'last_model_discharge': last_model,
+        'time_since_lastobs'  : lastobs_times,
+        'lastobs_discharge'   : last_observations
+    }
 
-        ## END OF CONTEXT (Remaining items could be outdented...)
-        model_discharge_last_ts = model_discharge_last_ts.join(lastobs_stations)
-        model_discharge_last_ts = model_discharge_last_ts.join(lastobs_times)
-        model_discharge_last_ts = model_discharge_last_ts.join(discharge_last_ts)
-        model_discharge_last_ts = model_discharge_last_ts.loc[
-            model_discharge_last_ts[model_discharge_id] != discharge_nan
+    lastobs_df = (
+        pd.DataFrame(data = data_var_dict).
+        set_index('gages').
+        join(gage_link_df, how = 'inner').
+        reset_index().
+        set_index(crosswalk_link_field)
+    )
+    lastobs_df = lastobs_df[
+        [
+            'gages',
+            'last_model_discharge',
+            'time_since_lastobs',
+            'lastobs_discharge',
         ]
-        model_discharge_last_ts = model_discharge_last_ts.reset_index().set_index(
-            station_id
-        )
-        model_discharge_last_ts = model_discharge_last_ts.drop(
-            [station_idx_id, time_idx_id], axis=1
-        )
-
-        model_discharge_last_ts[obs_discharge_id] = model_discharge_last_ts[
-            obs_discharge_id
-        ].to_frame()
-
-        # TODO: Remove any of the following comments that are no longer needed
-        # If predict from lastobs file use last obs file results
-        # if lastobs_file == "error-based":
-        # elif lastobs_file == "obs-based":  # the wrf-hydro default
-        # NOTE:  The following would compare potentially mis-matched
-        # obs/model pairs, so it is commented until we can figure out
-        # a more robust bias-type persistence.
-        # For now, we use only obs-type persistence.
-        # It would be possible to preserve a 'last_valid_bias' which would
-        # presumably correspond to the last_valid_time.
-        # # if wrf_lastobs_flag:
-        # #     model_discharge_last_ts[last_nudge_id] = (
-        # #         model_discharge_last_ts[obs_discharge_id]
-        # #         - model_discharge_last_ts[model_discharge_id]
-        # #     )
-
-        # final_df = station_gage_df.join(model_discharge_last_ts[obs_discharge_id])  # Preserve all columns
-        final_df = station_gage_df.join(model_discharge_last_ts)
-        final_df = final_df.reset_index()
-        final_df = final_df.set_index(link_id)
-        # final_df = final_df.drop([gage_id], axis=1)  # Not needed -- gage id could be useful
-        # TODO: What effect does this dropna have?
-        final_df = final_df.dropna()
-        # Translate to standard column names
-        final_df = final_df.rename(columns=reverse_dict(standard_columns))
-
-        # Else predict from the model outputs from t-route if index doesn't match interrupt computation as the results won't be valid
-        # else:
-        #     fvd_df = fvd_df
-        #     if len(model_discharge_last_ts.index) == len(fvd_df.index):
-        #         model_discharge_last_ts["last_nudge"] = (
-        #             model_discharge_last_ts["discharge"] - fvd_df[fvd_df.columns[0]]
-        #         )
-        #     else:
-        #         print("THE NUDGING FILE IDS DO NOT MATCH THE FLOWVELDEPTH IDS")
-        #         sys.exit()
-        # # Predictions created with continuously decreasing deltas until near 0 difference
-        # a = 120
-        # prediction_df = pd.DataFrame(index=model_discharge_last_ts.index)
-
-        # for time in range(0, 720, 5):
-        #     weight = math.exp(time / -a)
-        #     delta = pd.DataFrame(
-        #         model_discharge_last_ts["last_nudge"] / weight)
-
-        #     if time == 0:
-        #         prediction_df[str(time)] = model_discharge_last_ts["last_nudge"]
-        #         weight_diff = prediction_df[str(time)] - prediction_df[str(time)]
-        #     else:
-        #         if weight > 0.1:
-        #             prediction_df[str(time)] = (
-        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
-        #             )
-        #         elif weight < -0.1:
-        #             prediction_df[str(time)] = (
-        #                 delta["last_nudge"] + model_discharge_last_ts["model_discharge"]
-        #             )
-        # prediction_df["0"] = model_discharge_last_ts["model_discharge"]
-        return final_df
+    ]
+    
+    return lastobs_df
 
 
 def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
