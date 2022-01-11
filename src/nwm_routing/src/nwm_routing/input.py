@@ -230,40 +230,100 @@ def _input_handler_v02(args):
 
 
 def _does_file_exist(parameter_name, filepath_input):
+    '''
+    A test to see if input parameter files were provided by the user and that
+    those files exist
     
-    debugmsg = 'Checking that a {} parameter is specified and that the file exists'.format(parameter_name)
-    LOG.debug(debugmsg)
+    Arguments
+    ---------
+    - parameter_name (str): Name of the input parameter
+    
+    - filepath_input (str): Path of the input file to be checked
+    
+    Returns
+    -------
+    - No returns, just logging messages.
+    '''
+    
+    LOG.debug(
+        "Checking that a %s parameter is specified and the file exists", 
+        parameter_name
+    )
+    
     try:
         J = pathlib.Path(filepath_input)
         assert J.is_file() == True
+    
+    # file does not exist
     except AssertionError:
-        errmsg = '{} parameter entry {} does not exist. Please make sure the file path is correctly entered in the configuration file'.format(parameter_name, filepath_input)
-        LOG.error(errmsg)
-        raise
+
+        LOG.error(
+            'ERROR: %s parameter entry %s does not exist!!', 
+            parameter_name, 
+            filepath_input
+        )
+        LOG.error(
+            'Make sure the file path is correctly entered in the configuration file'
+        )
+        sys.exit()
+    
+    # parameter is not provided by the user
     except KeyError as err:
-        errmsg = 'A {} parameter must be specified in the configuration file'.format(parameter_name)
-        LOG.error(errmsg)
-        raise err
-    debugmsg  = 'The {} parameter is specified and exists'.format(parameter_name)
-    LOG.debug(debugmsg)
+        LOG.error(
+            'A %s parameter is not provided in the configuration file',
+            parameter_name
+        )
+        sys.exit()
+
+    # test passed
+    LOG.debug('The %s parameter is specified and exists', parameter_name)
     
 def _does_path_exist(parameter_name, directory_path_input):
+    '''
+    A test to see if an input parameter directory is provided by the user and 
+    that the directory exist
     
-    debugmsg = 'Checking that a {} parameter is specified and that the directory exists'.format(parameter_name)
-    LOG.debug(debugmsg)
+    Arguments
+    ---------
+    - parameter_name       (str): Name of the input parameter
+    
+    - directory_path_input (str): Path of the input directory to be checked
+    
+    Returns
+    -------
+    - No returns, just logging messages.
+    '''
+
+    LOG.debug(
+        'Checking that a %s parameter is specified and that the directory exists',
+        parameter_name
+    )
+    
     try:
         J = pathlib.Path(directory_path_input)
         assert J.is_dir() == True
+        
     except AssertionError:
-        errmsg = '{} parameter entry {} does not exist. Please make sure the directory path is correctly entered in the configuration file'.format(parameter_name, directory_path_input)
-        LOG.error(errmsg)
-        raise
+        
+        LOG.error(
+            'ERROR: %s parameter entry %s does not exist!!',
+            parameter_name,
+            directory_path_input
+        )
+        LOG.error(
+            'Make sure the directory path is correctly entered in the configuration file'
+        )
+        sys.exit()
+        
     except KeyError as err:
-        errmsg = 'A {} parameter must be specified in the configuration file'.format(parameter_name)
-        LOG.error(errmsg)
-        raise err
-    debugmsg  = 'The {} parameter is specified and exists'.format(parameter_name)
-    LOG.debug(debugmsg)
+        LOG.error(
+            'A %s parameter must be specified in the configuration file'
+            ,
+            parameter_name
+        )
+        sys.exit()
+        
+    LOG.debug('The %s parameter is specified and exists', parameter_name)
     
 def check_inputs(
             log_parameters,
@@ -281,6 +341,9 @@ def check_inputs(
 
     LOG.debug('***** Begining configuration file (.YAML) check *****')
     
+    #-----------------------------------------------------------------
+    # If only preprocessing, make sure output directory exists
+    #-----------------------------------------------------------------
     if preprocessing_parameters.get('preprocess_only', None):
         
         LOG.debug('Preparing a preprocessing only execution: preprocess_only = True')
@@ -301,16 +364,27 @@ def check_inputs(
             preprocessing_parameters['preprocess_output_folder']
         )
         
-    if preprocessing_parameters.get('preprocess_only', None) and preprocessing_parameters.get('use_preprocessed_data', None):
+    #-----------------------------------------------------------------
+    # User cannot set both preprocess_only and use_preprocessed_data
+    # to true. It needs to be one or the other. 
+    #-----------------------------------------------------------------
+    if preprocessing_parameters.get('preprocess_only', None) \
+    and preprocessing_parameters.get('use_preprocessed_data', None):
         
-        LOG.critical(
-            "preprocess_only = True and use_preprocessed_data = True. Aborting execution. Both variables cannot be True"
-        )
-        quit
+        LOG.error("preprocess_only = True and use_preprocessed_data = True.")
+        LOG.error('Aborting execution. Both variables cannot be True')
+        quit()
         
+    #-----------------------------------------------------------------
+    # If preprocessed network data is to be used to to jump-start a 
+    # simulation, then check that the preprocessed file is provided
+    # and that the file exists.
+    #-----------------------------------------------------------------    
     if preprocessing_parameters.get('use_preprocessed_data', None):
         
-        LOG.debug('Preparing a simlation that uses already preprocessed network graph data: use_preprocessed_data = True')
+        LOG.debug(
+            'Preparing a simlation that uses preprocessed network data: use_preprocessed_data = True'
+        )
         
         # if user requests to use ready preprocessed data, check to make sure that the .npy file
         # containing network graph objects is specified.
@@ -318,8 +392,9 @@ def check_inputs(
             pass
         else:
             LOG.error(
-                "No preprocessed data file specified. Please specify preprocess_source_file in the configuration file"
+                "No preprocessed .npy file specified."
             )
+            LOG.error('Please specify preprocess_source_file in the configuration file')
             quit()
         
         # ... and check to make sure the source file exists
@@ -328,55 +403,55 @@ def check_inputs(
             preprocessing_parameters['preprocess_source_file']
         )
     
+    #-----------------------------------------------------------------
+    # Check that geo_file_path is provided and exists
+    #----------------------------------------------------------------- 
     _does_file_exist('geo_file_path', 
                      supernetwork_parameters['geo_file_path'])
         
+    #-----------------------------------------------------------------
+    # Check if mask file is provided. If so, make sure the file exists
+    # If no mask is provided, write a logging message warning the user
+    # that no mask will be applied to the domain.
+    #----------------------------------------------------------------- 
     if supernetwork_parameters.get('mask_file_path', None):
         _does_file_exist('mask_file_path', 
                      supernetwork_parameters['mask_file_path'])
     else:
-        LOG.debug('No user specified mask file. No mask will be applied to the channel domain.')
-        
+        LOG.debug(
+            'No user specified mask file. No mask will be applied to the channel domain.'
+        )
+            
+    #-----------------------------------------------------------------
+    # Checking waterbody parameter inputs....
+    #
+    # For a simulation with waterbodies, 
+    # break_network_at_waterbodies = True
+    #----------------------------------------------------------------- 
     if waterbody_parameters.get('break_network_at_waterbodies', None):
         
-        # level pool waterbody parameter file
+        #-------------------------------------------------------------
+        # A levelpool waterbody parameter file must be provided for 
+        # any simulation with waterbodies. Check that a file was
+        # specified and that the file exists.
+        #-------------------------------------------------------------
         _does_file_exist('level_pool_waterbody_parameter_file_path', 
                      waterbody_parameters['level_pool']
                          ['level_pool_waterbody_parameter_file_path'])
+            
+        #-------------------------------------------------------------
+        # TODO: Include reservoir DA checks either here or elsewhere
+        #-------------------------------------------------------------
         
-        if waterbody_parameters.get('hybrid_and_rfc', None):
-            
-            res_usgs = waterbody_parameters['hybrid_and_rfc'].get('reservoir_persistence_usgs', False)
-            res_usace = waterbody_parameters['hybrid_and_rfc'].get('reservoir_persistence_usace', False)
-            res_forecasts = waterbody_parameters['hybrid_and_rfc'].get('reservoir_rfc_forecasts', False)
-            
-            if res_usgs or res_usace or res_forecasts:
-               
-                _does_file_exist('reservoir_parameter_file', 
-                         waterbody_parameters['hybrid_and_rfc']
-                                 ['reservoir_parameter_file'])
-                
-                if res_usgs:
-                    _does_path_exist('reservoir_usgs_timeslice_path', 
-                         waterbody_parameters['hybrid_and_rfc']
-                                 ['reservoir_usgs_timeslice_path'])
-                    
-                if res_usace:
-                    _does_path_exist('reservoir_persistence_usace', 
-                         waterbody_parameters['hybrid_and_rfc']
-                                 ['reservoir_persistence_usace'])
-                    
-                if res_forecasts:
-                    _does_path_exist('reservoir_rfc_forecasts', 
-                         waterbody_parameters['hybrid_and_rfc']
-                                 ['reservoir_rfc_forecasts'])   
-            else:
-                LOG.debug('All waterbody DA options are either set to False or not specified. Continuing with no waterbody DA, levelpoool waterbody simulation only.')
-                  
     else:
-        LOG.debug('break_network_at_waterbodies == False or is not specified, no waterbodies will be simulated')
+        LOG.debug(
+            'break_network_at_waterbodies == False or is not specified.')
         
-    
+        LOG.debug('No waterbodies will be simulated.')
+        
+    #-----------------------------------------------------------------
+    # Checking restart inputs
+    #----------------------------------------------------------------- 
     if restart_parameters.get('wrf_hydro_channel_restart_file', None):
         
         _does_file_exist(
@@ -397,6 +472,9 @@ def check_inputs(
     else:
         LOG.debug('No channel restart file specified, simulation will begin from a cold start')
     
+    #-----------------------------------------------------------------
+    # Checking forcing inputs
+    #----------------------------------------------------------------- 
     qlat_folder = forcing_parameters.get('qlat_input_folder',None)
     qlat_sets = forcing_parameters.get('qlat_forcing_sets', None)
     qlat_input_file = forcing_parameters.get('qlat_forcing_sets', None)
@@ -442,41 +520,103 @@ def check_inputs(
             'qlat_input_folder', 
             forcing_parameters['qlat_input_folder']
         )
-    
-    if data_assimilation_parameters.get('data_assimilation_timeslices_folder', None):
-        
-        _does_path_exist(
-            'data_assimilation_timeslices_folder', 
-            data_assimilation_parameters['data_assimilation_timeslices_folder']
-        )
-        
-        _does_file_exist(
-            'wrf_hydro_da_channel_ID_crosswalk_file',
-            data_assimilation_parameters['wrf_hydro_da_channel_ID_crosswalk_file']
-        )
-    
+    #-----------------------------------------------------------------
+    # Checking streamflow data assimilation inputs
+    #----------------------------------------------------------------- 
+    streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
+    if streamflow_da:
+        if streamflow_da.get('streamflow_nudging', False):
+            LOG.debug(
+                'streamflow_nudging == True, so simulation will include streamflow DA'
+            )
+            
+            # make sure a USGS TimeSlices directory is provided
+            _does_path_exist(
+                'usgs_timeslices_folder', 
+                data_assimilation_parameters['usgs_timeslices_folder']
+            )
+            
+            # make sure a gage<>segment ID crosswalk file is provided
+            _does_file_exist(
+                'gage_segID_crosswalk_file', 
+                streamflow_da['gage_segID_crosswalk_file']
+            )
+            #-----------------------------------------------------------------
+            # Checking for lastobs file
+            #-----------------------------------------------------------------
+            if streamflow_da.get('wrf_hydro_lastobs_file', None):
+                
+                _does_file_exist(
+                    'wrf_hydro_lastobs_file',
+                    streamflow_da['wrf_hydro_lastobs_file']
+                )
+                
+            else:
+                LOG.debug('No Lastobs file provided for streamflow DA.')
+                
+            #-----------------------------------------------------------------
+            # Checking for lastobs output folder
+            #-----------------------------------------------------------------  
+            if data_assimilation_parameters.get('lastobs_output_folder', None):
+
+                _does_path_exist(
+                    'lastobs_output_folder', 
+                    data_assimilation_parameters['lastobs_output_folder']
+                )
+            else:
+                LOG.debug(
+                    'No LastObs output folder specified. LastObs data will not be written out.'
+                )
+            
+        else:
+            LOG.debug('streamflow_nudging specified as or assumed to be False.')
+            LOG.debug('Simulation will NOT include streamflow DA')
+            
     else:
-        LOG.debug('No TimeSlice files proivided for streamflow DA.')
-    
-    if data_assimilation_parameters.get('wrf_hydro_lastobs_file', None):
-        
-        _does_file_exist(
-            'wrf_hydro_lastobs_file',
-            data_assimilation_parameters['wrf_hydro_lastobs_file']
-        )
-    else:
-        LOG.debug('No LastObs file provided for streamflow DA.')
-    
-    if data_assimilation_parameters.get('lastobs_output_folder', None):
-        
-        _does_path_exist(
-            'lastobs_output_folder', 
-            data_assimilation_parameters['lastobs_output_folder']
-        )
-    else:
-        LOG.debug('No LastObs output folder specified. LastObs data will not be written out.')
-    
-    
+        LOG.debug('No streamflow_da parameters provided.')
+        LOG.debug('Simulation will NOT include streamflow DA')
+
+    #-----------------------------------------------------------------
+    # Checking reservoir data assimilation inputs
+    #----------------------------------------------------------------- 
+    reservoir_da = data_assimilation_parameters.get('reservoir_da', None)
+    if reservoir_da:
+        reservoir_persistence_usgs  = reservoir_da.get('reservoir_persistence_usgs', False)
+        reservoir_persistence_usace = reservoir_da.get('reservoir_persistence_usace', False)
+        #-----------------------------------------------------------------
+        # USGS Hybrid inputs
+        #----------------------------------------------------------------- 
+        if reservoir_persistence_usgs:
+            LOG.debug(
+                'reservoir_persistence_usgs == True, so simulation will include USGS persistence reservoir DA'
+            )
+            _does_path_exist(
+                'usgs_timeslices_folder', 
+                data_assimilation_parameters['usgs_timeslices_folder']
+            )
+        #-----------------------------------------------------------------
+        # USACE Hybrid inputs
+        #-----------------------------------------------------------------           
+        if reservoir_persistence_usace:
+            LOG.debug(
+                'reservoir_persistence_usace == True, so simulation will include USACE persistence reservoir DA'
+            )
+            _does_path_exist(
+                'usace_timeslices_folder', 
+                data_assimilation_parameters['usace_timeslices_folder']
+            )
+        #-----------------------------------------------------------------
+        # Make sure crosswalk file exists, for either USGS or USACE hydbrid
+        #-----------------------------------------------------------------   
+        if reservoir_persistence_usgs or reservoir_persistence_usace:
+            
+            _does_file_exist(
+                'gage_lakeID_crosswalk_file',
+                reservoir_da['gage_lakeID_crosswalk_file']
+            )
+    #-----------------------------------------------------------------
+    # Checking output settings
+    #----------------------------------------------------------------- 
     if output_parameters.get('csv_output', None):
         
         if output_parameters['csv_output'].get('csv_output_folder', None):
