@@ -1112,6 +1112,7 @@ def main_v03(argv):
             waterbody_parameters,
             preprocessing_parameters,
             compute_parameters,
+            data_assimilation_parameters,
         )
     
     if showtiming:

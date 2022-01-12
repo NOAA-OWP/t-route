@@ -19,8 +19,8 @@ def nwm_network_preprocess(
     waterbody_parameters,
     preprocessing_parameters,
     compute_parameters,
+    data_assimilation_parameters,
 ):
-
 
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
@@ -96,38 +96,69 @@ def nwm_network_preprocess(
         # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype = "hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )
-
-        wbtype = "level_pool"
         wb_params_level_pool = waterbody_parameters.get(
-            wbtype, defaultdict(list)
+            'level_pool', defaultdict(list)
         )
+        
+        # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
+        reservoir_da = data_assimilation_parameters.get(
+            'reservoir_da', 
+            None
+        )
+        if reservoir_da:
+            usgs_hybrid  = reservoir_da.get(
+                'reservoir_persistence_usgs', 
+                False
+            )
+            usace_hybrid = reservoir_da.get(
+                'reservoir_persistence_usace', 
+                False
+            )
+            param_file1   = reservoir_da.get(
+                'gage_lakeID_crosswalk_file',
+                None
+            )
+            
+        # check if RFC-type reservoirs are set to true
+        rfc_params = waterbody_parameters.get('rfc')
+        rfc_forecast = rfc_params.get(
+            'reservoir_rfc_forecasts',
+            False
+        )
+        param_file2 = rfc_params.get('reservoir_parameter_file',None)
+        
+        # if reservoir parameter file is specified in both places, make sure they are the same
+        if reservoir_da:
+            if param_file1 and param_file2:
+                if param_file1 != param_file2:
+                    LOG.warning(
+                        'Two different reservoir DA parameter files are specified!'
+                    )
+                    LOG.warning(
+                        'in waterbody_parameters: %s', param_file2
+                    )
+                    LOG.warning(
+                        'in data_assimilation_parameters["reservoir_da"]: %s', param_file1
+                    )
+                    LOG.warning(
+                        'Defaulting to file specified in data_assimilation_parameters["reservoir_da"]'
+                    )
+                else: 
+                    param_file = param_file1
+            else:
+                B = [x for x in (param_file1, param_file2) if x is not None]
+                param_file = B[0]
+        else:
+            param_file = param_file2
 
-        # Determine if any data assimilation reservoirs are activated, and if so, read
-        # the reservoir parameter file
-        if (
-            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
-            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
-            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
-        ):
-
+        if usgs_hybrid or usace_hybrid or rfc_forecast:
+            
             waterbody_type_specified = True
 
             waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
+                param_file,
                 wb_params_level_pool["level_pool_waterbody_id"],
                 wbody_conn.values(),
-            )
-
-            # Remove duplicate lake_ids and rows
-            waterbody_types_df = (
-                waterbody_types_df.reset_index()
-                .drop_duplicates(subset="lake_id")
-                .set_index("lake_id")
             )
 
     else:
