@@ -154,6 +154,8 @@ def compute_nhd_routing_v02(
     qlats,
     usgs_df,
     lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usace_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
