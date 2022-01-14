@@ -997,8 +997,8 @@ def update_lookback_hours(dt, nts, waterbody_parameters):
     on the total hours ran in the prior loop.
     """
 
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
+    waterbody_parameters['rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
+    waterbody_parameters['rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
     math.ceil((dt * nts) / 3600)
 
     return waterbody_parameters
