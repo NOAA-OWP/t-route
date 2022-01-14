@@ -789,6 +789,18 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
+            
+            # select USGS reservoir DA data waterbodies in sub-domain 
+            usgs_wbodies_sub      = waterbody_types_df_sub[
+                                        waterbody_types_df_sub['reservoir_type']==2
+                                    ].index
+            reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
+            
+            # select USACE reservoir DA data waterbodies in sub-domain
+            usace_wbodies_sub      = waterbody_types_df_sub[
+                                        waterbody_types_df_sub['reservoir_type']==3
+                                    ].index
+            reservoir_usace_df_sub = reservoir_usgs_df.loc[usace_wbodies_sub]
 
             results.append(
                 compute_func(
