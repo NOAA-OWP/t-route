@@ -56,7 +56,7 @@ contains
     subroutine levelpool_init(this, water_elevation,  &
         lake_area, weir_elevation, weir_coeffecient, &
         weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-        orifice_area, max_depth, lake_number)
+        orifice_area, max_depth, lake_number, wbody_type_code)
         implicit none
         class(levelpool), intent(inout) :: this ! object being initialized
         real, intent(inout) :: water_elevation           ! meters AMSL
@@ -70,6 +70,7 @@ contains
         real, intent(in)    :: orifice_area              ! orifice area (meters^2)
         real, intent(in)    :: max_depth                 ! max depth of reservoir before overtop (meters)
         integer, intent(in) :: lake_number               ! lake number
+        integer, intent(in) :: wbody_type_code
         character(len=15)   :: lake_number_string
 
 !#ifdef RESERVOIR_D
@@ -114,7 +115,7 @@ contains
                 call this%properties%init( lake_area,  &
                     weir_elevation, weir_coeffecient, weir_length, dam_length, &
                     orifice_elevation, orifice_coefficient, &
-                    orifice_area, max_depth, lake_number )
+                    orifice_area, max_depth, lake_number, wbody_type_code )
             end if
             this%pointer_allocation_guard = .true.
 

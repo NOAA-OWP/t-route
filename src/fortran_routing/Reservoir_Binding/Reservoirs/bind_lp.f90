@@ -25,7 +25,7 @@ contains
         SUBROUTINE init_lp(handle,  water_elevation,  &
         lake_area, weir_elevation, weir_coeffecient, &
         weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-        orifice_area, max_depth, lake_number) BIND(C, NAME='init_lp')
+        orifice_area, max_depth, lake_number, wbody_type_code) BIND(C, NAME='init_lp')
             USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER
             TYPE(C_PTR), INTENT(IN), VALUE :: handle
             real, intent(inout) :: water_elevation           ! meters AMSL
@@ -39,13 +39,14 @@ contains
             real, intent(in)    :: orifice_area              ! orifice area (meters^2)
             real, intent(in)    :: max_depth                 ! max depth of reservoir before overtop (meters)
             integer, intent(in) :: lake_number               ! lake number
+            integer, intent(in) :: wbody_type_code           ! lake number
             type (levelpool), POINTER :: levelpool_ptr ! ptr to LP object
             CALL C_F_POINTER(handle, levelpool_ptr)
  
             call levelpool_ptr%init(water_elevation,  &
                                                    lake_area, weir_elevation, weir_coeffecient, &
                                                    weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-                                                   orifice_area, max_depth, lake_number)
+                                                   orifice_area, max_depth, lake_number, wbody_type_code )
         END SUBROUTINE init_lp
 
         SUBROUTINE run_lp(handle, inflow, lateral_inflow, water_elevation, outflow, routing_period) BIND(C, NAME='run_lp')
