@@ -864,7 +864,7 @@ def build_da_sets(da_params, run_sets, t0):
             # timestamps of TimeSlice files desired for run set i
             timestamps = pd.date_range(
                 t0 - dt_timeslice * timeslice_pad,
-                run_sets[i]['final_timestamp'] + dt_timeslice * timeslice_pad,
+                run_sets[i]['final_timestamp'] + dt_timeslice * 4,
                 freq=dt_timeslice
             )
 
