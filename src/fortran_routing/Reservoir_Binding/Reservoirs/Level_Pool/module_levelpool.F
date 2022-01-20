@@ -46,6 +46,7 @@ module module_levelpool
         procedure :: init => levelpool_init
         procedure :: destroy => levelpool_destroy
         procedure :: run => run_levelpool_reservoir
+        procedure :: assim => assimilate_water_elevation
 
     end type levelpool
 
@@ -139,6 +140,19 @@ contains
         implicit none
         class(levelpool), intent(inout) :: this ! object being destroyed
     end subroutine levelpool_destroy
+    
+    ! Subroutine for assimilating data-informed depth data into reservoir state
+    subroutine assimilate_water_elevation(this, updated_elevation, water_elevation)
+        implicit none
+        class(levelpool), intent(inout) :: this
+        real, intent(in)  :: updated_elevation ! meters
+        real, intent(out) :: water_elevation   ! meters
+        
+        ! set reservoir depth state to update value
+        water_elevation = updated_elevation
+        this%state%water_elevation = water_elevation
+                
+    end subroutine assimilate_water_elevation
 
 
     ! Subroutine for running a level pool reservoir,

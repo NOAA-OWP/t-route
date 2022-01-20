@@ -57,9 +57,51 @@ void free_levelpool_reach(_Reach* reach)
   free_lp(reach->reach.lp.handle);
 }
 
+/*
+ * Function: route
+ * --------------------------
+ * This function executes reservoir routing for a single timestep,
+ * single reservoir. It calls run_lp, with is a subrouting in bind_lp.f90
+ *
+ * Arguments
+ * ---------
+ * reach                  (): 
+ *
+ * inflow            (float): reservoir inflow from upstream segments
+ *
+ * lateral_inflow    (float): lateral inflows to reservoir (cms)
+ *
+ * routing_period    (float): timestep (seconds)
+ *
+ * outflow           (float): reservoir outflow at end of routing period (cms)
+ *
+ * water_elevation   (float): (initial, then computed) water elevation
+ *
+ */
 void route(_Reach* reach, float inflow, float lateral_inflow, float routing_period,
            float* outflow, float* water_elevation)
 {
   run_lp(reach->reach.lp.handle, &inflow, &lateral_inflow, &reach->reach.lp.water_elevation, outflow, &routing_period);
   *water_elevation = reach->reach.lp.water_elevation;
+}
+
+/*
+ * Function: update_elevation
+ * --------------------------
+ * This function updates the waterbody elevation state
+ *
+ * Arguments
+ * ---------
+ * reach                  ():
+ *
+ * updated_elevation (float):
+ *
+ * water_elevation   (float):
+ *
+ */
+void update_elevation(_Reach* reach, float updated_elevation, float* water_elevation)
+{
+  assim(reach->reach.lp.handle, &updated_elevation, &reach->reach.lp.water_elevation);
+  *water_elevation = reach->reach.lp.water_elevation;
+
 }

@@ -87,5 +87,21 @@ contains
             !allocate(str) !allocate the pointer to hold the tmp string
 
         END SUBROUTINE run_lp
+        
+        SUBROUTINE assim(handle, updated_elevation, water_elevation) BIND(C, NAME='assim')
 
+            USE, INTRINSIC :: ISO_C_BINDING, ONLY: C_PTR, C_F_POINTER, C_CHAR, C_LOC, C_NULL_CHAR
+
+            TYPE(C_PTR), INTENT(IN), VALUE :: handle
+            real, intent(in)    :: updated_elevation 
+            real, intent(out)   :: water_elevation
+            
+            type (levelpool), POINTER :: levelpool_ptr ! ptr to LP object
+
+            CALL C_F_POINTER(handle, levelpool_ptr)
+            
+            call levelpool_ptr%assim(updated_elevation, water_elevation)
+            
+        END SUBROUTINE assim
+        
 end module reservoir_to_c_lp
