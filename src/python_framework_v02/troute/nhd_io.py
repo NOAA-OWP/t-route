@@ -1095,8 +1095,7 @@ def get_obs_from_timeslices(
                             limit_direction = 'both'
                         ).
                         resample(frequency).
-                        asfreq().
-                        loc[t0:,:]
+                        asfreq()
                        )
     
     # re-transpose, making link the index

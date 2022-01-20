@@ -927,5 +927,12 @@ def nwm_forcing_preprocess(
         LOG.info("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
-    # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
+    #---------------------------------------------------------------------------
+    # Trim the time-extent of the streamflow_da usgs_df
+    # what happens if there are timeslice files missing on the front-end? 
+    # if the first column is some timestamp greater than t0, then this will throw
+    # an error. Need to think through this more. 
+    if not usgs_df.empty:
+        usgs_df = usgs_df.loc[:,t0:]
+    
     return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usace_df
