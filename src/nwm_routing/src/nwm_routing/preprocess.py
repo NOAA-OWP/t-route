@@ -114,42 +114,19 @@ def nwm_network_preprocess(
                 'reservoir_persistence_usace', 
                 False
             )
-            param_file1   = reservoir_da.get(
+            param_file   = reservoir_da.get(
                 'gage_lakeID_crosswalk_file',
                 None
             )
             
         # check if RFC-type reservoirs are set to true
         rfc_params = waterbody_parameters.get('rfc')
-        rfc_forecast = rfc_params.get(
-            'reservoir_rfc_forecasts',
-            False
-        )
-        param_file2 = rfc_params.get('reservoir_parameter_file',None)
-        
-        # if reservoir parameter file is specified in both places, make sure they are the same
-        if reservoir_da:
-            if param_file1 and param_file2:
-                if param_file1 != param_file2:
-                    LOG.warning(
-                        'Two different reservoir DA parameter files are specified!'
-                    )
-                    LOG.warning(
-                        'in waterbody_parameters: %s', param_file2
-                    )
-                    LOG.warning(
-                        'in data_assimilation_parameters["reservoir_da"]: %s', param_file1
-                    )
-                    LOG.warning(
-                        'Defaulting to file specified in data_assimilation_parameters["reservoir_da"]'
-                    )
-                else: 
-                    param_file = param_file1
-            else:
-                B = [x for x in (param_file1, param_file2) if x is not None]
-                param_file = B[0]
-        else:
-            param_file = param_file2
+        if rfc_params:
+            rfc_forecast = rfc_params.get(
+                'reservoir_rfc_forecasts',
+                False
+            )
+            param_file = rfc_params.get('reservoir_parameter_file',None)
 
         if usgs_hybrid or usace_hybrid or rfc_forecast:
             
