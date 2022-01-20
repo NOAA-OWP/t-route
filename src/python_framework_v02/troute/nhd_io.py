@@ -197,19 +197,50 @@ def read_level_pool_waterbody_df(
 
 
 def read_reservoir_parameter_file(
-    reservoir_parameter_file, lake_index_field="lake_id", lake_id_mask=None
+    reservoir_parameter_file, 
+    lake_index_field="lake_id", 
+    lake_id_mask=None
 ):
+#-------------------------------------------------------------------------------
     """
     Reads reservoir parameter file, which is separate from the LAKEPARM file.
+    Extracts reservoir "type" codes and returns in a DataFrame
+    type 1: Levelool
+    type 2: USGS Hybrid Persistence
+    type 3: USACE Hybrid Persistence
+    type 4: RFC
     This function is only called if Hybrid Persistence or RFC type reservoirs
     are active.
+    
+    Arguments
+    ---------
+    - reservoir_parameter_file (str): full file path of the reservoir parameter
+                                      file
+    
+    - lake_index_field         (str): field containing lake IDs in reservoir 
+                                      parameter file
+    
+    - lake_id_mask     (dict_values): Waterbody IDs in the model domain 
+    
+    Returns
+    -------
+    - df1 (Pandas DataFrame): Reservoir type codes, indexed by lake_id
+    
+    Notes
+    -----
+    
     """
+    
     with xr.open_dataset(reservoir_parameter_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
-
         ds_new = ds["reservoir_type"]
-
         df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        
+    # drop duplicate indices
+    df1 = (df1.reset_index()
+           .drop_duplicates(subset="lake_id")
+           .set_index("lake_id")
+          )
 
     return df1
 
