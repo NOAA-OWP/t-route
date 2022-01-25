@@ -1330,39 +1330,58 @@ cpdef object compute_network_structured(
             if assume_short_ts:
                 upstream_flows = previous_upstream_flows
 
-            if r.type == compute_type.RESERVOIR_LP:   
+            if r.type == compute_type.RESERVOIR_LP: 
+                
+                # water elevation before levelpool calculation
                 initial_water_elevation = r.reach.lp.water_elevation
+                
+                # levelpool reservoir storage/outflow calculation
                 run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                 
-                # need some conditional statment to call DA routine, only if reservoir is a hybrid-type
-                # call a new DA function, here -> using &reservoir_outflow and &reservoir_water_elevation
-                # as input arguments. This function should return updated values of outflow and elevation.
-                # use the update_lp_c() function to set the reservoir object's elecation and update
-                # floveldepth witht the new outflow.
-                
-                # USGS reservoir hybrid DA
+                # USGS reservoir hybrid DA inputs
                 if r.reach.lp.wbody_type_code == 2:
                     # find index location of waterbody in reservoir_usgs_obs 
                     # and reservoir_usgs_time
                     res_idx = np.where(usgs_idx == r.reach.lp.lake_number)
+                    wbody_gage_obs          = reservoir_usgs_obs[res_idx[0][0],:]
+                    wbody_gage_time         = reservoir_usgs_time
+                    prev_persisted_outflow  = usgs_prev_persisted_ouflow[res_idx[0][0]]
+                    persistence_update_time = usgs_persistence_update_time[res_idx[0][0]] 
+                    persistence_index       = usgs_prev_persistence_index[res_idx[0][0]]
+                    update_time             = usgs_update_time[res_idx[0][0]] 
+                
+                # USACE reservoir hybrid DA inputs
+                if r.reach.lp.wbody_type_code == 3:
+                    # find index location of waterbody in reservoir_usgs_obs 
+                    # and reservoir_usgs_time
+                    res_idx = np.where(usace_idx == r.reach.lp.lake_number)
+                    wbody_gage_obs          = reservoir_usace_obs[res_idx[0][0],:]
+                    wbody_gage_time         = reservoir_usace_time
+                    prev_persisted_outflow  = usace_prev_persisted_ouflow[res_idx[0][0]]
+                    persistence_update_time = usace_persistence_update_time[res_idx[0][0]] 
+                    persistence_index       = usace_prev_persistence_index[res_idx[0][0]]
+                    update_time             = usace_update_time[res_idx[0][0]] 
                     
-                    # create hybrid_da input args for USGS reservoir
-                    wbody_gage_obs  = reservoir_usgs_obs[res_idx[0][0],:]
-                    wbody_gage_time = reservoir_usgs_time
-                    prev_persisted_outflow = usgs_prev_persisted_ouflow[res_idx[0][0]]
-                    update_time = usgs_update_time[res_idx[0][0]] 
-                    
+                # Execute reservoir DA - both USGS(2) and USACE(3) types
+                if r.reach.lp.wbody_type_code == 2 or r.reach.lp.wbody_type_code == 3:
                     print('***********************************************************')
                     print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
                     print('before DA, simulated outflow = ', reservoir_outflow)
                     print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
                     
-                    new_outflow, new_water_elevation, new_update_time  = reservoir_hybrid_da(
+                    (new_outflow, 
+                     new_water_elevation, 
+                     new_update_time, 
+                     new_persistence_index, 
+                     new_persistence_update_time
+                    ) = reservoir_hybrid_da(
                         r.reach.lp.lake_number,       # lake identification number
                         wbody_gage_obs,               # gage observation values (cms)
                         wbody_gage_time,              # gage observation times (sec)
                         dt * timestep,                # model time (sec)
                         prev_persisted_outflow,       # previously persisted outflow (cms)
+                        persistence_update_time,
+                        persistence_index,            # number of sequentially persisted update cycles
                         reservoir_outflow,            # levelpool simulated outflow (cms)
                         upstream_flows,               # waterbody inflow (cms)
                         dt,                           # model timestep (sec)
@@ -1380,28 +1399,30 @@ cpdef object compute_network_structured(
                     # update levelpool water elevation state
                     update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
                     
-                    # update reservoir update_time
-                    usgs_update_time[res_idx[0][0]] = new_update_time
-                    
-                    # update previously persisted 
-                    usgs_prev_persisted_ouflow[res_idx[0][0]] = new_outflow
-                    
                     # change reservoir_outflow
                     reservoir_outflow = new_outflow
                     
                     print('confirming DA elevation replacement:', reservoir_water_elevation)
-                    
                     print('===========================================================')
                     
-
+                # update USGS DA reservoir state arrays
+                if r.reach.lp.wbody_type_code == 2:
+                    usgs_update_time[res_idx[0][0]]              = new_update_time
+                    usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_outflow
+                    usgs_prev_persistence_index[res_idx[0][0]]   = new_persistence_index
+                    usgs_persistence_update_time[res_idx[0][0]]  = new_persistence_update_time
+                    
+                # update USACE DA reservoir state arrays
+                if r.reach.lp.wbody_type_code == 3:
+                    usace_update_time[res_idx[0][0]]             = new_update_time
+                    usace_prev_persisted_ouflow[res_idx[0][0]]   = new_outflow
+                    usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
+                    usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
                 
+                # populate flowveldepth array with levelpool or hybrid DA results 
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
-                
-                # call dummy test function, here
-                # val = dummy.test(4)
-                # print(val)
 
             elif r.type == compute_type.RESERVOIR_RFC:
                 run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
