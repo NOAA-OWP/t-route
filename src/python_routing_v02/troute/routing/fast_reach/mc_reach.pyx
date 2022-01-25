@@ -1251,17 +1251,26 @@ cpdef object compute_network_structured(
     
     #---------------------------------------------------------------------------------------------
     #---------------------------------------------------------------------------------------------
-    # reservir id index arrays
-    cdef np.ndarray[int, ndim=1] usgs_idx = np.asarray(reservoir_usgs_wbody_idx)
+
+    # reservoir id index arrays
+    cdef np.ndarray[int, ndim=1] usgs_idx  = np.asarray(reservoir_usgs_wbody_idx)
     cdef np.ndarray[int, ndim=1] usace_idx = np.asarray(reservoir_usace_wbody_idx)
     
     # reservoir update time arrays
-    cdef np.ndarray[float, ndim=1] usgs_update_time = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usgs_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
     cdef np.ndarray[float, ndim=1] usace_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
     
     # reservoir persisted outflow arrays
-    cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow = np.full(len(usgs_idx), np.nan, dtype='float32')
+    cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow  = np.full(len(usgs_idx), np.nan, dtype='float32')
     cdef np.ndarray[float, ndim=1] usace_prev_persisted_ouflow = np.full(len(usace_idx), np.nan, dtype='float32')  
+    
+    # reservoir persistence index update time arrays
+    cdef np.ndarray[float, ndim=1] usgs_persistence_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_persistence_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
+    
+    # reservoir persisted outflow period index
+    cdef np.ndarray[float, ndim=1] usgs_prev_persistence_index  = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.zeros(np.shape(usace_idx), dtype='float32')  
 
     #---------------------------------------------------------------------------------------------
     #---------------------------------------------------------------------------------------------
