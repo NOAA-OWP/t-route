@@ -32,6 +32,11 @@ cdef void diffnw(
         double[::1,:] qtrib_g,
         int paradim,
         double[::1] para_ar_g,
+        int mxnbathy_g,
+        double[::1,:,:] x_bathy_g,
+        double[::1,:,:] z_bathy_g,
+        double[::1,:,:] mann_bathy_g,
+        int[::1,:] size_bathy_g,
         double[:,:,:] out_q,
         double[:,:,:] out_elv,
 ):
@@ -67,6 +72,11 @@ cdef void diffnw(
         &qtrib_g[0,0],
         &paradim,
         &para_ar_g[0],
+        &mxnbathy_g,
+        &x_bathy_g[0,0,0],
+        &z_bathy_g[0,0,0],
+        &mann_bathy_g[0,0,0],
+        &size_bathy_g[0,0],
         &q_ev_g[0,0,0],
         &elv_ev_g[0,0,0]
     )
@@ -107,6 +117,11 @@ cpdef object compute_diffusive(
         double[::1,:] qtrib_g = np.asfortranarray(diff_inputs["qtrib_g"])
         int paradim = diff_inputs['paradim']
         double[::1] para_ar_g = np.asfortranarray(diff_inputs["para_ar_g"])
+        int mxnbathy_g = diff_inputs['mxnbathy_g']
+        double[::1,:,:] x_bathy_g = np.asfortranarray(diff_inputs["x_bathy_g"])
+        double[::1,:,:] z_bathy_g = np.asfortranarray(diff_inputs["z_bathy_g"])
+        double[::1,:,:] mann_bathy_g = np.asfortranarray(diff_inputs["mann_bathy_g"])
+        int[::1,:] size_bathy_g = np.asfortranarray(diff_inputs["size_bathy_g"])
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
@@ -138,6 +153,11 @@ cpdef object compute_diffusive(
         qtrib_g,
         paradim,
         para_ar_g,
+        mxnbathy_g,
+        x_bathy_g,
+        z_bathy_g,
+        mann_bathy_g,
+        size_bathy_g,
         out_q,
         out_elv
     )

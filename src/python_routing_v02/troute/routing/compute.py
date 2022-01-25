@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import time
 import pandas as pd
 import numpy as np
+import netCDF4 as nc
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import (
@@ -901,6 +902,17 @@ def compute_diffusive_routing(
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 
+        # very very temporary installment for natual channel x-section data
+	inland_bathyNC = nc.Dataset('/home/dongha.kim/github/t-route/src/python_routing_v02/troute/routing/eHydro_ned_cross_sections_2021_12_29.nc')
+        # - The current eHydro data doesn't cover Cape fear river, so for pure testing purpose we borrow 
+        #   three x-sec bathy data from arbitarily picked three segments (they are connected in series)
+        comid_bathy = np.unique(inland_bathyNC['comid'][:])[1:4]
+        # - Test: switch x-section to make sure bottom elevation is always higher at the upstream
+        dmy0 = comid_bathy[0]
+        dmy1 = comid_bathy[1]
+        comid_bathy[0] = dmy1
+        comid_bathy[1] = dmy0
+
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -917,6 +929,8 @@ def compute_diffusive_routing(
             nts,
             dt,
             waterbodies_df,
+            comid_bathy,
+            inland_bathyNC,
         )
         
         # run the simulation
