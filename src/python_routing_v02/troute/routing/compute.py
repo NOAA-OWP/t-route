@@ -763,6 +763,12 @@ def compute_nhd_routing_v02(
                             "reservoir_type",
                         ],
                     ]
+                else:
+                    waterbody_types_df_sub = pd.DataFrame(
+                                            data = 1, 
+                                            index = waterbodies_df_sub.index, 
+                                            columns = ['reservoir_type']
+                                                         )
 
             else:
                 lake_segs = []
