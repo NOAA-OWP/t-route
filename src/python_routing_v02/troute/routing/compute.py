@@ -807,7 +807,7 @@ def compute_nhd_routing_v02(
                 reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
             else:
                 reservoir_usgs_df_sub = pd.DataFrame()
-                reservoir_usgs_df_time = pd.DataFrame()
+                reservoir_usgs_df_time = pd.DataFrame().to_numpy().reshape(0,)
             
             # select USACE reservoir DA data waterbodies in sub-domain
             if not reservoir_usace_df.empty:
@@ -818,7 +818,7 @@ def compute_nhd_routing_v02(
                 reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
             else: 
                 reservoir_usace_df_sub = pd.DataFrame()
-                reservoir_usace_df_time = pd.DataFrame()
+                reservoir_usace_df_time = pd.DataFrame().to_numpy().reshape(0,)
             #-------------------------------------------------------
 
             results.append(
