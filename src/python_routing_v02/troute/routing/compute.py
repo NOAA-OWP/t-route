@@ -134,6 +134,47 @@ def _prep_da_positions_byreach(reach_list, gage_index):
 
     return reach_key, gage_reach_i
 
+def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usace_df, waterbody_types_df_sub, t0):
+    '''
+    Helper function to build reservoir DA data arrays for routing computations
+
+    Arguments
+    ---------
+    reservoir_usgs_df      (DataFrame): gage flow observations at USGS-type reservoirs
+    reservoir_usace_df     (DataFrame): gage flow observations at USACE-type reservoirs
+    waterbody_types_df_sub (DataFrame): type-codes for waterbodies in sub domain
+    t0                      (datetime): model initialization time
+
+    Returns
+    -------
+    reservoir_usgs_df_sub  (DataFrame): gage flow observations for USGS-type reservoirs in sub domain
+    reservoir_usgs_df_time   (ndarray): time in seconds from model initialization time
+    reservoir_usace_df_sub (DataFrame): gage flow observations for USACE-type reservoirs in sub domain
+    reservoir_usace_df_time  (ndarray): time in seconds from model initialization time
+
+    '''
+    if not reservoir_usgs_df.empty:
+        usgs_wbodies_sub      = waterbody_types_df_sub[
+                                    waterbody_types_df_sub['reservoir_type']==2
+                                ].index
+        reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
+        reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
+    else:
+        reservoir_usgs_df_sub = pd.DataFrame()
+        reservoir_usgs_df_time = pd.DataFrame().to_numpy().reshape(0,)
+
+    # select USACE reservoir DA data waterbodies in sub-domain
+    if not reservoir_usace_df.empty:
+        usace_wbodies_sub      = waterbody_types_df_sub[
+                                    waterbody_types_df_sub['reservoir_type']==3
+                                ].index
+        reservoir_usace_df_sub = reservoir_usgs_df.loc[usace_wbodies_sub]
+        reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
+    else: 
+        reservoir_usace_df_sub = pd.DataFrame()
+        reservoir_usace_df_time = pd.DataFrame().to_numpy().reshape(0,)
+        
+    return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usace_df_sub, reservoir_usace_df_time
 
 def compute_nhd_routing_v02(
     connections,
@@ -796,31 +837,18 @@ def compute_nhd_routing_v02(
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
             
-            # TODO: Package this into function
-            #-------------------------------------------------------
-            # select USGS reservoir DA data waterbodies in sub-domain
-            if not reservoir_usgs_df.empty:
-                usgs_wbodies_sub      = waterbody_types_df_sub[
-                                            waterbody_types_df_sub['reservoir_type']==2
-                                        ].index
-                reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
-                reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
-            else:
-                reservoir_usgs_df_sub = pd.DataFrame()
-                reservoir_usgs_df_time = pd.DataFrame().to_numpy().reshape(0,)
+            # prepare reservoir DA data
+            (reservoir_usgs_df_sub, 
+             reservoir_usgs_df_time, 
+             reservoir_usace_df_sub, 
+             reservoir_usace_df_time
+             ) = _prep_reservoir_da_dataframes(
+                reservoir_usgs_df, 
+                reservoir_usace_df, 
+                waterbody_types_df_sub, 
+                t0
+            )
             
-            # select USACE reservoir DA data waterbodies in sub-domain
-            if not reservoir_usace_df.empty:
-                usace_wbodies_sub      = waterbody_types_df_sub[
-                                            waterbody_types_df_sub['reservoir_type']==3
-                                        ].index
-                reservoir_usace_df_sub = reservoir_usgs_df.loc[usace_wbodies_sub]
-                reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
-            else: 
-                reservoir_usace_df_sub = pd.DataFrame()
-                reservoir_usace_df_time = pd.DataFrame().to_numpy().reshape(0,)
-            #-------------------------------------------------------
-
             results.append(
                 compute_func(
                     nts,
