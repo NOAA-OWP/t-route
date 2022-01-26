@@ -1364,10 +1364,11 @@ cpdef object compute_network_structured(
                     
                 # Execute reservoir DA - both USGS(2) and USACE(3) types
                 if r.reach.lp.wbody_type_code == 2 or r.reach.lp.wbody_type_code == 3:
-                    print('***********************************************************')
-                    print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
-                    print('before DA, simulated outflow = ', reservoir_outflow)
-                    print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
+                    
+                    #print('***********************************************************')
+                    #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
+                    #print('before DA, simulated outflow = ', reservoir_outflow)
+                    #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
                     
                     (new_outflow, 
                      new_water_elevation, 
@@ -1393,8 +1394,8 @@ cpdef object compute_network_structured(
                         update_time                   # waterbody update time (sec)
                     )
                     
-                    print('After DA, outflow = ', new_outflow)
-                    print('After DA, water elevation =', new_water_elevation)
+                    #print('After DA, outflow = ', new_outflow)
+                    #print('After DA, water elevation =', new_water_elevation)
                     
                     # update levelpool water elevation state
                     update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
@@ -1402,8 +1403,8 @@ cpdef object compute_network_structured(
                     # change reservoir_outflow
                     reservoir_outflow = new_outflow
                     
-                    print('confirming DA elevation replacement:', reservoir_water_elevation)
-                    print('===========================================================')
+                    #print('confirming DA elevation replacement:', reservoir_water_elevation)
+                    #print('===========================================================')
                     
                 # update USGS DA reservoir state arrays
                 if r.reach.lp.wbody_type_code == 2:
