@@ -329,7 +329,7 @@ def nwm_initial_warmstate_preprocess(
     segment_index,
     waterbodies_df,
 ):
-#--------------------------------------------------------------------------------
+
     '''
     Assemble model initial condition data:
         - waterbody inital states (outflow and pool elevation)
@@ -538,7 +538,7 @@ def nwm_forcing_preprocess(
     
     - t0                       (datetime): Timestamp of the simualtion initial 
                                            condition
-#-------------------------------------------------------------------------------
+
     Returns
     -------
     - qlats_df           (Pandas DataFrame): Lateral inflow data, indexed by 
