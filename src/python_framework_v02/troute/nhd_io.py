@@ -1516,16 +1516,17 @@ def lastobs_df_output(
     var = [timedelta(seconds=d) for d in lastobs_df.time_since_lastobs.fillna(0)]
     lastobs_timestamp = [modelTimeAtOutput - d for d in var]
     lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
+    lastobs_timestamp_str_array = np.asarray(lastobs_timestamp_str,dtype = '|S19').reshape(len(lastobs_timestamp_str),1)
 
     # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
     ds = xr.Dataset(
         {
             "stationId": (["stationIdInd"], lastobs_df["gages"].to_numpy(dtype = '|S15')),
-            "time": (["stationIdInd"], np.asarray(lastobs_timestamp_str,dtype = '|S19')),
-            "discharge": (["stationIdInd"], lastobs_df["lastobs_discharge"].to_numpy()),
+            "time": (["stationIdInd", "timeInd"], np.asarray(lastobs_timestamp_str_array,dtype = '|S19')),
+            "discharge": (["stationIdInd", "timeInd"], lastobs_df["lastobs_discharge"].to_numpy().reshape(len(lastobs_df["lastobs_discharge"]),1)),
         }
     )
-    ds.attrs["modelTimeAtOutput"] = "example attribute"
+    ds.attrs["modelTimeAtOutput"] = modelTimeAtOutput_str
 
     # write-out LastObs file as netcdf
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
