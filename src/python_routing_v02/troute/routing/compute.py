@@ -172,7 +172,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usace_df, waterbo
         usace_wbodies_sub      = waterbody_types_df_sub[
                                     waterbody_types_df_sub['reservoir_type']==3
                                 ].index
-        reservoir_usace_df_sub = reservoir_usgs_df.loc[usace_wbodies_sub]
+        reservoir_usace_df_sub = reservoir_usace_df.loc[usace_wbodies_sub]
         reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
     else: 
         reservoir_usace_df_sub = pd.DataFrame()
