@@ -90,13 +90,23 @@ def _prep_da_dataframes(
     # usgs_df = pd.DataFrame()
     if not usgs_df.empty and not lastobs_df.empty:
         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
+        lastobs_segs = (lastobs_df.index.
+                        intersection(subnet_segs).
+                        to_list()
+                       )
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
-        usgs_segs = list(usgs_df.index.intersection(subnet_segs))
+        usgs_segs = (usgs_df.index.
+                     intersection(subnet_segs).
+                     reindex(lastobs_segs)[0].
+                     to_list()
+                    )
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
     elif usgs_df.empty and not lastobs_df.empty:
-        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
+        lastobs_segs = (lastobs_df.index.
+                        intersection(subnet_segs).
+                        to_list()
+                       )
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
         # Create a completely empty list of gages -- the .shape[1] attribute
         # will be == 0, and that will trigger a reference to the lastobs.
