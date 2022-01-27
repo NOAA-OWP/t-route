@@ -16,13 +16,9 @@ from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, 
 
 from troute.network.reach cimport Reach, _Reach, compute_type
 from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c, update_lp_c
-from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, run_hybrid_c
 from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
+from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from cython.parallel import prange
-
-import sys
-sys.path.insert(0,'/glade/u/home/adamw/projects/t-route/test/jobs/reservoir_debug/')
-from dummy import reservoir_hybrid_da
 
 #import cProfile
 #pr = cProfile.Profile()
