@@ -78,8 +78,6 @@ def nwm_network_preprocess(
     # waterbodies_segments = supernetwork_values[13]
     # connections_tailwaters = supernetwork_values[4]
 
-    waterbody_type_specified = False
-
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -128,18 +126,15 @@ def nwm_network_preprocess(
             )
             param_file = rfc_params.get('reservoir_parameter_file',None)
 
-        if usgs_hybrid or usace_hybrid or rfc_forecast:
-            
-            waterbody_type_specified = True
-
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                param_file,
-                usgs_hybrid,
-                usace_hybrid,
-                rfc_forecast,
-                wb_params_level_pool["level_pool_waterbody_id"],
-                wbody_conn.values(),
-            )
+        waterbody_type_specified = True
+        waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+            param_file,
+            usgs_hybrid,
+            usace_hybrid,
+            rfc_forecast,
+            wb_params_level_pool["level_pool_waterbody_id"],
+            wbody_conn.values(),
+        )
 
     else:
         # Declare empty dataframes
