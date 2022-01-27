@@ -389,6 +389,18 @@ def compute_nhd_routing_v02(
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
 
+                    # prepare reservoir DA data
+                    (reservoir_usgs_df_sub, 
+                     reservoir_usgs_df_time, 
+                     reservoir_usace_df_sub, 
+                     reservoir_usace_df_time
+                     ) = _prep_reservoir_da_dataframes(
+                        reservoir_usgs_df, 
+                        reservoir_usace_df, 
+                        waterbody_types_df_sub, 
+                        t0
+                    )
+                    
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -423,6 +435,12 @@ def compute_nhd_routing_v02(
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
+                            reservoir_usgs_df_sub.values.astype("float32"),
+                            reservoir_usgs_df_sub.index.values.astype("int32"),
+                            reservoir_usgs_df_time.astype('float32'),
+                            reservoir_usace_df_sub.values.astype("float32"),
+                            reservoir_usace_df_sub.index.values.astype("int32"),
+                            reservoir_usace_df_time.astype('float32'),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -588,6 +606,18 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
+                    
+                    # prepare reservoir DA data
+                    (reservoir_usgs_df_sub, 
+                     reservoir_usgs_df_time, 
+                     reservoir_usace_df_sub, 
+                     reservoir_usace_df_time
+                     ) = _prep_reservoir_da_dataframes(
+                        reservoir_usgs_df, 
+                        reservoir_usace_df, 
+                        waterbody_types_df_sub, 
+                        t0
+                    )
 
                     jobs.append(
                         delayed(compute_func)(
@@ -621,6 +651,12 @@ def compute_nhd_routing_v02(
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
+                            reservoir_usgs_df_sub.values.astype("float32"),
+                            reservoir_usgs_df_sub.index.values.astype("int32"),
+                            reservoir_usgs_df_time.astype('float32'),
+                            reservoir_usace_df_sub.values.astype("float32"),
+                            reservoir_usace_df_sub.index.values.astype("int32"),
+                            reservoir_usace_df_time.astype('float32'),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -729,6 +765,18 @@ def compute_nhd_routing_v02(
 
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
+                
+                # prepare reservoir DA data
+                (reservoir_usgs_df_sub, 
+                 reservoir_usgs_df_time, 
+                 reservoir_usace_df_sub, 
+                 reservoir_usace_df_time
+                 ) = _prep_reservoir_da_dataframes(
+                    reservoir_usgs_df, 
+                    reservoir_usace_df, 
+                    waterbody_types_df_sub, 
+                    t0
+                )
 
                 jobs.append(
                     delayed(compute_func)(
@@ -755,6 +803,12 @@ def compute_nhd_routing_v02(
                         lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         da_decay_coefficient,
+                        reservoir_usgs_df_sub.values.astype("float32"),
+                        reservoir_usgs_df_sub.index.values.astype("int32"),
+                        reservoir_usgs_df_time.astype('float32'),
+                        reservoir_usace_df_sub.values.astype("float32"),
+                        reservoir_usace_df_sub.index.values.astype("int32"),
+                        reservoir_usace_df_time.astype('float32'),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -808,12 +862,6 @@ def compute_nhd_routing_v02(
                             "reservoir_type",
                         ],
                     ]
-                #else:
-                #    waterbody_types_df_sub = pd.DataFrame(
-                #                            data = 1, 
-                #                            index = waterbodies_df_sub.index, 
-                #                            columns = ['reservoir_type']
-                #                                         )
 
             else:
                 lake_segs = []
