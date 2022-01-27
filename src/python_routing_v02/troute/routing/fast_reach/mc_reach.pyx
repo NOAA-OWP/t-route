@@ -1370,7 +1370,8 @@ cpdef object compute_network_structured(
                     #print('before DA, simulated outflow = ', reservoir_outflow)
                     #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
                     
-                    (new_outflow, 
+                    (new_outflow,
+                     new_persisted_outflow,
                      new_water_elevation, 
                      new_update_time, 
                      new_persistence_index, 
@@ -1409,14 +1410,14 @@ cpdef object compute_network_structured(
                 # update USGS DA reservoir state arrays
                 if r.reach.lp.wbody_type_code == 2:
                     usgs_update_time[res_idx[0][0]]              = new_update_time
-                    usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_outflow
+                    usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_persisted_outflow
                     usgs_prev_persistence_index[res_idx[0][0]]   = new_persistence_index
                     usgs_persistence_update_time[res_idx[0][0]]  = new_persistence_update_time
                     
                 # update USACE DA reservoir state arrays
                 if r.reach.lp.wbody_type_code == 3:
                     usace_update_time[res_idx[0][0]]             = new_update_time
-                    usace_prev_persisted_ouflow[res_idx[0][0]]   = new_outflow
+                    usace_prev_persisted_ouflow[res_idx[0][0]]   = new_persisted_outflow
                     usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
                     usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
                 
