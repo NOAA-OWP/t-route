@@ -134,6 +134,9 @@ def nwm_network_preprocess(
 
             waterbody_types_df = nhd_io.read_reservoir_parameter_file(
                 param_file,
+                usgs_hybrid,
+                usace_hybrid,
+                rfc_forecast,
                 wb_params_level_pool["level_pool_waterbody_id"],
                 wbody_conn.values(),
             )

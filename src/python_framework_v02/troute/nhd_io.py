@@ -198,8 +198,11 @@ def read_level_pool_waterbody_df(
 
 def read_reservoir_parameter_file(
     reservoir_parameter_file, 
+    usgs_hybrid,
+    usace_hybrid,
+    rfc_forecast,
     lake_index_field="lake_id", 
-    lake_id_mask=None
+    lake_id_mask=None,
 ):
 #-------------------------------------------------------------------------------
     """
@@ -216,6 +219,12 @@ def read_reservoir_parameter_file(
     ---------
     - reservoir_parameter_file (str): full file path of the reservoir parameter
                                       file
+    
+    - usgs_hybrid          (boolean): If True, then USGS Hybrid DA will be coded
+    
+    - usace_hybrid         (boolean): If True, then USACE Hybrid DA will be coded
+    
+    - rfc_forecast         (boolean): If True, then RFC Forecast DA will be coded
     
     - lake_index_field         (str): field containing lake IDs in reservoir 
                                       parameter file
@@ -241,6 +250,14 @@ def read_reservoir_parameter_file(
            .drop_duplicates(subset="lake_id")
            .set_index("lake_id")
           )
+    
+    # recode to levelpool (1) for reservoir DA types set to false
+    if usgs_hybrid == False:
+        df1[df1['reservoir_type'] == 2] = 1
+    if usace_hybrid == False:
+        df1[df1['reservoir_type'] == 3] = 1
+    if rfc_forecast == False:
+        df1[df1['reservoir_type'] == 4] = 1
 
     return df1
 
