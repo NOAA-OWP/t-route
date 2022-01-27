@@ -805,7 +805,6 @@ def build_lastobs_df(
         time_shift           = 0,
         crosswalk_gage_field = "gages",
         crosswalk_link_field = "link",
-        model_discharge_id   = "model_discharge",
         obs_discharge_id     = "discharge",
         time_idx_id          = "timeInd",
         station_id           = "stationId",
@@ -850,9 +849,6 @@ def build_lastobs_df(
         
         ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
         
-        last_model = ds[model_discharge_id][:,-1].values
-        last_model[np.where(last_model == discharge_nan)] = np.nan
-        
         last_ts = ds[time_idx_id].values[-1]
         
         df_discharge = (
@@ -886,7 +882,6 @@ def build_lastobs_df(
 
     data_var_dict = {
         'gages'               : gages,
-        'last_model_discharge': last_model,
         'time_since_lastobs'  : lastobs_times,
         'lastobs_discharge'   : last_observations
     }
@@ -901,7 +896,6 @@ def build_lastobs_df(
     lastobs_df = lastobs_df[
         [
             'gages',
-            'last_model_discharge',
             'time_since_lastobs',
             'lastobs_discharge',
         ]
