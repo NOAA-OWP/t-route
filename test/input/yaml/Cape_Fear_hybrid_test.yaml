@@ -1,0 +1,81 @@
+---
+#initial input parameters
+log_parameters:
+    log_level: DEBUG
+    showtiming: true
+network_topology_parameters:
+    supernetwork_parameters:
+        title_string: hybrid_integration_dev
+        geo_file_path: /glade/work/donghakim/cape_fear/domain/Route_Link.nc
+        mask_file_path: /glade/work/donghakim/cape_fear/mask/Cape_Fear_River_FULL_RES.txt  
+        mask_driver_string: txt
+        mask_layer_string: ""
+        mask_key: 0
+        break_network_at_gages: true
+        columns:
+            key: link
+            downstream: to
+            dx: Length
+            n: n 
+            ncc: nCC  
+            s0: So 
+            bw: BtmWdth  
+            waterbody: NHDWaterbodyComID
+            tw: TopWdth  
+            twcc: TopWdthCC 
+            alt: alt
+            musk: MusK
+            musx: MusX
+            cs: ChSlp 
+            gages: gages
+        waterbody_null_code: -9999
+        terminal_code: 0
+        driver_string: NetCDF
+        layer_string: 0
+    waterbody_parameters:
+        break_network_at_waterbodies: true 
+        level_pool:
+            level_pool_waterbody_parameter_file_path: /glade/work/donghakim/cape_fear/domain/LAKEPARM.nc
+            level_pool_waterbody_id: lake_id
+            level_pool_waterbody_area: LkArea
+            level_pool_weir_elevation: WeirE
+            level_pool_waterbody_max_elevation: LkMxE
+            level_pool_outfall_weir_coefficient: WeirC
+            level_pool_outfall_weir_length: WeirL
+            level_pool_overall_dam_length: DamL
+            level_pool_orifice_elevation: OrificeE
+            level_pool_orifice_coefficient: OrificeC
+            level_pool_orifice_area: OrificeA
+compute_parameters:
+    parallel_compute_method: serial
+    compute_kernel: V02-structured
+    assume_short_ts: true
+    subnetwork_target_size: 100
+    cpu_pool: 36
+    restart_parameters:
+        wrf_hydro_channel_restart_file: /glade/work/donghakim/cape_fear/restart/HYDRO_RST.2018-09-08_00:00_DOMAIN1
+        wrf_hydro_channel_ID_crosswalk_file: /glade/work/donghakim/cape_fear/domain/Route_Link.nc
+        wrf_hydro_channel_ID_crosswalk_file_field_name: link
+        wrf_hydro_channel_restart_upstream_flow_field_name: qlink1
+        wrf_hydro_channel_restart_downstream_flow_field_name: qlink2
+        wrf_hydro_channel_restart_depth_flow_field_name: hlink
+        wrf_hydro_waterbody_restart_file: /glade/work/donghakim/cape_fear/restart/HYDRO_RST.2018-09-08_00:00_DOMAIN1
+        wrf_hydro_waterbody_ID_crosswalk_file: /glade/work/donghakim/cape_fear/domain/LAKEPARM.nc
+        wrf_hydro_waterbody_ID_crosswalk_file_field_name: lake_id
+        wrf_hydro_waterbody_crosswalk_filter_file: /glade/work/donghakim/cape_fear/domain/Route_Link.nc
+        wrf_hydro_waterbody_crosswalk_filter_file_field_name: NHDWaterbodyComID
+    hybrid_parameters:
+        diffusive_domain: /glade/u/home/donghakim/t-route/test/input/cape_fear/yaml/capefear_diffusive_3rch.yaml
+    forcing_parameters:
+        qts_subdivisions: 12
+        dt: 300
+        qlat_input_folder: /glade/scratch/adamw/light_restart_dev/forcing_master
+        qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
+        qlat_file_index_col: feature_id
+        qlat_file_value_col: q_lateral
+#        nts: 6624
+        nts: 288
+        max_loop_size: 552  
+output_parameters:
+    #test_output: /glade/scratch/adamw/test_dump/capefear_mc_result
+    test_output: /glade/scratch/donghakim/test_dump/capefear_hybrid_result

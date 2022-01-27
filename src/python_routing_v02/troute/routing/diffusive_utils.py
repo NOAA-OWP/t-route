@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from functools import partial, reduce
 import troute.nhd_network as nhd_network
 
@@ -392,9 +393,10 @@ def fp_naturalxsec_map(
                 mainstem_headseg_list, 
                 inland_bathyNC, 
                 comid_bathy, 
-                geo_index, 
-                geo_cols, 
-                geo_data, 
+                param_df, 
+               #geo_index, 
+                #geo_cols, 
+                #geo_data, 
                 mx_jorder, 
                 mxncomp_g, 
                 nrch_g,
@@ -443,10 +445,8 @@ def fp_naturalxsec_map(
     x_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
     z_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
     mann_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
-    size_bathy_g= np.zeros((mxncomp_g, nrch_g), dtype=int)
-    
-    #import pdb; pdb.set_trace()
-    
+    size_bathy_g= np.zeros((mxncomp_g, nrch_g), dtype='int32')    
+   
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -499,12 +499,17 @@ def fp_naturalxsec_map(
                 if seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
                     # At tailwater bottom node (as # of segment = # node +1), z_bathy need to be adjusted by so*dx of the last segment
                     segID2 = seg_list[seg - 1]
-                    idx_segID2 = np.where(geo_index == segID2)
-                    idx_so = np.where(geo_cols == "s0")
-                    idx_dx = np.where(geo_cols == "dx")
-
-                    So = geo_data[idx_segID2, idx_so]
-                    dx = geo_data[idx_segID2, idx_dx]
+                    #idx_segID2 = np.where(geo_index == segID2)
+                    #idx_so = np.where(geo_cols == "s0")
+                    #idx_dx = np.where(geo_cols == "dx")
+                    idx_segID2 = np.where(param_df.index.values == segID2)
+                    idx_so = np.where(param_df.columns.values == "s0")
+                    idx_dx = np.where(param_df.columns.values == "dx")
+                    
+                    #So = geo_data[idx_segID2, idx_so]
+                    #dx = geo_data[idx_segID2, idx_dx]
+                    So = param_df.values[idx_segID2, idx_so]
+                    dx = param_df.values[idx_segID2, idx_dx]
                     
                     for idp in range(0, size_bathy_g[seg, frj]):
                         z_bathy_g[idp, seg, frj] = z_bathy_g[idp, seg, frj] - So * dx   
@@ -551,6 +556,7 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
+    #import pdb; pdb.set_trace()
     
     # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
@@ -848,13 +854,15 @@ def diffusive_input_data_v02(
                                                                    mainstem_headseg_list, 
                                                                    inland_bathyNC, 
                                                                    comid_bathy, 
-                                                                   geo_index, 
-                                                                   geo_cols, 
-                                                                   geo_data, 
+                                                                   param_df, 
+                                                                  #geo_index, 
+                                                                   #geo_cols, 
+                                                                   #geo_data, 
                                                                    mx_jorder,
                                                                    mxncomp_g, 
                                                                    nrch_g,
                                                                    dbfksegID)
+    
 
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
@@ -897,14 +905,20 @@ def diffusive_input_data_v02(
     diff_ins["qtrib_g"] = qtrib_g
     
     diff_ins["paradim"] = paradim 
-    diff_ins["para_ar_g"] = para_ar_g   
+    diff_ins["para_ar_g"] = para_ar_g 
+    
+    diff_ins["mxnbathy_g"] = mxnbathy_g
+    diff_ins["x_bathy_g"] = x_bathy_g
+    diff_ins["z_bathy_g"] = z_bathy_g
+    diff_ins["mann_bathy_g"] = mann_bathy_g
+    diff_ins["size_bathy_g"] = size_bathy_g    
     
     diff_ins["iniq"] = iniq
 
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw
     diff_ins["ordered_reaches"] = ordered_reaches
-
+    #import pdb; pdb.set_trace()
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
