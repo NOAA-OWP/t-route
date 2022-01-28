@@ -795,9 +795,8 @@ def _check_timeslice_exists(filenames, timeslices_folder):
             drop_list.append(f)
 
     # Assemble a list of existing TimeSlice files, only
-    if drop_list:
-        filenames_existing = [x for x in filenames if x not in drop_list]
-        
+    filenames_existing = [x for x in filenames if x not in drop_list]   
+    
     return filenames_existing
 
 def build_da_sets(da_params, run_sets, t0):
