@@ -855,7 +855,7 @@ def build_da_sets(da_params, run_sets, t0):
     reservoir_da = da_params.get('reservoir_da', False)
     if reservoir_da:
         usgs_da = reservoir_da.get('reservoir_persistence_usgs', False)
-        usgs_da = reservoir_da.get('reservoir_persistence_usgs', False)
+        usace_da = reservoir_da.get('reservoir_persistence_usace', False)
     
     nudging = False
     streamflow_da = da_params.get('streamflow_da', False)
