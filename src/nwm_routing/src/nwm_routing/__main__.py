@@ -1283,8 +1283,12 @@ def main_v03(argv):
         if showtiming:
             ic_start_time = time.time()
         
+        # if streamflow DA is ON, then create a new lastobs dataframe
         if data_assimilation_parameters:
-            lastobs_df = new_lastobs(run_results, dt * nts)
+            streamflow_da = data_assimilation_parameters.get('streamflow_da',False)
+            if streamflow_da:
+                if streamflow_da.get('streamflow_nudging', False):
+                    lastobs_df = new_lastobs(run_results, dt * nts)
             
         if showtiming:
             ic_end_time = time.time()
