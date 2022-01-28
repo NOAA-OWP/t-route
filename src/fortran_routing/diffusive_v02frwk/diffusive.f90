@@ -1369,7 +1369,7 @@ contains
   
     ! Subroutine local variable
     integer,          parameter :: maxit = 40
-    double precision, parameter :: xacc = 1e-2
+    double precision, parameter :: xacc = 1e-4
     integer                     :: iter
     integer                     :: xcolID, ycolID
     double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
