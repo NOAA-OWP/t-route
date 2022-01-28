@@ -1005,6 +1005,11 @@ def compute_diffusive_routing(
         # mask segments for which we already have MC solution
         x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
         
-        results_diffusive.append((rch_list[~x], dat_all[~x,3:]))
+        results_diffusive.append(
+            (
+                rch_list[~x], dat_all[~x,3:], 0,
+                (np.asarray([]), np.asarray([]), np.asarray([]))
+            )
+        )
 
     return results_diffusive
