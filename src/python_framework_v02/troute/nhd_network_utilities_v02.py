@@ -395,7 +395,27 @@ def set_supernetwork_parameters(
 
 
 def build_connections(supernetwork_parameters):
-    cols = supernetwork_parameters["columns"]
+    
+    cols = supernetwork_parameters.get(
+        'columns', 
+        {
+        'key'       : 'link',
+        'downstream': 'to',
+        'dx'        : 'Length',
+        'n'         : 'n',
+        'ncc'       : 'nCC',
+        's0'        : 'So',
+        'bw'        : 'BtmWdth',
+        'waterbody' : 'NHDWaterbodyComID',
+        'gages'     : 'gages',
+        'tw'        : 'TopWdth',
+        'twcc'      : 'TopWdthCC',
+        'alt'       : 'alt',
+        'musk'      : 'MusK',
+        'musx'      : 'MusX',
+        'cs'        : 'ChSlp',
+        }
+    )
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
     synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
     synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
@@ -420,11 +440,10 @@ def build_connections(supernetwork_parameters):
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
             pathlib.Path(supernetwork_parameters["mask_file_path"]),
-            layer_string=supernetwork_parameters["mask_layer_string"],
+            layer_string=supernetwork_parameters.get("mask_layer_string", None),
         )
-        param_df = param_df.filter(
-            data_mask.iloc[:, supernetwork_parameters["mask_key"]], axis=0
-        )
+        data_mask = data_mask.set_index(data_mask.columns[0])
+        param_df = param_df.filter(data_mask.index, axis=0)
 
     # Rename parameter columns to standard names: from route-link names
     #        key: "link"
@@ -539,10 +558,10 @@ def build_channel_initial_state(
         q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-            restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"],
-            restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"],
+            restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", 'link'),
+            restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", 'qlink1'),
+            restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
+            restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
         )
     else:
         # Set cold initial state

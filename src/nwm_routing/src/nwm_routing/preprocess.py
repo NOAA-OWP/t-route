@@ -140,7 +140,7 @@ def nwm_network_preprocess(
                 usgs_hybrid,
                 usace_hybrid,
                 rfc_forecast,
-                wb_params_level_pool["level_pool_waterbody_id"],
+                wb_params_level_pool.get("level_pool_waterbody_id", 'lake_id'),
                 wbody_conn.values(),
             )
         else:
@@ -409,11 +409,12 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
+                restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", 'lake_id'),
                 restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                restart_parameters[
-                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
-                ],
+                restart_parameters.get(
+                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name",
+                    'NHDWaterbodyComID'
+                ),
             )
         
         # if no restart file is provided, default initial states
