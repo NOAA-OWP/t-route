@@ -848,9 +848,27 @@ def build_da_sets(da_params, run_sets, t0):
         "usace_timeslices_folder",
         None
     )
+    
+    # User-specified DA ON/OFF preferences
+    usace_da = False
+    usgs_da = False
+    reservoir_da = da_params.get('reservoir_da', False)
+    if reservoir_da:
+        usgs_da = reservoir_da.get('reservoir_persistence_usgs', False)
+        usgs_da = reservoir_da.get('reservoir_persistence_usgs', False)
+    
+    nudging = False
+    streamflow_da = da_params.get('streamflow_da', False)
+    if streamflow_da:
+        nudging = streamflow_da.get('streamflow_nudging', False)
         
+    if not usgs_da and not usace_da and not nudging:
+        # if all DA capabilities are OFF, return empty dictionary
+        da_sets = [{} for _ in run_sets]
+    
     # if no user-input timeslice folders, a list of empty dictionaries
-    if not usgs_timeslices_folder and usace_timeslices_folder:
+    elif not usgs_timeslices_folder and not usace_timeslices_folder:
+        # if no timeslice folders, return empty dictionary
         da_sets = [{} for _ in run_sets]
         
     # if user-input timeslice folders are present, build TimeSlice sets
@@ -887,7 +905,7 @@ def build_da_sets(da_params, run_sets, t0):
             )
 
             # identify available USGS TimeSlices in run set i
-            if usgs_timeslices_folder:
+            if (usgs_timeslices_folder and nudging) or (usgs_timeslices_folder and usgs_da):
                 filenames_usgs = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
                             + '.15min.usgsTimeSlice.ncdf').to_list()
                 
@@ -901,7 +919,7 @@ def build_da_sets(da_params, run_sets, t0):
                 da_sets[i]['usgs_timeslice_files'] = filenames_usgs
                 
             # identify available USACE TimeSlices in run set i
-            if usace_timeslices_folder:
+            if usace_timeslices_folder and usace_da:
                 filenames_usace = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
                             + '.15min.usaceTimeSlice.ncdf').to_list()
                 
