@@ -78,6 +78,7 @@ def nwm_network_preprocess(
     # waterbodies_segments = supernetwork_values[13]
     # connections_tailwaters = supernetwork_values[4]
 
+    waterbody_type_specified = False
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -116,6 +117,10 @@ def nwm_network_preprocess(
                 'gage_lakeID_crosswalk_file',
                 None
             )
+        else:
+            param_file = None
+            usace_hybrid = False
+            usgs_hybrid = False
             
         # check if RFC-type reservoirs are set to true
         rfc_params = waterbody_parameters.get('rfc')
@@ -125,16 +130,22 @@ def nwm_network_preprocess(
                 False
             )
             param_file = rfc_params.get('reservoir_parameter_file',None)
+        else:
+            rfc_forecast = False
 
-        waterbody_type_specified = True
-        waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-            param_file,
-            usgs_hybrid,
-            usace_hybrid,
-            rfc_forecast,
-            wb_params_level_pool["level_pool_waterbody_id"],
-            wbody_conn.values(),
-        )
+        if param_file and reservoir_da:
+            waterbody_type_specified = True
+            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+                param_file,
+                usgs_hybrid,
+                usace_hybrid,
+                rfc_forecast,
+                wb_params_level_pool["level_pool_waterbody_id"],
+                wbody_conn.values(),
+            )
+        else:
+            waterbody_type_specified = True
+            waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
 
     else:
         # Declare empty dataframes
