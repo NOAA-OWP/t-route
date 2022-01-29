@@ -83,8 +83,7 @@ network_topology_parameters:
         mask_driver_string:
         # ---------------
         # typically this should be zero
-        # if using a mask this is !! mandatory
-        # TODO: default to zero
+        # optional, default to zero
         mask_key: 
         # ---------------
         # logical, if True gaged segments occupy a reach of their own
@@ -93,71 +92,75 @@ network_topology_parameters:
         break_network_at_gages: 
         # ---------------
         # attribute names in channel geometry file (Route_Link.nc)
+        # optional, defaults to attribute names in WRF RouteLink.nc
+        # This section is only needed if, for whatever reason, the channel
+        # geometry file differes in structure or naming conventions from
+        # the RouteLink file concentionally used WRF and NWM 2.1+
         columns:
             # ---------------
             # string, unique segment identifier
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             key:
             # ---------------
             # string, unique identifier of downstream segment
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             downstream:
             # ---------------
             # string, segment length
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             dx:
             # ---------------
             # string, manning's roughness of main channel
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             n:
             # ---------------
             # string, mannings roughness of compound channel
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             ncc:
             # ---------------
             # string, channel slope
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             s0:
             # ---------------
             # string, channel bottom width
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             bw:
             # ---------------
             # string, waterbody identifier
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             waterbody:
             # ---------------
             # string, channel top width
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             tw:
             # ---------------
             # string, compound channel top width
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             twcc:
             # ---------------
             # string, channel bottom altitude
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             alt:
             # ---------------
             # string, muskingum K parameter
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             musk:
             # ---------------
             # string, muskingum X parameter
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             musx:
             # ---------------
             # string, channel sideslope
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             cs:
             # ---------------
             # string, gage ID
-            # (!!) mandatory
+            # (!!) mandatory, if columns section included
             gages:
         # ---------------
         # coding in channel gemetry dataset for non waterbody segments
         # under attribute named in `columns: waterbody` above
-        # (!!) mandatory
+        # optional, defaults to -9999
         waterbody_null_code:
         # ---------------
         # "synthetic waterbody segment IDs that are used to construct the Great Lakes
@@ -189,12 +192,13 @@ network_topology_parameters:
     # parameters specifying how (if) waterbodies are handled
     waterbody_parameters:
         # ---------------
-        # logical, if True then all segments belonging to a waterbody are collapsed into a single reach
-        # (!!) mandatory for simulations with waterbodies.
+        # bollean, if True then all segments belonging to a waterbody are collapsed into a single reach
+        # (!!) mandatory (=True) for simulations with waterbodies.
         # if not specified, defaults to False and no waterbodies are simulated
         break_network_at_waterbodies:
         # ---------------
         # attributes of the lake geometry file for levelpool simulations
+        # (!!) mandatory for simulations with waterbodies
         level_pool:
             # ---------------
             # string, filepath to waterbody parameter file (LAKEPARM.nc)
@@ -202,44 +206,65 @@ network_topology_parameters:
             level_pool_waterbody_parameter_file_path: 
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional, default to 'lake_id'
             level_pool_waterbody_id:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_waterbody_area:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_weir_elevation:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_waterbody_max_elevation:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_outfall_weir_coefficient:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_outfall_weir_length:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_overall_dam_length:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_orifice_elevation:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_orifice_coefficient:
             # ---------------
             # string
-            # (!!) mandatory for simulations with waterbodies
+            # optional
             level_pool_orifice_area:
+    # ---------------
+    # RFC Reservoir Forecast parameters
+    rfc:
+        # ---------------
+        # parameter file specifying the waterbody that have RFC forecasts
+        # this file is typically named reservoir_index_AnA.nc
+        # (!!) mandatory for RFC forecasting
+        reservoir_parameter_file: 
+        # ---------------
+        # boolean, 
+        # if True, RFC forecasting will happen. 
+        # if False, RFC forecasting will not happen
+        # optional, defaults to False and RFC forecasting is turned off
+        reservoir_rfc_forecasts: 
+        # ---------------
+        # string, path to directory containing forecast files
+        # (!!) mandatory if reservoir_rfc_forecasts = True
+        reservoir_rfc_forecasts_time_series_path: 
+        # ---------------
+        # int
+        reservoir_rfc_forecasts_lookback_hours: 
     # TODO: add parameters for other waterbody modules.
 # ---------------
 # parameters specific to the routing simulation
@@ -273,10 +298,11 @@ compute_parameters:
     subnetwork_target_size:
     # ---------------
     # number of CPUs used for parallel computations
+    # multiple CPUs are used for computations and file i/o
     # (!!) optional, defaults to None
     cpu_pool:
     # ---------------
-    # logical, if True Courant metrics are returnd with simulations
+    # boolean, if True Courant metrics are returnd with simulations
     # this only works for MC simulations
     # optional - defaults to False
     return_courant:
@@ -306,19 +332,19 @@ compute_parameters:
         wrf_hydro_channel_ID_crosswalk_file: 
         # ---------------
         # field name of segment IDs in restart file
-        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        # optional
         wrf_hydro_channel_ID_crosswalk_file_field_name:
         # ---------------
         # field name of upstream flow in restart file
-        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        # optional
         wrf_hydro_channel_restart_upstream_flow_field_name:
         # ---------------
         # field name of downstream flow in restart file
-        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        # optional
         wrf_hydro_channel_restart_downstream_flow_field_name:
         # ---------------
         # field name of depth in restart file
-        # (!!) mandatory if wrf_hydro_channel_restart_file is provided
+        # optional
         wrf_hydro_channel_restart_depth_flow_field_name:
         # ---------------
         # filepath to waterbody restart file
@@ -331,15 +357,15 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file:
         # ---------------
         # field name of waterbody ID
-        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        # optional
         wrf_hydro_waterbody_ID_crosswalk_file_field_name:
         # ---------------
         # filepath to channel geometry file
-        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        # optional
         wrf_hydro_waterbody_crosswalk_filter_file: 
         # ---------------
         # fieldname of waterbody IDs in channel geometry file
-        # (!!) mandatory if wrf_hydro_waterbody_restart_file is provided
+        # optional
         wrf_hydro_waterbody_crosswalk_filter_file_field_name: 
     # ---------------
     # Parameters controlling the use of MC/diffusive hybrid simulations
@@ -455,45 +481,110 @@ compute_parameters:
     # For open-loop simulations omit the entire data_assimilation_parameters section 
     data_assimilation_parameters:
         # ---------------
-        # path to directory containing TimeSlice files
-        data_assimilation_timeslices_folder: 
+        # str, path to directory containing USGS TimeSlice files
+        # USGS TimeSlice files may be used for both steramflow DA 
+        # and reservoir DA at USGS reservoirs
+        # (!!) mandatory for streamflow nudging and/or USGS reservoir DA 
+        usgs_timeslices_folder: 
         # ---------------
-        # filepath to channel geometry file
-        wrf_hydro_da_channel_ID_crosswalk_file:
+        # str, path to directory containing USACE TimeSlice files
+        # USACE TimeSlice files are only used for reservoir DA
+        # at USACE reservoirs
+        # (!!) mandatory for USACE reservoir DA 
+        usgs_timeslices_folder: 
         # ---------------
-        # filepath to lastobs file
-        wrf_hydro_lastobs_file:
+        # int, the number of hours prior to the simulation start that TimeSlice files are searched for
+        # For example, if the start time of the simulation is 2022-10-10 12:00 and the timeslice_lookback_hours
+        # is set to 24, then the model will ingest data from all TimeSlice files between 2022-10-9 12:00 and 
+        # 2022-10-10 12:00. Additionally, this parameter controls the maximum time that the reservoir DA routine
+        # can use an observation for DA. 
+        # (!!) mandatory for reservoir DA - suggested value 48 (2 days)
+        timeslice_lookback_hours:
         # ---------------
-        # path to directory where lastobs will be written to
-        # (!!) mandatory if lastobs are to be written out during and after simulations
-        lastobs_output_folder:
+        # int, maximum duration of interpolation between gage observations. For example, when this value
+        # is set to 59, then the maximum duration of interpolation beetween observations will be no greater 
+        # than one hour. 
+        # optional - defaults to 59
+        interpolation_limit_min:
+        # ---------------
+        # float between 0 and 1, threshold for determining which observations are deemed acceptable
+        # for DA and which are not. If the values is set to 1, then only the very best observations
+        # are retained. On the other hand, if the value is set to 0, then all observations will be 
+        # used for assimilation, even those markesd as very poor quality. 
+        qc_threshold: 
         # ---------------
         # lead time of lastobs relative to simulation start time (secs)
         # optional, default to 0
         wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time:
         # ---------------
         # ???
+        # optional - defaults to "obs-based"
         wrf_lastobs_type:
         # ---------------
-        # The number of additional TimeSlice files added to the beginning and end of each
-        # DA timeslice sets. Padding is advised to reduce edge-effects of observation interpolation scheme
-        # optional, defaults to 0
-        timeslice_pad:
+        # parameters controlling streamflow nudging DA
+        streamflow_da:
+            # ---------------
+            # boolean, if True then streamflow nudging DA will happen. If false it will not. 
+            # note that in order for nudging to happen, the usgs_timeslices_folder also must
+            # be specified.
+            # (!!) mandatory for streamflow DA, defaults to False
+            streamflow_nudging:
+            # ---------------
+            # filepath, file relating stream gage IDs to segment links in the model domain.
+            # this is typically the RouteLink file.
+            # (!!) mandatory for streamflow DA.
+            gage_segID_crosswalk_file:
+            # ---------------
+            # optional
+            crosswalk_gage_field:
+            # ---------------
+            # optional
+            crosswalk_segID_field:
+            # ---------------
+            # str, filepath to lastobs file
+            # last obs files contain the time and magnitude of the last observations at gage locations.
+            # last obs files are necessary for analysis and forecast simulations. Without these files, initial
+            # flow states at gage locations will be set from the data in restart files. If this file is not provided, 
+            # the simulation will still run, however, initial conditions at gage locations will be flawed and DA-decay
+            # from initial states will be impossible.
+            # (!!) mandatory for analysis and 
+            wrf_hydro_lastobs_file:
+            # ---------------
+            # path to directory where lastobs will be written to
+            # (!!) mandatory if lastobs are to be written out during and after simulations
+            lastobs_output_folder:
         # ---------------
-        # sets of TimeSlice files to be with each simulation loop.
-        # optional, only include if explicitly listing TimeSlice files for each set
-        # This variable should not be included if running an AnA simulation using 
-        # automatic loop creation.
-        #
-        data_assimilation_sets:
+        # parameters controlling reservoir hybrid DA
+        reservoir_da:
             # ---------------
-            - usgs_timeslice_files:
-                - TimeSlice_filename1
-                - Timeslice_filename2
+            # boolean, if True then USGS reservoir hybrid DA will happen. If false it will not. 
+            # note that in order for USGS reservoir DA to happen, the usgs_timeslices_folder also must
+            # be specified.
+            # (!!) mandatory for USGS reservoir DA, defaults to False
+            reservoir_persistence_usgs:
             # ---------------
-            - usgs_timeslice_files:
-                - TimeSlice_filename3
-                - TimeSlice_filename4
+            # boolean, if True then USACE reservoir hybrid DA will happen. If false it will not. 
+            # note that in order for USACE reservoir DA to happen, the usace_timeslices_folder also must
+            # be specified.
+            # (!!) mandatory for USACE reservoir DA, defaults to False
+            reservoir_persistence_usace:
+            # ---------------
+            # filepath, crosswalk file connecting lake IDs to specific USGS and USACE gages
+            # this file is typically named reservoir_index_AnA.nc
+            # (!!) mandatory for RFC forecasting
+            gage_lakeID_crosswalk_file:
+            # ---------------
+            # optional, defaults to 'usgs_gage_id'
+            crosswalk_usgs_gage_field:
+            # ---------------
+            # optional, defaults to 'usace_gage_id'
+            crosswalk_usace_gage_field:
+            # ---------------
+            # optional, defaults to 'usgs_lake_id'
+            crosswalk_usgs_lakeID_field:
+            # ---------------
+            # optional, defaults to 'usace_lake_id'
+            crosswalk_usace_lakeID_field:
             
 # ---------------   
 # parameters controlling model outputs
