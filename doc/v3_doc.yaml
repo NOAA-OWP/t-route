@@ -311,6 +311,14 @@ compute_parameters:
     # optional, defaults to a cold-start
     restart_parameters:
         # ---------------
+        # string, time of model initialization (timestep zero).
+        # string date format must follow YYYY-MM-DD_HH:MM
+        # This start time will control which forcing files and TimeSlice files are required
+        # for the simulation. If the start time is erroneously enertered, such that there are
+        # no available forcing files, then the simulation will fail. Likewise, if thre are 
+        # no TimeSlice files available, then data assimilation will not occur. 
+        start_datetime:
+        # ---------------
         # filepath to a 'lite' channel restart file create by a previous t-route simulation
         # if a file is specified, then it will be given preference over WRF restart files 
         # for a simulation restart.
@@ -324,6 +332,10 @@ compute_parameters:
         lite_waterbody_restart_file: 
         # ---------------
         # filepath to WRF Hydro HYDRO_RST file
+        # this file does not need to be timed with start_datetime, which allows initial states
+        # from one datetime to initialize a simulation with forcings starting at a different datetime. 
+        # However, if the start_datetime parameter is not specified, then the time attribute in the
+        # channel restart file will be used as the starting time of the simulation. 
         # optional, defauls to None and channels are cold-started from zero flow and depth
         wrf_hydro_channel_restart_file: 
         # ---------------
