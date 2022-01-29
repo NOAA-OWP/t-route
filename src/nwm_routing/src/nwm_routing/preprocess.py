@@ -467,7 +467,7 @@ def nwm_initial_warmstate_preprocess(
     else:
         q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
-        # get initialization time
+        # get initialization time from restart file
         if restart_parameters.get("wrf_hydro_channel_restart_file", None):
             channel_initial_states_file = restart_parameters[
                 "wrf_hydro_channel_restart_file"
@@ -481,7 +481,34 @@ def nwm_initial_warmstate_preprocess(
 
         # convert timestamp from string to datetime
         t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-
+        
+    # get initial time from user inputs
+    if restart_parameters.get("start_datetime", None):
+        t0_str = restart_parameters.get("start_datetime")
+        
+        def _try_parsing_date(text):
+            for fmt in (
+                "%Y-%m-%d_%H:%M", 
+                "%Y-%m-%d_%H:%M:%S", 
+                "%Y-%m-%d %H:%M", 
+                "%Y-%m-%d %H:%M:%S", 
+                "%Y/%m/%d %H:%M", 
+                "%Y/%m/%d %H:%M:%S"
+            ):
+                try:
+                    return datetime.strptime(text, fmt)
+                except ValueError:
+                    pass
+            LOG.error('No valid date format found for start_datetime input. Please use format YYYY-MM-DD_HH:MM')
+            quit()
+            
+        t0 = _try_parsing_date(t0_str)
+    else:
+        if t0_str == "2015-08-16_00:00:00":
+            LOG.info('No user-input start_datetime and no restart file, start time arbitrarily 2015-08-16_00:00:00')
+        else:
+            LOG.info('No user-specified start_datetime, continuing with start time from restart file: %s', t0_str)
+        
     #----------------------------------------------------------------------------
     # Assemble streamflow DA lastobs data
     #----------------------------------------------------------------------------
