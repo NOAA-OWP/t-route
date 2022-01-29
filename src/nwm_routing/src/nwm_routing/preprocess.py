@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+import pathlib
 import numpy as np
 import pathlib
 import xarray as xr
@@ -18,8 +19,8 @@ def nwm_network_preprocess(
     waterbody_parameters,
     preprocessing_parameters,
     compute_parameters,
+    data_assimilation_parameters,
 ):
-
 
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
@@ -78,7 +79,6 @@ def nwm_network_preprocess(
     # connections_tailwaters = supernetwork_values[4]
 
     waterbody_type_specified = False
-
     if break_network_at_waterbodies:
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
@@ -95,39 +95,57 @@ def nwm_network_preprocess(
         # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        # Check if hybrid-usgs, hybrid-usace, or rfc type reservoirs are set to true
-        wbtype = "hybrid_and_rfc"
-        wb_params_hybrid_and_rfc = waterbody_parameters.get(
-            wbtype, defaultdict(list)
-        )
-
-        wbtype = "level_pool"
         wb_params_level_pool = waterbody_parameters.get(
-            wbtype, defaultdict(list)
+            'level_pool', defaultdict(list)
         )
+        
+        # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
+        reservoir_da = data_assimilation_parameters.get(
+            'reservoir_da', 
+            None
+        )
+        if reservoir_da:
+            usgs_hybrid  = reservoir_da.get(
+                'reservoir_persistence_usgs', 
+                False
+            )
+            usace_hybrid = reservoir_da.get(
+                'reservoir_persistence_usace', 
+                False
+            )
+            param_file   = reservoir_da.get(
+                'gage_lakeID_crosswalk_file',
+                None
+            )
+        else:
+            param_file = None
+            usace_hybrid = False
+            usgs_hybrid = False
+            
+        # check if RFC-type reservoirs are set to true
+        rfc_params = waterbody_parameters.get('rfc')
+        if rfc_params:
+            rfc_forecast = rfc_params.get(
+                'reservoir_rfc_forecasts',
+                False
+            )
+            param_file = rfc_params.get('reservoir_parameter_file',None)
+        else:
+            rfc_forecast = False
 
-        # Determine if any data assimilation reservoirs are activated, and if so, read
-        # the reservoir parameter file
-        if (
-            wb_params_hybrid_and_rfc["reservoir_persistence_usgs"]
-            or wb_params_hybrid_and_rfc["reservoir_persistence_usace"]
-            or wb_params_hybrid_and_rfc["reservoir_rfc_forecasts"]
-        ):
-
+        if param_file and reservoir_da:
             waterbody_type_specified = True
-
             waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                wb_params_hybrid_and_rfc["reservoir_parameter_file"],
-                wb_params_level_pool["level_pool_waterbody_id"],
+                param_file,
+                usgs_hybrid,
+                usace_hybrid,
+                rfc_forecast,
+                wb_params_level_pool.get("level_pool_waterbody_id", 'lake_id'),
                 wbody_conn.values(),
             )
-
-            # Remove duplicate lake_ids and rows
-            waterbody_types_df = (
-                waterbody_types_df.reset_index()
-                .drop_duplicates(subset="lake_id")
-                .set_index("lake_id")
-            )
+        else:
+            waterbody_type_specified = True
+            waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
 
     else:
         # Declare empty dataframes
@@ -321,32 +339,85 @@ def nwm_initial_warmstate_preprocess(
     data_assimilation_parameters,
     segment_index,
     waterbodies_df,
-    segment_list=None,
-    wbodies_list=None,
 ):
 
+    '''
+    Assemble model initial condition data:
+        - waterbody inital states (outflow and pool elevation)
+        - channel initial states (flow and depth)
+        - initial time
+        - most recent gage observations
+    Additionally, a dictionary of data assimilation parameters is assembled.
+    
+    Arguments
+    ---------
+    - break_network_at_waterbodies (bool): If True, waterbody initial states will
+                                           be appended to the waterbody parameter
+                                           dataframe. If False, waterbodies will
+                                           not be simulated and the waterbody
+                                           parameter datataframe wil not be changed
+    
+    - restart_parameters           (dict): User-input simulation restart 
+                                           parameters
+    
+    - data_assimilation_parameters (dict): User-input data assimilation 
+                                           parameters
+    
+    - segment_index        (Pandas Index): All segment IDs in the simulation 
+                                           doamin
+    
+    - waterbodies_df   (Pandas DataFrame): Waterbody parameters   
+    
+    Returns
+    -------
+    - waterbodies_df (Pandas DataFrame): Waterbody parameters with initial
+                                         states (outflow and pool elevation)
+    
+    - q0             (Pandas DataFrame): Initial flow and depth states for each
+                                         segment in the model domain
+    
+    - t0                     (datetime): Datetime of the model initialization
+    
+    - lastobs_df     (Pandas DataFrame): Last gage observations data for DA
+    
+    - da_parameter_dict          (dict): Data assimilation parameters
+    
+    Notes
+    -----
+    - I don't know if it makes sense to create the da_parameter_dict, here. 
+      Consider moving the creation to another location..
+    '''
+
+    #----------------------------------------------------------------------------
+    # Assemble waterbody initial states (outflow and pool elevation
+    #----------------------------------------------------------------------------
+    
     if break_network_at_waterbodies:
-        ## STEP 3c: Handle Waterbody Initial States
-        # TODO: move step 3c into function in nnu, like other functions wrapped in main()
+
         start_time = time.time()
         LOG.info("setting waterbody initial states ...")
 
+        # if a lite restart file is provided, read initial states from it.
         if restart_parameters.get("lite_waterbody_restart_file", None):
             
             waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
                 restart_parameters['lite_waterbody_restart_file']
             )
             
+        # read waterbody initial states from WRF-Hydro type restart file
         elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
+                restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", 'lake_id'),
                 restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                restart_parameters[
-                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
-                ],
+                restart_parameters.get(
+                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name",
+                    'NHDWaterbodyComID'
+                ),
             )
+        
+        # if no restart file is provided, default initial states
         else:
             # TODO: Consider adding option to read cold state from route-link file
             waterbodies_initial_ds_flow_const = 0.0
@@ -372,38 +443,57 @@ def nwm_initial_warmstate_preprocess(
             waterbodies_df, waterbodies_initial_states_df, on="lake_id"
         )
 
-        LOG.debug("waterbody initial states complete in %s seconds." % (time.time() - start_time))
+        LOG.debug(
+            "waterbody initial states complete in %s seconds."\
+            % (time.time() - start_time))
         start_time = time.time()
 
-    # STEP 4: Handle Channel Initial States, set T0, and initialize LastObs
+    #----------------------------------------------------------------------------
+    # Assemble channel initial states (flow and depth)
+    # also establish simulation initialization timestamp
+    #----------------------------------------------------------------------------
+    
     start_time = time.time()
     LOG.info("setting channel initial states ...")
 
-    # STEP 4a: Set Channel States and T0
+    # if lite restart file is provided, the read channel initial states from it
     if restart_parameters.get("lite_channel_restart_file", None):
         
         q0, t0 = nhd_io.read_lite_restart(
             restart_parameters['lite_channel_restart_file']
         )
+    
+    # build initial states from user-provided restart parameters
     else:
         q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
 
+        # get initialization time
         if restart_parameters.get("wrf_hydro_channel_restart_file", None):
             channel_initial_states_file = restart_parameters[
                 "wrf_hydro_channel_restart_file"
             ]
-            t0_str = nhd_io.get_param_str(channel_initial_states_file, "Restart_Time")
+            t0_str = nhd_io.get_param_str(
+                channel_initial_states_file, 
+                "Restart_Time"
+            )
         else:
             t0_str = "2015-08-16_00:00:00"
 
+        # convert timestamp from string to datetime
         t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
 
-    # STEP 4b: Set LastObs
+    #----------------------------------------------------------------------------
+    # Assemble streamflow DA lastobs data
+    #----------------------------------------------------------------------------
+    
     lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
         data_assimilation_parameters
     )
 
-    LOG.debug("channel initial states complete in %s seconds." % (time.time() - start_time))
+    LOG.debug(
+        "channel initial states complete in %s seconds."\
+        % (time.time() - start_time)
+    )
     start_time = time.time()
 
     return waterbodies_df, q0, t0, lastobs_df, da_parameter_dict
@@ -423,59 +513,92 @@ def nwm_forcing_preprocess(
     data_assimilation_parameters,
     break_network_at_waterbodies,
     segment_index,
+    link_gage_df,
     lastobs_index,
     cpu_pool,
-    warmstate_t0 = None,
+    t0,
 ):
+    """
+    Assemble model forcings. Forcings include hydrological lateral inflows (qlats)
+    and observations for streamflow and/or reservoir data assimilation schemes
+    
+    Aguments
+    --------
+    - run                          (dict): List of forcing files pertaining
+                                           to a single run-set
+    
+    - forcing_parameters           (dict): User-input simulation forcing 
+                                           parameters
+    
+    - da_run                       (dict): Lists of TimeSlice files for a
+                                           single run-set
+    
+    - data_assimilation_parameters (dict): User-input parameters controlling
+                                           data assimilation routines
+    
+    - break_network_at_waterbodies (bool): ????
+    
+    - segment_index                    (): ????
+    
+    - link_gage_df     (Pandas DataFrame): Crosswalking between segment ID and
+                                           USGS gage IDs in the model domain
+    
+    - lastobs_index        (Pandas Index): ????
+    
+    - cpu_pool                      (int): Number of CPUs in the process-parall
+                                           pool
+    
+    - t0                       (datetime): Timestamp of the simualtion initial 
+                                           condition
 
-    # TODO: Harmonize the t0 parameter -- this
-    # configuration permits the Warm-State derived
-    # t0 to carry as the default if no other value is
-    # provided -- we need to confirm this is
-    # desireable behavior.
-    t0 = forcing_parameters.get("t0", warmstate_t0)
-    nts = forcing_parameters.get("nts", None)
-    dt = forcing_parameters.get("dt", None)
-    qts_subdivisions = forcing_parameters.get("qts_subdivisions", None)
-    qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
-    qlat_file_index_col = forcing_parameters.get("qlat_file_index_col", "feature_id")
-    qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+    Returns
+    -------
+    - qlats_df           (Pandas DataFrame): Lateral inflow data, indexed by 
+                                             segment ID
+                                             
+    - usgs_df            (Pandas DataFrame): Streamflow DA observations, indexed by
+                                             segment ID
+                                             
+    - reservoir_usgs_df  (Pandas DataFrame): Reservoir DA observations 
+                                             (USGS persistence reservoirs), indexed 
+                                             by waterbody ID
+                                             
+    - reservoir_usace_df (Pandas DataFrame): Reservoir DA observations 
+                                             (USACE persistence reservoirs), indexed 
+                                             by waterbody ID
+    
+    Notes
+    -----
+    - This function adds new keys to the `run` input dictionary
+    
+    """
+
+    # Unpack user-specified forcing parameters
+    dt                           = forcing_parameters.get("dt", None)
+    qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
+    qlat_input_folder            = forcing_parameters.get("qlat_input_folder", None)
+    qlat_file_index_col          = forcing_parameters.get("qlat_file_index_col", "feature_id")
+    qlat_file_value_col          = forcing_parameters.get("qlat_file_value_col", "q_lateral")
     qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
     qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
 
     # TODO: find a better way to deal with these defaults and overrides.
-    run["t0"] = run.get("t0", t0)
-    run["nts"] = run.get("nts", nts)
-    run["dt"] = run.get("dt", dt)
-    run["qts_subdivisions"] = run.get("qts_subdivisions", qts_subdivisions)
-    run["qlat_input_folder"] = run.get("qlat_input_folder", qlat_input_folder)
-    run["qlat_file_index_col"] = run.get("qlat_file_index_col", qlat_file_index_col)
-    run["qlat_file_value_col"] = run.get("qlat_file_value_col", qlat_file_value_col)
+    run["t0"]                           = run.get("t0", t0)
+    run["nts"]                          = run.get("nts")
+    run["dt"]                           = run.get("dt", dt)
+    run["qts_subdivisions"]             = run.get("qts_subdivisions", qts_subdivisions)
+    run["qlat_input_folder"]            = run.get("qlat_input_folder", qlat_input_folder)
+    run["qlat_file_index_col"]          = run.get("qlat_file_index_col", qlat_file_index_col)
+    run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
     run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
     run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
 
-    if data_assimilation_parameters:
-        data_assimilation_folder = data_assimilation_parameters.get("data_assimilation_timeslices_folder", None)
-        data_assimilation_csv = data_assimilation_parameters.get("data_assimilation_csv", None)
-        lastobs_file = data_assimilation_parameters.get("wrf_hydro_lastobs_file", None)
-        lastobs_start = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
-        lastobs_type = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
-        lastobs_crosswalk_file = data_assimilation_parameters.get("wrf_hydro_da_channel_ID_crosswalk_file", None)
-        da_decay_coefficient = data_assimilation_parameters.get("da_decay_coefficient", 120)
-
-        da_run["data_assimilation_timeslices_folder"] = da_run.get("data_assimilation_timeslices_folder", data_assimilation_folder)
-        da_run["data_assimilation_csv"] = da_run.get("data_assimilation_csv", data_assimilation_csv)
-        da_run["wrf_hydro_lastobs_file"] = da_run.get("wrf_hydro_lastobs_file", lastobs_file)
-        da_run["wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0] = da_run.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", lastobs_start)
-        da_run["wrf_lastobs_type"] = da_run.get("wrf_lastobs_type", lastobs_type)
-        da_run["wrf_hydro_da_channel_ID_crosswalk_file"] = da_run.get("wrf_hydro_da_channel_ID_crosswalk_file", lastobs_crosswalk_file)
-        da_run["da_decay_coefficient"] = da_run.get("da_decay_coefficient", da_decay_coefficient)
-
-    # STEP 5: Read (or set) QLateral Inputs
-   
+    #---------------------------------------------------------------------------
+    # Assemble lateral inflow data
+    #---------------------------------------------------------------------------
+    
     start_time = time.time()
-
-    LOG.info("creating qlateral array ...")
+    LOG.info("Creating a DataFrame of lateral inflow forcings ...")
 
     qlats_df = nnu.build_qlateral_array(
         run,
@@ -483,31 +606,326 @@ def nwm_forcing_preprocess(
         segment_index,
     )
 
-    LOG.debug("qlateral array complete in %s seconds." % (time.time() - start_time))
-
-    # STEP 6
-    data_assimilation_csv = da_run.get("data_assimilation_csv", None)
-    data_assimilation_folder = da_run.get("data_assimilation_timeslices_folder", None)
-    if data_assimilation_csv or data_assimilation_folder:
-
-        if data_assimilation_folder and data_assimilation_csv:
-            LOG.info(
-                "Please select data_assimilation_parameters_folder + data_assimilation_filter or data_assimilation_csv not both."
-            )
-
-
-        start_time = time.time()
+    LOG.debug(
+        "lateral inflow DataFrame creation complete in %s seconds." \
+        % (time.time() - start_time)
+    )
     
-        LOG.info("creating usgs time_slice data array ...")
-
-        usgs_df = nnu.build_data_assimilation_usgs_df(da_run, run, lastobs_index)
-
-        LOG.debug("usgs array complete in %s seconds." % (time.time() - start_time))
-
-    else:
+    #---------------------------------------------------------------------------
+    # Assemble streamflow DA observation data
+    #---------------------------------------------------------------------------
+    
+    # isolate user-input parameters for streamflow data assimilation
+    streamflow_da_parameters = data_assimilation_parameters.get(
+        'streamflow_da', 
+        None
+    )
+    
+    # determine if user explictly requests streamflow DA
+    nudging = False
+    if streamflow_da_parameters:
+        nudging = streamflow_da_parameters.get('streamflow_nudging', False)
+        
+    # if user requested nudging and a specified a USGS TimeSlice directory, 
+    # then build and return USGS dataframe
+    if nudging and da_run['usgs_timeslice_files']:
+        
+        start_time = time.time()
+        LOG.info(
+            "Creating a DataFrame of USGS gage observations for streamflow DA ..."
+        )
+        
+        usgs_timeslices_folder = data_assimilation_parameters.get(
+                                    "usgs_timeslices_folder", 
+                                    None
+                                )
+        lastobs_file           = streamflow_da_parameters.get(
+                                    "wrf_hydro_lastobs_file", 
+                                    None
+                                )
+        lastobs_start          = data_assimilation_parameters.get(
+            "wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",
+                                    0
+                                )
+        lastobs_type           = data_assimilation_parameters.get(
+                                    "wrf_lastobs_type", 
+                                    "error-based"
+                                )
+        crosswalk_file         = streamflow_da_parameters.get(
+                                    "gage_segID_crosswalk_file", 
+                                    None
+                                )
+        crosswalk_gage_field   = streamflow_da_parameters.get(
+                                    'crosswalk_gage_field',
+                                    'gages'
+                                )
+        crosswalk_segID_field  = streamflow_da_parameters.get(
+                                    'crosswalk_segID_field',
+                                    'link'
+                                )
+        da_decay_coefficient   = data_assimilation_parameters.get(
+                                    "da_decay_coefficient",
+                                    120
+                                )
+        qc_threshold           = data_assimilation_parameters.get(
+                                    "qc_threshold",
+                                    1
+                                )
+        interpolation_limit    = data_assimilation_parameters.get(
+                                    "interpolation_limit_min",
+                                    59
+                                )
+        
+        # TODO: join timeslice folder and files into complete path upstream
+        usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
+        usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
+                      da_run['usgs_timeslice_files']]
+        
+        if usgs_files:
+            usgs_df = (
+                nhd_io.get_obs_from_timeslices(
+                    crosswalk_file,
+                    crosswalk_gage_field,
+                    crosswalk_segID_field,
+                    usgs_files,
+                    qc_threshold,
+                    interpolation_limit,
+                    run["dt"],
+                    run["t0"],
+                    cpu_pool
+                ).
+                loc[link_gage_df.index]
+            )
+            
+        else:
+            usgs_df = pd.DataFrame()
+        
+        LOG.debug(
+            "Streamflow DA USGS observation DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+        )
+                 
+    else: 
         usgs_df = pd.DataFrame()
-
-    # STEP 7
+    
+    #---------------------------------------------------------------------------
+    # Assemble reservoir data assimilation observation data
+    #---------------------------------------------------------------------------
+    
+    # isolate user-input parameters for reservoir data assimilation
+    reservoir_da_parameters = data_assimilation_parameters.get(
+        'reservoir_da', 
+        None
+    )
+    
+    # check if user explictly requests USGS and/or USACE reservoir DA
+    usgs_persistence  = False
+    usace_persistence = False
+    if reservoir_da_parameters:
+        usgs_persistence  = reservoir_da_parameters.get(
+            'reservoir_persistence_usgs', 
+            False
+        )
+        usace_persistence = reservoir_da_parameters.get(
+            'reservoir_persistence_usace', 
+            False
+        )
+        
+    #---------------------------------------------
+    # observations for USGS reservoir DA
+    #---------------------------------------------
+    
+    # create crosswalking dataframes and identify USGS lakeIDs in the model domain
+    if usgs_persistence:
+        
+        crosswalk_file = reservoir_da_parameters["gage_lakeID_crosswalk_file"]
+        crosswalk_file = pathlib.Path(crosswalk_file)
+        
+        with xr.open_dataset(crosswalk_file) as ds:
+            gage_lake_dict = {
+                'gage': ds.usgs_gage_id.values,
+                'usgs_lake_id': ds.usgs_lake_id.values
+            }
+            gage_lake_df = (
+                pd.DataFrame(data = gage_lake_dict).
+                set_index('gage')
+            )
+        
+        # build dataframe that crosswalks gageIDs to segmentIDs
+        gage_link_df = (
+            link_gage_df['gages'].
+            reset_index().
+            set_index(['gages'])
+        )
+        
+        # extract the USGS lakeIDs within the model domain
+        usgs_lakes_in_domain = (
+            gage_lake_df.join(gage_link_df, how = 'inner')['usgs_lake_id'].
+            to_numpy()
+        )
+    
+    # if USGS TimeSlices have already been opened and assembled for 
+    # streamflow DA, then simply take TimeSlice observations from `usgs_df`,
+    # no need to open TimeSlice files again.
+    if usgs_persistence and nudging and usgs_df.empty == False:
+        
+        start_time = time.time()
+        LOG.info(
+            "Creating a DataFrame of USGS gage observations for Reservoir DA ..."
+        )
+        
+        # build dataframe that crosswalks segmentIDs to lakeIDs
+        link_lake_df = (
+            gage_lake_df.
+            join(gage_link_df, how = 'inner').
+            reset_index().set_index('index').
+            drop(['level_0'], axis = 1)
+        )
+        
+        # resample `usgs_df` to 15 minute intervals
+        usgs_df_15min = (
+            usgs_df.
+            transpose().
+            resample('15min').asfreq().
+            transpose()
+        )
+        
+        # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
+        reservoir_usgs_df = (
+            usgs_df_15min.join(link_lake_df, how = 'inner').
+            reset_index().
+            set_index('usgs_lake_id').
+            drop(['index'], axis = 1)
+        )
+        
+        LOG.debug(
+            "Reservoir DA USGS observation DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+        )
+                    
+    elif usgs_persistence and not nudging:
+        
+        start_time = time.time()
+        LOG.info("Creating a DataFrame of USGS gage observations for Reservoir DA ...")
+        
+        usgs_timeslices_folder = data_assimilation_parameters.get(
+                                   "usgs_timeslices_folder",
+                                   None
+                                )
+        crosswalk_file         = reservoir_da_parameters.get(
+                                    "gage_lakeID_crosswalk_file", 
+                                    None
+                                )
+        crosswalk_gage_field   = streamflow_da_parameters.get(
+                                    'crosswalk_usgs_gage_field',
+                                    'usgs_gage_id'
+                                )
+        crosswalk_lakeID_field  = streamflow_da_parameters.get(
+                                    'crosswalk_usgs_lakeID_field',
+                                    'usgs_lake_id'
+                                )
+        qc_threshold            = data_assimilation_parameters.get(
+                                    "qc_threshold",
+                                    1
+                                )
+        interpolation_limit     = data_assimilation_parameters.get(
+                                    "interpolation_limit_min",
+                                    59
+                                )
+        
+        # TODO: join timeslice folder and files into complete path upstream in workflow
+        usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
+        usgs_files = [usgs_timeslices_folder.joinpath(f) for f in
+                      da_run['usgs_timeslice_files']]
+                
+        if usgs_files:
+            
+            reservoir_usgs_df = nhd_io.get_obs_from_timeslices(
+                crosswalk_file,
+                crosswalk_gage_field,
+                crosswalk_lakeID_field,
+                usgs_files,
+                qc_threshold,
+                interpolation_limit,
+                900,                      # 15 minutes, as secs
+                run["t0"],
+                cpu_pool
+            )
+            
+        else:
+            reservoir_usgs_df = pd.DataFrame()
+            
+        LOG.debug(
+            "Reservoir DA USGS observation DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+        )  
+        
+    else:
+        reservoir_usgs_df = pd.DataFrame()
+        
+    #---------------------------------------------
+    # observations for USACE reservoir DA
+    #---------------------------------------------  
+    
+    if usace_persistence:
+        start_time = time.time()
+        LOG.info("Creating a DataFrame of USACE gage observations for Reservoir DA ...")
+        
+        usace_timeslices_folder = data_assimilation_parameters.get(
+                                   "usace_timeslices_folder",
+                                   None
+                                )
+        crosswalk_file          = reservoir_da_parameters.get(
+                                    "gage_lakeID_crosswalk_file", 
+                                    None
+                                )
+        crosswalk_gage_field    = streamflow_da_parameters.get(
+                                    'crosswalk_usace_gage_field',
+                                    'usace_gage_id'
+                                )
+        crosswalk_lakeID_field   = streamflow_da_parameters.get(
+                                    'crosswalk_usace_lakeID_field',
+                                    'usace_lake_id'
+                                )
+        qc_threshold            = data_assimilation_parameters.get(
+                                    "qc_threshold",
+                                    1
+                                )
+        interpolation_limit     = data_assimilation_parameters.get(
+                                    "interpolation_limit_min",
+                                    59
+                                )
+        
+        # TODO: join timeslice folder and files into complete path upstream in workflow
+        usace_timeslices_folder = pathlib.Path(usace_timeslices_folder)
+        usace_files = [usace_timeslices_folder.joinpath(f) for f in da_run['usace_timeslice_files']]
+                
+        if usace_files:
+            reservoir_usace_df = nhd_io.get_obs_from_timeslices(
+                crosswalk_file,
+                crosswalk_gage_field,
+                crosswalk_lakeID_field,
+                usace_files,
+                qc_threshold,
+                interpolation_limit,
+                900,                      # 15 minutes, as secs
+                run["t0"],
+                cpu_pool
+            )
+        else:
+            reservoir_usace_df = pd.DataFrame()
+            
+        LOG.debug(
+            "Reservoir DA USACE observation DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+        )
+        
+    else:
+        reservoir_usace_df = pd.DataFrame()
+    
+    #---------------------------------------------------------------------------
+    # Assemble coastal coupling data [WIP]
+    
     coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
     coastal_ncdf = forcing_parameters.get("coastal_ncdf", None)
 
@@ -519,5 +937,12 @@ def nwm_forcing_preprocess(
         LOG.info("creating coastal ncdf dataframe ...")
         coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
 
-    # TODO: disentangle the implicit (run) and explicit (qlats_df, usgs_df) returns
-    return qlats_df, usgs_df
+    #---------------------------------------------------------------------------
+    # Trim the time-extent of the streamflow_da usgs_df
+    # what happens if there are timeslice files missing on the front-end? 
+    # if the first column is some timestamp greater than t0, then this will throw
+    # an error. Need to think through this more. 
+    if not usgs_df.empty:
+        usgs_df = usgs_df.loc[:,t0:]
+    
+    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usace_df

@@ -22,6 +22,7 @@ module module_levelpool_properties
         real :: orifice_area             ! orifice area (meters^2)
         real :: max_depth                ! max depth of reservoir before overtop (meters)
         integer :: lake_number           ! lake number
+        integer :: wbody_type_code        
 
     contains
 
@@ -35,7 +36,7 @@ contains
     !Level Pool Properties Constructor
     subroutine levelpool_properties_init(this, lake_area, &
         weir_elevation, weir_coeffecient, weir_length, dam_length, orifice_elevation, &
-        orifice_coefficient, orifice_area, max_depth, lake_number)
+        orifice_coefficient, orifice_area, max_depth, lake_number, wbody_type_code)
         implicit none
         class(levelpool_properties_interface), intent(inout) :: this ! the type object being initialized
         real, intent(in)    :: lake_area      	        ! area of lake (km^2)
@@ -48,6 +49,7 @@ contains
         real, intent(in)    :: orifice_area             ! orifice area (meters^2)
         real, intent(in)    :: max_depth                ! max depth of reservoir before overtop (meters)
         integer, intent(in) :: lake_number              ! lake number
+        integer, intent(in) :: wbody_type_code          ! waterbody type
 
         ! Assign the values passed in to a particular level pool reservoir
         ! properties object's variables.
@@ -61,6 +63,8 @@ contains
         this%max_depth = max_depth
         this%lake_number = lake_number
         this%dam_length = dam_length
+        this%wbody_type_code = wbody_type_code
+        
     end subroutine levelpool_properties_init
 
     !Level Pool Properties Destructor

@@ -861,6 +861,7 @@ def nwm_route(
     compute_kernel,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
@@ -870,6 +871,8 @@ def nwm_route(
     qlats,
     usgs_df,
     lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usace_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -903,6 +906,7 @@ def nwm_route(
         parallel_compute_method,
         subnetwork_target_size,  # The default here might be the whole network or some percentage...
         cpu_pool,
+        t0,
         dt,
         nts,
         qts_subdivisions,
@@ -912,6 +916,8 @@ def nwm_route(
         qlats,
         usgs_df,
         lastobs_df,
+        reservoir_usgs_df,
+        reservoir_usace_df,
         da_parameter_dict,
         assume_short_ts,
         return_courant,
@@ -991,8 +997,8 @@ def update_lookback_hours(dt, nts, waterbody_parameters):
     on the total hours ran in the prior loop.
     """
 
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
-    waterbody_parameters['hybrid_and_rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
+    waterbody_parameters['rfc']['reservoir_rfc_forecasts_lookback_hours'] = \
+    waterbody_parameters['rfc']['reservoir_rfc_forecasts_lookback_hours'] + \
     math.ceil((dt * nts) / 3600)
 
     return waterbody_parameters
@@ -1110,6 +1116,7 @@ def main_v03(argv):
             waterbody_parameters,
             preprocessing_parameters,
             compute_parameters,
+            data_assimilation_parameters,
         )
     
     if showtiming:
@@ -1131,8 +1138,6 @@ def main_v03(argv):
         data_assimilation_parameters,
         segment_index,
         waterbodies_df,
-        segment_list=None,
-        wbodies_list=None,
     )
     
     if showtiming:
@@ -1143,7 +1148,7 @@ def main_v03(argv):
     run_sets = nnu.build_forcing_sets(forcing_parameters, t0)
 
     # Create da_sets: sets of TimeSlice files for each loop
-    if "data_assimilation_parameters" in compute_parameters: 
+    if "data_assimilation_parameters" in compute_parameters:
         da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, t0)
         
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
@@ -1160,13 +1165,19 @@ def main_v03(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
 
-    qlats, usgs_df = nwm_forcing_preprocess(
+    (
+        qlats, 
+        usgs_df, 
+        reservoir_usgs_df, 
+        reservoir_usace_df
+    ) = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
         da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
         segment_index,
+        link_gage_df,
         lastobs_df.index,
         cpu_pool,
         t0,
@@ -1198,6 +1209,7 @@ def main_v03(argv):
             compute_kernel,
             subnetwork_target_size,
             cpu_pool,
+            t0,
             dt,
             nts,
             qts_subdivisions,
@@ -1207,6 +1219,8 @@ def main_v03(argv):
             qlats,
             usgs_df,
             lastobs_df,
+            reservoir_usgs_df,
+            reservoir_usace_df,
             da_parameter_dict,
             assume_short_ts,
             return_courant,
@@ -1237,13 +1251,19 @@ def main_v03(argv):
         
         # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
-            qlats, usgs_df = nwm_forcing_preprocess(
+            (
+                qlats, 
+                usgs_df, 
+                reservoir_usgs_df, 
+                reservoir_usace_df
+            ) = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
                 segment_index,
+                link_gage_df,
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
@@ -1263,8 +1283,12 @@ def main_v03(argv):
         if showtiming:
             ic_start_time = time.time()
         
+        # if streamflow DA is ON, then create a new lastobs dataframe
         if data_assimilation_parameters:
-            lastobs_df = new_lastobs(run_results, dt * nts)
+            streamflow_da = data_assimilation_parameters.get('streamflow_da',False)
+            if streamflow_da:
+                if streamflow_da.get('streamflow_nudging', False):
+                    lastobs_df = new_lastobs(run_results, dt * nts)
             
         if showtiming:
             ic_end_time = time.time()

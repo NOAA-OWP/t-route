@@ -236,12 +236,16 @@ def nwm_output_generator(
     # Write out LastObs as netcdf.
     # Assumed that this capability is only needed for AnA simulations
     # i.e. when timeslice files are provided to support DA
+    streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
+    if streamflow_da:
+        lastobs_output_folder = streamflow_da.get(
+            "lastobs_output_folder", None
+            )
+    
     data_assimilation_folder = data_assimilation_parameters.get(
-    "data_assimilation_timeslices_folder", None
+    "usgs_timeslices_folder", None
     )
-    lastobs_output_folder = data_assimilation_parameters.get(
-    "lastobs_output_folder", None
-    )
+
     # if lastobs_output_folder:
     #     warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
     if data_assimilation_folder and lastobs_output_folder:

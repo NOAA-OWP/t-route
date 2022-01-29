@@ -9,11 +9,7 @@ import pandas as pd
 import numpy as np
 
 import troute.nhd_network as nhd_network
-from troute.routing.fast_reach.mc_reach import (
-    compute_network,
-    compute_network_structured,
-    compute_network_structured_obj,
-)
+from troute.routing.fast_reach.mc_reach import compute_network_structured
 import troute.routing.diffusive_utils as diff_utils
 from troute.routing.fast_reach import diffusive
 
@@ -22,11 +18,9 @@ import logging
 LOG = logging.getLogger('')
 
 _compute_func_map = defaultdict(
-    compute_network,
+    compute_network_structured,
     {
-        "V02-caching": compute_network,
         "V02-structured": compute_network_structured,
-        "V02-structured-obj": compute_network_structured_obj,
     },
 )
 
@@ -90,13 +84,23 @@ def _prep_da_dataframes(
     # usgs_df = pd.DataFrame()
     if not usgs_df.empty and not lastobs_df.empty:
         # index values for last obs are not correct, but line up correctly with usgs values. Switched
-        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
+        lastobs_segs = (lastobs_df.index.
+                        intersection(subnet_segs).
+                        to_list()
+                       )
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
-        usgs_segs = list(usgs_df.index.intersection(subnet_segs))
+        usgs_segs = (usgs_df.index.
+                     intersection(subnet_segs).
+                     reindex(lastobs_segs)[0].
+                     to_list()
+                    )
         da_positions_list_byseg = param_df_sub_idx.get_indexer(usgs_segs)
         usgs_df_sub = usgs_df.loc[usgs_segs]
     elif usgs_df.empty and not lastobs_df.empty:
-        lastobs_segs = list(lastobs_df.index.intersection(subnet_segs))
+        lastobs_segs = (lastobs_df.index.
+                        intersection(subnet_segs).
+                        to_list()
+                       )
         lastobs_df_sub = lastobs_df.loc[lastobs_segs]
         # Create a completely empty list of gages -- the .shape[1] attribute
         # will be == 0, and that will trigger a reference to the lastobs.
@@ -134,6 +138,47 @@ def _prep_da_positions_byreach(reach_list, gage_index):
 
     return reach_key, gage_reach_i
 
+def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usace_df, waterbody_types_df_sub, t0):
+    '''
+    Helper function to build reservoir DA data arrays for routing computations
+
+    Arguments
+    ---------
+    reservoir_usgs_df      (DataFrame): gage flow observations at USGS-type reservoirs
+    reservoir_usace_df     (DataFrame): gage flow observations at USACE-type reservoirs
+    waterbody_types_df_sub (DataFrame): type-codes for waterbodies in sub domain
+    t0                      (datetime): model initialization time
+
+    Returns
+    -------
+    reservoir_usgs_df_sub  (DataFrame): gage flow observations for USGS-type reservoirs in sub domain
+    reservoir_usgs_df_time   (ndarray): time in seconds from model initialization time
+    reservoir_usace_df_sub (DataFrame): gage flow observations for USACE-type reservoirs in sub domain
+    reservoir_usace_df_time  (ndarray): time in seconds from model initialization time
+
+    '''
+    if not reservoir_usgs_df.empty:
+        usgs_wbodies_sub      = waterbody_types_df_sub[
+                                    waterbody_types_df_sub['reservoir_type']==2
+                                ].index
+        reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
+        reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
+    else:
+        reservoir_usgs_df_sub = pd.DataFrame()
+        reservoir_usgs_df_time = pd.DataFrame().to_numpy().reshape(0,)
+
+    # select USACE reservoir DA data waterbodies in sub-domain
+    if not reservoir_usace_df.empty:
+        usace_wbodies_sub      = waterbody_types_df_sub[
+                                    waterbody_types_df_sub['reservoir_type']==3
+                                ].index
+        reservoir_usace_df_sub = reservoir_usace_df.loc[usace_wbodies_sub]
+        reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
+    else: 
+        reservoir_usace_df_sub = pd.DataFrame()
+        reservoir_usace_df_time = pd.DataFrame().to_numpy().reshape(0,)
+        
+    return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usace_df_sub, reservoir_usace_df_time
 
 def compute_nhd_routing_v02(
     connections,
@@ -144,6 +189,7 @@ def compute_nhd_routing_v02(
     parallel_compute_method,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
@@ -153,6 +199,8 @@ def compute_nhd_routing_v02(
     qlats,
     usgs_df,
     lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usace_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -330,19 +378,7 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
-                    qlat_start_time = list(qlat_sub)[0]
-
-                    qlat_time_step_seconds = qts_subdivisions * dt
-
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
-
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
+                                        
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
                     ).sort_index()
@@ -353,6 +389,18 @@ def compute_nhd_routing_v02(
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
 
+                    # prepare reservoir DA data
+                    (reservoir_usgs_df_sub, 
+                     reservoir_usgs_df_time, 
+                     reservoir_usace_df_sub, 
+                     reservoir_usace_df_time
+                     ) = _prep_reservoir_da_dataframes(
+                        reservoir_usgs_df, 
+                        reservoir_usace_df, 
+                        waterbody_types_df_sub, 
+                        t0
+                    )
+                    
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -372,7 +420,7 @@ def compute_nhd_routing_v02(
                             waterbody_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
-                            model_start_time,
+                            t0.strftime('%Y-%m-%d_%H:%M:%S'),
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(da_positions_list_byseg, dtype="int32"),
@@ -387,6 +435,12 @@ def compute_nhd_routing_v02(
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
+                            reservoir_usgs_df_sub.values.astype("float32"),
+                            reservoir_usgs_df_sub.index.values.astype("int32"),
+                            reservoir_usgs_df_time.astype('float32'),
+                            reservoir_usace_df_sub.values.astype("float32"),
+                            reservoir_usace_df_sub.index.values.astype("int32"),
+                            reservoir_usace_df_time.astype('float32'),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -542,18 +596,6 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlats.loc[param_df_sub.index]
                     q0_sub = q0.loc[param_df_sub.index]
-                    
-                    #Determine model_start_time from qlat_start_time
-                    qlat_start_time = list(qlat_sub)[0]
-
-                    qlat_time_step_seconds = qts_subdivisions * dt
-
-                    qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                    model_start_time_datetime_object = qlat_start_time_datetime_object \
-                    - timedelta(seconds=qlat_time_step_seconds)
-
-                    model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
 
                     param_df_sub = param_df_sub.reindex(
                         param_df_sub.index.tolist() + lake_segs
@@ -564,6 +606,18 @@ def compute_nhd_routing_v02(
 
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
+                    
+                    # prepare reservoir DA data
+                    (reservoir_usgs_df_sub, 
+                     reservoir_usgs_df_time, 
+                     reservoir_usace_df_sub, 
+                     reservoir_usace_df_time
+                     ) = _prep_reservoir_da_dataframes(
+                        reservoir_usgs_df, 
+                        reservoir_usace_df, 
+                        waterbody_types_df_sub, 
+                        t0
+                    )
 
                     jobs.append(
                         delayed(compute_func)(
@@ -582,7 +636,7 @@ def compute_nhd_routing_v02(
                             waterbody_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
-                            model_start_time,
+                            t0.strftime('%Y-%m-%d_%H:%M:%S'),
                             usgs_df_sub.values.astype("float32"),
                             # flowveldepth_interorder,  # obtain keys and values from this dataset
                             np.array(da_positions_list_byseg, dtype="int32"),
@@ -597,6 +651,12 @@ def compute_nhd_routing_v02(
                                 pd.Series(index=lastobs_df_sub.index, name="Null"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
+                            reservoir_usgs_df_sub.values.astype("float32"),
+                            reservoir_usgs_df_sub.index.values.astype("int32"),
+                            reservoir_usgs_df_time.astype('float32'),
+                            reservoir_usace_df_sub.values.astype("float32"),
+                            reservoir_usace_df_sub.index.values.astype("int32"),
+                            reservoir_usace_df_time.astype('float32'),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -696,18 +756,6 @@ def compute_nhd_routing_v02(
                 qlat_sub = qlats.loc[param_df_sub.index]
                 q0_sub = q0.loc[param_df_sub.index]
 
-                #Determine model_start_time from qlat_start_time
-                qlat_start_time = list(qlat_sub)[0]
-
-                qlat_time_step_seconds = qts_subdivisions * dt
-
-                qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-                model_start_time_datetime_object = qlat_start_time_datetime_object \
-                - timedelta(seconds=qlat_time_step_seconds)
-
-                model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
                 param_df_sub = param_df_sub.reindex(
                     param_df_sub.index.tolist() + lake_segs
                 ).sort_index()
@@ -717,6 +765,18 @@ def compute_nhd_routing_v02(
 
                 qlat_sub = qlat_sub.reindex(param_df_sub.index)
                 q0_sub = q0_sub.reindex(param_df_sub.index)
+                
+                # prepare reservoir DA data
+                (reservoir_usgs_df_sub, 
+                 reservoir_usgs_df_time, 
+                 reservoir_usace_df_sub, 
+                 reservoir_usace_df_time
+                 ) = _prep_reservoir_da_dataframes(
+                    reservoir_usgs_df, 
+                    reservoir_usace_df, 
+                    waterbody_types_df_sub, 
+                    t0
+                )
 
                 jobs.append(
                     delayed(compute_func)(
@@ -735,7 +795,7 @@ def compute_nhd_routing_v02(
                         waterbody_parameters,
                         waterbody_types_df_sub.values.astype("int32"),
                         waterbody_type_specified,
-                        model_start_time,
+                        t0.strftime('%Y-%m-%d_%H:%M:%S'),
                         usgs_df_sub.values.astype("float32"),
                         np.array(da_positions_list_byseg, dtype="int32"),
                         np.array(da_positions_list_byreach, dtype="int32"),
@@ -743,6 +803,12 @@ def compute_nhd_routing_v02(
                         lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                         da_decay_coefficient,
+                        reservoir_usgs_df_sub.values.astype("float32"),
+                        reservoir_usgs_df_sub.index.values.astype("int32"),
+                        reservoir_usgs_df_time.astype('float32'),
+                        reservoir_usace_df_sub.values.astype("float32"),
+                        reservoir_usace_df_sub.index.values.astype("int32"),
+                        reservoir_usace_df_time.astype('float32'),
                         {},
                         assume_short_ts,
                         return_courant,
@@ -813,18 +879,6 @@ def compute_nhd_routing_v02(
             qlat_sub = qlats.loc[param_df_sub.index]
             q0_sub = q0.loc[param_df_sub.index]
 
-            #Determine model_start_time from qlat_start_time
-            qlat_start_time = list(qlat_sub)[0]
-
-            qlat_time_step_seconds = qts_subdivisions * dt
-
-            qlat_start_time_datetime_object =  _format_qlat_start_time(qlat_start_time)
-
-            model_start_time_datetime_object = qlat_start_time_datetime_object \
-            - timedelta(seconds=qlat_time_step_seconds)
-
-            model_start_time = model_start_time_datetime_object.strftime('%Y-%m-%d_%H:%M:%S')
-
             param_df_sub = param_df_sub.reindex(
                 param_df_sub.index.tolist() + lake_segs
             ).sort_index()
@@ -834,7 +888,19 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
-
+            
+            # prepare reservoir DA data
+            (reservoir_usgs_df_sub, 
+             reservoir_usgs_df_time, 
+             reservoir_usace_df_sub, 
+             reservoir_usace_df_time
+             ) = _prep_reservoir_da_dataframes(
+                reservoir_usgs_df, 
+                reservoir_usace_df, 
+                waterbody_types_df_sub, 
+                t0
+            )
+            
             results.append(
                 compute_func(
                     nts,
@@ -852,7 +918,7 @@ def compute_nhd_routing_v02(
                     waterbody_parameters,
                     waterbody_types_df_sub.values.astype("int32"),
                     waterbody_type_specified,
-                    model_start_time,
+                    t0.strftime('%Y-%m-%d_%H:%M:%S'),
                     usgs_df_sub.values.astype("float32"),
                     np.array(da_positions_list_byseg, dtype="int32"),
                     np.array(da_positions_list_byreach, dtype="int32"),
@@ -860,6 +926,12 @@ def compute_nhd_routing_v02(
                     lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
                     da_decay_coefficient,
+                    reservoir_usgs_df_sub.values.astype("float32"),
+                    reservoir_usgs_df_sub.index.values.astype("int32"),
+                    reservoir_usgs_df_time.astype('float32'),
+                    reservoir_usace_df_sub.values.astype("float32"),
+                    reservoir_usace_df_sub.index.values.astype("int32"),
+                    reservoir_usace_df_time.astype('float32'),
                     {},
                     assume_short_ts,
                     return_courant,
@@ -933,6 +1005,11 @@ def compute_diffusive_routing(
         # mask segments for which we already have MC solution
         x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
         
-        results_diffusive.append((rch_list[~x], dat_all[~x,3:]))
+        results_diffusive.append(
+            (
+                rch_list[~x], dat_all[~x,3:], 0,
+                (np.asarray([]), np.asarray([]), np.asarray([]))
+            )
+        )
 
     return results_diffusive

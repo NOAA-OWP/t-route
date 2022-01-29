@@ -80,6 +80,9 @@ contains
         integer                        :: update_offset_seconds
         character(len=15)              :: lake_number_string
         character(len=15)              :: reservoir_type_string
+        
+        integer :: wbody_type_code
+        wbody_type_code = 1
 
 #ifdef RESERVOIR_D
         ! Create diagnostic log file only for development/debugging purposes
@@ -156,7 +159,7 @@ contains
         ! Initialize level pool reservoir
         call this%state%levelpool_ptr%init(water_elevation, lake_area, &
         weir_elevation, weir_coeffecient, weir_length, dam_length, orifice_elevation, &
-        orifice_coefficient, orifice_area, lake_max_water_elevation, lake_number)
+        orifice_coefficient, orifice_area, lake_max_water_elevation, lake_number, wbody_type_code)
 
         ! Call to initialize time series data object
         call time_series_data%init(start_date, time_series_path, forecast_lookback_hours, &

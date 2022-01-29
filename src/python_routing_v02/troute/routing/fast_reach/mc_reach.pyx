@@ -15,10 +15,11 @@ from libc.stdio cimport printf
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
-from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c
-from troute.network.reservoirs.hybrid.hybrid cimport MC_Hybrid, run_hybrid_c
+from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c, update_lp_c
 from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
+from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from cython.parallel import prange
+
 #import cProfile
 #pr = cProfile.Profile()
 #NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
@@ -158,886 +159,6 @@ cpdef object column_mapper(object src_cols):
         rv.append(index[label])
     return rv
 
-
-cpdef object compute_network(
-    const int nsteps,
-    const float dt,
-    const int qts_subdivisions,
-    list reaches_wTypes, # a list of tuples
-    dict upstream_connections,
-    const long[:] data_idx,
-    object[:] data_cols,
-    const float[:,:] data_values,
-    const float[:,:] initial_conditions,
-    const float[:,:] qlat_values,
-    list lake_numbers_col,
-    const double[:,:] wbody_cols,
-    dict waterbody_parameters,
-    const int[:,:] reservoir_types,
-    bint reservoir_type_specified,
-    str model_start_time,
-    const float[:,:] usgs_values,
-    const int[:] usgs_positions,
-    const int[:] usgs_positions_reach,
-    const int[:] usgs_positions_gage,
-    const float[:] lastobs_values_init,
-    const float[:] time_since_lastobs_init,
-    const double da_decay_coefficient,
-    dict upstream_results={},
-    bint assume_short_ts=False,
-    bint return_courant=False,
-    int da_check_gage = -1,
-    ):
-    """
-    Compute network
-    Args:
-        nsteps (int): number of time steps
-        reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
-        upstream_connections (dict): Network
-        data_idx (ndarray): a 1D sorted index for data_values
-        data_values (ndarray): a 2D array of data inputs (nodes x variables)
-        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
-        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
-        assume_short_ts (bool): Assume short time steps (quc = qup)
-    Notes:
-        Array dimensions are checked as a precondition to this method.
-        data_idx inc. flowveldepth -- sorted numerically
-        Reach_buffer -- sorted topologically
-    """
-    # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0]:
-        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
-    if qlat_values.shape[1] > nsteps:
-        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
-    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
-        raise ValueError(f"data_values shape mismatch")
-
-    # flowveldepth is 2D float array that holds results
-    # columns: flow (qdc), velocity (velc), and depth (depthc) for each timestep
-    # rows: indexed by data_idx
-    cdef int qvd_ts_w = 3  # There are 3 values per timestep (corresponding to 3 columns per timestep)
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], (nsteps + 1) * qvd_ts_w), dtype='float32')
-
-    # courant is a 2D float array that holds courant results
-    # columns: courant number (cn), kinematic celerity (ck), x parameter(X) for each timestep
-    # rows: indexed by data_idx
-    cdef float[:,::1] courant = np.zeros((data_idx.shape[0], (nsteps + 1) * 3), dtype='float32')
-
-    flowveldepth[:,0] = initial_conditions[:,1]  # Populate initial flows
-    flowveldepth[:,2] = initial_conditions[:,2]  # Populate initial depths
-
-    cdef int gages_size = usgs_positions.shape[0]
-    cdef int gage_i, usgs_position_i
-    cdef int gage_maxtimestep = usgs_values.shape[1]
-    cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
-    cdef float[:] lastobs_values, lastobs_times
-    cdef (float, float, float, float) da_buf
-    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
-    cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
-
-    if gages_size:
-        lastobs_times = np.zeros(gages_size, dtype='float32')
-        lastobs_values = np.zeros(gages_size, dtype='float32')
-        for gage_i in range(gages_size):
-            lastobs_values[gage_i] = lastobs_values_init[gage_i]
-            lastobs_times[gage_i] = time_since_lastobs_init[gage_i]
-            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
-
-    # replace initial conditions with gage observations, wherever available
-    if gages_size and gage_maxtimestep > 0:
-        for gage_i in range(gages_size):
-            usgs_position_i = usgs_positions[gage_i]
-            # Handle the instance where there are no values, only gage positions
-            # TODO: Compare performance with math.isnan (imported for nogil...)
-            if not np.isnan(usgs_values[gage_i, 0]):
-                flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
-
-    # Pseudocode: LOOP ON Upstream Inflowers
-        # to pre-fill FlowVelDepth
-        # fill_index = list_of_all_segments_sorted -- .i.e, data_idx -- .index(upstream_tw_id)
-        # # FlowVelDepth[fill_index]['flow'] = UpstreamOutflows[upstream_tw_id]['flow']
-        # # FlowVelDepth[fill_index]['depth'] = UpstreamOutflows[upstream_tw_id]['depth']
-
-    cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
-    cdef Py_ssize_t fill_index
-    cdef long upstream_tw_id
-    cdef dict tmp
-    cdef int idx
-    cdef float val
-
-    for upstream_tw_id in upstream_results:
-        tmp = upstream_results[upstream_tw_id]
-        fill_index = tmp["position_index"]
-        fill_index_mask[fill_index] = False
-        for idx, val in enumerate(tmp["results"], qvd_ts_w):
-            flowveldepth[fill_index, idx] = val
-
-    cdef:
-        Py_ssize_t[:] srows  # Source rows indexes
-        Py_ssize_t[:] drows_tmp
-
-    # Buffers and buffer views
-    # These are C-contiguous.
-    cdef float[:, ::1] buf, buf_view
-    cdef float[:, ::1] out_buf, out_view
-
-    # Source columns
-    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
-
-    # hard-coded column. Find a better way to do this
-    cdef int buf_cols = 13
-
-    cdef:
-        Py_ssize_t _i  # Temporary variable
-        Py_ssize_t ireach  # current reach index
-        Py_ssize_t ireach_cache  # current index of reach cache
-        Py_ssize_t iusreach_cache  # current index of upstream reach cache
-
-    # Extract only the reaches
-    cdef list reaches = [reach for reach, _ in reaches_wTypes]
-
-    # Measure length of all the reaches
-    cdef list reach_sizes = list(map(len, reaches))
-    # For a given reach, get number of upstream nodes
-    cdef list usreach_sizes = [len(upstream_connections.get(reach[0], ())) for reach in reaches]
-
-    cdef:
-        list reach  # Temporary variable
-        list bf_results  # Temporary variable
-
-    cdef int reachlen, usreachlen
-    cdef Py_ssize_t bidx
-
-    cdef:
-        Py_ssize_t[:] reach_cache
-        Py_ssize_t[:] usreach_cache
-
-    # reach cache is ordered 1D view of reaches
-    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
-    # upstream reach cache is ordered 1D view of reaches
-    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
-
-    ireach_cache = 0
-    iusreach_cache = 0
-
-    # copy reaches into an array
-    for ireach in range(len(reaches)):
-        reachlen = reach_sizes[ireach]
-        usreachlen = usreach_sizes[ireach]
-        reach = reaches[ireach]
-
-        # set the length (must be negative to indicate reach boundary)
-        reach_cache[ireach_cache] = -reachlen
-        ireach_cache += 1
-        bf_results = binary_find(data_idx, reach)
-        for bidx in bf_results:
-            reach_cache[ireach_cache] = bidx
-            ireach_cache += 1
-
-        usreach_cache[iusreach_cache] = -usreachlen
-        iusreach_cache += 1
-        if usreachlen > 0:
-            for bidx in binary_find(data_idx, upstream_connections[reach[0]]):
-                usreach_cache[iusreach_cache] = bidx
-                iusreach_cache += 1
-
-    cdef int maxreachlen = max(reach_sizes)
-    buf = np.empty((maxreachlen, buf_cols), dtype='float32')
-
-    if return_courant:
-        out_buf = np.empty((maxreachlen, qvd_ts_w + 3), dtype='float32')
-    else:
-        out_buf = np.empty((maxreachlen, qvd_ts_w), dtype='float32')
-
-    drows_tmp = np.arange(maxreachlen, dtype=np.intp)
-    cdef Py_ssize_t[:] drows
-    cdef float qup, quc
-    cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
-    cdef int timestep = 0
-    cdef int ts_offset
-
-# TODO: Split the compute network function so that the part where we set up
-# all the indices is separate from the call to loop through them.
-# That way, we can refine the functions for preparing the indexes in isolation
-# For example, the actual looping function could start about here in the current
-# function, and might look like the following Psuedocode
-# cpdef(Dataindex):
-    # pull indices and put them in arrays
-    # minimal validation,
-    # Jump straight to nogil.
-
-    with nogil:
-        while timestep < nsteps:
-            ts_offset = (timestep + 1) * qvd_ts_w
-
-            ireach = 0
-            ireach_cache = 0
-            iusreach_cache = 0
-            while ireach_cache < reach_cache.shape[0]:
-                reachlen = -reach_cache[ireach_cache]
-                usreachlen = -usreach_cache[iusreach_cache]
-
-                ireach_cache += 1
-                iusreach_cache += 1
-
-                qup = 0.0
-                quc = 0.0
-                for _i in range(usreachlen):
-
-                    '''
-                    New logic was added to handle initial conditions:
-                    When timestep == 0, the flow from the upstream segments in the previous timestep
-                    are equal to the initial conditions.
-                    '''
-
-                    # upstream flow in the current timestep is equal the sum of flows
-                    # in upstream segments, current timestep
-                    # Headwater reaches are computed before higher order reaches, so quc can
-                    # be evaulated even when the timestep == 0.
-                    quc += flowveldepth[usreach_cache[iusreach_cache + _i], ts_offset]
-
-                    # upstream flow in the previous timestep is equal to the sum of flows
-                    # in upstream segments, previous timestep
-                    qup += flowveldepth[usreach_cache[iusreach_cache + _i], ts_offset - qvd_ts_w]
-                    # Remember, we have filled the first position in flowveldepth with qd0
-
-                buf_view = buf[:reachlen, :]
-                out_view = out_buf[:reachlen, :]
-                drows = drows_tmp[:reachlen]
-                srows = reach_cache[ireach_cache:ireach_cache+reachlen]
-
-                """
-                qlat_values may have fewer columns than data_values if qlat data are taken from WRF hydro simulations,
-                which are often run at a coarser timestep than routing models. In the fill_buffer_columns call below,
-                the second argument, which defines the column in qlat_values that data should be drawn from, is specified
-                such that qlat values are repeated for each of the finer routing timesteps within a WRF hydro timestep.
-                """
-                fill_buffer_column(srows,
-                                   int(timestep/qts_subdivisions),  # adjust timestep to WRF-hydro timestep
-                                   drows,
-                                   0,
-                                   qlat_values,
-                                   buf_view)
-
-                for _i in range(scols.shape[0]):
-                    fill_buffer_column(srows, scols[_i], drows, _i + 1, data_values, buf_view)
-
-                # fill buffer with qdp, depthp, velp
-                fill_buffer_column(srows, ts_offset - qvd_ts_w, drows, 10, flowveldepth, buf_view)
-                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 1), drows, 11, flowveldepth, buf_view)
-                fill_buffer_column(srows, ts_offset - (qvd_ts_w - 2), drows, 12, flowveldepth, buf_view)
-
-                if assume_short_ts:
-                    quc = qup
-
-                compute_reach_kernel(qup, quc, reachlen, buf_view, out_view, assume_short_ts, return_courant)
-
-                # copy out_buf results back to flowdepthvel
-                for _i in range(qvd_ts_w):
-                    fill_buffer_column(drows, _i, srows, ts_offset + _i, out_view, flowveldepth)
-
-                # copy out_buf results back to courant
-                if return_courant:
-                    for _i in range(qvd_ts_w,qvd_ts_w + 3):
-                        fill_buffer_column(drows, _i, srows, ts_offset + (_i-qvd_ts_w), out_view, courant)
-
-                if reach_has_gage[ireach] > -1:
-                # We only enter this process for reaches where the
-                # gage actually exists.
-                # If assimilation is active for this reach, we touch the
-                # exactly one gage which is relevant for the reach ...
-                    gage_i = reach_has_gage[ireach]
-                    usgs_position_i = usgs_positions[gage_i]
-                    da_buf = simple_da(
-                        timestep + 1,
-                        routing_period,
-                        da_decay_coefficient,
-                        gage_maxtimestep,
-                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep-1],
-                        flowveldepth[usgs_position_i, ts_offset],
-                        lastobs_times[gage_i],
-                        lastobs_values[gage_i],
-                        gage_i == da_check_gage,
-                    )
-                    flowveldepth[usgs_position_i, ts_offset] = da_buf[0]
-                    nudge[gage_i, timestep+1] = da_buf[1]
-                    lastobs_times[gage_i] = da_buf[2]
-                    lastobs_values[gage_i] = da_buf[3]
-
-                # Update indexes to point to next reach
-                ireach += 1
-                ireach_cache += reachlen
-                iusreach_cache += usreachlen
-
-
-            timestep += 1
-
-    # delete the duplicate results that shouldn't be passed along
-    # The upstream keys have empty results because they are not part of any reaches
-    # so we need to delete the null values that return
-    if return_courant:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask], np.asarray(courant[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
-    else:
-        return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], np.asarray(flowveldepth[:,qvd_ts_w:], dtype='float32')[fill_index_mask]
-
-#---------------------------------------------------------------------------------------------------------------#
-#---------------------------------------------------------------------------------------------------------------#
-#---------------------------------------------------------------------------------------------------------------#
-cpdef object compute_network_multithread(int nsteps, list reaches, dict connections,
-    const long[:] data_idx, object[:] data_cols, const float[:,:] data_values,
-    const float[:, :] qlat_values, const float[:,:] initial_conditions,
-    const int[:] reach_groups,
-    const int[:] reach_group_cache_sizes,
-    bint assume_short_ts=False):
-    """
-    Compute network
-    Args:
-        nsteps (int): number of time steps
-        reaches (list): List of reaches
-        connections (dict): Network
-        data_idx (ndarray): a 1D sorted index for data_values
-        data_values (ndarray): a 2D array of data inputs (nodes x variables)
-        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
-        initial_conditions (ndarray): an n x 3 array of initial conditions.
-        assume_short_ts (bool): Assume short time steps (quc = qup)
-    Notes:
-        Array dimensions are checked as a precondition to this method.
-    """
-    # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0]:
-        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
-    if qlat_values.shape[1] > nsteps:
-        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
-    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
-        raise ValueError(f"data_values shape mismatch")
-
-    cdef float[:,::1] flowveldepth = np.zeros((data_idx.shape[0], nsteps * 3), dtype='float32')
-
-    cdef:
-        Py_ssize_t[:] srows  # Source rows indexes
-        Py_ssize_t[:] drows_tmp
-
-    # hard-coded column. Find a better way to do this
-    cdef int buf_cols = 13
-
-    # Buffers and buffer views
-    # These are C-contiguous.
-    cdef float[:, ::1] buf, buf_view
-    cdef float[:, ::1] out_buf, out_view
-    cdef int maxgrouplen = max(reach_group_cache_sizes)
-    buf = np.empty((maxgrouplen, buf_cols), dtype='float32')
-    out_buf = np.empty((maxgrouplen, 3), dtype='float32')
-
-    # Source columns
-    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
-
-    cdef:
-        Py_ssize_t i  # Temporary variable
-        Py_ssize_t ireach  # current reach index
-        Py_ssize_t ireach_cache  # current index of reach cache
-        Py_ssize_t iusreach_cache  # current index of upstream reach cache
-
-    # Measure length of all the reaches
-    cdef list reach_sizes = list(map(len, reaches))
-    # For a given reach, get number of upstream nodes
-    cdef list usreach_sizes = [len(connections.get(reach[0], ())) for reach in reaches]
-
-    cdef:
-        list reach  # Temporary variable
-        list bf_results  # Temporary variable
-
-    cdef int reachlen, usreachlen
-    cdef int prevreachlen
-    cdef Py_ssize_t bidx
-
-    cdef:
-        Py_ssize_t[:] reach_cache
-        Py_ssize_t[:] usreach_cache
-        Py_ssize_t[:] ireach_cache_array
-        Py_ssize_t[:] iusreach_cache_array
-
-    # reach cache is ordered 1D view of reaches
-    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    reach_cache = np.empty(sum(reach_sizes) + len(reach_sizes), dtype=np.intp)
-    # upstream reach cache is ordered 1D view of reaches
-    # [-len, item, item, item, -len, item, item, -len, item, item, ...]
-    usreach_cache = np.empty(sum(usreach_sizes) + len(usreach_sizes), dtype=np.intp)
-
-    # ireach_cache_array
-    ireach_cache_array = np.empty(len(reach_sizes), dtype=np.intp)
-    iusreach_cache_array = np.empty(len(reach_sizes), dtype=np.intp)
-
-    ireach_cache = 0
-    iusreach_cache = 0
-
-    ireach_cache_array[0] = 0
-    iusreach_cache_array[0] = 0
-    # copy reaches into an array
-    for ireach in range(len(reaches)):
-        reachlen = reach_sizes[ireach]
-        usreachlen = usreach_sizes[ireach]
-        reach = reaches[ireach]
-
-        # set the length (must be negative to indicate reach boundary)
-        reach_cache[ireach_cache] = -reachlen
-        ireach_cache += 1
-        bf_results = binary_find(data_idx, reach)
-        for bidx in bf_results:
-            reach_cache[ireach_cache] = bidx
-            ireach_cache += 1
-
-        usreach_cache[iusreach_cache] = -usreachlen
-        iusreach_cache += 1
-        if usreachlen > 0:
-            for bidx in binary_find(data_idx, connections[reach[0]]):
-                usreach_cache[iusreach_cache] = bidx
-                iusreach_cache += 1
-
-        if ireach < max(range(len(reaches))):
-            ireach_cache_array[ireach+1] = ireach_cache
-            iusreach_cache_array[ireach+1] = iusreach_cache
-
-    drows_tmp = np.arange(maxgrouplen, dtype=np.intp)
-
-    cdef Py_ssize_t[:] drows
-    cdef int timestep = 0
-    cdef int ts_offset
-
-    cdef int maxgroupsize = max(reach_groups)
-    cdef float[:] qu_buf = np.empty(maxgroupsize, dtype = "float32")
-    cdef float[:] quc_view
-    cdef float[:] qup_view
-    cdef float quc, qup
-    cdef int qu_idx
-    cdef int buf_idx
-    cdef Py_ssize_t[:] srowsgroup_buf = np.empty(maxgrouplen, dtype = np.intp)
-    cdef int srows_idx
-
-    cdef:
-        Py_ssize_t istart
-        Py_ssize_t iend
-        int r
-
-    with nogil:
-        while timestep < nsteps:
-            ts_offset = timestep * 3
-
-            istart = 0
-            iend = -1
-            for group_i in range(len(reach_group_cache_sizes)):
-
-                # index of final reach entry in reach_cache for this group
-                iend += reach_groups[group_i]
-
-                # prepare group buffers
-                buf_view = buf[:reach_group_cache_sizes[group_i],:]
-                out_view = out_buf[:reach_group_cache_sizes[group_i],:]
-                quc_view = qu_buf[:reach_groups[group_i]]
-                qup_view = qu_buf[:reach_groups[group_i]]
-                srows = srowsgroup_buf[:reach_group_cache_sizes[group_i]]
-                drows = drows_tmp[:reach_group_cache_sizes[group_i]]
-
-                # extract upstream flows and populate srows
-                qu_idx = 0
-                srows_idx = 0
-                for r in range(istart,iend+1):
-
-                    ireach_cache = ireach_cache_array[r]
-                    iusreach_cache = iusreach_cache_array[r]
-                    reachlen = -reach_cache[ireach_cache]
-                    usreachlen = -usreach_cache[iusreach_cache]
-                    iusreach_cache += 1
-                    ireach_cache += 1
-
-                    quc = 0.0
-                    qup = 0.0
-                    for i in range(usreachlen):
-                        quc = quc + flowveldepth[usreach_cache[iusreach_cache + i], ts_offset]
-                        if timestep > 0:
-                            qup += flowveldepth[usreach_cache[iusreach_cache + i], ts_offset - 3]
-                        else:
-                            qup += initial_conditions[usreach_cache[iusreach_cache + i],1]
-
-                    quc_view[qu_idx] = quc
-                    qup_view[qu_idx] = qup
-                    qu_idx += 1
-
-                    # build srows
-                    for i in range(reachlen):
-                        srows[srows_idx] = reach_cache[ireach_cache + i]
-                        srows_idx += 1
-
-                # fill buf_view with qlat, parameter and initial conditions data
-                # qlats
-                fill_buffer_column(srows,
-                           int(timestep/(nsteps/qlat_values.shape[1])),
-                           drows,
-                           0,
-                           qlat_values,
-                           buf_view)
-
-                # parameters
-                for i in range(scols.shape[0]):
-                    fill_buffer_column(srows, scols[i], drows, i + 1, data_values, buf_view)
-
-                # initial conditions
-                if timestep > 0:
-                    fill_buffer_column(srows, ts_offset - 3, drows, 10, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 2, drows, 11, flowveldepth, buf_view)
-                    fill_buffer_column(srows, ts_offset - 1, drows, 12, flowveldepth, buf_view)
-                else:
-                    for i in range(drows.shape[0]):
-                        buf_view[drows[i], 10] = initial_conditions[srows[i],1]
-                        buf_view[drows[i], 11] = 0.0
-                        buf_view[drows[i], 12] = initial_conditions[srows[i],2]
-
-                # ------ !!!!! MULTITHREAD LOOP !!!!! ------ #
-                # compute each reach
-                for r in prange(istart,iend+1):
-
-                    # reach length for reach r of group
-                    ireach_cache = ireach_cache_array[r]
-                    reachlen = -reach_cache[ireach_cache]
-
-                    # total reach length of reaches preceeding reach r in group
-                    if r > istart:
-                        prevreachlen = 0
-                        for i in range((r-istart)):
-                            prevreachlen = prevreachlen + -reach_cache[ireach_cache_array[(r-(i+1))]]
-                    else:
-                        prevreachlen = 0
-
-                    # compute reach routing
-                    if assume_short_ts:
-                        compute_reach_kernel(qup_view[r-istart],
-                                             quc_view[r-istart], # quc = qup
-                                             reachlen,
-                                             buf_view[prevreachlen:prevreachlen+reachlen,:],
-                                             out_view[prevreachlen:prevreachlen+reachlen,:],
-                                             assume_short_ts)
-
-                    else:
-                        compute_reach_kernel(qup_view[r-istart],
-                                             quc_view[r-istart],
-                                             reachlen,
-                                             buf_view[prevreachlen:prevreachlen+reachlen,:],
-                                             out_view[prevreachlen:prevreachlen+reachlen,:],
-                                             assume_short_ts)
-                # END ------ !!!!! MULTITHREAD LOOP !!!!! ------ #
-
-
-                # place out_view results into flowveldepth
-                for i in range(3):
-                    fill_buffer_column(drows, i, srows, ts_offset + i, out_view, flowveldepth)
-
-
-                istart = istart + reach_groups[group_i]
-
-            timestep += 1
-
-    return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth, dtype='float32')
-
-cpdef object compute_network_structured_obj(
-    int nsteps,
-    float dt,
-    int qts_subdivisions,
-    list reaches_wTypes, # a list of tuples
-    dict upstream_connections,
-    const long[:] data_idx,
-    object[:] data_cols,
-    const float[:,:] data_values,
-    const float[:,:] initial_conditions,
-    const float[:,:] qlat_values,
-    list lake_numbers_col,
-    const double[:,:] wbody_cols,
-    dict waterbody_parameters,
-    const int[:,:] reservoir_types,
-    bint reservoir_type_specified,
-    str model_start_time,
-    const float[:,:] usgs_values,
-    const int[:] usgs_positions,
-    const int[:] usgs_positions_reach,
-    const int[:] usgs_positions_gage,
-    const float[:] lastobs_values_init,
-    const float[:] time_since_lastobs_init,
-    const double da_decay_coefficient,
-    dict upstream_results={},
-    bint assume_short_ts=False,
-    bint return_courant=False,
-    int da_check_gage = -1,
-    ):
-    """
-    Compute network
-    Args:
-        nsteps (int): number of time steps
-        reaches_wTypes (list): List of tuples: (reach, reach_type), where reach_type is 0 for Muskingum Cunge reach and 1 is a reservoir
-        upstream_connections (dict): Network
-        data_idx (ndarray): a 1D sorted index for data_values
-        data_values (ndarray): a 2D array of data inputs (nodes x variables)
-        qlats (ndarray): a 2D array of qlat values (nodes x nsteps). The index must be shared with data_values
-        initial_conditions (ndarray): an n x 3 array of initial conditions. n = nodes, column 1 = qu0, column 2 = qd0, column 3 = h0
-        assume_short_ts (bool): Assume short time steps (quc = qup)
-    Notes:
-        Array dimensions are checked as a precondition to this method.
-        This version uses only the cdef python object interface, and is a little slower
-        It is left here for reference, not reccomended for use
-    """
-    # Check shapes
-    if qlat_values.shape[0] != data_idx.shape[0]:
-        raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
-    if qlat_values.shape[1] > nsteps:
-        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[0]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
-    if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
-        raise ValueError(f"data_values shape mismatch")
-    #define and initialize the final output array +1 timestep for initial conditions
-    cdef np.ndarray[float, ndim=3] flowveldepth = np.zeros((data_idx.shape[0], nsteps+1, 3), dtype='float32')
-    #Make ndarrays from the mem views for convience of indexing...may be a better method
-    cdef np.ndarray[float, ndim=2] data_array = np.asarray(data_values)
-    cdef np.ndarray[float, ndim=2] init_array = np.asarray(initial_conditions)
-    cdef np.ndarray[float, ndim=2] qlat_array = np.asarray(qlat_values)
-    cdef np.ndarray[double, ndim=2] wbody_parameters = np.asarray(wbody_cols)
-    ###### Declare/type variables #####
-    # Source columns
-    cdef Py_ssize_t[:] scols = np.array(column_mapper(data_cols), dtype=np.intp)
-    cdef Py_ssize_t max_buff_size = 0
-    #lists to hold reach definitions, i.e. list of ids
-    cdef list reach
-    cdef list upstream_reach
-    #lists to hold segment ids
-    cdef list segment_ids
-    cdef list upstream_ids
-    #flow accumulation variables
-    cdef float upstream_flows, previous_upstream_flows
-    #starting timestep, shifted by 1 to account for initial conditions
-    cdef int timestep = 1
-    cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
-    #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
-    cdef float[:,:] out_buf
-    cdef float[:] lateral_flows
-    # list of reach objects to operate on
-    cdef list reach_objects = []
-    cdef list segment_objects
-    #pre compute the qlat resample fraction
-    cdef double qlat_resample = (nsteps)/qlat_values.shape[1]
-
-    cdef long sid
-    #cdef MC_Segment segment
-    #pr.enable()
-    #Preprocess the raw reaches, creating MC_Reach/MC_Segments
-    cdef int gages_size = usgs_positions.shape[0]
-    cdef int gage_maxtimestep = usgs_values.shape[1]
-    cdef int gage_i, usgs_position_i
-    cdef float a, da_decay_minutes, da_weighted_shift, replacement_val
-    cdef float [:] lastobs_values, lastobs_times
-    cdef (float, float, float, float) da_buf
-    cdef int[:] reach_has_gage = np.full(len(reaches_wTypes), np.iinfo(np.int32).min, dtype="int32")
-    cdef float[:,:] nudge = np.zeros((gages_size, nsteps + 1), dtype="float32")
-
-    if gages_size:
-        lastobs_times = np.zeros(gages_size, dtype="float32")
-        lastobs_values = np.zeros(gages_size, dtype='float32')
-        for gage_i in range(gages_size):
-            lastobs_values[gage_i] = lastobs_values_init[gage_i]
-            lastobs_times[gage_i] = time_since_lastobs_init[gage_i]
-            reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
-
-    # replace initial conditions with gage observations, wherever available
-    if gages_size and gage_maxtimestep > 0:
-        for gage_i in range(gages_size):
-            usgs_position_i = usgs_positions[gage_i]
-            # Handle the instance where there are no values, only gage positions
-            # TODO: Compare performance with math.isnan (imported for nogil...)
-            if not np.isnan(usgs_values[gage_i, 0]):
-                flowveldepth[usgs_position_i, 0] = usgs_values[gage_i, 0]
-
-    for reach, reach_type in reaches_wTypes:
-        upstream_reach = upstream_connections.get(reach[0], ())
-        upstream_ids = binary_find(data_idx, upstream_reach)
-        #Check if reach_type is 1 for reservoir
-        if (reach_type == 1):
-            my_id = binary_find(data_idx, reach)
-            wbody_index = binary_find(lake_numbers_col,reach)[0]
-            #Reservoirs should be singleton list reaches, TODO enforce that here?
-
-            #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
-            if (not reservoir_type_specified):
-
-                #Add level pool reservoir object to reach_objects
-                reach_objects.append(
-                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                    (
-                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                      array('l',upstream_ids), wbody_parameters[wbody_index]),
-                      reach_type)#lp_reservoir)
-                    )
-
-            else:
-                #If reservoir_type is 1, then initialize Level Pool reservoir
-                if (reservoir_types[wbody_index][0] == 1):
-
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                        (
-                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                          array('l',upstream_ids), wbody_parameters[wbody_index]),
-                          reach_type)#lp_reservoir)
-                        )
-
-                #If reservoir_type is 2 for USGS or 3 for USACE, then initialize Hybrid reservoir
-                elif (reservoir_types[wbody_index][0] == 2 or reservoir_types[wbody_index][0] == 3):
-
-                    #Add hybrid reservoir object to reach_objects
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
-                        (
-                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index],
-                          array('l',upstream_ids), wbody_parameters[wbody_index],
-                          reservoir_types[wbody_index][0],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
-                          model_start_time,
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usgs_timeslice_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usace_timeslice_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_lookback_hours"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_update_time_interval_seconds"]),
-                          reach_type)#hybrid_reservoir)
-                        )
-
-                #If reservoir_type is 4, then initialize RFC reservoir
-                elif (reservoir_types[wbody_index][0] == 4):
-
-                    #Add rfc reservoir object to reach_objects
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and rfc_reservoir
-                        (
-                          MC_RFC(my_id[0], lake_numbers_col[wbody_index],
-                          array('l',upstream_ids), wbody_parameters[wbody_index],
-                          reservoir_types[wbody_index][0],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
-                          model_start_time,
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_time_series_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_lookback_hours"]),
-                          reach_type)#rfc_reservoir)
-                        )
-
-        else:
-            segment_ids = binary_find(data_idx, reach)
-            #Set the initial condtions before running loop
-            flowveldepth[segment_ids, 0] = init_array[segment_ids]
-            segment_objects = []
-            #Find the max reach size, used to create buffer for compute_reach_kernel
-            if len(segment_ids) > max_buff_size:
-                max_buff_size=len(segment_ids)
-
-            for sid in segment_ids:
-                #Initialize parameters  from the data_array, and set the initial initial_conditions
-                #These aren't actually used (the initial contions) in the kernel as they are extracted from the
-                #flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so
-                #it is inialized to 0.0
-                segment_objects.append(
-                MC_Segment(sid, *data_array[sid, scols], init_array[sid, 0], 0.0, init_array[sid, 2])
-            )
-
-            reach_objects.append(
-                #tuple of MC_Reach and reach_type
-                (MC_Reach(segment_objects, array('l',upstream_ids)), reach_type)
-                )
-
-
-    #Init buffers
-    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
-    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
-    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
-
-    #Run time
-    while timestep < nsteps+1:
-        for reachi, (r, reach_type) in enumerate(reach_objects):
-
-        #Need to get quc and qup
-            upstream_flows = 0.0
-            previous_upstream_flows = 0.0
-            for id in r.upstream_ids: #Explicit loop reduces some overhead
-                upstream_flows += flowveldepth[id, timestep, 0]
-                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
-
-            if assume_short_ts:
-                upstream_flows = previous_upstream_flows
-
-            #Check if reach_type is 1 for reservoir/waterbody
-            if (reach_type == 1):
-                reservoir_outflow, water_elevation = r.run(upstream_flows, 0.0, routing_period)
-
-                flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                flowveldepth[r.id, timestep, 1] = 0.0
-                flowveldepth[r.id, timestep, 2] = water_elevation
-
-            else:
-
-                #Index of segments required to process this reach
-                segment_ids = []
-
-                #Create compute reach kernel input buffer
-                for _i, segment in enumerate(r):
-                    segment_ids.append(segment['id'])
-                    buf_view[_i, 0] = qlat_array[ segment['id'], int((timestep-1)/qlat_resample)]
-                    buf_view[_i, 1] = segment['dt']
-                    buf_view[_i, 2] = segment['dx']
-                    buf_view[_i, 3] = segment['bw']
-                    buf_view[_i, 4] = segment['tw']
-                    buf_view[_i, 5] = segment['twcc']
-                    buf_view[_i, 6] = segment['n']
-                    buf_view[_i, 7] = segment['ncc']
-                    buf_view[_i, 8] = segment['cs']
-                    buf_view[_i, 9] = segment['s0']
-                    buf_view[_i, 10] = flowveldepth[segment['id'], timestep-1, 0]
-                    buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                    buf_view[_i, 12] = flowveldepth[segment['id'], timestep-1, 2]
-
-                compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                     len(r), buf_view,
-                                     out_buf,
-                                     assume_short_ts)
-
-                #Copy the output out
-                for _i, id in enumerate(segment_ids):
-                    flowveldepth[id, timestep, 0] = out_buf[_i, 0]
-                    flowveldepth[id, timestep, 1] = out_buf[_i, 1]
-                    flowveldepth[id, timestep, 2] = out_buf[_i, 2]
-
-            if reach_has_gage[reachi] > -1:
-            # We only enter this process for reaches where the
-            # gage actually exists.
-            # If assimilation is active for this reach, we touch the
-            # exactly one gage which is relevant for the reach ...
-                gage_i = reach_has_gage[reachi]
-                usgs_position_i = usgs_positions[gage_i]
-                da_buf = simple_da(
-                    timestep,
-                    routing_period,
-                    da_decay_coefficient,
-                    gage_maxtimestep,
-                    NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep-1],
-                    flowveldepth[usgs_position_i, timestep, 0],
-                    lastobs_times[gage_i],
-                    lastobs_values[gage_i],
-                    gage_i == da_check_gage,
-                )
-                flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
-                nudge[gage_i, timestep] = da_buf[1]
-                lastobs_times[gage_i] = da_buf[2]
-                lastobs_values[gage_i] = da_buf[3]
-
-        timestep += 1
-
-    #pr.disable()
-    #pr.print_stats(sort='time')
-    #slice off the initial condition timestep and return
-    output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp), output.reshape(output.shape[0], -1)
-
-
 cpdef object compute_network_structured(
     int nsteps,
     float dt,
@@ -1062,11 +183,18 @@ cpdef object compute_network_structured(
     const float[:] lastobs_values_init,
     const float[:] time_since_lastobs_init,
     const double da_decay_coefficient,
+    const float[:,:] reservoir_usgs_obs,
+    const int[:] reservoir_usgs_wbody_idx,
+    const float[:] reservoir_usgs_time,
+    const float[:,:] reservoir_usace_obs,
+    const int[:] reservoir_usace_wbody_idx,
+    const float[:] reservoir_usace_time,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
     int da_check_gage = -1,
     ):
+    
     """
     Compute network
     Args:
@@ -1141,58 +269,48 @@ cpdef object compute_network_structured(
             #Check if reservoir_type is not specified, then initialize default Level Pool reservoir
             if (not reservoir_type_specified):
 
-                #Add level pool reservoir object to reach_objects
-                reach_objects.append(
-                    #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                      MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                                   array('l',upstream_ids),
-                                   wbody_parameters[wbody_index])
-                    )
+                # Initialize levelpool reservoir object
+                lp_obj =  MC_Levelpool(
+                    my_id[0],                        # index position of waterbody reach  
+                    lake_numbers_col[wbody_index],   # lake number 
+                    array('l',upstream_ids),         # upstream segment IDs
+                    wbody_parameters[wbody_index],   # water body parameters
+                    reservoir_types[wbody_index][0], # waterbody type code
+                )
+                reach_objects.append(lp_obj)
 
             else:
-                #If reservoir_type is 1, then initialize Level Pool reservoir
-                if (reservoir_types[wbody_index][0] == 1):
-                    #Add level pool reservoir object to reach_objects
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and lp_reservoir
-                          MC_Levelpool(my_id[0], lake_numbers_col[wbody_index],
-                                       array('l',upstream_ids),
-                                       wbody_parameters[wbody_index])
-                        )
+                # If reservoir_type is 1, 2, or 3, then initialize Levelpool reservoir
+                # reservoir_type 1 is a straight levelpool reservoir.
+                # reservoir_types 2 and 3 are USGS and USACE Hybrid reservoirs, respectively.
+                if (reservoir_types[wbody_index][0] >= 1 and reservoir_types[wbody_index][0] <= 3):
+                                        
+                    # Initialize levelpool reservoir object
+                    lp_obj =  MC_Levelpool(
+                        my_id[0],                        # index position of waterbody reach  
+                        lake_numbers_col[wbody_index],   # lake number 
+                        array('l',upstream_ids),         # upstream segment IDs
+                        wbody_parameters[wbody_index],   # water body parameters
+                        reservoir_types[wbody_index][0], # waterbody type code
+                    )
+                    reach_objects.append(lp_obj)
 
-                #If reservoir_type is 2 for USGS or 3 for USACE, then initialize Hybrid reservoir
-                elif (reservoir_types[wbody_index][0] == 2 or reservoir_types[wbody_index][0] == 3):
-
-                    #Add hybrid reservoir object to reach_objects
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and hybrid_reservoir
-                          MC_Hybrid(my_id[0], lake_numbers_col[wbody_index],
-                          array('l',upstream_ids),
-                          wbody_parameters[wbody_index],
-                          reservoir_types[wbody_index][0],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
-                          model_start_time,
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usgs_timeslice_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_usace_timeslice_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_lookback_hours"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_observation_update_time_interval_seconds"])
-                        )
-
-                #If reservoir_type is 4, then initialize RFC reservoir
+                #If reservoir_type is 4, then initialize RFC forecast reservoir
                 elif (reservoir_types[wbody_index][0] == 4):
-
-                    #Add rfc reservoir object to reach_objects
-                    reach_objects.append(
-                        #tuple of MC_Reservoir, reach_type, and rfc_reservoir
-                          MC_RFC(my_id[0], lake_numbers_col[wbody_index],
-                          array('l',upstream_ids),
-                          wbody_parameters[wbody_index],
-                          reservoir_types[wbody_index][0],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_parameter_file"],
-                          model_start_time,
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_time_series_path"],
-                          waterbody_parameters["hybrid_and_rfc"]["reservoir_rfc_forecasts_lookback_hours"])
-                        )
+                    
+                    # Initialize rfc reservoir object
+                    rfc_obj = MC_RFC(
+                        my_id[0], 
+                        lake_numbers_col[wbody_index],
+                        array('l',upstream_ids),
+                        wbody_parameters[wbody_index],
+                        reservoir_types[wbody_index][0],
+                        waterbody_parameters["rfc"]["reservoir_parameter_file"],
+                        model_start_time,
+                        waterbody_parameters["rfc"]["reservoir_rfc_forecasts_time_series_path"],
+                        waterbody_parameters["rfc"]["reservoir_rfc_forecasts_lookback_hours"],
+                    )
+                    reach_objects.append(rfc_obj)
 
         else:
             segment_ids = binary_find(data_idx, reach)
@@ -1246,6 +364,33 @@ cpdef object compute_network_structured(
             if not np.isnan(usgs_values[gage_i, 0]):
                 flowveldepth_nd[usgs_position_i, 0, 0] = usgs_values[gage_i, 0]
 
+    
+    #---------------------------------------------------------------------------------------------
+    #---------------------------------------------------------------------------------------------
+
+    # reservoir id index arrays
+    cdef np.ndarray[int, ndim=1] usgs_idx  = np.asarray(reservoir_usgs_wbody_idx)
+    cdef np.ndarray[int, ndim=1] usace_idx = np.asarray(reservoir_usace_wbody_idx)
+    
+    # reservoir update time arrays
+    cdef np.ndarray[float, ndim=1] usgs_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
+    
+    # reservoir persisted outflow arrays
+    cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow  = np.full(len(usgs_idx), np.nan, dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_prev_persisted_ouflow = np.full(len(usace_idx), np.nan, dtype='float32')  
+    
+    # reservoir persistence index update time arrays
+    cdef np.ndarray[float, ndim=1] usgs_persistence_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_persistence_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
+    
+    # reservoir persisted outflow period index
+    cdef np.ndarray[float, ndim=1] usgs_prev_persistence_index  = np.zeros(np.shape(usgs_idx), dtype='float32')
+    cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.zeros(np.shape(usace_idx), dtype='float32')  
+
+    #---------------------------------------------------------------------------------------------
+    #---------------------------------------------------------------------------------------------
+    
     cdef np.ndarray fill_index_mask = np.ones_like(data_idx, dtype=bool)
     cdef Py_ssize_t fill_index
     cdef long upstream_tw_id
@@ -1284,124 +429,207 @@ cpdef object compute_network_structured(
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
-    #Run time
-    with nogil:
-        # printf("timestep, gage_maxtimestep, a, da_decay_minutes, lastobs_times[gage_i], da_weighted_shift, lastobs_val, original_val, replacement_val")
-        while timestep < nsteps+1:
-            for i in range(num_reaches):
-                r = &reach_structs[i]
-                #Need to get quc and qup
-                upstream_flows = 0.0
-                previous_upstream_flows = 0.0
+    
+    
+    while timestep < nsteps+1:
+        for i in range(num_reaches):
+            r = &reach_structs[i]
+            #Need to get quc and qup
+            upstream_flows = 0.0
+            previous_upstream_flows = 0.0
 
-                for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
-                    id = r._upstream_ids[_i]
-                    upstream_flows += flowveldepth[id, timestep, 0]
-                    previous_upstream_flows += flowveldepth[id, timestep-1, 0]
+            for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
+                id = r._upstream_ids[_i]
+                upstream_flows += flowveldepth[id, timestep, 0]
+                previous_upstream_flows += flowveldepth[id, timestep-1, 0]
 
-                if assume_short_ts:
-                    upstream_flows = previous_upstream_flows
+            if assume_short_ts:
+                upstream_flows = previous_upstream_flows
 
-                if r.type == compute_type.RESERVOIR_LP:
-                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
-                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                    flowveldepth[r.id, timestep, 1] = 0.0
-                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
-
-                elif r.type == compute_type.RESERVOIR_HYBRID:
-                    run_hybrid_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
-                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                    flowveldepth[r.id, timestep, 1] = 0.0
-                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
-
-                elif r.type == compute_type.RESERVOIR_RFC:
-                    run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
-                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                    flowveldepth[r.id, timestep, 1] = 0.0
-                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
-
-                else:
-                    #Create compute reach kernel input buffer
-                    for _i in range(r.reach.mc_reach.num_segments):
-                        segment = get_mc_segment(r, _i)#r._segments[_i]
-                        buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
-                        buf_view[_i, 1] = segment.dt
-                        buf_view[_i, 2] = segment.dx
-                        buf_view[_i, 3] = segment.bw
-                        buf_view[_i, 4] = segment.tw
-                        buf_view[_i, 5] = segment.twcc
-                        buf_view[_i, 6] = segment.n
-                        buf_view[_i, 7] = segment.ncc
-                        buf_view[_i, 8] = segment.cs
-                        buf_view[_i, 9] = segment.s0
-                        buf_view[_i, 10] = flowveldepth[segment.id, timestep-1, 0]
-                        buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
-                        buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
-
-                    compute_reach_kernel(previous_upstream_flows, upstream_flows,
-                                         r.reach.mc_reach.num_segments, buf_view,
-                                         out_buf,
-                                         assume_short_ts)
-
-                    #Copy the output out
-                    for _i in range(r.reach.mc_reach.num_segments):
-                        segment = get_mc_segment(r, _i)
-                        flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
-                        if reach_has_gage[i] == da_check_gage:
-                            printf("segment.id: %ld\t", segment.id)
-                            printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
-                        flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
-                        flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
-
-                # For each reach,
-                # at the end of flow calculation, Check if there is something to assimilate
-                # by evaluating whether the reach_has_gage array has a value different from
-                # the initialized value, np.iinfo(np.int32).min (the minimum possible integer).
-
-                # TODO: If it were possible to invert the time and reach loops
-                # (should be possible for the MC), then this check could be
-                # performed fewer times -- consider implementing such a change.
-
-                if reach_has_gage[i] > -1:
-                # We only enter this process for reaches where the
-                # gage actually exists.
-                # If assimilation is active for this reach, we touch the
-                # exactly one gage which is relevant for the reach ...
-                    gage_i = reach_has_gage[i]
-                    usgs_position_i = usgs_positions[gage_i]
-                    da_buf = simple_da(
-                        timestep,
-                        routing_period,
-                        da_decay_coefficient,
-                        gage_maxtimestep,
-                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep],
-                        flowveldepth[usgs_position_i, timestep, 0],
-                        lastobs_times[gage_i],
-                        lastobs_values[gage_i],
-                        gage_i == da_check_gage,
+            if r.type == compute_type.RESERVOIR_LP: 
+                
+                # water elevation before levelpool calculation
+                initial_water_elevation = r.reach.lp.water_elevation
+                
+                # levelpool reservoir storage/outflow calculation
+                run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                
+                # USGS reservoir hybrid DA inputs
+                if r.reach.lp.wbody_type_code == 2:
+                    # find index location of waterbody in reservoir_usgs_obs 
+                    # and reservoir_usgs_time
+                    res_idx = np.where(usgs_idx == r.reach.lp.lake_number)
+                    wbody_gage_obs          = reservoir_usgs_obs[res_idx[0][0],:]
+                    wbody_gage_time         = reservoir_usgs_time
+                    prev_persisted_outflow  = usgs_prev_persisted_ouflow[res_idx[0][0]]
+                    persistence_update_time = usgs_persistence_update_time[res_idx[0][0]] 
+                    persistence_index       = usgs_prev_persistence_index[res_idx[0][0]]
+                    update_time             = usgs_update_time[res_idx[0][0]] 
+                
+                # USACE reservoir hybrid DA inputs
+                if r.reach.lp.wbody_type_code == 3:
+                    # find index location of waterbody in reservoir_usgs_obs 
+                    # and reservoir_usgs_time
+                    res_idx = np.where(usace_idx == r.reach.lp.lake_number)
+                    wbody_gage_obs          = reservoir_usace_obs[res_idx[0][0],:]
+                    wbody_gage_time         = reservoir_usace_time
+                    prev_persisted_outflow  = usace_prev_persisted_ouflow[res_idx[0][0]]
+                    persistence_update_time = usace_persistence_update_time[res_idx[0][0]] 
+                    persistence_index       = usace_prev_persistence_index[res_idx[0][0]]
+                    update_time             = usace_update_time[res_idx[0][0]] 
+                    
+                # Execute reservoir DA - both USGS(2) and USACE(3) types
+                if r.reach.lp.wbody_type_code == 2 or r.reach.lp.wbody_type_code == 3:
+                    
+                    #print('***********************************************************')
+                    #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
+                    #print('before DA, simulated outflow = ', reservoir_outflow)
+                    #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
+                    
+                    (new_outflow,
+                     new_persisted_outflow,
+                     new_water_elevation, 
+                     new_update_time, 
+                     new_persistence_index, 
+                     new_persistence_update_time
+                    ) = reservoir_hybrid_da(
+                        r.reach.lp.lake_number,       # lake identification number
+                        wbody_gage_obs,               # gage observation values (cms)
+                        wbody_gage_time,              # gage observation times (sec)
+                        dt * timestep,                # model time (sec)
+                        prev_persisted_outflow,       # previously persisted outflow (cms)
+                        persistence_update_time,
+                        persistence_index,            # number of sequentially persisted update cycles
+                        reservoir_outflow,            # levelpool simulated outflow (cms)
+                        upstream_flows,               # waterbody inflow (cms)
+                        dt,                           # model timestep (sec)
+                        r.reach.lp.area,              # waterbody surface area (km2)
+                        r.reach.lp.max_depth,         # max waterbody depth (m)
+                        r.reach.lp.orifice_elevation, # orifice elevation (m)
+                        initial_water_elevation,      # water surface el., previous timestep (m)
+                        48.0,                         # gage lookback hours (hrs)
+                        update_time                   # waterbody update time (sec)
                     )
-                    if gage_i == da_check_gage:
-                        printf("ts: %d\t", timestep)
-                        printf("gmxt: %d\t", gage_maxtimestep)
-                        printf("gage: %d\t", gage_i)
-                        printf("old: %g\t", flowveldepth[usgs_position_i, timestep, 0])
-                        printf("exp_gage_val: %g\t", 
-                        NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep],)
+                    
+                    #print('After DA, outflow = ', new_outflow)
+                    #print('After DA, water elevation =', new_water_elevation)
+                    
+                    # update levelpool water elevation state
+                    update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
+                    
+                    # change reservoir_outflow
+                    reservoir_outflow = new_outflow
+                    
+                    #print('confirming DA elevation replacement:', reservoir_water_elevation)
+                    #print('===========================================================')
+                    
+                # update USGS DA reservoir state arrays
+                if r.reach.lp.wbody_type_code == 2:
+                    usgs_update_time[res_idx[0][0]]              = new_update_time
+                    usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_persisted_outflow
+                    usgs_prev_persistence_index[res_idx[0][0]]   = new_persistence_index
+                    usgs_persistence_update_time[res_idx[0][0]]  = new_persistence_update_time
+                    
+                # update USACE DA reservoir state arrays
+                if r.reach.lp.wbody_type_code == 3:
+                    usace_update_time[res_idx[0][0]]             = new_update_time
+                    usace_prev_persisted_ouflow[res_idx[0][0]]   = new_persisted_outflow
+                    usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
+                    usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
+                
+                # populate flowveldepth array with levelpool or hybrid DA results 
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
 
-                    flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
+            elif r.type == compute_type.RESERVOIR_RFC:
+                run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                flowveldepth[r.id, timestep, 1] = 0.0
+                flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+            
+            else:
+                #Create compute reach kernel input buffer
+                for _i in range(r.reach.mc_reach.num_segments):
+                    segment = get_mc_segment(r, _i)#r._segments[_i]
+                    buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
+                    buf_view[_i, 1] = segment.dt
+                    buf_view[_i, 2] = segment.dx
+                    buf_view[_i, 3] = segment.bw
+                    buf_view[_i, 4] = segment.tw
+                    buf_view[_i, 5] = segment.twcc
+                    buf_view[_i, 6] = segment.n
+                    buf_view[_i, 7] = segment.ncc
+                    buf_view[_i, 8] = segment.cs
+                    buf_view[_i, 9] = segment.s0
+                    buf_view[_i, 10] = flowveldepth[segment.id, timestep-1, 0]
+                    buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
+                    buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
-                    if gage_i == da_check_gage:
-                        printf("new: %g\t", flowveldepth[usgs_position_i, timestep, 0])
-                        printf("repl: %g\t", da_buf[0])
-                        printf("nudg: %g\n", da_buf[1])
+                compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                                     r.reach.mc_reach.num_segments, buf_view,
+                                     out_buf,
+                                     assume_short_ts)
 
-                    nudge[gage_i, timestep] = da_buf[1]
-                    lastobs_times[gage_i] = da_buf[2]
-                    lastobs_values[gage_i] = da_buf[3]
+                #Copy the output out
+                for _i in range(r.reach.mc_reach.num_segments):
+                    segment = get_mc_segment(r, _i)
+                    flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
+                    if reach_has_gage[i] == da_check_gage:
+                        printf("segment.id: %ld\t", segment.id)
+                        printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
+                    flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
+                    flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
 
-            # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
+            # For each reach,
+            # at the end of flow calculation, Check if there is something to assimilate
+            # by evaluating whether the reach_has_gage array has a value different from
+            # the initialized value, np.iinfo(np.int32).min (the minimum possible integer).
 
-            timestep += 1
+            # TODO: If it were possible to invert the time and reach loops
+            # (should be possible for the MC), then this check could be
+            # performed fewer times -- consider implementing such a change.
+
+            if reach_has_gage[i] > -1:
+            # We only enter this process for reaches where the
+            # gage actually exists.
+            # If assimilation is active for this reach, we touch the
+            # exactly one gage which is relevant for the reach ...
+                gage_i = reach_has_gage[i]
+                usgs_position_i = usgs_positions[gage_i]
+                da_buf = simple_da(
+                    timestep,
+                    routing_period,
+                    da_decay_coefficient,
+                    gage_maxtimestep,
+                    NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep],
+                    flowveldepth[usgs_position_i, timestep, 0],
+                    lastobs_times[gage_i],
+                    lastobs_values[gage_i],
+                    gage_i == da_check_gage,
+                )
+                if gage_i == da_check_gage:
+                    printf("ts: %d\t", timestep)
+                    printf("gmxt: %d\t", gage_maxtimestep)
+                    printf("gage: %d\t", gage_i)
+                    printf("old: %g\t", flowveldepth[usgs_position_i, timestep, 0])
+                    printf("exp_gage_val: %g\t", 
+                    NAN if timestep >= gage_maxtimestep else usgs_values[gage_i,timestep],)
+
+                flowveldepth[usgs_position_i, timestep, 0] = da_buf[0]
+
+                if gage_i == da_check_gage:
+                    printf("new: %g\t", flowveldepth[usgs_position_i, timestep, 0])
+                    printf("repl: %g\t", da_buf[0])
+                    printf("nudg: %g\n", da_buf[1])
+
+                nudge[gage_i, timestep] = da_buf[1]
+                lastobs_times[gage_i] = da_buf[2]
+                lastobs_values[gage_i] = da_buf[3]
+
+        # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
+
+        timestep += 1
 
     #pr.disable()
     #pr.print_stats(sort='time')

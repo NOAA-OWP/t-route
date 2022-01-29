@@ -12,21 +12,26 @@ cdef extern from "levelpool_structs.c":
                             float dam_length, float area, float max_depth,
                             float orifice_area, float orifice_coefficient, float orifice_elevation,
                             float weir_coefficient, float weir_elevation, float weir_length,
-                            float initial_fractional_depth, float water_elevation
+                            float initial_fractional_depth, float water_elevation, int wbody_type_code
   )
   void free_levelpool_reach(_Reach* reach)
 
   void route(_Reach* reach, float routing_period, float inflow, float lateral_inflow, float* outflow,  float* water_elevation) nogil
 
+  void update_elevation(_Reach* reach, float updated_elevation, float* water_elevation) nogil
+
 cdef void run_lp_c(_Reach* reach, float inflow, float lateral_inflow, float routing_period, float* outflow,  float* water_elevation) nogil:
     route(reach, inflow, lateral_inflow, routing_period, outflow, water_elevation)
+    
+cdef void update_lp_c(_Reach* reach, float updated_elevation, float* water_elevation) nogil:
+    update_elevation(reach, updated_elevation, water_elevation)
 
 cdef class MC_Levelpool(Reach):
   """
     MC_Reservoir is a subclass of MC_Reach_Base_Class
   """
 
-  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args):
+  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args, wbody_type_code):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
@@ -74,7 +79,7 @@ cdef class MC_Levelpool(Reach):
                          dam_length, area, max_depth,
                          orifice_area, orifice_coefficient, orifice_elevation,
                          weir_coefficient, weir_elevation, weir_length,
-                         initial_fractional_depth, water_elevation)
+                         initial_fractional_depth, water_elevation, wbody_type_code)
 
   def __dealloc__(self):
     """

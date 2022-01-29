@@ -19,21 +19,21 @@ test_main.o: test_binding.c
 
 module_levelpool.o: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o
 
-module_persistence_levelpool_hybrid.o: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_persistence_levelpool_hybrid_properties.o module_persistence_levelpool_hybrid_state.o module_levelpool.o module_reservoir_read_timeslice_data.o
+#module_persistence_levelpool_hybrid.o: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o # # # # # #module_persistence_levelpool_hybrid_properties.o module_persistence_levelpool_hybrid_state.o module_levelpool.o #module_reservoir_read_timeslice_data.o
 
 module_rfc_forecasts.o: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_rfc_forecasts_properties.o module_rfc_forecasts_state.o module_levelpool.o module_reservoir_read_rfc_time_series_data.o
 
 bind_lp.o: module_levelpool.o
 
-bind_hybrid.o: module_persistence_levelpool_hybrid.o
+#bind_hybrid.o: module_persistence_levelpool_hybrid.o
 
 bind_rfc.o: module_rfc_forecasts.o
 
 binding_lp.a: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o bind_lp.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bind_hybrid.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_persistence_levelpool_hybrid_properties.o module_persistence_levelpool_hybrid_state.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o module_reservoir_read_timeslice_data.o module_persistence_levelpool_hybrid.o bind_hybrid.o
-	$(AR) $(ARFLAGS) $@ $^
+#bind_hybrid.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_persistence_levelpool_hybrid_properties.o #module_persistence_levelpool_hybrid_state.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o #module_reservoir_read_timeslice_data.o module_persistence_levelpool_hybrid.o bind_hybrid.o
+#	$(AR) $(ARFLAGS) $@ $^
 
 bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o module_rfc_forecasts_properties.o module_rfc_forecasts_state.o module_levelpool_properties.o module_levelpool_state.o module_levelpool.o module_reservoir_read_rfc_time_series_data.o module_rfc_forecasts.o bind_rfc.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -44,7 +44,8 @@ bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o 
 %.o: %.f90
 	$(COMPILER90) $(F90FLAGS) $(NETCDFLIB) -c -o $@ $<
 
-install: binding_lp.a bind_hybrid.a bind_rfc.a
+#install: binding_lp.a bind_hybrid.a bind_rfc.a
+install: binding_lp.a bind_rfc.a
 	echo $^
 	for lib in $^; do \
 		cp $$lib ../../../python_framework_v02/libs; \

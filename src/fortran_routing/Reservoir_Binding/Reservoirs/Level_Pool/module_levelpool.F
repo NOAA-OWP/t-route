@@ -46,6 +46,7 @@ module module_levelpool
         procedure :: init => levelpool_init
         procedure :: destroy => levelpool_destroy
         procedure :: run => run_levelpool_reservoir
+        procedure :: assim => assimilate_water_elevation
 
     end type levelpool
 
@@ -55,7 +56,7 @@ contains
     subroutine levelpool_init(this, water_elevation,  &
         lake_area, weir_elevation, weir_coeffecient, &
         weir_length, dam_length, orifice_elevation, orifice_coefficient, &
-        orifice_area, max_depth, lake_number)
+        orifice_area, max_depth, lake_number, wbody_type_code)
         implicit none
         class(levelpool), intent(inout) :: this ! object being initialized
         real, intent(inout) :: water_elevation           ! meters AMSL
@@ -69,6 +70,7 @@ contains
         real, intent(in)    :: orifice_area              ! orifice area (meters^2)
         real, intent(in)    :: max_depth                 ! max depth of reservoir before overtop (meters)
         integer, intent(in) :: lake_number               ! lake number
+        integer, intent(in) :: wbody_type_code
         character(len=15)   :: lake_number_string
 
 !#ifdef RESERVOIR_D
@@ -113,7 +115,7 @@ contains
                 call this%properties%init( lake_area,  &
                     weir_elevation, weir_coeffecient, weir_length, dam_length, &
                     orifice_elevation, orifice_coefficient, &
-                    orifice_area, max_depth, lake_number )
+                    orifice_area, max_depth, lake_number, wbody_type_code )
             end if
             this%pointer_allocation_guard = .true.
 
@@ -139,6 +141,19 @@ contains
         implicit none
         class(levelpool), intent(inout) :: this ! object being destroyed
     end subroutine levelpool_destroy
+    
+    ! Subroutine for assimilating data-informed depth data into reservoir state
+    subroutine assimilate_water_elevation(this, updated_elevation, water_elevation)
+        implicit none
+        class(levelpool), intent(inout) :: this
+        real, intent(in)  :: updated_elevation ! meters
+        real, intent(out) :: water_elevation   ! meters
+        
+        ! set reservoir depth state to update value
+        water_elevation = updated_elevation
+        this%state%water_elevation = water_elevation
+                
+    end subroutine assimilate_water_elevation
 
 
     ! Subroutine for running a level pool reservoir,
