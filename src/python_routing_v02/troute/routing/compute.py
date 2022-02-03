@@ -954,6 +954,7 @@ def compute_diffusive_routing(
     da_parameter_dict,
     diffusive_parameters,
     waterbodies_df,
+    topobathy_data,
 ):
 
     results_diffusive = []
@@ -972,6 +973,9 @@ def compute_diffusive_routing(
                     
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
+        
+        # create topobathy data for diffusive mainstem segments related to this given tw segment        
+        topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
 
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
@@ -989,6 +993,7 @@ def compute_diffusive_routing(
             nts,
             dt,
             waterbodies_df,
+            topobathy_data_bytw,
         )
         
         # run the simulation

@@ -26,21 +26,30 @@ def nwm_network_preprocess(
     if hybrid_params:
         
         domain_file = hybrid_params.get("diffusive_domain", None)
+        topobathy_domain_file = hybrid_params.get("topobathy_domain", None) # path to topobathy file
+        
         if domain_file:
             
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
+            # read topobathy domain netcdf file
+            topobathy_df = nhd_io.read_netcdf(topobathy_domain_file)
+            topobathy_data = topobathy_df.set_index('comid')
+            topobathy_data.index = topobathy_data.index.astype(int)
+             
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
         
         else:
             diffusive_domain = None
             diffusive_network_data = None
+            topobathy_data = None
             LOG.debug('No diffusive domain file spefified in configuration file.')
     else:
         diffusive_domain = None
         diffusive_network_data = None
+        topobathy_data = None
 
     LOG.info("creating supernetwork connections set")
 
@@ -156,6 +165,7 @@ def nwm_network_preprocess(
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
+                            .read_diffusive_domain
         for tw in diffusive_domain:
             
             # ===== build diffusive network data objects ==== 
@@ -163,7 +173,7 @@ def nwm_network_preprocess(
             
             # add diffusive domain segments
             diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
-            
+
             # diffusive domain tributary segments
             trib_segs = []
             for s in diffusive_domain[tw]:
@@ -286,6 +296,7 @@ def nwm_network_preprocess(
         rconn,
         pd.DataFrame.from_dict(gages),
         diffusive_network_data,
+        topobathy_data,
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
@@ -310,6 +321,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         rconn = inputs.get('rconn',None)
         gages = inputs.get('link_gage_df',None)
         diffusive_network_data = inputs.get('diffusive_network_data',None)
+        topobathy_data = inputs.get('topobathy_data',None)
         
         # todo: if any of the abocve variables are none, throw a critical error and quit the simulation. 
         
@@ -330,6 +342,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         rconn,
         gages,
         diffusive_network_data,
+        topobathy_data,
     )
 
 

@@ -387,6 +387,145 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
         
     return nts_db_g, dbcd_g
 
+def fp_naturalxsec_map(
+                ordered_reaches,
+                mainstem_headseg_list, 
+                #inland_bathyNC, 
+                #comid_bathy, 
+                topobathy_data_bytw,
+                param_df, 
+               #geo_index, 
+                #geo_cols, 
+                #geo_data, 
+                mx_jorder, 
+                mxncomp_g, 
+                nrch_g,
+                dbfksegID):
+    """
+    natural cross section mapping between Python and Fortran using eHydro_ned_cross_sections data
+    
+    Parameters
+    ----------
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    mainstem_headseg_list -- (int) a list of link IDs of headsegs of related mainstem reaches 
+    inland_bathyNC --  bathymetry NC data of channel cross section
+    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
+    mx_jorder -- (int) max junction order
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    dbfksegID -- (int) segment ID of fake node (=bottom node) of TW reach that hosts downstream boundary 
+                        condition for a network that is being routed. 
+    
+    Returns
+    -------
+    x_bathy_g -- (numpy of float64s) lateral distance of bathy data points
+    z_bathy_g -- (numpy of float64s) elevation of bathy data points
+    size_bathy_g -- (integer) the nubmer of bathy data points of each cross section
+    mxnbathy_g -- (integer) maximum size of bathy data points
+    """    
+    # take only related data from bathy NC file
+#    inland_bathyDF = pd.DataFrame()
+#    inland_bathyDF['comid'] =  pd.DataFrame(np.ma.filled(inland_bathyNC['comid'][:]))
+    # this is lateral distance from x=0 where the NWM line crosses the cross section later line. 
+    # For left side of x=0 (when looking upstream-to-downstream), the lateral distance takes negative values 
+    # for left side of main channel or left floodplains whiel positive for right side of main ch. or right floodplains.
+#    inland_bathyDF['x_bathy'] =  pd.DataFrame(np.ma.filled(inland_bathyNC['xid_d'][:]))
+#    inland_bathyDF['z_bathy'] =   pd.DataFrame(np.ma.filled(inland_bathyNC['z'][:]))
+#    inland_bathyDF['n'] =   pd.DataFrame(np.ma.filled(inland_bathyNC['n'][:]))
+    
+    # find maximum size of x or z bathy data
+#    sizelist=[]
+#    ncomid= len(comid_bathy)
+#    for i in range(0,ncomid): # for bathy data of arbitarily selected three segments
+#        inland_bathyDF_subset = inland_bathyDF[inland_bathyDF['comid'] == comid_bathy[i]]    
+#        size= inland_bathyDF_subset['x_bathy'].size
+#        sizelist.append(size)
+    
+    sizelist = []
+    for i in range(0, topobathy_data_bytw.index.unique().size):
+        size =  topobathy_data_bytw.loc[segID].size
+        sizelist.append(size)
+    mxnbathy_g=max(sizelist)
+
+    x_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+    z_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+    mann_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+    size_bathy_g= np.zeros((mxncomp_g, nrch_g), dtype='int32')    
+   
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            headsegID= seg_list[0]                  
+    ## **** for now, bathy data here doesn't cover Cape fear river we're experimenting with. So, we picked
+    ## **** arbitrarily three comid from the bathy NC data and get the bathy data to pass to three segments
+    ## **** we're considering now. Basically, three mainstem reaches with each having only one segment.                
+            if mainstem_headseg_list.count(headsegID) > 0:  
+                # when selected segID is mainstem:
+                #import pdb; pdb.set_trace()                   
+                for seg in range(0,ncomp):
+                    if seg==ncomp-1 and x > 0:
+                        #In node-configuration, bottom node takes bathy of the first segment of the downtream reach
+                        # except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
+                        # with so*0.5*dx of 
+                        segID= reach["downstream_head_segment"]
+                    else:
+                        # In node configuration, for example, for 2 segments of a reach, 
+                        # 1st node(=top node) takes bathy of the first segment and
+                        # 2nd node takes bathy of the second segment
+                        # 3rd node takes bathy of, as explained right above, the firt segment 
+                        segID= seg_list[seg]
+                    
+                     ## **** all hypothetical coding
+                  #  if x==2 and seg==0:
+                  #      idx_comid=0
+                  #  if x==2 and seg==1:
+                  #      idx_comid=1                        
+                  #  if x==1 and seg==0:
+                  #      idx_comid=1
+                  #  if x==1 and seg==1:
+                  #      idx_comid=2
+                  #  if x==0 and seg==0:
+                  #      idx_comid=2
+                  #  if x==0 and seg==1:
+                        #when tail water node, z_bathy will be adjusted by so*dx of related segment
+                  #      idx_comid=2                                      
+                    
+                    #inland_bathyDF_subset = inland_bathyDF[inland_bathyDF['comid'] == comid_bathy[idx_comid]]
+                    #size_bathy_g[seg, frj]= inland_bathyDF_subset['x_bathy'].size
+                    size_bathy_g[seg, frj] = topobathy_data_bytw.loc[segID].size
+                    
+                    #for idp in range(0, size_bathy_g[seg, frj]):
+                    for idp in range(0, len(topobathy_data_bytw.loc[segID])):
+                        #x_bathy_g[idp, seg, frj]  = inland_bathyDF_subset [['x_bathy']].iloc[idp]
+                        #z_bathy_g[idp, seg, frj] =  inland_bathyDF_subset [['z_bathy']].iloc[idp]
+                        #mann_bathy_g[idp, seg, frj] = inland_bathyDF_subset [['n']].iloc[idp]
+                        x_bathy_g[idp, seg, frj]  = topobathy_data_bytw.loc[segID].xid_d[idp]
+                        z_bathy_g[idp, seg, frj] = topobathy_data_bytw.loc[segID].z[idp]
+                        mann_bathy_g[idp, seg, frj] = topobathy_data_bytw.loc[segID].n[idp]
+                        
+                        
+                if seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
+                    # At tailwater bottom node (as # of segment = # node +1), z_bathy need to be adjusted by so*dx of the last segment
+                    segID2 = seg_list[seg - 1]
+                    #idx_segID2 = np.where(geo_index == segID2)
+                    #idx_so = np.where(geo_cols == "s0")
+                    #idx_dx = np.where(geo_cols == "dx")
+                    idx_segID2 = np.where(param_df.index.values == segID2)
+                    idx_so = np.where(param_df.columns.values == "s0")
+                    idx_dx = np.where(param_df.columns.values == "dx")
+                    
+                    #So = geo_data[idx_segID2, idx_so]
+                    #dx = geo_data[idx_segID2, idx_dx]
+                    So = param_df.values[idx_segID2, idx_so]
+                    dx = param_df.values[idx_segID2, idx_dx]
+                    
+                    for idp in range(0, size_bathy_g[seg, frj]):
+                        z_bathy_g[idp, seg, frj] = z_bathy_g[idp, seg, frj] - So * dx   
+   
+    return x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g
 
 def diffusive_input_data_v02(
     tw,
@@ -403,6 +542,7 @@ def diffusive_input_data_v02(
     nsteps,
     dt,
     waterbodies_df,
+    topobathy_data_bytw,
 ):
     """
     Build input data objects for diffusive wave model
@@ -712,26 +852,26 @@ def diffusive_input_data_v02(
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
                 qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']
     
-
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
-    #                 Prepare uniform flow lookup tables
-    # ---------------------------------------------------------------------------------
+    #                 Prepare cross section bathymetry data
+    # ---------------------------------------------------------------------------------    
+    x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
+                                                                   ordered_reaches,                                             
+                                                                   mainstem_headseg_list, 
+                                                                   #inland_bathyNC, 
+                                                                   #comid_bathy, 
+                                                                   topobathy_data_bytw,
+                                                                   param_df, 
+                                                                  #geo_index, 
+                                                                   #geo_cols, 
+                                                                   #geo_data, 
+                                                                   mx_jorder,
+                                                                   mxncomp_g, 
+                                                                   nrch_g,
+                                                                   dbfksegID)
 
-#     nhincr_m_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_main_increment_number", None
-#     )
-#     nhincr_f_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_floodplain_increment_number", None
-#     )
-#     timesdepth_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_depth_multiplier", None
-#     )
-#     ufqlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-#     ufhlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-#     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
-#     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
@@ -774,7 +914,13 @@ def diffusive_input_data_v02(
     diff_ins["qtrib_g"] = qtrib_g
     
     diff_ins["paradim"] = paradim 
-    diff_ins["para_ar_g"] = para_ar_g   
+    diff_ins["para_ar_g"] = para_ar_g
+    
+    diff_ins["mxnbathy_g"] = mxnbathy_g
+    diff_ins["x_bathy_g"] = x_bathy_g
+    diff_ins["z_bathy_g"] = z_bathy_g
+    diff_ins["mann_bathy_g"] = mann_bathy_g
+    diff_ins["size_bathy_g"] = size_bathy_g    
     
     diff_ins["iniq"] = iniq
 

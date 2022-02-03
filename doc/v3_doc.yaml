@@ -390,6 +390,13 @@ compute_parameters:
         # of diffusive network segments, organized by tailwater ID (keys).
         # (!!) mandatory for hybrid simulations
         diffusive_domain:
+        # ---------------
+        # filepath to topobathy data for channel cross sections. 
+        # This file is currently only NetCDF file format and contain  
+        # topobathy data of a channel cross section defined by comid.
+        # Theoretically, comid is identical to link of RouteLink data.
+        # (!!) mandatory for diffusive routing for natural cross sections.
+        topobathy_domain:
     # ---------------
     # parameters controling model forcings, simulation duration, and simulation time discretization
     # Here, the user has a choice. They can either explicitly list sets of forcing files to be used
