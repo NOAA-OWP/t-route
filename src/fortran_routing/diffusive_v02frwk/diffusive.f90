@@ -309,22 +309,22 @@ contains
   !-----------------------------------------------------------------------------
   ! variable initializations
 
-    routingNotChanged = 0
+    routingNotChanged   = 0
     applyNaturalSection = 1
-    x          = 0.0
-    newQ       = -999
-    newY       = -999
-    t          = t0*60.0     ! [min]
-    q_sk_multi = 1.0
-    oldQ       = iniq
-    newQ       = oldQ
-    qp         = oldQ
-    dimensionless_Cr = -999
-    dimensionless_Fo = -999
-    dimensionless_Fi = -999
-    dimensionless_Di = -999
-    dimensionless_Fc = -999
-    dimensionless_D  = -999
+    x                   = 0.0
+    newQ                = -999
+    newY                = -999
+    t                   = t0*60.0     ! [min]
+    q_sk_multi          = 1.0
+    oldQ                = iniq
+    newQ                = oldQ
+    qp                  = oldQ
+    dimensionless_Cr    = -999
+    dimensionless_Fo    = -999
+    dimensionless_Fi    = -999
+    dimensionless_Di    = -999
+    dimensionless_Fc    = -999
+    dimensionless_D     = -999
 
 
   !-----------------------------------------------------------------------------
@@ -333,7 +333,7 @@ contains
     ! Create a dummy array containing mainstem reaches
     nmstem_rch = 0
     do j = 1, nlinks
-      if (frnw_g(j,3) >= 2) then ! mainstem reach identification
+      if (frnw_g(j,3) >= 1) then ! mainstem reach identification
         nmstem_rch          = nmstem_rch + 1
         dmy_frj(nmstem_rch) = j
       end if
@@ -363,15 +363,20 @@ contains
     
   !-----------------------------------------------------------------------------
   ! Build natural / systhetic cross sections and related hydraulic lookup table 
-  applyNaturalSection = 1
+  if (mxnbathy == 0) then
+    applyNaturalSection = 0
+  else
+    applyNaturalSection = 1
+  end if
   
   if (applyNaturalSection == 1) then
+  
     ! use bathymetry data 
     x_bathy    = x_bathy_g
     z_bathy    = z_bathy_g
     mann_bathy = mann_bathy_g
     size_bathy = size_bathy_g
-
+    
     do jm = 1, nmstem_rch !* mainstem reach only
       j = mstem_frj(jm)
       do i = 1, frnw_g(j, 1)
@@ -404,9 +409,9 @@ contains
                             rightBank(i,j), timesDepth, j, z_ar_g,   &
                             bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
         end do
-    enddo
+    end do
   
-  endif  
+  end if  
   !-----------------------------------------------------------------------------
   ! Add uniform flow column to the hydraulic lookup table in order to avoid the 
   ! use of the trial-and-error iteration for solving normal depth
@@ -773,6 +778,7 @@ contains
     deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
     deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib)
     deallocate(mstem_frj)
+    deallocate(x_bathy, z_bathy, mann_bathy, size_bathy)
 
 
   end subroutine diffnw
@@ -1595,9 +1601,10 @@ contains
 
     ! As x_bathy data take negative values for the left of the streamline (where x=0) while positive for the right when looking from
     ! upstream to downstream. This subroutine takes zero at left-most x data point, so an adjustment is required.
+
     do ic = 1, size_bathy(idx_node, idx_reach)
       x_bathy_leftzero(ic) = - x_bathy(1, idx_node, idx_reach) + x_bathy(ic, idx_node, idx_reach)
-    enddo
+    end do
         
     do ic = 2, size_bathy(idx_node, idx_reach) + 1
       x1         = x_bathy_leftzero(ic-1)
@@ -1605,7 +1612,7 @@ contains
       xcs(ic)    = x1 * f2m
       ycs(ic)    = y1 * f2m
       manncs(ic) = mann_bathy(ic-1, idx_node, idx_reach)
-    enddo
+    end do
 
     num = maxTableLength
 
@@ -1657,7 +1664,7 @@ contains
           i_find        = 0
           i_end(i_area) = ic
         endif
-      enddo
+      end do
 
       cal_area       = 0.0
       cal_peri       = 0.0
@@ -1752,7 +1759,7 @@ contains
 
         do ii = iel, iel_incr_start - 1
           conv1(ii) = conv1(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
-        enddo
+        end do
 
         ! update dKdA accordingly
         do ii = iel, iel_incr_start - 1

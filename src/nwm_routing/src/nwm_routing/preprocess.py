@@ -25,18 +25,31 @@ def nwm_network_preprocess(
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
         
-        domain_file = hybrid_params.get("diffusive_domain", None)
-        topobathy_domain_file = hybrid_params.get("topobathy_domain", None) # path to topobathy file
+        domain_file    = hybrid_params.get("diffusive_domain",   None)
+        run_hybrid     = hybrid_params.get('run_hybrid_routing', False)
+        topobathy_file = hybrid_params.get("topobathy_domain",   None)
+        use_topobathy  = hybrid_params.get('use_natl_xsections', False)
         
-        if domain_file:
+        if domain_file and run_hybrid:
             
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
-            # read topobathy domain netcdf file
-            topobathy_df = nhd_io.read_netcdf(topobathy_domain_file)
-            topobathy_data = topobathy_df.set_index('comid')
-            topobathy_data.index = topobathy_data.index.astype(int)
+            if topobathy_file and use_topobathy:
+                
+                # read topobathy domain netcdf file, set index to 'comid'
+                # TODO: replace 'comid' with a user-specified indexing variable name.
+                # ... if for whatever reason there is not a `comid` variable in the 
+                # ... dataframe returned from read_netcdf, then the code would break here.
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
+                
+                # TODO: Request GID make comID variable an integer in their product, so
+                # we do not need to change variable types, here.
+                topobathy_data.index = topobathy_data.index.astype(int)
+                
+            else:
+                topobathy_data = pd.DataFrame()
+                LOG.debug('No natural cross section topobathy data provided.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
@@ -44,12 +57,12 @@ def nwm_network_preprocess(
         else:
             diffusive_domain = None
             diffusive_network_data = None
-            topobathy_data = None
+            topobathy_data = pd.DataFrame()
             LOG.debug('No diffusive domain file spefified in configuration file.')
     else:
         diffusive_domain = None
         diffusive_network_data = None
-        topobathy_data = None
+        topobathy_data = pd.DataFrame()
 
     LOG.info("creating supernetwork connections set")
 
@@ -186,10 +199,11 @@ def nwm_network_preprocess(
             # diffusive domain connections object
             diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
             
-            # diffusive domain reaches and upstream connections
+            # diffusive domain reaches and upstream connections. 
+            # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
                 diffusive_network_data[tw]['connections'],
-                set(),
+                set(trib_segs),
             )
             diffusive_network_data[tw]['rconn'] = rconn_diff
             diffusive_network_data[tw]['reaches'] = reaches[tw]
@@ -258,6 +272,7 @@ def nwm_network_preprocess(
                  'rconn': rconn,
                  'link_gage_df': pd.DataFrame.from_dict(gages),
                  'diffusive_network_data': diffusive_network_data,
+                 'topobathy_data': topobathy_data,
                 }
             )
             try:
@@ -322,9 +337,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         gages = inputs.get('link_gage_df',None)
         diffusive_network_data = inputs.get('diffusive_network_data',None)
         topobathy_data = inputs.get('topobathy_data',None)
-        
-        # todo: if any of the abocve variables are none, throw a critical error and quit the simulation. 
-        
+                
     else:
         LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
         quit()
