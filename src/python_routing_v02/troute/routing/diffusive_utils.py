@@ -451,7 +451,7 @@ def fp_naturalxsec_map(
     z_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
     mann_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
     size_bathy_g= np.zeros((mxncomp_g, nrch_g), dtype='int32')    
-   
+    import pdb; pdb.set_trace()
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -665,12 +665,12 @@ def diffusive_input_data_v02(
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
-    
 
     ordered_reaches = {}
     rchhead_reaches = {}
     rchbottom_reaches = {}
     z_all = {}
+    import pdb; pdb.set_trace()
     for o, rch in jorder_reaches:
         
         # add one more segment(fake) to the end of a list of segments to account for node configuration.
