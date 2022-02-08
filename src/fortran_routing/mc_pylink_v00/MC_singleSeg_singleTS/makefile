@@ -6,10 +6,9 @@ FC := $(F90)
 FCFLAGS = -g -c -O2 -fPIC
 # link flags
 FLFLAGS = -static-gfortran -static-libgcc -no-defaultlibs -lgfortran -lgcc
-VPATH = ../Reservoir_singleTS
 
-.PHONY: reach reservoir all install
-all: reach reservoir
+.PHONY: reach all install
+all: reach 
 
 reach: mc_single_seg.o pymc_single_seg.o
 
@@ -18,8 +17,6 @@ mc_single_seg.o: MCsingleSegStime_f2py_NOLOOP.f90 precis.mod
 
 pymc_single_seg.o: pyMCsingleSegStime_NoLoop.f90
 	$(FC) $(FCFLAGS) -o $@ $<
-
-reservoir:  precis.mod module_levelpool.o pymodule_levelpool.o
 
 precis.mod: varPrecision.f90
 	$(FC) $(FCFLAGS) $<
