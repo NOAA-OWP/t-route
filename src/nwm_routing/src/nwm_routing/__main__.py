@@ -1089,6 +1089,7 @@ def main_v03(argv):
             waterbody_types_df,
             break_network_at_waterbodies,
             waterbody_type_specified,
+            link_lake_crosswalk,
             independent_networks,
             reaches_bytw,
             rconn,
@@ -1106,6 +1107,7 @@ def main_v03(argv):
             waterbody_types_df,
             break_network_at_waterbodies,
             waterbody_type_specified,
+            link_lake_crosswalk,
             independent_networks,
             reaches_bytw,
             rconn,
@@ -1308,6 +1310,7 @@ def main_v03(argv):
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
+            link_lake_crosswalk,
         )
         
         if showtiming:

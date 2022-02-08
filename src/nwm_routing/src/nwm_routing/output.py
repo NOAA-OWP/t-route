@@ -22,8 +22,9 @@ def nwm_output_generator(
     return_courant,
     cpu_pool,
     data_assimilation_parameters=False,
-    lastobs_df=None,
-    link_gage_df=None,
+    lastobs_df = None,
+    link_gage_df = None,
+    link_lake_crosswalk = None,
 ):
 
     dt = run.get("dt")
