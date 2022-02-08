@@ -52,14 +52,14 @@ def adj_alt1(
 
 
 def fp_network_map(
-    mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+    mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
 ):
     """
     Channel network mapping between Python and Fortran
     
     Parameters
     ----------
-    mainstem_headseg_list - 
+    mainstem_seg_list - (int) a list of link IDs of segments of  mainstem reaches solely for diffusive routing 
     mx_jorder -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     rchbottom_reaches -- (dict) reaches and reach metadata keyed by reach tail segment
@@ -108,7 +108,7 @@ def fp_network_map(
                             i = i + 1
                             frnw_g[frj, 2 + i] = j
                             # find if the selected headseg ID of an upstream reach belong to mainstem segment
-                            if mainstem_headseg_list.count(usrch_hseg_id) > 0:
+                            if mainstem_seg_list.count(usrch_hseg_id) > 0:
                                 r = r+1
                                 usrch_hseg_mainstem_j=j
                                 # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
@@ -389,7 +389,7 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
 
 def fp_naturalxsec_map(
                 ordered_reaches,
-                mainstem_headseg_list, 
+                mainstem_seg_list, 
                 topobathy_data_bytw,
                 param_df, 
                 mx_jorder, 
@@ -402,7 +402,7 @@ def fp_naturalxsec_map(
     Parameters
     ----------
     ordered_reaches -- (dict) reaches and reach metadata by junction order
-    mainstem_headseg_list -- (int) a list of link IDs of headsegs of related mainstem reaches 
+    mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
     topobathy_data_bytw --  
     param_df --
     mx_jorder -- (int) max junction order
@@ -451,7 +451,7 @@ def fp_naturalxsec_map(
                 ncomp = reach["number_segments"]
 
                 # determine if this reach is part of the mainstem diffusive domain
-                if head_segment in mainstem_headseg_list: 
+                if head_segment in mainstem_seg_list: 
 
                     # loop through segments in mainstem reach
                     for seg, segID in enumerate(seg_list):
@@ -507,7 +507,7 @@ def diffusive_input_data_v02(
     connections,
     rconn,
     reach_list,
-    mainstem_headseg_list,
+    mainstem_seg_list,
     diffusive_parameters,
     param_df,
     qlat,
@@ -714,7 +714,7 @@ def diffusive_input_data_v02(
 
     frnw_col = 8
     frnw_g = fp_network_map(
-        mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+        mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
     )
 
     # covert data type from integer to float for frnw  
@@ -820,7 +820,7 @@ def diffusive_input_data_v02(
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             frj = frj + 1
-            if head_segment not in mainstem_headseg_list:
+            if head_segment not in mainstem_seg_list:
                 qtrib_g[1:,frj] = junction_inflows.loc[head_segment]
                 
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
@@ -834,7 +834,7 @@ def diffusive_input_data_v02(
     # ---------------------------------------------------------------------------------    
     x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
                                                                    ordered_reaches,                                             
-                                                                   mainstem_headseg_list, 
+                                                                   mainstem_seg_list, 
                                                                    topobathy_data_bytw,
                                                                    param_df, 
                                                                    mx_jorder,
