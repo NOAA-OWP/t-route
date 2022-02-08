@@ -1,1 +1,0 @@
-../MC_singleSeg_singleTS/varPrecision.f90
