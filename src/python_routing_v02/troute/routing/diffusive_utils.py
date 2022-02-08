@@ -645,7 +645,6 @@ def diffusive_input_data_v02(
     rchhead_reaches = {}
     rchbottom_reaches = {}
     z_all = {}
-    import pdb; pdb.set_trace()
     for o, rch in jorder_reaches:
         
         # add one more segment(fake) to the end of a list of segments to account for node configuration.
