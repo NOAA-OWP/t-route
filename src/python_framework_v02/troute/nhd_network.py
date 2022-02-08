@@ -490,12 +490,27 @@ def separate_waterbodies(connections, waterbodies):
 def replace_waterbodies_connections(connections, waterbodies):
     """
     Use a single node to represent waterbodies. The node id is the
-    waterbody id.
+    waterbody id. Create a cross walk dictionary that relates lake_ids
+    to the terminal segments within the waterbody footprint.
+    
+    Arguments
+    ---------
+    - connections (dict):
+    - waterbodies (dict): dictionary relating segment linkIDs to the
+                          waterbody lake_id that they lie in
 
-    This returns a new copy of connections with transformation
+    Returns
+    -------
+    - new_conn  (dict): connections dictionary with waterbodies represented by single nodes. 
+                        Waterbody node ids are lake_ids
+    - link_lake (dict): cross walk dictionary where keys area lake_ids and values are lists
+                        of waterbody tailwater nodes (i.e. the nodes connected to the 
+                        waterbody outlet). 
     """
     new_conn = {}
+    link_lake = {}
     waterbody_nets = separate_waterbodies(connections, waterbodies)
+    rconn = reverse_network(connections)
 
     for n in connections:
         if n in waterbodies:
@@ -507,6 +522,8 @@ def replace_waterbodies_connections(connections, waterbodies):
             wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
             outgoing = reservoir_shore(connections, wbody_nodes)
             new_conn[wbody_code] = outgoing
+            
+            link_lake[wbody_code] = list(set(rconn[outgoing[0]]).intersection(set(wbody_nodes)))
 
         elif reservoir_boundary(connections, waterbodies, n):
             # one of the children of n is a member of a waterbody
@@ -521,8 +538,8 @@ def replace_waterbodies_connections(connections, waterbodies):
         else:
             # copy to new network unchanged
             new_conn[n] = connections[n]
-    return new_conn
-
+    
+    return new_conn, link_lake
 
 def build_subnetworks(connections, rconn, min_size, sources=None):
     """

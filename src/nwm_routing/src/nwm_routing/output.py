@@ -22,8 +22,9 @@ def nwm_output_generator(
     return_courant,
     cpu_pool,
     data_assimilation_parameters=False,
-    lastobs_df=None,
-    link_gage_df=None,
+    lastobs_df = None,
+    link_gage_df = None,
+    link_lake_crosswalk = None,
 ):
 
     dt = run.get("dt")
@@ -94,6 +95,11 @@ def nwm_output_generator(
             copy=False,
         )
         
+        # replace waterbody lake_ids with outlet link ids
+        if link_lake_crosswalk:
+            for lake, seg in link_lake_crosswalk.items():
+                flowveldepth.rename(index={lake:seg[0]}, inplace = True)
+        
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
         # flowveldepth.to_pickle(output_parameters['test_output'])
@@ -109,6 +115,11 @@ def nwm_output_generator(
                 ],
                 copy=False,
             )
+            
+            # replace waterbody lake_ids with outlet link ids
+            if link_lake_crosswalk:
+                for lake, seg in link_lake_crosswalk.items():
+                    courant.rename(index={lake:seg[0]}, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 

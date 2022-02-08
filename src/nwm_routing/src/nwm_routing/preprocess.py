@@ -65,11 +65,12 @@ def nwm_network_preprocess(
         break_network_at_waterbodies = False
 
     if break_network_at_waterbodies:
-        connections = nhd_network.replace_waterbodies_connections(
+        connections, link_lake_crosswalk = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
         )
+    else:
+        link_lake_crosswalk = None
 
-    
     LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
 
     ################################
@@ -243,6 +244,7 @@ def nwm_network_preprocess(
                  'waterbody_types_df': waterbody_types_df,
                  'break_network_at_waterbodies': break_network_at_waterbodies,
                  'waterbody_type_specified': waterbody_type_specified,
+                 'link_lake_crosswalk': link_lake_crosswalk,
                  'independent_networks': independent_networks,
                  'reaches_bytw': reaches_bytw,
                  'rconn': rconn,
@@ -281,6 +283,7 @@ def nwm_network_preprocess(
         waterbody_types_df,
         break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
         waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
+        link_lake_crosswalk,
         independent_networks,
         reaches_bytw,
         rconn,
@@ -305,6 +308,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         waterbody_types_df = inputs.get('waterbody_types_df',None)
         break_network_at_waterbodies = inputs.get('break_network_at_waterbodies',None)
         waterbody_type_specified = inputs.get('waterbody_type_specified',None)
+        link_lake_crosswalk = inputs.get('link_lake_crosswalk', None)
         independent_networks = inputs.get('independent_networks',None)
         reaches_bytw = inputs.get('reaches_bytw',None)
         rconn = inputs.get('rconn',None)
@@ -325,6 +329,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         waterbody_types_df,
         break_network_at_waterbodies,
         waterbody_type_specified,
+        link_lake_crosswalk,
         independent_networks,
         reaches_bytw,
         rconn,
