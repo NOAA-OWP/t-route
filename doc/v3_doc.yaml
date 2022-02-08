@@ -385,11 +385,30 @@ compute_parameters:
     # simulations is desired.
     hybrid_parameters:
         # ---------------
+        # boolean paramete whether or not hybrid routing is actived.
+        # If it is set to True, the hybrid routing is activated. If false, 
+        # MC is solely used for channel flow routing.
+        # (!!) mandatory for hybrid simulations
+        run_hybrid_domain:
+        # ---------------
         # filepath to diffusive domain dictionary file. 
         # This file can be either JSON or yaml and contain a dictionary
         # of diffusive network segments, organized by tailwater ID (keys).
         # (!!) mandatory for hybrid simulations
         diffusive_domain:
+        # ---------------
+        # boolean paramete whether or not natural cross section data is used.
+        # If it is set to True, diffusive model use natural cross section data.
+        # If False, diffusive model use synthetic cross section defined by RouteLink.nc
+        # (!!) mandatory for hybrid simulations
+        use_natl_xsections:
+        # ---------------
+        # filepath to topobathy data for channel cross sections. 
+        # This file is currently only NetCDF file format and contain  
+        # topobathy data of a channel cross section defined by comid.
+        # Theoretically, comid is identical to link of RouteLink data.
+        # (!!) mandatory for diffusive routing for natural cross sections.
+        topobathy_domain:
     # ---------------
     # parameters controling model forcings, simulation duration, and simulation time discretization
     # Here, the user has a choice. They can either explicitly list sets of forcing files to be used

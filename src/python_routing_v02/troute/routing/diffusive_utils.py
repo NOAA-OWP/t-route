@@ -52,14 +52,14 @@ def adj_alt1(
 
 
 def fp_network_map(
-    mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+    mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
 ):
     """
     Channel network mapping between Python and Fortran
     
     Parameters
     ----------
-    mainstem_headseg_list - 
+    mainstem_seg_list - (int) a list of link IDs of segments of  mainstem reaches solely for diffusive routing 
     mx_jorder -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     rchbottom_reaches -- (dict) reaches and reach metadata keyed by reach tail segment
@@ -108,7 +108,7 @@ def fp_network_map(
                             i = i + 1
                             frnw_g[frj, 2 + i] = j
                             # find if the selected headseg ID of an upstream reach belong to mainstem segment
-                            if mainstem_headseg_list.count(usrch_hseg_id) > 0:
+                            if mainstem_seg_list.count(usrch_hseg_id) > 0:
                                 r = r+1
                                 usrch_hseg_mainstem_j=j
                                 # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
@@ -387,13 +387,127 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
         
     return nts_db_g, dbcd_g
 
+def fp_naturalxsec_map(
+                ordered_reaches,
+                mainstem_seg_list, 
+                topobathy_data_bytw,
+                param_df, 
+                mx_jorder, 
+                mxncomp_g, 
+                nrch_g,
+                dbfksegID):
+    """
+    natural cross section mapping between Python and Fortran using eHydro_ned_cross_sections data
+    
+    Parameters
+    ----------
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
+    topobathy_data_bytw --  
+    param_df --
+    mx_jorder -- (int) max junction order
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    dbfksegID -- (int) segment ID of fake node (=bottom node) of TW reach that hosts downstream boundary 
+                        condition for a network that is being routed. 
+    
+    Returns
+    -------
+    x_bathy_g -- (numpy of float64s) lateral distance of bathy data points
+    z_bathy_g -- (numpy of float64s) elevation of bathy data points
+    size_bathy_g -- (integer) the nubmer of bathy data points of each cross section
+    mxnbathy_g -- (integer) maximum size of bathy data points
+    
+    Notes
+    -----
+    - In node-configuration, bottom node takes bathy of the first segment of the downtream reach
+      except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
+      with so*0.5*dx 
+    """  
+    
+    if not topobathy_data_bytw.empty:
+        
+        # maximum number of stations along a single cross section
+        mxnbathy_g = topobathy_data_bytw.index.value_counts().max()
+
+        # initialize arrays to store cross section data
+        x_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        z_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        mann_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        size_bathy_g = np.zeros((mxncomp_g, nrch_g), dtype='i4')    
+
+        # loop over reach orders.
+        frj = -1
+        for x in range(mx_jorder, -1, -1):
+
+            # loop through all reaches of order x
+            for head_segment, reach in ordered_reaches[x]:
+                frj = frj + 1
+
+                # list of segments in this reach
+                seg_list = reach["segments_list"]
+
+                # number of segments in this reach
+                ncomp = reach["number_segments"]
+
+                # determine if this reach is part of the mainstem diffusive domain
+                if head_segment in mainstem_seg_list: 
+
+                    # loop through segments in mainstem reach
+                    for seg, segID in enumerate(seg_list):
+
+                        # identify the index in topobathy dataframe that contains
+                        # the data we want for this node.
+                        if seg == ncomp-1 and x > 0: 
+                            
+                            # if last node of a reach, but not the last node in the network
+                            # use cross section of downstream neighbor
+                            seg_idx = reach["downstream_head_segment"][0]
+
+                        elif segID == dbfksegID:
+                            
+                            # if last node of reach AND last node in the network,
+                            # use cross section of upstream neighbor
+                            seg_idx = seg_list[seg-1]
+                            
+                        else:
+                            seg_idx = segID
+                            
+                        # how many stations are in the node cross section?
+                        nstations = len(topobathy_data_bytw.loc[seg_idx])
+                        
+                        # populate cross section size (# of stations) array
+                        size_bathy_g[seg, frj] = nstations
+                        
+                        # populate cross section x, z and mannings n arrays
+                        x_bathy_g[0:nstations, seg, frj]    = topobathy_data_bytw.loc[seg_idx].xid_d
+                        z_bathy_g[0:nstations, seg, frj]    = topobathy_data_bytw.loc[seg_idx].z
+                        mann_bathy_g[0:nstations, seg, frj] = topobathy_data_bytw.loc[seg_idx].n
+                        
+                        # if terminal node of the network, then adjust the cross section z data using
+                        # channel slope and length data
+                        if segID == dbfksegID:
+                            So = param_df.loc[seg_idx].s0
+                            dx = param_df.loc[seg_idx].dx
+                            z_bathy_g[0:nstations, seg, frj] = z_bathy_g[0:nstations, seg, frj] - So * dx   
+   
+    else:
+        
+        # if the bathy dataframe is empty, then pass out empty arrays
+        x_bathy_g    = np.array([]).reshape(0,0,0)
+        z_bathy_g    = np.array([]).reshape(0,0,0)
+        mann_bathy_g = np.array([]).reshape(0,0,0)
+        size_bathy_g = np.array([], dtype = 'i4').reshape(0,0)
+        mxnbathy_g   = int(0)
+    
+    return x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g
 
 def diffusive_input_data_v02(
     tw,
     connections,
     rconn,
     reach_list,
-    mainstem_headseg_list,
+    mainstem_seg_list,
     diffusive_parameters,
     param_df,
     qlat,
@@ -403,6 +517,7 @@ def diffusive_input_data_v02(
     nsteps,
     dt,
     waterbodies_df,
+    topobathy_data_bytw,
 ):
     """
     Build input data objects for diffusive wave model
@@ -520,17 +635,17 @@ def diffusive_input_data_v02(
 #             upstream_flow_array[j,0] = us_iniq
     
     # Order reaches by junction depth
-    path_func = partial(nhd_network.split_at_junction, rconn)
+    path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(junction_inflows.index.to_list()),rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
-    
 
     ordered_reaches = {}
     rchhead_reaches = {}
     rchbottom_reaches = {}
     z_all = {}
+    import pdb; pdb.set_trace()
     for o, rch in jorder_reaches:
         
         # add one more segment(fake) to the end of a list of segments to account for node configuration.
@@ -599,7 +714,7 @@ def diffusive_input_data_v02(
 
     frnw_col = 8
     frnw_g = fp_network_map(
-        mainstem_headseg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+        mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
     )
 
     # covert data type from integer to float for frnw  
@@ -705,33 +820,28 @@ def diffusive_input_data_v02(
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             frj = frj + 1
-            if head_segment not in mainstem_headseg_list:
+            if head_segment not in mainstem_seg_list:
                 qtrib_g[1:,frj] = junction_inflows.loc[head_segment]
                 
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
                 qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']
     
-
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
-    #                 Prepare uniform flow lookup tables
-    # ---------------------------------------------------------------------------------
+    #                 Prepare cross section bathymetry data
+    # ---------------------------------------------------------------------------------    
+    x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
+                                                                   ordered_reaches,                                             
+                                                                   mainstem_seg_list, 
+                                                                   topobathy_data_bytw,
+                                                                   param_df, 
+                                                                   mx_jorder,
+                                                                   mxncomp_g, 
+                                                                   nrch_g,
+                                                                   dbfksegID)
 
-#     nhincr_m_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_main_increment_number", None
-#     )
-#     nhincr_f_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_floodplain_increment_number", None
-#     )
-#     timesdepth_g = diffusive_parameters.get(
-#         "normaldepth_lookuptable_depth_multiplier", None
-#     )
-#     ufqlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-#     ufhlt_m_g = np.zeros((mxncomp_g, nrch_g, nhincr_m_g))
-#     ufqlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
-#     ufhlt_f_g = np.zeros((mxncomp_g, nrch_g, nhincr_f_g))
 
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
@@ -774,7 +884,13 @@ def diffusive_input_data_v02(
     diff_ins["qtrib_g"] = qtrib_g
     
     diff_ins["paradim"] = paradim 
-    diff_ins["para_ar_g"] = para_ar_g   
+    diff_ins["para_ar_g"] = para_ar_g
+    
+    diff_ins["mxnbathy_g"] = mxnbathy_g
+    diff_ins["x_bathy_g"] = x_bathy_g
+    diff_ins["z_bathy_g"] = z_bathy_g
+    diff_ins["mann_bathy_g"] = mann_bathy_g
+    diff_ins["size_bathy_g"] = size_bathy_g    
     
     diff_ins["iniq"] = iniq
 

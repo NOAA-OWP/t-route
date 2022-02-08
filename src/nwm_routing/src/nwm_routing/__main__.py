@@ -882,6 +882,7 @@ def nwm_route(
     waterbody_type_specified,
     diffusive_parameters,
     diffusive_network_data,
+    topobathy_data,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -948,6 +949,7 @@ def nwm_route(
                 da_parameter_dict,
                 diffusive_parameters,
                 waterbodies_df,
+                topobathy_data,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -1095,6 +1097,7 @@ def main_v03(argv):
             rconn,
             link_gage_df,
             diffusive_network_data,
+            topobathy_data,
         ) = unpack_nwm_preprocess_data(
             preprocessing_parameters
         )
@@ -1113,6 +1116,7 @@ def main_v03(argv):
             rconn,
             link_gage_df,
             diffusive_network_data,
+            topobathy_data,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
@@ -1232,6 +1236,7 @@ def main_v03(argv):
             waterbody_type_specified,
             diffusive_parameters,
             diffusive_network_data,
+            topobathy_data,
         )
         
         if showtiming:

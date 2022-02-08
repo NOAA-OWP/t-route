@@ -66,6 +66,11 @@ cdef extern from "pydiffusive.h":
                      double *qtrib_g,
                      int *paradim,
                      double *para_ar_g,
+                     int *mxnbathy_g,
+                     double *x_bathy_g,
+                     double *z_bathy_g,
+                     double *mann_bathy_g,
+                     int *size_bathy_g, 
                      double *q_ev_g,
                      double *elv_ev_g) nogil;
     

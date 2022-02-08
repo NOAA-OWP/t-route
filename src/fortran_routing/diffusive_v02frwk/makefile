@@ -2,7 +2,7 @@
 FC := gfortran
 
 # compile flags
-FCFLAGS = -g -c -O2 -fPIC
+FCFLAGS = -g -c -O2 -fPIC -fbounds-check
 
 diffusive.o: diffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
