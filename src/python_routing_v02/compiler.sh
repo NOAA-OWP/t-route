@@ -26,7 +26,7 @@ export NETCDFINC=/usr/include/openmpi-x86_64/
 
 if  [[ "$build_mc_kernel" == true ]]; then
   #building reach and resevoir kernel files .o
-  cd $REPOROOT/src/fortran_routing/mc_pylink_v00/MC_singleSeg_singleTS/
+  cd $REPOROOT/src/fortran_routing/mc_routing/
   make clean
   make  || exit
   make install || exit
