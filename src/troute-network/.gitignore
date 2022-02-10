@@ -1,0 +1,10 @@
+# Ignore everything in this directory
+libs/*
+# Except for these empty folders
+!libs/.gitkeep
+#
+*.c
+### Needed to build modules ###
+!*mc_reach_structs.c
+!*levelpool_structs.c
+!*reach_structs.c
