@@ -318,6 +318,53 @@ def nwm_network_preprocess(
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
+    import pdb; pdb.set_trace()
+    '''
+    Separate input parameters:
+        - preprocess source file
+    
+    Arguments
+    ---------
+    - preprocessing_parameters (dict): User-input parameters
+    
+    Returns
+    -------
+
+    - connections                   (dict): Model IDs and connected reaches
+    
+    - param_df                      (Pandas DataFrame): Channel data for IDs
+    
+    - wbody_conn                    (datetime): Waterbody IDs and connected reaches
+    
+    - waterbodies_df                (Pandas DataFrame): Last gage observations data for DA
+    
+    - waterbody_types_df            (dict): Data assimilation parameters
+
+    - break_network_at_waterbodies  (bool): Selection to break network at waterbodies
+
+    - waterbody_type_specified      (bool): Selection of waterbody file type
+
+    - link_lake_crosswalk           (Pandas DataFrame): Crosswalk dictionary of IDs
+
+    - independent_networks          (dict): Dictionary of seperated connection networks
+
+    - reaches_bytw                  (dict): Reaches organized by tailwater
+
+    - rconn                         (dict): Reverse of connections 
+
+    - gages                         (Pandas DataFrame): Gage Ids
+
+    - diffusive_network_data        (Pandas DataFrame): Diffusive network data
+
+    - topobathy_data                (Pandas DataFrame): Topobathy data 
+    
+
+    '''
+
+    #----------------------------------------------------------------------------
+    # Assemble waterbody initial states (outflow and pool elevation
+    #----------------------------------------------------------------------------
+    
     
     preprocess_filepath = preprocessing_parameters.get('preprocess_source_file',None)
     if preprocess_filepath:

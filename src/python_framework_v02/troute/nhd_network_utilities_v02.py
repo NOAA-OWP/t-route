@@ -767,7 +767,23 @@ def build_qlateral_array(
 
 
 def build_parity_sets(parity_parameters, run_sets):
+    '''
+    Builds parity sets for comparison against results:
+        - preprocess source file
     
+    Arguments
+    ---------
+    - parity_parameters (dict): User-input parameters including comparison ID 
+    - run_sets (list): List of dictionary values to be computed as model runs
+    
+    Returns
+    -------
+
+    - parity_sets                   (list): List of dictionary values to compare against run set results
+    
+
+
+    '''
     parity_sets = parity_parameters.get("parity_check_compare_file_sets", None)
     
     if parity_sets:

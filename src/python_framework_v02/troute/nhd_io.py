@@ -58,6 +58,41 @@ def read_mask(path, layer_string=None):
 
 
 def read_custom_input_new(custom_input_file):
+    '''
+    Separate yaml inputs:
+        - preprocess source file
+    
+    Arguments
+    ---------
+    - custom_input_file (yaml): User-input file
+    
+    Returns
+    -------
+
+    - log_parameters                   (dict): parameters controling logging messages throughout execution
+    
+    - preprocessing_parameters                      (dict): Parameters controlling the creation and use of preprocessed network graph data
+    
+    - supernetwork_parameters                    (dict): Parameters controlling the creation of network
+    
+    - waterbody_parameters                (dict): Parameters specifying how (if) waterbodies are handled
+    
+    - compute_parameters            (dict): parameters specific to the routing simulation
+
+    - forcing_parameters  (dict): parameters controling model forcings, simulation duration, and simulation time discretization
+
+    - restart_parameters      (dict): parameters specifying warm-state simulation conditions
+
+    - diffusive_parameters           (dict): parameters specifying diffusive simulation conditions
+
+    - output_parameters          (dict): parameters controlling model outputs
+
+    - parity_parameters                  (dict): parameters controlling model parity check
+
+    - data_assimilation_parameters                         (dict): parameters controlling data assimilation scheme
+    
+
+    '''   
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
@@ -101,6 +136,20 @@ def read_custom_input_new(custom_input_file):
     )
 
 def read_diffusive_domain(domain_file):
+    '''
+    Reads diffusive inputs:
+        - preprocess domain_file file
+    
+    Arguments
+    ---------
+    - domain_file (yaml): User-input diffusive file
+    
+    Returns
+    -------
+
+    - data                   (dict): diffusive inputs
+
+    '''   
     if domain_file[-4:] == "yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
@@ -629,7 +678,26 @@ def write_chrtout(
     qts_subdivisions,
     cpu_pool,
 ):
+    '''
+    Write chrtout files:
     
+    Arguments
+    ---------
+    - flowveldepth (Pandas DataFrame): Model output
+
+    - chrtout_files (ncdf): Source chrtout files
+
+    - qts_subdivisions (int): The number of routing simulation timesteps per qlateral time interval. 
+
+    - cpu_pool (int): The number of cpus being used to compute the model 
+    
+    Returns
+    -------
+
+    - chrtout_files                   (ncdf): Source chrtout files with appended troute values
+    
+    
+    '''       
     LOG.debug("Starting the write_chrtout function") 
     
     # count the number of simulated timesteps
@@ -1484,6 +1552,18 @@ def get_reservoir_restart_from_wrf_hydro(
 
 
 def build_coastal_dataframe(coastal_boundary_elev):
+    '''
+    Builds coastal dataframe 
+    
+    Arguments
+    -----------
+        coastal_boundary_elev (string): File path to coastal_boundary_elev file
+        
+    Returns
+    ----------
+        coastal_df (DataFrame): coastal dataframe 
+
+    '''    
     coastal_df = pd.read_csv(
         coastal_boundary_elev, sep="  ", header=None, engine="python"
     )
@@ -1491,6 +1571,18 @@ def build_coastal_dataframe(coastal_boundary_elev):
 
 
 def build_coastal_ncdf_dataframe(coastal_ncdf):
+    '''
+    Builds coastal dataframe 
+    
+    Arguments
+    -----------
+        coastal_ncdf (ncdf): File path to coastal_ncdf file
+        
+    Returns
+    ----------
+        coastal_ncdf_df (DataFrame): coastal ncdf dataframe 
+
+    '''    
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
