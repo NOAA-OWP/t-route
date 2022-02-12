@@ -523,7 +523,7 @@ def replace_waterbodies_connections(connections, waterbodies):
             outgoing = reservoir_shore(connections, wbody_nodes)
             new_conn[wbody_code] = outgoing
             
-            link_lake[wbody_code] = list(set(rconn[outgoing[0]]).intersection(set(wbody_nodes)))
+            link_lake[wbody_code] = list(set(rconn[outgoing[0]]).intersection(set(wbody_nodes)))[0]
 
         elif reservoir_boundary(connections, waterbodies, n):
             # one of the children of n is a member of a waterbody
