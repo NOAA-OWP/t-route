@@ -97,8 +97,19 @@ def nwm_output_generator(
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
-            for lake, seg in link_lake_crosswalk.items():
-                flowveldepth.rename(index={lake:seg[0]}, inplace = True)
+            
+            # evaluate intersection of lakeids and flowveldpeth index values
+            # i.e. what are the index positions of lake IDs that need replacing?
+            lakeids = np.fromiter(link_lake_crosswalk.keys(), dtype = int)
+            fvdidxs = flowveldepth.index.to_numpy()
+            lake_index_intersect = np.intersect1d(fvdidxs, lakeids, return_indices = True)
+            
+            # replace lake IDs with segment IDs in the flowveldepth index array
+            segids = np.fromiter(link_lake_crosswalk.values(), dtype = int)
+            fvdidxs[lake_index_intersect[1]] = segids
+            
+            # (re) set the flowveldepth index
+            flowveldepth.set_index(fvdidxs, inplace = True)
         
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
@@ -118,8 +129,9 @@ def nwm_output_generator(
             
             # replace waterbody lake_ids with outlet link ids
             if link_lake_crosswalk:
-                for lake, seg in link_lake_crosswalk.items():
-                    courant.rename(index={lake:seg[0]}, inplace = True)
+                
+                # (re) set the flowveldepth index
+                courant.set_index(fvdidxs, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
 
