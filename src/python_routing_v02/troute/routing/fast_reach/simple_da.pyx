@@ -1,4 +1,4 @@
-from libc.math cimport exp, isnan, NAN
+from libc.math cimport exp, isnan, NAN, fabs
 from libc.stdio cimport printf
 
 cpdef float simple_da_with_decay_py(
@@ -119,7 +119,7 @@ cdef float obs_persist_shift(
     """
 
     cdef float da_weight, da_shift, da_weighted_shift
-    da_weight = exp(minutes_since_last_valid/-decay_coeff)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
+    da_weight = exp(fabs(minutes_since_last_valid)/-decay_coeff)  # TODO: This could be pre-calculated knowing when obs finish relative to simulation time
     # TODO: we need to be able to export these values to compute the 'Nudge'
     # One possibility would be to return only the nudge from this function...
     da_shift = last_valid_obs - model_val
