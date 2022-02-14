@@ -21,7 +21,7 @@ import logging
 from .log_level_set import log_level_set
 
 
-from .input import _input_handler_v02, _input_handler_v03
+from .input import _input_handler_v03
 from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
