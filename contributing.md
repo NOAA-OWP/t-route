@@ -189,9 +189,7 @@ ____
 
 ### 8. Tinker in your development branches. 
 In your local development branches, explore the code, make changes, 
-and tinker at will. Try out one of the notebooks or execute one of 
-the `src/python_framework` or `src/python_routing` files --
-most have a test script built in. **Be creative!**
+and tinker at will. **Be creative!**
 
 ____
 

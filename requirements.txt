@@ -7,4 +7,3 @@ netcdf4
 pyyaml
 toolz
 joblib
-dask
