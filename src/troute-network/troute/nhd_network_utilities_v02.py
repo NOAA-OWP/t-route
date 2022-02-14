@@ -1,18 +1,18 @@
 import json
 import pathlib
-import pandas as pd
 from functools import partial
 from datetime import datetime, timedelta
-from joblib import delayed, Parallel
-import netCDF4
-import numpy as np
-# TODO: Consider nio and nnw as aliases for these modules...
-import troute.nhd_io as nhd_io
-import troute.nhd_network as nhd_network
 import logging
 
-LOG = logging.getLogger('')
+import pandas as pd
+import numpy as np
+import netCDF4
+from joblib import delayed, Parallel
 
+import troute.nhd_io as nhd_io
+import troute.nhd_network as nhd_network
+
+LOG = logging.getLogger('')
 
 def set_supernetwork_parameters(
     supernetwork="", geo_input_folder=None, verbose=True, debuglevel=0
