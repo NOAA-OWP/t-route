@@ -69,10 +69,14 @@ def nwm_network_preprocess(
         
         if domain_file and run_hybrid:
             
+            LOG.info('reading diffusive domain extent for MC/Diffusive hybrid simulation')
+            
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
             if topobathy_file and use_topobathy:
+                
+                LOG.debug('Natural cross section data are provided.')
                 
                 # read topobathy domain netcdf file, set index to 'comid'
                 # TODO: replace 'comid' with a user-specified indexing variable name.
@@ -86,7 +90,7 @@ def nwm_network_preprocess(
                 
             else:
                 topobathy_data = pd.DataFrame()
-                LOG.debug('No natural cross section topobathy data provided.')
+                LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on complex trapezoidal geometry.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
@@ -95,14 +99,14 @@ def nwm_network_preprocess(
             diffusive_domain = None
             diffusive_network_data = None
             topobathy_data = pd.DataFrame()
-            LOG.debug('No diffusive domain file spefified in configuration file.')
+            LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
     else:
         diffusive_domain = None
         diffusive_network_data = None
         topobathy_data = pd.DataFrame()
+        LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
 
     LOG.info("creating supernetwork connections set")
-
     start_time = time.time()
 
     # STEP 1: Build basic network connections graph,
@@ -337,15 +341,14 @@ def nwm_network_preprocess(
             )
             quit()
 
-    import pdb; pdb.set_trace()
     return (
         connections,
         param_df,
         wbody_conn,
         waterbodies_df,
         waterbody_types_df,
-        break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
-        waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
+        break_network_at_waterbodies,  
+        waterbody_type_specified, 
         link_lake_crosswalk,
         independent_networks,
         reaches_bytw,
