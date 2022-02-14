@@ -261,7 +261,6 @@ def main_v03(argv):
     ) = _input_handler_v03(args)
    
     showtiming = log_parameters.get("showtiming", None)
-    
     if showtiming:
         task_times = {}
         task_times['initial_condition_time'] = 0
@@ -272,8 +271,12 @@ def main_v03(argv):
 
     if showtiming:
         network_start_time = time.time()
-        
+
+    # Build routing network data objects. Network data objects specify river 
+    # network connectivity, channel geometry, and waterbody parameters.
     if preprocessing_parameters.get('use_preprocessed_data', False): 
+        
+        # get data from pre-processed file
         (
             connections,
             param_df,
@@ -293,6 +296,8 @@ def main_v03(argv):
             preprocessing_parameters
         )
     else:
+        
+        # build data objects from scratch
         (
             connections,
             param_df,
