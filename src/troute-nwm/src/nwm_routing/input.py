@@ -17,11 +17,35 @@ if ENV_IS_CL:
 elif not ENV_IS_CL:
     root = pathlib.Path("../../").resolve()
 
-
+#-------------------------------------------------------------------------------
 def _input_handler_v03(args):
+    '''
+    Read user inputs from configuration file and set logging level
+    
+    Arguments
+    ---------
+    Args (argparse.Namespace): Command line input arguments
+    
+    Returns
+    -------
+    log_parameters               (dict): Input parameters re logging
+    preprocessing_parameters     (dict): Input parameters re preprocessing
+    supernetwork_parameters      (dict): Input parameters re network extent
+    waterbody_parameters         (dict): Input parameters re waterbodies
+    compute_parameters           (dict): Input parameters re computation settings
+    forcing_parameters           (dict): Input parameters re model forcings
+    restart_parameters           (dict): Input parameters re model restart
+    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    output_parameters            (dict): Input parameters re output writing
+    parity_parameters            (dict): Input parameters re parity assessment
+    data_assimilation_parameters (dict): Input parameters re data assimilation
 
+    '''
+    
+    # get name of user configuration file (e.g. test.yaml)
     custom_input_file = args.custom_input_file
     
+    # read data from user configuration file
     (
         log_parameters,
         preprocessing_parameters,
