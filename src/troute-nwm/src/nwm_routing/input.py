@@ -21,36 +21,20 @@ elif not ENV_IS_CL:
 def _input_handler_v03(args):
 
     custom_input_file = args.custom_input_file
-    log_parameters = {}
-    supernetwork_parameters = None
-    preprocessing_parameters = {}
-    waterbody_parameters = {}
-    compute_parameters = {}
-    forcing_parameters = {}
-    restart_parameters = {}
-    output_parameters = {}
-    parity_parameters = {}
-    data_assimilation_parameters = {}
-    diffusive_parameters = {}
     
-    if custom_input_file:
-        (
-            log_parameters,
-            preprocessing_parameters,
-            supernetwork_parameters,
-            waterbody_parameters,
-            compute_parameters,
-            forcing_parameters,
-            restart_parameters,
-            diffusive_parameters,
-            output_parameters,
-            parity_parameters,
-            data_assimilation_parameters,
-        ) = nhd_io.read_custom_input_new(custom_input_file)
-    else:
-        # TODO: clean _main_.py to remove command line argument comprehension
-        LOG.error("CLI input no longer supported")
-        raise RuntimeError
+    (
+        log_parameters,
+        preprocessing_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        diffusive_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    ) = nhd_io.read_custom_input_new(custom_input_file)
 
     log_level_set(log_parameters)
     LOG = logging.getLogger('')
