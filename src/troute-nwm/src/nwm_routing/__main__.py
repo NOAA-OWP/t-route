@@ -43,7 +43,7 @@ def _handle_args_v03(argv):
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
-        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+        help="Path of a .yaml or .json file containing model configuration parameters. See doc/v3_doc.yaml",
     )
     return parser.parse_args(argv)
 
