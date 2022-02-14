@@ -57,7 +57,7 @@ def _input_handler_v03(args):
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
-    ) = nhd_io.read_custom_input_new(custom_input_file)
+    ) = nhd_io.read_config_file(custom_input_file)
 
     log_level_set(log_parameters)
     LOG = logging.getLogger('')

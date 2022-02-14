@@ -56,7 +56,7 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
-def read_custom_input_new(custom_input_file):
+def read_config_file(custom_input_file):
     '''
     Read-in data from user-created configuration file.
     
