@@ -1,18 +1,18 @@
 import time
-import pandas as pd
 import pathlib
-import numpy as np
-import pathlib
-import xarray as xr
+import logging
 from datetime import datetime
 from collections import defaultdict
+
+import pandas as pd
+import numpy as np
+import xarray as xr
+
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
-import logging
 
 LOG = logging.getLogger('')
-
 
 def nwm_network_preprocess(
     supernetwork_parameters,
@@ -21,6 +21,43 @@ def nwm_network_preprocess(
     compute_parameters,
     data_assimilation_parameters,
 ):
+    '''
+    Creation of routing network data objects. Logical ordering of lower-level
+    function calls that build individual network data objects.
+    
+    Arguments
+    ---------
+    supernetwork_parameters      (dict): user input data re network extent
+    waterbody_parameters         (dict): user input data re waterbodies
+    preprocessing_parameters     (dict): user input data re preprocessing
+    compute_parameters           (dict): user input data re compute configuration
+    data_assimilation_parameters (dict): user input data re data assimilation
+    
+    Returns
+    -------
+    connections                 (dict of int: [int]): {segment id: [downsteram adjacent segment ids]}
+    param_df                             (DataFrame): Hydraulic geometry and roughness parameters, by segment
+    wbody_conn                    (dict of int: int): {segment id: associated lake id}
+    waterbodies_df                       (DataFrame): Waterbody (reservoir) parameters
+    waterbody_types_df                   (DataFrame): Waterbody type codes (1 - levelpool, 2 - USGS, 3 - USACE, 4 - RFC)
+    break_network_at_waterbodies              (bool): If True, waterbodies occpy reaches of their own
+    waterbody_type_specified                  (bool): If True, more than just levelpool waterbodies exist
+    link_lake_crosswalk           (dict of int: int): {lake id: outlet segment id}
+    independent_networks (dict of int: {int: [int]}): {tailwater id: {segment id: [upstream adjacent segment ids]}}
+    reaches_bytw              (dict of int: [[int]]): {tailwater id: list or reach lists}
+    rconn                       (dict of int: [int]): {segment id: [upstream adjacent segment ids]}
+    pd.DataFrame.from_dict(gages)        (DataFrame): Gage ids and corresponding segment ids at which they are located
+    diffusive_network_data            (dict or None): Network data objects for diffusive domain
+    topobathy_data                       (DataFrame): Natural cross section data for diffusive domain
+    
+    Notes
+    -----
+    - waterbody_type_specified is likely an excessive return and can be removed and inferred from the 
+      contents of waterbody_types_df
+    - The values of the link_lake_crosswalk dictionary are the downstream-most segments within 
+      the waterbody extent to which waterbody data are written. They are NOT the first segments 
+      downsteram of the waterbody 
+    '''
 
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
@@ -300,6 +337,7 @@ def nwm_network_preprocess(
             )
             quit()
 
+    import pdb; pdb.set_trace()
     return (
         connections,
         param_df,
