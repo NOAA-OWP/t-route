@@ -16,6 +16,8 @@ LOG = logging.getLogger('')
 
 def build_connections(supernetwork_parameters):
     
+    # crosswalking dictionary between variables names in input dataset and 
+    # variable names recognized by troute.routing module.
     cols = supernetwork_parameters.get(
         'columns', 
         {
@@ -36,14 +38,22 @@ def build_connections(supernetwork_parameters):
         'cs'        : 'ChSlp',
         }
     )
+    
+    # numeric code used to indicate network terminal segments
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
-    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
-    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
 
+    # read parameter dataframe 
     param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
 
+    # select the column names specified in the values in the cols dict variable
     param_df = param_df[list(cols.values())]
+    
+    # rename dataframe columns to keys in the cols dict variable
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+    
+    # handle synthetic waterbody segments
+    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
     if synthetic_wb_segments:
         # rename the current key column to key32
         key32_d = {"key":"key32"}
@@ -55,8 +65,10 @@ def build_connections(supernetwork_parameters):
         fix_idx = param_df.key.isin(set(synthetic_wb_segments))
         param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
 
-    param_df = param_df.set_index("key")
+    # set parameter dataframe index as segment id number, sort
+    param_df = param_df.set_index("key").sort_index()
 
+    # get and apply domain mask
     if "mask_file_path" in supernetwork_parameters:
         data_mask = nhd_io.read_mask(
             pathlib.Path(supernetwork_parameters["mask_file_path"]),
@@ -64,24 +76,6 @@ def build_connections(supernetwork_parameters):
         )
         data_mask = data_mask.set_index(data_mask.columns[0])
         param_df = param_df.filter(data_mask.index, axis=0)
-
-    # Rename parameter columns to standard names: from route-link names
-    #        key: "link"
-    #        downstream: "to"
-    #        dx: "Length"
-    #        n: "n"  # TODO: rename to `manningn`
-    #        ncc: "nCC"  # TODO: rename to `mannningncc`
-    #        s0: "So"  # TODO: rename to `bedslope`
-    #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
-    #        waterbody: "NHDWaterbodyComID"
-    #        gages: "gages"
-    #        tw: "TopWdth"  # TODO: rename to `topwidth`
-    #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-    #        alt: "alt"
-    #        musk: "MusK"
-    #        musx: "MusX"
-    #        cs: "ChSlp"  # TODO: rename to `sideslope`
-    param_df = param_df.sort_index()
 
     # TODO: Do we need this second, identical call to the one above?
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
