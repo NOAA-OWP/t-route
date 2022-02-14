@@ -56,14 +56,37 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
-
 def read_custom_input_new(custom_input_file):
+    '''
+    Read-in data from user-created configuration file.
+    
+    Arguments
+    ---------
+    custom_input_file (str): configuration filepath, either .yaml or .json
+    
+    Returns
+    -------
+    log_parameters               (dict): Input parameters re logging
+    preprocessing_parameters     (dict): Input parameters re preprocessing
+    supernetwork_parameters      (dict): Input parameters re network extent
+    waterbody_parameters         (dict): Input parameters re waterbodies
+    compute_parameters           (dict): Input parameters re computation settings
+    forcing_parameters           (dict): Input parameters re model forcings
+    restart_parameters           (dict): Input parameters re model restart
+    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    output_parameters            (dict): Input parameters re output writing
+    parity_parameters            (dict): Input parameters re parity assessment
+    data_assimilation_parameters (dict): Input parameters re data assimilation
+
+    '''
+    
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
     else:
         with open(custom_input_file) as custom_file:
             data = json.load(custom_file)
+      
     log_parameters = data.get("log_parameters", {})
     network_topology_parameters = data.get("network_topology_parameters", None)
     supernetwork_parameters = network_topology_parameters.get(
@@ -71,10 +94,10 @@ def read_custom_input_new(custom_input_file):
     )
     preprocessing_parameters = network_topology_parameters.get(
         "preprocessing_parameters", {}
+    )        
+    waterbody_parameters = network_topology_parameters.get(
+        "waterbody_parameters", None
     )
-    if not preprocessing_parameters:
-        preprocessing_parameters = {}
-    waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
     restart_parameters = compute_parameters.get("restart_parameters", {})
@@ -85,7 +108,6 @@ def read_custom_input_new(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
 
-    # TODO: add error trapping for potentially missing files
     return (
         log_parameters,
         preprocessing_parameters,

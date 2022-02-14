@@ -17,7 +17,6 @@ if ENV_IS_CL:
 elif not ENV_IS_CL:
     root = pathlib.Path("../../").resolve()
 
-#-------------------------------------------------------------------------------
 def _input_handler_v03(args):
     '''
     Read user inputs from configuration file and set logging level
