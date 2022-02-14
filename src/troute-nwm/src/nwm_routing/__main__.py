@@ -241,11 +241,11 @@ def new_lastobs(run_results, time_increment):
 
 def main_v03(argv):
     """
-    Handles the creation of the input parameter dictionaries
-    from an input file and then sequences the execution of the
-    t-route routing agorithm on a series of execution loops.
+    High level orchestration of t-route simulations for NWM application
     """
     args = _handle_args_v03(argv)
+    
+    # unpack user inputs
     (
         log_parameters,
         preprocessing_parameters,
