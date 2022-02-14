@@ -515,10 +515,7 @@ def write_chanobs(
                     dimensions = ("time", "feature_id"),
                     fill_value = np.nan
                 )
-            y[:] = gage_flow_data.reshape(
-                len(gage_flow_time),
-                len(gage_feature_id)
-            )
+            y[:] = gage_flow_data.T
 
             # =========== GLOBAL ATTRIBUTES ===============  
             f.setncatts(
@@ -545,10 +542,7 @@ def write_chanobs(
                 calendar = "gregorian"
             )
 
-            flow_new = gage_flow_data.reshape(
-                len(gage_flow_time),
-                len(gage_feature_id)
-            )
+            flow_new = gage_flow_data.T
             
             # =========== append new flow data =============== 
             tshape = len(f.dimensions['time'])
