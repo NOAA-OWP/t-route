@@ -1,28 +1,25 @@
 import zipfile
+import json
+import sys
+import math
+import pathlib
+import time
+import logging
+from datetime import *
+
+import yaml
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
-import json
-import yaml
 import numpy as np
 from toolz import compose
-import dask.array as da
-import sys
-import math
-from datetime import *
-import pathlib
 import netCDF4
-import time
-import logging
 from joblib import delayed, Parallel
 from cftime import date2num
 
-
-
-LOG = logging.getLogger('')
-
 from troute.nhd_network import reverse_dict
 
+LOG = logging.getLogger('')
 
 def read_netcdf(geo_file_path):
     '''
