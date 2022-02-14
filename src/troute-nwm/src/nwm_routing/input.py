@@ -59,11 +59,12 @@ def _input_handler_v03(args):
         data_assimilation_parameters,
     ) = nhd_io.read_config_file(custom_input_file)
 
+    # configure python logger
     log_level_set(log_parameters)
     LOG = logging.getLogger('')
 
+    # if log level is at or below DEBUG, then check user inputs
     if LOG.level <= 10: # DEBUG
-        # don't forget to add input checks on user's preprocessing_parameters
         check_inputs(
                 log_parameters,
                 preprocessing_parameters,
@@ -77,6 +78,7 @@ def _input_handler_v03(args):
                 parity_parameters,
                 data_assimilation_parameters
                 )
+        
     return (
         log_parameters,
         preprocessing_parameters,
