@@ -139,6 +139,19 @@ def read_config_file(custom_input_file):
     )
 
 def read_diffusive_domain(domain_file):
+    '''
+    Read diffusive domain data from .ymal or .json file.
+    
+    Arguments
+    ---------
+    domain_file (str or pathlib.Path): Path of diffusive domain file
+    
+    Returns
+    -------
+    data (dict int: [int]): domain tailwater segments: list of segments in domain 
+                            (includeing tailwater segment) 
+    
+    '''
     if domain_file[-4:] == "yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
