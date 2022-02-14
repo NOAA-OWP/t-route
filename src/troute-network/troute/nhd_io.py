@@ -25,6 +25,22 @@ from troute.nhd_network import reverse_dict
 
 
 def read_netcdf(geo_file_path):
+    '''
+    Open a netcdf file with xarray and convert to dataframe
+    
+    Arguments
+    ---------
+    geo_file_path (str or pathlib.Path): netCDF filepath
+    
+    Returns
+    -------
+    ds.to_dataframe() (DataFrame): netCDF contents
+    
+    Notes
+    -----
+    - When handling large volumes of netCDF files, xarray is not the most efficient.
+    
+    '''
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
