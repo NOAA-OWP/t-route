@@ -7,15 +7,7 @@ from datetime import *
 from .log_level_set import log_level_set
 import logging
 
-
 LOG = logging.getLogger('')
-
-# FIXME
-ENV_IS_CL = False
-if ENV_IS_CL:
-    root = pathlib.Path("/", "content", "t-route")
-elif not ENV_IS_CL:
-    root = pathlib.Path("../../").resolve()
 
 def _input_handler_v03(args):
     '''
