@@ -1,11 +1,11 @@
-import pathlib
 import sys
-import troute.nhd_network_utilities_v02 as nnu
-import troute.nhd_io as nhd_io
-import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-from datetime import *
-from .log_level_set import log_level_set
+import pathlib
 import logging
+from datetime import *
+
+import troute.nhd_io as nhd_io
+import troute.nhd_network_utilities_v02 as nnu
+from .log_level_set import log_level_set
 
 LOG = logging.getLogger('')
 
