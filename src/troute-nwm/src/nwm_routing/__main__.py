@@ -1,25 +1,15 @@
 import argparse
 import time
+import math
+import asyncio
+import logging
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
-import numpy as np
-import pandas as pd
-import math
-
-import asyncio
 import concurrent.futures
 
-## network and reach utilities
-import troute.nhd_network as nhd_network
-import troute.nhd_io as nhd_io
-import troute.nhd_network_utilities_v02 as nnu
-import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-
-import troute.routing.diffusive_utils as diff_utils
-import logging
-from .log_level_set import log_level_set
-
+import numpy as np
+import pandas as pd
 
 from .input import _input_handler_v03
 from .preprocess import (
@@ -29,13 +19,19 @@ from .preprocess import (
     unpack_nwm_preprocess_data,
 )
 from .output import nwm_output_generator
-
+from .log_level_set import log_level_set
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
+import troute.nhd_network as nhd_network
+import troute.nhd_io as nhd_io
+import troute.nhd_network_utilities_v02 as nnu
+import troute.routing.diffusive_utils as diff_utils
 
-#needed for v03 looping when a new instance occurs
 LOG = logging.getLogger('')
 
 def _handle_args_v03(argv):
+    '''
+    Handle command line input argument - filepath of configuration file
+    '''
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
