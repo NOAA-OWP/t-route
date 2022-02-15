@@ -77,10 +77,11 @@ def build_connections(supernetwork_parameters):
         data_mask = data_mask.set_index(data_mask.columns[0])
         param_df = param_df.filter(data_mask.index, axis=0)
 
+    # map segment ids to waterbody ids
     wbodies = {}
     if "waterbody" in cols:
-        wbodies = build_waterbodies(
-            param_df[["waterbody"]], supernetwork_parameters, "waterbody"
+        wbodies = nhd_network.extract_waterbody_connections(
+            param_df[["waterbody"]]
         )
         param_df = param_df.drop("waterbody", axis=1)
 
@@ -109,29 +110,6 @@ def build_connections(supernetwork_parameters):
 
     # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages
-
-
-def build_waterbodies(
-    segment_reservoir_df,
-    supernetwork_parameters,
-    waterbody_crosswalk_column="waterbody",
-):
-    """
-    segment_reservoir_list
-    supernetwork_parameters
-    waterbody_crosswalk_column
-    """
-    wbody_conn = nhd_network.extract_waterbody_connections(
-        segment_reservoir_df,
-        waterbody_crosswalk_column,
-        supernetwork_parameters.get('waterbody_null_code', -9999),
-    )
-
-    # TODO: Add function to read LAKEPARM.nc here
-    # TODO: return the lakeparam_df
-
-    return wbody_conn
-
 
 def organize_independent_networks(connections, wbodies=None):
 
