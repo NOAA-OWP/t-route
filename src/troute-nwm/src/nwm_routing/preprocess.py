@@ -59,6 +59,9 @@ def nwm_network_preprocess(
       downsteram of the waterbody 
     '''
 
+    #============================================================================
+    # Establish diffusive domain for MC/diffusive hybrid simulations
+    
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
         
@@ -105,12 +108,13 @@ def nwm_network_preprocess(
         diffusive_network_data = None
         topobathy_data = pd.DataFrame()
         LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
-
-    LOG.info("creating supernetwork connections set")
+    
+    #============================================================================
+    # Build network connections graph, assemble parameter dataframe, 
+    # establish segment-waterbody, and segment-gage mappings
+    LOG.info("creating network connections graph")
     start_time = time.time()
-
-    # STEP 1: Build basic network connections graph,
-    # read network parameters, identify waterbodies and gages, if any.
+    
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
@@ -122,11 +126,14 @@ def nwm_network_preprocess(
         "break_network_at_gages", False
     )
 
-    if (
-        not wbody_conn
-    ):  # Turn off any further reservoir processing if the network contains no waterbodies
+    if not wbody_conn: 
+        # Turn off any further reservoir processing if the network contains no 
+        # waterbodies
         break_network_at_waterbodies = False
 
+    # if waterbodies are being simulated, udjust the connections graph so that 
+    # waterbodies are collapsed to single nodes. Also, build a mapping between 
+    # waterbody outlet segments and lake ids
     if break_network_at_waterbodies:
         connections, link_lake_crosswalk = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -134,9 +141,9 @@ def nwm_network_preprocess(
     else:
         link_lake_crosswalk = None
 
-    LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
+    LOG.debug("network connections graph created in %s seconds." % (time.time() - start_time))
 
-    ################################
+    #============================================================================
     ## STEP 3a: Read waterbody parameter file
     # waterbodies_values = supernetwork_values[12]
     # waterbodies_segments = supernetwork_values[13]
