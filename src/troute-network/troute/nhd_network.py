@@ -9,47 +9,17 @@ def reverse_dict(d):
     """
     Reverse a 1-1 mapping
     Values must be hashable!
+    
+    Arguments:
+    ----------
+    d (dict): Dictionary to be reversed
+    
+    Returns
+    -------
+    (dict): reversed dictionary
+    
     """
     return {v: k for k, v in d.items()}
-
-
-def nodes(N):
-    yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
-
-
-def edges(N):
-    for i, v in N.items():
-        for j in v:
-            yield (i, j)
-
-
-def in_degrees(N):
-    """
-    Compute indegree of nodes in N.
-
-    Args:
-        N (dict): Network
-
-    Returns:
-
-    """
-    degs = Counter(chain.from_iterable(N.values()))
-    degs.update(dict.fromkeys(headwaters(N), 0))
-    return degs
-
-
-def out_degrees(N):
-    """
-    Compute outdegree of nodes in N
-
-    Args:
-        N (dict): Network
-
-    Returns:
-
-    """
-    return in_degrees(reverse_network(N))
-
 
 def extract_connections(rows, target_col, terminal_codes=None):
     '''
