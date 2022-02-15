@@ -102,6 +102,8 @@ def build_connections(supernetwork_parameters):
     terminal_codes = terminal_codes | set(
         param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
     )
+    
+    # build connections dictionary
     connections = nhd_network.extract_connections(
         param_df, "downstream", terminal_codes=terminal_codes
     )
@@ -109,7 +111,6 @@ def build_connections(supernetwork_parameters):
 
     param_df = param_df.astype("float32")
 
-    # datasub = data[['dt', 'bw', 'tw', 'twcc', 'dx', 'n', 'ncc', 'cs', 's0']]
     return connections, param_df, wbodies, gages
 
 def organize_independent_networks(connections, wbodies=None):

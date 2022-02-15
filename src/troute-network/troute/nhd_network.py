@@ -52,16 +52,20 @@ def out_degrees(N):
 
 
 def extract_connections(rows, target_col, terminal_codes=None):
-    """Extract connection network from dataframe.
+    '''
+    Extract connection network from dataframe.
 
     Arguments:
-        rows (DataFrame): Dataframe indexed by key_col.
-        key_col (str): Source of each edge
-        target_col (str): Target of edge
+    ----------
+    rows (DataFrame): Dataframe indexed by key_col.
+    key_col    (str): Source of each edge
+    target_col (str): Target of edge
 
     Returns:
-        (dict)
-    """
+    --------
+    network (dict, int: [int]): {segment id: [list of downstream adjacent segment ids]}
+    
+    '''
     if terminal_codes is not None:
         terminal_codes = set(terminal_codes)
     else:
