@@ -106,7 +106,7 @@ def nwm_output_generator(
             
             # replace lake IDs with segment IDs in the flowveldepth index array
             segids = np.fromiter(link_lake_crosswalk.values(), dtype = int)
-            fvdidxs[lake_index_intersect[1]] = segids
+            fvdidxs[lake_index_intersect[1]] = segids[lake_index_intersect[2]]
             
             # (re) set the flowveldepth index
             flowveldepth.set_index(fvdidxs, inplace = True)
