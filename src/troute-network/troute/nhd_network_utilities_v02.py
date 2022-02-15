@@ -77,9 +77,6 @@ def build_connections(supernetwork_parameters):
         data_mask = data_mask.set_index(data_mask.columns[0])
         param_df = param_df.filter(data_mask.index, axis=0)
 
-    # TODO: Do we need this second, identical call to the one above?
-    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
-
     wbodies = {}
     if "waterbody" in cols:
         wbodies = build_waterbodies(
