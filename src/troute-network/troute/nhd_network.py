@@ -89,16 +89,38 @@ def extract_waterbody_connections(rows, target_col = 'waterbody', waterbody_null
     
     Returns
     -------
-    wbody_seg_map (dict, int: int): {segment id: lake id}
+    wbody_map (dict, int: int): {segment id: lake id}
     
     '''    
     
-    wbody_seg_map = (rows.loc[rows[target_col] != waterbody_null, target_col].
+    wbody_map = (rows.loc[rows[target_col] != waterbody_null, target_col].
                      astype("int").
                      to_dict()
                     )
     
-    return wbody_seg_map
+    return wbody_map
+
+
+def gage_mapping(segment_gage_df, gage_col="gages"):
+    """
+    Extract gage mapping from parameter dataframe. Mapping segment ids to gage ids
+    
+    Arguments
+    ---------
+    segment_gage_df (DataFrame): Gage id codes, indexed by segment id
+    gage_col              (str): Column name containing gage id codes in segment_gage_df (default: 'gages')
+    
+    Returns
+    -------
+    gage_map (dict, int: byte string) {segment id: gage id}
+    """
+
+    gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))
+    gage_mask = list(map(bytes.isalnum, gage_list))
+    segment_gage_df = segment_gage_df.loc[gage_mask, [gage_col]]
+    segment_gage_df[gage_col] = segment_gage_df[gage_col].map(bytes.strip)
+    gage_map = segment_gage_df.to_dict()
+    return gage_map
 
 
 def reverse_surjective_mapping(d):
