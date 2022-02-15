@@ -41,13 +41,14 @@ if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
 fi
 
 if [[ "$build_reservoir_kernel" == true ]]; then
-  cd $REPOROOT/src/kernel/reservoirs/
+  cd $REPOROOT/src/kernel/reservoir/
   make clean
   #make NETCDFINC=`nc-config --includedir` || exit
   #make binding_lp.a
   #make install_lp || exit
   make
-  make install || exit
+  make install_lp || exit
+  make install_rfc || exit
 
 fi
 
