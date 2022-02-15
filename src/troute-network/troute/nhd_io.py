@@ -3,9 +3,9 @@ import json
 import sys
 import math
 import pathlib
-import time
 import logging
 from datetime import *
+import time
 
 import yaml
 import xarray as xr
