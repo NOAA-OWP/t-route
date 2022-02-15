@@ -137,6 +137,18 @@ def reverse_surjective_mapping(d):
 
 
 def reverse_network(N):
+    '''
+    Reverse network connections graph
+    
+    Arguments:
+    ----------
+    N (dict, int: [int]): downstream network connections
+    
+    Returns:
+    --------
+    rg (dict, int: [int]): upstream network connections
+    
+    '''
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
