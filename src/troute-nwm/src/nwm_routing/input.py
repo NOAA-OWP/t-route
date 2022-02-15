@@ -1,62 +1,62 @@
-import pathlib
 import sys
-import troute.nhd_network_utilities_v02 as nnu
-import troute.nhd_io as nhd_io
-import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
-from datetime import *
-from .log_level_set import log_level_set
+import pathlib
 import logging
+from datetime import *
 
+import troute.nhd_io as nhd_io
+import troute.nhd_network_utilities_v02 as nnu
+from .log_level_set import log_level_set
 
 LOG = logging.getLogger('')
 
-# FIXME
-ENV_IS_CL = False
-if ENV_IS_CL:
-    root = pathlib.Path("/", "content", "t-route")
-elif not ENV_IS_CL:
-    root = pathlib.Path("../../").resolve()
-
-
 def _input_handler_v03(args):
-
-    custom_input_file = args.custom_input_file
-    log_parameters = {}
-    supernetwork_parameters = None
-    preprocessing_parameters = {}
-    waterbody_parameters = {}
-    compute_parameters = {}
-    forcing_parameters = {}
-    restart_parameters = {}
-    output_parameters = {}
-    parity_parameters = {}
-    data_assimilation_parameters = {}
-    diffusive_parameters = {}
+    '''
+    Read user inputs from configuration file and set logging level
     
-    if custom_input_file:
-        (
-            log_parameters,
-            preprocessing_parameters,
-            supernetwork_parameters,
-            waterbody_parameters,
-            compute_parameters,
-            forcing_parameters,
-            restart_parameters,
-            diffusive_parameters,
-            output_parameters,
-            parity_parameters,
-            data_assimilation_parameters,
-        ) = nhd_io.read_custom_input_new(custom_input_file)
-    else:
-        # TODO: clean _main_.py to remove command line argument comprehension
-        LOG.error("CLI input no longer supported")
-        raise RuntimeError
+    Arguments
+    ---------
+    Args (argparse.Namespace): Command line input arguments
+    
+    Returns
+    -------
+    log_parameters               (dict): Input parameters re logging
+    preprocessing_parameters     (dict): Input parameters re preprocessing
+    supernetwork_parameters      (dict): Input parameters re network extent
+    waterbody_parameters         (dict): Input parameters re waterbodies
+    compute_parameters           (dict): Input parameters re computation settings
+    forcing_parameters           (dict): Input parameters re model forcings
+    restart_parameters           (dict): Input parameters re model restart
+    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    output_parameters            (dict): Input parameters re output writing
+    parity_parameters            (dict): Input parameters re parity assessment
+    data_assimilation_parameters (dict): Input parameters re data assimilation
 
+    '''
+    
+    # get name of user configuration file (e.g. test.yaml)
+    custom_input_file = args.custom_input_file
+    
+    # read data from user configuration file
+    (
+        log_parameters,
+        preprocessing_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        diffusive_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    ) = nhd_io.read_config_file(custom_input_file)
+
+    # configure python logger
     log_level_set(log_parameters)
     LOG = logging.getLogger('')
 
+    # if log level is at or below DEBUG, then check user inputs
     if LOG.level <= 10: # DEBUG
-        # don't forget to add input checks on user's preprocessing_parameters
         check_inputs(
                 log_parameters,
                 preprocessing_parameters,
@@ -70,6 +70,7 @@ def _input_handler_v03(args):
                 parity_parameters,
                 data_assimilation_parameters
                 )
+        
     return (
         log_parameters,
         preprocessing_parameters,
@@ -82,150 +83,6 @@ def _input_handler_v03(args):
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
-    )
-
-
-def _input_handler_v02(args):
-
-    # args = _handle_args()
-
-    custom_input_file = args.custom_input_file
-    supernetwork_parameters = None
-    waterbody_parameters = {}
-    forcing_parameters = {}
-    restart_parameters = {}
-    output_parameters = {}
-    run_parameters = {}
-    parity_parameters = {}
-    data_assimilation_parameters = {}
-    diffusive_parameters = {}
-
-    if custom_input_file:
-        (
-            supernetwork_parameters,
-            waterbody_parameters,
-            forcing_parameters,
-            restart_parameters,
-            output_parameters,
-            run_parameters,
-            parity_parameters,
-            data_assimilation_parameters,
-            diffusive_parameters,
-            coastal_parameters,
-        ) = nhd_io.read_custom_input(custom_input_file)
-
-    else:
-        run_parameters["assume_short_ts"] = args.assume_short_ts
-        run_parameters["return_courant"] = args.return_courant
-        run_parameters["parallel_compute_method"] = args.parallel_compute_method
-        run_parameters["subnetwork_target_size"] = args.subnetwork_target_size
-        run_parameters["cpu_pool"] = args.cpu_pool
-        run_parameters["showtiming"] = args.showtiming
-        run_parameters["compute_method"] = args.compute_method
-
-        run_parameters["debuglevel"] = debuglevel = -1 * args.debuglevel
-        run_parameters["verbose"] = verbose = args.verbose
-
-        output_parameters["csv_output"] = {}
-        output_parameters["csv_output"]["csv_output_folder"] = args.csv_output_folder
-
-        test_folder = pathlib.Path(root, "test")
-        geo_input_folder = test_folder.joinpath("input", "geo")
-
-        test_case = args.test_case
-
-        if test_case:
-
-            # call test case assemble function
-            (
-                supernetwork_parameters,
-                run_parameters,
-                output_parameters,
-                restart_parameters,
-                forcing_parameters,
-                parity_parameters,
-            ) = build_tests.build_test_parameters(
-                test_case,
-                supernetwork_parameters,
-                run_parameters,
-                output_parameters,
-                restart_parameters,
-                forcing_parameters,
-                parity_parameters,
-            )
-
-        else:
-            run_parameters["dt"] = args.dt
-            run_parameters["nts"] = args.nts
-            run_parameters["qts_subdivisions"] = args.qts_subdivisions
-            run_parameters["compute_method"] = args.compute_method
-
-            waterbody_parameters[
-                "break_network_at_waterbodies"
-            ] = args.break_network_at_waterbodies
-
-            data_assimilation_parameters[
-                "data_assimilation_parameters_folder"
-            ] = args.data_assimilation_parameters_folder
-            data_assimilation_parameters[
-                "data_assimilation_filter"
-            ] = args.data_assimilation_filter
-            data_assimilation_parameters[
-                "data_assimilation_csv"
-            ] = args.data_assimilation_csv
-
-            restart_parameters[
-                "wrf_hydro_channel_restart_file"
-            ] = args.wrf_hydro_channel_restart_file
-            restart_parameters[
-                "wrf_hydro_channel_ID_crosswalk_file"
-            ] = args.wrf_hydro_channel_ID_crosswalk_file
-            restart_parameters[
-                "wrf_hydro_channel_ID_crosswalk_file_field_name"
-            ] = args.wrf_hydro_channel_ID_crosswalk_file_field_name
-            restart_parameters[
-                "wrf_hydro_channel_restart_upstream_flow_field_name"
-            ] = args.wrf_hydro_channel_restart_upstream_flow_field_name
-            restart_parameters[
-                "wrf_hydro_channel_restart_downstream_flow_field_name"
-            ] = args.wrf_hydro_channel_restart_downstream_flow_field_name
-            restart_parameters[
-                "wrf_hydro_channel_restart_depth_flow_field_name"
-            ] = args.wrf_hydro_channel_restart_depth_flow_field_name
-
-            forcing_parameters["qlat_const"] = float(args.qlat_const)
-            forcing_parameters["qlat_input_folder"] = args.qlat_input_folder
-            forcing_parameters["qlat_input_file"] = args.qlat_input_file
-            forcing_parameters[
-                "qlat_file_pattern_filter"
-            ] = args.qlat_file_pattern_filter
-            forcing_parameters["qlat_file_index_col"] = args.qlat_file_index_col
-            forcing_parameters["qlat_file_value_col"] = args.qlat_file_value_col
-
-            supernetwork = args.supernetwork
-
-        # STEP 0.5: Obtain Supernetwork Parameters for test cases
-        if not supernetwork_parameters:
-            supernetwork_parameters = nnu.set_supernetwork_parameters(
-                supernetwork=supernetwork,
-                geo_input_folder=geo_input_folder,
-                verbose=False,
-                debuglevel=debuglevel,
-            )
-    log_level_set(run_parameters)
-    LOG = logging.getLogger('')
-
-    return (
-        supernetwork_parameters,
-        waterbody_parameters,
-        forcing_parameters,
-        restart_parameters,
-        output_parameters,
-        run_parameters,
-        parity_parameters,
-        data_assimilation_parameters,
-        diffusive_parameters,
-        coastal_parameters,
     )
 
 

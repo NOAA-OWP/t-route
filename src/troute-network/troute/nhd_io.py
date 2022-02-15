@@ -1,30 +1,43 @@
 import zipfile
+import json
+import sys
+import math
+import pathlib
+import logging
+from datetime import *
+import time
+
+import yaml
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
-import json
-import yaml
 import numpy as np
 from toolz import compose
-import dask.array as da
-import sys
-import math
-from datetime import *
-import pathlib
 import netCDF4
-import time
-import logging
 from joblib import delayed, Parallel
 from cftime import date2num
 
-
+from troute.nhd_network import reverse_dict
 
 LOG = logging.getLogger('')
 
-from troute.nhd_network import reverse_dict
-
-
 def read_netcdf(geo_file_path):
+    '''
+    Open a netcdf file with xarray and convert to dataframe
+    
+    Arguments
+    ---------
+    geo_file_path (str or pathlib.Path): netCDF filepath
+    
+    Returns
+    -------
+    ds.to_dataframe() (DataFrame): netCDF contents
+    
+    Notes
+    -----
+    - When handling large volumes of netCDF files, xarray is not the most efficient.
+    
+    '''
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
@@ -56,14 +69,37 @@ def read(geo_file_path, layer_string=None, driver_string=None):
 def read_mask(path, layer_string=None):
     return read_csv(path, header=None, layer_string=layer_string)
 
+def read_config_file(custom_input_file):
+    '''
+    Read-in data from user-created configuration file.
+    
+    Arguments
+    ---------
+    custom_input_file (str): configuration filepath, either .yaml or .json
+    
+    Returns
+    -------
+    log_parameters               (dict): Input parameters re logging
+    preprocessing_parameters     (dict): Input parameters re preprocessing
+    supernetwork_parameters      (dict): Input parameters re network extent
+    waterbody_parameters         (dict): Input parameters re waterbodies
+    compute_parameters           (dict): Input parameters re computation settings
+    forcing_parameters           (dict): Input parameters re model forcings
+    restart_parameters           (dict): Input parameters re model restart
+    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    output_parameters            (dict): Input parameters re output writing
+    parity_parameters            (dict): Input parameters re parity assessment
+    data_assimilation_parameters (dict): Input parameters re data assimilation
 
-def read_custom_input_new(custom_input_file):
+    '''
+    
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
     else:
         with open(custom_input_file) as custom_file:
             data = json.load(custom_file)
+      
     log_parameters = data.get("log_parameters", {})
     network_topology_parameters = data.get("network_topology_parameters", None)
     supernetwork_parameters = network_topology_parameters.get(
@@ -71,10 +107,10 @@ def read_custom_input_new(custom_input_file):
     )
     preprocessing_parameters = network_topology_parameters.get(
         "preprocessing_parameters", {}
+    )        
+    waterbody_parameters = network_topology_parameters.get(
+        "waterbody_parameters", None
     )
-    if not preprocessing_parameters:
-        preprocessing_parameters = {}
-    waterbody_parameters = network_topology_parameters.get("waterbody_parameters", None)
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
     restart_parameters = compute_parameters.get("restart_parameters", {})
@@ -85,7 +121,6 @@ def read_custom_input_new(custom_input_file):
     output_parameters = data.get("output_parameters", {})
     parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
 
-    # TODO: add error trapping for potentially missing files
     return (
         log_parameters,
         preprocessing_parameters,
@@ -101,6 +136,19 @@ def read_custom_input_new(custom_input_file):
     )
 
 def read_diffusive_domain(domain_file):
+    '''
+    Read diffusive domain data from .ymal or .json file.
+    
+    Arguments
+    ---------
+    domain_file (str or pathlib.Path): Path of diffusive domain file
+    
+    Returns
+    -------
+    data (dict int: [int]): domain tailwater segments: list of segments in domain 
+                            (includeing tailwater segment) 
+    
+    '''
     if domain_file[-4:] == "yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
@@ -152,23 +200,10 @@ def replace_downstreams(data, downstream_col, terminal_code):
     new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
     return new_data
 
-
-def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
-    """
-    General waterbody dataframe reader. At present, only level-pool
-    capability exists.
-    """
-    if wbtype == "level_pool":
-        wb_params = waterbody_parameters[wbtype]
-        return read_level_pool_waterbody_df(
-            wb_params["level_pool_waterbody_parameter_file_path"],
-            wb_params.get("level_pool_waterbody_id", 'lake_id'),
-            waterbodies_values[wbtype],
-        )
-
-
-def read_level_pool_waterbody_df(
-    parm_file, lake_index_field="lake_id", lake_id_mask=None
+def read_lakeparm(
+    parm_file, 
+    lake_index_field="lake_id", 
+    lake_id_mask=None
 ):
     """
     Reads LAKEPARM file and prepares a dataframe, filtered
@@ -177,15 +212,16 @@ def read_level_pool_waterbody_df(
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
+    
+    Arguments:
+    ----------
+    parm_file (str or pathlib.Path): Path to LAKEPARM file
+    lake_index_field           (str): waterbody id dimension name (default: 'lake_id')
+    lake_id_mask       (list of int): lake ids in simulation domain
+    
+    Returns:
+    df1 (DataFrame):
 
-    Prior version filtered the dataframe as opposed to the dataset as in this version.
-    with xr.open_dataset(parm_file) as ds:
-        df1 = ds.to_dataframe()
-    df1 = df1.set_index(lake_index_field).sort_index(axis="index")
-    if lake_id_mask is None:
-        return df1
-    else:
-        return df1.loc[lake_id_mask]
     """
 
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
@@ -775,23 +811,6 @@ def get_attribute(nc_file, attribute):
 
     with xr.open_dataset(nc_file) as xd:
         return xd.attrs[attribute]
-
-
-def build_filtered_gage_df(segment_gage_df, gage_col="gages"):
-    """
-    segment_gage_df - dataframe indexed by segment with at least
-        one column, gage_col, with the gage ids by segment.
-    gage_col - the name of the column containing the gages
-        to filter.
-    """
-    # TODO: use this function to filter the inputs
-    # coming into the da read routines below.
-    gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))
-    gage_mask = list(map(bytes.isalnum, gage_list))
-    segment_gage_df = segment_gage_df.loc[gage_mask, [gage_col]]
-    segment_gage_df[gage_col] = segment_gage_df[gage_col].map(bytes.strip)
-    return segment_gage_df.to_dict()
-
 
 def build_lastobs_df(
         lastobsfile,

@@ -1,18 +1,18 @@
 import time
-import pandas as pd
 import pathlib
-import numpy as np
-import pathlib
-import xarray as xr
+import logging
 from datetime import datetime
 from collections import defaultdict
+
+import pandas as pd
+import numpy as np
+import xarray as xr
+
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
-import logging
 
 LOG = logging.getLogger('')
-
 
 def nwm_network_preprocess(
     supernetwork_parameters,
@@ -21,7 +21,47 @@ def nwm_network_preprocess(
     compute_parameters,
     data_assimilation_parameters,
 ):
+    '''
+    Creation of routing network data objects. Logical ordering of lower-level
+    function calls that build individual network data objects.
+    
+    Arguments
+    ---------
+    supernetwork_parameters      (dict): user input data re network extent
+    waterbody_parameters         (dict): user input data re waterbodies
+    preprocessing_parameters     (dict): user input data re preprocessing
+    compute_parameters           (dict): user input data re compute configuration
+    data_assimilation_parameters (dict): user input data re data assimilation
+    
+    Returns
+    -------
+    connections                 (dict of int: [int]): {segment id: [downsteram adjacent segment ids]}
+    param_df                             (DataFrame): Hydraulic geometry and roughness parameters, by segment
+    wbody_conn                    (dict of int: int): {segment id: associated lake id}
+    waterbodies_df                       (DataFrame): Waterbody (reservoir) parameters
+    waterbody_types_df                   (DataFrame): Waterbody type codes (1 - levelpool, 2 - USGS, 3 - USACE, 4 - RFC)
+    break_network_at_waterbodies              (bool): If True, waterbodies occpy reaches of their own
+    waterbody_type_specified                  (bool): If True, more than just levelpool waterbodies exist
+    link_lake_crosswalk           (dict of int: int): {lake id: outlet segment id}
+    independent_networks (dict of int: {int: [int]}): {tailwater id: {segment id: [upstream adjacent segment ids]}}
+    reaches_bytw              (dict of int: [[int]]): {tailwater id: list or reach lists}
+    rconn                       (dict of int: [int]): {segment id: [upstream adjacent segment ids]}
+    pd.DataFrame.from_dict(gages)        (DataFrame): Gage ids and corresponding segment ids at which they are located
+    diffusive_network_data            (dict or None): Network data objects for diffusive domain
+    topobathy_data                       (DataFrame): Natural cross section data for diffusive domain
+    
+    Notes
+    -----
+    - waterbody_type_specified is likely an excessive return and can be removed and inferred from the 
+      contents of waterbody_types_df
+    - The values of the link_lake_crosswalk dictionary are the downstream-most segments within 
+      the waterbody extent to which waterbody data are written. They are NOT the first segments 
+      downsteram of the waterbody 
+    '''
 
+    #============================================================================
+    # Establish diffusive domain for MC/diffusive hybrid simulations
+    
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
         
@@ -32,10 +72,14 @@ def nwm_network_preprocess(
         
         if domain_file and run_hybrid:
             
+            LOG.info('reading diffusive domain extent for MC/Diffusive hybrid simulation')
+            
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
             
             if topobathy_file and use_topobathy:
+                
+                LOG.debug('Natural cross section data are provided.')
                 
                 # read topobathy domain netcdf file, set index to 'comid'
                 # TODO: replace 'comid' with a user-specified indexing variable name.
@@ -49,7 +93,7 @@ def nwm_network_preprocess(
                 
             else:
                 topobathy_data = pd.DataFrame()
-                LOG.debug('No natural cross section topobathy data provided.')
+                LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on complex trapezoidal geometry.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
@@ -58,18 +102,19 @@ def nwm_network_preprocess(
             diffusive_domain = None
             diffusive_network_data = None
             topobathy_data = pd.DataFrame()
-            LOG.debug('No diffusive domain file spefified in configuration file.')
+            LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
     else:
         diffusive_domain = None
         diffusive_network_data = None
         topobathy_data = pd.DataFrame()
-
-    LOG.info("creating supernetwork connections set")
-
+        LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
+    
+    #============================================================================
+    # Build network connections graph, assemble parameter dataframe, 
+    # establish segment-waterbody, and segment-gage mappings
+    LOG.info("creating network connections graph")
     start_time = time.time()
-
-    # STEP 1: Build basic network connections graph,
-    # read network parameters, identify waterbodies and gages, if any.
+    
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
@@ -81,11 +126,14 @@ def nwm_network_preprocess(
         "break_network_at_gages", False
     )
 
-    if (
-        not wbody_conn
-    ):  # Turn off any further reservoir processing if the network contains no waterbodies
+    if not wbody_conn: 
+        # Turn off any further reservoir processing if the network contains no 
+        # waterbodies
         break_network_at_waterbodies = False
 
+    # if waterbodies are being simulated, udjust the connections graph so that 
+    # waterbodies are collapsed to single nodes. Also, build a mapping between 
+    # waterbody outlet segments and lake ids
     if break_network_at_waterbodies:
         connections, link_lake_crosswalk = nhd_network.replace_waterbodies_connections(
             connections, wbody_conn
@@ -93,19 +141,20 @@ def nwm_network_preprocess(
     else:
         link_lake_crosswalk = None
 
-    LOG.debug("supernetwork connections set complete in %s seconds." % (time.time() - start_time))
+    LOG.debug("network connections graph created in %s seconds." % (time.time() - start_time))
 
-    ################################
-    ## STEP 3a: Read waterbody parameter file
-    # waterbodies_values = supernetwork_values[12]
-    # waterbodies_segments = supernetwork_values[13]
-    # connections_tailwaters = supernetwork_values[4]
+    #============================================================================
+    # Retrieve and organize waterbody parameters
 
     waterbody_type_specified = False
     if break_network_at_waterbodies:
-        # Read waterbody parameters
-        waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbody_conn.values()}
+        
+        # Read waterbody parameters from LAKEPARM file
+        level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
+        waterbodies_df = nhd_io.read_lakeparm(
+            level_pool_params['level_pool_waterbody_parameter_file_path'],
+            level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+            wbody_conn.values()
         )
 
         # Remove duplicate lake_ids and rows
@@ -118,10 +167,6 @@ def nwm_network_preprocess(
         # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        wb_params_level_pool = waterbody_parameters.get(
-            'level_pool', defaultdict(list)
-        )
-        
         # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
         reservoir_da = data_assimilation_parameters.get(
             'reservoir_da', 
@@ -163,7 +208,7 @@ def nwm_network_preprocess(
                 usgs_hybrid,
                 usace_hybrid,
                 rfc_forecast,
-                wb_params_level_pool.get("level_pool_waterbody_id", 'lake_id'),
+                level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
                 wbody_conn.values(),
             )
         else:
@@ -175,7 +220,9 @@ def nwm_network_preprocess(
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
+    #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
+    
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
@@ -228,12 +275,11 @@ def nwm_network_preprocess(
             for us in trib_segs:
                 connections[us] = []
     
-    # STEP 2: Identify Independent Networks and Reaches by Network
-    
-    start_time = time.time()
-
+    #============================================================================
+    # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
-
+    start_time = time.time()
+    
     network_break_segments = set()
     if break_network_at_waterbodies:
         network_break_segments = network_break_segments.union(wbody_conn.values())
@@ -306,8 +352,8 @@ def nwm_network_preprocess(
         wbody_conn,
         waterbodies_df,
         waterbody_types_df,
-        break_network_at_waterbodies,  # Could this be inferred from the wbody_conn or waterbodies_df  # Could this be inferred from the wbody_conn or waterbodies_df? Consider making this name less about the network and more about the reservoir simulation.
-        waterbody_type_specified,  # Seems like this could be inferred from waterbody_types_df...
+        break_network_at_waterbodies,  
+        waterbody_type_specified, 
         link_lake_crosswalk,
         independent_networks,
         reaches_bytw,

@@ -1,27 +1,17 @@
 import argparse
 import time
+import math
+import asyncio
+import logging
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
-import numpy as np
-import pandas as pd
-import math
-
-import asyncio
 import concurrent.futures
 
-## network and reach utilities
-import troute.nhd_network as nhd_network
-import troute.nhd_io as nhd_io
-import troute.nhd_network_utilities_v02 as nnu
-import build_tests  # TODO: Determine whether and how to incorporate this into setup.py
+import numpy as np
+import pandas as pd
 
-import troute.routing.diffusive_utils as diff_utils
-import logging
-from .log_level_set import log_level_set
-
-
-from .input import _input_handler_v02, _input_handler_v03
+from .input import _input_handler_v03
 from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
@@ -29,13 +19,19 @@ from .preprocess import (
     unpack_nwm_preprocess_data,
 )
 from .output import nwm_output_generator
-
+from .log_level_set import log_level_set
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
+import troute.nhd_network as nhd_network
+import troute.nhd_io as nhd_io
+import troute.nhd_network_utilities_v02 as nnu
+import troute.routing.diffusive_utils as diff_utils
 
-#needed for v03 looping when a new instance occurs
 LOG = logging.getLogger('')
 
 def _handle_args_v03(argv):
+    '''
+    Handle command line input argument - filepath of configuration file
+    '''
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -43,7 +39,7 @@ def _handle_args_v03(argv):
         "-f",
         "--custom-input-file",
         dest="custom_input_file",
-        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+        help="Path of a .yaml or .json file containing model configuration parameters. See doc/v3_doc.yaml",
     )
     return parser.parse_args(argv)
 
@@ -245,11 +241,11 @@ def new_lastobs(run_results, time_increment):
 
 def main_v03(argv):
     """
-    Handles the creation of the input parameter dictionaries
-    from an input file and then sequences the execution of the
-    t-route routing agorithm on a series of execution loops.
+    High level orchestration of t-route simulations for NWM application
     """
     args = _handle_args_v03(argv)
+    
+    # unpack user inputs
     (
         log_parameters,
         preprocessing_parameters,
@@ -265,7 +261,6 @@ def main_v03(argv):
     ) = _input_handler_v03(args)
    
     showtiming = log_parameters.get("showtiming", None)
-    
     if showtiming:
         task_times = {}
         task_times['initial_condition_time'] = 0
@@ -276,8 +271,12 @@ def main_v03(argv):
 
     if showtiming:
         network_start_time = time.time()
-        
+
+    # Build routing network data objects. Network data objects specify river 
+    # network connectivity, channel geometry, and waterbody parameters.
     if preprocessing_parameters.get('use_preprocessed_data', False): 
+        
+        # get data from pre-processed file
         (
             connections,
             param_df,
@@ -297,6 +296,8 @@ def main_v03(argv):
             preprocessing_parameters
         )
     else:
+        
+        # build data objects from scratch
         (
             connections,
             param_df,

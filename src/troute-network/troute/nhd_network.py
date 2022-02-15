@@ -9,59 +9,33 @@ def reverse_dict(d):
     """
     Reverse a 1-1 mapping
     Values must be hashable!
+    
+    Arguments:
+    ----------
+    d (dict): Dictionary to be reversed
+    
+    Returns
+    -------
+    (dict): reversed dictionary
+    
     """
     return {v: k for k, v in d.items()}
 
-
-def nodes(N):
-    yield from N.keys() | (v for v in chain.from_iterable(N.values()) if v not in N)
-
-
-def edges(N):
-    for i, v in N.items():
-        for j in v:
-            yield (i, j)
-
-
-def in_degrees(N):
-    """
-    Compute indegree of nodes in N.
-
-    Args:
-        N (dict): Network
-
-    Returns:
-
-    """
-    degs = Counter(chain.from_iterable(N.values()))
-    degs.update(dict.fromkeys(headwaters(N), 0))
-    return degs
-
-
-def out_degrees(N):
-    """
-    Compute outdegree of nodes in N
-
-    Args:
-        N (dict): Network
-
-    Returns:
-
-    """
-    return in_degrees(reverse_network(N))
-
-
 def extract_connections(rows, target_col, terminal_codes=None):
-    """Extract connection network from dataframe.
+    '''
+    Extract connection network from dataframe.
 
     Arguments:
-        rows (DataFrame): Dataframe indexed by key_col.
-        key_col (str): Source of each edge
-        target_col (str): Target of edge
+    ----------
+    rows (DataFrame): Dataframe indexed by key_col.
+    key_col    (str): Source of each edge
+    target_col (str): Target of edge
 
     Returns:
-        (dict)
-    """
+    --------
+    network (dict, int: [int]): {segment id: [list of downstream adjacent segment ids]}
+    
+    '''
     if terminal_codes is not None:
         terminal_codes = set(terminal_codes)
     else:
@@ -77,11 +51,51 @@ def extract_connections(rows, target_col, terminal_codes=None):
     return network
 
 
-def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
-    """Extract waterbody mapping from dataframe."""
-    return (
-        rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
-    )
+def extract_waterbody_connections(rows, target_col = 'waterbody', waterbody_null=-9999):
+    '''
+    Extract waterbody mapping from parameter dataframe. Mapping segment ids to the lake ids they reside in
+    
+    Arguments
+    ---------
+    rows     (DataFrame): Waterbody id codes, indexed by segment id
+    target_col     (str): Column name containing waterbody id codes in rows df (defalt: 'waterbody')
+    waterbody_null (int): waterbody null code (default: -9999)
+    
+    Returns
+    -------
+    wbody_map (dict, int: int): {segment id: lake id}
+    
+    '''    
+    
+    wbody_map = (rows.loc[rows[target_col] != waterbody_null, target_col].
+                     astype("int").
+                     to_dict()
+                    )
+    
+    return wbody_map
+
+
+def gage_mapping(segment_gage_df, gage_col="gages"):
+    """
+    Extract gage mapping from parameter dataframe. Mapping segment ids to gage ids
+    
+    Arguments
+    ---------
+    segment_gage_df (DataFrame): Gage id codes, indexed by segment id
+    gage_col              (str): Column name containing gage id codes in segment_gage_df (default: 'gages')
+    
+    Returns
+    -------
+    gage_map (dict, int: byte string) {segment id: gage id}
+    
+    """
+
+    gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))
+    gage_mask = list(map(bytes.isalnum, gage_list))
+    segment_gage_df = segment_gage_df.loc[gage_mask, [gage_col]]
+    segment_gage_df[gage_col] = segment_gage_df[gage_col].map(bytes.strip)
+    gage_map = segment_gage_df.to_dict()
+    return gage_map
 
 
 def reverse_surjective_mapping(d):
@@ -93,6 +107,18 @@ def reverse_surjective_mapping(d):
 
 
 def reverse_network(N):
+    '''
+    Reverse network connections graph
+    
+    Arguments:
+    ----------
+    N (dict, int: [int]): downstream network connections
+    
+    Returns:
+    --------
+    rg (dict, int: [int]): upstream network connections
+    
+    '''
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
@@ -126,33 +152,65 @@ def find_tw_for_node(reaches_bytw, node):
 
     return None  # Node not in reach set.
 
-
-def junctions(N):
-    c = Counter(chain.from_iterable(N.values()))
-    return {k for k, v in c.items() if v > 1}
-
-
 def headwaters(N):
+    '''
+    Find network headwater segments
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): headwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network tailwaters.
+      
+    '''
     return N.keys() - chain.from_iterable(N.values())
 
-
 def tailwaters(N):
+    '''
+    Find network tailwaters
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): tailwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network headwaters.
+      
+    '''
     tw = chain.from_iterable(N.values()) - N.keys()
     for m, n in N.items():
         if not n:
             tw.add(m)
     return tw
 
-
 def reachable(N, sources=None, targets=None):
     """
-    Return nodes reachable from sources.
-    Args:
-        N:
-        sources (iterable): If None, source nodes are used.
-        targets (iterable): Target nodes to stop searching.
+    Return segments reachable from sources.
+    
+    Arguments:
+    ----------
+    N (dict, int: [int]): Reverse network connections
+    sources (iterable): Segments from which to start searches. 
+                        If none, network tailwaters are used
+    targets (iterable): Target segments to stop searching.
 
     Returns:
+    rv (dict, int: set(int)): Segments reachble from sources. Sources are dictionary keys,
+                              reachable segments are dictionary values.
+    
     """
     if sources is None:
         sources = headwaters(N)
@@ -185,14 +243,23 @@ def reachable(N, sources=None, targets=None):
 def reachable_network(N, sources=None, targets=None, check_disjoint=True):
     """
     Return subnetworks generated by reach
-    Args:
-        N:
-        sources:
+    Arguments:
+    ----------
+    N (dict, int: [int]): Reverse network connections dictionary
+    sources (iterable): Segments to begin search from. If None, source nodes are used.
+    targets (iterable): Target nodes to stop searching
+    check_disjoint (bool): 
 
     Returns:
+    --------
+    rv (dict, {int, {int: [int]}}): Reverse connections dictionary for each independent network
+                                    highest level key is the network tailwater id.
 
     """
+    # identify all segments reachable from each terminal segment (e.g. tailwater)
     reached = reachable(N, sources=sources, targets=targets)
+    
+    # check network connectivity
     if (
         check_disjoint
         and len(reached) > 1
@@ -207,10 +274,37 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
 
 def split_at_junction(network, path, node):
+    '''
+    
+    Arguments:
+    ----------
+    network
+    path
+    node
+    
+    Returns:
+    --------
+    (bool): False if segment is a network break point, True otherwise
+    
+    '''
     return len(network[node]) == 1
 
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
+    '''
+    
+    Arguments:
+    ----------
+    waterbody_nodes
+    network
+    path
+    node
+    
+    Returns:
+    --------
+    (bool): False if segment is a network break point, True otherwise
+    
+    '''
     if (path[-1] in waterbody_nodes) ^ (node in waterbody_nodes):
         return False  # force a path split if entering or exiting a waterbody
     else:
@@ -360,23 +454,28 @@ def coalesce_reaches(RN, reach_list, tag_idx=-1):
 
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
-    Decompose network into lists of simply connected nodes
-    For the routing problem, these sets of nodes are segments
-    in a reach terminated by a junction, headwater, or tailwater.
-    (... or as otherwise tagged by the `path_func`.)
+    Decompose network into reaches - lists of simply connected segments. 
+    Reaches are sets of segments terminated by a junction, headwater, or tailwater.
+    (... or other segments tagged by the `path_func`.)
 
-    The order of these segments are suitable to be parallelized as we guarantee that for any segment,
-    the predecessor segments appear before it in the list.
+    The order of the reaches returned are suitable to be parallelized as we guarantee that for any reach,
+    the predecessor reaches appear before it in the list.
 
     This is accomplished by a depth first search on the reversed graph and
     finding the path from node to its nearest junction.
 
     Arguments:
-        N (Dict[obj: List[obj]]): The graph
+    ----------
+    N (dict {int: [int]}): Reverse network connections
+    path_func (functools.partial): Function for identifying reach breaks
+    source_nodes       (iterable): Segments from which to begin reach creation.
+                                   defaults to network tailwater.
 
     Returns:
-        [List]: List of paths to be processed in order.
+    (List): List of reaches to be processed in order.
+    
     """
+
     if source_nodes is None:
         source_nodes = headwaters(N)
 
