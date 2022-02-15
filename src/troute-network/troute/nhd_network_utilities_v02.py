@@ -130,9 +130,10 @@ def build_connections(supernetwork_parameters):
 
     return connections, param_df, wbodies, gages
 
-def organize_independent_networks(connections, breaks=None):
+def organize_independent_networks(connections, break_nodes=None):
     '''
     Build reverse network connections, independent drainage networks, and network reaches.
+    Reaches are defined as linearly connected segments between two junctions or break points.
     
     Arguments:
     ----------
@@ -141,9 +142,10 @@ def organize_independent_networks(connections, breaks=None):
     
     Returns:
     --------
-    independent_networks (dict, {int: {int: [int]}}): reverse network connections dictionaries for each indepent network
-    reaches_bytw         (dict):
-    rconn                (dict):
+    independent_networks (dict, {int: {int: [int]}}): reverse network connections dictionaries 
+                                                      for each indepent network
+    reaches_bytw         (dict): list of reaches, by independent network tailwaters
+    rconn                (dict): reverse network connections
     
     '''
 
@@ -153,15 +155,21 @@ def organize_independent_networks(connections, breaks=None):
     # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
     
+    # construct network reaches
     reaches_bytw = {}
     for tw, net in independent_networks.items():
         if break_nodes:
+            
+            # reaches will be broken between junctions and specified break nodes
             path_func = partial(
                 nhd_network.split_at_waterbodies_and_junctions, set(break_nodes), net
             )
         else:
+            
+            # reaches will be broken between junctions
             path_func = partial(nhd_network.split_at_junction, net)
 
+        # construct network reaches with depth-first search alg.
         reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
     return independent_networks, reaches_bytw, rconn

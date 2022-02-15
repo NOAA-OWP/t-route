@@ -278,10 +278,37 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
 
 def split_at_junction(network, path, node):
+    '''
+    
+    Arguments:
+    ----------
+    network
+    path
+    node
+    
+    Returns:
+    --------
+    (bool):
+    
+    '''
     return len(network[node]) == 1
 
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
+    '''
+    
+    Arguments:
+    ----------
+    waterbody_nodes
+    network
+    path
+    node
+    
+    Returns:
+    --------
+    (bool)
+    
+    '''
     if (path[-1] in waterbody_nodes) ^ (node in waterbody_nodes):
         return False  # force a path split if entering or exiting a waterbody
     else:
@@ -431,23 +458,28 @@ def coalesce_reaches(RN, reach_list, tag_idx=-1):
 
 def dfs_decomposition(N, path_func, source_nodes=None):
     """
-    Decompose network into lists of simply connected nodes
-    For the routing problem, these sets of nodes are segments
-    in a reach terminated by a junction, headwater, or tailwater.
-    (... or as otherwise tagged by the `path_func`.)
+    Decompose network into reaches - lists of simply connected segments. 
+    Reaches are sets of segments terminated by a junction, headwater, or tailwater.
+    (... or other segments tagged by the `path_func`.)
 
-    The order of these segments are suitable to be parallelized as we guarantee that for any segment,
-    the predecessor segments appear before it in the list.
+    The order of the reaches returned are suitable to be parallelized as we guarantee that for any reach,
+    the predecessor reaches appear before it in the list.
 
     This is accomplished by a depth first search on the reversed graph and
     finding the path from node to its nearest junction.
 
     Arguments:
-        N (Dict[obj: List[obj]]): The graph
+    ----------
+    N (dict {int: [int]}): Reverse network connections
+    path_func (functools.partial): Function for identifying reach breaks
+    source_nodes       (iterable): Segments from which to begin reach creation.
+                                   defaults to network tailwater.
 
     Returns:
-        [List]: List of paths to be processed in order.
+    (List): List of reaches to be processed in order.
+    
     """
+
     if source_nodes is None:
         source_nodes = headwaters(N)
 
