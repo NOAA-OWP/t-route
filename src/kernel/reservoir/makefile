@@ -45,13 +45,16 @@ bind_rfc.a: module_reservoir.o module_hydro_stop.o module_reservoir_utilities.o 
 	$(COMPILER90) $(F90FLAGS) $(NETCDFLIB) -c -o $@ $<
 
 #install: binding_lp.a bind_hybrid.a bind_rfc.a
-install: binding_lp.a bind_rfc.a
-	echo $^
-	for lib in $^; do \
-		cp $$lib ../../troute-network/libs; \
-	done
+#install: binding_lp.a bind_rfc.a
+#	echo $^
+#	for lib in $^; do \
+#		cp $$lib ../../troute-network/libs; \
+#	done
 
 install_lp: binding_lp.a
+	cp $< ../../troute-network/libs;
+    
+install_rfc: bind_rfc.a
 	cp $< ../../troute-network/libs;
 
 clean:
