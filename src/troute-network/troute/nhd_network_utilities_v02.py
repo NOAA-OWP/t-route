@@ -15,6 +15,23 @@ import troute.nhd_network as nhd_network
 LOG = logging.getLogger('')
 
 def build_connections(supernetwork_parameters):
+    '''
+    Construct network connections network, parameter dataframe, waterbody mapping, 
+    and gage mapping. This is an intermediate-level function that calls several 
+    lower level functions to read data, conduct network operations, and extract mappings.
+    
+    Arguments
+    ---------
+    supernetwork_parameters (dict): User input network parameters
+    
+    Returns:
+    --------
+    connections (dict int: [int]): Network connections
+    param_df          (DataFrame): Geometry and hydraulic parameters
+    wbodies       (dict, int: int): segment-waterbody mapping
+    gages         (dict, int: int): segment-gage mapping
+    
+    '''
     
     # crosswalking dictionary between variables names in input dataset and 
     # variable names recognized by troute.routing module.
