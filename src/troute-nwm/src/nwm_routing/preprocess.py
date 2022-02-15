@@ -144,13 +144,11 @@ def nwm_network_preprocess(
     LOG.debug("network connections graph created in %s seconds." % (time.time() - start_time))
 
     #============================================================================
-    ## STEP 3a: Read waterbody parameter file
-    # waterbodies_values = supernetwork_values[12]
-    # waterbodies_segments = supernetwork_values[13]
-    # connections_tailwaters = supernetwork_values[4]
+    # Retrieve and organize waterbody parameters
 
     waterbody_type_specified = False
     if break_network_at_waterbodies:
+        
         # Read waterbody parameters
         waterbodies_df = nhd_io.read_waterbody_df(
             waterbody_parameters, {"level_pool": wbody_conn.values()}
