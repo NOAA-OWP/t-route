@@ -200,23 +200,10 @@ def replace_downstreams(data, downstream_col, terminal_code):
     new_data.loc[~data[downstream_col].isin(data.index), downstream_col] *= -1
     return new_data
 
-
-def read_waterbody_df(waterbody_parameters, waterbodies_values, wbtype="level_pool"):
-    """
-    General waterbody dataframe reader. At present, only level-pool
-    capability exists.
-    """
-    if wbtype == "level_pool":
-        wb_params = waterbody_parameters[wbtype]
-        return read_level_pool_waterbody_df(
-            wb_params["level_pool_waterbody_parameter_file_path"],
-            wb_params.get("level_pool_waterbody_id", 'lake_id'),
-            waterbodies_values[wbtype],
-        )
-
-
-def read_level_pool_waterbody_df(
-    parm_file, lake_index_field="lake_id", lake_id_mask=None
+def read_lakeparm(
+    parm_file, 
+    lake_index_field="lake_id", 
+    lake_id_mask=None
 ):
     """
     Reads LAKEPARM file and prepares a dataframe, filtered
