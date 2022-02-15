@@ -113,6 +113,7 @@ def gage_mapping(segment_gage_df, gage_col="gages"):
     Returns
     -------
     gage_map (dict, int: byte string) {segment id: gage id}
+    
     """
 
     gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))

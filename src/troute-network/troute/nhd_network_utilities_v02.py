@@ -85,11 +85,12 @@ def build_connections(supernetwork_parameters):
         )
         param_df = param_df.drop("waterbody", axis=1)
 
+    # map segment ids to gage ids
     gages = {}
     if "gages" in cols:
-        gages = nhd_io.build_filtered_gage_df(param_df[["gages"]])
+        gages = nhd_network.gage_mapping(param_df[["gages"]])
         param_df = param_df.drop("gages", axis=1)
-
+        
     # There can be an externally determined terminal code -- that's this first value
     terminal_codes = set()
     terminal_codes.add(terminal_code)
