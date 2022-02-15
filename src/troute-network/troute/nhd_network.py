@@ -152,23 +152,49 @@ def find_tw_for_node(reaches_bytw, node):
 
     return None  # Node not in reach set.
 
-
-def junctions(N):
-    c = Counter(chain.from_iterable(N.values()))
-    return {k for k, v in c.items() if v > 1}
-
-
 def headwaters(N):
+    '''
+    Find network headwater segments
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): headwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network tailwaters.
+      
+    '''
     return N.keys() - chain.from_iterable(N.values())
 
-
 def tailwaters(N):
+    '''
+    Find network tailwaters
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): tailwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network headwaters.
+      
+    '''
     tw = chain.from_iterable(N.values()) - N.keys()
     for m, n in N.items():
         if not n:
             tw.add(m)
     return tw
-
 
 def reachable(N, sources=None, targets=None):
     """
@@ -258,7 +284,7 @@ def split_at_junction(network, path, node):
     
     Returns:
     --------
-    (bool):
+    (bool): False if segment is a network break point, True otherwise
     
     '''
     return len(network[node]) == 1
@@ -276,7 +302,7 @@ def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     
     Returns:
     --------
-    (bool)
+    (bool): False if segment is a network break point, True otherwise
     
     '''
     if (path[-1] in waterbody_nodes) ^ (node in waterbody_nodes):
