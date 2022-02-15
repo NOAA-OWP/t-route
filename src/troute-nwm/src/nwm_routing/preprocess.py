@@ -149,9 +149,12 @@ def nwm_network_preprocess(
     waterbody_type_specified = False
     if break_network_at_waterbodies:
         
-        # Read waterbody parameters
-        waterbodies_df = nhd_io.read_waterbody_df(
-            waterbody_parameters, {"level_pool": wbody_conn.values()}
+        # Read waterbody parameters from LAKEPARM file
+        level_pool_params = waterbody_parameters.get('level_pool')
+        waterbodies_df = nhd_io.read_lakeparm(
+            level_pool_params['level_pool_waterbody_parameter_file_path'],
+            level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+            wbody_conn.values()
         )
 
         # Remove duplicate lake_ids and rows

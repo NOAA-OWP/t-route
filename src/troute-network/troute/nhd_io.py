@@ -212,15 +212,16 @@ def read_lakeparm(
 
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
+    
+    Arguments:
+    ----------
+    parm_file (str or pathlib.Path): Path to LAKEPARM file
+    lake_index_field           (str): waterbody id dimension name (default: 'lake_id')
+    lake_id_mask       (list of int): lake ids in simulation domain
+    
+    Returns:
+    df1 (DataFrame):
 
-    Prior version filtered the dataframe as opposed to the dataset as in this version.
-    with xr.open_dataset(parm_file) as ds:
-        df1 = ds.to_dataframe()
-    df1 = df1.set_index(lake_index_field).sort_index(axis="index")
-    if lake_id_mask is None:
-        return df1
-    else:
-        return df1.loc[lake_id_mask]
     """
 
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
