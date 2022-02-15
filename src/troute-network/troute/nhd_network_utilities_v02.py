@@ -130,15 +130,34 @@ def build_connections(supernetwork_parameters):
 
     return connections, param_df, wbodies, gages
 
-def organize_independent_networks(connections, wbodies=None):
+def organize_independent_networks(connections, breaks=None):
+    '''
+    Build reverse network connections, independent drainage networks, and network reaches.
+    
+    Arguments:
+    ----------
+    connections (dict, int: [int]): downstream network connections
+    break_nodes              (set): segment ids where network reaches are broken
+    
+    Returns:
+    --------
+    independent_networks (dict, {int: {int: [int]}}): reverse network connections dictionaries for each indepent network
+    reaches_bytw         (dict):
+    rconn                (dict):
+    
+    '''
 
+    # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
+    
+    # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
+    
     reaches_bytw = {}
     for tw, net in independent_networks.items():
-        if wbodies:
+        if break_nodes:
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, set(wbodies), net
+                nhd_network.split_at_waterbodies_and_junctions, set(break_nodes), net
             )
         else:
             path_func = partial(nhd_network.split_at_junction, net)

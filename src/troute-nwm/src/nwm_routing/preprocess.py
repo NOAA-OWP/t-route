@@ -220,7 +220,9 @@ def nwm_network_preprocess(
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
 
+    #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
+    
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
@@ -273,12 +275,11 @@ def nwm_network_preprocess(
             for us in trib_segs:
                 connections[us] = []
     
-    # STEP 2: Identify Independent Networks and Reaches by Network
-    
-    start_time = time.time()
-
+    #============================================================================
+    # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
-
+    start_time = time.time()
+    
     network_break_segments = set()
     if break_network_at_waterbodies:
         network_break_segments = network_break_segments.union(wbody_conn.values())
