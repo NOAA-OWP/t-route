@@ -150,7 +150,7 @@ def nwm_network_preprocess(
     if break_network_at_waterbodies:
         
         # Read waterbody parameters from LAKEPARM file
-        level_pool_params = waterbody_parameters.get('level_pool')
+        level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
         waterbodies_df = nhd_io.read_lakeparm(
             level_pool_params['level_pool_waterbody_parameter_file_path'],
             level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
@@ -167,10 +167,6 @@ def nwm_network_preprocess(
         # Declare empty dataframe
         waterbody_types_df = pd.DataFrame()
 
-        wb_params_level_pool = waterbody_parameters.get(
-            'level_pool', defaultdict(list)
-        )
-        
         # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
         reservoir_da = data_assimilation_parameters.get(
             'reservoir_da', 
@@ -212,7 +208,7 @@ def nwm_network_preprocess(
                 usgs_hybrid,
                 usace_hybrid,
                 rfc_forecast,
-                wb_params_level_pool.get("level_pool_waterbody_id", 'lake_id'),
+                level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
                 wbody_conn.values(),
             )
         else:
