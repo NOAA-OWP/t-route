@@ -78,10 +78,27 @@ def extract_connections(rows, target_col, terminal_codes=None):
 
 
 def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
-    """Extract waterbody mapping from dataframe."""
-    return (
-        rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
-    )
+    '''
+    Extract waterbody mapping from parameter dataframe. Mapping segment ids to the lake ids they reside in
+    
+    Arguments
+    ---------
+    rows     (DataFrame): Waterbody id codes, indexed by segment id
+    target_col     (str): Column name containing waterbody id codes in rows df
+    waterbody_null (int): waterbody null code (default: -9999)
+    
+    Returns
+    -------
+    wbody_seg_map (dict, int: int): {segment id: lake id}
+    
+    '''    
+    
+    wbody_seg_map = (rows.loc[rows[target_col] != waterbody_null, target_col].
+                     astype("int").
+                     to_dict()
+                    )
+    
+    return wbody_seg_map
 
 
 def reverse_surjective_mapping(d):
