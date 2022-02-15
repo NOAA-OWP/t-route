@@ -77,14 +77,14 @@ def extract_connections(rows, target_col, terminal_codes=None):
     return network
 
 
-def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
+def extract_waterbody_connections(rows, target_col = 'waterbody', waterbody_null=-9999):
     '''
     Extract waterbody mapping from parameter dataframe. Mapping segment ids to the lake ids they reside in
     
     Arguments
     ---------
     rows     (DataFrame): Waterbody id codes, indexed by segment id
-    target_col     (str): Column name containing waterbody id codes in rows df
+    target_col     (str): Column name containing waterbody id codes in rows df (defalt: 'waterbody')
     waterbody_null (int): waterbody null code (default: -9999)
     
     Returns
