@@ -323,8 +323,11 @@ def get_ql_from_chrtout(
 ):
     '''
     Return an array of qlateral data from a single CHRTOUT netCDF4 file.
-    If the lateral inflow variable is not present in the file, then calculate
-    lateral inflow as the sum of qbucket and surface runoff.
+    Lateral inflows to any segment are calculated as the sum of qBucket
+    and qSfcLatRunoff variables. In the event that one or both of these
+    variables are not available, then the q_lateral variable is used. In
+    the event that none of these variables are available an error will be
+    thrown and the simulation will stop. 
     
     Arguments
     ---------
@@ -343,12 +346,11 @@ def get_ql_from_chrtout(
     ) as ds:
         
         all_variables = list(ds.variables.keys())
-        if qlateral_varname in all_variables:
-            dat = ds.variables[qlateral_varname][:].filled(fill_value = 0.0)
-        
-        else:
+        if qbucket_varname in all_variables and runoff_varname in all_variables:
             dat = ds.variables[qbucket_varname][:].filled(fill_value = 0.0) + \
                 ds.variables[runoff_varname][:].filled(fill_value = 0.0)
+        else:
+            dat = ds.variables[qlateral_varname][:].filled(fill_value = 0.0)
         
     return dat
 
