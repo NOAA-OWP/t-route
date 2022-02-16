@@ -728,7 +728,10 @@ def build_qlateral_array(
 
             jobs = []
             for f in qlat_files:
-                jobs.append(delayed(nhd_io.get_ql_from_chrtout)(f))
+                jobs.append(
+                    delayed(nhd_io.get_ql_from_chrtout)
+                    (f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
+                )
             ql_list = parallel(jobs)
 
         # get feature_id from a single CHRTOUT file
