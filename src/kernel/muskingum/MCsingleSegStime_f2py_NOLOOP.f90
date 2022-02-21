@@ -5,6 +5,56 @@ module muskingcunge_module
 
 contains
 
+subroutine reachcompute(dt, nseg, qup_top, quc_top, qdp_rch, ql_rch, dx_rch,& 
+                        bw_rch, tw_rch, twcc_rch,n_rch, ncc_rch, cs_rch, s0_rch,&
+                        velp_rch, depthp_rch, qdc_rch, velc_rch, depthc_rch, ck_rch,&
+                        cn_rch, X_rch)
+    
+    implicit none
+    
+    integer, intent(in) :: nseg
+    real(prec), intent(in) :: dt
+    real(prec), intent(in) :: qup_top, quc_top
+    real(prec), dimension(nseg), intent(in) :: qdp_rch, ql_rch
+    real(prec), dimension(nseg), intent(in) :: dx_rch, bw_rch, tw_rch, twcc_rch
+    real(prec), dimension(nseg), intent(in) :: n_rch, ncc_rch, cs_rch, s0_rch
+    real(prec), dimension(nseg), intent(in) :: velp_rch
+    real(prec), dimension(nseg), intent(in) :: depthp_rch
+    real(prec), dimension(nseg), intent(out) :: qdc_rch, velc_rch, depthc_rch
+    real(prec), dimension(nseg), intent(out) :: ck_rch, cn_rch, X_rch
+    
+    integer :: i
+    real(prec) :: quc, qup
+    real(prec) :: qdc, velc, depthc
+    real(prec) :: ck, cn, X
+    
+    qup = qup_top
+    quc = quc_top
+    do i = 1, nseg
+ 
+      call muskingcungenwm(dt, qup, quc, qdp_rch(i), ql_rch(i), dx_rch(i),& 
+                           bw_rch(i), tw_rch(i), twcc_rch(i), n_rch(i), ncc_rch(i),& 
+                           cs_rch(i), s0_rch(i), velp_rch(i), depthp_rch(i), qdc,& 
+                           velc, depthc, ck, cn, X)
+                           
+      
+      qdc_rch(i) = qdc
+      velc_rch(i) = velc
+      depthc_rch(i) = depthc
+      
+      ck_rch(i) = ck
+      cn_rch(i) = cn
+      X_rch(i) = X
+      
+      qup = qdp_rch(i)
+      
+      ! short timestep assumption
+      quc = qup
+    
+    end do
+    
+end subroutine reachcompute
+
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
 
@@ -156,7 +206,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             endif
         else
             qdc = ((C1*qup)+(C2*quc)+(C3*qdp) + C4) !-- pg 295 Bedient huber
-            !write(*,*)"C1", C1, "qup", qup, "C2", C2, "quc", quc, "C3", C3, "qdp", qdp, "C4", C4
+            !write(*,*)"C1", C1, "qup", qup, "C2", C2,0 "quc", quc, "C3", C3, "qdp", qdp, "C4", C4
             !qdc = -333.3
         endif
 

@@ -65,7 +65,77 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
+cpdef void compute_reach_kernel_NEW(float qup, float quc, int nseg, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False):
+    
+    cdef:
+        const float[:,:] input_buf_F
+        float dt
+        const float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        int i
+        float[:,:] out_buf_F = np.empty((nseg, 6), dtype = 'float32', order = 'F')
+        
+        #float[:] flow_f = np.empty((nseg), dtype = 'float32', order = 'F')
+        #float[:] velocity_f = np.empty((nseg), dtype = 'float32', order = 'F')
+        #float[:] depth_f = np.empty((nseg), dtype = 'float32', order = 'F')
+        #float[:] cn_f = np.empty((nseg), dtype = 'float32', order = 'F')
+        #float[:] ck_f = np.empty((nseg), dtype = 'float32', order = 'F')
+        #float[:] X_f = np.empty((nseg), dtype = 'float32', order = 'F')
+    
+    input_buf_F = np.asfortranarray(input_buf)
+    #out_buf_F = np.asfortranarray(output_buf)
+    
+    # extract input arrays from input_buf
+    qlat   = input_buf_F[:nseg, 0]
+    dt     = input_buf[0, 1]
+    dx     = input_buf_F[:nseg, 2]
+    bw     = input_buf_F[:nseg, 3]
+    tw     = input_buf_F[:nseg, 4]
+    twcc   = input_buf_F[:nseg, 5]
+    n      = input_buf_F[:nseg, 6]
+    ncc    = input_buf_F[:nseg, 7]
+    cs     = input_buf_F[:nseg, 8]
+    s0     = input_buf_F[:nseg, 9]
+    qdp    = input_buf_F[:nseg, 10]
+    velp   = input_buf_F[:nseg, 11]
+    depthp = input_buf_F[:nseg, 12]
+        
+    reach.computereach(
+        dt,
+        nseg,
+        qup,
+        quc,
+        qdp,
+        qlat,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n,
+        ncc,
+        cs,
+        s0,
+        velp,
+        depthp,
+        out_buf_F[:,0],
+        out_buf_F[:,1],
+        out_buf_F[:,2],
+        out_buf_F[:,3],
+        out_buf_F[:,4],
+        out_buf_F[:,5],
+        #flow_f,
+        #velocity_f,
+        #depth_f,
+        #cn_f,
+        #ck_f,
+        #X_f
+    )
+        
+    output_buf[:nseg,0] = out_buf_F[:,0]
+    output_buf[:nseg,1] = out_buf_F[:,1]
+    output_buf[:nseg,2] = out_buf_F[:,2]
+
+@cython.boundscheck(False)
+cpdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) :
     """
     Kernel to compute reach.
     Input buffer is array matching following description:
@@ -139,7 +209,7 @@ cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
     const Py_ssize_t[:] drows,
     const Py_ssize_t dcol,
-    const float[:, :] src, float[:, ::1] out) nogil except *:
+    const float[:, :] src, float[:, ::1] out) except *:
 
     cdef Py_ssize_t i
     for i in range(srows.shape[0]):
@@ -432,6 +502,8 @@ cpdef object compute_network_structured(
     
     
     while timestep < nsteps+1:
+        print('timestep:', timestep)
+        
         for i in range(num_reaches):
             r = &reach_structs[i]
             #Need to get quc and qup
@@ -551,6 +623,8 @@ cpdef object compute_network_structured(
             else:
                 #Create compute reach kernel input buffer
                 for _i in range(r.reach.mc_reach.num_segments):
+                    #if _i == 0:
+                    #    print('reach_head:', segment.id)
                     segment = get_mc_segment(r, _i)#r._segments[_i]
                     buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
                     buf_view[_i, 1] = segment.dt
@@ -566,12 +640,42 @@ cpdef object compute_network_structured(
                     buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                     buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
+                '''
+                # Extract input data for a single-reach, single-timestep computation
+                
+                if data_idx[segment.id] == 5785357:
+                    input_arguments = {
+                        'nseg': r.reach.mc_reach.num_segments,
+                        'qup': previous_upstream_flows,
+                        'quc': upstream_flows, 
+                        'input_buf': np.asarray(buf_view, dtype = 'float32'),
+                        'out_buf': np.asarray(out_buf, dtype = 'float32'),
+                        'assume_short_ts': True
+                    }
+                    np.save(
+                        '/glade/u/home/adamw/projects/t-route/test/jobs/prifile_cython/single_reach_args.npy',
+                        input_arguments
+                    )
+                    exit()
+                
+                '''
+                
+                
+                compute_reach_kernel_NEW(previous_upstream_flows, upstream_flows,
+                                     r.reach.mc_reach.num_segments, buf_view,
+                                     out_buf,
+                                     assume_short_ts)
+                
+                
+                '''
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
                                      assume_short_ts)
+          
 
-                #Copy the output out
+                '''    
+            #Copy the output out
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)
                     flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
@@ -580,6 +684,7 @@ cpdef object compute_network_structured(
                         printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
                     flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
                     flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
+                    
 
             # For each reach,
             # at the end of flow calculation, Check if there is something to assimilate

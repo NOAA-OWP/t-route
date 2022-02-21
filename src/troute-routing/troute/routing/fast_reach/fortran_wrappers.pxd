@@ -15,7 +15,7 @@ cdef extern from "pyResLevelPool.h":
                               float *H0,
                               float *H1,
                               float *qo1) nogil;
-
+    
 cdef extern from "pyMCsingleSegStime_NoLoop.h":
     void c_muskingcungenwm(float *dt,
                                   float *qup,
@@ -38,6 +38,29 @@ cdef extern from "pyMCsingleSegStime_NoLoop.h":
                                   float *ck,
                                   float *cn,
                                   float *X) nogil;
+    
+    void c_reachcompute(float *dt,
+                        int *nseg,
+                        float *qup_top,
+                        float *quc_top,
+                        float *qdp_rch,
+                        float *ql_rch,
+                        float *dx_rch,
+                        float *bw_rch,
+                        float *tw_rch,
+                        float *twcc_rch,
+                        float *n_rch,
+                        float *ncc_rch,
+                        float *cs_rch,
+                        float *s0_rch,
+                        float *velp_rch,
+                        float *depthp_rch,
+                        float *qdc_rch,
+                        float *velc_rch,
+                        float *depthc_rch,
+                        float *ck_rch,
+                        float *cn_rch,
+                        float *X_rch) nogil;
     
 cdef extern from "pydiffusive.h":
     void c_diffnw(double *timestep_ar_g,

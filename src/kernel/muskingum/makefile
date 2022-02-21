@@ -3,7 +3,7 @@ FC := $(F90)
 
 # compile flags
 #FCFLAGS = -c -fdefault-real-8 -fno-align-commons -fbounds-check --free-form
-FCFLAGS = -g -c -O2 -fPIC
+FCFLAGS = -g -c -O2 -fPIC -fbounds-check
 # link flags
 FLFLAGS = -static-gfortran -static-libgcc -no-defaultlibs -lgfortran -lgcc
 
