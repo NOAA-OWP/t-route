@@ -41,6 +41,7 @@ cdef extern from "pyMCsingleSegStime_NoLoop.h":
     
     void c_reachcompute(float *dt,
                         int *nseg,
+                        int *nts,
                         float *qup_top,
                         float *quc_top,
                         float *qdp_rch,

@@ -65,47 +65,38 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cpdef void compute_reach_kernel_NEW(float qup, float quc, int nseg, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False):
+cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] lateral_flows, int nseg, int nts, float[:,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
     
     cdef:
-        const float[:,:] input_buf_F
         float dt
-        const float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        int i
-        float[:,:] out_buf_F = np.empty((nseg, 6), dtype = 'float32', order = 'F')
-        
-        #float[:] flow_f = np.empty((nseg), dtype = 'float32', order = 'F')
-        #float[:] velocity_f = np.empty((nseg), dtype = 'float32', order = 'F')
-        #float[:] depth_f = np.empty((nseg), dtype = 'float32', order = 'F')
-        #float[:] cn_f = np.empty((nseg), dtype = 'float32', order = 'F')
-        #float[:] ck_f = np.empty((nseg), dtype = 'float32', order = 'F')
-        #float[:] X_f = np.empty((nseg), dtype = 'float32', order = 'F')
-    
-    input_buf_F = np.asfortranarray(input_buf)
-    #out_buf_F = np.asfortranarray(output_buf)
+        int i 
+        float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        float[:,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
+        float[:,:] input_buf_F     = np.asfortranarray(input_buf)
+        float[:,:] lateral_flows_F = np.asfortranarray(lateral_flows)
     
     # extract input arrays from input_buf
-    qlat   = input_buf_F[:nseg, 0]
-    dt     = input_buf[0, 1]
-    dx     = input_buf_F[:nseg, 2]
-    bw     = input_buf_F[:nseg, 3]
-    tw     = input_buf_F[:nseg, 4]
-    twcc   = input_buf_F[:nseg, 5]
-    n      = input_buf_F[:nseg, 6]
-    ncc    = input_buf_F[:nseg, 7]
-    cs     = input_buf_F[:nseg, 8]
-    s0     = input_buf_F[:nseg, 9]
-    qdp    = input_buf_F[:nseg, 10]
-    velp   = input_buf_F[:nseg, 11]
-    depthp = input_buf_F[:nseg, 12]
+    dt     = input_buf_F[0, 0]
+    dx     = input_buf_F[:nseg, 1]
+    bw     = input_buf_F[:nseg, 2]
+    tw     = input_buf_F[:nseg, 3]
+    twcc   = input_buf_F[:nseg, 4]
+    n      = input_buf_F[:nseg, 5]
+    ncc    = input_buf_F[:nseg, 6]
+    cs     = input_buf_F[:nseg, 7]
+    s0     = input_buf_F[:nseg, 8]
+    qdp    = input_buf_F[:nseg, 9]
+    velp   = input_buf_F[:nseg, 10]
+    depthp = input_buf_F[:nseg, 11]
         
     reach.computereach(
         dt,
         nseg,
+        nts,
         qup,
         quc,
         qdp,
-        qlat,
+        lateral_flows_F,
         dx,
         bw,
         tw,
@@ -116,23 +107,19 @@ cpdef void compute_reach_kernel_NEW(float qup, float quc, int nseg, const float[
         s0,
         velp,
         depthp,
-        out_buf_F[:,0],
-        out_buf_F[:,1],
-        out_buf_F[:,2],
-        out_buf_F[:,3],
-        out_buf_F[:,4],
-        out_buf_F[:,5],
-        #flow_f,
-        #velocity_f,
-        #depth_f,
-        #cn_f,
-        #ck_f,
-        #X_f
+        out[:,:,0],
+        out[:,:,1],
+        out[:,:,2],
+        out[:,:,3],
+        out[:,:,4],
+        out[:,:,5],
     )
-        
-    output_buf[:nseg,0] = out_buf_F[:,0]
-    output_buf[:nseg,1] = out_buf_F[:,1]
-    output_buf[:nseg,2] = out_buf_F[:,2]
+    
+    print('out[:,:,0]:', np.asarray(out[:,:,0]))
+    
+    output_buf[:nseg,:,0] = out[:,:,0]
+    output_buf[:nseg,:,1] = out[:,:,1]
+    output_buf[:nseg,:,2] = out[:,:,2]
 
 @cython.boundscheck(False)
 cpdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) :
@@ -306,15 +293,12 @@ cpdef object compute_network_structured(
     #lists to hold segment ids
     cdef list segment_ids
     cdef list upstream_ids
-    #flow accumulation variables
-    cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
     cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
-    #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
-    cdef float[:,:] out_buf
-    cdef float[:] lateral_flows
+    
+
+    
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -481,10 +465,20 @@ cpdef object compute_network_structured(
                 flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
                 flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
+    
+    #buffers to pass to compute_reach_kernel
+    cdef float[:,:] buf_view
+    cdef float[:,:,:] out_buf
+    cdef float[:,:] lateral_flows
+    cdef float[:] upstream_flows, previous_upstream_flows
+    cdef int _i, _t
+    
     #Init buffers
-    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
-    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
-    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+    lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32')
+    upstream_flows          = np.zeros( (nsteps), dtype='float32')
+    previous_upstream_flows = np.zeros( (nsteps), dtype='float32')
+    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32')
+    out_buf                 = np.full( (max_buff_size, nsteps, 6), -1, dtype='float32')
 
     cdef int num_reaches = len(reach_objects)
     #Dynamically allocate a C array of reach structs
@@ -500,7 +494,65 @@ cpdef object compute_network_structured(
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
+    for i in range(num_reaches):
+                
+        r = &reach_structs[i]
+        for _t in range(nsteps): 
+
+            # populate upstream flows arrays
+            for _i in range(r._num_upstream_ids):
+                id = r._upstream_ids[_i]
+                upstream_flows[_t]          += flowveldepth[id, _t+1, 0]
+                previous_upstream_flows[_t] += flowveldepth[id, _t, 0]
+
+            # populate lateral flow array
+            for _i in range(r.reach.mc_reach.num_segments):
+                segment = get_mc_segment(r, _i)
+                lateral_flows[_i, _t] = qlat_array[ segment.id, <int>(_t/qts_subdivisions)]
+        
+        # build parameter and initial condition buffer
+        for _i in range(r.reach.mc_reach.num_segments):
+            segment = get_mc_segment(r, _i)
+            buf_view[_i, 0] = segment.dt
+            buf_view[_i, 1] = segment.dx
+            buf_view[_i, 2] = segment.bw
+            buf_view[_i, 3] = segment.tw
+            buf_view[_i, 4] = segment.twcc
+            buf_view[_i, 5] = segment.n
+            buf_view[_i, 6] = segment.ncc
+            buf_view[_i, 7] = segment.cs
+            buf_view[_i, 8] = segment.s0
+            buf_view[_i, 9] = flowveldepth[segment.id, 0, 0]
+            buf_view[_i, 10] = 0.0
+            buf_view[_i, 11] = flowveldepth[segment.id, 0, 2]
+            
+        # compute reach routing - all timesteps
+        compute_reach_kernel_NEW(
+            np.asfortranarray(previous_upstream_flows), 
+            np.asfortranarray(upstream_flows),
+            np.asfortranarray(lateral_flows),
+            r.reach.mc_reach.num_segments, 
+            nsteps,
+            buf_view,
+            out_buf,
+            assume_short_ts
+        )
+        
+        print('out_buf:', np.asarray(out_buf[:r.reach.mc_reach.num_segments, :, 0]))
+        
+        
+        for _i in range(r.reach.mc_reach.num_segments):
+            segment = get_mc_segment(r, _i)
+            flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
+            flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
+            flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
+            
+        if np.sum(out_buf[_i, :, 0]) == np.nan:
+            exit()
+        
+            
     
+    '''
     while timestep < nsteps+1:
         print('timestep:', timestep)
         
@@ -735,6 +787,7 @@ cpdef object compute_network_structured(
         # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
         timestep += 1
+        '''
 
     #pr.disable()
     #pr.print_stats(sort='time')
