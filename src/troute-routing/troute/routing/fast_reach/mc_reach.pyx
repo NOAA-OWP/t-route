@@ -1,17 +1,15 @@
-# cython: language_level=3, boundscheck=True, wraparound=False, profile=True
+# cython: language_level=3, boundscheck=True, wraparound=False
 
 import numpy as np
 from itertools import chain
 from operator import itemgetter
 from array import array
-from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
+from numpy cimport ndarray
 from libc.math cimport isnan, NAN
-cimport numpy as np  # TODO: We are cimporting and importing numpy into the same symbol, 'np'. Problem?
+cimport numpy as np 
 cimport cython
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport printf
-#Note may get slightly better performance using cython mem module (pulls from python's heap)
-#from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
@@ -20,13 +18,6 @@ from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from cython.parallel import prange
 
-#import cProfile
-#pr = cProfile.Profile()
-#NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
-#the mc_reach.so will have an undefined symbol _muskingcunge, and reach.so will have a ____pyx_f_5reach_muskingcunge
-#if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
-#____pyx_f_5reach_muskingcunge
-#from reach cimport muskingcunge, QVD
 cimport troute.routing.fast_reach.reach as reach
 from troute.routing.fast_reach.simple_da cimport obs_persist_shift, simple_da_with_decay, simple_da
 
@@ -65,43 +56,40 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] lateral_flows, int nseg, int nts, float[:,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
+cpdef void compute_reach_kernel(float[:] qup, float[:] quc, float[:,:] lateral_flows, int nseg, int nts, float[::1,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
     
     cdef:
         float dt
         int i 
         float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
         float[:,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
-        float[:,:] lateral_flows_F
-        float[:,:] input_buf_F = np.asfortranarray(input_buf)
-    
+        float[:,:] lateral_flows_F    
     
     if nseg == 1:
-        lateral_flows_F = lateral_flows.T
+        lateral_flows_F = lateral_flows[:nseg,:].T
     else:
-        lateral_flows_F = np.asfortranarray(lateral_flows)
-    
+        lateral_flows_F = np.asfortranarray(lateral_flows[:nseg,:])
     
     # extract input arrays from input_buf
-    dt     = input_buf_F[0, 0]
-    dx     = input_buf_F[:nseg, 1]
-    bw     = input_buf_F[:nseg, 2]
-    tw     = input_buf_F[:nseg, 3]
-    twcc   = input_buf_F[:nseg, 4]
-    n      = input_buf_F[:nseg, 5]
-    ncc    = input_buf_F[:nseg, 6]
-    cs     = input_buf_F[:nseg, 7]
-    s0     = input_buf_F[:nseg, 8]
-    qdp    = input_buf_F[:nseg, 9]
-    velp   = input_buf_F[:nseg, 10]
-    depthp = input_buf_F[:nseg, 11]
+    dt     = input_buf[0, 0]
+    dx     = input_buf[:nseg, 1]
+    bw     = input_buf[:nseg, 2]
+    tw     = input_buf[:nseg, 3]
+    twcc   = input_buf[:nseg, 4]
+    n      = input_buf[:nseg, 5]
+    ncc    = input_buf[:nseg, 6]
+    cs     = input_buf[:nseg, 7]
+    s0     = input_buf[:nseg, 8]
+    qdp    = input_buf[:nseg, 9]
+    velp   = input_buf[:nseg, 10]
+    depthp = input_buf[:nseg, 11]
         
     reach.computereach(
         dt,
         nseg,
         nts,
-        qup.T,
-        quc.T,
+        qup,
+        quc,
         qdp,
         lateral_flows_F,
         dx,
@@ -125,77 +113,6 @@ cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] later
     output_buf[:nseg,:,0] = out[:,:,0]
     output_buf[:nseg,:,1] = out[:,:,1]
     output_buf[:nseg,:,2] = out[:,:,2]
-
-@cython.boundscheck(False)
-cpdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) :
-    """
-    Kernel to compute reach.
-    Input buffer is array matching following description:
-    axis 0 is reach
-    axis 1 is inputs in th following order:
-        qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        qup and quc are initial conditions.
-    Output buffer matches the same dimsions as input buffer in axis 0
-    Input is nxm (n reaches by m variables)
-    Ouput is nx3 (n reaches by 3 return values)
-        0: current flow, 1: current depth, 2: current velocity
-    """
-    cdef reach.QVD rv
-    cdef reach.QVD *out = &rv
-
-    cdef:
-        float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        int i
-
-    for i in range(nreach):
-        qlat = input_buf[i, 0] # n x 1
-        dt = input_buf[i, 1] # n x 1
-        dx = input_buf[i, 2] # n x 1
-        bw = input_buf[i, 3]
-        tw = input_buf[i, 4]
-        twcc =input_buf[i, 5]
-        n = input_buf[i, 6]
-        ncc = input_buf[i, 7]
-        cs = input_buf[i, 8]
-        s0 = input_buf[i, 9]
-        qdp = input_buf[i, 10]
-        velp = input_buf[i, 11]
-        depthp = input_buf[i, 12]
-
-        reach.muskingcunge(
-                    dt,
-                    qup,
-                    quc,
-                    qdp,
-                    qlat,
-                    dx,
-                    bw,
-                    tw,
-                    twcc,
-                    n,
-                    ncc,
-                    cs,
-                    s0,
-                    velp,
-                    depthp,
-                    out)
-
-#        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
-        output_buf[i, 0] = out.qdc
-        output_buf[i, 1] = out.velc
-        output_buf[i, 2] = out.depthc
-
-        if return_courant:
-            output_buf[i, 3] = out.cn
-            output_buf[i, 4] = out.ck
-            output_buf[i, 5] = out.X
-
-        qup = qdp
-
-        if assume_short_ts:
-            quc = qup
-        else:
-            quc = out.qdc
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
@@ -472,7 +389,7 @@ cpdef object compute_network_structured(
 
     
     #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
+    cdef float[::1,:] buf_view
     cdef float[:,:,:] out_buf
     cdef float[:,:] lateral_flows
     cdef float[:] upstream_flows, previous_upstream_flows
@@ -480,7 +397,7 @@ cpdef object compute_network_structured(
     
     #Init buffers
     lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32')
-    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32')
+    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32', order = 'F')
     out_buf                 = np.full( (max_buff_size, nsteps, 6), -1, dtype='float32')
 
     cdef int num_reaches = len(reach_objects)
@@ -502,8 +419,8 @@ cpdef object compute_network_structured(
         r = &reach_structs[i]
         
         # initialize upstream flow arrays
-        upstream_flows          = np.zeros( (nsteps), dtype='float32')
-        previous_upstream_flows = np.zeros( (nsteps), dtype='float32')
+        upstream_flows          = np.zeros( (nsteps), dtype='float32', order = 'F')
+        previous_upstream_flows = np.zeros( (nsteps), dtype='float32', order = 'F')
         
         # step through time and populate upstream and lateral flow arrays
         for _t in range(nsteps): 
@@ -511,8 +428,11 @@ cpdef object compute_network_structured(
             # populate upstream flows arrays
             for _i in range(r._num_upstream_ids):
                 id = r._upstream_ids[_i]
-                upstream_flows[_t]          += flowveldepth[id, _t+1, 0]
                 previous_upstream_flows[_t] += flowveldepth[id, _t, 0]
+                if assume_short_ts:
+                    upstream_flows[_t]          += flowveldepth[id, _t, 0]
+                else:
+                    upstream_flows[_t]          += flowveldepth[id, _t+1, 0]
 
             # populate lateral flow array
             for _i in range(r.reach.mc_reach.num_segments):
@@ -535,13 +455,27 @@ cpdef object compute_network_structured(
             buf_view[_i, 10] = 0.0
             buf_view[_i, 11] = flowveldepth[segment.id, 0, 2]
             
+        '''
+        if data_idx[segment.id] == 3766386:
+            input_arguments = {
+                'nseg': r.reach.mc_reach.num_segments,
+                'nsteps': nsteps,
+                'qup': np.asarray(previous_upstream_flows, dtype = 'float32'),
+                'quc': np.asarray(upstream_flows, dtype = 'float32'), 
+                'lateral_flows': np.asarray(lateral_flows, dtype = 'float32'),
+                'input_buf': np.asarray(buf_view, dtype = 'float32'),
+                'out_buf': np.asarray(out_buf, dtype = 'float32'),
+                'assume_short_ts': True
+            }
+            np.save(
+                '/glade/u/home/adamw/projects/t-route/test/jobs/prifile_cython/single_reach_all_time_args.npy',
+                input_arguments
+            )
+            exit()
+        '''
+
         # compute reach routing - all timesteps
-        print('******************************')
-        print('COMPUTUING reach, tail segment:', data_idx[segment.id])
-        print('lateral inflow array:')
-        print(np.asarray(lateral_flows))
-        
-        compute_reach_kernel_NEW(
+        compute_reach_kernel(
             previous_upstream_flows, 
             upstream_flows,
             lateral_flows,
@@ -552,7 +486,6 @@ cpdef object compute_network_structured(
             assume_short_ts
         )
                 
-        
         for _i in range(r.reach.mc_reach.num_segments):
             segment = get_mc_segment(r, _i)
             flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
