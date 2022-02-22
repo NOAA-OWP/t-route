@@ -37,25 +37,25 @@ subroutine reachcompute(dt, nseg, nts, qup_top, quc_top, qdp_rch, ql_rch, dx_rch
     depth_init = depthp_rch
                 
     do t = 1, nts
-        !print *, '*******************************'
-        !print *, 'TIMESTEP:', t
+        print *, '*******************************'
+        print *, 'TIMESTEP:', t
     
         qup = qup_top(t)
         quc = quc_top(t)
         do i = 1, nseg
 
-          !print *, '========================================'
-          !print *, 'segment', i, ' out of', nseg
-          !print *, 'previous upstream flow:', qup
-          !print *, 'previous downstream flow:', qdp_rch(i)
-          !print *, 'lateral inflow:', ql_rch(i,t)
+          print *, '========================================'
+          print *, 'segment', i, ' out of', nseg
+          print *, 'previous upstream flow:', qup
+          print *, 'previous downstream flow:', qdp_rch(i)
+          print *, 'lateral inflow:', ql_rch(i,t)
           
           call muskingcungenwm(dt, qup, quc, flow_init(i), ql_rch(i,t), dx_rch(i),& 
                                bw_rch(i), tw_rch(i), twcc_rch(i), n_rch(i), ncc_rch(i),& 
                                cs_rch(i), s0_rch(i), velp_rch(i), depth_init(i), qdc,& 
                                velc, depthc, ck, cn, X)
                                
-         !print *, 'computed segment flow:', qdc
+         print *, 'computed segment flow:', qdc
 
 
           qdc_rch(i,t) = qdc
