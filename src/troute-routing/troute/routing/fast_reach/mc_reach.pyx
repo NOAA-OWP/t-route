@@ -65,43 +65,44 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] lateral_flows, int nseg, int nts, float[:,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
+cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[::1,:] lateral_flows, int nseg, int nts, float[::1,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
     
     cdef:
         float dt
         int i 
         float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        float[:,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
-        float[:,:] input_buf_F     = np.asfortranarray(input_buf)
-        float[:,:] lateral_flows_F
-        
+        float[::1,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
+        #float[:,:] lateral_flows_F
+    
+    '''
     if nseg == 1:
         lateral_flows_F = lateral_flows.T
     else:
         lateral_flows_F = np.asfortranarray(lateral_flows)
+    '''
     
     # extract input arrays from input_buf
-    dt     = input_buf_F[0, 0]
-    dx     = input_buf_F[:nseg, 1]
-    bw     = input_buf_F[:nseg, 2]
-    tw     = input_buf_F[:nseg, 3]
-    twcc   = input_buf_F[:nseg, 4]
-    n      = input_buf_F[:nseg, 5]
-    ncc    = input_buf_F[:nseg, 6]
-    cs     = input_buf_F[:nseg, 7]
-    s0     = input_buf_F[:nseg, 8]
-    qdp    = input_buf_F[:nseg, 9]
-    velp   = input_buf_F[:nseg, 10]
-    depthp = input_buf_F[:nseg, 11]
+    dt     = input_buf[0, 0]
+    dx     = input_buf[:nseg, 1]
+    bw     = input_buf[:nseg, 2]
+    tw     = input_buf[:nseg, 3]
+    twcc   = input_buf[:nseg, 4]
+    n      = input_buf[:nseg, 5]
+    ncc    = input_buf[:nseg, 6]
+    cs     = input_buf[:nseg, 7]
+    s0     = input_buf[:nseg, 8]
+    qdp    = input_buf[:nseg, 9]
+    velp   = input_buf[:nseg, 10]
+    depthp = input_buf[:nseg, 11]
         
     reach.computereach(
         dt,
         nseg,
         nts,
-        qup.T,
-        quc.T,
+        qup,
+        quc,
         qdp,
-        lateral_flows_F,
+        lateral_flows,
         dx,
         bw,
         tw,
@@ -470,15 +471,15 @@ cpdef object compute_network_structured(
 
     
     #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
+    cdef float[::1,:] buf_view
     cdef float[:,:,:] out_buf
-    cdef float[:,:] lateral_flows
+    cdef float[::1,:] lateral_flows
     cdef float[:] upstream_flows, previous_upstream_flows
     cdef int _i, _t
     
     #Init buffers
-    lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32')
-    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32')
+    lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32', order = 'F')
+    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32', order = 'F')
     out_buf                 = np.full( (max_buff_size, nsteps, 6), -1, dtype='float32')
 
     cdef int num_reaches = len(reach_objects)
@@ -500,8 +501,8 @@ cpdef object compute_network_structured(
         r = &reach_structs[i]
         
         # initialize upstream flow arrays
-        upstream_flows          = np.zeros( (nsteps), dtype='float32')
-        previous_upstream_flows = np.zeros( (nsteps), dtype='float32')
+        upstream_flows          = np.zeros( (nsteps), dtype='float32', order = 'F')
+        previous_upstream_flows = np.zeros( (nsteps), dtype='float32', order = 'F')
         
         # step through time and populate upstream and lateral flow arrays
         for _t in range(nsteps): 
