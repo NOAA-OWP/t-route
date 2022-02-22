@@ -73,7 +73,12 @@ cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] later
         float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
         float[:,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
         float[:,:] input_buf_F     = np.asfortranarray(input_buf)
-        float[:,:] lateral_flows_F = np.asfortranarray(lateral_flows)
+        float[:,:] lateral_flows_F
+        
+    if nseg == 1:
+        lateral_flows_F = lateral_flows.T
+    else:
+        lateral_flows_F = np.asfortranarray(lateral_flows)
     
     # extract input arrays from input_buf
     dt     = input_buf_F[0, 0]
@@ -93,8 +98,8 @@ cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] later
         dt,
         nseg,
         nts,
-        qup,
-        quc,
+        qup.T,
+        quc.T,
         qdp,
         lateral_flows_F,
         dx,
@@ -114,9 +119,7 @@ cpdef void compute_reach_kernel_NEW(float[:] qup, float[:] quc, float[:,:] later
         out[:,:,4],
         out[:,:,5],
     )
-    
-    print('out[:,:,0]:', np.asarray(out[:,:,0]))
-    
+        
     output_buf[:nseg,:,0] = out[:,:,0]
     output_buf[:nseg,:,1] = out[:,:,1]
     output_buf[:nseg,:,2] = out[:,:,2]
@@ -475,8 +478,6 @@ cpdef object compute_network_structured(
     
     #Init buffers
     lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32')
-    upstream_flows          = np.zeros( (nsteps), dtype='float32')
-    previous_upstream_flows = np.zeros( (nsteps), dtype='float32')
     buf_view                = np.zeros( (max_buff_size, 12), dtype='float32')
     out_buf                 = np.full( (max_buff_size, nsteps, 6), -1, dtype='float32')
 
@@ -497,6 +498,12 @@ cpdef object compute_network_structured(
     for i in range(num_reaches):
                 
         r = &reach_structs[i]
+        
+        # initialize upstream flow arrays
+        upstream_flows          = np.zeros( (nsteps), dtype='float32')
+        previous_upstream_flows = np.zeros( (nsteps), dtype='float32')
+        
+        # step through time and populate upstream and lateral flow arrays
         for _t in range(nsteps): 
 
             # populate upstream flows arrays
@@ -510,7 +517,7 @@ cpdef object compute_network_structured(
                 segment = get_mc_segment(r, _i)
                 lateral_flows[_i, _t] = qlat_array[ segment.id, <int>(_t/qts_subdivisions)]
         
-        # build parameter and initial condition buffer
+        # build reach parameter and initial condition buffer
         for _i in range(r.reach.mc_reach.num_segments):
             segment = get_mc_segment(r, _i)
             buf_view[_i, 0] = segment.dt
@@ -528,28 +535,22 @@ cpdef object compute_network_structured(
             
         # compute reach routing - all timesteps
         compute_reach_kernel_NEW(
-            np.asfortranarray(previous_upstream_flows), 
-            np.asfortranarray(upstream_flows),
-            np.asfortranarray(lateral_flows),
+            previous_upstream_flows, 
+            upstream_flows,
+            lateral_flows,
             r.reach.mc_reach.num_segments, 
             nsteps,
             buf_view,
             out_buf,
             assume_short_ts
         )
-        
-        print('out_buf:', np.asarray(out_buf[:r.reach.mc_reach.num_segments, :, 0]))
-        
+                
         
         for _i in range(r.reach.mc_reach.num_segments):
             segment = get_mc_segment(r, _i)
             flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
             flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
             flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
-            
-        if np.sum(out_buf[_i, :, 0]) == np.nan:
-            exit()
-        
             
     
     '''
@@ -692,7 +693,7 @@ cpdef object compute_network_structured(
                     buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                     buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
-                '''
+
                 # Extract input data for a single-reach, single-timestep computation
                 
                 if data_idx[segment.id] == 5785357:
@@ -710,7 +711,7 @@ cpdef object compute_network_structured(
                     )
                     exit()
                 
-                '''
+
                 
                 
                 compute_reach_kernel_NEW(previous_upstream_flows, upstream_flows,
@@ -719,14 +720,13 @@ cpdef object compute_network_structured(
                                      assume_short_ts)
                 
                 
-                '''
+
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
                                      assume_short_ts)
           
 
-                '''    
             #Copy the output out
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)

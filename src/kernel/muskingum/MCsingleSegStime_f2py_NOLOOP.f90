@@ -28,24 +28,34 @@ subroutine reachcompute(dt, nseg, nts, qup_top, quc_top, qdp_rch, ql_rch, dx_rch
     real(prec) :: quc, qup
     real(prec) :: qdc, velc, depthc
     real(prec) :: ck, cn, X
-        
     
-    print *, 'dx:', dx_rch
-    print *, 'dt:', dt
-    print *, 'qup:', qup_top
-    print *, 'qdp:', qdp_rch
+    real(prec), dimension(:), allocatable :: flow_init, depth_init
+    allocate(flow_init(nseg))
+    allocate(depth_init(nseg))
     
-    
+    flow_init  = qdp_rch
+    depth_init = depthp_rch
+                
     do t = 1, nts
+        !print *, '*******************************'
+        !print *, 'TIMESTEP:', t
     
         qup = qup_top(t)
         quc = quc_top(t)
         do i = 1, nseg
 
-          call muskingcungenwm(dt, qup, quc, qdp_rch(i), ql_rch(i,t), dx_rch(i),& 
+          !print *, '========================================'
+          !print *, 'segment', i, ' out of', nseg
+          !print *, 'previous upstream flow:', qup
+          !print *, 'previous downstream flow:', qdp_rch(i)
+          !print *, 'lateral inflow:', ql_rch(i,t)
+          
+          call muskingcungenwm(dt, qup, quc, flow_init(i), ql_rch(i,t), dx_rch(i),& 
                                bw_rch(i), tw_rch(i), twcc_rch(i), n_rch(i), ncc_rch(i),& 
-                               cs_rch(i), s0_rch(i), velp_rch(i), depthp_rch(i), qdc,& 
+                               cs_rch(i), s0_rch(i), velp_rch(i), depth_init(i), qdc,& 
                                velc, depthc, ck, cn, X)
+                               
+         !print *, 'computed segment flow:', qdc
 
 
           qdc_rch(i,t) = qdc
@@ -60,10 +70,12 @@ subroutine reachcompute(dt, nseg, nts, qup_top, quc_top, qdp_rch, ql_rch, dx_rch
 
           ! short timestep assumption
           quc = qup
+          
+          flow_init(i)    = qdc
+          depth_init(i) = depthc
 
         end do
     end do
-    
 end subroutine reachcompute
 
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
