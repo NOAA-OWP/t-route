@@ -418,6 +418,12 @@ cpdef object compute_network_structured(
                 
         r = &reach_structs[i]
         
+   
+        #------------------------------------------------------------------------
+        #
+        #    Organize upstream inflows and lateral flow data for reach r
+        #
+        #------------------------------------------------------------------------
         # initialize upstream flow arrays
         upstream_flows          = np.zeros( (nsteps), dtype='float32', order = 'F')
         previous_upstream_flows = np.zeros( (nsteps), dtype='float32', order = 'F')
@@ -433,66 +439,70 @@ cpdef object compute_network_structured(
                     upstream_flows[_t]          += flowveldepth[id, _t, 0]
                 else:
                     upstream_flows[_t]          += flowveldepth[id, _t+1, 0]
-
+                    
             # populate lateral flow array
+            if r.type == compute_type.MC_REACH:
+                for _i in range(r.reach.mc_reach.num_segments):
+                    segment = get_mc_segment(r, _i)
+                    lateral_flows[_i, _t] = qlat_array[ segment.id, <int>(_t/qts_subdivisions)]
+        
+        #------------------------------------------------------------------------
+        #
+        #                      Muskingum-Cunge Routing
+        #
+        #------------------------------------------------------------------------
+        #print('Executing MC calculations for reach with tail segment', data_idx[segment.id])
+        if r.type == compute_type.MC_REACH: 
+            
+            # build reach parameter and initial condition buffer
             for _i in range(r.reach.mc_reach.num_segments):
                 segment = get_mc_segment(r, _i)
-                lateral_flows[_i, _t] = qlat_array[ segment.id, <int>(_t/qts_subdivisions)]
-        
-        # build reach parameter and initial condition buffer
-        for _i in range(r.reach.mc_reach.num_segments):
-            segment = get_mc_segment(r, _i)
-            buf_view[_i, 0] = segment.dt
-            buf_view[_i, 1] = segment.dx
-            buf_view[_i, 2] = segment.bw
-            buf_view[_i, 3] = segment.tw
-            buf_view[_i, 4] = segment.twcc
-            buf_view[_i, 5] = segment.n
-            buf_view[_i, 6] = segment.ncc
-            buf_view[_i, 7] = segment.cs
-            buf_view[_i, 8] = segment.s0
-            buf_view[_i, 9] = flowveldepth[segment.id, 0, 0]
-            buf_view[_i, 10] = 0.0
-            buf_view[_i, 11] = flowveldepth[segment.id, 0, 2]
-            
-        '''
-        if data_idx[segment.id] == 3766386:
-            input_arguments = {
-                'nseg': r.reach.mc_reach.num_segments,
-                'nsteps': nsteps,
-                'qup': np.asarray(previous_upstream_flows, dtype = 'float32'),
-                'quc': np.asarray(upstream_flows, dtype = 'float32'), 
-                'lateral_flows': np.asarray(lateral_flows, dtype = 'float32'),
-                'input_buf': np.asarray(buf_view, dtype = 'float32'),
-                'out_buf': np.asarray(out_buf, dtype = 'float32'),
-                'assume_short_ts': True
-            }
-            np.save(
-                '/glade/u/home/adamw/projects/t-route/test/jobs/prifile_cython/single_reach_all_time_args.npy',
-                input_arguments
-            )
-            exit()
-        '''
+                buf_view[_i, 0] = segment.dt
+                buf_view[_i, 1] = segment.dx
+                buf_view[_i, 2] = segment.bw
+                buf_view[_i, 3] = segment.tw
+                buf_view[_i, 4] = segment.twcc
+                buf_view[_i, 5] = segment.n
+                buf_view[_i, 6] = segment.ncc
+                buf_view[_i, 7] = segment.cs
+                buf_view[_i, 8] = segment.s0
+                buf_view[_i, 9] = flowveldepth[segment.id, 0, 0]
+                buf_view[_i, 10] = 0.0
+                buf_view[_i, 11] = flowveldepth[segment.id, 0, 2]
 
-        # compute reach routing - all timesteps
-        compute_reach_kernel(
-            previous_upstream_flows, 
-            upstream_flows,
-            lateral_flows,
-            r.reach.mc_reach.num_segments, 
-            nsteps,
-            buf_view,
-            out_buf,
-            assume_short_ts
-        )
-                
-        for _i in range(r.reach.mc_reach.num_segments):
-            segment = get_mc_segment(r, _i)
-            flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
-            flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
-            flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
+            # compute reach routing - all timesteps
+            compute_reach_kernel(
+                previous_upstream_flows, 
+                upstream_flows,
+                lateral_flows,
+                r.reach.mc_reach.num_segments, 
+                nsteps,
+                buf_view,
+                out_buf,
+                assume_short_ts
+            )
+
+            for _i in range(r.reach.mc_reach.num_segments):
+                segment = get_mc_segment(r, _i)
+                flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
+                flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
+                flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
             
-    
+        if r.type == compute_type.RESERVOIR_LP: 
+                
+            #print('Executing levelpool calculations for lake', r.reach.lp.lake_number)
+            for _t in range(nsteps): 
+            
+                # levelpool reservoir storage/outflow calculation
+                print(_t, '/', nsteps)
+                run_lp_c(r, upstream_flows[_t], 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                
+                # populate flowveldepth array with levelpool
+                flowveldepth[r.id, _t+1, 0] = reservoir_outflow
+                flowveldepth[r.id, _t+1, 1] = 0.0
+                flowveldepth[r.id, _t+1, 2] = reservoir_water_elevation
+                
+            
     '''
     while timestep < nsteps+1:
         print('timestep:', timestep)
