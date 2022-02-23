@@ -416,12 +416,13 @@ cpdef object compute_network_structured(
     
     for i in range(num_reaches):
                 
+        # get reach object, which contains parameters and states 
+        # needed for reach calculations
         r = &reach_structs[i]
         
-   
         #------------------------------------------------------------------------
         #
-        #    Organize upstream inflows and lateral flow data for reach r
+        #    Organize reach forcing: upstream inflows and lateral inflows
         #
         #------------------------------------------------------------------------
         # initialize upstream flow arrays
@@ -448,7 +449,7 @@ cpdef object compute_network_structured(
         
         #------------------------------------------------------------------------
         #
-        #                      Muskingum-Cunge Routing
+        #                      Muskingum-Cunge Reach
         #
         #------------------------------------------------------------------------
         #print('Executing MC calculations for reach with tail segment', data_idx[segment.id])
@@ -487,14 +488,18 @@ cpdef object compute_network_structured(
                 flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
                 flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
                 flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
-            
+                
+        #------------------------------------------------------------------------
+        #
+        #                      Reservoir Reach
+        #
+        #------------------------------------------------------------------------   
         if r.type == compute_type.RESERVOIR_LP: 
                 
             #print('Executing levelpool calculations for lake', r.reach.lp.lake_number)
             for _t in range(nsteps): 
             
                 # levelpool reservoir storage/outflow calculation
-                print(_t, '/', nsteps)
                 run_lp_c(r, upstream_flows[_t], 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                 
                 # populate flowveldepth array with levelpool
