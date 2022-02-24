@@ -280,15 +280,18 @@ def nwm_network_preprocess(
     LOG.info("organizing connections into reaches ...")
     start_time = time.time()
     
-    network_break_segments = set()
+    gage_break_segments = set()
+    wbody_break_segments = set()
     if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbody_conn.values())
+        wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
+        
     if break_network_at_gages:
-        network_break_segments = network_break_segments.union(gages['gages'].keys())
+        gage_break_segments = gage_break_segments.union(gages['gages'].keys())
         
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        network_break_segments,
+        wbody_break_segments,
+        gage_break_segments,
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
