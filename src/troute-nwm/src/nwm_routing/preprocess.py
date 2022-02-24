@@ -134,7 +134,7 @@ def nwm_network_preprocess(
         # waterbodies
         break_network_at_waterbodies = False
 
-    # if waterbodies are being simulated, udjust the connections graph so that 
+    # if waterbodies are being simulated, adjust the connections graph so that 
     # waterbodies are collapsed to single nodes. Also, build a mapping between 
     # waterbody outlet segments and lake ids
     if break_network_at_waterbodies:

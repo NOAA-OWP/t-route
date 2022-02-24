@@ -86,11 +86,6 @@ network_topology_parameters:
         # optional, default to zero
         mask_key: 
         # ---------------
-        # logical, if True gaged segments occupy a reach of their own
-        # defaults to False
-        # (!!) mandatory for DA simulations
-        break_network_at_gages: 
-        # ---------------
         # attribute names in channel geometry file (Route_Link.nc)
         # optional, defaults to attribute names in WRF RouteLink.nc
         # This section is only needed if, for whatever reason, the channel
@@ -385,11 +380,11 @@ compute_parameters:
     # simulations is desired.
     hybrid_parameters:
         # ---------------
-        # boolean paramete whether or not hybrid routing is actived.
+        # boolean parameter whether or not hybrid routing is actived.
         # If it is set to True, the hybrid routing is activated. If false, 
         # MC is solely used for channel flow routing.
         # (!!) mandatory for hybrid simulations
-        run_hybrid_domain:
+        run_hybrid_routing:
         # ---------------
         # filepath to diffusive domain dictionary file. 
         # This file can be either JSON or yaml and contain a dictionary
