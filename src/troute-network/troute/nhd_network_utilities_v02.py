@@ -138,7 +138,8 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     Arguments:
     ----------
     connections (dict, int: [int]): downstream network connections
-    break_nodes              (set): segment ids where network reaches are broken
+    wbody_break_segments     (set): waterbody segments to break reaches at inlets/outlets
+    gage_break_segments      (set): gage ids to break reaches at gages
     
     Returns:
     --------
