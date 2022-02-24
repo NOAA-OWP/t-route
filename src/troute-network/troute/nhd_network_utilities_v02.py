@@ -130,7 +130,7 @@ def build_connections(supernetwork_parameters):
 
     return connections, param_df, wbodies, gages
 
-def organize_independent_networks(connections, break_nodes=None):
+def organize_independent_networks(connections, wbody_break_segments, gage_break_segments):
     '''
     Build reverse network connections, independent drainage networks, and network reaches.
     Reaches are defined as linearly connected segments between two junctions or break points.
