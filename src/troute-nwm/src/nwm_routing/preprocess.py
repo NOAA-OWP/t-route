@@ -122,9 +122,12 @@ def nwm_network_preprocess(
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
-    break_network_at_gages = supernetwork_parameters.get(
-        "break_network_at_gages", False
-    )
+    
+    # if streamflow DA, then break network at gages
+    break_network_at_gages = False
+    streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
+    if streamflow_da:
+        break_network_at_gages = streamflow_da.get('streamflow_nudging', False)
 
     if not wbody_conn: 
         # Turn off any further reservoir processing if the network contains no 
