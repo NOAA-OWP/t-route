@@ -159,12 +159,36 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     # construct network reaches
     reaches_bytw = {}
     for tw, net in independent_networks.items():
-        if break_nodes:
+        
+        # break reaches at waterbody inlets/outlets, gages and junctions
+        if wbody_break_segments and gage_break_segments:
             
-            # reaches will be broken between junctions and specified break nodes
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, set(break_nodes), net
+                nhd_network.split_at_gages_waterbodies_and_junctions, 
+                gage_break_segments, 
+                wbody_break_segments, 
+                net
             )
+            
+        # break reaches at gages and junctions
+        elif gage_break_segments and not wbody_break_segments:
+            
+            path_func = partial(
+                nhd_network.split_at_gages_and_junctions, 
+                gage_break_segments, 
+                net
+            )
+        
+        # break network at waterbody inlets/outlets and junctions
+        elif wbody_break_segments and not gage_break_segments:
+            
+            path_func = partial(
+                nhd_network.split_at_waterbodies_and_junctions, 
+                wbody_break_segments, 
+                net
+            )
+            
+        # break reaches at junctions
         else:
             
             # reaches will be broken between junctions
