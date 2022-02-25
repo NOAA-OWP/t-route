@@ -646,7 +646,7 @@ def nwm_initial_warmstate_preprocess(
     # otherwise, gage data will not be assimilated at waterbody outlet
     # segments.
     if link_lake_crosswalk:
-        lastobs_df = _reindex_link_to_lake_id(lastobs_df, link_lake_crosswalk):
+        lastobs_df = _reindex_link_to_lake_id(lastobs_df, link_lake_crosswalk)
 
     LOG.debug(
         "channel initial states complete in %s seconds."\
