@@ -340,6 +340,7 @@ def main_v03(argv):
         data_assimilation_parameters,
         segment_index,
         waterbodies_df,
+        link_lake_crosswalk,
     )
     
     if showtiming:
@@ -380,6 +381,7 @@ def main_v03(argv):
         break_network_at_waterbodies,
         segment_index,
         link_gage_df,
+        link_lake_crosswalk,
         lastobs_df.index,
         cpu_pool,
         t0,
