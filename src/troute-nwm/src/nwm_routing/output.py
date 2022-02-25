@@ -242,6 +242,14 @@ def nwm_output_generator(
         
         LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
         start = time.time()
+        
+        if link_lake_crosswalk:
+            lakeids = np.fromiter(link_lake_crosswalk.keys(), dtype = int)
+            idxs = link_gage_df.index.to_numpy()
+            lake_index_intersect = np.intersect1d(idxs, lakeids, return_indices = True)
+            segids = np.fromiter(link_lake_crosswalk.values(), dtype = int)
+            idxs[lake_index_intersect[1]] = segids[lake_index_intersect[2]]
+            link_gage_df.set_index(idxs, inplace = True)
                 
         nhd_io.write_chanobs(
             Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 
