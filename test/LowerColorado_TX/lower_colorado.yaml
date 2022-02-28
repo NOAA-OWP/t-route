@@ -25,21 +25,27 @@ compute_parameters:
     subnetwork_target_size: 5000
     cpu_pool: 12
     restart_parameters:
-        wrf_hydro_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2019-10-01_00:00_DOMAIN1
+        start_datetime: "2020-06-01_12:00:00"
+        #wrf_hydro_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1 channel_restart_202006011200
+        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_channel_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
-        wrf_hydro_waterbody_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2019-10-01_00:00_DOMAIN1
+        #wrf_hydro_waterbody_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1
+        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_waterbody_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc
         wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
     hybrid_parameters:
-        diffusive_domain: diffusive_domain.yaml
+        run_hybrid_routing: True
+        diffusive_domain: domain/diffusive_domain.yaml
+        use_natl_xsections: False
+        topobathy_domain: None
     forcing_parameters:
         qts_subdivisions: 12
         dt: 300
         qlat_input_folder: /glade/scratch/adamw/CONUS_1yr/forcing
         qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
         #nts: 105120
-        nts: 576 #1152 #576 #8640 #576
-        max_loop_size: 24 #720 #24  
+        nts: 8640 #8640 #1152 #576 #8640 #576
+        max_loop_size: 720 #720 #24  
         qlat_file_value_col: NULL
     #data_assimilation_parameters:
         usgs_timeslices_folder: /glade/scratch/adamw/CONUS_1yr/TimeSlice
@@ -50,7 +56,7 @@ compute_parameters:
             gage_segID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
             lastobs_output_folder: /glade/scratch/adamw/CONUS_1yr/lastobs       
 output_parameters:
-    test_output: /glade/scratch/donghakim/test_dump/lower_colorado_openloop
+    test_output: output/lower_colorado_hybrid_nmdepth_1mth  #/glade/scratch/donghakim/test_dump/lower_colorado_openloop
     chanobs_output:
             chanobs_output_directory: output/
             chanobs_filepath: LowerColorado_chanobs_1yr.nc

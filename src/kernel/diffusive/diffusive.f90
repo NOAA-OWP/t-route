@@ -187,12 +187,23 @@ contains
     double precision, dimension(:), allocatable :: varr_ub
     double precision, dimension(:), allocatable :: tarr_db
     double precision, dimension(:), allocatable :: varr_db
+    double precision, dimension(:), allocatable :: dbcd ! temporary
     double precision, dimension(:,:), allocatable :: leftBank
     double precision, dimension(:,:), allocatable :: rightBank
     double precision, dimension(:,:), allocatable :: skLeft
     double precision, dimension(:,:), allocatable :: skMain
     double precision, dimension(:,:), allocatable :: skRight
-
+    
+    ! test
+    double precision :: sumdmy1, sumdmy2
+    integer :: ts
+    open(unit=1, file="./input/tide_matagorda_city_31d.txt")
+    !open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
+    allocate(dbcd(nts_db_g))
+    do n = 1, nts_db_g
+        read(1,*) dmyi, dbcd(n), dmyi
+        dbcd(n) = dbcd(n) + 5.0
+    end do
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
@@ -296,12 +307,13 @@ contains
     allocate(tarr_ql(nts_ql_g), varr_ql(nts_ql_g))
     allocate(tarr_ub(nts_ub_g), varr_ub(nts_ub_g))
     allocate(tarr_qtrib(nts_qtrib_g), varr_qtrib(nts_qtrib_g))
+    allocate(tarr_db(nts_db_g), varr_db(nts_db_g))
     allocate(dmy_frj(nlinks))
     allocate(frnw_g(nlinks,frnw_col))
     allocate(x_bathy(mxnbathy, mxncomp, nlinks), z_bathy(mxnbathy, mxncomp, nlinks))
     allocate(mann_bathy(mxnbathy, mxncomp, nlinks))
     allocate(size_bathy(mxncomp, nlinks))
-
+    
   !-----------------------------------------------------------------------------
     frnw_g = frnw_ar_g ! network mapping matrix
     z      = z_ar_g    ! node elevation array
@@ -429,9 +441,9 @@ contains
         if (slope .le. so_llm) slope = so_llm
 
         xsec_tab(10, iel, i, j) = convey * slope**0.50
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   !-----------------------------------------------------------------------------
   ! Build time arrays for lateral flow, upstream boundary, donwstream boundary,
@@ -455,9 +467,14 @@ contains
                       real(n-1,KIND(dt_qtrib)) / 60.0 ! [min]
     end do
     
-    ! time step series for downstream boundary data
+    ! use tailwater downstream boundary observations
     ! needed for coastal coupling
     ! **** COMING SOON ****
+    ! time step series for downstream boundary data
+    do n=1, nts_db_g
+        tarr_db(n) = t0 * 60.0 + dt_db * &
+                      real(n-1,KIND(dt_db)) / 60.0 ! [min]
+    end do
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation, channel area, and volume
@@ -472,13 +489,19 @@ contains
         
         ! use tailwater downstream boundary observations
         ! needed for coastal coupling
-        ! **** COMING SOON ****
-            
-        ! normal depth as TW boundary condition
-        xcolID         = 10
-        ycolID         = 1
-        oldY(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, oldQ(ncomp,j)) ! normal elevation not depth
+        ! **** COMING SOON **** 
+        do n = 1, nts_db_g
+          varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+        end do
+        t              = t0 * 60.0
+        oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
         newY(ncomp, j) = oldY(ncomp, j)  
+
+        ! normal depth as TW boundary condition
+!        xcolID         = 10
+!        ycolID         = 1
+!        oldY(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, oldQ(ncomp,j)) ! normal elevation not depth
+!        newY(ncomp, j) = oldY(ncomp, j)  
       else
       
         ! Initial depth at botton node of interror reach
@@ -601,7 +624,7 @@ contains
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch
           end do        
-	  !print *, 'sum of upstream reach inflows:', newQ(1,j)
+        !print *, 'sum of upstream reach inflows:', newQ(1,j)
         else
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
@@ -643,14 +666,21 @@ contains
             
           ! use downstream boundary data source to set bottom node WSEL value
           ! ***** COMING SOON *****
-
-          ! Assume normal depth at tailwater downstream boundary
-          xcolID  = 10
-          ycolID  = 1
-          newY(ncomp,j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newQ(ncomp,j)) ! normal elevation not depth
+          !do n = 1, nts_db_g  <-- already executed when initial values of Q and Y are computed.
+          !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+          !end do          
+          newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.0)
           xcolID  = 1
           ycolID  = 2
-          newArea(ncomp,j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
+          newArea(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
+
+          ! Assume normal depth at tailwater downstream boundary
+!          xcolID  = 10
+!          ycolID  = 1
+!          newY(ncomp,j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, abs(newQ(ncomp,j))) ! normal elevation not depth
+!          xcolID  = 1
+!          ycolID  = 2
+!          newArea(ncomp,j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
         end if
 
         ! Calculate WSEL at interrior reach nodes
@@ -763,6 +793,46 @@ contains
       pere    = -999
       
     end do  ! end of time loop
+    
+                    !* test
+            sumdmy1=0.0
+            sumdmy2=0.0
+            do ts=1, ntss_ev_g
+            do j=1, nrch_g
+            do i=1, frnw_g(j,1)
+                !write(101,"(f10.1, 2I10, 2F20.4)") dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
+                !print*, "here", dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
+                !if (i==2) then
+                    if (j==3) then
+                        sumdmy1= sumdmy1 + q_ev_g(ts, 1, j)
+                    end if
+                    if (j==3) then
+                        sumdmy2= sumdmy2 + q_ev_g(ts, 4, j)
+                    end if
+                !endif
+            enddo
+            enddo
+            enddo
+                !* test
+            sumdmy1=0.0
+            sumdmy2=0.0
+            do ts=1, ntss_ev_g
+            do j=1, nrch_g
+            do i=1, frnw_g(j,1)
+                !write(101,"(f10.1, 2I10, 2F20.4)") dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j) !-z(i,j)
+                !print*, "here", dtini*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
+                !if (i==2) then
+                    if (j==3) then
+                        sumdmy1= sumdmy1 + q_ev_g(ts, 1, j)
+                    end if
+                    if (j==3) then
+                        sumdmy2= sumdmy2 + q_ev_g(ts, 4, j)
+                    end if
+                !endif
+            enddo
+            enddo
+            enddo
+            print*, sumdmy1, sumdmy2, sumdmy2/sumdmy1    
 
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
@@ -1387,7 +1457,7 @@ contains
     
     xcolID   = 10
     ycolID   = 1
-    elv_norm = intp_xsec_tab(i, j, nel, xcolID, ycolID, Q_cur) ! normal elevation not depth
+    elv_norm = intp_xsec_tab(i, j, nel, xcolID, ycolID, abs(Q_cur)) ! normal elevation not depth
     y_norm   = elv_norm - z(i, j)
     y_old    = oldY(i, j) - z(i, j)
     ! option 1 for initial point

@@ -547,7 +547,7 @@ def diffusive_input_data_v02(
     # upstream boundary condition timestep (sec)
     dt_ub_g = dt
     # downstream boundary condition timestep (sec)
-    dt_db_g = dt * qts_subdivisions
+    dt_db_g = 360.0 # dt * qts_subdivisions
     # tributary inflow timestep (sec)
     dt_qtrib_g = dt
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
