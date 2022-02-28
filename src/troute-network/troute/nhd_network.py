@@ -275,12 +275,13 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
 def split_at_junction(network, path, node):
     '''
+    Identify reach break points at junctions.
     
     Arguments:
     ----------
-    network
-    path
-    node
+    network (dict): Reverse connections graph
+    path    (list): List of segments along search path
+    node     (int): Stream segment under inquiry
     
     Returns:
     --------
@@ -291,14 +292,15 @@ def split_at_junction(network, path, node):
 
 def split_at_gages_waterbodies_and_junctions(gage_nodes, waterbody_nodes, network, path, node):
     '''
+    Identify reach break points at stream gages, waterbodies and junctions.
     
     Arguments:
     ----------
-    gage_nodes
-    waterbody_nodes
-    network
-    path
-    node
+    gage_nodes      (set): Nodes with gages
+    waterbody_nodes (set): Nodes within waterbodies
+    network        (dict): Reverse connections graph
+    path           (list): List of segments along search path
+    node            (int): Stream segment under inquiry
     
     Returns:
     --------
@@ -314,13 +316,14 @@ def split_at_gages_waterbodies_and_junctions(gage_nodes, waterbody_nodes, networ
 
 def split_at_gages_and_junctions(gage_nodes, network, path, node):
     '''
+    Identify reach break points at stream gages and junctions.
     
     Arguments:
     ----------
-    gage_nodes
-    network
-    path
-    node
+    gage_nodes (set): Nodes with gages
+    network   (dict): Reverse connections graph
+    path      (list): List of segments along search path
+    node       (int): Stream segment under inquiry
     
     Returns:
     --------
@@ -334,13 +337,14 @@ def split_at_gages_and_junctions(gage_nodes, network, path, node):
 
 def split_at_waterbodies_and_junctions(waterbody_nodes, network, path, node):
     '''
+    Identify reach break points at waterbody inlets/outlets and junctions.
     
     Arguments:
     ----------
-    waterbody_nodes
-    network
-    path
-    node
+    waterbody_nodes (set): Nodes within waterbodies
+    network        (dict): Reverse connections graph
+    path           (list): List of segments along search path
+    node            (int): Stream segment under inquiry
     
     Returns:
     --------
