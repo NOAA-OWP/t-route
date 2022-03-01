@@ -10,6 +10,42 @@ import logging
 
 LOG = logging.getLogger('')
 
+def _reindex_lake_to_link_id(target_df, crosswalk):
+    '''
+    Utility function for replacing lake ID index values
+    with link ID values in a dataframe. This is used to 
+    reinedex results dataframes
+    
+    Arguments:
+    ----------
+    - target_df (DataFrame): Data frame to be reinexed
+    - crosswalk      (dict): Relates lake ids to outlet link ids
+    
+    Returns:
+    --------
+    - target_df (DataFrame): Re-indexed with link ids replacing 
+                             lake ids
+    '''
+
+    # evaluate intersection of lake ids and target_df index values
+    # i.e. what are the index positions of lake ids that need replacing?
+    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
+    idxs = target_df.index.to_numpy()
+    lake_index_intersect = np.intersect1d(
+        idxs, 
+        lakeids, 
+        return_indices = True
+    )
+
+    # replace lake ids with link IDs in the target_df index array
+    linkids = np.fromiter(crosswalk.values(), dtype = int)
+    idxs[lake_index_intersect[1]] = linkids[lake_index_intersect[2]]
+
+    # (re) set the target_df index
+    target_df.set_index(idxs, inplace = True)
+    
+    return target_df
+
 def nwm_output_generator(
     run,
     results,
@@ -97,20 +133,8 @@ def nwm_output_generator(
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
+            flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
             
-            # evaluate intersection of lakeids and flowveldpeth index values
-            # i.e. what are the index positions of lake IDs that need replacing?
-            lakeids = np.fromiter(link_lake_crosswalk.keys(), dtype = int)
-            fvdidxs = flowveldepth.index.to_numpy()
-            lake_index_intersect = np.intersect1d(fvdidxs, lakeids, return_indices = True)
-            
-            # replace lake IDs with segment IDs in the flowveldepth index array
-            segids = np.fromiter(link_lake_crosswalk.values(), dtype = int)
-            fvdidxs[lake_index_intersect[1]] = segids[lake_index_intersect[2]]
-            
-            # (re) set the flowveldepth index
-            flowveldepth.set_index(fvdidxs, inplace = True)
-        
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
         # flowveldepth.to_pickle(output_parameters['test_output'])
@@ -242,6 +266,10 @@ def nwm_output_generator(
         
         LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
         start = time.time()
+        
+        # replace waterbody lake_ids with outlet link ids
+        if link_lake_crosswalk:
+            link_gage_df = _reindex_lake_to_link_id(link_gage_df, link_lake_crosswalk)
                 
         nhd_io.write_chanobs(
             Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 

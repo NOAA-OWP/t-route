@@ -130,7 +130,7 @@ def build_connections(supernetwork_parameters):
 
     return connections, param_df, wbodies, gages
 
-def organize_independent_networks(connections, break_nodes=None):
+def organize_independent_networks(connections, wbody_break_segments, gage_break_segments):
     '''
     Build reverse network connections, independent drainage networks, and network reaches.
     Reaches are defined as linearly connected segments between two junctions or break points.
@@ -138,7 +138,8 @@ def organize_independent_networks(connections, break_nodes=None):
     Arguments:
     ----------
     connections (dict, int: [int]): downstream network connections
-    break_nodes              (set): segment ids where network reaches are broken
+    wbody_break_segments     (set): waterbody segments to break reaches at inlets/outlets
+    gage_break_segments      (set): gage ids to break reaches at gages
     
     Returns:
     --------
@@ -158,12 +159,36 @@ def organize_independent_networks(connections, break_nodes=None):
     # construct network reaches
     reaches_bytw = {}
     for tw, net in independent_networks.items():
-        if break_nodes:
+        
+        # break reaches at waterbody inlets/outlets, gages and junctions
+        if wbody_break_segments and gage_break_segments:
             
-            # reaches will be broken between junctions and specified break nodes
             path_func = partial(
-                nhd_network.split_at_waterbodies_and_junctions, set(break_nodes), net
+                nhd_network.split_at_gages_waterbodies_and_junctions, 
+                gage_break_segments, 
+                wbody_break_segments, 
+                net
             )
+            
+        # break reaches at gages and junctions
+        elif gage_break_segments and not wbody_break_segments:
+            
+            path_func = partial(
+                nhd_network.split_at_gages_and_junctions, 
+                gage_break_segments, 
+                net
+            )
+        
+        # break network at waterbody inlets/outlets and junctions
+        elif wbody_break_segments and not gage_break_segments:
+            
+            path_func = partial(
+                nhd_network.split_at_waterbodies_and_junctions, 
+                wbody_break_segments, 
+                net
+            )
+            
+        # break reaches at junctions
         else:
             
             # reaches will be broken between junctions
