@@ -234,14 +234,32 @@ def compute_nhd_routing_v02(
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                if waterbodies_df.empty:
-                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                else:
+                
+                if not waterbodies_df.empty and not usgs_df.empty:
+                    path_func = partial(
+                        nhd_network.split_at_gages_waterbodies_and_junctions,
+                        set(usgs_df.index.values),
+                        set(waterbodies_df.index.values),
+                        rconn_subn
+                        )
+                
+                elif waterbodies_df.empty and not usgs_df.empty:
+                    path_func = partial(
+                        nhd_network.split_at_gages_and_junctions,
+                        set(usgs_df.index.values),
+                        rconn_subn
+                        )
+                
+                elif not waterbodies_df.empty and usgs_df.empty:
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
                         set(waterbodies_df.index.values),
                         rconn_subn
                         )
+                
+                else:
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
@@ -498,14 +516,30 @@ def compute_nhd_routing_v02(
             for subn_tw, subnet in ordered_subn_dict.items():
                 conn_subn = {k: connections[k] for k in subnet if k in connections}
                 rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                if waterbodies_df.empty:
-                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                else:
+                if not waterbodies_df.empty and not usgs_df.empty:
+                    path_func = partial(
+                        nhd_network.split_at_gages_waterbodies_and_junctions,
+                        set(usgs_df.index.values),
+                        set(waterbodies_df.index.values),
+                        rconn_subn
+                        )
+                
+                elif waterbodies_df.empty and not usgs_df.empty:
+                    path_func = partial(
+                        nhd_network.split_at_gages_and_junctions,
+                        set(usgs_df.index.values),
+                        rconn_subn
+                        )
+                
+                elif not waterbodies_df.empty and usgs_df.empty:
                     path_func = partial(
                         nhd_network.split_at_waterbodies_and_junctions,
                         set(waterbodies_df.index.values),
                         rconn_subn
                         )
+                
+                else:
+                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
                 reaches_ordered_bysubntw[order][
                     subn_tw
                 ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
