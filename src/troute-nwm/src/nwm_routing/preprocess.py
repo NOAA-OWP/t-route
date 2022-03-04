@@ -247,22 +247,34 @@ def nwm_network_preprocess(
 
         if param_file and reservoir_da:
             waterbody_type_specified = True
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+            (
+                waterbody_types_df, 
+                usgs_lake_gage_crosswalk, 
+                usace_lake_gage_crosswalk
+            ) = nhd_io.read_reservoir_parameter_file(
                 param_file,
                 usgs_hybrid,
                 usace_hybrid,
                 rfc_forecast,
                 level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+                reservoir_da.get('crosswalk_usgs_gage_field', 'usgs_gage_id'),
+                reservoir_da.get('crosswalk_usgs_lakeID_field', 'usgs_lake_id'),
+                reservoir_da.get('crosswalk_usace_gage_field', 'usace_gage_id'),
+                reservoir_da.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
                 wbody_conn.values(),
             )
         else:
             waterbody_type_specified = True
             waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
+            usgs_lake_gage_crosswalk = None
+            usace_lake_gage_crosswalk = None
 
     else:
         # Declare empty dataframes
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
+        usgs_lake_gage_crosswalk = None
+        usace_lake_gage_crosswalk = None
 
     #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
