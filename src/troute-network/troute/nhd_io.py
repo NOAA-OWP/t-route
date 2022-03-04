@@ -238,6 +238,10 @@ def read_reservoir_parameter_file(
     usace_hybrid,
     rfc_forecast,
     lake_index_field="lake_id", 
+    usgs_gage_id_field = "usgs_gage_id",
+    usgs_lake_id_field = "usgs_lake_id",
+    usace_gage_id_field = "usace_gage_id",
+    usace_lake_id_field = "usace_lake_id",
     lake_id_mask=None,
 ):
 
@@ -275,11 +279,24 @@ def read_reservoir_parameter_file(
     -----
     
     """
-    
     with xr.open_dataset(reservoir_parameter_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
         ds_new = ds["reservoir_type"]
         df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        
+        usgs_crosswalk = pd.DataFrame(
+            data = ds[usgs_gage_id_field].to_numpy(), 
+            index = ds[usgs_lake_id_field].to_numpy(), 
+            columns = [usgs_gage_id_field]
+        )
+        usgs_crosswalk.index.name = usgs_lake_id_field
+        
+        usace_crosswalk = pd.DataFrame(
+            data = ds[usace_gage_id_field].to_numpy(), 
+            index = ds[usace_lake_id_field].to_numpy(), 
+            columns = [usace_gage_id_field]
+        )
+        usace_crosswalk.index.name = usace_lake_id_field
         
     # drop duplicate indices
     df1 = (df1.reset_index()
@@ -294,8 +311,8 @@ def read_reservoir_parameter_file(
         df1[df1['reservoir_type'] == 3] = 1
     if rfc_forecast == False:
         df1[df1['reservoir_type'] == 4] = 1
-
-    return df1
+    
+    return df1, usgs_crosswalk, usace_crosswalk
 
 
 def get_ql_from_csv(qlat_input_file, index_col=0):

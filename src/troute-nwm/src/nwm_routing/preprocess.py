@@ -403,7 +403,9 @@ def nwm_network_preprocess(
         independent_networks,
         reaches_bytw,
         rconn,
-        pd.DataFrame.from_dict(gages),
+        link_gage_df,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
         diffusive_network_data,
         topobathy_data,
     )
@@ -673,6 +675,8 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     link_gage_df,
+    usgs_lake_gage_crosswalk, 
+    usace_lake_gage_crosswalk,
     link_lake_crosswalk,
     lastobs_index,
     cpu_pool,
@@ -1010,7 +1014,7 @@ def nwm_forcing_preprocess(
         if usgs_files:
             
             reservoir_usgs_df = nhd_io.get_obs_from_timeslices(
-                crosswalk_file,
+                usgs_lake_gage_crosswalk,
                 crosswalk_gage_field,
                 crosswalk_lakeID_field,
                 usgs_files,
@@ -1071,7 +1075,7 @@ def nwm_forcing_preprocess(
                 
         if usace_files:
             reservoir_usace_df = nhd_io.get_obs_from_timeslices(
-                crosswalk_file,
+                usace_lake_gage_crosswalk,
                 crosswalk_gage_field,
                 crosswalk_lakeID_field,
                 usace_files,
