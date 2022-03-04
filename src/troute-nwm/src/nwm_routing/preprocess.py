@@ -955,12 +955,13 @@ def nwm_forcing_preprocess(
             "Creating a DataFrame of USGS gage observations for Reservoir DA ..."
         )
         
+        
         # build dataframe that crosswalks segmentIDs to lakeIDs
         link_lake_df = (
             gage_lake_df.
             join(gage_link_df, how = 'inner').
-            reset_index().set_index('index').
-            drop(['level_0'], axis = 1)
+            reset_index().set_index('link').
+            drop(['index'], axis = 1)
         )
         
         # resample `usgs_df` to 15 minute intervals
