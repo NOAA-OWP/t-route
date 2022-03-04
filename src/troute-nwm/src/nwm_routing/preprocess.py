@@ -157,6 +157,9 @@ def nwm_network_preprocess(
         supernetwork_parameters,
     )
     
+    link_gage_df = pd.DataFrame.from_dict(gages)
+    link_gage_df.index.name = 'link'
+    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
