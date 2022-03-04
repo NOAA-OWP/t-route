@@ -378,7 +378,7 @@ def nwm_network_preprocess(
                  'independent_networks': independent_networks,
                  'reaches_bytw': reaches_bytw,
                  'rconn': rconn,
-                 'link_gage_df': pd.DataFrame.from_dict(gages),
+                 'link_gage_df': link_gage_df,
                  'diffusive_network_data': diffusive_network_data,
                  'topobathy_data': topobathy_data,
                 }
