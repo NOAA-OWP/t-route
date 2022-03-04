@@ -926,18 +926,11 @@ def nwm_forcing_preprocess(
     # create crosswalking dataframes and identify USGS lakeIDs in the model domain
     if usgs_persistence:
         
-        crosswalk_file = reservoir_da_parameters["gage_lakeID_crosswalk_file"]
-        crosswalk_file = pathlib.Path(crosswalk_file)
-        
-        with xr.open_dataset(crosswalk_file) as ds:
-            gage_lake_dict = {
-                'gage': ds.usgs_gage_id.values,
-                'usgs_lake_id': ds.usgs_lake_id.values
-            }
-            gage_lake_df = (
-                pd.DataFrame(data = gage_lake_dict).
-                set_index('gage')
-            )
+        gage_lake_df = (
+            usgs_lake_gage_crosswalk.
+            reset_index().
+            set_index(['usgs_gage_id']) # <- TODO use input parameter for this
+        )
         
         # build dataframe that crosswalks gageIDs to segmentIDs
         gage_link_df = (
