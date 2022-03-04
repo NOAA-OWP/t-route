@@ -866,7 +866,7 @@ def nwm_forcing_preprocess(
         if usgs_files:
             usgs_df = (
                 nhd_io.get_obs_from_timeslices(
-                    crosswalk_file,
+                    link_gage_df,
                     crosswalk_gage_field,
                     crosswalk_segID_field,
                     usgs_files,
