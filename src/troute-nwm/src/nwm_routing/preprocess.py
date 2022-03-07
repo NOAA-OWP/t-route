@@ -14,6 +14,44 @@ import troute.nhd_io as nhd_io
 
 LOG = logging.getLogger('')
 
+def _reindex_link_to_lake_id(target_df, crosswalk):
+    '''
+    Utility function for replacing link ID index values
+    with lake ID values in a dataframe. This is used to 
+    reinedex dataframes used for streamflow DA such that 
+    data from data from gages located at waterbody outlets
+    can be assimilated. 
+    
+    Arguments:
+    ----------
+    - target_df (DataFrame): Data frame to be reinexed
+    - crosswalk      (dict): Relates lake ids to outlet link ids
+    
+    Returns:
+    --------
+    - target_df (DataFrame): Re-indexed with lake ids replacing 
+                             link ids
+    '''
+
+    # evaluate intersection of link ids and target_df index values
+    # i.e. what are the index positions of link ids that need replacing?
+    linkids = np.fromiter(crosswalk.values(), dtype = int)
+    gageidxs = target_df.index.to_numpy()
+    lake_index_intersect = np.intersect1d(
+        gageidxs, 
+        linkids, 
+        return_indices = True
+    )
+
+    # replace link ids with lake IDs in the target_df index array
+    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
+    gageidxs[lake_index_intersect[1]] = lakeids[lake_index_intersect[2]]
+
+    # (re) set the target_df index
+    target_df.set_index(gageidxs, inplace = True)
+    
+    return target_df
+
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
@@ -124,16 +162,19 @@ def nwm_network_preprocess(
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
-    break_network_at_gages = supernetwork_parameters.get(
-        "break_network_at_gages", False
-    )
+    
+    # if streamflow DA, then break network at gages
+    break_network_at_gages = False
+    streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
+    if streamflow_da:
+        break_network_at_gages = streamflow_da.get('streamflow_nudging', False)
 
     if not wbody_conn: 
         # Turn off any further reservoir processing if the network contains no 
         # waterbodies
         break_network_at_waterbodies = False
 
-    # if waterbodies are being simulated, udjust the connections graph so that 
+    # if waterbodies are being simulated, adjust the connections graph so that 
     # waterbodies are collapsed to single nodes. Also, build a mapping between 
     # waterbody outlet segments and lake ids
     if break_network_at_waterbodies:
@@ -294,15 +335,18 @@ def nwm_network_preprocess(
     LOG.info("organizing connections into reaches ...")
     start_time = time.time()
     
-    network_break_segments = set()
+    gage_break_segments = set()
+    wbody_break_segments = set()
     if break_network_at_waterbodies:
-        network_break_segments = network_break_segments.union(wbody_conn.values())
+        wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
+        
     if break_network_at_gages:
-        network_break_segments = network_break_segments.union(gages['gages'].keys())
+        gage_break_segments = gage_break_segments.union(gages['gages'].keys())
         
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        network_break_segments,
+        wbody_break_segments,
+        gage_break_segments,
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
@@ -430,6 +474,7 @@ def nwm_initial_warmstate_preprocess(
     data_assimilation_parameters,
     segment_index,
     waterbodies_df,
+    link_lake_crosswalk,
 ):
 
     '''
@@ -457,7 +502,10 @@ def nwm_initial_warmstate_preprocess(
     - segment_index        (Pandas Index): All segment IDs in the simulation 
                                            doamin
     
-    - waterbodies_df   (Pandas DataFrame): Waterbody parameters   
+    - waterbodies_df   (Pandas DataFrame): Waterbody parameters
+    
+    - link_lake_crosswalk          (dict): Crosswalking between lake ids and the link
+                                           id of the lake outlet segment
     
     Returns
     -------
@@ -607,6 +655,12 @@ def nwm_initial_warmstate_preprocess(
     lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
         data_assimilation_parameters
     )
+    
+    # replace link ids with lake ids, for gages at waterbody outlets, 
+    # otherwise, gage data will not be assimilated at waterbody outlet
+    # segments.
+    if link_lake_crosswalk:
+        lastobs_df = _reindex_link_to_lake_id(lastobs_df, link_lake_crosswalk)
 
     LOG.debug(
         "channel initial states complete in %s seconds."\
@@ -632,6 +686,7 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     link_gage_df,
+    link_lake_crosswalk,
     lastobs_index,
     cpu_pool,
     t0,
@@ -660,6 +715,9 @@ def nwm_forcing_preprocess(
     
     - link_gage_df     (Pandas DataFrame): Crosswalking between segment ID and
                                            USGS gage IDs in the model domain
+                                           
+    - link_lake_crosswalk          (dict): Crosswalking between lake ids and the link
+                                           id of the lake outlet segment
     
     - lastobs_index        (Pandas Index): ????
     
@@ -815,6 +873,12 @@ def nwm_forcing_preprocess(
                 loc[link_gage_df.index]
             )
             
+            # replace link ids with lake ids, for gages at waterbody outlets, 
+            # otherwise, gage data will not be assimilated at waterbody outlet
+            # segments.
+            if link_lake_crosswalk:
+                usgs_df = _reindex_link_to_lake_id(usgs_df, link_lake_crosswalk)
+
         else:
             usgs_df = pd.DataFrame()
         
