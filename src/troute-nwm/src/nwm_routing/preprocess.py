@@ -293,6 +293,7 @@ def nwm_network_preprocess(
             _, reaches, rconn_diff = nnu.organize_independent_networks(
                 diffusive_network_data[tw]['connections'],
                 set(trib_segs),
+                set(),
             )
             diffusive_network_data[tw]['rconn'] = rconn_diff
             diffusive_network_data[tw]['reaches'] = reaches[tw]
