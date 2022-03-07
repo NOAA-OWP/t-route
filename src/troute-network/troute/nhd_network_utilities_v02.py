@@ -130,7 +130,7 @@ def build_connections(supernetwork_parameters):
 
     return connections, param_df, wbodies, gages
 
-def organize_independent_networks(connections, wbody_break_segments, gage_break_segments):
+def organize_independent_networks(connections, wbody_break_segments=None, gage_break_segments=None):
     '''
     Build reverse network connections, independent drainage networks, and network reaches.
     Reaches are defined as linearly connected segments between two junctions or break points.
@@ -798,3 +798,129 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_df = pd.DataFrame()
 
     return usgs_df
+
+def build_refac_connections(diff_network_parameters):
+    '''
+    Construct network connections network, parameter dataframe, waterbody mapping, 
+    and gage mapping. This is an intermediate-level function that calls several 
+    lower level functions to read data, conduct network operations, and extract mappings.
+    
+    Arguments
+    ---------
+    diff_network_parameters (dict): User input network parameters
+    
+    Returns:
+    --------
+    connections (dict int: [int]): Network connections
+    param_df          (DataFrame): Geometry and hydraulic parameters
+    wbodies       (dict, int: int): segment-waterbody mapping
+    gages         (dict, int: int): segment-gage mapping
+    
+    '''
+    
+    # crosswalking dictionary between variables names in input dataset and 
+    # variable names recognized by troute.routing module.
+    cols = diff_network_parameters.get(
+        'columns', 
+        {
+        'key'       : 'rlink',
+        'downstream': 'rto',
+        'dx'        : 'Length',
+        'n'         : 'n',
+        'waterbody' : 'NHDWaterbodyComID',
+        'gages'     : 'gages',
+        'xwalk'     : 'lengthMap',
+        'junct_to'  : 'junction_to',
+        'elev'      : 'z',
+        'line_d'    : 'xid_d',
+        
+        }
+    )
+    
+    # numeric code used to indicate network terminal segments
+    terminal_code = diff_network_parameters.get("terminal_code", 0)
+
+    # read parameter dataframe 
+    param_df = nhd_io.read(pathlib.Path(diff_network_parameters["geo_file_path"]))
+
+    # select the column names specified in the values in the cols dict variable
+    param_df = param_df[list(cols.values())]
+    
+    # rename dataframe columns to keys in the cols dict variable
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+    
+    # handle synthetic waterbody segments
+    synthetic_wb_segments = diff_network_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = diff_network_parameters.get("synthetic_wb_id_offset", 9.99e11)
+    if synthetic_wb_segments:
+        # rename the current key column to key32
+        key32_d = {"key":"key32"}
+        param_df = param_df.rename(columns=key32_d)
+        # create a key index that is int64
+        # copy the links into the new column
+        param_df["key"] = param_df.key32.astype("int64")
+        # update the values of the synthetic reservoir segments
+        fix_idx = param_df.key.isin(set(synthetic_wb_segments))
+        param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
+    
+    # create dict of junction conversion
+    junct_to = dict(zip(param_df.junct_to,param_df.key))
+    
+    # set parameter dataframe index as segment id number, sort
+    param_df = param_df.set_index("key").sort_index()
+
+    # get and apply domain mask
+    if "mask_file_path" in diff_network_parameters:
+        data_mask = nhd_io.read_mask(
+            pathlib.Path(diff_network_parameters["mask_file_path"]),
+            layer_string=diff_network_parameters.get("mask_layer_string", None),
+        )
+        data_mask = data_mask.set_index(data_mask.columns[0])
+        param_df = param_df.filter(data_mask.index, axis=0)
+
+    # map segment ids to waterbody ids
+    wbodies = {}
+    if "waterbody" in cols:
+        wbodies = nhd_network.extract_waterbody_connections(
+            param_df[["waterbody"]]
+        )
+        param_df = param_df.drop("waterbody", axis=1)
+
+    # remove non-gaged IDs and convert gage to byte str
+    gage_list = param_df[["gages"]].drop_duplicates()
+    gage_list.gages = gage_list.gages.replace('','empty')
+    gage_list = gage_list.loc[~gage_list.gages.str.contains('empty')]
+    gage_list['gages'] = list(map(lambda x: x.encode('ASCII'), gage_list.gages))
+    
+    
+    # map segment ids to gage ids
+    gages = {}
+    if "gages" in cols:
+        gages = nhd_network.gage_mapping(gage_list)
+        param_df = param_df.drop("gages", axis=1)
+        
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.add(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+    
+    # build connections dictionary
+    connections = nhd_network.extract_connections(
+        param_df, "downstream", terminal_codes=terminal_codes
+    )
+    
+    param_df = param_df.drop("downstream", axis=1)
+    param_df.dx = pd.to_numeric(param_df.dx, downcast='float')
+    param_df.n = pd.to_numeric(param_df.n, downcast='float')
+    param_df.elev = pd.to_numeric(param_df.elev, downcast='float')
+    param_df.line_d = pd.to_numeric(param_df.line_d, downcast='float')
+    # param_df = param_df.astype("float32")
+    
+    return connections, param_df, wbodies, gages, junct_to

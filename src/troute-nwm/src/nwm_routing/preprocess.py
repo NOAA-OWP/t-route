@@ -14,44 +14,6 @@ import troute.nhd_io as nhd_io
 
 LOG = logging.getLogger('')
 
-def _reindex_link_to_lake_id(target_df, crosswalk):
-    '''
-    Utility function for replacing link ID index values
-    with lake ID values in a dataframe. This is used to 
-    reinedex dataframes used for streamflow DA such that 
-    data from data from gages located at waterbody outlets
-    can be assimilated. 
-    
-    Arguments:
-    ----------
-    - target_df (DataFrame): Data frame to be reinexed
-    - crosswalk      (dict): Relates lake ids to outlet link ids
-    
-    Returns:
-    --------
-    - target_df (DataFrame): Re-indexed with lake ids replacing 
-                             link ids
-    '''
-
-    # evaluate intersection of link ids and target_df index values
-    # i.e. what are the index positions of link ids that need replacing?
-    linkids = np.fromiter(crosswalk.values(), dtype = int)
-    gageidxs = target_df.index.to_numpy()
-    lake_index_intersect = np.intersect1d(
-        gageidxs, 
-        linkids, 
-        return_indices = True
-    )
-
-    # replace link ids with lake IDs in the target_df index array
-    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
-    gageidxs[lake_index_intersect[1]] = lakeids[lake_index_intersect[2]]
-
-    # (re) set the target_df index
-    target_df.set_index(gageidxs, inplace = True)
-    
-    return target_df
-
 def nwm_network_preprocess(
     supernetwork_parameters,
     waterbody_parameters,
@@ -103,18 +65,20 @@ def nwm_network_preprocess(
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
         
-        domain_file    = hybrid_params.get("diffusive_domain",   None)
-        run_hybrid     = hybrid_params.get('run_hybrid', False)
-        topobathy_file = hybrid_params.get("topobathy_domain",   None)
-        use_topobathy  = hybrid_params.get('use_natl_xsections', False)
-        
+        domain_file             = hybrid_params.get("diffusive_domain",   None)
+        refactored_domain_file  = hybrid_params.get("refactored_domain",   None)
+        run_hybrid              = hybrid_params.get('run_hybrid_routing', False)
+        topobathy_file          = hybrid_params.get("topobathy_domain",   None)
+        use_topobathy           = hybrid_params.get('use_natl_xsections', False)
+
         if domain_file and run_hybrid:
             
             LOG.info('reading diffusive domain extent for MC/Diffusive hybrid simulation')
             
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
-            
+            refactored_domain = nhd_io.read_diffusive_domain(refactored_domain_file)
+ 
             if topobathy_file and use_topobathy:
                 
                 LOG.debug('Natural cross section data are provided.')
@@ -123,8 +87,7 @@ def nwm_network_preprocess(
                 # TODO: replace 'comid' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `comid` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
-                
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('rlink'))
                 # TODO: Request GID make comID variable an integer in their product, so
                 # we do not need to change variable types, here.
                 topobathy_data.index = topobathy_data.index.astype(int)
@@ -138,11 +101,13 @@ def nwm_network_preprocess(
         
         else:
             diffusive_domain = None
+            refactored_domain = None
             diffusive_network_data = None
             topobathy_data = pd.DataFrame()
             LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
     else:
         diffusive_domain = None
+        refactored_domain = None
         diffusive_network_data = None
         topobathy_data = pd.DataFrame()
         LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
@@ -152,27 +117,23 @@ def nwm_network_preprocess(
     # establish segment-waterbody, and segment-gage mappings
     LOG.info("creating network connections graph")
     start_time = time.time()
-    
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-    import pdb; pdb.set_trace()
+    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
-    
-    # if streamflow DA, then break network at gages
-    break_network_at_gages = False
-    streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
-    if streamflow_da:
-        break_network_at_gages = streamflow_da.get('streamflow_nudging', False)
+    break_network_at_gages = supernetwork_parameters.get(
+        "break_network_at_gages", False
+    )
 
     if not wbody_conn: 
         # Turn off any further reservoir processing if the network contains no 
         # waterbodies
         break_network_at_waterbodies = False
 
-    # if waterbodies are being simulated, adjust the connections graph so that 
+    # if waterbodies are being simulated, udjust the connections graph so that 
     # waterbodies are collapsed to single nodes. Also, build a mapping between 
     # waterbody outlet segments and lake ids
     if break_network_at_waterbodies:
@@ -263,11 +224,15 @@ def nwm_network_preprocess(
 
     #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
-    import pdb; pdb.set_trace()
     if diffusive_domain:
         
-        rconn = nhd_network.reverse_network(connections)
+        r_supernetwork_parameters = {'geo_file_path': topobathy_file}
+        
+        ref_connections, ref_param_df, ref_wbody_conn, ref_gages, junct_to = nnu.build_refac_connections(r_supernetwork_parameters,)
 
+        rconn = nhd_network.reverse_network(connections)
+        ref_rconn = nhd_network.reverse_network(ref_connections)
+        import pdb; pdb.set_trace()
         for tw in diffusive_domain:
             
             # ===== build diffusive network data objects ==== 
@@ -288,16 +253,19 @@ def nwm_network_preprocess(
             
             # diffusive domain connections object
             diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
-            
+            import pdb; pdb.set_trace()
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
                 diffusive_network_data[tw]['connections'],
                 set(trib_segs),
+                set(),
             )
+            import pdb; pdb.set_trace()
             diffusive_network_data[tw]['rconn'] = rconn_diff
+            import pdb; pdb.set_trace()
             diffusive_network_data[tw]['reaches'] = reaches[tw]
-            
+            import pdb; pdb.set_trace()
             # RouteLink parameters
             diffusive_network_data[tw]['param_df'] = param_df.filter(
                 (diffusive_domain[tw] + trib_segs),
@@ -307,33 +275,34 @@ def nwm_network_preprocess(
             # ==== remove diffusive domain segs from MC domain ====
         
             # drop indices from param_df
+            import pdb; pdb.set_trace()
             param_df = param_df.drop(diffusive_domain[tw])
         
             # remove keys from connections dictionary
             for s in diffusive_domain[tw]:
+                import pdb; pdb.set_trace()
                 connections.pop(s)
             
             # update downstream connections of trib segs
             for us in trib_segs:
-                connections[us] = []
+                import pdb; pdb.set_trace()
+                old_connection = connections[us]
+                connections[us] = junct_to[old_connection]
     
     #============================================================================
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
     start_time = time.time()
     
-    gage_break_segments = set()
-    wbody_break_segments = set()
+    network_break_segments = set()
     if break_network_at_waterbodies:
-        wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
-        
+        network_break_segments = network_break_segments.union(wbody_conn.values())
     if break_network_at_gages:
-        gage_break_segments = gage_break_segments.union(gages['gages'].keys())
+        network_break_segments = network_break_segments.union(gages['gages'].keys())
         
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
-        wbody_break_segments,
-        gage_break_segments,
+        network_break_segments,
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
@@ -461,7 +430,6 @@ def nwm_initial_warmstate_preprocess(
     data_assimilation_parameters,
     segment_index,
     waterbodies_df,
-    link_lake_crosswalk,
 ):
 
     '''
@@ -489,10 +457,7 @@ def nwm_initial_warmstate_preprocess(
     - segment_index        (Pandas Index): All segment IDs in the simulation 
                                            doamin
     
-    - waterbodies_df   (Pandas DataFrame): Waterbody parameters
-    
-    - link_lake_crosswalk          (dict): Crosswalking between lake ids and the link
-                                           id of the lake outlet segment
+    - waterbodies_df   (Pandas DataFrame): Waterbody parameters   
     
     Returns
     -------
@@ -642,12 +607,6 @@ def nwm_initial_warmstate_preprocess(
     lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
         data_assimilation_parameters
     )
-    
-    # replace link ids with lake ids, for gages at waterbody outlets, 
-    # otherwise, gage data will not be assimilated at waterbody outlet
-    # segments.
-    if link_lake_crosswalk:
-        lastobs_df = _reindex_link_to_lake_id(lastobs_df, link_lake_crosswalk)
 
     LOG.debug(
         "channel initial states complete in %s seconds."\
@@ -673,7 +632,6 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     link_gage_df,
-    link_lake_crosswalk,
     lastobs_index,
     cpu_pool,
     t0,
@@ -702,9 +660,6 @@ def nwm_forcing_preprocess(
     
     - link_gage_df     (Pandas DataFrame): Crosswalking between segment ID and
                                            USGS gage IDs in the model domain
-                                           
-    - link_lake_crosswalk          (dict): Crosswalking between lake ids and the link
-                                           id of the lake outlet segment
     
     - lastobs_index        (Pandas Index): ????
     
@@ -860,12 +815,6 @@ def nwm_forcing_preprocess(
                 loc[link_gage_df.index]
             )
             
-            # replace link ids with lake ids, for gages at waterbody outlets, 
-            # otherwise, gage data will not be assimilated at waterbody outlet
-            # segments.
-            if link_lake_crosswalk:
-                usgs_df = _reindex_link_to_lake_id(usgs_df, link_lake_crosswalk)
-
         else:
             usgs_df = pd.DataFrame()
         
