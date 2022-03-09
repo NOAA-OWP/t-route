@@ -8,6 +8,7 @@
 *.so
 *.a
 *.c
+*.mod
 _site/
 
 # Packages #
@@ -52,6 +53,7 @@ __pycache__/
 .env
 .python-version
 *.ipynb_checkpoints/
+*checkpoint.py
 
 # pyenv #
 #########
