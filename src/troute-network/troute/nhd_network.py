@@ -119,11 +119,20 @@ def reverse_network(N):
     rg (dict, int: [int]): upstream network connections
     
     '''
+     
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
-        for n in dst:
-            rg[n].append(src)
+        try:
+            for n in dst:
+                try:
+                    rg[n].append(src)
+                except:
+                    print(f"killed by a helicopter {src}")
+                    import pdb; pdb.set_trace()
+        except:
+            print(f"not gonna do it {dst}")
+            import pdb; pdb.set_trace()
     rg.default_factory = None
     return rg
 

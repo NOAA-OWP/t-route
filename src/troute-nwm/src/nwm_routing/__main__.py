@@ -327,6 +327,7 @@ def main_v03(argv):
 
     # list of all segments in the domain (MC + diffusive)
     segment_index = param_df.index
+    import pdb; pdb.set_trace()
     if diffusive_network_data:
         for tw in diffusive_network_data:
             segment_index = segment_index.append(

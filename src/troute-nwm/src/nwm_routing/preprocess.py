@@ -266,22 +266,22 @@ def nwm_network_preprocess(
     #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
     if diffusive_domain:
-        
+        import pdb; pdb.set_trace()
         r_supernetwork_parameters = {'geo_file_path': topobathy_file}
         
         ref_connections, ref_param_df, ref_wbody_conn, ref_gages, junct_to = nnu.build_refac_connections(r_supernetwork_parameters,)
 
         rconn = nhd_network.reverse_network(connections)
         ref_rconn = nhd_network.reverse_network(ref_connections)
-        import pdb; pdb.set_trace()
+        
         for tw in diffusive_domain:
-            
+            print(f"tw = {tw}")
             # ===== build diffusive network data objects ==== 
             diffusive_network_data[tw] = {}
             
             # add diffusive domain segments
             diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
-            import pdb; pdb.set_trace()
+            
             # diffusive domain tributary segments
             trib_segs = []
             for s in diffusive_domain[tw]:
@@ -289,12 +289,12 @@ def nwm_network_preprocess(
                 for u in us_list:
                     if u not in diffusive_domain[tw]:
                         trib_segs.append(u)
-            import pdb; pdb.set_trace()
+            
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
             
             # diffusive domain connections object
             diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
-            import pdb; pdb.set_trace()
+            
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
@@ -302,33 +302,44 @@ def nwm_network_preprocess(
                 set(trib_segs),
                 set(),
             )
-            import pdb; pdb.set_trace()
+            
             diffusive_network_data[tw]['rconn'] = rconn_diff
-            import pdb; pdb.set_trace()
+            
             diffusive_network_data[tw]['reaches'] = reaches[tw]
-            import pdb; pdb.set_trace()
+            
             # RouteLink parameters
             diffusive_network_data[tw]['param_df'] = param_df.filter(
                 (diffusive_domain[tw] + trib_segs),
                 axis = 0,
             )
-        
+            
+            junct_to[5791912] = [1180010756]
+            junct_to[5791838] = [1180010773]
+            junct_to[3764234] = [1180011054]
+            junct_to[3766362] = [1180011019]
+            junct_to[5790212] = [1180010735]
+            
             # ==== remove diffusive domain segs from MC domain ====
         
             # drop indices from param_df
-            import pdb; pdb.set_trace()
             param_df = param_df.drop(diffusive_domain[tw])
-        
             # remove keys from connections dictionary
-            for s in diffusive_domain[tw]:
-                import pdb; pdb.set_trace()
-                connections.pop(s)
+            for seg in diffusive_domain[tw]:
+                connections.pop(seg)
             
             # update downstream connections of trib segs
             for us in trib_segs:
-                import pdb; pdb.set_trace()
-                old_connection = connections[us]
-                connections[us] = junct_to[old_connection]
+                try:
+                    old_connection = connections[us][-1]
+                    #if us == 3764252:
+                        #import pdb; pdb.set_trace() 
+                        #print(f"key: {us}; value {connections[us]}")
+                except:
+                    print(f"value not in list format for id {old_connection}")
+                try:
+                    connections[us] = junct_to[old_connection]
+                except:
+                    print(f"keyerror for id {old_connection}")
     
     #============================================================================
     # Identify Independent Networks and Reaches by Network
@@ -339,20 +350,20 @@ def nwm_network_preprocess(
     wbody_break_segments = set()
     if break_network_at_waterbodies:
         wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
-        
+    
     if break_network_at_gages:
         gage_break_segments = gage_break_segments.union(gages['gages'].keys())
-        
+    import pdb; pdb.set_trace() 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
         wbody_break_segments,
         gage_break_segments,
     )
-    
+    import pdb; pdb.set_trace()
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
     
     if preprocessing_parameters.get('preprocess_only', False):
-
+        import pdb; pdb.set_trace()
         LOG.debug("saving preprocessed network data to disk for future use")
         # todo: consider a better default than None
         destination_folder = preprocessing_parameters.get('preprocess_output_folder', None)
