@@ -449,6 +449,8 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         reaches_bytw = inputs.get('reaches_bytw',None)
         rconn = inputs.get('rconn',None)
         gages = inputs.get('link_gage_df',None)
+        usgs_lake_gage_crosswalk = inputs.get('usgs_lake_gage_crosswalk',None)
+        usace_lake_gage_crosswalk = inputs.get('usace_lake_gage_crosswalk',None)
         diffusive_network_data = inputs.get('diffusive_network_data',None)
         topobathy_data = inputs.get('topobathy_data',None)
                 
@@ -469,6 +471,8 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         reaches_bytw,
         rconn,
         gages,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
         diffusive_network_data,
         topobathy_data,
     )
