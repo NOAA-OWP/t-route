@@ -379,6 +379,8 @@ def nwm_network_preprocess(
                  'reaches_bytw': reaches_bytw,
                  'rconn': rconn,
                  'link_gage_df': link_gage_df,
+                 'usgs_lake_gage_crosswalk': usgs_lake_gage_crosswalk, 
+                 'usace_lake_gage_crosswalk': usace_lake_gage_crosswalk,
                  'diffusive_network_data': diffusive_network_data,
                  'topobathy_data': topobathy_data,
                 }
