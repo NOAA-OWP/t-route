@@ -290,6 +290,8 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            usgs_lake_gage_crosswalk, 
+            usace_lake_gage_crosswalk,
             diffusive_network_data,
             topobathy_data,
         ) = unpack_nwm_preprocess_data(
