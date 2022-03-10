@@ -128,10 +128,10 @@ def reverse_network(N):
                 try:
                     rg[n].append(src)
                 except:
-                    print(f"killed by a helicopter {src}")
+                    print(f"rg[n].append(src): {src}")
                     import pdb; pdb.set_trace()
         except:
-            print(f"not gonna do it {dst}")
+            print(f"for n in dst: {dst}")
             import pdb; pdb.set_trace()
     rg.default_factory = None
     return rg
