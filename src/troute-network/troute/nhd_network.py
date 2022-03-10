@@ -123,16 +123,9 @@ def reverse_network(N):
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
-        try:
-            for n in dst:
-                try:
-                    rg[n].append(src)
-                except:
-                    print(f"rg[n].append(src): {src}")
-                    import pdb; pdb.set_trace()
-        except:
-            print(f"for n in dst: {dst}")
-            import pdb; pdb.set_trace()
+        for n in dst:
+            rg[n].append(src)
+    
     rg.default_factory = None
     return rg
 

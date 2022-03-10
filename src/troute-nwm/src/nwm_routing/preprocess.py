@@ -312,12 +312,12 @@ def nwm_network_preprocess(
                 (diffusive_domain[tw] + trib_segs),
                 axis = 0,
             )
-            
-            junct_to[5791912] = [1180010756]
-            junct_to[5791838] = [1180010773]
-            junct_to[3764234] = [1180011054]
-            junct_to[3766362] = [1180011019]
-            junct_to[5790212] = [1180010735]
+
+            junct_to[5791912] = 1180010756
+            junct_to[5791838] = 1180010773
+            junct_to[3764234] = 1180011054
+            junct_to[3766362] = 1180011019
+            junct_to[5790212] = 1180010735
             
             # ==== remove diffusive domain segs from MC domain ====
         
@@ -337,7 +337,7 @@ def nwm_network_preprocess(
                 except:
                     print(f"value not in list format for id {old_connection}")
                 try:
-                    connections[us] = junct_to[old_connection]
+                    connections[us] = [junct_to[old_connection]]
                 except:
                     print(f"keyerror for id {old_connection}")
     
