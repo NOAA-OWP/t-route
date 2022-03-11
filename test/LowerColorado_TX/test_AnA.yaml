@@ -38,7 +38,7 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
-        run_hybrid_domain : False
+        run_hybrid_routing: True
         diffusive_domain  : domain/diffusive_domain.yaml
     forcing_parameters:
         #----------
