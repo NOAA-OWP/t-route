@@ -166,6 +166,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usace_df, waterbo
     else:
         reservoir_usgs_df_sub = pd.DataFrame()
         reservoir_usgs_df_time = pd.DataFrame().to_numpy().reshape(0,)
+        waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 2] = 1
 
     # select USACE reservoir DA data waterbodies in sub-domain
     if not reservoir_usace_df.empty:
@@ -177,8 +178,9 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usace_df, waterbo
     else: 
         reservoir_usace_df_sub = pd.DataFrame()
         reservoir_usace_df_time = pd.DataFrame().to_numpy().reshape(0,)
+        waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 3] = 1
         
-    return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usace_df_sub, reservoir_usace_df_time
+    return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usace_df_sub, reservoir_usace_df_time, waterbody_types_df_sub
 
 def compute_nhd_routing_v02(
     connections,
@@ -411,7 +413,8 @@ def compute_nhd_routing_v02(
                     (reservoir_usgs_df_sub, 
                      reservoir_usgs_df_time, 
                      reservoir_usace_df_sub, 
-                     reservoir_usace_df_time
+                     reservoir_usace_df_time,
+                     waterbody_types_df_sub,
                      ) = _prep_reservoir_da_dataframes(
                         reservoir_usgs_df, 
                         reservoir_usace_df, 
@@ -645,7 +648,8 @@ def compute_nhd_routing_v02(
                     (reservoir_usgs_df_sub, 
                      reservoir_usgs_df_time, 
                      reservoir_usace_df_sub, 
-                     reservoir_usace_df_time
+                     reservoir_usace_df_time,
+                     waterbody_types_df_sub,
                      ) = _prep_reservoir_da_dataframes(
                         reservoir_usgs_df, 
                         reservoir_usace_df, 
@@ -804,7 +808,8 @@ def compute_nhd_routing_v02(
                 (reservoir_usgs_df_sub, 
                  reservoir_usgs_df_time, 
                  reservoir_usace_df_sub, 
-                 reservoir_usace_df_time
+                 reservoir_usace_df_time,
+                 waterbody_types_df_sub,
                  ) = _prep_reservoir_da_dataframes(
                     reservoir_usgs_df, 
                     reservoir_usace_df, 
@@ -927,7 +932,8 @@ def compute_nhd_routing_v02(
             (reservoir_usgs_df_sub, 
              reservoir_usgs_df_time, 
              reservoir_usace_df_sub, 
-             reservoir_usace_df_time
+             reservoir_usace_df_time,
+             waterbody_types_df_sub,
              ) = _prep_reservoir_da_dataframes(
                 reservoir_usgs_df, 
                 reservoir_usace_df, 
