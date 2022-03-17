@@ -152,7 +152,8 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     
     # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
-    import pdb; pdb.set_trace()
+    rconn = {key:value for (key, value) in rconn.items() if len(value) >= 1}
+    
     # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
     
@@ -164,10 +165,10 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
         if wbody_break_segments and gage_break_segments:
             
             path_func = partial(
-                nhd_network.split_at_gages_waterbodies_and_junctions, 
-                gage_break_segments, 
-                wbody_break_segments, 
-                net
+            nhd_network.split_at_gages_waterbodies_and_junctions, 
+            gage_break_segments, 
+            wbody_break_segments, 
+            net
             )
             
         # break reaches at gages and junctions
@@ -193,7 +194,7 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
             
             # reaches will be broken between junctions
             path_func = partial(nhd_network.split_at_junction, net)
-
+        
         # construct network reaches with depth-first search alg.
         reaches_bytw[tw] = nhd_network.dfs_decomposition(net, path_func)
 
@@ -201,9 +202,9 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 
 
 def build_channel_initial_state(
-    restart_parameters, segment_index=pd.Index([])
+    restart_parameters, hybrid_params, topobathy_data, segment_index=pd.Index([]), 
 ):
-
+    
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
@@ -214,7 +215,7 @@ def build_channel_initial_state(
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
 
     elif wrf_hydro_channel_restart_file:
-
+        
         q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
@@ -223,6 +224,7 @@ def build_channel_initial_state(
             restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
             restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
         )
+        
     else:
         # Set cold initial state
         # assume to be zero
@@ -230,6 +232,20 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
+    
+    if hybrid_params:
+        # Add q0 for refactored links
+        run_refactored  = hybrid_params.get('run_refactored_network', False)
+        if run_refactored:
+            
+            # create key, value for crosswalk
+            rlink_list = [i for i in segment_index if not i in q0.index]
+            q0_lookup = dict([(i, topobathy_data.loc[i].junction_to.unique().item()) for i in rlink_list])
+            
+            # add refactored ids to q0 with values from crosswalked ids
+            for rlink,link in q0_lookup.items():
+                q0.loc[rlink] = q0.loc[link]
+        
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
@@ -247,7 +263,7 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-
+    
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
@@ -259,7 +275,6 @@ def build_forcing_sets(
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
         
     # TODO: Throw errors if insufficient input data are available
-
     if run_sets:
         
         # append final_timestamp variable to each set_list
@@ -271,7 +286,7 @@ def build_forcing_sets(
                     'model_output_valid_time')
             run_sets[s]['final_timestamp'] = \
                 datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
-            
+    
     elif qlat_input_folder:
         
         # Construct run_set dictionary from user-specified parameters
@@ -290,21 +305,21 @@ def build_forcing_sets(
         t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
         dt_qlat_timedelta = t2 - t1
         dt_qlat = dt_qlat_timedelta.seconds
-
+        
         # determine qts_subdivisions
         qts_subdivisions = dt_qlat / dt
         if dt_qlat % dt == 0:
             qts_subdivisions = dt_qlat / dt
-
+        
         # the number of files required for the simulation
         nfiles = int(np.ceil(nts / qts_subdivisions))
-
+        
         # list of forcing file datetimes
         datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
                          range(nfiles)]
         datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
                              datetime_list]
-
+        
         # list of forcing files
         forcing_filename_list = [d_str + ".CHRTOUT_DOMAIN1" for d_str in
                                  datetime_list_str]
@@ -315,8 +330,9 @@ def build_forcing_sets(
                 J = pathlib.Path(qlat_input_folder.joinpath(f))     
                 assert J.is_file() == True
             except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
-                
+                print(f"{J} is not in the channel_forcing folder")
+                #raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+        
         # build run sets list
         run_sets = []
         k = 0
@@ -349,22 +365,24 @@ def build_forcing_sets(
             nts_last = nts_accum
             k += max_loop_size
             j += 1
-    
+            
     return run_sets
 
 def build_qlateral_array(
     forcing_parameters,
-    cpu_pool,
+    cpu_pool, 
+    hybrid_params, 
+    topobathy_data,
     segment_index=pd.Index([]),
     ts_iterator=None,
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
-
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
+    
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         if "qlat_files" in forcing_parameters:
@@ -375,10 +393,11 @@ def build_qlateral_array(
                 "qlat_file_pattern_filter", "*CHRT_OUT*"
             )
             qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
-
+        
         qlat_file_index_col = forcing_parameters.get(
             "qlat_file_index_col", "feature_id"
         )
+        
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
         gw_bucket_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col","qBucket")
         terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
@@ -404,7 +423,19 @@ def build_qlateral_array(
             index = idx,
             columns = range(len(qlat_files))
         )    
-        qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
+        
+        if hybrid_params:
+            # Generate q_lat series for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+
+                # create key, value for crosswalk
+                rlink_list = [i for i in segment_index if not i in qlat_df.index]
+                qlat_lookup = dict([(i, topobathy_data.loc[i].lengthMap.unique().item()) for i in rlink_list])
+                # Generate new qlat time series for refactored ids
+                refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
+                # Add refactored qlat time series to df
+                qlat_df = pd.concat([qlat_df,refac_qlat])
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
@@ -813,7 +844,6 @@ def build_refac_connections(diff_network_parameters):
     --------
     connections (dict int: [int]): Network connections
     param_df          (DataFrame): Geometry and hydraulic parameters
-    wbodies       (dict, int: int): segment-waterbody mapping
     gages         (dict, int: int): segment-gage mapping
     
     '''
@@ -839,7 +869,7 @@ def build_refac_connections(diff_network_parameters):
     
     # numeric code used to indicate network terminal segments
     terminal_code = diff_network_parameters.get("terminal_code", 0)
-
+    
     # read parameter dataframe 
     param_df = nhd_io.read(pathlib.Path(diff_network_parameters["geo_file_path"]))
 
@@ -848,20 +878,6 @@ def build_refac_connections(diff_network_parameters):
     
     # rename dataframe columns to keys in the cols dict variable
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
-    
-    # handle synthetic waterbody segments
-    synthetic_wb_segments = diff_network_parameters.get("synthetic_wb_segments", None)
-    synthetic_wb_id_offset = diff_network_parameters.get("synthetic_wb_id_offset", 9.99e11)
-    if synthetic_wb_segments:
-        # rename the current key column to key32
-        key32_d = {"key":"key32"}
-        param_df = param_df.rename(columns=key32_d)
-        # create a key index that is int64
-        # copy the links into the new column
-        param_df["key"] = param_df.key32.astype("int64")
-        # update the values of the synthetic reservoir segments
-        fix_idx = param_df.key.isin(set(synthetic_wb_segments))
-        param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
     
     # create dict of junction conversion
     junct_to = dict(zip(param_df.junct_to,param_df.key))
@@ -878,20 +894,11 @@ def build_refac_connections(diff_network_parameters):
         data_mask = data_mask.set_index(data_mask.columns[0])
         param_df = param_df.filter(data_mask.index, axis=0)
 
-    # map segment ids to waterbody ids
-    wbodies = {}
-    if "waterbody" in cols:
-        wbodies = nhd_network.extract_waterbody_connections(
-            param_df[["waterbody"]]
-        )
-        param_df = param_df.drop("waterbody", axis=1)
-
     # remove non-gaged IDs and convert gage to byte str
     gage_list = param_df[["gages"]].drop_duplicates()
     gage_list.gages = gage_list.gages.replace('','empty')
     gage_list = gage_list.loc[~gage_list.gages.str.contains('empty')]
     gage_list['gages'] = list(map(lambda x: x.encode('ASCII'), gage_list.gages))
-    
     
     # map segment ids to gage ids
     gages = {}
@@ -911,16 +918,106 @@ def build_refac_connections(diff_network_parameters):
         param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
     )
     
+    param_df_unique = param_df.drop_duplicates("downstream")
     # build connections dictionary
     connections = nhd_network.extract_connections(
-        param_df, "downstream", terminal_codes=terminal_codes
+        param_df_unique, "downstream", terminal_codes=terminal_codes
     )
     
-    param_df = param_df.drop("downstream", axis=1)
+    # param_df = param_df.drop("downstream", axis=1)
     param_df.dx = pd.to_numeric(param_df.dx, downcast='float')
     param_df.n = pd.to_numeric(param_df.n, downcast='float')
     param_df.elev = pd.to_numeric(param_df.elev, downcast='float')
     param_df.line_d = pd.to_numeric(param_df.line_d, downcast='float')
-    # param_df = param_df.astype("float32")
     
-    return connections, param_df, wbodies, gages, junct_to
+    return connections, param_df, gages, junct_to
+
+def generate_qlat(qlat_lookup, orig_qlat):
+    
+    # Convert qlat df to dict
+    qlat_dict = dict(zip(orig_qlat.index, orig_qlat.values))
+    
+    ref_qlat_dict = {}
+    fraction_dict = {}
+    comids_missing_qlat = []
+    
+    for rlink, crosswalk in qlat_lookup.items():
+       
+        xwalk_list = crosswalk.split(',')
+        
+        # Segments with multiple crosswalk IDs
+        if len(xwalk_list) > 1:
+            
+            for xwalk in xwalk_list:
+
+                if '.' in xwalk:
+                    # Get ID and fraction of crosswalk
+                    comid, fraction = xwalk.split('.')
+                    comid = int(comid)
+                    if fraction == '1':
+                        fraction = 1
+                    else:
+                        fraction = float(fraction)/1000
+
+                    if comid in fraction_dict.keys():
+                        fraction_dict[comid] += fraction
+                    else:
+                        fraction_dict[comid] = fraction
+                    
+                if comid not in qlat_dict.keys():
+                    comids_missing_qlat.append(comid)
+                
+                else:
+                    if rlink in ref_qlat_dict.keys():
+                        qlat_sum = [sum(x) for x in \
+                                    zip(ref_qlat_dict[rlink], \
+                                    list(map(lambda x:fraction*x, \
+                                    qlat_dict[comid] \
+                                    )))]
+                        
+                        ref_qlat_dict[rlink] = qlat_sum
+                    else:
+                        ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[comid]))
+                
+        # Segments with single crosswalk ID
+        elif len(xwalk_list) == 1:
+            
+            if '.' in xwalk_list[0]:
+                    # Get ID and fraction of crosswalk
+                    comid, fraction = xwalk_list[0].split('.')
+                    comid = int(comid)
+                    if fraction == '1':
+                        fraction = 1
+                    else:
+                        fraction = float(fraction)/1000
+
+                    if comid in fraction_dict.keys():
+                        fraction_dict[comid] += fraction
+                    else:
+                        fraction_dict[comid] = fraction
+            else:
+                comid = xwalk_list[0]
+
+            # Copy channel properties            
+            if comid not in qlat_dict.keys():
+                comids_missing_qlat.append(i)
+
+            else:
+                if rlink in ref_qlat_dict.keys():
+                    qlat_sum = [sum(x) for x in \
+                                zip(ref_qlat_dict[rlink], \
+                                list(map(lambda x:fraction*x, \
+                                qlat_dict[comid]\
+                                )))]
+                    
+                    ref_qlat_dict[rlink] = qlat_sum
+                                        
+                else:
+                    ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[comid]))
+                    
+        else:
+            print (f"no crosswalk for refactored segment {rlink}")
+    
+    refac_qlat = pd.DataFrame().from_dict(ref_qlat_dict,orient='index')
+    
+    return refac_qlat, comids_missing_qlat, fraction_dict

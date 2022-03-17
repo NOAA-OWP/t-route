@@ -1223,7 +1223,9 @@ def get_channel_restart_from_wrf_hydro(
     with xr.open_dataset(crosswalk_file) as xds:
         xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
+    
     xdf = xdf[[channel_ID_column]]
+    
     with xr.open_dataset(channel_initial_states_file) as qds:
         if depth_column in qds:
             qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
@@ -1231,6 +1233,7 @@ def get_channel_restart_from_wrf_hydro(
             qdf2 = qds[[us_flow_column, ds_flow_column]].to_dataframe()
             qdf2[depth_column] = 0
     qdf2 = qdf2.reset_index()
+    
     qdf2 = qdf2[[us_flow_column, ds_flow_column, depth_column]]
     qdf2.rename(
         columns={
@@ -1240,11 +1243,10 @@ def get_channel_restart_from_wrf_hydro(
         },
         inplace=True,
     )
+    
     qdf2[channel_ID_column] = xdf
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
-
     q_initial_states = qdf2
-
     q_initial_states = q_initial_states.drop(columns="index")
 
     return q_initial_states

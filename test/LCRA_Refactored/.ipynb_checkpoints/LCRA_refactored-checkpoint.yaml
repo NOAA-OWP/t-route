@@ -38,8 +38,12 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
-        run_hybrid      : True
+        run_hybrid_routing: True
         diffusive_domain: domain/diffusive_domain.yaml
+        run_refactored_network: False
+        refactored_domain: domain/refactored_diffusive_domain.yaml
+        topobathy_domain: domain/diffusive_natural_xs.nc
+        use_natl_xsections: False
     forcing_parameters:
         #----------
         qts_subdivisions        : 12

@@ -327,7 +327,6 @@ def main_v03(argv):
 
     # list of all segments in the domain (MC + diffusive)
     segment_index = param_df.index
-    import pdb; pdb.set_trace()
     if diffusive_network_data:
         for tw in diffusive_network_data:
             segment_index = segment_index.append(
@@ -342,6 +341,8 @@ def main_v03(argv):
         segment_index,
         waterbodies_df,
         link_lake_crosswalk,
+        compute_parameters.get("hybrid_parameters", False),
+        topobathy_data,
     )
     
     if showtiming:
@@ -386,6 +387,8 @@ def main_v03(argv):
         lastobs_df.index,
         cpu_pool,
         t0,
+        compute_parameters.get("hybrid_parameters", False),
+        topobathy_data,
     )
         
     if showtiming:
@@ -474,6 +477,8 @@ def main_v03(argv):
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
+                compute_parameters.get("hybrid_parameters", False),
+                topobathy_data,
             )
             
             if showtiming:
@@ -697,6 +702,8 @@ async def main_v03_async(argv):
         lastobs_df.index,
         IO_cpu_pool,
         t0,
+        compute_parameters.get("hybrid_parameters", False),
+        topobathy_data,
     )
 
     run_set_iterator = 0
@@ -754,6 +761,8 @@ async def main_v03_async(argv):
             lastobs_df.index,
             IO_cpu_pool,
             t0 + timedelta(seconds = dt * nts),
+            compute_parameters.get("hybrid_parameters", False),
+            topobathy_data,
         )
 
         run_results = await model_task
