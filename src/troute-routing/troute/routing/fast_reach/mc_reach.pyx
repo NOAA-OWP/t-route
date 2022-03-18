@@ -430,6 +430,7 @@ cpdef object compute_network_structured(
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
+    
     while timestep < nsteps+1:
         for i in range(num_reaches):
             r = &reach_structs[i]
