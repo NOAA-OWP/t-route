@@ -119,13 +119,11 @@ def reverse_network(N):
     rg (dict, int: [int]): upstream network connections
     
     '''
-     
     rg = defaultdict(list)
     for src, dst in N.items():
         rg[src]
         for n in dst:
             rg[n].append(src)
-    
     rg.default_factory = None
     return rg
 
