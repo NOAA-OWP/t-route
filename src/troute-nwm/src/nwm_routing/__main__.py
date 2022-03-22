@@ -118,7 +118,7 @@ def nwm_route(
         waterbody_types_df,
         waterbody_type_specified,
     )
-    
+  
     if diffusive_network_data: # run diffusive side of a hybrid simulation
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
@@ -332,7 +332,7 @@ def main_v03(argv):
             segment_index = segment_index.append(
                 pd.Index(diffusive_network_data[tw]['mainstem_segs'])
             ) 
-    
+
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
@@ -438,11 +438,11 @@ def main_v03(argv):
         if showtiming:
             route_end_time = time.time()
             task_times['route_time'] += route_end_time - route_start_time
-
+ 
         # create initial conditions for next loop itteration
         q0 = new_nwm_q0(run_results)
         waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
-        
+    
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
@@ -451,7 +451,7 @@ def main_v03(argv):
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
             )
-        
+
         # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
             (
@@ -895,6 +895,7 @@ if __name__ == "__main__":
         help="Use version 2 or 3 of the input format. Default 3",
     )
     v_args = v_parser.parse_known_args()
+
     if v_args[0].input_version == 4:
         LOG.info("Running main v03 - async looping")
         coroutine = main_v03_async(v_args[1])

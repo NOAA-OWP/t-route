@@ -76,7 +76,7 @@ def nwm_network_preprocess(
             
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
-            
+
             if topobathy_file and use_topobathy:
                 
                 LOG.debug('Natural cross section data are provided.')
@@ -84,8 +84,9 @@ def nwm_network_preprocess(
                 # read topobathy domain netcdf file, set index to 'comid'
                 # TODO: replace 'comid' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `comid` variable in the 
-                # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
+                # ... dataframe returned from read_netcdf, then the code would break here.                
+                # topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
                 # TODO: Request GID make comID variable an integer in their product, so
                 # we do not need to change variable types, here.
@@ -126,6 +127,22 @@ def nwm_network_preprocess(
         "break_network_at_gages", False
     )
 
+    # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
+    '''  
+    headlink_mainstem = 3764244  #3765742
+    twlink_mainstem = 3766334
+    uslink_mainstem = headlink_mainstem
+    dslink_mainstem = 1 # initial value
+    mainstem_list =[headlink_mainstem]
+    while dslink_mainstem != twlink_mainstem:
+        dslink_mainstem = connections[uslink_mainstem][0]
+        mainstem_list.append(dslink_mainstem)
+        uslink_mainstem = dslink_mainstem   
+    diffusive_domain={}
+    diffusive_domain[twlink_mainstem] = mainstem_list
+    import pdb; pdb.set_trace()
+    '''
+    
     if not wbody_conn: 
         # Turn off any further reservoir processing if the network contains no 
         # waterbodies
@@ -529,7 +546,6 @@ def nwm_initial_warmstate_preprocess(
     # Assemble channel initial states (flow and depth)
     # also establish simulation initialization timestamp
     #----------------------------------------------------------------------------
-    
     start_time = time.time()
     LOG.info("setting channel initial states ...")
 
