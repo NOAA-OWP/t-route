@@ -1783,6 +1783,12 @@ contains
         ii = iel
         do while (newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1))
           ii = ii + 1
+          
+          if (ii > nel) then
+            ii = nel
+            exit
+          end if
+          
         end do
         
         iel_incr_start = ii
@@ -1790,11 +1796,11 @@ contains
 
         do ii = iel, iel_incr_start - 1
           newdKdA(ii) = newdKdA(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
-        enddo
+        end do
 
         iel_start = iel_incr_start
-      endif
-    enddo
+      end if
+    end do
 
     ! finally build lookup table
     do iel = 1,  nel

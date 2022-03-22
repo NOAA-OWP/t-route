@@ -120,14 +120,10 @@ def nwm_network_preprocess(
                 LOG.debug('Natural cross section data are provided.')
                 
                 # read topobathy domain netcdf file, set index to 'comid'
-                # TODO: replace 'comid' with a user-specified indexing variable name.
-                # ... if for whatever reason there is not a `comid` variable in the 
+                # TODO: replace 'link' with a user-specified indexing variable name.
+                # ... if for whatever reason there is not a `link` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
-                
-                # TODO: Request GID make comID variable an integer in their product, so
-                # we do not need to change variable types, here.
-                topobathy_data.index = topobathy_data.index.astype(int)
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
             else:
                 topobathy_data = pd.DataFrame()
