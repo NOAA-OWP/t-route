@@ -551,7 +551,7 @@ def write_chanobs(
             # =========== feature_id VARIABLE ===============
             FEATURE_ID = f.createVariable(
                 varname = "feature_id",
-                datatype = 'int32',
+                datatype = 'int64',
                 dimensions = ("feature_id",),
             )
             FEATURE_ID[:] = gage_feature_id
