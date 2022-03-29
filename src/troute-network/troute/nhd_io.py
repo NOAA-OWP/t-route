@@ -487,7 +487,7 @@ def write_chanobs(
     '''
     
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    gage_feature_id = link_gage_df.index.to_numpy(dtype = "int32")
+    gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")
     
     # array of simulated flow data at gage locations
     gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
