@@ -101,6 +101,7 @@ def fp_network_map(
                     usrch_bseg_id = usrch_bseg_list[
                         usrch
                     ]  # upstream reach's bottom segment
+                    import pdb; pdb.set_trace()
                     usrch_hseg_id = rchbottom_reaches[usrch_bseg_id]["segments_list"][0]
                     # find Fortran js corresponding to individual usrchid
                     for j, sid in pynw.items():

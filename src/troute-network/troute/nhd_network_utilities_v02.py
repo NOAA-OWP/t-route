@@ -240,6 +240,7 @@ def build_channel_initial_state(
             
             # create key, value for crosswalk
             rlink_list = [i for i in segment_index if not i in q0.index]
+            # rlink_list = [set(segment_index) - set(q0.index)]
             q0_lookup = dict([(i, topobathy_data.loc[i].junction_to.unique().item()) for i in rlink_list])
             
             # add refactored ids to q0 with values from crosswalked ids
@@ -952,68 +953,64 @@ def generate_qlat(qlat_lookup, orig_qlat):
 
                 if '.' in xwalk:
                     # Get ID and fraction of crosswalk
-                    comid, fraction = xwalk.split('.')
-                    comid = int(comid)
+                    link, fraction = xwalk.split('.')
+                    link = int(link)
                     if fraction == '1':
                         fraction = 1
                     else:
                         fraction = float(fraction)/1000
 
-                    if comid in fraction_dict.keys():
-                        fraction_dict[comid] += fraction
+                    if link in fraction_dict.keys():
+                        fraction_dict[link] += fraction
                     else:
-                        fraction_dict[comid] = fraction
+                        fraction_dict[link] = fraction
                     
-                if comid not in qlat_dict.keys():
-                    comids_missing_qlat.append(comid)
+                if link not in qlat_dict.keys():
+                    link.append(link)
                 
                 else:
                     if rlink in ref_qlat_dict.keys():
-                        qlat_sum = [sum(x) for x in \
-                                    zip(ref_qlat_dict[rlink], \
-                                    list(map(lambda x:fraction*x, \
-                                    qlat_dict[comid] \
+                        qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], \
+                                    list(map(lambda x:fraction*x,qlat_dict[link] \
                                     )))]
                         
                         ref_qlat_dict[rlink] = qlat_sum
                     else:
-                        ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[comid]))
+                        ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
                 
         # Segments with single crosswalk ID
         elif len(xwalk_list) == 1:
             
             if '.' in xwalk_list[0]:
                     # Get ID and fraction of crosswalk
-                    comid, fraction = xwalk_list[0].split('.')
-                    comid = int(comid)
+                    link, fraction = xwalk_list[0].split('.')
+                    link = int(link)
                     if fraction == '1':
                         fraction = 1
                     else:
                         fraction = float(fraction)/1000
 
-                    if comid in fraction_dict.keys():
-                        fraction_dict[comid] += fraction
+                    if link in fraction_dict.keys():
+                        fraction_dict[link] += fraction
                     else:
-                        fraction_dict[comid] = fraction
+                        fraction_dict[link] = fraction
             else:
-                comid = xwalk_list[0]
+                link = xwalk_list[0]
 
             # Copy channel properties            
-            if comid not in qlat_dict.keys():
-                comids_missing_qlat.append(i)
+            if link not in qlat_dict.keys():
+                link.append(i)
 
             else:
                 if rlink in ref_qlat_dict.keys():
-                    qlat_sum = [sum(x) for x in \
-                                zip(ref_qlat_dict[rlink], \
-                                list(map(lambda x:fraction*x, \
-                                qlat_dict[comid]\
+                    qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], list(map(lambda x:fraction*x, \
+                                qlat_dict[link]\
                                 )))]
                     
                     ref_qlat_dict[rlink] = qlat_sum
                                         
                 else:
-                    ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[comid]))
+                    ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
                     
         else:
             print (f"no crosswalk for refactored segment {rlink}")
