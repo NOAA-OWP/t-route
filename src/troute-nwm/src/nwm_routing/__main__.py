@@ -290,6 +290,8 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            usgs_lake_gage_crosswalk, 
+            usace_lake_gage_crosswalk,
             diffusive_network_data,
             topobathy_data,
         ) = unpack_nwm_preprocess_data(
@@ -311,6 +313,8 @@ def main_v03(argv):
             reaches_bytw,
             rconn,
             link_gage_df,
+            usgs_lake_gage_crosswalk, 
+            usace_lake_gage_crosswalk,
             diffusive_network_data,
             topobathy_data,
         ) = nwm_network_preprocess(
@@ -383,6 +387,8 @@ def main_v03(argv):
         break_network_at_waterbodies,
         segment_index,
         link_gage_df,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
         link_lake_crosswalk,
         lastobs_df.index,
         cpu_pool,
@@ -390,6 +396,7 @@ def main_v03(argv):
         compute_parameters.get("hybrid_parameters", False),
         topobathy_data,
     )
+    
         
     if showtiming:
         forcing_end_time = time.time()
@@ -473,6 +480,8 @@ def main_v03(argv):
                 break_network_at_waterbodies,
                 segment_index,
                 link_gage_df,
+                usgs_lake_gage_crosswalk, 
+                usace_lake_gage_crosswalk,
                 link_lake_crosswalk,
                 lastobs_df.index,
                 cpu_pool,
