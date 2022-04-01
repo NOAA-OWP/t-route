@@ -116,7 +116,9 @@ def nwm_network_preprocess(
             
             # read diffusive domain dictionary from yaml or json
             diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
-            refactored_domain = nhd_io.read_diffusive_domain(refactored_domain)
+            
+            if run_refactored and run_hybrid:
+                refactored_domain = nhd_io.read_diffusive_domain(refactored_domain)
  
             if topobathy_file and use_topobathy:
                 
@@ -126,7 +128,7 @@ def nwm_network_preprocess(
                 # TODO: replace 'comid' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `comid` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('rlink'))
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 # TODO: Request GID make comID variable an integer in their product, so
                 # we do not need to change variable types, here.
                 topobathy_data.index = topobathy_data.index.astype(int)
