@@ -1001,6 +1001,7 @@ def compute_diffusive_routing(
         
         # run the simulation
         out_q, out_elv = diffusive.compute_diffusive(diffusive_inputs)
+        #import pdb; pdb.set_trace()
         
         # unpack results
         rch_list, dat_all = diff_utils.unpack_output(
@@ -1009,7 +1010,7 @@ def compute_diffusive_routing(
             out_q, 
             out_elv
         )
-        
+
         # mask segments for which we already have MC solution
         x = np.in1d(rch_list, diffusive_network_data[tw]['tributary_segments'])
         

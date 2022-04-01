@@ -65,6 +65,12 @@ module diffusive
   double precision, dimension(:,:),     allocatable :: qtrib 
   double precision, dimension(:,:,:),   allocatable :: x_bathy, z_bathy, mann_bathy 
   double precision, dimension(:,:,:,:), allocatable :: xsec_tab
+  !-----------------------
+  ! DA
+  integer :: nts_da
+  double precision, dimension(:), allocatable :: usgsflow
+  double precision, dimension(:), allocatable :: tarr_da
+  double precision, dimension(:), allocatable :: varr_da
   
 contains
 
@@ -143,6 +149,9 @@ contains
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: mann_bathy_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_ev_g
+    !TODO for DA
+    !integer, intent(in) :: nts_da_g
+    !double precision, dimension(nts_da_g, nrch_g),   intent(in) :: qda_g 
 
 
   ! Local variables    
@@ -198,14 +207,20 @@ contains
     ! test
     double precision :: sumdmy1, sumdmy2
     integer :: ts
+    ! DA
+    doubleprecision :: dt_da, dmy, dmy2
+    integer :: idmy
+        
     open(unit=1, file="./input/sine_tide_matagorda_city_31d.txt")
     !open(unit=1, file="t-route/src/kernel/diffusive/input/tide_matagorda_city_31d.txt")
-    !open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
+    open(unit=2, file="./input/usgsBastrop_06011200_06302355_2020.txt")
+    open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado_noda.txt")
     !open(unit=102, file="./output/cn-mod q elev depth at each sim_time.txt")
     allocate(dbcd(nts_db_g))
+    
     do n = 1, nts_db_g
         read(1,*) dmyi, dbcd(n), dmyi
-        !dbcd(n) = dbcd(n) + 10.0
+        dbcd(n) = dbcd(n) + 10.0
     end do
   !-----------------------------------------------------------------------------
   ! Time domain parameters
@@ -218,7 +233,8 @@ contains
     dt_db        = timestep_ar_g(7) ! downstream boundary time step [sec]
     dt_qtrib     = timestep_ar_g(8) ! tributary data time step [sec]
     dtini_given  = dtini            ! preserve user-input timestep duration
-    
+    ! TODO for DA
+    ! dt_da = timestep_ar_g(9)  ! DA time step [sec]
   !-----------------------------------------------------------------------------
   ! miscellaneous parameters
     timesDepth = 4.0 ! water depth multiplier used in readXsection
@@ -478,6 +494,24 @@ contains
         tarr_db(n) = t0 * 60.0 + dt_db * &
                       real(n-1,KIND(dt_db)) / 60.0 ! [min]       
     end do
+    
+  !-----------------------------------------------------------------------------
+  ! Build DA input array 
+    dt_da = 300.0 ![sec]
+    nts_da = int((tfin - t0)*3600.0 / dt_da) + 1
+    allocate(usgsflow(nts_da))
+    allocate(tarr_da(nts_da))
+    do n = 1, nts_da
+        read(2,*) idmy, dmy, dmy2
+        usgsflow(n) = dmy
+    end do
+   !TODO for DA
+   !nts_da = nts_da_g
+    do n=1, nts_da
+        tarr_da(n) = t0 * 60.0 + dt_da * &
+                      real(n-1,KIND(dt_da)) / 60.0 ! [min]
+    end do
+
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation, channel area, and volume
@@ -745,7 +779,7 @@ contains
        !   write(102, *) t, i, j, newQ(i, j), newY(i, j), newY(i,j)-z(i,j)
        ! end do
       !end do
-
+      print*, "diffusive min=", t
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
         do jm = 1, nmstem_rch
@@ -809,14 +843,15 @@ contains
     end do  ! end of time loop
     
             !* test
-            !do ts=1, ntss_ev_g
-            !do j=1, nrch_g
-            !do i=1, frnw_g(j,1)
-            !    write(101,"(f10.1, 2I10, 2F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
+            do ts=1, ntss_ev_g
+            do j=1, nrch_g
+            do i=1, frnw_g(j,1)
+                write(101,"(f10.1, 2I10, 2F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j),&
+                                                    elv_ev_g(ts, i, j)
                 !print*, "here", saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j), elv_ev_g(ts, i, j)-z(i,j)
-            !enddo
-            !enddo
-            !enddo
+            enddo
+            enddo
+            enddo
  
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
@@ -1044,6 +1079,9 @@ contains
       double precision :: currentQ
       double precision :: eei_ghost, ffi_ghost, exi_ghost
       double precision :: fxi_ghost, qp_ghost, qpx_ghost
+      
+      ! DA
+      integer :: n 
     
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
@@ -1173,8 +1211,17 @@ contains
 
       qp_ghost  = oldQ(ncomp-1, j)
       qpx_ghost = 0.
-
-      qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+      
+      if (j==32) then
+        allocate(varr_da(nts_da))
+        do n = 1, nts_da
+            varr_da(n) = usgsflow(n)
+        end do
+        qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t)
+        deallocate(varr_da)
+      else
+        qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+      endif
       qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
 
       do i = ncomp-1, 1, -1
@@ -1182,10 +1229,50 @@ contains
         qpx(i, j) = exi(i) * qpx(i+1, j) + fxi(i)
       end do
 
-      qp(1, j) = newQ(1, j)
+      if (j /= 32) then
+       qp(1, j) = newQ(1, j)
+       qp(1, j) = qp(1, j) + allqlat
+      endif
+
+      !---------
+      ! original
+      !qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+      !qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
+
+      !do i = ncomp-1, 1, -1
+      !  qp(i, j)  = eei(i) * qp(i+1, j) + ffi(i)
+      !  qpx(i, j) = exi(i) * qpx(i+1, j) + fxi(i)
+      !end do
+
+      !qp(1, j) = newQ(1, j)   
 
       ! All qlat to a river reach is applied to the u/s boundary
-      qp(1, j) = qp(1, j) + allqlat
+      !qp(1, j) = qp(1, j) + allqlat
+      
+!TODO for DA: start
+      !if (qda_g(1,j) /= 0.0) then
+        !replace assumed Q at bottom node and next time step by observed one
+      !  allocate(varr_da(nts_da))
+      !  do n = 1, nts_da
+      !      varr_da(n) = qda_g(n, j)
+      !  end do
+      !  qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t)
+      !  deallocate(varr_da)
+      !else
+      !  qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+      !endif
+      !qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
+
+      !do i = ncomp-1, 1, -1
+      !  qp(i, j)  = eei(i) * qp(i+1, j) + ffi(i)
+      !  qpx(i, j) = exi(i) * qpx(i+1, j) + fxi(i)
+      !end do
+
+      !if (qda_g(1,j) == 0.0) then
+      ! qp(1, j) = newQ(1, j)
+      ! qp(1, j) = qp(1, j) + allqlat
+      !endif      
+!TODO for DA: end      
 
       do i = 1, ncomp
         if (abs(qp(i, j)) < q_llm) then
