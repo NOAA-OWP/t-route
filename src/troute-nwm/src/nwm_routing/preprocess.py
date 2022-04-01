@@ -157,6 +157,9 @@ def nwm_network_preprocess(
         supernetwork_parameters,
     )
     
+    link_gage_df = pd.DataFrame.from_dict(gages)
+    link_gage_df.index.name = 'link'
+    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -244,22 +247,34 @@ def nwm_network_preprocess(
 
         if param_file and reservoir_da:
             waterbody_type_specified = True
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
+            (
+                waterbody_types_df, 
+                usgs_lake_gage_crosswalk, 
+                usace_lake_gage_crosswalk
+            ) = nhd_io.read_reservoir_parameter_file(
                 param_file,
                 usgs_hybrid,
                 usace_hybrid,
                 rfc_forecast,
                 level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+                reservoir_da.get('crosswalk_usgs_gage_field', 'usgs_gage_id'),
+                reservoir_da.get('crosswalk_usgs_lakeID_field', 'usgs_lake_id'),
+                reservoir_da.get('crosswalk_usace_gage_field', 'usace_gage_id'),
+                reservoir_da.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
                 wbody_conn.values(),
             )
         else:
             waterbody_type_specified = True
             waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
+            usgs_lake_gage_crosswalk = None
+            usace_lake_gage_crosswalk = None
 
     else:
         # Declare empty dataframes
         waterbody_types_df = pd.DataFrame()
         waterbodies_df = pd.DataFrame()
+        usgs_lake_gage_crosswalk = None
+        usace_lake_gage_crosswalk = None
 
     #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
@@ -363,7 +378,9 @@ def nwm_network_preprocess(
                  'independent_networks': independent_networks,
                  'reaches_bytw': reaches_bytw,
                  'rconn': rconn,
-                 'link_gage_df': pd.DataFrame.from_dict(gages),
+                 'link_gage_df': link_gage_df,
+                 'usgs_lake_gage_crosswalk': usgs_lake_gage_crosswalk, 
+                 'usace_lake_gage_crosswalk': usace_lake_gage_crosswalk,
                  'diffusive_network_data': diffusive_network_data,
                  'topobathy_data': topobathy_data,
                 }
@@ -403,7 +420,9 @@ def nwm_network_preprocess(
         independent_networks,
         reaches_bytw,
         rconn,
-        pd.DataFrame.from_dict(gages),
+        link_gage_df,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
         diffusive_network_data,
         topobathy_data,
     )
@@ -430,6 +449,8 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         reaches_bytw = inputs.get('reaches_bytw',None)
         rconn = inputs.get('rconn',None)
         gages = inputs.get('link_gage_df',None)
+        usgs_lake_gage_crosswalk = inputs.get('usgs_lake_gage_crosswalk',None)
+        usace_lake_gage_crosswalk = inputs.get('usace_lake_gage_crosswalk',None)
         diffusive_network_data = inputs.get('diffusive_network_data',None)
         topobathy_data = inputs.get('topobathy_data',None)
                 
@@ -450,6 +471,8 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         reaches_bytw,
         rconn,
         gages,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
         diffusive_network_data,
         topobathy_data,
     )
@@ -673,6 +696,8 @@ def nwm_forcing_preprocess(
     break_network_at_waterbodies,
     segment_index,
     link_gage_df,
+    usgs_lake_gage_crosswalk, 
+    usace_lake_gage_crosswalk,
     link_lake_crosswalk,
     lastobs_index,
     cpu_pool,
@@ -847,7 +872,7 @@ def nwm_forcing_preprocess(
         if usgs_files:
             usgs_df = (
                 nhd_io.get_obs_from_timeslices(
-                    crosswalk_file,
+                    link_gage_df,
                     crosswalk_gage_field,
                     crosswalk_segID_field,
                     usgs_files,
@@ -907,18 +932,11 @@ def nwm_forcing_preprocess(
     # create crosswalking dataframes and identify USGS lakeIDs in the model domain
     if usgs_persistence:
         
-        crosswalk_file = reservoir_da_parameters["gage_lakeID_crosswalk_file"]
-        crosswalk_file = pathlib.Path(crosswalk_file)
-        
-        with xr.open_dataset(crosswalk_file) as ds:
-            gage_lake_dict = {
-                'gage': ds.usgs_gage_id.values,
-                'usgs_lake_id': ds.usgs_lake_id.values
-            }
-            gage_lake_df = (
-                pd.DataFrame(data = gage_lake_dict).
-                set_index('gage')
-            )
+        gage_lake_df = (
+            usgs_lake_gage_crosswalk.
+            reset_index().
+            set_index(['usgs_gage_id']) # <- TODO use input parameter for this
+        )
         
         # build dataframe that crosswalks gageIDs to segmentIDs
         gage_link_df = (
@@ -943,12 +961,13 @@ def nwm_forcing_preprocess(
             "Creating a DataFrame of USGS gage observations for Reservoir DA ..."
         )
         
+        
         # build dataframe that crosswalks segmentIDs to lakeIDs
         link_lake_df = (
             gage_lake_df.
             join(gage_link_df, how = 'inner').
-            reset_index().set_index('index').
-            drop(['level_0'], axis = 1)
+            reset_index().set_index('link').
+            drop(['index'], axis = 1)
         )
         
         # resample `usgs_df` to 15 minute intervals
@@ -1010,7 +1029,7 @@ def nwm_forcing_preprocess(
         if usgs_files:
             
             reservoir_usgs_df = nhd_io.get_obs_from_timeslices(
-                crosswalk_file,
+                usgs_lake_gage_crosswalk,
                 crosswalk_gage_field,
                 crosswalk_lakeID_field,
                 usgs_files,
@@ -1071,7 +1090,7 @@ def nwm_forcing_preprocess(
                 
         if usace_files:
             reservoir_usace_df = nhd_io.get_obs_from_timeslices(
-                crosswalk_file,
+                usace_lake_gage_crosswalk,
                 crosswalk_gage_field,
                 crosswalk_lakeID_field,
                 usace_files,

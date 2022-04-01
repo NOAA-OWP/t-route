@@ -192,7 +192,7 @@ def fp_chgeo_map(
                     segID = seg_list[seg]
                 
                 bo_ar_g[seg, frj] = param_df.loc[segID, 'bw']
-                traps_ar_g[seg, frj] = param_df.loc[segID, 'cs']
+                traps_ar_g[seg, frj] = 1/param_df.loc[segID, 'cs']
                 tw_ar_g[seg, frj] = param_df.loc[segID, 'tw']
                 twcc_ar_g[seg, frj] = param_df.loc[segID, 'twcc']
                 mann_ar_g[seg, frj] = param_df.loc[segID, 'n']
@@ -683,9 +683,6 @@ def diffusive_input_data_v02(
             
         # for channel altitude adjustment
         z_all.update({seg: {"adj.alt": np.zeros(1)} for seg in rch})
-    
-    # take the reciprical of cs - this seems out of place, where should this be located?
-    param_df.loc[:,'cs'] = 1/param_df.loc[:,'cs']
     
     # --------------------------------------------------------------------------------------
     #                                 Step 0-3
