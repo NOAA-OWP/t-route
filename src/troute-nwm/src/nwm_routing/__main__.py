@@ -331,11 +331,13 @@ def main_v03(argv):
 
     # list of all segments in the domain (MC + diffusive)
     segment_index = param_df.index
+    import pdb; pdb.set_trace()
     if diffusive_network_data:
         for tw in diffusive_network_data:
             segment_index = segment_index.append(
                 pd.Index(diffusive_network_data[tw]['mainstem_segs'])
             ) 
+    import pdb; pdb.set_trace()
     
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
