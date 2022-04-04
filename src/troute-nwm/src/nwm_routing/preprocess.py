@@ -85,7 +85,7 @@ def nwm_network_preprocess(
                 # TODO: replace 'comid' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `comid` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.                
-                # topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
+                #topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
                 topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
                 # TODO: Request GID make comID variable an integer in their product, so
@@ -128,9 +128,10 @@ def nwm_network_preprocess(
     )
 
     # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
-    '''  
-    headlink_mainstem = 3764244  #3765742
+    ''' 
+    headlink_mainstem = 5790106  #3765742
     twlink_mainstem = 3766334
+    
     uslink_mainstem = headlink_mainstem
     dslink_mainstem = 1 # initial value
     mainstem_list =[headlink_mainstem]
@@ -142,6 +143,7 @@ def nwm_network_preprocess(
     diffusive_domain[twlink_mainstem] = mainstem_list
     import pdb; pdb.set_trace()
     '''
+
     
     if not wbody_conn: 
         # Turn off any further reservoir processing if the network contains no 
