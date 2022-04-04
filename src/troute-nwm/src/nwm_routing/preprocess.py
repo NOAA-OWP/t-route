@@ -407,7 +407,29 @@ def nwm_network_preprocess(
                 "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file. Aborting preprocessing routine"
             )
             quit()
-
+    import pdb; pdb.set_trace()
+    test_out = [connections,
+        param_df,
+        wbody_conn,
+        waterbodies_df,
+        waterbody_types_df,
+        break_network_at_waterbodies,  
+        waterbody_type_specified, 
+        link_lake_crosswalk,
+        independent_networks,
+        reaches_bytw,
+        rconn,
+        link_gage_df,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk,
+        diffusive_network_data,
+        topobathy_data] 
+    import pdb; pdb.set_trace()
+    import pickle
+    import os
+    with open('/glade/u/home/bavant/master_preprocess.pkl', 'wb') as fp:
+        pickle.dump(test_out, fp)
+    import pdb; pdb.set_trace()
     return (
         connections,
         param_df,
