@@ -70,7 +70,7 @@ def _input_handler_v03(args):
                 parity_parameters,
                 data_assimilation_parameters
                 )
-        
+ 
     return (
         log_parameters,
         preprocessing_parameters,
@@ -260,12 +260,13 @@ def check_inputs(
             preprocessing_parameters['preprocess_source_file']
         )
     
+
     #-----------------------------------------------------------------
     # Check that geo_file_path is provided and exists
     #----------------------------------------------------------------- 
     _does_file_exist('geo_file_path', 
                      supernetwork_parameters['geo_file_path'])
-        
+
     #-----------------------------------------------------------------
     # Check if mask file is provided. If so, make sure the file exists
     # If no mask is provided, write a logging message warning the user
