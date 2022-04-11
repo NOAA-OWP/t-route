@@ -110,4 +110,5 @@ setup(
     ext_modules=ext_modules,
     ext_packages="",
     package_data=package_data,
+    py_modules=["build_tests"]
 )
