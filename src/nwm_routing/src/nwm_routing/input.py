@@ -71,6 +71,7 @@ def _input_handler_v02(args):
     parity_parameters = {}
     data_assimilation_parameters = {}
     diffusive_parameters = {}
+    coastal_parameters = {}
 
     if custom_input_file:
         (
