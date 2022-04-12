@@ -27,10 +27,10 @@ compute_parameters:
     restart_parameters:
         start_datetime: "2020-06-01_12:00:00"
         #wrf_hydro_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1 channel_restart_202006011200
-        lite_channel_restart_file: #/glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
+        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_channel_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
         #wrf_hydro_waterbody_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1
-        lite_channel_restart_file: #/glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
+        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_waterbody_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc
         wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
     hybrid_parameters:
@@ -38,8 +38,8 @@ compute_parameters:
         diffusive_domain: domain/diffusive_domain.yaml
         refactored_domain: domain/refactored_diffusive_domain.yaml
         run_refactored_network: False
-        use_natl_xsections: True
-        topobathy_domain: domain/diffusive_natural_xs_20220322.nc #diffusive_natural_xs_20220322.nc refac_diffusive_natural_xs_040522.nc refac_diffusive_natural_xs_041222.nc
+        use_natl_xsections: False
+        topobathy_domain: domain/diffusive_natural_xs_20220322.nc
     forcing_parameters:
         qts_subdivisions: 12
         dt: 300
