@@ -38,8 +38,8 @@ compute_parameters:
         diffusive_domain: domain/diffusive_domain.yaml
         refactored_domain: domain/refactored_diffusive_domain.yaml
         run_refactored_network: False
-        use_natl_xsections: False
-        topobathy_domain: domain/diffusive_natural_xs_20220322.nc
+        use_natl_xsections: True
+        topobathy_domain: domain/diffusive_natural_xs_20220322.nc #diffusive_natural_xs_20220322.nc refac_diffusive_natural_xs_040522.nc refac_diffusive_natural_xs_041222.nc
     forcing_parameters:
         qts_subdivisions: 12
         dt: 300
