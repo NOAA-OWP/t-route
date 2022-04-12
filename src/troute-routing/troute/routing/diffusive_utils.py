@@ -87,7 +87,7 @@ def fp_network_map(
     frnw_g = np.zeros((nrch_g, frnw_col), dtype='int32')
     frj = -1
     for x in range(mx_jorder, -1, -1):
-        for head_segment, reach in ordered_reaches[x]:
+        for head_segment, reach in ordered_reaches[x]: # TODO: fix
             seg_list = reach["segments_list"]
             ncomp = reach["number_segments"]
             frj = frj + 1
@@ -151,7 +151,7 @@ def fp_network_map(
 
 
 def fp_chgeo_map(
-    mx_jorder, ordered_reaches, param_df, z_all, mxncomp_g, nrch_g, use_topobathy
+    mx_jorder, ordered_reaches, param_df, z_all, mxncomp_g, nrch_g
 ):
     """
     Channel geometry data mapping between Python and Fortran
@@ -493,7 +493,7 @@ def fp_naturalxsec_map(
                             
                         else:
                             seg_idx = segID
-                            
+                        
                         # how many stations are in the node cross section?
                         nstations = len(topobathy_data_bytw.loc[seg_idx])
                         
@@ -662,7 +662,7 @@ def diffusive_input_data_v02(
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
-
+    
     ordered_reaches = {}
     rchhead_reaches = {}
     rchbottom_reaches = {}
@@ -691,7 +691,7 @@ def diffusive_input_data_v02(
                 },
             ]
         )
-
+            
         if rch[0] not in rchhead_reaches:
             
             # a list of segments for a given reach-head segment
@@ -714,11 +714,10 @@ def diffusive_input_data_v02(
     dbfksegID = int(str(tw) + str(2))
     
     use_topobathy = hybrid_parameters.get('use_natl_xsections', False)
-    if use_topobathy:
     
-        adj_alt1(
-            mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
-        )
+    adj_alt1(
+        mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
+    )
     
     # --------------------------------------------------------------------------------------
     #                                 Step 0-4
@@ -762,7 +761,6 @@ def diffusive_input_data_v02(
         z_all,
         mxncomp_g,
         nrch_g,
-        use_topobathy,
     )
     
     # ---------------------------------------------------------------------------------
