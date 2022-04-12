@@ -534,6 +534,17 @@ def main_v03(argv):
                 t0 + timedelta(seconds = dt * nts),
             )
             
+            # if there are no TimeSlice files available for hybrid reservoir DA, 
+            # but there are DA parameters from the previous loop, then create a
+            # dummy observations df. This allows the reservoir persistence to continue.
+            if reservoir_usgs_df.empty and len(reservoir_usgs_param_df.index) > 0:
+                reservoir_usgs_df = pd.DataFrame(
+                    data    = np.nan, 
+                    index   = reservoir_usgs_param_df.index, 
+                    columns = [t0]
+                )
+            # repeat for USACE 
+            
             if showtiming:
                 forcing_end_time = time.time()
                 task_times['forcing_time'] += forcing_end_time - route_end_time
