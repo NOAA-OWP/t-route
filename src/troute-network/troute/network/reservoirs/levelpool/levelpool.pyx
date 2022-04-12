@@ -31,7 +31,7 @@ cdef class MC_Levelpool(Reach):
     MC_Reservoir is a subclass of MC_Reach_Base_Class
   """
 
-  def __init__(self, long id, int lake_number, long[::1] upstream_ids, args, wbody_type_code):
+  def __init__(self, long id, long lake_number, long[::1] upstream_ids, args, wbody_type_code):
     """
       Construct the kernel based on passed parameters,
       which only constructs the parent class
