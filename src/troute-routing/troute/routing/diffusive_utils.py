@@ -35,19 +35,27 @@ def adj_alt1(
                     # head segment id of downstream reach from a junction
                     dsrchID = reach["downstream_head_segment"]
                     
-                    z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
+                    try:
+                        z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
+                    except:
+                        z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt'].values.min()
 
                 elif seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
                     # Terminal downstream fakesegment
                     ## AD HOC: need to be corrected later
                     segID2 = seg_list[seg - 1]
-                    
-                    z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'] * param_df.loc[segID2, 'dx']
-                    
+                    try:
+                        z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'] * param_df.loc[segID2, 'dx']
+                    except:
+                        z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'].values[0] * param_df.loc[segID2, 'dx'].values.min()
+            
                 else:
                     
-                    z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt']
-
+                    try:
+                        z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt']
+                    except:
+                        z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt'].values.min()
+                    
     return z_all
 
 
@@ -101,7 +109,6 @@ def fp_network_map(
                     usrch_bseg_id = usrch_bseg_list[
                         usrch
                     ]  # upstream reach's bottom segment
-                    import pdb; pdb.set_trace()
                     usrch_hseg_id = rchbottom_reaches[usrch_bseg_id]["segments_list"][0]
                     # find Fortran js corresponding to individual usrchid
                     for j, sid in pynw.items():
@@ -144,7 +151,7 @@ def fp_network_map(
 
 
 def fp_chgeo_map(
-    mx_jorder, ordered_reaches, param_df, z_all, mxncomp_g, nrch_g
+    mx_jorder, ordered_reaches, param_df, z_all, mxncomp_g, nrch_g, use_topobathy
 ):
     """
     Channel geometry data mapping between Python and Fortran
@@ -192,18 +199,31 @@ def fp_chgeo_map(
                 else:
                     segID = seg_list[seg]
                 
-                bo_ar_g[seg, frj] = param_df.loc[segID, 'bw']
-                traps_ar_g[seg, frj] = 1/param_df.loc[segID, 'cs']
-                tw_ar_g[seg, frj] = param_df.loc[segID, 'tw']
-                twcc_ar_g[seg, frj] = param_df.loc[segID, 'twcc']
-                mann_ar_g[seg, frj] = param_df.loc[segID, 'n']
-                manncc_ar_g[seg, frj] = param_df.loc[segID, 'ncc']
-                so_ar_g[seg, frj] = param_df.loc[segID, 's0']
-                dx_ar_g[seg, frj] = param_df.loc[segID, 'dx']
+                # Update to handle natural xs data (trib data in natl xs still scalar but mainstem isn't)
+                try:
+                    bo_ar_g[seg, frj] = param_df.loc[segID, 'bw']
+                    traps_ar_g[seg, frj] = 1/param_df.loc[segID, 'cs']
+                    tw_ar_g[seg, frj] = param_df.loc[segID, 'tw']
+                    twcc_ar_g[seg, frj] = param_df.loc[segID, 'twcc']
+                    mann_ar_g[seg, frj] = param_df.loc[segID, 'n']
+                    manncc_ar_g[seg, frj] = param_df.loc[segID, 'ncc']
+                    so_ar_g[seg, frj] = param_df.loc[segID, 's0']
+                    dx_ar_g[seg, frj] = param_df.loc[segID, 'dx']
+
+                except:
+                    bo_ar_g[seg, frj] = param_df.loc[segID, 'bw'].values[0]
+                    traps_ar_g[seg, frj] = 1/param_df.loc[segID, 'cs'].values[0]
+                    tw_ar_g[seg, frj] = param_df.loc[segID, 'tw'].values[0]
+                    twcc_ar_g[seg, frj] = param_df.loc[segID, 'twcc'].values[0]
+                    mann_ar_g[seg, frj] = param_df.loc[segID, 'n'].values[0]
+                    manncc_ar_g[seg, frj] = param_df.loc[segID, 'ncc'].values[0]
+                    so_ar_g[seg, frj] = param_df.loc[segID, 's0'].values[0]
+                    dx_ar_g[seg, frj] = param_df.loc[segID, 'dx'].values[0]
+                    
 
                 segID1 = seg_list[seg]
                 z_ar_g[seg, frj] = z_all[segID1]["adj.alt"][0]
-
+                
     return (
         z_ar_g,
         bo_ar_g,
@@ -258,7 +278,7 @@ def fp_qlat_map(
                         
                         tlf = qlat.loc[segID, tsi]
                         dx = param_df.loc[segID, 'dx']
-                        qlat_g[tsi, seg, frj] = tlf / dx  # [m^2/sec]
+                        qlat_g[tsi, seg, frj] = tlf / np.unique(dx).item()  # [m^2/sec]
 
                     else:
                         qlat_g[
@@ -519,6 +539,7 @@ def diffusive_input_data_v02(
     dt,
     waterbodies_df,
     topobathy_data_bytw,
+    hybrid_parameters,
 ):
     """
     Build input data objects for diffusive wave model
@@ -691,10 +712,13 @@ def diffusive_input_data_v02(
     #    of the first segment of its downstream reach right after their common junction.
     # --------------------------------------------------------------------------------------
     dbfksegID = int(str(tw) + str(2))
-
-    adj_alt1(
-        mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
-    )
+    
+    use_topobathy = hybrid_parameters.get('use_natl_xsections', False)
+    if use_topobathy:
+    
+        adj_alt1(
+            mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
+        )
     
     # --------------------------------------------------------------------------------------
     #                                 Step 0-4
@@ -731,13 +755,14 @@ def diffusive_input_data_v02(
         manncc_ar_g,
         so_ar_g,
         dx_ar_g,
-    ) = fp_chgeo_map(
+        ) = fp_chgeo_map(
         mx_jorder,
         ordered_reaches,
         param_df,
         z_all,
         mxncomp_g,
         nrch_g,
+        use_topobathy,
     )
     
     # ---------------------------------------------------------------------------------

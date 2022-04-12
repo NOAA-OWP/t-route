@@ -74,6 +74,7 @@ def nwm_route(
     diffusive_parameters,
     diffusive_network_data,
     topobathy_data,
+    hybrid_parameters,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -117,6 +118,7 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
+        hybrid_parameters,
     )
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
@@ -141,6 +143,7 @@ def nwm_route(
                 diffusive_parameters,
                 waterbodies_df,
                 topobathy_data,
+                hybrid_parameters,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -331,13 +334,11 @@ def main_v03(argv):
 
     # list of all segments in the domain (MC + diffusive)
     segment_index = param_df.index
-    import pdb; pdb.set_trace()
     if diffusive_network_data:
         for tw in diffusive_network_data:
             segment_index = segment_index.append(
                 pd.Index(diffusive_network_data[tw]['mainstem_segs'])
             ) 
-    import pdb; pdb.set_trace()
     
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
@@ -348,7 +349,7 @@ def main_v03(argv):
         waterbodies_df,
         link_lake_crosswalk,
         compute_parameters.get("hybrid_parameters", False),
-        topobathy_data,
+        diffusive_network_data,
     )
     
     if showtiming:
@@ -396,7 +397,7 @@ def main_v03(argv):
         cpu_pool,
         t0,
         compute_parameters.get("hybrid_parameters", False),
-        topobathy_data,
+        diffusive_network_data,
     )
     
         
@@ -448,6 +449,7 @@ def main_v03(argv):
             diffusive_parameters,
             diffusive_network_data,
             topobathy_data,
+            compute_parameters.get("hybrid_parameters", False),
         )
         
         if showtiming:
@@ -489,7 +491,7 @@ def main_v03(argv):
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
                 compute_parameters.get("hybrid_parameters", False),
-                topobathy_data,
+                diffusive_network_data,
             )
             
             if showtiming:
@@ -714,7 +716,7 @@ async def main_v03_async(argv):
         IO_cpu_pool,
         t0,
         compute_parameters.get("hybrid_parameters", False),
-        topobathy_data,
+        diffusive_network_data,
     )
 
     run_set_iterator = 0
@@ -758,6 +760,7 @@ async def main_v03_async(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
+            compute_parameters.get("hybrid_parameters", False),
         )
 
         forcings_task = loop.run_in_executor(
@@ -773,7 +776,7 @@ async def main_v03_async(argv):
             IO_cpu_pool,
             t0 + timedelta(seconds = dt * nts),
             compute_parameters.get("hybrid_parameters", False),
-            topobathy_data,
+            diffusive_network_data,
         )
 
         run_results = await model_task
@@ -849,6 +852,7 @@ async def main_v03_async(argv):
         waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
+        compute_parameters.get("hybrid_parameters", False),
     )
 
     # nwm_final_output_generator()

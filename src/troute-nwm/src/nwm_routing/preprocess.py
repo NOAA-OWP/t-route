@@ -288,8 +288,6 @@ def nwm_network_preprocess(
         rconn = nhd_network.reverse_network(connections)
         
         for tw in diffusive_domain:
-            # ===== build diffusive network data objects ==== 
-            diffusive_network_data[tw] = {}
             
             # diffusive domain tributary segments
             trib_segs = []
@@ -299,35 +297,79 @@ def nwm_network_preprocess(
                     if u not in diffusive_domain[tw]:
                         trib_segs.append(u)
             
-            diffusive_network_data[tw]['tributary_segments'] = trib_segs
-            
-            if run_refactored: # autmatically assumes topobathy data
-                print('running refactored network')
+            if use_topobathy:
                 diffusive_parameters = {'geo_file_path': topobathy_file}
-                ref_connections, ref_param_df, ref_gages, junct_to = nnu.build_refac_connections(diffusive_parameters)
-                # diffusive domain connections object
-                diffusive_network_data[tw]['connections'] = {junct_to[k]: ref_connections[junct_to[k]] for k in (diffusive_domain[tw] + trib_segs) if k in junct_to.keys()}
+                nat_connections, nat_param_df, nat_gages = nnu.build_refac_connections(diffusive_parameters)
                 
-                diffusive_network_data[tw]['junct_to'] = junct_to
+                trib_params = param_df.filter(
+                     (trib_segs),
+                     axis = 0,
+                )
+                
+                # Add dummy RouteLink parameters
+                trib_params['line_d'] = 0.0
+                nat_param_df['ncc'] = np.float(-999.0)
+                nat_param_df['s0'] = np.float(-999.0)
+                nat_param_df['bw'] = np.float(-999.0)
+                nat_param_df['tw'] = np.float(-999.0)
+                nat_param_df['twcc'] = np.float(-999.0)
+                nat_param_df['musk'] = np.float(-999.0)
+                nat_param_df['musx'] = np.float(-999.0)
+                nat_param_df['cs'] = np.float(-999.0)
+                
+                # RouteLink parameters
+                nat_param_df = pd.concat([nat_param_df,trib_params])
+                
+            if run_refactored: # automatically assumes topobathy data
+                refac_tw = refactored_domain[tw]['upstream_xwalk'][tw]
+                
+                # ===== build diffusive network data objects ==== 
+                diffusive_network_data[refac_tw] = {}
+                        
+                diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
+            
+                print('running refactored network')
+                
+                #refactored_domain = refactored_domain[3766334]
+                
+                #diffusive_parameters = {'geo_file_path': topobathy_file}
+                #ref_connections, ref_param_df, ref_gages = nnu.build_refac_connections(diffusive_parameters)
+                
+                refactored_domain[tw]['incoming_tribs'][5791936] = 1180012573
+                refactored_domain[tw]['incoming_tribs'][3765746] = 1180012579
+                # lengthMap need to be strings ###
+                diffusive_network_data[refac_tw]['connections'] = nat_connections
+
+                diffusive_network_data[refac_tw]['connections'].update({k: [refactored_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
+                
+                # create dict of junction conversion
+                diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk'] 
+                
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
                 _, ref_reaches, ref_conn_diff = nnu.organize_independent_networks(
-                    diffusive_network_data[tw]['connections'],
+                    diffusive_network_data[refac_tw]['connections'],
                     set(trib_segs),
                     set(),
                 )
-
-                diffusive_network_data[tw]['rconn'] = ref_conn_diff
-                diffusive_network_data[tw]['reaches'] = ref_reaches[junct_to[tw]]
-
-                # RouteLink parameters
-                diffusive_network_data[tw]['param_df'] = ref_param_df
-
-                # diffusive_network_data[tw]['gages'] = ref_gages
                 
-                diffusive_network_data[tw]['mainstem_segs'] = refactored_domain[junct_to[tw]]
+                diffusive_network_data[refac_tw]['rconn'] = ref_conn_diff
+                diffusive_network_data[refac_tw]['reaches'] = ref_reaches[refac_tw]
+                
+                # RouteLink parameters
+                diffusive_network_data[refac_tw]['param_df'] = nat_param_df
 
+                diffusive_network_data[refac_tw]['gages'] = nat_gages
+                
+                diffusive_network_data[refac_tw]['lengthMap'] = refactored_domain[tw]['lengthMap']
+                
+                diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_domain[tw]['rlinks']
+                
             else:
+                # ===== build diffusive network data objects ==== 
+                diffusive_network_data[tw] = {}
+                        
+                diffusive_network_data[tw]['tributary_segments'] = trib_segs
                 
                 # add diffusive domain segments
                 diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
@@ -346,15 +388,17 @@ def nwm_network_preprocess(
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
 
                 # RouteLink parameters
-                diffusive_network_data[tw]['param_df'] = param_df.filter(
-                    (diffusive_domain[tw] + trib_segs),
-                    axis = 0,
-                )
+                #diffusive_network_data[tw]['param_df'] = param_df.filter(
+                #    (diffusive_domain[tw] + trib_segs),
+                #    axis = 0,
+                #)
+                # RouteLink parameters
+                diffusive_network_data[tw]['param_df'] = nat_param_df
                 
             # ==== remove diffusive domain segs from MC domain ====
-        
             # drop indices from param_df
             param_df = param_df.drop(diffusive_domain[tw])
+            
             # remove keys from connections dictionary
             for seg in diffusive_domain[tw]:
                 connections.pop(seg)
@@ -517,7 +561,7 @@ def nwm_initial_warmstate_preprocess(
     waterbodies_df,
     link_lake_crosswalk,
     hybrid_params,
-    topobathy_data,
+    diffusive_network_data,
 ):
 
     '''
@@ -648,7 +692,7 @@ def nwm_initial_warmstate_preprocess(
     # build initial states from user-provided restart parameters
     else:
         
-        q0 = nnu.build_channel_initial_state(restart_parameters, hybrid_params, topobathy_data, segment_index)
+        q0 = nnu.build_channel_initial_state(restart_parameters, hybrid_params, diffusive_network_data, segment_index)
         
         # get initialization time from restart file
         if restart_parameters.get("wrf_hydro_channel_restart_file", None):
@@ -737,7 +781,7 @@ def nwm_forcing_preprocess(
     cpu_pool,
     t0, 
     hybrid_params, 
-    topobathy_data,
+    diffusive_network_data,
 ):
     """
     Assemble model forcings. Forcings include hydrological lateral inflows (qlats)
@@ -827,7 +871,7 @@ def nwm_forcing_preprocess(
         run,
         cpu_pool, 
         hybrid_params, 
-        topobathy_data,
+        diffusive_network_data,
         segment_index,
     )
     LOG.debug(

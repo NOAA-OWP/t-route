@@ -152,7 +152,6 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     
     # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
-    rconn = {key:value for (key, value) in rconn.items() if len(value) >= 1}
     
     # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
@@ -202,7 +201,7 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 
 
 def build_channel_initial_state(
-    restart_parameters, hybrid_params, topobathy_data, segment_index=pd.Index([]), 
+    restart_parameters, hybrid_params, diffusive_network_data, segment_index=pd.Index([]), 
 ):
     
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
@@ -239,13 +238,14 @@ def build_channel_initial_state(
         if run_refactored:
             
             # create key, value for crosswalk
-            rlink_list = [i for i in segment_index if not i in q0.index]
-            # rlink_list = [set(segment_index) - set(q0.index)]
-            q0_lookup = dict([(i, topobathy_data.loc[i].junction_to.unique().item()) for i in rlink_list])
+            rlink_list = list(set(segment_index) - set(q0.index))
+            #import pdb; pdb.set_trace()
+            for tw in diffusive_network_data:
+                q0_lookup = dict([(i, diffusive_network_data[tw]['upstream_xwalk'][i]) for i in rlink_list])
             
-            # add refactored ids to q0 with values from crosswalked ids
-            for rlink,link in q0_lookup.items():
-                q0.loc[rlink] = q0.loc[link]
+                # add refactored ids to q0 with values from crosswalked ids
+                for rlink,link in q0_lookup.items():
+                    q0.loc[rlink] = q0.loc[link]
         
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
@@ -373,7 +373,7 @@ def build_qlateral_array(
     forcing_parameters,
     cpu_pool, 
     hybrid_params, 
-    topobathy_data,
+    diffusive_network_data,
     segment_index=pd.Index([]),
     ts_iterator=None,
     file_run_size=None,
@@ -429,14 +429,17 @@ def build_qlateral_array(
             # Generate q_lat series for refactored links
             run_refactored  = hybrid_params.get('run_refactored_network', False)
             if run_refactored:
-
                 # create key, value for crosswalk
-                rlink_list = [i for i in segment_index if not i in qlat_df.index]
-                qlat_lookup = dict([(i, topobathy_data.loc[i].lengthMap.unique().item()) for i in rlink_list])
-                # Generate new qlat time series for refactored ids
-                refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
-                # Add refactored qlat time series to df
-                qlat_df = pd.concat([qlat_df,refac_qlat])
+                rlink_list = list(set(segment_index) - set(qlat_df.index))
+                #import pdb; pdb.set_trace()
+                for tw in diffusive_network_data:
+                    qlat_lookup = dict([(i, diffusive_network_data[tw]['lengthMap'][i]) for i in rlink_list])
+                
+                    # Generate new qlat time series for refactored ids
+                    refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
+                
+                    # Add refactored qlat time series to df
+                    qlat_df = pd.concat([qlat_df,refac_qlat])
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
@@ -854,34 +857,28 @@ def build_refac_connections(diff_network_parameters):
     cols = diff_network_parameters.get(
         'columns', 
         {
-        'key'       : 'rlink',
-        'downstream': 'rto',
+        'key'       : 'link',
+        'downstream': 'to',
         'dx'        : 'Length',
         'n'         : 'n',
         'waterbody' : 'NHDWaterbodyComID',
         'gages'     : 'gages',
-        'xwalk'     : 'lengthMap',
-        'junct_to'  : 'junction_to',
-        'elev'      : 'z',
-        'line_d'    : 'xid_d',
-        
+        'alt'      : 'z',
+        'line_d'    : 'xid_d',        
         }
     )
-    
-    # numeric code used to indicate network terminal segments
-    terminal_code = diff_network_parameters.get("terminal_code", 0)
-    
+
     # read parameter dataframe 
     param_df = nhd_io.read(pathlib.Path(diff_network_parameters["geo_file_path"]))
+    
+    # numeric code used to indicate network terminal segments
+    terminal_code = set(param_df.to.unique()) - set(param_df.link.unique())
 
     # select the column names specified in the values in the cols dict variable
     param_df = param_df[list(cols.values())]
     
     # rename dataframe columns to keys in the cols dict variable
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
-    
-    # create dict of junction conversion
-    junct_to = dict(zip(param_df.junct_to,param_df.key))
     
     # set parameter dataframe index as segment id number, sort
     param_df = param_df.set_index("key").sort_index()
@@ -907,9 +904,11 @@ def build_refac_connections(diff_network_parameters):
         gages = nhd_network.gage_mapping(gage_list)
         param_df = param_df.drop("gages", axis=1)
         
+    
+    
     # There can be an externally determined terminal code -- that's this first value
     terminal_codes = set()
-    terminal_codes.add(terminal_code)
+    terminal_codes.update(terminal_code)
     # ... but there may also be off-domain nodes that are not explicitly identified
     # but which are terminal (i.e., off-domain) as a result of a mask or some other
     # an interior domain truncation that results in a
@@ -925,13 +924,14 @@ def build_refac_connections(diff_network_parameters):
         param_df_unique, "downstream", terminal_codes=terminal_codes
     )
     
-    # param_df = param_df.drop("downstream", axis=1)
+    param_df = param_df.drop("downstream", axis=1)
+    param_df = param_df.drop("waterbody", axis=1)
     param_df.dx = pd.to_numeric(param_df.dx, downcast='float')
     param_df.n = pd.to_numeric(param_df.n, downcast='float')
-    param_df.elev = pd.to_numeric(param_df.elev, downcast='float')
+    param_df.alt = pd.to_numeric(param_df.alt, downcast='float')
     param_df.line_d = pd.to_numeric(param_df.line_d, downcast='float')
     
-    return connections, param_df, gages, junct_to
+    return connections, param_df, gages
 
 def generate_qlat(qlat_lookup, orig_qlat):
     
