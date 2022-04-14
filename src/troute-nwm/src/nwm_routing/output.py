@@ -57,6 +57,7 @@ def nwm_output_generator(
     qts_subdivisions,
     return_courant,
     cpu_pool,
+    waterbodies_df,
     data_assimilation_parameters=False,
     lastobs_df = None,
     link_gage_df = None,
@@ -111,6 +112,7 @@ def nwm_output_generator(
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
+    wbdyo = output_parameters.get("wbdy_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -119,7 +121,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or chano or test:
+    if csv_output_folder or rsrto or chrto or chano or test or wbdyo:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -130,7 +132,30 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+
+        # create waterbody dataframe for output to netcdf file
+        i_columns = pd.MultiIndex.from_product(
+            [range(nts), ["i"]]
+        ).to_flat_index()
+
+        wbdy = pd.concat(
+            [pd.DataFrame(r[4], index=r[0], columns=i_columns) for r in results],
+            copy=False,
+        )
         
+        wbdy_id_list = waterbodies_df.index.values.tolist()
+        q_df = flowveldepth.iloc[:,0::3].reset_index().rename(columns = {'index': 'ID'})
+        q_df = q_df[q_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        q_df['time'], q_df['variable'] = zip(*q_df.variable)
+        d_df = flowveldepth.iloc[:,2::3].reset_index().rename(columns = {'index': 'ID'})
+        d_df = d_df[d_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        d_df['time'], d_df['variable'] = zip(*d_df.variable)
+        i_df = wbdy.reset_index().rename(columns = {'index': 'ID'})
+        i_df = i_df[i_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        i_df['time'], i_df['variable'] = zip(*i_df.variable)
+        
+        wbdy_df = pd.concat([i_df,q_df,d_df])
+            
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
