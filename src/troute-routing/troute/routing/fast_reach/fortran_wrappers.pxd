@@ -46,6 +46,7 @@ cdef extern from "pydiffusive.h":
                      int *nts_db_g,
                      int *ntss_ev_g,
                      int *nts_qtrib_g,
+                     int *nts_da_g,
                      int *mxncomp_g,
                      int *nrch_g,
                      double *z_ar_g,
@@ -70,7 +71,9 @@ cdef extern from "pydiffusive.h":
                      double *x_bathy_g,
                      double *z_bathy_g,
                      double *mann_bathy_g,
-                     int *size_bathy_g, 
+                     int *size_bathy_g,
+                     double *usgs_da_g,
+                     int *usgs_da_reach_g,
                      double *q_ev_g,
                      double *elv_ev_g) nogil;
     

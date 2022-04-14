@@ -12,6 +12,7 @@ cdef void diffnw(
         int nts_db_g,
         int ntss_ev_g,
         int nts_qtrib_g,
+        int nts_da_g,
         int mxncomp_g,
         int nrch_g,
         double[::1,:] z_ar_g,
@@ -36,7 +37,9 @@ cdef void diffnw(
         double[::1,:,:] x_bathy_g,
         double[::1,:,:] z_bathy_g,
         double[::1,:,:] mann_bathy_g,
-        int[::1,:] size_bathy_g,    
+        int[::1,:] size_bathy_g,  
+        double[::1,:] usgs_da_g,
+        int[::1] usgs_da_reach_g,  
         double[:,:,:] out_q,
         double[:,:,:] out_elv,
 ):
@@ -52,6 +55,7 @@ cdef void diffnw(
         &nts_db_g,
         &ntss_ev_g,
         &nts_qtrib_g,
+        &nts_da_g,
         &mxncomp_g,
         &nrch_g,
         &z_ar_g[0,0],
@@ -76,7 +80,9 @@ cdef void diffnw(
         &x_bathy_g[0,0,0],
         &z_bathy_g[0,0,0],
         &mann_bathy_g[0,0,0],
-        &size_bathy_g[0,0],
+        &size_bathy_g[0,0],        
+        &usgs_da_g[0,0],
+        &usgs_da_reach_g[0], 
         &q_ev_g[0,0,0],
         &elv_ev_g[0,0,0]
     )
@@ -95,8 +101,9 @@ cpdef object compute_diffusive(
         int nts_ql_g = diff_inputs["nts_ql_g"]
         int nts_ub_g = diff_inputs["nts_ub_g"]
         int nts_db_g = diff_inputs["nts_db_g"]
+        int ntss_ev_g = diff_inputs["ntss_ev_g"] 
         int nts_qtrib_g = diff_inputs['nts_qtrib_g']
-        int ntss_ev_g = diff_inputs["ntss_ev_g"]
+        int nts_da_g = diff_inputs["nts_da_g"]       
         int mxncomp_g = diff_inputs["mxncomp_g"]
         int nrch_g = diff_inputs["nrch_g"]
         double[::1,:] z_ar_g = np.asfortranarray(diff_inputs["z_ar_g"])
@@ -122,6 +129,8 @@ cpdef object compute_diffusive(
         double[::1,:,:] z_bathy_g = np.asfortranarray(diff_inputs["z_bathy_g"])
         double[::1,:,:] mann_bathy_g = np.asfortranarray(diff_inputs["mann_bathy_g"])
         int[::1,:] size_bathy_g = np.asfortranarray(diff_inputs["size_bathy_g"])    
+        double[::1,:] usgs_da_g = np.asfortranarray(diff_inputs["usgs_da_g"])   
+        int[::1] usgs_da_reach_g = np.asfortranarray(diff_inputs["usgs_da_reach_g"]) 
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
@@ -133,6 +142,7 @@ cpdef object compute_diffusive(
         nts_db_g,
         ntss_ev_g,
         nts_qtrib_g,
+        nts_da_g,
         mxncomp_g,
         nrch_g,
         z_ar_g,
@@ -158,6 +168,8 @@ cpdef object compute_diffusive(
         z_bathy_g,
         mann_bathy_g,
         size_bathy_g,
+        usgs_da_g,
+        usgs_da_reach_g,
         out_q,
         out_elv
     )
