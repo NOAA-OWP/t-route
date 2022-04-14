@@ -510,7 +510,6 @@ def main_v03(argv):
                 output_parameters['lite_restart']
             )
         
-        # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
             (
                 qlats, 
