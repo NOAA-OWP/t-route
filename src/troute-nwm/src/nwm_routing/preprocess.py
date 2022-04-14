@@ -1051,6 +1051,19 @@ def nwm_forcing_preprocess(
     else:
         reservoir_usgs_df = pd.DataFrame()
         
+    # create USGS reservoir hybrid DA initial parameters dataframe    
+    if reservoir_usgs_df.empty == False:
+        reservoir_usgs_param_df = pd.DataFrame(
+            data = 0, 
+            index = reservoir_usgs_df.index ,
+            columns = ['update_time']
+        )
+        reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
+        reservoir_usgs_param_df['persistence_update_time'] = 0
+        reservoir_usgs_param_df['persistence_index'] = 0
+    else:
+        reservoir_usgs_param_df = pd.DataFrame()
+
     #---------------------------------------------
     # observations for USACE reservoir DA
     #---------------------------------------------  
@@ -1110,7 +1123,20 @@ def nwm_forcing_preprocess(
         
     else:
         reservoir_usace_df = pd.DataFrame()
-    
+        
+    # create USACE reservoir hybrid DA initial parameters dataframe    
+    if reservoir_usace_df.empty == False:
+        reservoir_usace_param_df = pd.DataFrame(
+            data = 0, 
+            index = reservoir_usace_df.index ,
+            columns = ['update_time']
+        )
+        reservoir_usace_param_df['prev_persisted_outflow'] = np.nan
+        reservoir_usace_param_df['persistence_update_time'] = 0
+        reservoir_usace_param_df['persistence_index'] = 0
+    else:
+        reservoir_usace_param_df = pd.DataFrame()
+
     #---------------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
     
@@ -1133,4 +1159,4 @@ def nwm_forcing_preprocess(
     if not usgs_df.empty:
         usgs_df = usgs_df.loc[:,t0:]
     
-    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usace_df
+    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df
