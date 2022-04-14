@@ -502,6 +502,90 @@ def fp_naturalxsec_map(
     
     return x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g
 
+def fp_da_map(
+    mx_jorder,
+    ordered_reaches,
+    usgs_df,
+    nrch_g,
+    t0,
+    nsteps,
+    dt_da_g,
+    t0_g,
+    tfin_g):
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    
+    Parameters
+    ----------
+    mx_jorder       -- (int) maximum network reach order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    usgs_df         -- (DataFrame) usgs streamflow data interpolated at dt time steps
+    t0              -- (datetime) initial date
+    nsteps          -- (int)  
+    nts_ql_g        -- (int) numer of qlateral timesteps
+    usgs_df         -- (DataFrame)
+    qlat -- (DataFrame) qlateral data (m3/sec)
+    qlat_g -- (ndarray of float32) empty qlateral array to be filled
+    
+    Returns
+    -------
+    qlat_g -- (ndarray of float32) qlateral array (m3/sec/m)
+    
+    Notes
+    -----
+    data in qlat_g are normalized by segment length with units of m2/sec = m3/sec/m
+    """
+    from datetime import datetime, timedelta
+    import pandas as pd
+    
+    nts_da_g    = int((tfin_g - t0_g) * 3600.0 / dt_da_g) + 1  # include initial time 0 to the final time    
+    usgs_da_g   = np.zeros((nts_da_g, nrch_g))
+    usgs_da_reach_g = np.zeros(nrch_g, dtype='i4')
+    
+    dt_timeslice = timedelta(minutes=dt_da_g/60.0)
+    tfin         = t0 + dt_timeslice*nsteps
+    timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
+    
+    usgs_df_complete = usgs_df.replace(np.nan, -444)
+    
+    for i in range(len(timestamps)):
+        if timestamps[i] not in usgs_df.columns:
+            usgs_df_complete.insert(i, timestamps[i], -444*np.ones(len(usgs_df)), allow_duplicates=False)
+  
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp):
+                segID = seg_list[seg]
+                if segID in usgs_df_complete.index:
+                    usgs_da_g[:,frj] = usgs_df_complete.loc[segID].values
+                    usgs_da_reach_g[frj] = frj + 1  # Fortran-Python index relationship, that is Python i = Fortran i+1 
+
+    '''
+    # test
+    frj= -1
+    with open("./output/usgs_da_g.txt",'a') as usgs_da:
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:                  
+                seg_list= reach["segments_list"]
+                ncomp= reach["number_segments"]             
+                frj= frj+1     
+                for seg in range(0,ncomp):                               
+                    segID= seg_list[seg]
+                    for tsi in range (0,nts_da_g):
+                        t_min= dt_da_g/60.0*float(tsi)                        
+                        dmy1= usgs_da_g[tsi, frj]
+                        usgs_da.write("%s %s %s %s\n" %\
+                                (str(frj+1), str(seg+1), str(t_min), str(dmy1)) )                   
+                                # <- +1 is added to frj for accommodating Fortran indexing. 
+    # test
+    np.savetxt("./output/usgs_da_reach_g.txt", usgs_da_reach_g, fmt='%15.5f')
+    '''
+    return nts_da_g, usgs_da_g, usgs_da_reach_g
+
 def diffusive_input_data_v02(
     tw,
     connections,
@@ -514,10 +598,12 @@ def diffusive_input_data_v02(
     initial_conditions,
     junction_inflows,
     qts_subdivisions,
+    t0,
     nsteps,
     dt,
     waterbodies_df,
     topobathy_data_bytw,
+    usgs_df,
 ):
     """
     Build input data objects for diffusive wave model
@@ -541,15 +627,17 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-    
+   
     # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
     # upstream boundary condition timestep (sec)
     dt_ub_g = dt
     # downstream boundary condition timestep (sec)
-    dt_db_g = dt * qts_subdivisions
+    dt_db_g = 360.0 # dt * qts_subdivisions
     # tributary inflow timestep (sec)
     dt_qtrib_g = dt
+    # usgs_df time step used for data assimilation. The original timestep of USGS streamflow is 15 min but later interpolated at every dt in min.
+    dt_da_g = dt # [sec]
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
     # time interval at which depth is written out by cnt model
@@ -561,30 +649,31 @@ def diffusive_input_data_v02(
     tfin_g = (dt * nsteps)/60/60
     
     # package timestep variables into single array
-    timestep_ar_g = np.zeros(8)
-    timestep_ar_g[0]= dtini_g
-    timestep_ar_g[1]= t0_g
-    timestep_ar_g[2]= tfin_g
-    timestep_ar_g[3]= saveinterval_tu 
-    timestep_ar_g[4]= dt_ql_g
-    timestep_ar_g[5]= dt_ub_g
-    timestep_ar_g[6]= dt_db_g
-    timestep_ar_g[7]= dt_qtrib_g   
-    
+    timestep_ar_g    = np.zeros(9)
+    timestep_ar_g[0] = dtini_g
+    timestep_ar_g[1] = t0_g
+    timestep_ar_g[2] = tfin_g
+    timestep_ar_g[3] = saveinterval_tu 
+    timestep_ar_g[4] = dt_ql_g
+    timestep_ar_g[5] = dt_ub_g
+    timestep_ar_g[6] = dt_db_g
+    timestep_ar_g[7] = dt_qtrib_g
+    timestep_ar_g[8] = dt_da_g
+        
     # CN-mod parameters
-    paradim = 10
-    para_ar_g= np.zeros(10)
-    para_ar_g[0]= 0.95    # Courant number (default: 0.95)
-    para_ar_g[1]= 0.5     # lower limit of celerity (default: 0.5)
-    para_ar_g[2]= 50.0    # lower limit of diffusivity (default: 50)
-    para_ar_g[3]= 5000.0  # upper limit of diffusivity (default: 1000)
-    para_ar_g[4]= -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
-    para_ar_g[5]= -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
-    para_ar_g[6]= 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
-    para_ar_g[7]= 0.02831   # lower limit of discharge (default: 0.02831 cms)
-    para_ar_g[8]= 0.0001    # lower limit of channel bed slope (default: 0.0001)
-    para_ar_g[9]= 1.0     # weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
-
+    paradim       = 11
+    para_ar_g     = np.zeros(paradim)
+    para_ar_g[0]  = 0.95    # Courant number (default: 0.95)
+    para_ar_g[1]  = 0.5     # lower limit of celerity (default: 0.5)
+    para_ar_g[2]  = 50.0    # lower limit of diffusivity (default: 50)
+    para_ar_g[3]  = 5000.0  # upper limit of diffusivity (default: 1000)
+    para_ar_g[4]  = -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
+    para_ar_g[5]  = -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
+    para_ar_g[6]  = 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
+    para_ar_g[7]  = 0.02831   # lower limit of discharge (default: 0.02831 cms)
+    para_ar_g[8]  = 0.0001    # lower limit of channel bed slope (default: 0.0001)
+    para_ar_g[9]  = 1.0     # weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
+    para_ar_g[10] = 2      # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
     # number of reaches in network
     nrch_g = len(reach_list)
 
@@ -715,6 +804,15 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
+    
+    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
+    frj= -1
+    with open("./output/pynw.txt",'a') as pynwtxt:    
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:       
+                frj= frj+1     
+                pynwtxt.write("%s %s\n" %\
+                           (str(frj+1), str(pynw[frj]))) 
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
@@ -801,8 +899,10 @@ def diffusive_input_data_v02(
 
     # this is a place holder that uses normal depth and the lower boundary.
     # we will need to revisit this 
-    nts_db_g = 1
-    dbcd_g = -np.ones(nts_db_g)  
+    #nts_db_g = 1
+    #dbcd_g = -np.ones(nts_db_g)  
+    nts_db_g = int((tfin_g - t0_g) * 3600.0 / dt_db_g)+1 
+    dbcd_g = np.zeros(nts_db_g)
 
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-9-2
@@ -829,19 +929,36 @@ def diffusive_input_data_v02(
     #                 Prepare cross section bathymetry data
     # ---------------------------------------------------------------------------------    
     x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
-                                                                   ordered_reaches,                                             
-                                                                   mainstem_seg_list, 
-                                                                   topobathy_data_bytw,
-                                                                   param_df, 
-                                                                   mx_jorder,
-                                                                   mxncomp_g, 
-                                                                   nrch_g,
-                                                                   dbfksegID)
+                                                                       ordered_reaches,                                             
+                                                                       mainstem_seg_list, 
+                                                                       topobathy_data_bytw,
+                                                                       param_df, 
+                                                                       mx_jorder,
+                                                                       mxncomp_g, 
+                                                                       nrch_g,
+                                                                       dbfksegID)
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-11
+
+    #       Prepare interpolated USGS streamflow values at every dt_da_g time step [sec]   
+    # ---------------------------------------------------------------------------------------------
+    usgs_df.to_csv('./output/usgs_df.txt', header=True, index=True, sep=' ', mode='w')
+    
+    nts_da_g, usgs_da_g, usgs_da_reach_g = fp_da_map(
+                                                mx_jorder,
+                                                ordered_reaches,
+                                                usgs_df,
+                                                nrch_g,
+                                                t0,
+                                                nsteps,
+                                                dt_da_g,
+                                                t0_g,
+                                                tfin_g)
 
 
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
-    #                              Step 0-11
+    #                              Step 0-12
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
@@ -851,12 +968,13 @@ def diffusive_input_data_v02(
     diff_ins = {}
 
     # model input parameters
-    diff_ins["timestep_ar_g"]= timestep_ar_g  
-    diff_ins["nts_ql_g"] = nts_ql_g
-    diff_ins["nts_ub_g"] = nts_ub_g
-    diff_ins["nts_db_g"] = nts_db_g
-    diff_ins["nts_qtrib_g"] = nts_qtrib_g
-    diff_ins["ntss_ev_g"] = ntss_ev_g
+    diff_ins["timestep_ar_g"] = timestep_ar_g  
+    diff_ins["nts_ql_g"]      = nts_ql_g
+    diff_ins["nts_ub_g"]      = nts_ub_g
+    diff_ins["nts_db_g"]      = nts_db_g
+    diff_ins["nts_qtrib_g"]   = nts_qtrib_g
+    diff_ins["ntss_ev_g"]     = ntss_ev_g
+    diff_ins["nts_da_g"]      = nts_da_g # DA
     
     diff_ins["mxncomp_g"] = mxncomp_g
     diff_ins["nrch_g"] = nrch_g
@@ -893,6 +1011,10 @@ def diffusive_input_data_v02(
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw
     diff_ins["ordered_reaches"] = ordered_reaches
+    
+    # Data Assimilation
+    diff_ins["usgs_da_g"]   = usgs_da_g 
+    diff_ins["usgs_da_reach_g"] = usgs_da_reach_g         
 
     return diff_ins
 

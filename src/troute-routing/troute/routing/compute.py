@@ -986,6 +986,7 @@ def compute_diffusive_routing(
     results,
     diffusive_network_data,
     cpu_pool,
+    t0,
     dt,
     nts,
     q0,
@@ -1035,10 +1036,12 @@ def compute_diffusive_routing(
             q0,
             junction_inflows,
             qts_subdivisions,
+            t0,
             nts,
             dt,
             waterbodies_df,
             topobathy_data_bytw,
+            usgs_df,
         )
         
         # run the simulation
