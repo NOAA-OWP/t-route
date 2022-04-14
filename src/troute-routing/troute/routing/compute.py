@@ -1159,7 +1159,9 @@ def compute_diffusive_routing(
         results_diffusive.append(
             (
                 rch_list[~x], dat_all[~x,3:], 0,
-                (np.asarray([]), np.asarray([]), np.asarray([]))
+                (np.asarray([]), np.asarray([]), np.asarray([])),
+                (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
+                (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
             )
         )
 
