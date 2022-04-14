@@ -144,12 +144,12 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
 
     Arguments
     ---------
-    reservoir_usgs_df      (DataFrame): gage flow observations at USGS-type reservoirs
-    reservoir_usgs_param_df
-    reservoir_usace_df     (DataFrame): gage flow observations at USACE-type reservoirs
-    reservoir_usace_param_df
-    waterbody_types_df_sub (DataFrame): type-codes for waterbodies in sub domain
-    t0                      (datetime): model initialization time
+    reservoir_usgs_df        (DataFrame): gage flow observations at USGS-type reservoirs
+    reservoir_usgs_param_df  (DataFrame): USGS reservoir DA state parameters
+    reservoir_usace_df       (DataFrame): gage flow observations at USACE-type reservoirs
+    reservoir_usace_param_df (DataFrame): USACE reservoir DA state parameters
+    waterbody_types_df_sub   (DataFrame): type-codes for waterbodies in sub domain
+    t0                        (datetime): model initialization time
 
     Returns
     -------
@@ -1159,7 +1159,9 @@ def compute_diffusive_routing(
         results_diffusive.append(
             (
                 rch_list[~x], dat_all[~x,3:], 0,
+                # place-holder for streamflow DA parameters
                 (np.asarray([]), np.asarray([]), np.asarray([])),
+                # place-holder for reservoir DA paramters
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
             )

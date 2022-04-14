@@ -188,6 +188,7 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
 
 def set_reservoir_da_prams(run_results):
     '''
+    Update persistence reservoir DA parameters for subsequent loops
     '''
     
     reservoir_usgs_param_df = pd.DataFrame(data = [], 
