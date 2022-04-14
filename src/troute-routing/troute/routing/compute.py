@@ -153,10 +153,19 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
 
     Returns
     -------
-    reservoir_usgs_df_sub  (DataFrame): gage flow observations for USGS-type reservoirs in sub domain
-    reservoir_usgs_df_time   (ndarray): time in seconds from model initialization time
-    reservoir_usace_df_sub (DataFrame): gage flow observations for USACE-type reservoirs in sub domain
-    reservoir_usace_df_time  (ndarray): time in seconds from model initialization time
+    * there are many returns, because we are passing explicit arrays to mc_reach cython code
+    reservoir_usgs_df_sub                 (DataFrame): gage flow observations for USGS-type reservoirs in sub domain
+    reservoir_usgs_df_time                  (ndarray): time in seconds from model initialization time
+    reservoir_usgs_update_time              (ndarray): update time (sec) to search for new observation at USGS reservoirs
+    reservoir_usgs_prev_persisted_flow      (ndarray): previously persisted outflow rates at USGS reservoirs
+    reservoir_usgs_persistence_update_time  (ndarray): update time (sec) of persisted value at USGS reservoirs
+    reservoir_usgs_persistence_index        (ndarray): index denoting elapsed persistence epochs at USGS reservoirs
+    reservoir_usace_df_sub                (DataFrame): gage flow observations for USACE-type reservoirs in sub domain
+    reservoir_usace_df_time                 (ndarray): time in seconds from model initialization time
+    reservoir_usace_update_time             (ndarray): update time (sec) to search for new observation at USACE reservoirs
+    reservoir_usace_prev_persisted_flow     (ndarray): previously persisted outflow rates at USACE reservoirs
+    reservoir_usace_persistence_update_time (ndarray): update time (sec) of persisted value at USACE reservoirs
+    reservoir_usace_persistence_index       (ndarray): index denoting elapsed persistence epochs at USACE reservoirs
 
     '''
     if not reservoir_usgs_df.empty:
