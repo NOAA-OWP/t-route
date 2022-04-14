@@ -297,10 +297,29 @@ def nwm_network_preprocess(
                     if u not in diffusive_domain[tw]:
                         trib_segs.append(u)
             
-            #if use_topobathy:
-            if run_refactored: # automatically assumes topobathy data
+            if use_topobathy:
                 diffusive_parameters = {'geo_file_path': topobathy_file}
                 nat_connections, nat_param_df, nat_gages = nnu.build_refac_connections(diffusive_parameters)
+            
+                trib_params = param_df.filter(
+                     (trib_segs),
+                     axis = 0,
+                )
+            
+                # Add dummy RouteLink parameters
+                #trib_params['line_d'] = 0.0                
+                #nat_param_df['ncc'] = np.float(np.mean(trib_params['ncc']))
+                #nat_param_df['s0'] = np.float(np.mean(trib_params['s0']))
+                #nat_param_df['bw'] = np.float(np.mean(trib_params['bw']))
+                #nat_param_df['tw'] = np.float(np.mean(trib_params['tw']))
+                #nat_param_df['twcc'] = np.float(np.mean(trib_params['twcc']))
+                #nat_param_df['musk'] = np.float(np.mean(trib_params['musk']))
+                #nat_param_df['musx'] = np.float(np.mean(trib_params['musx']))
+                #nat_param_df['cs'] = np.float(np.mean(trib_params['cs']))
+                
+                nat_param_df = pd.concat([nat_param_df,trib_params])
+                
+            if run_refactored: # automatically assumes topobathy data
                 
                 trib_params = param_df.filter(
                      (trib_segs),
@@ -320,17 +339,6 @@ def nwm_network_preprocess(
                 
                 for k,v in missing_links.items():
                     trap_params.loc[k] = trap_params.loc[v[0]]
-                
-                # Add dummy RouteLink parameters
-                #trib_params['line_d'] = 0.0                
-                #nat_param_df['ncc'] = np.float(np.mean(trib_params['ncc']))
-                #nat_param_df['s0'] = np.float(np.mean(trib_params['s0']))
-                #nat_param_df['bw'] = np.float(np.mean(trib_params['bw']))
-                #nat_param_df['tw'] = np.float(np.mean(trib_params['tw']))
-                #nat_param_df['twcc'] = np.float(np.mean(trib_params['twcc']))
-                #nat_param_df['musk'] = np.float(np.mean(trib_params['musk']))
-                #nat_param_df['musx'] = np.float(np.mean(trib_params['musx']))
-                #nat_param_df['cs'] = np.float(np.mean(trib_params['cs']))
                 
                 # RouteLink parameters
                 #nat_param_df = pd.concat([nat_param_df,trib_params])
@@ -409,9 +417,9 @@ def nwm_network_preprocess(
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
 
                 # RouteLink parameters
-                #if use_topobathy:
-                    #diffusive_network_data[tw]['param_df'] = nat_param_df
-               # else:
+                if use_topobathy:
+                    diffusive_network_data[tw]['param_df'] = nat_param_df
+               else:
                 diffusive_network_data[tw]['param_df'] = param_df.filter(
                     (diffusive_domain[tw] + trib_segs),
                     axis = 0,
