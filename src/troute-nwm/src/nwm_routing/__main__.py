@@ -74,7 +74,6 @@ def nwm_route(
     diffusive_parameters,
     diffusive_network_data,
     topobathy_data,
-    hybrid_parameters,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -118,7 +117,6 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
-        hybrid_parameters,
     )
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
@@ -143,7 +141,6 @@ def nwm_route(
                 diffusive_parameters,
                 waterbodies_df,
                 topobathy_data,
-                hybrid_parameters,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -449,7 +446,6 @@ def main_v03(argv):
             diffusive_parameters,
             diffusive_network_data,
             topobathy_data,
-            compute_parameters.get("hybrid_parameters", False),
         )
         
         if showtiming:
@@ -760,7 +756,6 @@ async def main_v03_async(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_parameters,
-            compute_parameters.get("hybrid_parameters", False),
         )
 
         forcings_task = loop.run_in_executor(
@@ -852,7 +847,6 @@ async def main_v03_async(argv):
         waterbody_types_df,
         waterbody_type_specified,
         diffusive_parameters,
-        compute_parameters.get("hybrid_parameters", False),
     )
 
     # nwm_final_output_generator()

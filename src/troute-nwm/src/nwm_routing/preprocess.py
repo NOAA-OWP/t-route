@@ -297,7 +297,8 @@ def nwm_network_preprocess(
                     if u not in diffusive_domain[tw]:
                         trib_segs.append(u)
             
-            if use_topobathy:
+            #if use_topobathy:
+            if run_refactored: # automatically assumes topobathy data
                 diffusive_parameters = {'geo_file_path': topobathy_file}
                 nat_connections, nat_param_df, nat_gages = nnu.build_refac_connections(diffusive_parameters)
                 
@@ -306,37 +307,46 @@ def nwm_network_preprocess(
                      axis = 0,
                 )
                 
+                trap_params = param_df.filter(
+                        (diffusive_domain[tw]),
+                        axis = 0,
+                    )
+                
+                #unused_links = list(set(trap_params.index) - set(refactored_domain[tw]['upstream_xwalk'].keys()))
+                trap_params.rename(index=refactored_domain[tw]['upstream_xwalk'],inplace=True)
+                #trap_params = trap_params.drop(unused_links)
+                
+                missing_links = dict([(k,v) for k,v in nat_connections.items() if k not in trap_params.index])
+                
+                for k,v in missing_links.items():
+                    trap_params.loc[k] = trap_params.loc[v[0]]
+                
                 # Add dummy RouteLink parameters
-                trib_params['line_d'] = 0.0
-                nat_param_df['ncc'] = np.float(-999.0)
-                nat_param_df['s0'] = np.float(-999.0)
-                nat_param_df['bw'] = np.float(-999.0)
-                nat_param_df['tw'] = np.float(-999.0)
-                nat_param_df['twcc'] = np.float(-999.0)
-                nat_param_df['musk'] = np.float(-999.0)
-                nat_param_df['musx'] = np.float(-999.0)
-                nat_param_df['cs'] = np.float(-999.0)
+                #trib_params['line_d'] = 0.0                
+                #nat_param_df['ncc'] = np.float(np.mean(trib_params['ncc']))
+                #nat_param_df['s0'] = np.float(np.mean(trib_params['s0']))
+                #nat_param_df['bw'] = np.float(np.mean(trib_params['bw']))
+                #nat_param_df['tw'] = np.float(np.mean(trib_params['tw']))
+                #nat_param_df['twcc'] = np.float(np.mean(trib_params['twcc']))
+                #nat_param_df['musk'] = np.float(np.mean(trib_params['musk']))
+                #nat_param_df['musx'] = np.float(np.mean(trib_params['musx']))
+                #nat_param_df['cs'] = np.float(np.mean(trib_params['cs']))
                 
                 # RouteLink parameters
-                nat_param_df = pd.concat([nat_param_df,trib_params])
-                
-            if run_refactored: # automatically assumes topobathy data
+                #nat_param_df = pd.concat([nat_param_df,trib_params])
+                nat_param_df = pd.concat([trap_params,trib_params])
+                import pdb; pdb.set_trace() # 1180012577
+                print('running refactored network')
                 refac_tw = refactored_domain[tw]['upstream_xwalk'][tw]
                 
                 # ===== build diffusive network data objects ==== 
                 diffusive_network_data[refac_tw] = {}
                         
                 diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
-            
-                print('running refactored network')
-                
-                #refactored_domain = refactored_domain[3766334]
-                
-                #diffusive_parameters = {'geo_file_path': topobathy_file}
-                #ref_connections, ref_param_df, ref_gages = nnu.build_refac_connections(diffusive_parameters)
                 
                 refactored_domain[tw]['incoming_tribs'][5791936] = 1180012573
                 refactored_domain[tw]['incoming_tribs'][3765746] = 1180012579
+                
                 # lengthMap need to be strings ###
                 diffusive_network_data[refac_tw]['connections'] = nat_connections
 
@@ -359,7 +369,18 @@ def nwm_network_preprocess(
                 # RouteLink parameters
                 diffusive_network_data[refac_tw]['param_df'] = nat_param_df
 
-                diffusive_network_data[refac_tw]['gages'] = nat_gages
+                diffusive_network_data[refac_tw]['gages'] = nat_gages['gages']
+                
+                # drop gages in refactored network
+                drop_gages = [i for i in diffusive_domain[tw] if i in link_gage_df.index]
+                gage_remapping = {5791848:1180012577,
+                 5791934:1180012573,
+                 3764246:1180012582, 
+                 3765768:1180012579, 
+                 5790058:1180010786, 
+                 5781917:1180009082, 
+                 5790218:1180010806}
+                link_gage_df.rename(index=gage_remapping,inplace=True)
                 
                 diffusive_network_data[refac_tw]['lengthMap'] = refactored_domain[tw]['lengthMap']
                 
@@ -388,12 +409,13 @@ def nwm_network_preprocess(
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
 
                 # RouteLink parameters
-                #diffusive_network_data[tw]['param_df'] = param_df.filter(
-                #    (diffusive_domain[tw] + trib_segs),
-                #    axis = 0,
-                #)
-                # RouteLink parameters
-                diffusive_network_data[tw]['param_df'] = nat_param_df
+                #if use_topobathy:
+                    #diffusive_network_data[tw]['param_df'] = nat_param_df
+               # else:
+                diffusive_network_data[tw]['param_df'] = param_df.filter(
+                    (diffusive_domain[tw] + trib_segs),
+                    axis = 0,
+                )
                 
             # ==== remove diffusive domain segs from MC domain ====
             # drop indices from param_df
@@ -406,7 +428,7 @@ def nwm_network_preprocess(
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
-    
+            
     #============================================================================
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")

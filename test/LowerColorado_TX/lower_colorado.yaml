@@ -27,19 +27,19 @@ compute_parameters:
     restart_parameters:
         start_datetime: "2020-06-01_12:00:00"
         #wrf_hydro_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1 channel_restart_202006011200
-        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
+        lite_channel_restart_file: #/glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_channel_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
         #wrf_hydro_waterbody_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/HYDRO_RST.2020-06-01_00:00_DOMAIN1
-        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
+        lite_channel_restart_file: #/glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
         wrf_hydro_waterbody_ID_crosswalk_file: /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc
         wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain: domain/diffusive_domain.yaml
         refactored_domain: domain/refactored_diffusive_domain.yaml
-        run_refactored_network: False
+        run_refactored_network: True
         use_natl_xsections: True
-        topobathy_domain: domain/diffusive_natural_xs_20220322.nc #diffusive_natural_xs_20220322.nc refac_diffusive_natural_xs_040522.nc refac_diffusive_natural_xs_041222.nc
+        topobathy_domain: domain/refac_diffusive_natural_xs_041222.nc #diffusive_natural_xs_20220322.nc refac_diffusive_natural_xs_040522.nc refac_diffusive_natural_xs_041222.nc
     forcing_parameters:
         qts_subdivisions: 12
         dt: 300
@@ -60,10 +60,10 @@ compute_parameters:
 output_parameters:
     #test_output: output/lower_colorado_hybrid_trch_sine_1mth  #/glade/scratch/donghakim/test_dump/lower_colorado_openloop
     #test_output: output/lower_colorado_NOda_48hrs
-    test_output: output/lower_colorado_da_72hrs
+    test_output: output/lower_colorado_da_72hrs_nat_usetrap_refac.pkl
     chanobs_output:
             chanobs_output_directory: output/
-            chanobs_filepath: LowerColorado_chanobs_1yr.nc
+            chanobs_filepath: LowerColorado_chanobs_1yr_nat_usetrap_refac.nc
         
     #    wrf_hydro_channel_output_source_folder: /glade/scratch/adamw/CONUS_1yr/forcing
     #lite_restart:

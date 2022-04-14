@@ -539,7 +539,6 @@ def diffusive_input_data_v02(
     dt,
     waterbodies_df,
     topobathy_data_bytw,
-    hybrid_parameters,
 ):
     """
     Build input data objects for diffusive wave model
@@ -713,8 +712,6 @@ def diffusive_input_data_v02(
     # --------------------------------------------------------------------------------------
     dbfksegID = int(str(tw) + str(2))
     
-    use_topobathy = hybrid_parameters.get('use_natl_xsections', False)
-    
     adj_alt1(
         mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
     )
@@ -781,7 +778,10 @@ def diffusive_input_data_v02(
                     segID = seg_list[seg]
                 
                 # retrieve initial condition from initial_conditions DataFrame
-                iniq[seg, frj] = initial_conditions.loc[segID, 'qu0']
+                try:
+                    iniq[seg, frj] = initial_conditions.loc[segID, 'qu0']
+                except:
+                    import pdb; pdb.set_trace()
                 
                 # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
