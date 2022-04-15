@@ -511,7 +511,7 @@ def build_da_sets(da_params, run_sets, t0):
         "usace_timeslices_folder",
         None
     )
-    
+
     # User-specified DA ON/OFF preferences
     usace_da = False
     usgs_da = False
@@ -552,7 +552,7 @@ def build_da_sets(da_params, run_sets, t0):
         dt_timeslice = timedelta(minutes = 15)
 
         da_sets = [] # initialize list to store TimeSlice set lists
-        
+
         # Loop through each run set and build lists of available TimeSlice files
         for (i, set_dict) in enumerate(run_sets):
             
@@ -753,8 +753,10 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
     da_parameter_dict = {}
     da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get(
         "da_decay_coefficient", 
-        120
-    )
+        120)
+    da_parameter_dict["diffusive_streamflow_DA"] = streamflow_da_parameters.get(
+        "diffusive_streamflow_DA", False) 
+    
     # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
 
     return lastobs_df, da_parameter_dict

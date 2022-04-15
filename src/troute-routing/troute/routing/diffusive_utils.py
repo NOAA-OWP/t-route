@@ -536,32 +536,33 @@ def fp_da_map(
     import pandas as pd
     
     nts_da_g    = int((tfin_g - t0_g) * 3600.0 / dt_da_g) + 1  # include initial time 0 to the final time    
-    usgs_da_g   = np.zeros((nts_da_g, nrch_g))
+    usgs_da_g   = -444*np.ones((nts_da_g, nrch_g))
     usgs_da_reach_g = np.zeros(nrch_g, dtype='i4')
     
-    dt_timeslice = timedelta(minutes=dt_da_g/60.0)
-    tfin         = t0 + dt_timeslice*nsteps
-    timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
+    if not usgs_df.empty:    
+        dt_timeslice = timedelta(minutes=dt_da_g/60.0)
+        tfin         = t0 + dt_timeslice*nsteps
+        timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
     
-    usgs_df_complete = usgs_df.replace(np.nan, -444)
+        usgs_df_complete = usgs_df.replace(np.nan, -444)
     
-    for i in range(len(timestamps)):
-        if timestamps[i] not in usgs_df.columns:
-            usgs_df_complete.insert(i, timestamps[i], -444*np.ones(len(usgs_df)), allow_duplicates=False)
+        for i in range(len(timestamps)):
+            if timestamps[i] not in usgs_df.columns:
+                usgs_df_complete.insert(i, timestamps[i], -444*np.ones(len(usgs_df)), allow_duplicates=False)
   
-    frj = -1
-    for x in range(mx_jorder, -1, -1):
-        for head_segment, reach in ordered_reaches[x]:
-            seg_list = reach["segments_list"]
-            ncomp = reach["number_segments"]
-            frj = frj + 1
-            for seg in range(0, ncomp):
-                segID = seg_list[seg]
-                if segID in usgs_df_complete.index:
-                    usgs_da_g[:,frj] = usgs_df_complete.loc[segID].values
-                    usgs_da_reach_g[frj] = frj + 1  # Fortran-Python index relationship, that is Python i = Fortran i+1 
+        frj = -1
+        for x in range(mx_jorder, -1, -1):
+            for head_segment, reach in ordered_reaches[x]:
+                seg_list = reach["segments_list"]
+                ncomp = reach["number_segments"]
+                frj = frj + 1
+                for seg in range(0, ncomp):
+                    segID = seg_list[seg]
+                    if segID in usgs_df_complete.index:
+                        usgs_da_g[:,frj] = usgs_df_complete.loc[segID].values
+                        usgs_da_reach_g[frj] = frj + 1  # Fortran-Python index relationship, that is Python i = Fortran i+1 
 
-    '''
+    '''    
     # test
     frj= -1
     with open("./output/usgs_da_g.txt",'a') as usgs_da:
@@ -570,13 +571,13 @@ def fp_da_map(
                 seg_list= reach["segments_list"]
                 ncomp= reach["number_segments"]             
                 frj= frj+1     
-                for seg in range(0,ncomp):                               
-                    segID= seg_list[seg]
-                    for tsi in range (0,nts_da_g):
-                        t_min= dt_da_g/60.0*float(tsi)                        
-                        dmy1= usgs_da_g[tsi, frj]
-                        usgs_da.write("%s %s %s %s\n" %\
-                                (str(frj+1), str(seg+1), str(t_min), str(dmy1)) )                   
+                #for seg in range(0,ncomp):                               
+                #    segID= seg_list[seg]
+                for tsi in range (0,nts_da_g):
+                    t_min= dt_da_g/60.0*float(tsi)                        
+                    dmy1= usgs_da_g[tsi, frj]
+                    usgs_da.write("%s %s %s\n" %\
+                                (str(frj+1), str(t_min), str(dmy1)) )                   
                                 # <- +1 is added to frj for accommodating Fortran indexing. 
     # test
     np.savetxt("./output/usgs_da_reach_g.txt", usgs_da_reach_g, fmt='%15.5f')
@@ -624,7 +625,7 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-   
+
     # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
     # upstream boundary condition timestep (sec)
@@ -802,6 +803,15 @@ def diffusive_input_data_v02(
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
     
+    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
+    frj= -1
+    with open("./output/pynw.txt",'a') as pynwtxt:    
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:       
+                frj= frj+1     
+                pynwtxt.write("%s %s\n" %\
+                           (str(frj+1), str(pynw[frj]))) 
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -942,7 +952,7 @@ def diffusive_input_data_v02(
                                                 t0_g,
                                                 tfin_g)
 
-
+        
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
     #                              Step 0-12
