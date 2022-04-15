@@ -59,6 +59,7 @@ compute_parameters:
         streamflow_da:
             #----------
             streamflow_nudging       : True
+            diffusive_streamflow_DA  : False
             gage_segID_crosswalk_file: domain/RouteLink.nc
             crosswalk_gage_field     : 'gages'
             crosswalk_segID_field    : 'link'
@@ -72,7 +73,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/LowerColorado_flowveldepth_da.pkl
+    test_output: output/LowerColorado_flowveldepth_noda.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/

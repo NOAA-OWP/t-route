@@ -214,7 +214,8 @@ contains
     open(unit=1, file="./input/sine_tide_matagorda_city_31d.txt")
     !open(unit=1, file="t-route/src/kernel/diffusive/input/tide_matagorda_city_31d.txt")
     !open(unit=2, file="./input/usgsBastrop_06011200_06302355_2020.txt")
-    !open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado_da_usgs.txt")
+    !open(unit=91, file="./output/iniq.txt")
+    !open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
     !open(unit=102, file="./output/cn-mod q elev depth at each sim_time.txt")
     allocate(dbcd(nts_db_g))
     do n = 1, nts_db_g
@@ -362,8 +363,7 @@ contains
     dimensionless_Fc    = -999
     dimensionless_D     = -999
 
-
-
+    
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
 
@@ -383,6 +383,13 @@ contains
     end do
     deallocate(dmy_frj)
 
+    ! test
+    !do jm = 1, nmstem_rch !* mainstem reach only
+    !  j = mstem_frj(jm)
+    !  do i = 1, frnw_g(j, 1)-1
+    !    write(91,*) i, j, iniq(i,j)
+    !  end do
+    !end do
   !-----------------------------------------------------------------------------
   ! create dx array from dx_ar_g and determine minimum dx.
 
@@ -539,14 +546,17 @@ contains
           newY(ncomp, j) = oldY(ncomp, j)  
         endif
       else
-        ! Initial depth at botton node of interror reach
-        
-        ! calculate initial depth as normal depth 
+        ! Initial depth at botton node of interror reach is equal to the depth at top node of the downstream reach     
         linknb         = frnw_g(j, 2)
         newY(ncomp, j) = newY(1, linknb)        
       end if              
      
       ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
+      ! ** At intial time oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
+      ! ** So, let's assume the values are all equal to flow at the bottom node.
+      do i = 1, ncomp -1
+        oldY(i,j) = newY(ncomp, j)
+      end do
       call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
 
       do i = 1,ncomp      
@@ -856,10 +866,10 @@ contains
     deallocate( skkkTable, nwi1Table, dPdATable, ncompElevTable, ncompAreaTable)
     deallocate(xsec_tab, rightBank, leftBank, skLeft, skMain, skRight)
     deallocate(currentSquareDepth, ini_y, ini_q, notSwitchRouting, currentROutingDiffusive )
-    deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib)
+    deallocate(tarr_ql, varr_ql, tarr_ub, varr_ub, tarr_qtrib, varr_qtrib, tarr_da)
     deallocate(mstem_frj)
     deallocate(x_bathy, z_bathy, mann_bathy, size_bathy)
-
+    deallocate(usgs_da_reach, usgs_da)
 
   end subroutine diffnw
   
@@ -1419,7 +1429,7 @@ contains
         z_cur        = z(i-1, j)
         z_ds         = z(i, j)
         y_ds         = newY(i, j) - z(i, j)
-        y_ds         = max(y_ds, 0.005)
+        y_ds         = max(y_ds, 0.005)       
         y_cur        = rtsafe(i-1, j, Q_cur, Q_ds, z_cur, z_ds, y_ds)
         tempDepthi_1 = y_cur              
         newY(i-1,j)  = tempDepthi_1 + z(i-1, j)
@@ -1485,7 +1495,9 @@ contains
     double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
     double precision            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
     double precision            :: rtsafe
-
+    
+    !open(unit=201, file="./output/depth computing.txt")
+    
     y_ulm_multi = 2.0
     y_llm_multi = 0.1
     
@@ -1494,12 +1506,17 @@ contains
     elv_norm = intp_xsec_tab(i, j, nel, xcolID, ycolID, abs(Q_cur)) ! normal elevation not depth
     y_norm   = elv_norm - z(i, j)
     y_old    = oldY(i, j) - z(i, j)
+    
+    !write(201,*) "very 0:   ", i, j, z(i,j), Q_cur, Q_ds, elv_norm, oldY(i,j), y_norm, y_old 
+    
     ! option 1 for initial point
     !x1       = y_norm * y_llm_multi
     !x2       = y_norm * y_ulm_multi
     ! option 2 for initial point
     x1       = 0.5 * (y_norm + y_old) * y_llm_multi
     x2       = 0.5 * (y_norm + y_old) * y_ulm_multi
+    
+    !write(201,*) "initial x:", i, j,  x1, x2, y_norm
     
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x1, y_ds, fl, df)
 
@@ -1512,9 +1529,11 @@ contains
 
     if (fl == 0.0) then
       rtsafe = x1
+      !write(201,*) "return 1: ", i, j, x1, x2, rtsafe
       return
     elseif (fh == 0.0) then
       rtsafe = x2
+      !write(201,*) "return 2: ", i, j, x1, x2, rtsafe
       return
     elseif (fl < 0.0) then ! orient the search so that f(xl) < 0.
       xl = x1
@@ -1545,7 +1564,7 @@ contains
         rtsafe = rtsafe - dxx
         if (temp == rtsafe) return
       end if
-
+      !write(201,*) "iteration:", i, j, xl, xh, rtsafe
       if (abs(dxx) < xacc) return  ! convergence criterion.
 
       ! one new function evaluation per iteration.
@@ -1560,6 +1579,7 @@ contains
 
     ! when root is not converged:
     rtsafe = y_norm
+    !write(201,*) "no covg:  ", i, j, rtsafe
   
   end function rtsafe
 
