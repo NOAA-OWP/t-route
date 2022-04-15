@@ -427,7 +427,7 @@ cpdef object compute_network_structured(
     cdef _Reach* r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
-    cdef np.ndarray[float, ndim=3] upstream_array = np.zeros((data_idx.shape[0], nsteps+1, 1), dtype='float32')
+    cdef np.ndarray[float, ndim=3] upstream_array = np.empty((data_idx.shape[0], nsteps+1, 1), dtype='float32')
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
