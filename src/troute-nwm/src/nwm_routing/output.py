@@ -190,6 +190,26 @@ def nwm_output_generator(
     if test:
         flowveldepth.to_pickle(Path(test))
     
+    if wbdyo:
+        
+        LOG.info("- writing t-route flow results to LAKEOUT files")
+        start = time.time()
+        
+        for time_index, i in enumerate(wbdy_df.time.unique()):
+            
+            nhd_io.write_waterbody_netcdf(
+                wbdyo, 
+                wbdy_df[wbdy_df.time==i], 
+                waterbodies_df, 
+                t0, 
+                dt, 
+                nts,
+                time_index,
+            )
+        
+        
+        LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
+    
     if rsrto:
 
         LOG.info("- writing restart files")
