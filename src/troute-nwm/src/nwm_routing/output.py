@@ -58,6 +58,7 @@ def nwm_output_generator(
     return_courant,
     cpu_pool,
     waterbodies_df,
+    waterbody_types_df,
     data_assimilation_parameters=False,
     lastobs_df = None,
     link_gage_df = None,
@@ -141,21 +142,23 @@ def nwm_output_generator(
         wbdy = pd.concat(
             [pd.DataFrame(r[4], index=r[0], columns=i_columns) for r in results],
             copy=False,
-        )
-        
+        ).reset_index().rename(columns = {'index': 'ID'})
+
         wbdy_id_list = waterbodies_df.index.values.tolist()
-        q_df = flowveldepth.iloc[:,0::3].reset_index().rename(columns = {'index': 'ID'})
-        q_df = q_df[q_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        flow_df = flowveldepth.reset_index().rename(columns = {'index': 'ID'})
+        flow_df = flow_df[flow_df['ID'].isin(wbdy_id_list)]
+        q_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,1::3]],axis = 1).melt(id_vars = 'ID')
         q_df['time'], q_df['variable'] = zip(*q_df.variable)
-        d_df = flowveldepth.iloc[:,2::3].reset_index().rename(columns = {'index': 'ID'})
-        d_df = d_df[d_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        d_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,3::3]],axis = 1).melt(id_vars = 'ID')
         d_df['time'], d_df['variable'] = zip(*d_df.variable)
-        i_df = wbdy.reset_index().rename(columns = {'index': 'ID'})
-        i_df = i_df[i_df['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+        i_df = wbdy[wbdy['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
         i_df['time'], i_df['variable'] = zip(*i_df.variable)
         
-        wbdy_df = pd.concat([i_df,q_df,d_df])
-            
+        #combine each of the datafames created above and merge with reservoir_types_df
+        wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
+                           waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
+                           on = 'ID')
+        
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
