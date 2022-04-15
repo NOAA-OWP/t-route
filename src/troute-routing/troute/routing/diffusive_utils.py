@@ -522,18 +522,15 @@ def fp_da_map(
     usgs_df         -- (DataFrame) usgs streamflow data interpolated at dt time steps
     t0              -- (datetime) initial date
     nsteps          -- (int)  
-    nts_ql_g        -- (int) numer of qlateral timesteps
-    usgs_df         -- (DataFrame)
-    qlat -- (DataFrame) qlateral data (m3/sec)
-    qlat_g -- (ndarray of float32) empty qlateral array to be filled
+    dt_da_g         -- (int) numer of Data Assimilation timesteps
+    t0_g            -- (float) diffusive model's initial simulation time [hr] (by default, zero)
+    tfin_g          -- (float) diffusive model's final simulation time [hr] 
     
     Returns
     -------
-    qlat_g -- (ndarray of float32) qlateral array (m3/sec/m)
-    
-    Notes
-    -----
-    data in qlat_g are normalized by segment length with units of m2/sec = m3/sec/m
+    nts_da_g        -- (int) number of DA timesteps
+    usgs_da_g       -- (float) usgs oberved streamflow data [cms]
+    usgs_da_reach_g -- (int) indices of stream reaches where DA is applied    
     """
     from datetime import datetime, timedelta
     import pandas as pd
@@ -805,15 +802,6 @@ def diffusive_input_data_v02(
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
     
-    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
-    frj= -1
-    with open("./output/pynw.txt",'a') as pynwtxt:    
-        for x in range(mx_jorder,-1,-1):   
-            for head_segment, reach in ordered_reaches[x]:       
-                frj= frj+1     
-                pynwtxt.write("%s %s\n" %\
-                           (str(frj+1), str(pynw[frj]))) 
-
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -942,8 +930,7 @@ def diffusive_input_data_v02(
 
     #       Prepare interpolated USGS streamflow values at every dt_da_g time step [sec]   
     # ---------------------------------------------------------------------------------------------
-    usgs_df.to_csv('./output/usgs_df.txt', header=True, index=True, sep=' ', mode='w')
-    
+    # test: usgs_df.to_csv('./output/usgs_df.txt', header=True, index=True, sep=' ', mode='w')    
     nts_da_g, usgs_da_g, usgs_da_reach_g = fp_da_map(
                                                 mx_jorder,
                                                 ordered_reaches,
@@ -967,7 +954,7 @@ def diffusive_input_data_v02(
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
 
-    # model input parameters
+    # model time steps
     diff_ins["timestep_ar_g"] = timestep_ar_g  
     diff_ins["nts_ql_g"]      = nts_ql_g
     diff_ins["nts_ub_g"]      = nts_ub_g
@@ -975,10 +962,10 @@ def diffusive_input_data_v02(
     diff_ins["nts_qtrib_g"]   = nts_qtrib_g
     diff_ins["ntss_ev_g"]     = ntss_ev_g
     diff_ins["nts_da_g"]      = nts_da_g # DA
-    
+    # max number of computation nodes of a stream reach and the number of entire stream reaches 
     diff_ins["mxncomp_g"] = mxncomp_g
     diff_ins["nrch_g"] = nrch_g
-    
+    # synthetic (trapezoidal) xsection geometry data 
     diff_ins["z_ar_g"] = z_ar_g
     diff_ins["bo_ar_g"] = bo_ar_g
     diff_ins["traps_ar_g"] = traps_ar_g
@@ -988,30 +975,28 @@ def diffusive_input_data_v02(
     diff_ins["manncc_ar_g"] = manncc_ar_g
     diff_ins["so_ar_g"] = so_ar_g
     diff_ins["dx_ar_g"] = dx_ar_g
-
+    # python-to-fortran channel network mapping
     diff_ins["frnw_col"] = frnw_col
     diff_ins["frnw_g"] = frnw_g
-    
+    # flow forcing data
     diff_ins["qlat_g"] = qlat_g
     diff_ins["ubcd_g"] = ubcd_g
     diff_ins["dbcd_g"] = dbcd_g
     diff_ins["qtrib_g"] = qtrib_g
-    
+    # diffusive model internal parameters
     diff_ins["paradim"] = paradim 
     diff_ins["para_ar_g"] = para_ar_g
-    
+    # natural xsection bathy data
     diff_ins["mxnbathy_g"] = mxnbathy_g
     diff_ins["x_bathy_g"] = x_bathy_g
     diff_ins["z_bathy_g"] = z_bathy_g
     diff_ins["mann_bathy_g"] = mann_bathy_g
     diff_ins["size_bathy_g"] = size_bathy_g    
-    
+    # initial flow value
     diff_ins["iniq"] = iniq
-
     # python-fortran crosswalk data
     diff_ins["pynw"] = pynw
-    diff_ins["ordered_reaches"] = ordered_reaches
-    
+    diff_ins["ordered_reaches"] = ordered_reaches    
     # Data Assimilation
     diff_ins["usgs_da_g"]   = usgs_da_g 
     diff_ins["usgs_da_reach_g"] = usgs_da_reach_g         

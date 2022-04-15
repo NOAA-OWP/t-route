@@ -29,7 +29,7 @@ compute_parameters:
     compute_kernel         : V02-structured
     assume_short_ts        : True
     subnetwork_target_size : 10000
-    cpu_pool               : 36
+    cpu_pool               : 1
     restart_parameters:
         #----------
         wrf_hydro_channel_restart_file           : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
@@ -38,10 +38,10 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
-        run_hybrid_routing: False
+        run_hybrid_routing: True
         diffusive_domain  : domain/diffusive_domain.yaml
-        use_natl_xsections: False
-        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc
+        use_natl_xsections: True
+        topobathy_domain  : input/diffusive_natural_xs_20220331.nc
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
@@ -72,7 +72,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/LowerColorado_flowveldepth.pkl
+    test_output: output/LowerColorado_flowveldepth_da.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/
