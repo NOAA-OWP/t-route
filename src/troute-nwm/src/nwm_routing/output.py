@@ -134,30 +134,32 @@ def nwm_output_generator(
             copy=False,
         )
 
-        # create waterbody dataframe for output to netcdf file
-        i_columns = pd.MultiIndex.from_product(
-            [range(nts), ["i"]]
-        ).to_flat_index()
+        if wbdyo and not waterbodies_df.empty:
+            
+            # create waterbody dataframe for output to netcdf file
+            i_columns = pd.MultiIndex.from_product(
+                [range(nts), ["i"]]
+            ).to_flat_index()
 
-        wbdy = pd.concat(
-            [pd.DataFrame(r[4], index=r[0], columns=i_columns) for r in results],
-            copy=False,
-        ).reset_index().rename(columns = {'index': 'ID'})
+            wbdy = pd.concat(
+                [pd.DataFrame(r[4], index=r[0], columns=i_columns) for r in results],
+                copy=False,
+            ).reset_index().rename(columns = {'index': 'ID'})
 
-        wbdy_id_list = waterbodies_df.index.values.tolist()
-        flow_df = flowveldepth.reset_index().rename(columns = {'index': 'ID'})
-        flow_df = flow_df[flow_df['ID'].isin(wbdy_id_list)]
-        q_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,1::3]],axis = 1).melt(id_vars = 'ID')
-        q_df['time'], q_df['variable'] = zip(*q_df.variable)
-        d_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,3::3]],axis = 1).melt(id_vars = 'ID')
-        d_df['time'], d_df['variable'] = zip(*d_df.variable)
-        i_df = wbdy[wbdy['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
-        i_df['time'], i_df['variable'] = zip(*i_df.variable)
-        
-        #combine each of the datafames created above and merge with reservoir_types_df
-        wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
-                           waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
-                           on = 'ID')
+            wbdy_id_list = waterbodies_df.index.values.tolist()
+            flow_df = flowveldepth.reset_index().rename(columns = {'index': 'ID'})
+            flow_df = flow_df[flow_df['ID'].isin(wbdy_id_list)]
+            q_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,1::3]],axis = 1).melt(id_vars = 'ID')
+            q_df['time'], q_df['variable'] = zip(*q_df.variable)
+            d_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,3::3]],axis = 1).melt(id_vars = 'ID')
+            d_df['time'], d_df['variable'] = zip(*d_df.variable)
+            i_df = wbdy[wbdy['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+            i_df['time'], i_df['variable'] = zip(*i_df.variable)
+
+            #combine each of the datafames created above and merge with reservoir_types_df
+            wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
+                               waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
+                               on = 'ID')
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
@@ -190,7 +192,7 @@ def nwm_output_generator(
     if test:
         flowveldepth.to_pickle(Path(test))
     
-    if wbdyo:
+    if wbdyo and not waterbodies_df.empty:
         
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
