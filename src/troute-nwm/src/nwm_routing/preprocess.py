@@ -311,11 +311,11 @@ def nwm_network_preprocess(
                         (diffusive_domain[tw]),
                         axis = 0,
                     )
-                
+                import pdb; pdb.set_trace()
                 #unused_links = list(set(trap_params.index) - set(refactored_domain[tw]['upstream_xwalk'].keys()))
                 trap_params.rename(index=refactored_domain[tw]['upstream_xwalk'],inplace=True)
                 #trap_params = trap_params.drop(unused_links)
-                
+                import pdb; pdb.set_trace()
                 missing_links = dict([(k,v) for k,v in nat_connections.items() if k not in trap_params.index])
                 
                 for k,v in missing_links.items():
@@ -335,7 +335,7 @@ def nwm_network_preprocess(
                 # RouteLink parameters
                 #nat_param_df = pd.concat([nat_param_df,trib_params])
                 nat_param_df = pd.concat([trap_params,trib_params])
-                import pdb; pdb.set_trace() # 1180012577
+                print(f"number of links: {len(nat_param_df.index.unique())}, number of nat_param_df rows: {len(nat_param_df)}") # 1180012577
                 print('running refactored network')
                 refac_tw = refactored_domain[tw]['upstream_xwalk'][tw]
                 
@@ -349,9 +349,10 @@ def nwm_network_preprocess(
                 
                 # lengthMap need to be strings ###
                 diffusive_network_data[refac_tw]['connections'] = nat_connections
-
+                import pdb; pdb.set_trace()
                 diffusive_network_data[refac_tw]['connections'].update({k: [refactored_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-                
+                missing_tribs2 = [i for i in trib_segs if not i in refactored_domain[tw]['incoming_tribs'].keys()]
+                import pdb; pdb.set_trace()
                 # create dict of junction conversion
                 diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk'] 
                 
@@ -367,6 +368,8 @@ def nwm_network_preprocess(
                 diffusive_network_data[refac_tw]['reaches'] = ref_reaches[refac_tw]
                 
                 # RouteLink parameters
+                drop_params = set(nat_param_df.index) - set(diffusive_network_data[refac_tw]['connections'].keys())
+                nat_param_df = nat_param_df.drop(drop_params)
                 diffusive_network_data[refac_tw]['param_df'] = nat_param_df
 
                 diffusive_network_data[refac_tw]['gages'] = nat_gages['gages']
@@ -385,7 +388,7 @@ def nwm_network_preprocess(
                 diffusive_network_data[refac_tw]['lengthMap'] = refactored_domain[tw]['lengthMap']
                 
                 diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_domain[tw]['rlinks']
-                
+                import pdb; pdb.set_trace()
             else:
                 # ===== build diffusive network data objects ==== 
                 diffusive_network_data[tw] = {}
@@ -415,14 +418,24 @@ def nwm_network_preprocess(
                         (diffusive_domain[tw] + trib_segs),
                         axis = 0,
                     )
-                    diffusive_network_data[tw]['param_df']['ncc'] = np.float(np.mean(param_df['ncc']))
-                    diffusive_network_data[tw]['param_df']['s0'] = np.float(np.mean(param_df['s0']))
-                    diffusive_network_data[tw]['param_df']['bw'] = np.float(np.mean(param_df['bw']))
-                    diffusive_network_data[tw]['param_df']['tw'] = np.float(np.mean(param_df['tw']))
-                    diffusive_network_data[tw]['param_df']['twcc'] = np.float(np.mean(param_df['twcc']))
-                    diffusive_network_data[tw]['param_df']['musk'] = np.float(np.mean(param_df['musk']))
-                    diffusive_network_data[tw]['param_df']['musx'] = np.float(np.mean(param_df['musx']))
-                    diffusive_network_data[tw]['param_df']['cs'] = np.float(np.mean(param_df['cs']))
+                    import pdb; pdb.set_trace()
+                    #diffusive_network_data[tw]['param_df']['ncc'] = np.float(np.mean(param_df['ncc']))
+                    #diffusive_network_data[tw]['param_df']['s0'] = np.float(np.mean(param_df['s0']))
+                    #diffusive_network_data[tw]['param_df']['bw'] = np.float(np.mean(param_df['bw']))
+                    #diffusive_network_data[tw]['param_df']['tw'] = np.float(np.mean(param_df['tw']))
+                    #diffusive_network_data[tw]['param_df']['twcc'] = np.float(np.mean(param_df['twcc']))
+                    #diffusive_network_data[tw]['param_df']['musk'] = np.float(np.mean(param_df['musk']))
+                    #diffusive_network_data[tw]['param_df']['musx'] = np.float(np.mean(param_df['musx']))
+                    #diffusive_network_data[tw]['param_df']['cs'] = np.float(np.mean(param_df['cs']))
+                    
+                    #diffusive_network_data[tw]['param_df']['ncc'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['s0'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['bw'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['tw'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['twcc'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['musk'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['musx'] = np.float(10.0)
+                    #diffusive_network_data[tw]['param_df']['cs'] = np.float(10.0)
                 else:
                     diffusive_network_data[tw]['param_df'] = param_df.filter(
                         (diffusive_domain[tw] + trib_segs),
