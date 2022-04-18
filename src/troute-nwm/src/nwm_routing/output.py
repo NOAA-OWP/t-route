@@ -113,7 +113,7 @@ def nwm_output_generator(
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
-    wbdyo = output_parameters.get("wbdy_output", None)
+    wbdyo = output_parameters.get("lakeout_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -142,7 +142,7 @@ def nwm_output_generator(
             ).to_flat_index()
 
             wbdy = pd.concat(
-                [pd.DataFrame(r[4], index=r[0], columns=i_columns) for r in results],
+                [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
                 copy=False,
             ).reset_index().rename(columns = {'index': 'ID'})
 

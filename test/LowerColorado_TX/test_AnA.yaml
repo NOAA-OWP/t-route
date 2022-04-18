@@ -83,7 +83,5 @@ output_parameters:
         #----------
         chanobs_output_directory: output/
         chanobs_filepath        : LowerColorado_chanobs.nc
-    lakebody_output:
-        #----------
-        lakeout_output_directory: lakeout/
+    lakeout_output: lakeout/
     
