@@ -63,7 +63,9 @@ def nwm_route(
     usgs_df,
     lastobs_df,
     reservoir_usgs_df,
+    reservoir_usgs_param_df,
     reservoir_usace_df,
+    reservoir_usace_param_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -109,7 +111,9 @@ def nwm_route(
         usgs_df,
         lastobs_df,
         reservoir_usgs_df,
+        reservoir_usgs_param_df,
         reservoir_usace_df,
+        reservoir_usace_param_df,
         da_parameter_dict,
         assume_short_ts,
         return_courant,
@@ -181,6 +185,44 @@ def get_waterbody_water_elevation(waterbodies_df, q0):
     waterbodies_df.update(q0)
 
     return waterbodies_df
+
+def set_reservoir_da_prams(run_results):
+    '''
+    Update persistence reservoir DA parameters for subsequent loops
+    '''
+    
+    reservoir_usgs_param_df = pd.DataFrame(data = [], 
+                                           index = [], 
+                                           columns = [
+                                               'update_time', 'prev_persisted_outflow', 
+                                               'persistence_update_time', 'persistence_index'
+                                           ]
+                                          )
+    reservoir_usace_param_df = pd.DataFrame(data = [], 
+                                           index = [], 
+                                           columns = [
+                                               'update_time', 'prev_persisted_outflow', 
+                                               'persistence_update_time', 'persistence_index'
+                                           ]
+                                          )
+    
+    for r in run_results:
+        
+        if len(r[4][0]) > 0:
+            tmp_usgs = pd.DataFrame(data = r[4][1], index = r[4][0], columns = ['update_time'])
+            tmp_usgs['prev_persisted_outflow'] = r[4][2]
+            tmp_usgs['persistence_update_time'] = r[4][4]
+            tmp_usgs['persistence_index'] = r[4][3]
+            reservoir_usgs_param_df = pd.concat([reservoir_usgs_param_df, tmp_usgs])
+        
+        if len(r[5][0]) > 0:
+            tmp_usace = pd.DataFrame(data = r[5][1], index = r[5][0], columns = ['update_time'])
+            tmp_usace['prev_persisted_outflow'] = r[5][2]
+            tmp_usace['persistence_update_time'] = r[5][4]
+            tmp_usace['persistence_index'] = r[5][3]
+            reservoir_usace_param_df = pd.concat([reservoir_usace_param_df, tmp_usace])
+    
+    return reservoir_usgs_param_df, reservoir_usace_param_df
 
 
 def update_lookback_hours(dt, nts, waterbody_parameters):
@@ -376,7 +418,9 @@ def main_v03(argv):
         qlats, 
         usgs_df, 
         reservoir_usgs_df, 
-        reservoir_usace_df
+        reservoir_usgs_param_df,
+        reservoir_usace_df,
+        reservoir_usace_param_df
     ) = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
@@ -431,7 +475,9 @@ def main_v03(argv):
             usgs_df,
             lastobs_df,
             reservoir_usgs_df,
+            reservoir_usgs_param_df,
             reservoir_usace_df,
+            reservoir_usace_param_df,
             da_parameter_dict,
             assume_short_ts,
             return_courant,
@@ -452,6 +498,9 @@ def main_v03(argv):
         q0 = new_nwm_q0(run_results)
         waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
         
+        # get reservoir DA initial parameters for next loop itteration
+        reservoir_usgs_param_df, reservoir_usace_param_df = set_reservoir_da_prams(run_results)
+        
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
@@ -461,13 +510,14 @@ def main_v03(argv):
                 output_parameters['lite_restart']
             )
         
-        # No forcing to prepare for the last loop
         if run_set_iterator < len(run_sets) - 1:
             (
                 qlats, 
                 usgs_df, 
                 reservoir_usgs_df, 
-                reservoir_usace_df
+                _,
+                reservoir_usace_df,
+                _,
             ) = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
@@ -484,13 +534,35 @@ def main_v03(argv):
                 t0 + timedelta(seconds = dt * nts),
             )
             
+            # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
+            # but there are DA parameters from the previous loop, then create a
+            # dummy observations df. This allows the reservoir persistence to continue across loops.
+            # USGS Reservoirs
+            if 2 in waterbody_types_df['reservoir_type'].unique():
+                if reservoir_usgs_df.empty and len(reservoir_usgs_param_df.index) > 0:
+                    reservoir_usgs_df = pd.DataFrame(
+                        data    = np.nan, 
+                        index   = reservoir_usgs_param_df.index, 
+                        columns = [t0]
+                    )
+                    
+            # USACE Reservoirs   
+            if 3 in waterbody_types_df['reservoir_type'].unique():
+                if reservoir_usace_df.empty and len(reservoir_usace_param_df.index) > 0:
+                    reservoir_usace_df = pd.DataFrame(
+                        data    = np.nan, 
+                        index   = reservoir_usgs_param_df.index, 
+                        columns = [t0]
+                    )
+                
+            # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
+            if 4 in waterbody_types_df['reservoir_type'].unique():
+                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)     
+                
             if showtiming:
                 forcing_end_time = time.time()
                 task_times['forcing_time'] += forcing_end_time - route_end_time
-
-            if waterbody_type_specified:
-                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-                
+  
             if showtiming:
                 ic_end_time = time.time()
                 task_times['initial_condition_time'] += ic_end_time - forcing_end_time

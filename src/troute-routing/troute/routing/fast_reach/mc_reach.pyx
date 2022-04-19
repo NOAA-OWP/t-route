@@ -186,9 +186,17 @@ cpdef object compute_network_structured(
     const float[:,:] reservoir_usgs_obs,
     const int[:] reservoir_usgs_wbody_idx,
     const float[:] reservoir_usgs_time,
+    const float[:] reservoir_usgs_update_time,
+    const float[:] reservoir_usgs_prev_persisted_flow,
+    const float[:] reservoir_usgs_persistence_update_time,
+    const float[:] reservoir_usgs_persistence_index,
     const float[:,:] reservoir_usace_obs,
     const int[:] reservoir_usace_wbody_idx,
     const float[:] reservoir_usace_time,
+    const float[:] reservoir_usace_update_time,
+    const float[:] reservoir_usace_prev_persisted_flow,
+    const float[:] reservoir_usace_persistence_update_time,
+    const float[:] reservoir_usace_persistence_index,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -373,20 +381,20 @@ cpdef object compute_network_structured(
     cdef np.ndarray[int, ndim=1] usace_idx = np.asarray(reservoir_usace_wbody_idx)
     
     # reservoir update time arrays
-    cdef np.ndarray[float, ndim=1] usgs_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
-    cdef np.ndarray[float, ndim=1] usace_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
+    cdef np.ndarray[float, ndim=1] usgs_update_time  = np.asarray(reservoir_usgs_update_time)
+    cdef np.ndarray[float, ndim=1] usace_update_time = np.asarray(reservoir_usace_update_time)
     
     # reservoir persisted outflow arrays
-    cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow  = np.full(len(usgs_idx), np.nan, dtype='float32')
-    cdef np.ndarray[float, ndim=1] usace_prev_persisted_ouflow = np.full(len(usace_idx), np.nan, dtype='float32')  
+    cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow  = np.asarray(reservoir_usgs_prev_persisted_flow)
+    cdef np.ndarray[float, ndim=1] usace_prev_persisted_ouflow = np.asarray(reservoir_usace_prev_persisted_flow)  
     
     # reservoir persistence index update time arrays
-    cdef np.ndarray[float, ndim=1] usgs_persistence_update_time  = np.zeros(np.shape(usgs_idx), dtype='float32')
-    cdef np.ndarray[float, ndim=1] usace_persistence_update_time = np.zeros(np.shape(usace_idx), dtype='float32')  
+    cdef np.ndarray[float, ndim=1] usgs_persistence_update_time  = np.asarray(reservoir_usgs_persistence_update_time)
+    cdef np.ndarray[float, ndim=1] usace_persistence_update_time = np.asarray(reservoir_usace_persistence_update_time)
     
     # reservoir persisted outflow period index
-    cdef np.ndarray[float, ndim=1] usgs_prev_persistence_index  = np.zeros(np.shape(usgs_idx), dtype='float32')
-    cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.zeros(np.shape(usace_idx), dtype='float32')  
+    cdef np.ndarray[float, ndim=1] usgs_prev_persistence_index  = np.asarray(reservoir_usgs_persistence_index)
+    cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.asarray(reservoir_usace_persistence_index)
 
     #---------------------------------------------------------------------------------------------
     #---------------------------------------------------------------------------------------------
@@ -638,4 +646,4 @@ cpdef object compute_network_structured(
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values))
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt))
