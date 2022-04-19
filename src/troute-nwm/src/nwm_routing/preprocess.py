@@ -120,14 +120,10 @@ def nwm_network_preprocess(
                 LOG.debug('Natural cross section data are provided.')
                 
                 # read topobathy domain netcdf file, set index to 'comid'
-                # TODO: replace 'comid' with a user-specified indexing variable name.
-                # ... if for whatever reason there is not a `comid` variable in the 
+                # TODO: replace 'link' with a user-specified indexing variable name.
+                # ... if for whatever reason there is not a `link` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('comid'))
-                
-                # TODO: Request GID make comID variable an integer in their product, so
-                # we do not need to change variable types, here.
-                topobathy_data.index = topobathy_data.index.astype(int)
+                topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
             else:
                 topobathy_data = pd.DataFrame()
@@ -1051,6 +1047,19 @@ def nwm_forcing_preprocess(
     else:
         reservoir_usgs_df = pd.DataFrame()
         
+    # create USGS reservoir hybrid DA initial parameters dataframe    
+    if reservoir_usgs_df.empty == False:
+        reservoir_usgs_param_df = pd.DataFrame(
+            data = 0, 
+            index = reservoir_usgs_df.index ,
+            columns = ['update_time']
+        )
+        reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
+        reservoir_usgs_param_df['persistence_update_time'] = 0
+        reservoir_usgs_param_df['persistence_index'] = 0
+    else:
+        reservoir_usgs_param_df = pd.DataFrame()
+
     #---------------------------------------------
     # observations for USACE reservoir DA
     #---------------------------------------------  
@@ -1110,7 +1119,20 @@ def nwm_forcing_preprocess(
         
     else:
         reservoir_usace_df = pd.DataFrame()
-    
+        
+    # create USACE reservoir hybrid DA initial parameters dataframe    
+    if reservoir_usace_df.empty == False:
+        reservoir_usace_param_df = pd.DataFrame(
+            data = 0, 
+            index = reservoir_usace_df.index ,
+            columns = ['update_time']
+        )
+        reservoir_usace_param_df['prev_persisted_outflow'] = np.nan
+        reservoir_usace_param_df['persistence_update_time'] = 0
+        reservoir_usace_param_df['persistence_index'] = 0
+    else:
+        reservoir_usace_param_df = pd.DataFrame()
+
     #---------------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
     
@@ -1133,4 +1155,4 @@ def nwm_forcing_preprocess(
     if not usgs_df.empty:
         usgs_df = usgs_df.loc[:,t0:]
     
-    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usace_df
+    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df

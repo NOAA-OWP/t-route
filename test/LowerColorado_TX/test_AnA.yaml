@@ -40,8 +40,8 @@ compute_parameters:
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/diffusive_domain.yaml
-        use_natl_xsections: True
-        topobathy_domain  : input/diffusive_natural_xs_20220331.nc
+        use_natl_xsections: False
+        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
