@@ -68,6 +68,12 @@ def build_connections(supernetwork_parameters):
     # rename dataframe columns to keys in the cols dict variable
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
     
+
+    # handle GDL sythetic waterbody segmetns
+    gdl_idx = param_df[param_df['key'] < 10].index
+    if not gdl_idx.empty:
+        param_df.loc[gdl_idx,"key"] = (param_df.loc[gdl_idx,"key"] + 9999).astype("int64")
+    
     # handle synthetic waterbody segments
     synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
     synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
