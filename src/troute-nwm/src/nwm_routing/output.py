@@ -160,6 +160,10 @@ def nwm_output_generator(
             wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
                                waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
                                on = 'ID')
+            
+            #filter only timesteps at dt*qts_subdivisions intervals
+            timestep_index = np.where(((wbdy_df.time.unique() + 1) * dt) % (dt * qts_subdivisions) == 0)
+            wbdy_df = wbdy_df[wbdy_df.time.isin(timestep_index[0])]
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
@@ -197,7 +201,7 @@ def nwm_output_generator(
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
         
-        for time_index, i in enumerate(wbdy_df.time.unique()):
+        for i in wbdy_df.time.unique():
             
             nhd_io.write_waterbody_netcdf(
                 wbdyo, 
@@ -206,7 +210,6 @@ def nwm_output_generator(
                 t0, 
                 dt, 
                 nts,
-                time_index,
             )
         
         

@@ -1566,8 +1566,7 @@ def write_waterbody_netcdf(
     waterbodies_df, 
     t0, 
     dt, 
-    nts,
-    time_index
+    nts
 ):
     
     '''
@@ -1600,7 +1599,7 @@ def write_waterbody_netcdf(
     wbdy_data = wbdy_df.drop(columns='reservoir_type').pivot(index=['ID','time'],columns='variable',values='value')
     
     # array of simulation time
-    wbdy_time = [t0 + timedelta(seconds = (time_index+1) * dt)]
+    wbdy_time = [t0 + timedelta(seconds = (wbdy_df.time.unique()[0] + 1).tolist() * dt)]
     
     # Merge waterbodies_df with wbdy_data
     full_wbdy_data = pd.merge(waterbodies_df,wbdy_data,on = 'ID')
