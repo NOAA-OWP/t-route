@@ -340,12 +340,14 @@ def nwm_output_generator(
         # Write out LastObs as netcdf.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
         # folder is provided by the user.
+        lastobs_output_folder = None
+        nudging_true = None
         streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
-        nudging_true = streamflow_da.get('streamflow_nudging', None)
         if streamflow_da:
             lastobs_output_folder = streamflow_da.get(
                 "lastobs_output_folder", None
                 )
+            nudging_true = streamflow_da.get('streamflow_nudging', None)
 
         if nudging_true and lastobs_output_folder:
 

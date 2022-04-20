@@ -607,6 +607,7 @@ def nwm_initial_warmstate_preprocess(
         q0, t0 = nhd_io.read_lite_restart(
             restart_parameters['lite_channel_restart_file']
         )
+        t0_str = None
     
     # build initial states from user-provided restart parameters
     else:
