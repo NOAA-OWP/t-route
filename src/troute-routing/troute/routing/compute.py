@@ -1108,7 +1108,7 @@ def compute_diffusive_routing(
     diffusive_parameters,
     waterbodies_df,
     topobathy_data,
-):
+    ):
  
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
@@ -1134,7 +1134,7 @@ def compute_diffusive_routing(
             topobathy_data_bytw = pd.DataFrame()
             
         # diffusive streamflow DA activation switch
-        if da_parameter_dict['diffusive_streamflow_DA']==True:
+        if da_parameter_dict['diffusive_streamflow_nudging']==True:
             diff_usgs_df = usgs_df
         else:
             diff_usgs_df = pd.DataFrame()

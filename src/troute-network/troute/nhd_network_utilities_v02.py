@@ -754,8 +754,8 @@ def build_data_assimilation_lastobs(data_assimilation_parameters):
     da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get(
         "da_decay_coefficient", 
         120)
-    da_parameter_dict["diffusive_streamflow_DA"] = streamflow_da_parameters.get(
-        "diffusive_streamflow_DA", False) 
+    da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get(
+        "diffusive_streamflow_nudging", False) 
     
     # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
 

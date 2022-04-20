@@ -29,7 +29,7 @@ compute_parameters:
     compute_kernel         : V02-structured
     assume_short_ts        : True
     subnetwork_target_size : 10000
-    cpu_pool               : 1
+    cpu_pool               : 36
     restart_parameters:
         #----------
         wrf_hydro_channel_restart_file           : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
@@ -40,8 +40,8 @@ compute_parameters:
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/diffusive_domain.yaml
-        use_natl_xsections: True
-        topobathy_domain  : input/diffusive_natural_xs_20220331.nc
+        use_natl_xsections: False
+        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc 
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
@@ -58,13 +58,13 @@ compute_parameters:
         qc_threshold             : 1
         streamflow_da:
             #----------
-            streamflow_nudging       : True
-            diffusive_streamflow_DA  : False
-            gage_segID_crosswalk_file: domain/RouteLink.nc
-            crosswalk_gage_field     : 'gages'
-            crosswalk_segID_field    : 'link'
-            wrf_hydro_lastobs_file   : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc
-            lastobs_output_folder    : lastobs/
+            streamflow_nudging            : True
+            diffusive_streamflow_nudging  : True
+            gage_segID_crosswalk_file     : domain/RouteLink.nc
+            crosswalk_gage_field          : 'gages'
+            crosswalk_segID_field         : 'link'
+            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc
+            lastobs_output_folder         : lastobs/
         reservoir_da:
             #----------
             reservoir_persistence_usgs  : True
@@ -73,7 +73,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/LowerColorado_flowveldepth_noda.pkl
+    test_output: output/LowerColorado_flowveldepth.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/

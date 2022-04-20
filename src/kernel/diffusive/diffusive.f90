@@ -150,10 +150,6 @@ contains
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: mann_bathy_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_ev_g
-    !TODO for DA
-    !integer, intent(in) :: nts_da_g
-    !double precision, dimension(nts_da_g, nrch_g),   intent(in) :: qda_g 
-
 
   ! Local variables    
     integer :: ncomp
@@ -206,22 +202,6 @@ contains
     double precision, dimension(:,:), allocatable :: skMain
     double precision, dimension(:,:), allocatable :: skRight
     
-    ! test
-    integer :: ts
-    ! DA
-    !doubleprecision :: dt_da, dmy, dmy2
-    !integer :: idmy        
-    open(unit=1, file="./input/sine_tide_matagorda_city_31d.txt")
-    !open(unit=1, file="t-route/src/kernel/diffusive/input/tide_matagorda_city_31d.txt")
-    !open(unit=2, file="./input/usgsBastrop_06011200_06302355_2020.txt")
-    !open(unit=91, file="./output/iniq.txt")
-    !open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
-    !open(unit=102, file="./output/cn-mod q elev depth at each sim_time.txt")
-    allocate(dbcd(nts_db_g))
-    do n = 1, nts_db_g
-        read(1,*) dmyi, dbcd(n), dmyi
-        dbcd(n) = dbcd(n) + 5.0
-    end do
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
@@ -337,6 +317,7 @@ contains
     allocate(size_bathy(mxncomp, nlinks))
     allocate(usgs_da_reach(nlinks))
     allocate(usgs_da(nts_da, nlinks))
+    allocate(dbcd(nts_db_g))
     
   !--------------------------------------------------------------------------------------------
     frnw_g        = frnw_ar_g ! network mapping matrix
@@ -362,7 +343,7 @@ contains
     dimensionless_Di    = -999
     dimensionless_Fc    = -999
     dimensionless_D     = -999
-
+    dbcd                = 0.0 !TODO: pass downstream boundary values from Python   
     
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
@@ -383,13 +364,6 @@ contains
     end do
     deallocate(dmy_frj)
 
-    ! test
-    !do jm = 1, nmstem_rch !* mainstem reach only
-    !  j = mstem_frj(jm)
-    !  do i = 1, frnw_g(j, 1)-1
-    !    write(91,*) i, j, iniq(i,j)
-    !  end do
-    !end do
   !-----------------------------------------------------------------------------
   ! create dx array from dx_ar_g and determine minimum dx.
 
@@ -843,17 +817,6 @@ contains
       
     end do  ! end of time loop
     
-            !* test
-            !do ts=1, ntss_ev_g
-            !do jm = 1, nmstem_rch  !* mainstem reach only
-            !  j = mstem_frj(jm)
-            !  do i=1, frnw_g(j,1)
-            !    write(101,"(f10.1, 2I10, 4F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j),&
-            !                                      z(i,j), elv_ev_g(ts, i, j) - z(i,j),  elv_ev_g(ts, i, j) 
-            !  end do
-            !end do
-            !end do
- 
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
     deallocate(volRemain, froud, courant, oldQ, newQ, oldArea, newArea, oldY, newY)
@@ -1067,7 +1030,7 @@ contains
     
     ! Local variables
       integer :: ncomp
-      integer :: i
+      integer :: i, irow, flag_da
       double precision :: a1, a2, a3, a4
       double precision :: b1, b2, b3, b4
       double precision :: dd1, dd2, dd3, dd4
@@ -1220,13 +1183,21 @@ contains
             varr_da(n) = usgs_da(n, j)
         end do
         qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t)
-        if (qp(ncomp,j) <= 0.0) then
+        flag_da = 1
+        ! check usgs_da value is in good quality
+        irow = locate(tarr_da, t)
+        if (irow == nts_da) then
+          irow = irow-1
+        endif        
+        if ((varr_da(irow)<= -4443.999).or.(varr_da(irow+1)<= -4443.999)) then
           ! when usgs data is missing or in poor quality
           qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+          flag_da = 0
         endif
         deallocate(varr_da)
       else
         qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
+        flag_da = 0
       endif
       qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
 
@@ -1236,7 +1207,7 @@ contains
       end do
 
       ! when a reach hasn't been applied to DA 
-      if ((usgs_da_reach(j) == 0).or.(qp(ncomp,j) <= 0.0)) then
+      if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
        qp(1, j) = newQ(1, j)
        qp(1, j) = qp(1, j) + allqlat
       endif
@@ -1494,10 +1465,8 @@ contains
     integer                     :: xcolID, ycolID
     double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
     double precision            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
-    double precision            :: rtsafe
-    
-    !open(unit=201, file="./output/depth computing.txt")
-    
+    double precision            :: rtsafe    
+   
     y_ulm_multi = 2.0
     y_llm_multi = 0.1
     
@@ -1505,19 +1474,15 @@ contains
     ycolID   = 1
     elv_norm = intp_xsec_tab(i, j, nel, xcolID, ycolID, abs(Q_cur)) ! normal elevation not depth
     y_norm   = elv_norm - z(i, j)
-    y_old    = oldY(i, j) - z(i, j)
-    
-    !write(201,*) "very 0:   ", i, j, z(i,j), Q_cur, Q_ds, elv_norm, oldY(i,j), y_norm, y_old 
-    
+    y_old    = oldY(i, j) - z(i, j)    
+   
     ! option 1 for initial point
     !x1       = y_norm * y_llm_multi
     !x2       = y_norm * y_ulm_multi
     ! option 2 for initial point
     x1       = 0.5 * (y_norm + y_old) * y_llm_multi
     x2       = 0.5 * (y_norm + y_old) * y_ulm_multi
-    
-    !write(201,*) "initial x:", i, j,  x1, x2, y_norm
-    
+       
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x1, y_ds, fl, df)
 
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x2, y_ds, fh, df)
@@ -1529,11 +1494,9 @@ contains
 
     if (fl == 0.0) then
       rtsafe = x1
-      !write(201,*) "return 1: ", i, j, x1, x2, rtsafe
       return
     elseif (fh == 0.0) then
       rtsafe = x2
-      !write(201,*) "return 2: ", i, j, x1, x2, rtsafe
       return
     elseif (fl < 0.0) then ! orient the search so that f(xl) < 0.
       xl = x1
@@ -1564,7 +1527,7 @@ contains
         rtsafe = rtsafe - dxx
         if (temp == rtsafe) return
       end if
-      !write(201,*) "iteration:", i, j, xl, xh, rtsafe
+      
       if (abs(dxx) < xacc) return  ! convergence criterion.
 
       ! one new function evaluation per iteration.
@@ -1579,8 +1542,7 @@ contains
 
     ! when root is not converged:
     rtsafe = y_norm
-    !write(201,*) "no covg:  ", i, j, rtsafe
-  
+    
   end function rtsafe
 
   subroutine funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds, f, df)
