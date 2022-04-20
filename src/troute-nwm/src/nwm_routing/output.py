@@ -337,36 +337,31 @@ def nwm_output_generator(
         
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
 
-    # Write out LastObs as netcdf.
-    # Assumed that this capability is only needed for AnA simulations
-    # i.e. when timeslice files are provided to support DA
-    streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
-    if streamflow_da:
-        lastobs_output_folder = streamflow_da.get(
-            "lastobs_output_folder", None
-            )
-    
-    data_assimilation_folder = data_assimilation_parameters.get(
-    "usgs_timeslices_folder", None
-    )
+        # Write out LastObs as netcdf.
+        # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
+        # folder is provided by the user.
+        streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
+        nudging_true = streamflow_da.get('streamflow_nudging', None)
+        if streamflow_da:
+            lastobs_output_folder = streamflow_da.get(
+                "lastobs_output_folder", None
+                )
 
-    # if lastobs_output_folder:
-    #     warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
-    if data_assimilation_folder and lastobs_output_folder:
-        
-        LOG.info("- writing lastobs files")
-        start = time.time()
-        
-        nhd_io.lastobs_df_output(
-            lastobs_df,
-            dt,
-            nts,
-            t0,
-            link_gage_df['gages'],
-            lastobs_output_folder,
-        )
-        
-        LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
+        if nudging_true and lastobs_output_folder:
+
+            LOG.info("- writing lastobs files")
+            start = time.time()
+
+            nhd_io.lastobs_df_output(
+                lastobs_df,
+                dt,
+                nts,
+                t0,
+                link_gage_df['gages'],
+                lastobs_output_folder,
+            )
+
+            LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)
