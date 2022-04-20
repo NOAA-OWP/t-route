@@ -580,7 +580,7 @@ def main_v03(argv):
         if showtiming:
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
-                
+        
         nwm_output_generator(
             run,
             run_results,
@@ -592,6 +592,8 @@ def main_v03(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
+            waterbodies_df,
+            waterbody_types_df,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,

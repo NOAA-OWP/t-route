@@ -1559,3 +1559,274 @@ def lastobs_df_output(
     # write-out LastObs file as netcdf
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
     ds.to_netcdf(str(output_path))
+
+def write_waterbody_netcdf(
+    wbdy_filepath, 
+    wbdy_df, 
+    waterbodies_df, 
+    t0, 
+    dt, 
+    nts
+):
+    
+    '''
+    Write results of waterbodies to netcdf. 
+    Written as one file per time step.
+    
+    Arguments
+    -------------
+        wbdy_filepath (Path or string) - directory where files will be created
+        wbdy_df (DataFrame) - t-route waterbody inflow, outflow, and depth results
+        waterbodies_df (DataFrame) - linkIDs of waterbodies in network
+        t0 (datetime) - initial time
+        dt (int) - timestep duration (seconds)
+        nts (int) - number of timesteps in simulation
+        time_index (ind) - specific timestep for this file
+        
+    Returns
+    -------------
+    
+    '''
+    
+    # array of segment linkIDs at gage locations. Results from these segments will be written
+    waterbodies_df = waterbodies_df.reset_index().rename(columns = {'lake_id': 'ID'})[['ID','lat','lon','crs']]
+    wbdy_feature_id = waterbodies_df.ID.to_numpy(dtype = "int64")
+
+    # dataframe of waterbody types
+    wbdy_type = wbdy_df.loc[:,['ID','reservoir_type']].drop_duplicates().reservoir_type.to_numpy(dtype = 'int32')
+    
+    # array of simulated flow data at gage locations
+    wbdy_data = wbdy_df.drop(columns='reservoir_type').pivot(index=['ID','time'],columns='variable',values='value')
+    
+    # array of simulation time
+    wbdy_time = [t0 + timedelta(seconds = (wbdy_df.time.unique()[0] + 1).tolist() * dt)]
+    
+    # Merge waterbodies_df with wbdy_data
+    full_wbdy_data = pd.merge(waterbodies_df,wbdy_data,on = 'ID')
+    
+    if wbdy_filepath:
+        
+        # open netCDF4 Dataset in write mode
+        with netCDF4.Dataset(
+            filename = wbdy_filepath + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
+            mode = 'w',
+            format = "NETCDF4"
+        ) as f:
+
+            # =========== DIMENSIONS ===============
+            _ = f.createDimension("time", 1)
+            _ = f.createDimension("feature_id", len(wbdy_feature_id))
+            _ = f.createDimension("reference_time", 1)
+            _ = f.createDimension("latitude", len(wbdy_feature_id))
+            _ = f.createDimension("longitude", len(wbdy_feature_id))
+
+            # =========== time VARIABLE ===============
+            TIME = f.createVariable(
+                varname = "time",
+                datatype = 'int32',
+                dimensions = ("time",),
+            )
+            TIME[:] = date2num(
+                wbdy_time, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['time'].setncatts(
+                {
+                    'long_name': 'valid output time',
+                    'standard_name': 'time',
+                    'valid_min': date2num(
+                        t0, 
+                        units = "minutes since 1970-01-01 00:00:00 UTC",
+                        calendar = "gregorian"
+                    ),
+                    'valid_max': date2num(
+                        wbdy_time[0], 
+                        units = "minutes since 1970-01-01 00:00:00 UTC",
+                        calendar = "gregorian"
+                    ),
+                    'units': 'minutes since 1970-01-01T00:00:00+00:00',
+                    'calendar': 'proleptic_gregorian'
+                }
+            )
+
+            # =========== reference_time VARIABLE ===============
+            REF_TIME = f.createVariable(
+                varname = "reference_time",
+                datatype = 'int32',
+                dimensions = ("reference_time",),
+            )
+            REF_TIME[:] = date2num(
+                t0, 
+                units = "minutes since 1970-01-01 00:00:00 UTC",
+                calendar = "gregorian"
+            )
+            f['reference_time'].setncatts(
+                {
+                    'long_name': 'model initialization time',
+                    'standard_name': 'forecast_reference_time',
+                    'units': 'minutes since 1970-01-01T00:00:00+00:00',
+                    'calendar': 'proleptic_gregorian'
+                }
+            )
+
+            # =========== feature_id VARIABLE ===============
+            FEATURE_ID = f.createVariable(
+                varname = "feature_id",
+                datatype = 'int64',
+                dimensions = ("feature_id",),
+            )
+            FEATURE_ID[:] = wbdy_feature_id
+            f['feature_id'].setncatts(
+                {
+                    'long_name': 'Lake ComID',
+                    'comment': '',
+                    'cf_role:': 'timeseries_id'
+                }
+            )
+
+            # =========== latitude VARIABLE ===============
+            LATITUDE = f.createVariable(
+                varname = "latitude",
+                datatype = 'f4',
+                dimensions = ("feature_id",),
+                fill_value = np.nan
+            )
+            LATITUDE[:] = full_wbdy_data.lat.tolist()
+            f['latitude'].setncatts(
+                {
+                    'long_name': 'Lake latitude',
+                    'standard_name': 'latitude',
+                    'units': 'degrees_north'
+                }
+            )
+            
+            # =========== longitude VARIABLE ===============
+            LONGITUDE = f.createVariable(
+                varname = "longitude",
+                datatype = 'f4',
+                dimensions = ("feature_id",),
+                fill_value = np.nan
+            )
+            LONGITUDE[:] = full_wbdy_data.lon.tolist()
+            f['longitude'].setncatts(
+                {
+                    'long_name': 'Lake longitude',
+                    'standard_name': 'longitude',
+                    'units': 'degrees_east'
+                }
+            )
+            
+            # =========== reservoir type VARIABLE ===============            
+            res_type = f.createVariable(
+                    varname = "reservoir_type",
+                    datatype = "i4",
+                    dimensions = ("feature_id")
+                )
+            res_type[:] = wbdy_type
+            f['reservoir_type'].setncatts(
+                {
+                    'coordinates': 'latitude longitude',
+                    'long_name': 'reservoir_type',
+                    'flag_values': [1, 2, 3, 4],
+                    'flag_meanings': 'Level_pool USGS-persistence USACE-persistence RFC-forecasts'
+                }
+            )
+            
+            # =========== crs VARIABLE ===============            
+            crs = f.createVariable(
+                    varname = "crs",
+                    datatype = "S1",
+                    dimensions = ()
+                )
+            crs[:] = np.array(waterbodies_df.loc[0,'crs'],dtype = '|S1')
+            f['crs'].setncatts(
+                {
+                    'transform_name': 'latitude longitude',
+                    'grid_mapping_name': 'latitude longitude',
+                    'esri_pe_string': 'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]];-400 -400 1000000000;-100000 10000;-100000 10000;8.98315284119521E-09;0.001;0.001;IsHighPrecision',
+                    'spatial_ref': 'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]];-400 -400 1000000000;-100000 10000;-100000 10000;8.98315284119521E-09;0.001;0.001;IsHighPrecision',
+                    'long_name': 'CRS definition',
+                    'longitude_of_prime_meridian': 0.0,
+                    '_CoordinateAxes': 'latitude longitude',
+                    'semi_major_axis': 6378137.0,
+                    'semi_minor_axis': 6356752.5,
+                    'inverse_flattening': 298.25723
+                }
+            )
+            
+            # =========== inflow VARIABLE ===============            
+            inflow = f.createVariable(
+                    varname = "inflow",
+                    datatype = "f4",
+                    dimensions = ("feature_id"),
+                    fill_value = -999900
+                )
+            inflow[:] = full_wbdy_data.i.tolist()
+            f['inflow'].setncatts(
+                {
+                    'long_name': 'Lake Inflow',
+                    'units': 'm3 s-1',
+                    'grid_mapping': 'crs',
+                    'valid_range': [-1000000,1000000],
+                    'coordinates': 'latitude longitude',
+                    'add_offset': 0.0,
+                    'scale_factor': 0.01,
+                    'missing_value': -999900
+                }
+            )
+
+            # =========== outflow VARIABLE ===============            
+            outflow = f.createVariable(
+                    varname = "outflow",
+                    datatype = "f4",
+                    dimensions = ("feature_id"),
+                    fill_value = np.nan
+                )
+            outflow[:] = full_wbdy_data.q.tolist()
+            f['outflow'].setncatts(
+                {
+                    'long_name': 'Lake Outflow',
+                    'units': 'm3 s-1',
+                    'grid_mapping': 'crs',
+                    'valid_range': [-1000000,1000000],
+                    'coordinates': 'latitude longitude',
+                    'add_offset': 0.0,
+                    'scale_factor': 0.01,
+                    'missing_value': -999900
+                }
+            )
+
+            # =========== depth VARIABLE ===============            
+            depth = f.createVariable(
+                    varname = "water_sfc_elev",
+                    datatype = "f4",
+                    dimensions = ("feature_id"),
+                    fill_value = np.nan
+                )
+            depth[:] = full_wbdy_data.d.tolist()
+            f['water_sfc_elev'].setncatts(
+                {
+                    'long_name': 'Water Surface Elevation',
+                    'units': 'm',
+                    'comment': 'If reservoir_type = 4, water_sfc_elev is invalid because this value corresponds only to level pool',
+                    'coordinates': 'latitude longitude'
+                }
+            )
+
+            # =========== GLOBAL ATTRIBUTES ===============  
+            f.setncatts(
+                {
+                    'TITLE': 'OUTPUT FROM T-ROUTE',
+                    'featureType': 'timeSeries',
+                    'proj4': '+proj=lcc +units=m +a=6370000.0 +b=6370000.0 +lat_1=30.0 +lat_2=60.0 +lat_0=40.0 +lon_0=-97.0 +x_0=0 +y_0=0 +k_0=1.0 +nadgrids=@',
+                    'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                    'station_dimension': 'lake_id',
+                    'model_output_valid_time': wbdy_time[0].strftime('%Y-%m-%d_%H:%M:%S'),
+                    'model_total_valid_times': nts,
+                    'Conventions': 'CF-1.6',
+                    'code_version': '',
+                    'model_output_type': 'reservoir',
+                    'model_configuration': ''
+                }
+            )

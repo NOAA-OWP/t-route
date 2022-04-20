@@ -708,3 +708,9 @@ output_parameters:
             - validation_files:
                 - validation_file3
                 - validation_file4
+    # ---------------
+    # parameters controlling the writing of results to LAKEOUT netcdf files
+    # optional, default is None and results are not written to lakeout.
+    # path to directory where un-edited LAKEOUT files are located.
+    # (!!) mandatory if writing results to lakeout. Default is to None and results will not be written.
+    lakeout_output:

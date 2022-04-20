@@ -435,6 +435,7 @@ cpdef object compute_network_structured(
     cdef _Reach* r
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
+    cdef np.ndarray[float, ndim=3] upstream_array = np.empty((data_idx.shape[0], nsteps+1, 1), dtype='float32')
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
@@ -549,12 +550,14 @@ cpdef object compute_network_structured(
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                upstream_array[r.id, timestep, 0] = upstream_flows
 
             elif r.type == compute_type.RESERVOIR_RFC:
                 run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                upstream_array[r.id, timestep, 0] = upstream_flows
             
             else:
                 #Create compute reach kernel input buffer
@@ -645,5 +648,7 @@ cpdef object compute_network_structured(
     free(reach_structs)
     #slice off the initial condition timestep and return
     output = np.asarray(flowveldepth[:,1:,:], dtype='float32')
+    #do the same for the upstream_array
+    output_upstream = np.asarray(upstream_array[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt))
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt)), output_upstream.reshape(output.shape[0], -1)[fill_index_mask]
