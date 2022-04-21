@@ -152,7 +152,7 @@ def nwm_network_preprocess(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-    
+
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
     

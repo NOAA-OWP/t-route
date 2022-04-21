@@ -558,9 +558,9 @@ def fp_da_map(
                 for seg in range(0, ncomp):
                     segID = seg_list[seg]
                     if segID in usgs_df_complete.index:
-                        usgs_da_g[:,frj] = usgs_df_complete.loc[segID].values
+                        usgs_da_g[:,frj] = usgs_df_complete.loc[segID].values[0:nts_da_g]
                         usgs_da_reach_g[frj] = frj + 1  # Fortran-Python index relationship, that is Python i = Fortran i+1
-                        
+                       
     return nts_da_g, usgs_da_g, usgs_da_reach_g
 
 def diffusive_input_data_v02(
@@ -604,7 +604,6 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-
     # lateral inflow timestep (sec)
     dt_ql_g = dt * qts_subdivisions
     # upstream boundary condition timestep (sec)
@@ -867,8 +866,6 @@ def diffusive_input_data_v02(
 
     # this is a place holder that uses normal depth and the lower boundary.
     # we will need to revisit this 
-    #nts_db_g = 1
-    #dbcd_g = -np.ones(nts_db_g)  
     nts_db_g = int((tfin_g - t0_g) * 3600.0 / dt_db_g)+1 
     dbcd_g = np.zeros(nts_db_g)
 
@@ -910,7 +907,6 @@ def diffusive_input_data_v02(
 
     #       Prepare interpolated USGS streamflow values at every dt_da_g time step [sec]   
     # ---------------------------------------------------------------------------------------------
-    # test: usgs_df.to_csv('./output/usgs_df.txt', header=True, index=True, sep=' ', mode='w')    
     nts_da_g, usgs_da_g, usgs_da_reach_g = fp_da_map(
                                                 mx_jorder,
                                                 ordered_reaches,
@@ -921,8 +917,7 @@ def diffusive_input_data_v02(
                                                 dt_da_g,
                                                 t0_g,
                                                 tfin_g)
-
-        
+  
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
     #                              Step 0-12

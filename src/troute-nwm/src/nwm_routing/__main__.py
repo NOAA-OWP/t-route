@@ -127,7 +127,7 @@ def nwm_route(
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
-        #import pdb; pdb.set_trace()        
+ 
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(

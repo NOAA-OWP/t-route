@@ -38,7 +38,7 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
-        run_hybrid_routing: True
+        run_hybrid_routing: False
         diffusive_domain  : domain/diffusive_domain.yaml
         use_natl_xsections: False
         topobathy_domain  : domain/diffusive_natural_xs_03312022.nc 
@@ -59,7 +59,7 @@ compute_parameters:
         streamflow_da:
             #----------
             streamflow_nudging            : True
-            diffusive_streamflow_nudging  : True
+            diffusive_streamflow_nudging  : False
             gage_segID_crosswalk_file     : domain/RouteLink.nc
             crosswalk_gage_field          : 'gages'
             crosswalk_segID_field         : 'link'

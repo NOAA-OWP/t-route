@@ -238,8 +238,7 @@ contains
     so_llm      = para_ar_g(9)  ! lower limit of channel bed slope (default: 0.0001)
     theta       = para_ar_g(10) ! weight for computing 2nd derivative: 
                                 ! 0: explicit, 1: implicit (default: 1.0)
-    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth                      
-  
+    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth                        
   !-----------------------------------------------------------------------------
   ! Some parameters for using natural cross section bathymetry data
     mxnbathy = mxnbathy_g  ! maximum size of bathymetry data points
@@ -324,9 +323,10 @@ contains
     z             = z_ar_g    ! node elevation array
     usgs_da_reach = usgs_da_reach_g ! contains indices of reaches where usgs data are avaliable
     usgs_da       = usgs_da_g       ! contains usgs data at a related reach 
+        
   !-----------------------------------------------------------------------------
   ! variable initializations
-
+  
     routingNotChanged   = 0
     applyNaturalSection = 1
     x                   = 0.0
@@ -628,22 +628,19 @@ contains
 
               ! inflow from upstream mainstem reach
               q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
-              !print *, 'added flow from upstream mainstem'
             else
 
               ! inflow from upstream tributary reach
               do n = 1, nts_qtrib_g
                 varr_qtrib(n) = qtrib_g(n, usrchj)
               end do
-              tf0 = t +  dtini / 60.0
+              tf0 = t +  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
-              !print *, 'added flow from tributary'
             end if
 
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch
           end do        
-        !print *, 'sum of upstream reach inflows:', newQ(1,j)
         else
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
@@ -651,7 +648,6 @@ contains
 
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
-        !print *, 'sum of upstream reach inflows and lateral inflows:', newQ(1,j)
         
         call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval, j)
 
@@ -688,7 +684,7 @@ contains
             !do n = 1, nts_db_g  <-- already executed when initial values of Q and Y are computed.
             !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
             !end do          
-            newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.0)
+            newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.)
             xcolID  = 1
             ycolID  = 2
             newArea(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
@@ -752,8 +748,8 @@ contains
         call calc_dimensionless_numbers(j)
       end do
       
-      ! test
-      print*, "diffusive min=", t
+      ! diffusive wave simulation time print
+      print*, "diffusive simulatoin time in minute=", t
 
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
@@ -783,7 +779,7 @@ contains
       end if
 
       ! write initial conditions to output arrays
-      if ( ( t == t0 + dtini / 60 ) ) then
+      if ( ( t == t0 + dtini / 60. ) ) then
         do jm = 1, nmstem_rch  !* mainstem reach only
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -1030,7 +1026,7 @@ contains
     
     ! Local variables
       integer :: ncomp
-      integer :: i, irow, flag_da
+      integer :: i, irow, flag_da, n
       double precision :: a1, a2, a3, a4
       double precision :: b1, b2, b3, b4
       double precision :: dd1, dd2, dd3, dd4
@@ -1043,10 +1039,7 @@ contains
       double precision :: currentQ
       double precision :: eei_ghost, ffi_ghost, exi_ghost
       double precision :: fxi_ghost, qp_ghost, qpx_ghost
-      
-      ! DA
-      integer :: n 
-    
+
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
     !* Note: lateralFlow(1,j) is already added to the boundary
@@ -1178,14 +1171,15 @@ contains
       
       ! when a reach has usgs streamflow data at its location, apply DA
       if (usgs_da_reach(j) /= 0) then
+        
         allocate(varr_da(nts_da))
         do n = 1, nts_da
             varr_da(n) = usgs_da(n, j)
         end do
-        qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t)
+        qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t + dtini/60.)
         flag_da = 1
         ! check usgs_da value is in good quality
-        irow = locate(tarr_da, t)
+        irow = locate(tarr_da, t + dtini/60.)
         if (irow == nts_da) then
           irow = irow-1
         endif        
@@ -1196,9 +1190,11 @@ contains
         endif
         deallocate(varr_da)
       else
+        
         qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
         flag_da = 0
       endif
+      
       qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
 
       do i = ncomp-1, 1, -1
@@ -1219,8 +1215,9 @@ contains
       end do
       
       ! update newQ
-      newQ(1:ncomp, j) = qp(1:ncomp, j)
-
+      do i = 1, ncomp
+        newQ(i, j) = qp(i, j)
+      end do
     ! ============== DEBUG to find unstable flow calcls =================
     !        do i= ncomp, 1, -1
     !            if (abs(qp(i,j)) .gt. 2E4) then
