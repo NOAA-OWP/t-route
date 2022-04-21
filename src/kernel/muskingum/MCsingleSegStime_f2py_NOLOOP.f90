@@ -245,7 +245,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
         twl, R, AREA, AREAC, WP, WPC)
 
     !**kinematic celerity, c
-    if(h .gt. bfd) then
+    if(h .gt. bfd) .and. (twcc .gt. 0.0_prec) .and. (ncc .gt. 0.0_prec) then
     !*water outside of defined channel weight the celerity by the contributing area, and
     !*assume that the mannings of the spills is 2x the manning of the channel
         Ck = max(0.0_prec,((sqrt(s0)/n) &
@@ -275,7 +275,7 @@ subroutine secant2_h(z, bw, bfd, twcc, s0, n, ncc, dt, dx, &
     endif
 
     !**MC parameter, X
-    if(h .gt. bfd) then !water outside of defined channel
+    if( (h .gt. bfd) .and. (twcc .gt. 0.0_prec) .and. (ncc .gt. 0.0_prec) .and. (Ck .gt. 0.0_prec) ) then !water outside of defined channel
         !H0
         if (interval .eq. upper_interval) then
             X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj/(2.0_prec*twcc*s0*Ck*dx)))))
@@ -393,6 +393,14 @@ subroutine hydraulic_geometry(h, bfd, bw, twcc, z, &
 
     h_gt_bf_loc = max(h - bfd, 0.0_prec)
     h_lt_bf_loc = min(bfd, h)
+    
+    ! Exception for NWM 3.0 channel geometry:
+    ! if depth is beyond bankfull, but the floodplain width is zero,
+    ! then just extend the trapezoidal channel upwards beyond bankfull
+    if (h_gt_bf_loc .gt. 0.0_prec) .and. (twcc .le. 0.0_prec) then
+        h_gt_bf_loc = 0.0_prec
+        h_lt_bf_loc = h
+    endif
 
     AREA_loc = (bw + h_lt_bf_loc * z ) * h_lt_bf_loc
 
