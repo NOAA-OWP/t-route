@@ -6,6 +6,10 @@
 *.exe
 *.o
 *.so
+*.a
+*.c
+
+*.mod
 _site/
 
 # Packages #
@@ -49,7 +53,8 @@ __pycache__/
 *.py[cod]
 .env
 .python-version
-.ipynb_checkpoints/
+*.ipynb_checkpoints/
+*checkpoint.py
 
 # pyenv #
 #########

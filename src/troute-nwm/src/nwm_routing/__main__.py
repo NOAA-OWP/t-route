@@ -89,7 +89,7 @@ def nwm_route(
         )
     else:
         LOG.info(f"executing routing computation ...")
-
+    
     start_time_mc = time.time()
     results = compute_nhd_routing_v02(
         downstream_connections,
@@ -387,6 +387,8 @@ def main_v03(argv):
         segment_index,
         waterbodies_df,
         link_lake_crosswalk,
+        compute_parameters.get("hybrid_parameters", False),
+        diffusive_network_data,
     )
     
     if showtiming:
@@ -435,6 +437,8 @@ def main_v03(argv):
         lastobs_df.index,
         cpu_pool,
         t0,
+        compute_parameters.get("hybrid_parameters", False),
+        diffusive_network_data,
     )
     
         
@@ -532,6 +536,8 @@ def main_v03(argv):
                 lastobs_df.index,
                 cpu_pool,
                 t0 + timedelta(seconds = dt * nts),
+                compute_parameters.get("hybrid_parameters", False),
+                diffusive_network_data,
             )
             
             # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
@@ -777,6 +783,8 @@ async def main_v03_async(argv):
         lastobs_df.index,
         IO_cpu_pool,
         t0,
+        compute_parameters.get("hybrid_parameters", False),
+        diffusive_network_data,
     )
 
     run_set_iterator = 0
@@ -834,6 +842,8 @@ async def main_v03_async(argv):
             lastobs_df.index,
             IO_cpu_pool,
             t0 + timedelta(seconds = dt * nts),
+            compute_parameters.get("hybrid_parameters", False),
+            diffusive_network_data,
         )
 
         run_results = await model_task

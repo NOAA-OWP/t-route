@@ -201,20 +201,29 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 
 
 def build_channel_initial_state(
-    restart_parameters, segment_index=pd.Index([])
+    restart_parameters, hybrid_params, diffusive_network_data, segment_index=pd.Index([]), 
 ):
-
+    
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
-
+    
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
-
+        
+        if hybrid_params:
+            # Add q0 for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                for tw in diffusive_network_data:
+                    # Add refactored ids to q0 with values from crosswalked ids
+                    for rlink,link in diffusive_network_data[tw]['rlink_reindex'].items():
+                        if not rlink in q0.index:
+                            q0.loc[rlink] = q0.loc[link]
+        
     elif wrf_hydro_channel_restart_file:
-
         q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
@@ -223,6 +232,17 @@ def build_channel_initial_state(
             restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
             restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
         )
+        
+        if hybrid_params:
+            # Add q0 for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                for tw in diffusive_network_data:
+                    # Add refactored ids to q0 with values from crosswalked ids
+                    for rlink,link in diffusive_network_data[tw]['rlink_reindex'].items():
+                        if not rlink in q0.index:
+                            q0.loc[rlink] = q0.loc[link]
+                        
     else:
         # Set cold initial state
         # assume to be zero
@@ -230,10 +250,11 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
+                
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
-
+    
     return q0
 
 
@@ -241,13 +262,12 @@ def build_forcing_sets(
     forcing_parameters,
     t0
 ):
-    
     run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-
+    
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
@@ -404,10 +424,21 @@ def build_qlateral_array(
             index = idx,
             columns = range(len(qlat_files))
         )    
-        qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
+        
+        if hybrid_params:
+            # Generate q_lat series for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                qlat_df = qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data)
 
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
+        
+        if hybrid_params:
+            # Generate q_lat series for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                qlat_df = qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data)
 
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
@@ -422,12 +453,27 @@ def build_qlateral_array(
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
-
+    
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-
+    
     return qlat_df
 
+def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
+    
+    # Create key, value for crosswalk
+    rlink_list = list(set(segment_index) - set(qlat_df.index))
+    if len(rlink_list) > 0:
+        for tw in diffusive_network_data:
+            qlat_lookup = dict([(i, diffusive_network_data[tw]['lengthMap'][i]) for i in rlink_list])
+
+            # Generate new qlat time series for refactored ids
+            refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
+
+            # Add refactored qlat time series to df
+            qlat_df = pd.concat([qlat_df,refac_qlat])
+    
+    return qlat_df
 
 def build_parity_sets(parity_parameters, run_sets):
     
@@ -798,3 +844,162 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_df = pd.DataFrame()
 
     return usgs_df
+
+def build_refac_connections(diff_network_parameters):
+    '''
+    Construct network connections network for refacored dataset. 
+    
+    Arguments
+    ---------
+    diff_network_parameters (dict): User input network parameters
+    
+    Returns:
+    --------
+    connections (dict int: [int]): Network connections
+    '''
+
+    # crosswalking dictionary between variables names in input dataset and 
+    # variable names recognized by troute.routing module.
+    cols = diff_network_parameters.get(
+        'columns', 
+        {
+        'key'       : 'link',
+        'downstream': 'to',
+        'dx'        : 'Length',
+        'n'         : 'n',
+        'waterbody' : 'NHDWaterbodyComID',
+        'gages'     : 'gages',
+        'alt'      : 'z',
+        'line_d'    : 'xid_d',        
+        }
+    )
+
+    # read parameter dataframe 
+    param_df = nhd_io.read(pathlib.Path(diff_network_parameters["geo_file_path"]))
+
+    # numeric code used to indicate network terminal segments
+    terminal_code = set(param_df.to.unique()) - set(param_df.link.unique())
+
+    # select the column names specified in the values in the cols dict variable
+    param_df = param_df[list(cols.values())]
+
+    # rename dataframe columns to keys in the cols dict variable
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+
+    # set parameter dataframe index as segment id number, sort
+    param_df = param_df.set_index("key").sort_index()
+
+    # get and apply domain mask
+    if "mask_file_path" in diff_network_parameters:
+        data_mask = nhd_io.read_mask(
+            pathlib.Path(diff_network_parameters["mask_file_path"]),
+            layer_string=diff_network_parameters.get("mask_layer_string", None),
+        )
+        data_mask = data_mask.set_index(data_mask.columns[0])
+        param_df = param_df.filter(data_mask.index, axis=0)
+    
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.update(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+
+    param_df_unique = param_df.drop_duplicates("downstream")
+    # build connections dictionary
+    connections = nhd_network.extract_connections(
+        param_df_unique, "downstream", terminal_codes=terminal_codes
+    )
+
+    return connections
+
+def generate_qlat(qlat_lookup, orig_qlat):
+
+    # Convert qlat df to dict
+    qlat_dict = dict(zip(orig_qlat.index, orig_qlat.values))
+
+    ref_qlat_dict = {}
+    fraction_dict = {}
+    comids_missing_qlat = []
+
+    for rlink, crosswalk in qlat_lookup.items():
+
+        xwalk_list = crosswalk.split(',')
+
+        # Segments with multiple crosswalk IDs
+        if len(xwalk_list) > 1:
+
+            for xwalk in xwalk_list:
+
+                if '.' in xwalk:
+                    # Get ID and fraction of crosswalk
+                    link, fraction = xwalk.split('.')
+                    link = int(link)
+                    if fraction == '1':
+                        fraction = 1
+                    else:
+                        fraction = float(fraction)/1000
+
+                    if link in fraction_dict.keys():
+                        fraction_dict[link] += fraction
+                    else:
+                        fraction_dict[link] = fraction
+
+                if link not in qlat_dict.keys():
+                    comids_missing_qlat.append(link)
+
+                else:
+                    if rlink in ref_qlat_dict.keys():
+                        qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], \
+                                    list(map(lambda x:fraction*x,qlat_dict[link] \
+                                    )))]
+
+                        ref_qlat_dict[rlink] = qlat_sum
+                    else:
+                        ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
+
+        # Segments with single crosswalk ID
+        elif len(xwalk_list) == 1:
+
+            if '.' in xwalk_list[0]:
+                    # Get ID and fraction of crosswalk
+                    link, fraction = xwalk_list[0].split('.')
+                    link = int(link)
+                    if fraction == '1':
+                        fraction = 1
+                    else:
+                        fraction = float(fraction)/1000
+
+                    if link in fraction_dict.keys():
+                        fraction_dict[link] += fraction
+                    else:
+                        fraction_dict[link] = fraction
+            else:
+                link = xwalk_list[0]
+
+            # Copy channel properties            
+            if link not in qlat_dict.keys():
+                comids_missing_qlat.append(i)
+
+            else:
+                if rlink in ref_qlat_dict.keys():
+                    qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], list(map(lambda x:fraction*x, \
+                                qlat_dict[link]\
+                                )))]
+
+                    ref_qlat_dict[rlink] = qlat_sum
+
+                else:
+                    ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
+
+        else:
+            print (f"no crosswalk for refactored segment {rlink}")
+
+    refac_qlat = pd.DataFrame().from_dict(ref_qlat_dict,orient='index')
+
+    return refac_qlat, comids_missing_qlat, fraction_dict 
