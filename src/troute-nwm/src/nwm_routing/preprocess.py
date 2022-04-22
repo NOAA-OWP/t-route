@@ -210,8 +210,9 @@ def nwm_network_preprocess(
         # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
         reservoir_da = data_assimilation_parameters.get(
             'reservoir_da', 
-            None
+            {}
         )
+        
         if reservoir_da:
             usgs_hybrid  = reservoir_da.get(
                 'reservoir_persistence_usgs', 
@@ -241,7 +242,7 @@ def nwm_network_preprocess(
         else:
             rfc_forecast = False
 
-        if param_file and reservoir_da:
+        if (param_file and reservoir_da) or (param_file and rfc_forecast):
             waterbody_type_specified = True
             (
                 waterbody_types_df, 
