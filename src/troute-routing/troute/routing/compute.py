@@ -1096,6 +1096,7 @@ def compute_diffusive_routing(
     results,
     diffusive_network_data,
     cpu_pool,
+    t0,
     dt,
     nts,
     q0,
@@ -1107,8 +1108,7 @@ def compute_diffusive_routing(
     diffusive_parameters,
     waterbodies_df,
     topobathy_data,
-):
-
+    ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
 
@@ -1131,6 +1131,12 @@ def compute_diffusive_routing(
             topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
         else:
             topobathy_data_bytw = pd.DataFrame()
+            
+        # diffusive streamflow DA activation switch
+        if da_parameter_dict['diffusive_streamflow_nudging']==True:
+            diff_usgs_df = usgs_df
+        else:
+            diff_usgs_df = pd.DataFrame()
 
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
@@ -1145,15 +1151,17 @@ def compute_diffusive_routing(
             q0,
             junction_inflows,
             qts_subdivisions,
+            t0,
             nts,
             dt,
             waterbodies_df,
             topobathy_data_bytw,
+            diff_usgs_df,
         )
         
         # run the simulation
         out_q, out_elv = diffusive.compute_diffusive(diffusive_inputs)
-        
+
         # unpack results
         rch_list, dat_all = diff_utils.unpack_output(
             diffusive_inputs['pynw'], 
