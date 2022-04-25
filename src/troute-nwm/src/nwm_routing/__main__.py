@@ -544,27 +544,28 @@ def main_v03(argv):
             # but there are DA parameters from the previous loop, then create a
             # dummy observations df. This allows the reservoir persistence to continue across loops.
             # USGS Reservoirs
-            if 2 in waterbody_types_df['reservoir_type'].unique():
-                if reservoir_usgs_df.empty and len(reservoir_usgs_param_df.index) > 0:
-                    reservoir_usgs_df = pd.DataFrame(
-                        data    = np.nan, 
-                        index   = reservoir_usgs_param_df.index, 
-                        columns = [t0]
-                    )
-                    
-            # USACE Reservoirs   
-            if 3 in waterbody_types_df['reservoir_type'].unique():
-                if reservoir_usace_df.empty and len(reservoir_usace_param_df.index) > 0:
-                    reservoir_usace_df = pd.DataFrame(
-                        data    = np.nan, 
-                        index   = reservoir_usgs_param_df.index, 
-                        columns = [t0]
-                    )
-                
-            # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
-            if 4 in waterbody_types_df['reservoir_type'].unique():
-                waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)     
-                
+            if not waterbody_types_df.empty:
+                if 2 in waterbody_types_df['reservoir_type'].unique():
+                    if reservoir_usgs_df.empty and len(reservoir_usgs_param_df.index) > 0:
+                        reservoir_usgs_df = pd.DataFrame(
+                            data    = np.nan, 
+                            index   = reservoir_usgs_param_df.index, 
+                            columns = [t0]
+                        )
+
+                # USACE Reservoirs   
+                if 3 in waterbody_types_df['reservoir_type'].unique():
+                    if reservoir_usace_df.empty and len(reservoir_usace_param_df.index) > 0:
+                        reservoir_usace_df = pd.DataFrame(
+                            data    = np.nan, 
+                            index   = reservoir_usgs_param_df.index, 
+                            columns = [t0]
+                        )
+
+                # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
+                if 4 in waterbody_types_df['reservoir_type'].unique():
+                    waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)     
+
             if showtiming:
                 forcing_end_time = time.time()
                 task_times['forcing_time'] += forcing_end_time - route_end_time
@@ -586,6 +587,7 @@ def main_v03(argv):
         if showtiming:
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
+            
         import pdb; pdb.set_trace()
         print(f"run: {run_results}")
         import pdb; pdb.set_trace()
@@ -600,6 +602,8 @@ def main_v03(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
+            waterbodies_df,
+            waterbody_types_df,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,

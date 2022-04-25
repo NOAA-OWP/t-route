@@ -57,6 +57,8 @@ def nwm_output_generator(
     qts_subdivisions,
     return_courant,
     cpu_pool,
+    waterbodies_df,
+    waterbody_types_df,
     data_assimilation_parameters=False,
     lastobs_df = None,
     link_gage_df = None,
@@ -111,6 +113,7 @@ def nwm_output_generator(
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
+    wbdyo = output_parameters.get("lakeout_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -119,7 +122,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or chano or test:
+    if csv_output_folder or rsrto or chrto or chano or test or wbdyo:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -130,6 +133,37 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
+
+        if wbdyo and not waterbodies_df.empty:
+            
+            # create waterbody dataframe for output to netcdf file
+            i_columns = pd.MultiIndex.from_product(
+                [range(nts), ["i"]]
+            ).to_flat_index()
+
+            wbdy = pd.concat(
+                [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
+                copy=False,
+            ).reset_index().rename(columns = {'index': 'ID'})
+
+            wbdy_id_list = waterbodies_df.index.values.tolist()
+            flow_df = flowveldepth.reset_index().rename(columns = {'index': 'ID'})
+            flow_df = flow_df[flow_df['ID'].isin(wbdy_id_list)]
+            q_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,1::3]],axis = 1).melt(id_vars = 'ID')
+            q_df['time'], q_df['variable'] = zip(*q_df.variable)
+            d_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,3::3]],axis = 1).melt(id_vars = 'ID')
+            d_df['time'], d_df['variable'] = zip(*d_df.variable)
+            i_df = wbdy[wbdy['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
+            i_df['time'], i_df['variable'] = zip(*i_df.variable)
+
+            #combine each of the datafames created above and merge with reservoir_types_df
+            wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
+                               waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
+                               on = 'ID')
+            
+            #filter only timesteps at dt*qts_subdivisions intervals
+            timestep_index = np.where(((wbdy_df.time.unique() + 1) * dt) % (dt * qts_subdivisions) == 0)
+            wbdy_df = wbdy_df[wbdy_df.time.isin(timestep_index[0])]
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
@@ -161,6 +195,25 @@ def nwm_output_generator(
 
     if test:
         flowveldepth.to_pickle(Path(test))
+    
+    if wbdyo and not waterbodies_df.empty:
+        
+        LOG.info("- writing t-route flow results to LAKEOUT files")
+        start = time.time()
+        
+        for i in wbdy_df.time.unique():
+            
+            nhd_io.write_waterbody_netcdf(
+                wbdyo, 
+                wbdy_df[wbdy_df.time==i], 
+                waterbodies_df, 
+                t0, 
+                dt, 
+                nts,
+            )
+        
+        
+        LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
     
     if rsrto:
 
@@ -284,36 +337,33 @@ def nwm_output_generator(
         
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
 
-    # Write out LastObs as netcdf.
-    # Assumed that this capability is only needed for AnA simulations
-    # i.e. when timeslice files are provided to support DA
-    streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
-    if streamflow_da:
-        lastobs_output_folder = streamflow_da.get(
-            "lastobs_output_folder", None
-            )
-    
-    data_assimilation_folder = data_assimilation_parameters.get(
-    "usgs_timeslices_folder", None
-    )
+        # Write out LastObs as netcdf.
+        # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
+        # folder is provided by the user.
+        lastobs_output_folder = None
+        nudging_true = None
+        streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
+        if streamflow_da:
+            lastobs_output_folder = streamflow_da.get(
+                "lastobs_output_folder", None
+                )
+            nudging_true = streamflow_da.get('streamflow_nudging', None)
 
-    # if lastobs_output_folder:
-    #     warnings.warn("No LastObs output folder directory specified in input file - not writing out LastObs data")
-    if data_assimilation_folder and lastobs_output_folder:
-        
-        LOG.info("- writing lastobs files")
-        start = time.time()
-        
-        nhd_io.lastobs_df_output(
-            lastobs_df,
-            dt,
-            nts,
-            t0,
-            link_gage_df['gages'],
-            lastobs_output_folder,
-        )
-        
-        LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
+        if nudging_true and lastobs_output_folder:
+
+            LOG.info("- writing lastobs files")
+            start = time.time()
+
+            nhd_io.lastobs_df_output(
+                lastobs_df,
+                dt,
+                nts,
+                t0,
+                link_gage_df['gages'],
+                lastobs_output_folder,
+            )
+
+            LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)
