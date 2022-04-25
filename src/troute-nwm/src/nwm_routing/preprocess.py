@@ -642,7 +642,7 @@ def nwm_initial_warmstate_preprocess(
                     'NHDWaterbodyComID'
                 ),
             )
-        
+            
         # if no restart file is provided, default initial states
         else:
             # TODO: Consider adding option to read cold state from route-link file

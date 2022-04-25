@@ -640,7 +640,7 @@ def diffusive_input_data_v02(
     
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
-
+    
     ordered_reaches = {}
     rchhead_reaches = {}
     rchbottom_reaches = {}
@@ -690,7 +690,7 @@ def diffusive_input_data_v02(
     #    of the first segment of its downstream reach right after their common junction.
     # --------------------------------------------------------------------------------------
     dbfksegID = int(str(tw) + str(2))
-
+    
     adj_alt1(
         mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
     )
@@ -707,12 +707,12 @@ def diffusive_input_data_v02(
         for head_segment, reach in ordered_reaches[x]:
             frj = frj + 1
             pynw[frj] = head_segment
-
+            
     frnw_col = 8
     frnw_g = fp_network_map(
         mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
     )
-
+    
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
 
@@ -745,6 +745,7 @@ def diffusive_input_data_v02(
     # ---------------------------------------------------------------------------------
     iniq = np.zeros((mxncomp_g, nrch_g))
     frj = -1
+    
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             seg_list = reach["segments_list"]
@@ -768,12 +769,13 @@ def diffusive_input_data_v02(
 
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
+    
     nts_ql_g = (
         int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
     )  # the number of the entire time steps of lateral flow data
-
+    
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
-
+    
     fp_qlat_map(
         mx_jorder,
         ordered_reaches,
@@ -792,7 +794,7 @@ def diffusive_input_data_v02(
     upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <------ this is a place holder until we figure out what to do with upstream boundary 
     nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
-
+    
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
