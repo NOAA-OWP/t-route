@@ -587,6 +587,8 @@ def main_v03(argv):
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
         import pdb; pdb.set_trace()
+        print(f"run: {run_results}")
+        import pdb; pdb.set_trace()
         nwm_output_generator(
             run,
             run_results,
