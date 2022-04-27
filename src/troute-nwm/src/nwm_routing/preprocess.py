@@ -359,6 +359,8 @@ def nwm_network_preprocess(
                 
                 diffusive_network_data[refac_tw]['rlink_reindex'] = refactored_domain[tw]['rlink_reindex']
                 
+                diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk']
+                
             else:
                 
                 # ===== build diffusive network data objects ==== 
@@ -383,8 +385,6 @@ def nwm_network_preprocess(
                 diffusive_network_data[tw]['rconn'] = rconn_diff
                 #true_tw = {3766334:3766336,1558950:1559020,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
                 
-                #if tw == 1558950:
-                    #import pdb; pdb.set_trace()
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
                 #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
                 
