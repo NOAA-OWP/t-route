@@ -946,7 +946,8 @@ def generate_qlat(qlat_lookup, orig_qlat):
                     if fraction == '1':
                         fraction = 1
                     else:
-                        fraction = float(fraction)/1000
+                        lfrac = len(fraction)
+                        fraction = float(fraction)/10**(lfrac-1)
 
                     if link in fraction_dict.keys():
                         fraction_dict[link] += fraction
@@ -976,7 +977,8 @@ def generate_qlat(qlat_lookup, orig_qlat):
                     if fraction == '1':
                         fraction = 1
                     else:
-                        fraction = float(fraction)/1000
+                        lfrac = len(fraction)
+                        fraction = float(fraction)/10**(lfrac-1)
 
                     if link in fraction_dict.keys():
                         fraction_dict[link] += fraction

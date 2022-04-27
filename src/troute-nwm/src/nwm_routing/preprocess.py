@@ -293,7 +293,6 @@ def nwm_network_preprocess(
         for tw in diffusive_domain:
         
             mainstem_segs = diffusive_domain[tw]['links']
-            #mainstem_segs = diffusive_domain[tw]
             
             # diffusive domain tributary segments
             trib_segs = []
@@ -321,7 +320,7 @@ def nwm_network_preprocess(
                 trap_params = trap_params.drop(mainstem_segs)
                 
                 # ===== build diffusive network data objects ==== 
-                refac_tw = refactored_domain[tw]['upstream_xwalk'][tw]
+                refac_tw = refactored_domain[tw]['refac_tw']
                 diffusive_network_data[refac_tw] = {}
                 
                 diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
@@ -330,9 +329,6 @@ def nwm_network_preprocess(
                 diffusive_network_data[refac_tw]['connections'] = nat_connections
                 
                 diffusive_network_data[refac_tw]['connections'].update({k: [refactored_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-                
-                # create dict of junction conversion
-                diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk']
                 
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
@@ -385,9 +381,12 @@ def nwm_network_preprocess(
                 )
                 
                 diffusive_network_data[tw]['rconn'] = rconn_diff
-                #true_tw = {3766334:3766336,1558950:1558950,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
-                #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
+                #true_tw = {3766334:3766336,1558950:1559020,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
+                
+                #if tw == 1558950:
+                    #import pdb; pdb.set_trace()
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
+                #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
                 
                 # RouteLink parameters
                 diffusive_network_data[tw]['param_df'] = param_df.filter(
