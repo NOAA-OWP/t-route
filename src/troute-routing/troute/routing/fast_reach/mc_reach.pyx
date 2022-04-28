@@ -304,7 +304,7 @@ cpdef object compute_network_structured(
                     reach_objects.append(lp_obj)
 
                 #If reservoir_type is 4, then initialize RFC forecast reservoir
-                elif (reservoir_types[wbody_index][0] == 4):
+                elif (reservoir_types[wbody_index][0] == 4 or reservoir_types[wbody_index][0] == 5):
                     
                     # Initialize rfc reservoir object
                     rfc_obj = MC_RFC(

@@ -284,19 +284,27 @@ def read_reservoir_parameter_file(
         ds_new = ds["reservoir_type"]
         df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
         
-        usgs_crosswalk = pd.DataFrame(
-            data = ds[usgs_gage_id_field].to_numpy(), 
-            index = ds[usgs_lake_id_field].to_numpy(), 
-            columns = [usgs_gage_id_field]
-        )
-        usgs_crosswalk.index.name = usgs_lake_id_field
+        ds_vars = [i for i in ds.data_vars] 
         
-        usace_crosswalk = pd.DataFrame(
-            data = ds[usace_gage_id_field].to_numpy(), 
-            index = ds[usace_lake_id_field].to_numpy(), 
-            columns = [usace_gage_id_field]
-        )
-        usace_crosswalk.index.name = usace_lake_id_field
+        if (usgs_gage_id_field in ds_vars) and (usgs_lake_id_field in ds_vars):
+            usgs_crosswalk = pd.DataFrame(
+                data = ds[usgs_gage_id_field].to_numpy(), 
+                index = ds[usgs_lake_id_field].to_numpy(), 
+                columns = [usgs_gage_id_field]
+            )
+            usgs_crosswalk.index.name = usgs_lake_id_field
+        else:
+            usgs_crosswalk = None
+        
+        if (usace_gage_id_field in ds_vars) and (usace_lake_id_field in ds_vars):
+            usace_crosswalk = pd.DataFrame(
+                data = ds[usace_gage_id_field].to_numpy(), 
+                index = ds[usace_lake_id_field].to_numpy(), 
+                columns = [usace_gage_id_field]
+            )
+            usace_crosswalk.index.name = usace_lake_id_field
+        else:
+            usace_crosswalk = None
         
     # drop duplicate indices
     df1 = (df1.reset_index()
