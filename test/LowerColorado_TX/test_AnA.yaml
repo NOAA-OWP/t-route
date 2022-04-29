@@ -1,4 +1,4 @@
-# $ python -m nwm_routing -f -V3 test_AnA_diff.yaml
+# $ python -m nwm_routing -f -V3 test_AnA.yaml
 #--------------------------------------------------------------------------------
 log_parameters:
     #----------
@@ -74,7 +74,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/lcra_diffusive_natural_xs_xidpost.pkl
+    test_output: output/LowerColorado_flowveldepth.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/
@@ -84,5 +84,6 @@ output_parameters:
     chanobs_output:
         #----------
         chanobs_output_directory: output/
-        chanobs_filepath        : lcra_diffusive_natural_xs_xidpost.nc
+        chanobs_filepath        : LowerColorado_chanobs.nc
+    lakeout_output: lakeout/
     

@@ -290,7 +290,7 @@ def nwm_network_preprocess(
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
-        
+
         for tw in diffusive_domain:
         
             mainstem_segs = diffusive_domain[tw]['links']
@@ -405,7 +405,7 @@ def nwm_network_preprocess(
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
-            
+    
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []

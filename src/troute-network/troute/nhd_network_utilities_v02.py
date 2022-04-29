@@ -249,7 +249,7 @@ def build_channel_initial_state(
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
-        )  
+        )
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
@@ -261,13 +261,13 @@ def build_forcing_sets(
     forcing_parameters,
     t0
 ):
-
+    
     run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-    
+
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
