@@ -359,7 +359,9 @@ def nwm_network_preprocess(
                 
                 diffusive_network_data[refac_tw]['rlink_reindex'] = refactored_domain[tw]['rlink_reindex']
                 
-                diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk']
+                diffusive_network_data[refac_tw]['outputs_xwalk'] = refactored_domain[tw]['outputs_xwalk']
+                
+                diffusive_network_data[refac_tw]['gages_xwalk'] = {v: k for k, v in refactored_domain[tw]['gages_xwalk'].items()}
                 
             else:
                 

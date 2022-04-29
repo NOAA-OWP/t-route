@@ -149,7 +149,7 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     rconn                (dict): reverse network connections
     
     '''
-
+    
     # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
     

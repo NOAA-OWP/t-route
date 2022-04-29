@@ -127,7 +127,7 @@ def nwm_route(
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
-        #import pdb; pdb.set_trace()
+        
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(
@@ -588,9 +588,6 @@ def main_v03(argv):
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
             
-        import pdb; pdb.set_trace()
-        print(f"run: {run_results}")
-        import pdb; pdb.set_trace()
         nwm_output_generator(
             run,
             run_results,
@@ -604,10 +601,12 @@ def main_v03(argv):
             cpu_pool,
             waterbodies_df,
             waterbody_types_df,
+            compute_parameters.get("hybrid_parameters", False),
+            diffusive_network_data,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
-            link_lake_crosswalk,
+            link_lake_crosswalk
         )
         
         if showtiming:
@@ -864,7 +863,7 @@ async def main_v03_async(argv):
 
         if waterbody_type_specified:
             waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-        import pdb; pdb.set_trace()
+        
         output_task = loop.run_in_executor(
             pool_IO,
             nwm_output_generator,
@@ -941,7 +940,7 @@ async def main_v03_async(argv):
 
     if waterbody_type_specified:
         waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-    import pdb; pdb.set_trace()
+    
     output_task = await loop.run_in_executor(
         pool_IO,
         nwm_output_generator,

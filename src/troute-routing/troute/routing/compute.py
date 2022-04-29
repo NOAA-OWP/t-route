@@ -950,7 +950,6 @@ def compute_nhd_routing_v02(
             results = parallel(jobs)
 
     else:  # Execute in serial
-        #import pdb; pdb.set_trace()
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
@@ -1122,19 +1121,11 @@ def compute_diffusive_routing(
                     trib_segs = i[0][x]
                     trib_flow = i[1][x, ::3]
                 else:
-                    try:
-                        trib_segs = np.append(trib_segs, i[0][x])
-                        trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
-                    except: 
-                        #import pdb; pdb.set_trace()
-                        trib_segs = i[0][x]
-                        trib_flow = i[1][x, ::3]
-                        #import pdb; pdb.set_trace()
-        try:            
-            # create DataFrame of junction inflow data            
-            junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
-        except: 
-            import pdb; pdb.set_trace()
+                    trib_segs = np.append(trib_segs, i[0][x])
+                    trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+                    
+        # create DataFrame of junction inflow data            
+        junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
         
         if not topobathy_data.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
