@@ -1,4 +1,4 @@
-# $ python -m nwm_routing -f -V3 test_AnA.yaml
+# $ python -m nwm_routing -f -V3 test_AnA_diff.yaml
 #--------------------------------------------------------------------------------
 log_parameters:
     #----------
@@ -38,10 +38,12 @@ compute_parameters:
         wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
-        run_hybrid_routing: False
-        diffusive_domain  : domain/diffusive_domain.yaml
-        use_natl_xsections: False
-        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc
+        run_hybrid_routing: True
+        diffusive_domain  : domain/lcra_test_domain_041822.yaml
+        refactored_domain : domain/lcra_refactored_diffusive_domain.yaml
+        run_refactored_network: False
+        use_natl_xsections: True
+        topobathy_domain  : domain/lcra_diffusive_natural_xs_xidpost.nc
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
@@ -72,7 +74,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/LowerColorado_flowveldepth.pkl
+    test_output: output/lcra_diffusive_natural_xs_xidpost.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/
@@ -82,6 +84,5 @@ output_parameters:
     chanobs_output:
         #----------
         chanobs_output_directory: output/
-        chanobs_filepath        : LowerColorado_chanobs.nc
-    lakeout_output: lakeout/
+        chanobs_filepath        : lcra_diffusive_natural_xs_xidpost.nc
     
