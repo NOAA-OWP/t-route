@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import time
 import pandas as pd
 import numpy as np
+import copy
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
@@ -242,110 +243,123 @@ def compute_nhd_routing_v02(
     waterbody_parameters,
     waterbody_types_df,
     waterbody_type_specified,
+    subnetwork_list,
 ):
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
     param_df = param_df.astype("float32")
-
+    
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
     if parallel_compute_method == "by-subnetwork-jit-clustered":
-        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
-            connections, rconn, subnetwork_target_size
-        )
-        subnetworks_only_ordered_jit = defaultdict(dict)
-        subnetworks = defaultdict(dict)
-        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
-            intw = independent_networks[tw]
-            for order, subnet_sets in ordered_network.items():
-                subnetworks_only_ordered_jit[order].update(subnet_sets)
-                for subn_tw, subnetwork in subnet_sets.items():
-                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+        
+        # Create subnetwork objects if they have not already been created
+        if not subnetwork_list[0] or not subnetwork_list[1]:
+            networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+                connections, rconn, subnetwork_target_size
+            )
+            subnetworks_only_ordered_jit = defaultdict(dict)
+            subnetworks = defaultdict(dict)
+            for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+                intw = independent_networks[tw]
+                for order, subnet_sets in ordered_network.items():
+                    subnetworks_only_ordered_jit[order].update(subnet_sets)
+                    for subn_tw, subnetwork in subnet_sets.items():
+                        subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
-        reaches_ordered_bysubntw = defaultdict(dict)
-        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
-            for subn_tw, subnet in ordered_subn_dict.items():
-                conn_subn = {k: connections[k] for k in subnet if k in connections}
-                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                
-                if not waterbodies_df.empty and not usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_gages_waterbodies_and_junctions,
-                        set(usgs_df.index.values),
-                        set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
-                
-                elif waterbodies_df.empty and not usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_gages_and_junctions,
-                        set(usgs_df.index.values),
-                        rconn_subn
-                        )
-                
-                elif not waterbodies_df.empty and usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_waterbodies_and_junctions,
-                        set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
-                
-                else:
-                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                
-                reaches_ordered_bysubntw[order][
-                    subn_tw
-                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+            reaches_ordered_bysubntw = defaultdict(dict)
+            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+                for subn_tw, subnet in ordered_subn_dict.items():
+                    conn_subn = {k: connections[k] for k in subnet if k in connections}
+                    rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
 
-        cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
-        # Otherwise, keep adding reaches.
+                    if not waterbodies_df.empty and not usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_gages_waterbodies_and_junctions,
+                            set(usgs_df.index.values),
+                            set(waterbodies_df.index.values),
+                            rconn_subn
+                            )
 
-        reaches_ordered_bysubntw_clustered = defaultdict(dict)
+                    elif waterbodies_df.empty and not usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_gages_and_junctions,
+                            set(usgs_df.index.values),
+                            rconn_subn
+                            )
 
-        for order in subnetworks_only_ordered_jit:
-            cluster = 0
-            reaches_ordered_bysubntw_clustered[order][cluster] = {
-                "segs": [],
-                "upstreams": {},
-                "tw": [],
-                "subn_reach_list": [],
-            }
-            for twi, (subn_tw, subn_reach_list) in enumerate(
-                reaches_ordered_bysubntw[order].items(), 1
-            ):
-                segs = list(chain.from_iterable(subn_reach_list))
-                reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
-                reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
-                    subnetworks[subn_tw]
-                )
+                    elif not waterbodies_df.empty and usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_waterbodies_and_junctions,
+                            set(waterbodies_df.index.values),
+                            rconn_subn
+                            )
 
-                reaches_ordered_bysubntw_clustered[order][cluster]["tw"].append(subn_tw)
-                reaches_ordered_bysubntw_clustered[order][cluster][
-                    "subn_reach_list"
-                ].extend(subn_reach_list)
+                    else:
+                        path_func = partial(nhd_network.split_at_junction, rconn_subn)
 
-                if (
-                    len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
-                    >= cluster_threshold * subnetwork_target_size
-                ) and (
-                    twi
-                    < len(reaches_ordered_bysubntw[order])
-                    # i.e., we haven't reached the end
-                    # TODO: perhaps this should be a while condition...
+                    reaches_ordered_bysubntw[order][
+                        subn_tw
+                    ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+            cluster_threshold = 0.65  # When a job has a total segment count 65% of the target size, compute it
+            # Otherwise, keep adding reaches.
+
+            reaches_ordered_bysubntw_clustered = defaultdict(dict)
+
+            for order in subnetworks_only_ordered_jit:
+                cluster = 0
+                reaches_ordered_bysubntw_clustered[order][cluster] = {
+                    "segs": [],
+                    "upstreams": {},
+                    "tw": [],
+                    "subn_reach_list": [],
+                }
+                for twi, (subn_tw, subn_reach_list) in enumerate(
+                    reaches_ordered_bysubntw[order].items(), 1
                 ):
-                    cluster += 1
-                    reaches_ordered_bysubntw_clustered[order][cluster] = {
-                        "segs": [],
-                        "upstreams": {},
-                        "tw": [],
-                        "subn_reach_list": [],
-                    }
+                    segs = list(chain.from_iterable(subn_reach_list))
+                    reaches_ordered_bysubntw_clustered[order][cluster]["segs"].extend(segs)
+                    reaches_ordered_bysubntw_clustered[order][cluster]["upstreams"].update(
+                        subnetworks[subn_tw]
+                    )
 
+                    reaches_ordered_bysubntw_clustered[order][cluster]["tw"].append(subn_tw)
+                    reaches_ordered_bysubntw_clustered[order][cluster][
+                        "subn_reach_list"
+                    ].extend(subn_reach_list)
+
+                    if (
+                        len(reaches_ordered_bysubntw_clustered[order][cluster]["segs"])
+                        >= cluster_threshold * subnetwork_target_size
+                    ) and (
+                        twi
+                        < len(reaches_ordered_bysubntw[order])
+                        # i.e., we haven't reached the end
+                        # TODO: perhaps this should be a while condition...
+                    ):
+                        cluster += 1
+                        reaches_ordered_bysubntw_clustered[order][cluster] = {
+                            "segs": [],
+                            "upstreams": {},
+                            "tw": [],
+                            "subn_reach_list": [],
+                        }
+
+            # save subnetworks_only_ordered_jit and reaches_ordered_bysubntw_clustered in a list
+            # to be passed on to next loop. Create a deep copy of this list to prevent it from being
+            # altered before being returned
+            subnetwork_list = [subnetworks_only_ordered_jit, reaches_ordered_bysubntw_clustered]
+            subnetwork_list = copy.deepcopy(subnetwork_list)
+
+        else:
+            subnetworks_only_ordered_jit, reaches_ordered_bysubntw_clustered = subnetwork_list
+        
         if 1 == 1:
             LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             LOG.info("starting Parallel JIT calculation")
-
+        
         start_para_time = time.time()
         # if 1 == 1:
         with Parallel(n_jobs=cpu_pool, backend="loky") as parallel:
@@ -554,51 +568,62 @@ def compute_nhd_routing_v02(
             LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
 
     elif parallel_compute_method == "by-subnetwork-jit":
-        networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
-            connections, rconn, subnetwork_target_size
-        )
-        subnetworks_only_ordered_jit = defaultdict(dict)
-        subnetworks = defaultdict(dict)
-        for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
-            intw = independent_networks[tw]
-            for order, subnet_sets in ordered_network.items():
-                subnetworks_only_ordered_jit[order].update(subnet_sets)
-                for subn_tw, subnetwork in subnet_sets.items():
-                    subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
+        # Create subnetwork objects if they have not already been created
+        if not subnetwork_list[0] or not subnetwork_list[1] or not subnetwork_list[2]:
+            networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
+                connections, rconn, subnetwork_target_size
+            )
+            subnetworks_only_ordered_jit = defaultdict(dict)
+            subnetworks = defaultdict(dict)
+            for tw, ordered_network in networks_with_subnetworks_ordered_jit.items():
+                intw = independent_networks[tw]
+                for order, subnet_sets in ordered_network.items():
+                    subnetworks_only_ordered_jit[order].update(subnet_sets)
+                    for subn_tw, subnetwork in subnet_sets.items():
+                        subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
 
-        reaches_ordered_bysubntw = defaultdict(dict)
-        for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
-            for subn_tw, subnet in ordered_subn_dict.items():
-                conn_subn = {k: connections[k] for k in subnet if k in connections}
-                rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-                if not waterbodies_df.empty and not usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_gages_waterbodies_and_junctions,
-                        set(usgs_df.index.values),
-                        set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
-                
-                elif waterbodies_df.empty and not usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_gages_and_junctions,
-                        set(usgs_df.index.values),
-                        rconn_subn
-                        )
-                
-                elif not waterbodies_df.empty and usgs_df.empty:
-                    path_func = partial(
-                        nhd_network.split_at_waterbodies_and_junctions,
-                        set(waterbodies_df.index.values),
-                        rconn_subn
-                        )
-                
-                else:
-                    path_func = partial(nhd_network.split_at_junction, rconn_subn)
-                reaches_ordered_bysubntw[order][
-                    subn_tw
-                ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+            reaches_ordered_bysubntw = defaultdict(dict)
+            for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
+                for subn_tw, subnet in ordered_subn_dict.items():
+                    conn_subn = {k: connections[k] for k in subnet if k in connections}
+                    rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
+                    if not waterbodies_df.empty and not usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_gages_waterbodies_and_junctions,
+                            set(usgs_df.index.values),
+                            set(waterbodies_df.index.values),
+                            rconn_subn
+                            )
 
+                    elif waterbodies_df.empty and not usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_gages_and_junctions,
+                            set(usgs_df.index.values),
+                            rconn_subn
+                            )
+
+                    elif not waterbodies_df.empty and usgs_df.empty:
+                        path_func = partial(
+                            nhd_network.split_at_waterbodies_and_junctions,
+                            set(waterbodies_df.index.values),
+                            rconn_subn
+                            )
+
+                    else:
+                        path_func = partial(nhd_network.split_at_junction, rconn_subn)
+                    reaches_ordered_bysubntw[order][
+                        subn_tw
+                    ] = nhd_network.dfs_decomposition(rconn_subn, path_func)
+
+            # save subnetworks_only_ordered_jit and reaches_ordered_bysubntw_clustered in a list
+            # to be passed on to next loop. Create a deep copy of this list to prevent it from being
+            # altered before being returned
+            subnetwork_list = [subnetworks_only_ordered_jit, reaches_ordered_bysubntw, subnetworks]
+            subnetwork_list = copy.deepcopy(subnetwork_list)
+
+        else:
+            subnetworks_only_ordered_jit, reaches_ordered_bysubntw, subnetworks = subnetwork_list
+            
         if 1 == 1:
             LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
             LOG.info("starting Parallel JIT calculation")
@@ -1090,7 +1115,7 @@ def compute_nhd_routing_v02(
                 )
             )
 
-    return results
+    return results, subnetwork_list
 
 def compute_diffusive_routing(
     results,
