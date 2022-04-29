@@ -125,11 +125,12 @@ def nwm_output_generator(
 
     
     if csv_output_folder or rsrto or chrto or chano or test or wbdyo:
+
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
         ).to_flat_index()
-        
+
         flowveldepth = pd.concat(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,

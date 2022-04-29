@@ -149,7 +149,7 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     rconn                (dict): reverse network connections
     
     '''
-    
+
     # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
     
@@ -203,13 +203,13 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 def build_channel_initial_state(
     restart_parameters, hybrid_params, diffusive_network_data, segment_index=pd.Index([]), 
 ):
-    
+
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
-    
+
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
         
@@ -249,12 +249,11 @@ def build_channel_initial_state(
         # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
-        )
-                
+        )  
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
-    
+
     return q0
 
 
@@ -262,6 +261,7 @@ def build_forcing_sets(
     forcing_parameters,
     t0
 ):
+
     run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     nts = forcing_parameters.get("nts", None)
@@ -360,7 +360,6 @@ def build_forcing_sets(
 
             final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'
                     ][-1])
-            
             final_timestamp_str = nhd_io.get_param_str(final_chrtout,
                     'model_output_valid_time')
             run_sets[j]['final_timestamp'] = \
@@ -382,12 +381,11 @@ def build_qlateral_array(
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
-    
+
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-    
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         if "qlat_files" in forcing_parameters:
@@ -456,10 +454,10 @@ def build_qlateral_array(
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
-    
+
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-    
+
     return qlat_df
 
 def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):

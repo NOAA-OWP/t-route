@@ -485,7 +485,7 @@ def nwm_network_preprocess(
                 "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file. Aborting preprocessing routine"
             )
             quit()
-    
+
     return (
         connections,
         param_df,
@@ -644,7 +644,7 @@ def nwm_initial_warmstate_preprocess(
                     'NHDWaterbodyComID'
                 ),
             )
-            
+        
         # if no restart file is provided, default initial states
         else:
             # TODO: Consider adding option to read cold state from route-link file

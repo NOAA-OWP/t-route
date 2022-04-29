@@ -89,7 +89,7 @@ def nwm_route(
         )
     else:
         LOG.info(f"executing routing computation ...")
-    
+
     start_time_mc = time.time()
     results = compute_nhd_routing_v02(
         downstream_connections,
@@ -127,7 +127,7 @@ def nwm_route(
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
-        
+
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(
@@ -587,7 +587,7 @@ def main_v03(argv):
         if showtiming:
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
-            
+        
         nwm_output_generator(
             run,
             run_results,
@@ -863,7 +863,7 @@ async def main_v03_async(argv):
 
         if waterbody_type_specified:
             waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-        
+
         output_task = loop.run_in_executor(
             pool_IO,
             nwm_output_generator,
@@ -940,7 +940,7 @@ async def main_v03_async(argv):
 
     if waterbody_type_specified:
         waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-    
+
     output_task = await loop.run_in_executor(
         pool_IO,
         nwm_output_generator,
