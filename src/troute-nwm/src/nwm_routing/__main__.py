@@ -127,7 +127,7 @@ def nwm_route(
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
-
+                
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(
@@ -606,7 +606,7 @@ def main_v03(argv):
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
-            link_lake_crosswalk
+            link_lake_crosswalk,
         )
         
         if showtiming:
