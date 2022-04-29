@@ -39,11 +39,11 @@ compute_parameters:
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
     hybrid_parameters:
         run_hybrid_routing: True
-        diffusive_domain  : domain/lcra_test_domain_041822.yaml
-        refactored_domain : domain/lcra_refactored_diffusive_domain.yaml
+        diffusive_domain  : domain/diffusive_domain.yaml
+        refactored_domain : domain/refactored_diffusive_domain.yaml
         run_refactored_network: False
         use_natl_xsections: True
-        topobathy_domain  : domain/lcra_diffusive_natural_xs_xidpost.nc
+        topobathy_domain  : domain/diffusive_natural_xs_lcra_041822.nc
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
