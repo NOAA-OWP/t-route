@@ -250,7 +250,6 @@ def compute_nhd_routing_v02(
 
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
-    
     if parallel_compute_method == "by-subnetwork-jit-clustered":
         networks_with_subnetworks_ordered_jit = nhd_network.build_subnetworks(
             connections, rconn, subnetwork_target_size
@@ -1114,10 +1113,10 @@ def compute_diffusive_routing(
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
 
         # extract junction inflows from results array
-        for jt, i in enumerate(results):
+        for j, i in enumerate(results):
             x = np.in1d(i[0], diffusive_network_data[tw]['tributary_segments'])
             if sum(x) > 0:
-                if jt == 0:
+                if j == 0:
                     trib_segs = i[0][x]
                     trib_flow = i[1][x, ::3]
                 else:
@@ -1132,7 +1131,7 @@ def compute_diffusive_routing(
             topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
         else:
             topobathy_data_bytw = pd.DataFrame()
-        
+        import pdb; pdb.set_trace()
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1174,8 +1173,6 @@ def compute_diffusive_routing(
                 # place-holder for reservoir DA paramters
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
-                # place holder for reservoir inflows
-                np.zeros(dat_all[~x,3::3].shape)
             )
         )
 
