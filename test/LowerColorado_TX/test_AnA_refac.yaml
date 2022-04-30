@@ -51,7 +51,7 @@ compute_parameters:
         qlat_input_folder       : channel_forcing
         qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
         nts                     : 336
-        max_loop_size           : 28    
+        max_loop_size           : 28   
     data_assimilation_parameters:
         #----------
         usgs_timeslices_folder   : usgs_TimeSlice/
