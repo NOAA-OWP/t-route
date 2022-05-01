@@ -1108,6 +1108,7 @@ def compute_diffusive_routing(
     diffusive_parameters,
     waterbodies_df,
     topobathy_data,
+    refactored_diffusive_domain,
     ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
@@ -1157,6 +1158,7 @@ def compute_diffusive_routing(
             waterbodies_df,
             topobathy_data_bytw,
             diff_usgs_df,
+            refactored_diffusive_domain[tw],
         )
         
         # run the simulation

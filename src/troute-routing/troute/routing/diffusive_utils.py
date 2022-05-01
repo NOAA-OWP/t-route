@@ -3,6 +3,7 @@ from functools import partial, reduce
 import troute.nhd_network as nhd_network
 from datetime import datetime, timedelta
 import pandas as pd
+from collections import Counter
 
 
 def adj_alt1(
@@ -95,8 +96,8 @@ def fp_network_map(
                 nusrch = len(reach["upstream_bottom_segments"])
                 frnw_g[frj, 2] = nusrch  # the number of upstream reaches
                 usrch_bseg_list = list(reach["upstream_bottom_segments"])
-                usrch_hseg_mainstem_j=-100 # ini.value of frj* of reach on mainstem that is just upstream of the current reach of frj
-                frnw_g[frj, 2 + nusrch + 1] = usrch_hseg_mainstem_j + 1
+                #usrch_hseg_mainstem_j=-100 # ini.value of frj* of reach on mainstem that is just upstream of the current reach of frj
+                #frnw_g[frj, 2 + nusrch + 1] = usrch_hseg_mainstem_j + 1
                 i = 0
                 r = 0
                 for usrch in range(0, nusrch):
@@ -110,11 +111,11 @@ def fp_network_map(
                             i = i + 1
                             frnw_g[frj, 2 + i] = j
                             # find if the selected headseg ID of an upstream reach belong to mainstem segment
-                            if mainstem_seg_list.count(usrch_hseg_id) > 0:
-                                r = r+1
-                                usrch_hseg_mainstem_j=j
+                            #if mainstem_seg_list.count(usrch_hseg_id) > 0:
+                            #    r = r+1
+                            #    usrch_hseg_mainstem_j=j
                                 # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
-                                frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
+                            #    frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
 
             if seg_list.count(dbfksegID) > 0:
                 # a reach where downstream boundary condition is set.
@@ -581,7 +582,9 @@ def diffusive_input_data_v02(
     waterbodies_df,
     topobathy_data_bytw,
     usgs_df,
+    refactored_diffusive_domain,
 ):
+
     """
     Build input data objects for diffusive wave model
     
@@ -780,7 +783,16 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
-   
+    
+    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
+    frj= -1
+    with open("./output/pynw.txt",'a') as pynwtxt:    
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:       
+                frj= frj+1     
+                pynwtxt.write("%s %s\n" %\
+                           (str(frj+1), str(pynw[frj]))) 
+    import pdb; pdb.set_trace()
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -917,10 +929,91 @@ def diffusive_input_data_v02(
                                                 dt_da_g,
                                                 t0_g,
                                                 tfin_g)
-  
+    
+    
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-12-1
+
+    #       Prepare map between non-refactored(defined by RouteLink.nc) and refactored hydrofabric   
+    #
+    #  link : stream segment of non-refactored hydrofabric
+    #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
+    #                                                    increase min.lenght of segment)
+    # ---------------------------------------------------------------------------------------------    
+    rfrnw_g = frnw_g
+    rpynw = {}   
+    
+    for frj in range(0, nrch_g):
+        if frnw_g[frj, 2] == 0: # number of upstream reaches = 0 means it's a tributary entering mainstem
+            rpynw[frj] = pynw[frj]
+        elif frnw_g[frj, 2] > 0: # number of upstream reaches > 0 means it's a mainstem
+            rpynw[frj] = refactored_diffusive_domain['incoming_tribs'][pynw[frj-1]]
+            
+    #n_headrlink = len(set([*refactored_diffusive_domain['incoming_tribs'].values()])) # counts unique values  
+    head_rlink_frequency = Counter(refactored_diffusive_domain['incoming_tribs'].values())
+    head_rlink_multi_trib_links = {key: value for key,value in head_rlink_frequency.items() if value>1}
+    
+    frj = -1
+    while frj < nrch_g-1:
+        frj = frj + 1  
+        if rpynw[frj] in head_rlink_multi_trib_links.keys():
+            # more than one tributary link enter to a single mainstem rlink
+            ntrib_links = head_rlink_frequency[rpynw[frj]] # number of tributary links entering to this mainstem rlink.   
+            
+            rfrj = frj
+            niter = ntrib_links-1
+            temp_ntrib_links = ntrib_links
+            for iter in range(0, niter):
+                # step1: label it invalid reach by the dummy value
+                rfrnw_g[rfrj, :] = -33 
+                rpynw[rfrj] = -33
+                
+                # step2: fix downstream frjs of upstream reaches both in mainstem and tributary
+                if rfrnw_g[rfrj-1, 1] != -33:
+                    rfrnw_g[rfrj-1, 1] = rfrnw_g[rfrj-1, 1] + 2*(temp_ntrib_links - 1)
+                if rfrnw_g[rfrj-2, 1] != -33:
+                    rfrnw_g[rfrj-2, 1] = rfrnw_g[rfrj-2, 1] + 2*(temp_ntrib_links - 1)
+                    
+                rfrj = rfrj + 2
+                temp_ntrib_links = temp_ntrib_links - 1
+                
+            # step3:  fix values of frj of final mainstem rlink  
+            rfrnw_g[rfrj, 2] = 1 + ntrib_links # number of upstream reaches (1 for upstream mainstem rlink)
+            frj_start = rfrj - 2* ntrib_links 
+            frj_end   = rfrj - 1
+            i=2
+            for frj2 in range(frj_start, frj_end + 1):
+                if rfrnw_g[frj2, 1] != -33:
+                    # frj of upstream reaches
+                    i = i + 1
+                    rfrnw_g[rfrj, i] = frj2 + 1 # +1 becasue python row index + 1 = fortran row index
+            frj = rfrj         
+                               
+    np.savetxt("./output/refactored_frnw_ar.txt", rfrnw_g, fmt='%10i')    
+    
+    with open("./output/refactored_pynw.txt",'a') as rpynwtxt:    
+        for frj in range(0, nrch_g):   
+            rpynwtxt.write("%s %s\n" %\
+                    (str(frj+1), str(rpynw[frj])))  
+    
+    import pdb; pdb.set_trace()
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-12-2
+
+    #       Prepare map between non-refactored(defined by RouteLink.nc) and refactored hydrofabric   
+    #
+    #  link : stream segment of non-refactored hydrofabric
+    #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
+    #                                                    increase min.lenght of segment)
+    # ---------------------------------------------------------------------------------------------       
+    
+    
+
+    
+
     # TODO: Call uniform flow lookup table creation kernel    
     # ---------------------------------------------------------------------------------
-    #                              Step 0-12
+    #                              Step 0-13
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------

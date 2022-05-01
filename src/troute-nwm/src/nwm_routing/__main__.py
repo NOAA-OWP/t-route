@@ -76,6 +76,7 @@ def nwm_route(
     diffusive_parameters,
     diffusive_network_data,
     topobathy_data,
+    refactored_diffusive_domain,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -146,6 +147,7 @@ def nwm_route(
                 diffusive_parameters,
                 waterbodies_df,
                 topobathy_data,
+                refactored_diffusive_domain,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -360,6 +362,7 @@ def main_v03(argv):
             usace_lake_gage_crosswalk,
             diffusive_network_data,
             topobathy_data,
+            refactored_diffusive_domain,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
@@ -489,6 +492,7 @@ def main_v03(argv):
             diffusive_parameters,
             diffusive_network_data,
             topobathy_data,
+            refactored_diffusive_domain,
         )
         
         if showtiming:
