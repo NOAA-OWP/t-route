@@ -40,11 +40,18 @@ compute_parameters:
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/diffusive_domain.yaml
+<<<<<<< HEAD
         use_natl_xsections: True
         topobathy_domain  : domain/diffusive_natural_xs_03312022.nc 
         run_refactored_network: True
         refactored_domain: domain/lcra_refactored_diffusive_domain_042122.yaml
         refactored_topobathy_domain: domain/lcra_refac_diffusive_natural_xs_042122.nc
+=======
+        refactored_domain : domain/refactored_diffusive_domain.yaml
+        run_refactored_network: False
+        use_natl_xsections: True
+        topobathy_domain  : domain/diffusive_natural_xs_lcra_041822.nc
+>>>>>>> 28caeed45d5350ea5954db76b4eaa51497dc32ef
     forcing_parameters:
         #----------
         qts_subdivisions        : 12

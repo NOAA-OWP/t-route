@@ -59,6 +59,8 @@ def nwm_output_generator(
     cpu_pool,
     waterbodies_df,
     waterbody_types_df,
+    hybrid_params,
+    diffusive_network_data,
     data_assimilation_parameters=False,
     lastobs_df = None,
     link_gage_df = None,
@@ -133,7 +135,20 @@ def nwm_output_generator(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
-
+        
+        if hybrid_params:
+            # xwalk rlink outputs to link for refactored segments
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                for tw in diffusive_network_data:
+                    for link,rlink in diffusive_network_data[tw]['outputs_xwalk'].items():
+                        flowveldepth.loc[link] = flowveldepth.loc[rlink]
+                    
+                    flowveldepth.drop(diffusive_network_data[tw]['mainstem_segs'], inplace=True)
+                    
+                    # Update gages in refactored network to link index
+                    link_gage_df.rename(index=diffusive_network_data[tw]['gages_xwalk'],inplace=True)
+        
         if wbdyo and not waterbodies_df.empty:
             
             # create waterbody dataframe for output to netcdf file

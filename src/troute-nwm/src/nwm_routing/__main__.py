@@ -76,6 +76,7 @@ def nwm_route(
     diffusive_parameters,
     diffusive_network_data,
     topobathy_data,
+    subnetwork_list,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -89,7 +90,7 @@ def nwm_route(
         )
     else:
         LOG.info(f"executing routing computation ...")
-    
+
     start_time_mc = time.time()
     results = compute_nhd_routing_v02(
         downstream_connections,
@@ -121,13 +122,18 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
+        subnetwork_list,
     )
+    
+    # returns list, first item is run result, second item is subnetwork items
+    subnetwork_list = results[1]
+    results = results[0]
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
-        #import pdb; pdb.set_trace()
+                
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(
@@ -151,7 +157,7 @@ def nwm_route(
 
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
-    return results
+    return results, subnetwork_list
 
 
 def new_nwm_q0(run_results):
@@ -446,6 +452,11 @@ def main_v03(argv):
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - ic_end_time
 
+    # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
+    # on first iteration of for loop only. For additional loops this will be passed
+    # to function from inital loop. 
+    subnetwork_list = [None, None, None]
+        
     for run_set_iterator, run in enumerate(run_sets):
 
         t0 = run.get("t0")
@@ -492,7 +503,12 @@ def main_v03(argv):
             diffusive_parameters,
             diffusive_network_data,
             topobathy_data,
+            subnetwork_list,
         )
+        
+        # returns list, first item is run result, second item is subnetwork items
+        subnetwork_list = run_results[1]
+        run_results = run_results[0]
         
         if showtiming:
             route_end_time = time.time()
@@ -587,10 +603,7 @@ def main_v03(argv):
         if showtiming:
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
-            
-        import pdb; pdb.set_trace()
-        print(f"run: {run_results}")
-        import pdb; pdb.set_trace()
+        
         nwm_output_generator(
             run,
             run_results,
@@ -604,6 +617,8 @@ def main_v03(argv):
             cpu_pool,
             waterbodies_df,
             waterbody_types_df,
+            compute_parameters.get("hybrid_parameters", False),
+            diffusive_network_data,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,
@@ -864,7 +879,7 @@ async def main_v03_async(argv):
 
         if waterbody_type_specified:
             waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-        import pdb; pdb.set_trace()
+
         output_task = loop.run_in_executor(
             pool_IO,
             nwm_output_generator,
@@ -941,7 +956,7 @@ async def main_v03_async(argv):
 
     if waterbody_type_specified:
         waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
-    import pdb; pdb.set_trace()
+
     output_task = await loop.run_in_executor(
         pool_IO,
         nwm_output_generator,

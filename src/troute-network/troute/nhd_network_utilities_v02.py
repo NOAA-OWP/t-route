@@ -203,13 +203,13 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 def build_channel_initial_state(
     restart_parameters, hybrid_params, diffusive_network_data, segment_index=pd.Index([]), 
 ):
-    
+
     channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
-    
+
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
         
@@ -250,11 +250,10 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
-                
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
-    
+
     return q0
 
 
@@ -262,12 +261,13 @@ def build_forcing_sets(
     forcing_parameters,
     t0
 ):
+    
     run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-    
+
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
@@ -360,7 +360,6 @@ def build_forcing_sets(
 
             final_chrtout = qlat_input_folder.joinpath(run_sets[j]['qlat_files'
                     ][-1])
-            
             final_timestamp_str = nhd_io.get_param_str(final_chrtout,
                     'model_output_valid_time')
             run_sets[j]['final_timestamp'] = \
@@ -382,12 +381,11 @@ def build_qlateral_array(
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
-    
+
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
     qlat_input_file = forcing_parameters.get("qlat_input_file", None)
-    
     if qlat_input_folder:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         if "qlat_files" in forcing_parameters:
@@ -456,23 +454,45 @@ def build_qlateral_array(
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
-    
+
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-    
+
     return qlat_df
 
 def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
+    
+    '''
+    Check that each TimeSlice file in a list of files exists. Return a list of 
+    available files.
+    
+    Arguments
+    ---------
+    qlat_df (pandas df): Q lateral forcing data for links in segment_index
+    segment_index (pandas df): index of relevant link and rlink ids
+    diffusive_network_data (nested dict): nexted dictionary object with relevant diffusive domain data
+    
+    Returns
+    -------
+    qlat_df (pandas df): Q lateral forcing data for rlinks in segment_index
+    
+    '''
     
     # Create key, value for crosswalk
     rlink_list = list(set(segment_index) - set(qlat_df.index))
     if len(rlink_list) > 0:
         for tw in diffusive_network_data:
             qlat_lookup = dict([(i, diffusive_network_data[tw]['lengthMap'][i]) for i in rlink_list])
-
-            # Generate new qlat time series for refactored ids
-            refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
-
+            
+            try:
+                # Generate new qlat time series for refactored ids
+                refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
+                # Check that qlat fractions are mass balanced
+                partial_streams = [str(k) for k,f in fraction_dict.items() if float(f) < 1.0]
+                assert len(partial_streams) == 0
+            except AssertionError:
+                LOG.warning(f"qlat time series for id(s) {', '.join(partial_streams)} not mass balanced")
+            
             # Add refactored qlat time series to df
             qlat_df = pd.concat([qlat_df,refac_qlat])
     
@@ -922,6 +942,22 @@ def build_refac_connections(diff_network_parameters):
     return connections
 
 def generate_qlat(qlat_lookup, orig_qlat):
+    
+    '''
+    Generate qlat time series for each rlink using link qlat data and the lengthMap fractional crosswalk.
+    
+    Arguments
+    ---------
+    qlat_lookup (dict): Lookup table containing rlink keys and lengthMap fractional crosswalk as values
+    orig_qlat (pandas df): Q lateral forcing data for links in segment_index
+    
+    Returns:
+    --------
+    refac_qlat (pandas df): Q lateral forcing data for rlinks in segment_index
+    comids_missing_qlat (list): List of any links in lengthMap not found in qlat df
+    fraction_dict (dict): Lookup table with links as keys and the cummulative fraction in lengthMap as values
+    connections (dict int: [int]): Network connections
+    '''
 
     # Convert qlat df to dict
     qlat_dict = dict(zip(orig_qlat.index, orig_qlat.values))
@@ -929,80 +965,42 @@ def generate_qlat(qlat_lookup, orig_qlat):
     ref_qlat_dict = {}
     fraction_dict = {}
     comids_missing_qlat = []
-
+    # Iterate of all rlink and respective crosswalks
     for rlink, crosswalk in qlat_lookup.items():
-
+        # Split crosswalk string in to list of link.fraction
         xwalk_list = crosswalk.split(',')
 
-        # Segments with multiple crosswalk IDs
-        if len(xwalk_list) > 1:
-
-            for xwalk in xwalk_list:
-
-                if '.' in xwalk:
-                    # Get ID and fraction of crosswalk
-                    link, fraction = xwalk.split('.')
-                    link = int(link)
-                    if fraction == '1':
-                        fraction = 1
-                    else:
-                        fraction = float(fraction)/1000
-
-                    if link in fraction_dict.keys():
-                        fraction_dict[link] += fraction
-                    else:
-                        fraction_dict[link] = fraction
-
-                if link not in qlat_dict.keys():
-                    comids_missing_qlat.append(link)
-
+        # Step through each link crosswalk in lengthMap
+        for xwalk in xwalk_list:
+            if '.' in xwalk:
+                # Get ID and fraction of crosswalk
+                link, fraction = xwalk.split('.')
+                link = int(link)
+                if fraction == '1':
+                    fraction = 1
                 else:
-                    if rlink in ref_qlat_dict.keys():
-                        qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], \
-                                    list(map(lambda x:fraction*x,qlat_dict[link] \
-                                    )))]
-
-                        ref_qlat_dict[rlink] = qlat_sum
-                    else:
-                        ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
-
-        # Segments with single crosswalk ID
-        elif len(xwalk_list) == 1:
-
-            if '.' in xwalk_list[0]:
-                    # Get ID and fraction of crosswalk
-                    link, fraction = xwalk_list[0].split('.')
-                    link = int(link)
-                    if fraction == '1':
-                        fraction = 1
-                    else:
-                        fraction = float(fraction)/1000
-
-                    if link in fraction_dict.keys():
-                        fraction_dict[link] += fraction
-                    else:
-                        fraction_dict[link] = fraction
+                    lfrac = len(fraction)
+                    fraction = float(fraction)/10**(lfrac-1)
+                # Populate fraction_dict
+                if link in fraction_dict.keys():
+                    fraction_dict[link] += fraction
+                else:
+                    fraction_dict[link] = fraction
             else:
                 link = xwalk_list[0]
-
-            # Copy channel properties            
+                
+            # Flag if link is not in qlat time series data
             if link not in qlat_dict.keys():
-                comids_missing_qlat.append(i)
-
+                comids_missing_qlat.append(link)
+            # Calculate new qlat time series for rlink using link qlat time series
             else:
                 if rlink in ref_qlat_dict.keys():
-                    qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], list(map(lambda x:fraction*x, \
-                                qlat_dict[link]\
-                                )))]
-
+                    qlat_sum = [sum(x) for x in zip(ref_qlat_dict[rlink], \
+                                list(map(lambda x:fraction*x,qlat_dict[link])))]
                     ref_qlat_dict[rlink] = qlat_sum
-
                 else:
                     ref_qlat_dict[rlink] = list(map(lambda x:fraction*x, qlat_dict[link]))
-
-        else:
-            print (f"no crosswalk for refactored segment {rlink}")
-
+    
     refac_qlat = pd.DataFrame().from_dict(ref_qlat_dict,orient='index')
 
     return refac_qlat, comids_missing_qlat, fraction_dict 

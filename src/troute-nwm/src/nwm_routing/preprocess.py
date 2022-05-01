@@ -221,8 +221,9 @@ def nwm_network_preprocess(
         # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
         reservoir_da = data_assimilation_parameters.get(
             'reservoir_da', 
-            None
+            {}
         )
+        
         if reservoir_da:
             usgs_hybrid  = reservoir_da.get(
                 'reservoir_persistence_usgs', 
@@ -252,7 +253,7 @@ def nwm_network_preprocess(
         else:
             rfc_forecast = False
 
-        if param_file and reservoir_da:
+        if (param_file and reservoir_da) or (param_file and rfc_forecast):
             waterbody_type_specified = True
             (
                 waterbody_types_df, 
@@ -289,11 +290,10 @@ def nwm_network_preprocess(
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
-        
+
         for tw in diffusive_domain:
         
             mainstem_segs = diffusive_domain[tw]['links']
-            #mainstem_segs = diffusive_domain[tw]
             
             # diffusive domain tributary segments
             trib_segs = []
@@ -321,7 +321,7 @@ def nwm_network_preprocess(
                 trap_params = trap_params.drop(mainstem_segs)
                 
                 # ===== build diffusive network data objects ==== 
-                refac_tw = refactored_domain[tw]['upstream_xwalk'][tw]
+                refac_tw = refactored_domain[tw]['refac_tw']
                 diffusive_network_data[refac_tw] = {}
                 
                 diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
@@ -330,9 +330,6 @@ def nwm_network_preprocess(
                 diffusive_network_data[refac_tw]['connections'] = nat_connections
                 
                 diffusive_network_data[refac_tw]['connections'].update({k: [refactored_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-                
-                # create dict of junction conversion
-                diffusive_network_data[refac_tw]['upstream_xwalk'] = refactored_domain[tw]['upstream_xwalk']
                 
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
@@ -363,6 +360,10 @@ def nwm_network_preprocess(
                 
                 diffusive_network_data[refac_tw]['rlink_reindex'] = refactored_domain[tw]['rlink_reindex']
                 
+                diffusive_network_data[refac_tw]['outputs_xwalk'] = refactored_domain[tw]['outputs_xwalk']
+                
+                diffusive_network_data[refac_tw]['gages_xwalk'] = {v: k for k, v in refactored_domain[tw]['gages_xwalk'].items()}
+                
             else:
                 
                 # ===== build diffusive network data objects ==== 
@@ -385,9 +386,10 @@ def nwm_network_preprocess(
                 )
                 
                 diffusive_network_data[tw]['rconn'] = rconn_diff
-                #true_tw = {3766334:3766336,1558950:1558950,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
-                #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
+                #true_tw = {3766334:3766336,1558950:1559020,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
+                
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
+                #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
                 
                 # RouteLink parameters
                 diffusive_network_data[tw]['param_df'] = param_df.filter(
@@ -403,7 +405,7 @@ def nwm_network_preprocess(
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
-            
+    
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
@@ -483,7 +485,7 @@ def nwm_network_preprocess(
                 "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file. Aborting preprocessing routine"
             )
             quit()
-    
+
     return (
         connections,
         param_df,
@@ -642,7 +644,7 @@ def nwm_initial_warmstate_preprocess(
                     'NHDWaterbodyComID'
                 ),
             )
-            
+        
         # if no restart file is provided, default initial states
         else:
             # TODO: Consider adding option to read cold state from route-link file
