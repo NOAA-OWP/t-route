@@ -144,7 +144,7 @@ contains
     double precision, dimension(nts_ub_g,    nrch_g),   intent(in) :: ubcd_g
     double precision, dimension(nts_qtrib_g, nrch_g),   intent(in) :: qtrib_g 
     double precision, dimension(nts_da_g,    nrch_g),   intent(in) :: usgs_da_g 
-    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in ) :: qlat_g
+    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in ) :: qlat_g 
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: x_bathy_g
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: z_bathy_g
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: mann_bathy_g
