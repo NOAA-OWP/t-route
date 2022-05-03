@@ -215,7 +215,7 @@ def build_channel_initial_state(
         
         if hybrid_params:
             # Add q0 for refactored links
-            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            run_refactored = hybrid_params.get('run_refactored_network', False)
             if run_refactored:
                 for tw in diffusive_network_data:
                     # Add refactored ids to q0 with values from crosswalked ids
@@ -235,7 +235,7 @@ def build_channel_initial_state(
         
         if hybrid_params:
             # Add q0 for refactored links
-            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            run_refactored = hybrid_params.get('run_refactored_network', False)
             if run_refactored:
                 for tw in diffusive_network_data:
                     # Add refactored ids to q0 with values from crosswalked ids
@@ -424,23 +424,24 @@ def build_qlateral_array(
             np.stack(ql_list).T,
             index = idx,
             columns = range(len(qlat_files))
-        )    
-        
+        )
+        og_sum = qlat_df.to_numpy().sum()
+        qlat_df_old = qlat_df.copy()
         if hybrid_params:
             # Generate q_lat series for refactored links
-            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            run_refactored = hybrid_params.get('run_refactored_network', False)
             if run_refactored:
                 qlat_df = qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data)
-
+    
     elif qlat_input_file:
         qlat_df = nhd_io.get_ql_from_csv(qlat_input_file)
         
         if hybrid_params:
             # Generate q_lat series for refactored links
-            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            run_refactored = hybrid_params.get('run_refactored_network', False)
             if run_refactored:
                 qlat_df = qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data)
-
+    
     else:
         qlat_const = forcing_parameters.get("qlat_const", 0)
         qlat_df = pd.DataFrame(
@@ -449,7 +450,7 @@ def build_qlateral_array(
             columns=range(nts // qts_subdivisions),
             dtype="float32",
         )
-
+        
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
@@ -457,7 +458,11 @@ def build_qlateral_array(
 
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-
+    ref_sum = qlat_df.to_numpy().sum()
+    if ref_sum != og_sum:
+        import pdb; pdb.set_trace()
+    elif ref_sum == og_sum:
+        print("DongHa it seems to be working")
     return qlat_df
 
 def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
@@ -487,6 +492,7 @@ def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
             try:
                 # Generate new qlat time series for refactored ids
                 refac_qlat, comids_missing_qlat, fraction_dict = generate_qlat(qlat_lookup, qlat_df)
+                
                 # Check that qlat fractions are mass balanced
                 partial_streams = [str(k) for k,f in fraction_dict.items() if float(f) < 1.0]
                 assert len(partial_streams) == 0

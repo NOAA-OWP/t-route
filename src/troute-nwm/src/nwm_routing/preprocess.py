@@ -691,6 +691,16 @@ def nwm_initial_warmstate_preprocess(
             restart_parameters['lite_channel_restart_file']
         )
         t0_str = None
+        
+        if hybrid_params:
+            # Add q0 for refactored links
+            run_refactored  = hybrid_params.get('run_refactored_network', False)
+            if run_refactored:
+                for tw in diffusive_network_data:
+                    # Add refactored ids to q0 with values from crosswalked ids
+                    for rlink,link in diffusive_network_data[tw]['rlink_reindex'].items():
+                        if not rlink in q0.index:
+                            q0.loc[rlink] = q0.loc[link]
     
     # build initial states from user-provided restart parameters
     else:
