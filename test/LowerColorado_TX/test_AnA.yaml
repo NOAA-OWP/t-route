@@ -43,7 +43,7 @@ compute_parameters:
         refactored_domain : domain/refactored_diffusive_domain.yaml
         run_refactored_network: False
         use_natl_xsections: True
-        topobathy_domain  : domain/diffusive_natural_xs_lcra_041822.nc
+        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc
     forcing_parameters:
         #----------
         qts_subdivisions        : 12
