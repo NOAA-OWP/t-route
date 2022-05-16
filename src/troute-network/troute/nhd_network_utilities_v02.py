@@ -124,6 +124,7 @@ def build_connections(supernetwork_parameters):
     connections = nhd_network.extract_connections(
         param_df, "downstream", terminal_codes=terminal_codes
     )
+    
     param_df = param_df.drop("downstream", axis=1)
 
     param_df = param_df.astype("float32")
@@ -425,7 +426,7 @@ def build_qlateral_array(
             index = idx,
             columns = range(len(qlat_files))
         )
-        og_sum = qlat_df.to_numpy().sum()
+        
         qlat_df_old = qlat_df.copy()
         if hybrid_params:
             # Generate q_lat series for refactored links
@@ -450,19 +451,46 @@ def build_qlateral_array(
             columns=range(nts // qts_subdivisions),
             dtype="float32",
         )
-        
+    
     # TODO: Make a more sophisticated date-based filter
     max_col = 1 + nts // qts_subdivisions
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
-
+    #if hybrid_params:
+            # Generate q_lat series for refactored links
+            #run_refactored = hybrid_params.get('run_refactored_network', False)
+            #if run_refactored:
+                #link_list = list(diffusive_network_data[1180011013]['outputs_xwalk'].keys())
     if not segment_index.empty:
         qlat_df = qlat_df[qlat_df.index.isin(segment_index)]
-    ref_sum = qlat_df.to_numpy().sum()
-    if ref_sum != og_sum:
-        import pdb; pdb.set_trace()
-    elif ref_sum == og_sum:
-        print("DongHa it seems to be working")
+        qlat_df_old = qlat_df_old[qlat_df_old.index.isin(segment_index)]
+    
+    #if hybrid_params:
+            # Generate q_lat series for refactored links
+            #run_refactored = hybrid_params.get('run_refactored_network', False)
+            #if run_refactored:
+                # Check everything in segment_index but not in diffusive domain
+                #qlat_df_old_mc = qlat_df_old[~qlat_df_old.index.isin(link_list)]
+                #qlat_df_mc = qlat_df[~qlat_df.index.isin(link_list)]
+                #qlat_df_mc = qlat_df_mc[~qlat_df_mc.index.isin(diffusive_network_data[1180011013]['mainstem_segs'])]
+                #ref_sum_mc = qlat_df_mc.to_numpy().sum()
+                #og_sum_mc = qlat_df_old_mc.to_numpy().sum()
+                #perc_err_mc = abs((ref_sum_mc-og_sum_mc)/og_sum_mc)*100
+    
+                #try:
+                    #assert perc_err_mc < 0.01
+                #except AssertionError:
+                    #LOG.warning(f"qlat mc domain not mass balanced. % Error {perc_err_mc}")
+    
+                #ref_sum = qlat_df[~qlat_df.index.isin(diffusive_network_data[1180011013]['mainstem_segs'])].to_numpy().sum()
+                #og_sum = qlat_df_old.to_numpy().sum()
+                #perc_err = abs((ref_sum-og_sum)/og_sum)*100
+
+                #try:
+                    #assert perc_err < 0.01
+                #except AssertionError:
+                    #LOG.warning(f"qlat refactor mapping not mass balanced. % Error {perc_err}")
+    
     return qlat_df
 
 def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
@@ -495,9 +523,22 @@ def qlat_refactor_mapping(qlat_df,segment_index,diffusive_network_data):
                 
                 # Check that qlat fractions are mass balanced
                 partial_streams = [str(k) for k,f in fraction_dict.items() if float(f) < 1.0]
+                #partial_streams_over = [str(k) for k,f in fraction_dict.items() if float(f) > 1.0]
                 assert len(partial_streams) == 0
             except AssertionError:
                 LOG.warning(f"qlat time series for id(s) {', '.join(partial_streams)} not mass balanced")
+            
+            # Check qlat mass balance in diffusive domain
+            link_list = list(diffusive_network_data[tw]['outputs_xwalk'].keys())
+            qlat_df_missing = qlat_df[qlat_df.index.isin(link_list)]
+            og_sum = qlat_df_missing.to_numpy().sum()
+            ref_sum = refac_qlat.to_numpy().sum()
+            perc_err = abs((ref_sum-og_sum)/og_sum)*100
+            
+            try:
+                assert perc_err < 0.01
+            except AssertionError:
+                LOG.warning(f"qlat refactor mapping not mass balanced. % Error {perc_err}")
             
             # Add refactored qlat time series to df
             qlat_df = pd.concat([qlat_df,refac_qlat])
@@ -874,7 +915,7 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
 
     return usgs_df
 
-def build_refac_connections(diff_network_parameters):
+def build_refac_connections(diff_network_parameters,mask=None):
     '''
     Construct network connections network for refacored dataset. 
     
@@ -914,18 +955,11 @@ def build_refac_connections(diff_network_parameters):
 
     # rename dataframe columns to keys in the cols dict variable
     param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
-
+    
+    if mask:
+        param_df = param_df.loc[param_df['key'].isin(mask)]
     # set parameter dataframe index as segment id number, sort
     param_df = param_df.set_index("key").sort_index()
-
-    # get and apply domain mask
-    if "mask_file_path" in diff_network_parameters:
-        data_mask = nhd_io.read_mask(
-            pathlib.Path(diff_network_parameters["mask_file_path"]),
-            layer_string=diff_network_parameters.get("mask_layer_string", None),
-        )
-        data_mask = data_mask.set_index(data_mask.columns[0])
-        param_df = param_df.filter(data_mask.index, axis=0)
     
     # There can be an externally determined terminal code -- that's this first value
     terminal_codes = set()

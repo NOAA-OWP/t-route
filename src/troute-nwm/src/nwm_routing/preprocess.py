@@ -73,7 +73,7 @@ def nwm_network_preprocess(
     
     Returns
     -------
-    connections                 (dict of int: [int]): {segment id: [downsteram adjacent segment ids]}
+    connections                 (dict of int: [int]): {segment id: [downstream adjacent segment ids]}
     param_df                             (DataFrame): Hydraulic geometry and roughness parameters, by segment
     wbody_conn                    (dict of int: int): {segment id: associated lake id}
     waterbodies_df                       (DataFrame): Waterbody (reservoir) parameters
@@ -181,7 +181,7 @@ def nwm_network_preprocess(
         # Turn off any further reservoir processing if the network contains no 
         # waterbodies
         break_network_at_waterbodies = False
-
+    
     # if waterbodies are being simulated, adjust the connections graph so that 
     # waterbodies are collapsed to single nodes. Also, build a mapping between 
     # waterbody outlet segments and lake ids
@@ -191,7 +191,7 @@ def nwm_network_preprocess(
         )
     else:
         link_lake_crosswalk = None
-
+    
     LOG.debug("network connections graph created in %s seconds." % (time.time() - start_time))
 
     #============================================================================
@@ -288,24 +288,29 @@ def nwm_network_preprocess(
     # build diffusive domain data and edit MC domain data for hybrid simulation
     
     if diffusive_domain:
-        
+        import pdb; pdb.set_trace() # connections[1620061]
+        if 1559144 in connections.keys():
+            connections[1560074] = connections[1559144]
+            _ = connections.pop(1559144)
+        import pdb; pdb.set_trace()
         rconn = nhd_network.reverse_network(connections)
-
+        import pdb; pdb.set_trace()
         for tw in diffusive_domain:
         
             mainstem_segs = diffusive_domain[tw]['links']
             
             # diffusive domain tributary segments
             trib_segs = []
-            for s in mainstem_segs:
-                us_list = rconn[s]
+            for seg in mainstem_segs:
+                try:
+                    us_list = rconn[seg]
+                except:
+                    import pdb; pdb.set_trace()
                 for u in us_list:
                     if u not in mainstem_segs:
                         trib_segs.append(u)
                         
             if run_refactored: # automatically assumes topobathy data
-                diffusive_parameters = {'geo_file_path': topobathy_file}
-                nat_connections = nnu.build_refac_connections(diffusive_parameters)
                 
                 # RouteLink parameters
                 trap_params = param_df.filter(
@@ -326,9 +331,14 @@ def nwm_network_preprocess(
                 
                 diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
                 
+                #if "mask_file_path" in supernetwork_parameters:
+                    
+                diffusive_parameters = {'geo_file_path': topobathy_file}
+                nat_connections = nnu.build_refac_connections(diffusive_parameters,refactored_domain[tw]['rlinks'])
+                
                 # Build connections with rlink mainstem and link tributaries
                 diffusive_network_data[refac_tw]['connections'] = nat_connections
-                
+                    
                 diffusive_network_data[refac_tw]['connections'].update({k: [refactored_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
                 
                 # diffusive domain reaches and upstream connections. 
@@ -363,7 +373,7 @@ def nwm_network_preprocess(
                 diffusive_network_data[refac_tw]['outputs_xwalk'] = refactored_domain[tw]['outputs_xwalk']
                 
                 diffusive_network_data[refac_tw]['gages_xwalk'] = {v: k for k, v in refactored_domain[tw]['gages_xwalk'].items()}
-                
+                import pdb; pdb.set_trace()
             else:
                 
                 # ===== build diffusive network data objects ==== 
@@ -386,17 +396,15 @@ def nwm_network_preprocess(
                 )
                 
                 diffusive_network_data[tw]['rconn'] = rconn_diff
-                #true_tw = {3766334:3766336,1558950:1559020,1442283:1440535,1558954:1558954,7702762:7702768,1737140:1737140}
                 
                 diffusive_network_data[tw]['reaches'] = reaches[tw]
-                #diffusive_network_data[tw]['reaches'] = reaches[true_tw[tw]]
                 
                 # RouteLink parameters
                 diffusive_network_data[tw]['param_df'] = param_df.filter(
                     (mainstem_segs + trib_segs),
                     axis = 0,
                 )
-        
+            
             # ==== remove diffusive domain segs from MC domain ====
         
             # drop indices from param_df
@@ -414,7 +422,7 @@ def nwm_network_preprocess(
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
     start_time = time.time()
-    
+    import pdb; pdb.set_trace()
     gage_break_segments = set()
     wbody_break_segments = set()
     if break_network_at_waterbodies:
