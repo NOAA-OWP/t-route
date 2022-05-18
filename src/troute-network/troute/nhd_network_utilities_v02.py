@@ -800,3 +800,78 @@ def build_data_assimilation_folder(data_assimilation_parameters, run_parameters)
         usgs_df = pd.DataFrame()
 
     return usgs_df
+
+
+def build_refac_connections(diff_network_parameters):
+    '''
+    Construct network connections network for refacored dataset. 
+    
+    Arguments
+    ---------
+    diff_network_parameters (dict): User input network parameters
+    
+    Returns:
+    --------
+    connections (dict int: [int]): Network connections
+    '''
+
+    # crosswalking dictionary between variables names in input dataset and 
+    # variable names recognized by troute.routing module.
+    cols = diff_network_parameters.get(
+        'columns', 
+        {
+        'key'       : 'link',
+        'downstream': 'to',
+        'dx'        : 'Length',
+        'n'         : 'n',
+        'waterbody' : 'NHDWaterbodyComID',
+        'gages'     : 'gages',
+        'alt'      : 'z',
+        'line_d'    : 'xid_d',        
+        }
+    )
+
+    # read parameter dataframe 
+    param_df = nhd_io.read(pathlib.Path(diff_network_parameters["geo_file_path"]))
+
+    # numeric code used to indicate network terminal segments
+    terminal_code = set(param_df.to.unique()) - set(param_df.link.unique())
+
+    # select the column names specified in the values in the cols dict variable
+    param_df = param_df[list(cols.values())]
+
+    # rename dataframe columns to keys in the cols dict variable
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+
+    # set parameter dataframe index as segment id number, sort
+    param_df = param_df.set_index("key").sort_index()
+
+    # get and apply domain mask
+    if "mask_file_path" in diff_network_parameters:
+        data_mask = nhd_io.read_mask(
+            pathlib.Path(diff_network_parameters["mask_file_path"]),
+            layer_string=diff_network_parameters.get("mask_layer_string", None),
+        )
+        data_mask = data_mask.set_index(data_mask.columns[0])
+        param_df = param_df.filter(data_mask.index, axis=0)
+    
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.update(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+
+    param_df_unique = param_df.drop_duplicates("downstream")
+    # build connections dictionary
+    connections = nhd_network.extract_connections(
+        param_df_unique, "downstream", terminal_codes=terminal_codes
+    )
+
+    return connections
+

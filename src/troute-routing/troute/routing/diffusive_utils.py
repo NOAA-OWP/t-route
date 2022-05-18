@@ -155,7 +155,7 @@ def fp_chgeo_map(
     ----------
     mx_jorder -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
-    param_df
+    param_df -- (DataFrame) geomorphic parameters
     z_all -- (dict) adjusted altitude dictionary
     mxncomp_g -- (int) maximum number of nodes in a reach
     nrch_g -- (int) number of reaches in the network
@@ -234,7 +234,7 @@ def fp_qlat_map(
     ----------
     mx_jorder -- (int) maximum network reach order
     nts_ql_g -- (int) numer of qlateral timesteps
-    param_df -- (DataFrame)
+    param_df --(DataFrame) geomorphic parameters
     qlat -- (DataFrame) qlateral data (m3/sec)
     qlat_g -- (ndarray of float32) empty qlateral array to be filled
     
@@ -407,7 +407,7 @@ def fp_naturalxsec_map(
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
     topobathy_data_bytw --  
-    param_df --
+    param_df --(DataFrame) geomorphic parameters
     mx_jorder -- (int) max junction order
     mxncomp_g -- (int) maximum number of nodes in a reach
     nrch_g -- (int) number of reaches in the network
@@ -427,7 +427,6 @@ def fp_naturalxsec_map(
       except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
       with so*0.5*dx 
     """  
-    
     if not topobathy_data_bytw.empty:
         
         # maximum number of stations along a single cross section
@@ -494,9 +493,8 @@ def fp_naturalxsec_map(
                             dx = param_df.loc[seg_idx].dx
                             z_bathy_g[0:nstations, seg, frj] = z_bathy_g[0:nstations, seg, frj] - So * dx   
    
-    else:
-        
-        # if the bathy dataframe is empty, then pass out empty arrays
+    else: 
+        #if the bathy dataframe is empty, then pass out empty arrays
         x_bathy_g    = np.array([]).reshape(0,0,0)
         z_bathy_g    = np.array([]).reshape(0,0,0)
         mann_bathy_g = np.array([]).reshape(0,0,0)
@@ -517,18 +515,18 @@ def fp_da_map(
     tfin_g):
     """
     Data assimilatoin data mapping between Python and Fortran
-    
+
     Parameters
     ----------
     mx_jorder       -- (int) maximum network reach order
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     usgs_df         -- (DataFrame) usgs streamflow data interpolated at dt time steps
     t0              -- (datetime) initial date
-    nsteps          -- (int)  
+    nsteps          -- (int) number of simulation time steps
     dt_da_g         -- (int) numer of Data Assimilation timesteps
     t0_g            -- (float) diffusive model's initial simulation time [hr] (by default, zero)
     tfin_g          -- (float) diffusive model's final simulation time [hr] 
-    
+
     Returns
     -------
     nts_da_g        -- (int) number of DA timesteps
@@ -564,6 +562,385 @@ def fp_da_map(
                        
     return nts_da_g, usgs_da_g, usgs_da_reach_g
 
+def fp_refactored_network_map(
+    nrch_g,
+    frnw_g, 
+    pynw, 
+    refactored_diffusive_domain,
+    refactored_reaches):
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    
+    Parameters
+    ----------
+    nrch_g -- (int) number of reaches in the network
+    frnw_g -- (nparray of int) Fortran-Python network mapping array
+    pynw -- (dict) ordered reach head segments
+    refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
+    refactored_reaches -- (list of lists) lists of stream segment IDs of diffusive mainstems on refactored hydrofabrics including 
+                                          tributaries of original hydrofabric
+
+    Returns
+    -------
+    rfrnw_g -- (nparray of int) Fortran-Python network mapping array on refactored hydrofabric
+    rpynw -- (dict) ordered reach head segments on refactored hydrofabric
+    rordered_reaches -- (dict) reaches and reach metadata by junction order on refactored hydrofabric
+    """ 
+    rfrnw_g = frnw_g.copy()
+    rpynw = {}
+
+    for frj in range(0, nrch_g):
+        if frnw_g[frj, 2] == 0: # number of upstream reaches = 0 means it's a tributary entering mainstem
+            rpynw[frj] = pynw[frj]
+        elif frnw_g[frj, 2] > 0: # number of upstream reaches > 0 means it's a mainstem
+            rpynw[frj] = refactored_diffusive_domain['incoming_tribs'][pynw[frj-1]]
+
+    head_rlink_frequency = Counter(refactored_diffusive_domain['incoming_tribs'].values())
+    head_rlink_multi_trib_links = {key: value for key,value in head_rlink_frequency.items() if value>1}
+    
+    # make a dictionary of  rlink head (as a key): [rlinks] in the reach (as a value)
+    rordered_reaches = {}
+    for frj in range(0, nrch_g):
+        rreach = [x for x in refactored_reaches if rpynw[frj] in x][0]
+        rordered_reaches[rpynw[frj]] = rreach
+        
+    # find the number of nodes for refactored hydrofabric
+    for frj in range(0, nrch_g):
+        rfrnw_g[frj, 0] = len(rordered_reaches[rpynw[frj]]) + 1
+    
+    frj = -1
+    while frj < nrch_g-1:
+        frj = frj + 1  
+        if rpynw[frj] in head_rlink_multi_trib_links.keys():
+            # more than one tributary link enter to a single mainstem rlink
+            ntrib_links = head_rlink_frequency[rpynw[frj]] # number of tributary links entering to this mainstem rlink.   
+            
+            rfrj = frj
+            niter = ntrib_links-1
+            temp_ntrib_links = ntrib_links
+            for iter in range(0, niter):
+                # step1: label it invalid reach by the dummy value
+                rfrnw_g[rfrj, :] = -33 
+                rpynw[rfrj] = -33
+                
+                # step2: fix downstream frjs of upstream reaches both in mainstem and tributary
+                if rfrnw_g[rfrj-1, 1] != -33:
+                    rfrnw_g[rfrj-1, 1] = rfrnw_g[rfrj-1, 1] + 2*(temp_ntrib_links - 1)
+                if rfrnw_g[rfrj-2, 1] != -33:
+                    rfrnw_g[rfrj-2, 1] = rfrnw_g[rfrj-2, 1] + 2*(temp_ntrib_links - 1)
+                    
+                rfrj = rfrj + 2
+                temp_ntrib_links = temp_ntrib_links - 1
+                
+            # step3:  fix values of frj of final mainstem rlink  
+            rfrnw_g[rfrj, 2] = 1 + ntrib_links # number of upstream reaches (1 for upstream mainstem rlink)
+            frj_start = rfrj - 2* ntrib_links 
+            frj_end   = rfrj - 1
+            i=2
+            for frj2 in range(frj_start, frj_end + 1):
+                if rfrnw_g[frj2, 1] != -33:
+                    # frj of upstream reaches
+                    i = i + 1
+                    rfrnw_g[rfrj, i] = frj2 + 1 # +1 becasue python row index + 1 = fortran row index
+            frj = rfrj 
+    
+    return rfrnw_g, rpynw, rordered_reaches 
+
+def fp_refactored_qlat_iniq_dx_map(
+    mxncomp_g,
+    nrch_g,
+    mx_jorder,
+    ordered_reaches,                                                     
+    frnw_g,
+    nts_ql_g, 
+    qlat_g,   
+    initial_conditions,   
+    param_df,
+    rfrnw_g, 
+    rpynw,
+    rordered_reaches,            
+    refactored_diffusive_domain,
+    ): 
+                                           
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    
+    Parameters
+    ----------
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    mx_jorder -- (int) max junction order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    frnw_g -- (nparray of int) Fortran-Python network mapping array 
+    nts_ql_g -- (int) numer of qlateral timesteps
+    qlat_g -- (ndarray of float32) empty qlateral array to be filled    
+    initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
+    param_df --(DataFrame) geomorphic parameters
+    rfrnw_g -- (nparray of int) Fortran-Python network mapping array on refactored hydrofabric
+    rpynw -- (dict) ordered reach head segments on refactored hydrofabric
+    rordered_reaches -- (dict) reaches and reach metadata by junction order on refactored hydrofabric
+    refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
+
+    Returns
+    -------
+    rqlat_g -- (ndarray of float32) empty qlateral array to be filled on refactored hydrofabric
+    riniq -- (ndarray of float32) initial flow (m3/sec) for network nodes on refactored hydrofabric
+    rdx_ar_g -- (numpy of float64s) segment length on refactored hydrofabric (meters)
+    linkid_mainstem_ordered -- (list) segment IDs of mainstem only (excluding tributaries) by junction order
+    linkid_mainstem_indices -- (dict) mainstem segment ID : [segment index,  reach index]
+    linkid_indices -- (dict) segment ID of both mainstem and tributaries : [segment index,  reach index]    
+    """
+    linkid_indices={} 
+    linkid_mainstem_indices = {}
+    rdx_ar_g = np.zeros((mxncomp_g, nrch_g))
+    linkid_mainstem_ordered=[]
+    
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp-1):                
+                linkid = seg_list[seg]
+                linkid_indices[linkid] = [seg, frj]
+                if  frnw_g[frj, 2] > 0:
+                    linkid_mainstem_indices[linkid] = [seg, frj]                
+                    linkid_mainstem_ordered.append(linkid)    
+
+    rlinkid_indices= {}
+    for frj in range(0, nrch_g):
+        if  rfrnw_g[frj, 2] > 0:
+            rreach = rordered_reaches[rpynw[frj]]
+            for seg in range(0,len(rreach)):
+                rlinkid_indices[rreach[seg]] = [seg, frj]
+
+    rqlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
+    riniq   = np.zeros((mxncomp_g, nrch_g))
+
+    for frj in range(0, nrch_g):
+        if  rfrnw_g[frj, 2] > 0:
+            # mainstem only
+            rncomp = rfrnw_g[frj, 0]
+            for rseg in range(0, rncomp-1): #qlat at bottom node is not used in diffusive.f90 so set it zero.
+                rlinkid = rordered_reaches[rpynw[frj]][rseg]
+                linkid_list = refactored_diffusive_domain['lengthMap'][rlinkid].split(',')
+                sumql_link      = 0.0
+                sumq0_link      = 0.0
+                sumlength_rlink = 0.0
+                for seg in range(len(linkid_list)):
+                    linkid_dxfrac = float(linkid_list[seg])
+                    intpart,decimalpart = int(linkid_dxfrac),linkid_dxfrac-int(linkid_dxfrac)
+                    if intpart in linkid_indices:
+                        # sometimes rlink goes further downstream of TW link so as to include more links that are not in diffusive domain.
+                        i_index = linkid_indices[intpart][0]
+                        j_index = linkid_indices[intpart][1]
+                        qlat_link = qlat_g[:, i_index, j_index] # [m^2/sec]   
+                        q0_link   = initial_conditions.loc[intpart,'qu0']  
+                        dx_link = param_df.loc[intpart, 'dx']
+                        
+                        sumql_link      = sumql_link + qlat_link*dx_link*decimalpart*10.0 #[m^3/s] 
+                        sumlength_rlink = sumlength_rlink + dx_link*decimalpart*10.0
+                        sumq0_link      = sumq0_link + q0_link*dx_link*decimalpart*10.0   #[m^4/s]                
+                
+                rqlat_g[:,rseg,frj] = sumql_link / sumlength_rlink # [m^2/sec]
+                rdx_ar_g[rseg, frj] = sumlength_rlink
+                riniq[rseg, frj]    = sumq0_link / sumlength_rlink # weighted averge by a weight of dx_link / dx_rlink
+                if rseg == rncomp-2:
+                    riniq[rseg+1, frj] = riniq[rseg, frj]
+    
+    return rqlat_g, riniq, rdx_ar_g, linkid_indices,  linkid_mainstem_indices, linkid_mainstem_ordered
+    
+def fp_refactored_naturalxsec_map(
+    tw,
+    mxncomp_g,
+    nrch_g,                                                    
+    topobathy_data_bytw, 
+    param_df,
+    rfrnw_g, 
+    rpynw,
+    rordered_reaches,            
+    refactored_diffusive_domain,
+    ):  
+            
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    
+    Parameters
+    ----------
+    tw,
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    topobathy_data_bytw --(DataFrame) natural channel cross section data of a channel network draining into a tailwater node
+    param_df --(DataFrame) geomorphic parameters
+    rfrnw_g -- (nparray of int) Fortran-Python network mapping array on refactored hydrofabric
+    rpynw -- (dict) ordered reach head segments on refactored hydrofabric
+    rordered_reaches -- (dict) reaches and reach metadata by junction order on refactored hydrofabric
+    refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
+
+    Returns
+    -------
+    x_bathy_g -- (numpy of float64s) lateral distance of bathy data points on refactored hydrofabric
+    z_bathy_g -- (numpy of float64s) elevation of bathy data points on refactored hydrofabric
+    mann_bathy_g -- (numpy of float64s) Manning's N value of bathy data points on refactored hydrofabric
+    size_bathy_g -- (integer) the nubmer of bathy data points of each cross section on refactored hydrofabric
+    mxnbathy_g -- (integer) maximum size of bathy data points on refactored hydrofabric
+    """    
+    
+    if not topobathy_data_bytw.empty:
+        # maximum number of stations along a single cross section
+        mxnbathy_g = topobathy_data_bytw.index.value_counts().max()
+
+        # initialize arrays to store cross section data
+        x_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        z_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        mann_bathy_g = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
+        size_bathy_g = np.zeros((mxncomp_g, nrch_g), dtype='i4')   
+    
+        rlinkid_tw = refactored_diffusive_domain['refac_tw']
+
+        for frj in range(0, nrch_g):
+            if  rfrnw_g[frj, 2] > 0:
+                # mainstem only
+                rncomp = rfrnw_g[frj, 0]
+                rlink_list = rordered_reaches[rpynw[frj]]
+
+                for rseg in range(0, rncomp):
+                    if rseg < rncomp-1:
+                        segid = rlink_list[rseg]
+                    else:
+                        segid = rlink_list[rseg-1]
+        
+                    if rseg == rncomp-1:
+                        if segid != rlinkid_tw:
+                            # if last node of a reach, but not the last node in TW reach
+                            # use cross section of head segment of the downstream reach
+                            i = frj + 1
+                            while rfrnw_g[i, 2] <= 0:
+                                i = i + 1                        
+                            rlinkid = rordered_reaches[rpynw[i]][0]
+                        else:                            
+                            # if last node of reach AND last node in the network,
+                            # use cross section of upstream rlink to interpolate toward bottom node of TW reach
+                            rlinkid = rlink_list[rncomp-2]                            
+                    else:
+                        rlinkid = rlink_list[rseg]
+                    
+                    # how many topo data points in a given cross section?
+                    nstations = len(topobathy_data_bytw.loc[rlinkid])
+                        
+                    # populate cross section size (# of stations) array
+                    size_bathy_g[rseg, frj] = nstations
+                        
+                    # populate cross section x, z and mannings n arrays
+                    x_bathy_g[0:nstations, rseg, frj]    = topobathy_data_bytw.loc[rlinkid].xid_d
+                    z_bathy_g[0:nstations, rseg, frj]    = topobathy_data_bytw.loc[rlinkid].z
+                    mann_bathy_g[0:nstations, rseg, frj] = topobathy_data_bytw.loc[rlinkid].n
+                        
+                    # if terminal node of the network, then adjust the cross section z data using
+                    # channel slope and length data
+                    if rseg == rncomp-1 and rlinkid == rlinkid_tw:
+                        So = param_df.loc[tw].s0
+                        dx = param_df.loc[tw].dx                    
+                        z_bathy_g[0:nstations, rseg, frj] = z_bathy_g[0:nstations, rseg, frj] - So * dx  
+    else: 
+        #if the bathy dataframe is empty, then pass out empty arrays
+        x_bathy_g    = np.array([]).reshape(0,0,0)
+        z_bathy_g    = np.array([]).reshape(0,0,0)
+        mann_bathy_g = np.array([]).reshape(0,0,0)
+        size_bathy_g = np.array([], dtype = 'i4').reshape(0,0)
+        mxnbathy_g   = int(0)
+   
+    return mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g
+            
+def fp_crosswalk_map(
+    nrch_g,                                                    
+    rfrnw_g, 
+    rpynw,
+    rordered_reaches,            
+    linkid_mainstem_ordered,
+    linkid_mainstem_indices,
+    linkid_indices,
+    refactored_diffusive_domain
+    ):  
+            
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    
+    Parameters
+    ----------
+    nrch_g -- (int) number of reaches in the network
+    rfrnw_g -- (nparray of int) Fortran-Python network mapping array on refactored hydrofabric
+    rpynw -- (dict) ordered reach head segments on refactored hydrofabric
+    rordered_reaches -- (dict) reaches and reach metadata by junction order on refactored hydrofabric
+    linkid_mainstem_ordered -- (list) segment IDs of mainstem only (excluding tributaries) by junction order
+    linkid_mainstem_indices -- (dict) mainstem segment ID : [segment index,  reach index]
+    linkid_indices -- (dict) segment ID of both mainstem and tributaries : [segment index,  reach index]
+    refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
+
+    Returns
+    -------
+    crosswalk_nrow -- (int) number of rows in the crosswalk lookup table
+    crosswalk_ncol -- (int) number of columns in the crosswalk lookup table
+    crosswalk_g -- (numpy of float64s) crosswalk information between original and refactored hydrofabric, used for mapping 
+                                       routing results back to original hydrofabric
+    """
+    crosswalk_nrow = len(refactored_diffusive_domain['lengthMap'].keys())
+    crosswalk_ncol = 15 + 3
+    #crosswalk_g    = np.zeros((crosswalk_nrow, crosswalk_ncol), dtype="float32")
+    crosswalk_g    = np.zeros((crosswalk_nrow, crosswalk_ncol))
+
+    irow = -1    
+    for frj in range(0, nrch_g):
+        if  rfrnw_g[frj, 2] > 0:
+            # mainstem only
+            rncomp = rfrnw_g[frj, 0]
+            
+            for rseg in range(0, rncomp-1): #qlat at bottom node is not used in diffusive.f90 so set it zero.
+                irow = irow + 1
+                
+                rlinkid = rordered_reaches[rpynw[frj]][rseg]
+                crosswalk_g[irow, 0] = rseg + 1 # fortran index of [rseg,    ] for refactored 
+                crosswalk_g[irow, 1] = frj + 1  # fortran index of [    , frj] for refactored                 
+                
+                linkid_frac_list = refactored_diffusive_domain['lengthMap'][rlinkid].split(',')         
+      
+                linkid_list=[]
+                linkid_frac_float_list=[]
+                for seg in range(len(linkid_frac_list)):
+                    linkid_frac = float(linkid_frac_list[seg])
+                    linkid,dxfrac = int(linkid_frac),linkid_frac-int(linkid_frac)
+                    linkid_list.append(linkid) 
+                    linkid_frac_float_list.append(linkid_frac)
+                
+                # order linkid_frac list from upstream to downstream
+                linkid_ordered = [x for x in linkid_mainstem_ordered if x in linkid_list] 
+                linkid_frac_float_ordered =[]
+                for seg in range(len(linkid_frac_list)):
+                    linkid_frac = linkid_frac_float_list[seg]
+                    if int(linkid_frac) in linkid_indices:     
+                        # sometimes rlink goes further downstream of TW link so as to include more links that are not in diffusive domain.
+                        idx = linkid_ordered.index(int(linkid_frac))
+                        linkid_frac_float_ordered.insert(idx, linkid_frac)                
+                
+                crosswalk_g[irow, 2] = len(linkid_frac_float_ordered)  # number of links to cover a rlink     
+                
+                jcol = 3
+                for seg in range(len(linkid_frac_float_ordered)):                     
+                    linkid_frac = linkid_frac_float_ordered[seg]
+                    linkid, frac = int(linkid_frac),linkid_frac-int(linkid_frac)
+                    if linkid in linkid_indices:     
+                        # sometimes rlink goes further downstream of TW link so as to include more links that are not in diffusive domain.
+                        i_index = linkid_mainstem_indices[linkid][0]
+                        j_index = linkid_mainstem_indices[linkid][1]
+                                 
+                        crosswalk_g[irow, jcol]   = i_index + 1  # +1 for fortran indexing
+                        crosswalk_g[irow, jcol+1] = j_index + 1
+                        crosswalk_g[irow, jcol+2] = frac*10.0                        
+                        jcol = jcol + 3   
+    
+    return crosswalk_nrow, crosswalk_ncol, crosswalk_g 
+     
 def diffusive_input_data_v02(
     tw,
     connections,
@@ -583,8 +960,9 @@ def diffusive_input_data_v02(
     topobathy_data_bytw,
     usgs_df,
     refactored_diffusive_domain,
+    refactored_reaches,
 ):
-
+    
     """
     Build input data objects for diffusive wave model
     
@@ -595,13 +973,16 @@ def diffusive_input_data_v02(
     rconn -- (dict) upstream connections for each segment in the network
     reach_list -- (list of lists) lists of segments comprising different reaches in the network
     diffusive_parametters -- (dict) Diffusive wave model parameters
-    geo_cols -- (ndarray of strs) column headers for geomorphic parameters data array (geo_data)
-    geo_index -- (ndarray of int64s) row indices for geomorphic parameters data array (geo_data)
-    geo_data --(ndarray of float32s) geomorphic parameters data array
+    param_df --(DataFrame) geomorphic parameters
     qlat_data -- (ndarray of float32) qlateral data (m3/sec)
     initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
     upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth   
-    qts_subdivisions -- (int) number of qlateral timestep subdivisions 
+    qts_subdivisions -- (int) number of qlateral timestep subdivisions    
+    topobathy_data_bytw --(DataFrame) natural channel cross section data of a channel network draining into a tailwater node
+    usgs_df --(DataFrame) observed usgs flow data
+    refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
+    refactored_reaches -- (list of lists) lists of stream segment IDs of diffusive mainstems on refactored hydrofabrics including 
+                                          tributaries of original hydrofabric
  
     Returns
     -------
@@ -638,7 +1019,7 @@ def diffusive_input_data_v02(
     timestep_ar_g[6] = dt_db_g
     timestep_ar_g[7] = dt_qtrib_g
     timestep_ar_g[8] = dt_da_g
-        
+
     # CN-mod parameters
     paradim       = 11
     para_ar_g     = np.zeros(paradim)
@@ -662,33 +1043,33 @@ def diffusive_input_data_v02(
         nnodes = len(r) + 1
         if nnodes > mxncomp_g:
             mxncomp_g = nnodes
-    
+
 # TODO: How do we plan to utilize upstream boundary condition data object?
 #     ds_seg = []
 #     offnet_segs = []
 #     upstream_flow_array = np.zeros((len(ds_seg), nsteps+1))
 #     if upstream_results:
-        
+
 #         # create a list of segments downstream of offnetwork upstreams [ds_seg]
 #         # and a list of offnetwork upstream segments [offnet_segs]
 #         inv_map = nhd_network.reverse_network(rconn)
 #         for seg in upstream_results:
 #             ds_seg.append(inv_map[seg][0])
 #             offnet_segs.append(seg)
-        
+
 #         # populate an array of upstream flows (boundary condtions)
 #         upstream_flow_array = np.zeros((len(set(ds_seg)), nsteps+1))
 #         for j, seg in enumerate(set(ds_seg)):
-            
+
 #             # offnetwork-upstream connections
 #             us_segs = rconn[seg]
-            
+
 #             # sum upstream flows and initial conditions
 #             usq = np.zeros((len(us_segs), nsteps))
 #             us_iniq = 0
 #             for k, s in enumerate(us_segs):
 #                 usq[k] = upstream_results[s]['results'][::3]
-                
+
 #                 if s in lake_segs:
 #                     # initial conditions from wbody_param array
 #                     idx_segID = np.where(np.asarray(lake_segs) == s)
@@ -697,15 +1078,15 @@ def diffusive_input_data_v02(
 #                     # initial conditions from initial_conditions array
 #                     idx_segID = np.where(geo_index == s)
 #                     us_iniq += initial_conditions[idx_segID,0]
-            
+
 #             # write upstream flows to upstream_flow_array
 #             upstream_flow_array[j,1:] = np.sum(usq, axis = 0)
 #             upstream_flow_array[j,0] = us_iniq
-    
+
     # Order reaches by junction depth
     path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(junction_inflows.index.to_list()),rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
-    
+
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
 
@@ -714,7 +1095,7 @@ def diffusive_input_data_v02(
     rchbottom_reaches = {}
     z_all = {}
     for o, rch in jorder_reaches:
-        
+
         # add one more segment(fake) to the end of a list of segments to account for node configuration.
         fksegID = int(str(rch[-1]) + str(2))
         rch.append(fksegID)
@@ -724,7 +1105,7 @@ def diffusive_input_data_v02(
 
         if o not in ordered_reaches:
             ordered_reaches.update({o: []})
-        
+
         # populate the ordered_reaches dictionary with node connection information
         ordered_reaches[o].append(
             [
@@ -739,7 +1120,7 @@ def diffusive_input_data_v02(
         )
 
         if rch[0] not in rchhead_reaches:
-            
+
             # a list of segments for a given reach-head segment
             rchhead_reaches.update(
                 {rch[0]: {"number_segments": len(rch), "segments_list": rch}}
@@ -748,10 +1129,10 @@ def diffusive_input_data_v02(
             rchbottom_reaches.update(
                 {rch[-1]: {"number_segments": len(rch), "segments_list": rch}}
             )
-            
+
         # for channel altitude adjustment
         z_all.update({seg: {"adj.alt": np.zeros(1)} for seg in rch})
-    
+
     # --------------------------------------------------------------------------------------
     #                                 Step 0-3
     #    Adjust altitude so that altitude of the last sement of a reach is equal to that
@@ -762,7 +1143,7 @@ def diffusive_input_data_v02(
     adj_alt1(
         mx_jorder, ordered_reaches, param_df, dbfksegID, z_all
     )
-    
+
     # --------------------------------------------------------------------------------------
     #                                 Step 0-4
     #     Make Fortran-Python channel network mapping variables.
@@ -783,16 +1164,7 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
-    
-    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
-    frj= -1
-    with open("./output/pynw.txt",'a') as pynwtxt:    
-        for x in range(mx_jorder,-1,-1):   
-            for head_segment, reach in ordered_reaches[x]:       
-                frj= frj+1     
-                pynwtxt.write("%s %s\n" %\
-                           (str(frj+1), str(pynw[frj]))) 
-    import pdb; pdb.set_trace()
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -832,10 +1204,10 @@ def diffusive_input_data_v02(
                     segID = seg_list[seg - 1]
                 else:
                     segID = seg_list[seg]
-                
+
                 # retrieve initial condition from initial_conditions DataFrame
                 iniq[seg, frj] = initial_conditions.loc[segID, 'qu0']
-                
+
                 # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
@@ -859,14 +1231,14 @@ def diffusive_input_data_v02(
         qlat,
         qlat_g,
     )
-    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
     ds_seg = []
-    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <------ this is a place holder until we figure out what to do with upstream boundary 
+    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <- this is a place holder until we figure out what to do with upstream boundary 
     nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)
     ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
 
@@ -899,21 +1271,23 @@ def diffusive_input_data_v02(
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
                 qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']
-    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
     #                 Prepare cross section bathymetry data
     # ---------------------------------------------------------------------------------    
-    x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
-                                                                       ordered_reaches,                                             
-                                                                       mainstem_seg_list, 
-                                                                       topobathy_data_bytw,
-                                                                       param_df, 
-                                                                       mx_jorder,
-                                                                       mxncomp_g, 
-                                                                       nrch_g,
-                                                                       dbfksegID)
+    if not refactored_diffusive_domain:
+        x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
+                                                                           ordered_reaches,                                             
+                                                                           mainstem_seg_list, 
+                                                                           topobathy_data_bytw,
+                                                                           param_df, 
+                                                                           mx_jorder,
+                                                                           mxncomp_g, 
+                                                                           nrch_g,
+                                                                           dbfksegID)
+  
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-11
 
@@ -930,88 +1304,127 @@ def diffusive_input_data_v02(
                                                 t0_g,
                                                 tfin_g)
     
-    
+ 
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-1
 
-    #       Prepare map between non-refactored(defined by RouteLink.nc) and refactored hydrofabric   
+    #              Prepare python-fortarn map for refactored hydrofabric   
     #
     #  link : stream segment of non-refactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------    
-    rfrnw_g = frnw_g
-    rpynw = {}   
-    
-    for frj in range(0, nrch_g):
-        if frnw_g[frj, 2] == 0: # number of upstream reaches = 0 means it's a tributary entering mainstem
-            rpynw[frj] = pynw[frj]
-        elif frnw_g[frj, 2] > 0: # number of upstream reaches > 0 means it's a mainstem
-            rpynw[frj] = refactored_diffusive_domain['incoming_tribs'][pynw[frj-1]]
-            
-    #n_headrlink = len(set([*refactored_diffusive_domain['incoming_tribs'].values()])) # counts unique values  
-    head_rlink_frequency = Counter(refactored_diffusive_domain['incoming_tribs'].values())
-    head_rlink_multi_trib_links = {key: value for key,value in head_rlink_frequency.items() if value>1}
-    
-    frj = -1
-    while frj < nrch_g-1:
-        frj = frj + 1  
-        if rpynw[frj] in head_rlink_multi_trib_links.keys():
-            # more than one tributary link enter to a single mainstem rlink
-            ntrib_links = head_rlink_frequency[rpynw[frj]] # number of tributary links entering to this mainstem rlink.   
-            
-            rfrj = frj
-            niter = ntrib_links-1
-            temp_ntrib_links = ntrib_links
-            for iter in range(0, niter):
-                # step1: label it invalid reach by the dummy value
-                rfrnw_g[rfrj, :] = -33 
-                rpynw[rfrj] = -33
-                
-                # step2: fix downstream frjs of upstream reaches both in mainstem and tributary
-                if rfrnw_g[rfrj-1, 1] != -33:
-                    rfrnw_g[rfrj-1, 1] = rfrnw_g[rfrj-1, 1] + 2*(temp_ntrib_links - 1)
-                if rfrnw_g[rfrj-2, 1] != -33:
-                    rfrnw_g[rfrj-2, 1] = rfrnw_g[rfrj-2, 1] + 2*(temp_ntrib_links - 1)
-                    
-                rfrj = rfrj + 2
-                temp_ntrib_links = temp_ntrib_links - 1
-                
-            # step3:  fix values of frj of final mainstem rlink  
-            rfrnw_g[rfrj, 2] = 1 + ntrib_links # number of upstream reaches (1 for upstream mainstem rlink)
-            frj_start = rfrj - 2* ntrib_links 
-            frj_end   = rfrj - 1
-            i=2
-            for frj2 in range(frj_start, frj_end + 1):
-                if rfrnw_g[frj2, 1] != -33:
-                    # frj of upstream reaches
-                    i = i + 1
-                    rfrnw_g[rfrj, i] = frj2 + 1 # +1 becasue python row index + 1 = fortran row index
-            frj = rfrj         
-                               
-    np.savetxt("./output/refactored_frnw_ar.txt", rfrnw_g, fmt='%10i')    
-    
-    with open("./output/refactored_pynw.txt",'a') as rpynwtxt:    
-        for frj in range(0, nrch_g):   
-            rpynwtxt.write("%s %s\n" %\
-                    (str(frj+1), str(rpynw[frj])))  
-    
-    import pdb; pdb.set_trace()
-    # ---------------------------------------------------------------------------------------------
+    if refactored_diffusive_domain:
+        rfrnw_g, rpynw, rordered_reaches  = fp_refactored_network_map(
+                                                    nrch_g,
+                                                    frnw_g, 
+                                                    pynw, 
+                                                    refactored_diffusive_domain,
+                                                    refactored_reaches)
+
+    # ---------------------------------------------------------------------------------
     #                              Step 0-12-2
 
-    #       Prepare map between non-refactored(defined by RouteLink.nc) and refactored hydrofabric   
+    #       Prepare qlateral, iniq, and dx for refactored hydrofabric   
     #
     #  link : stream segment of non-refactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------       
-    
-    
+    if refactored_diffusive_domain:
+        (
+                 rqlat_g, 
+                 riniq, 
+                 rdx_ar_g, 
+                 linkid_indices, 
+                 linkid_mainstem_indices, 
+                 linkid_mainstem_ordered
+        ) = fp_refactored_qlat_iniq_dx_map(
+                mxncomp_g,
+                nrch_g,
+                mx_jorder,
+                ordered_reaches,
+                frnw_g,
+                nts_ql_g,
+                qlat_g,   
+                initial_conditions,   
+                param_df,
+                rfrnw_g, 
+                rpynw,
+                rordered_reaches,
+                refactored_diffusive_domain,
+                )
 
-    
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-12-3
 
-    # TODO: Call uniform flow lookup table creation kernel    
+    #       Prepare topobathy data on refactored hydrofabric   
+    #
+    #  link : stream segment of non-refactored hydrofabric
+    #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
+    #                                                    increase min.lenght of segment)
+    # ---------------------------------------------------------------------------------------------  
+    if refactored_diffusive_domain:
+        (
+                 mxnbathy_g, 
+                 x_bathy_g, 
+                 z_bathy_g, 
+                 mann_bathy_g, 
+                 size_bathy_g, 
+        ) = fp_refactored_naturalxsec_map(
+                tw,
+                mxncomp_g,
+                nrch_g,                                                    
+                topobathy_data_bytw, 
+                param_df,
+                rfrnw_g, 
+                rpynw,
+                rordered_reaches,            
+                refactored_diffusive_domain,
+                )  
+
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-12-3
+
+    #       No trapezoidal data when using refactored hydrofabric except dx data from RouteLink.nc
+    # ---------------------------------------------------------------------------------------------                     
+    if refactored_diffusive_domain:
+        rz_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rbo_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rtraps_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rtw_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rtwcc_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rmann_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rmanncc_ar_g = np.zeros((mxncomp_g, nrch_g))
+        rso_ar_g = np.zeros((mxncomp_g, nrch_g))
+    else: 
+        rdx_ar_g = np.array([]).reshape(0,0) 
+    
+    # ---------------------------------------------------------------------------------------------
+    #                              Step 0-12-4
+
+    #    Prepare crosswalk map between non-refactored and refactored hydrofabric
+    # ---------------------------------------------------------------------------------------------   
+    if refactored_diffusive_domain:
+        (
+                crosswalk_nrow, 
+                crosswalk_ncol, 
+                crosswalk_g 
+        ) = fp_crosswalk_map(
+                nrch_g,                                                    
+                rfrnw_g, 
+                rpynw,
+                rordered_reaches,   
+                linkid_mainstem_ordered,
+                linkid_mainstem_indices,
+                linkid_indices,
+                refactored_diffusive_domain
+                ) 
+    else:
+        crosswalk_nrow = int(0) 
+        crosswalk_ncol = int(0)
+        crosswalk_g  = np.array([]).reshape(0,0)       
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-13
 
@@ -1021,54 +1434,111 @@ def diffusive_input_data_v02(
 
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
-
-    # model time steps
-    diff_ins["timestep_ar_g"] = timestep_ar_g  
-    diff_ins["nts_ql_g"]      = nts_ql_g
-    diff_ins["nts_ub_g"]      = nts_ub_g
-    diff_ins["nts_db_g"]      = nts_db_g
-    diff_ins["nts_qtrib_g"]   = nts_qtrib_g
-    diff_ins["ntss_ev_g"]     = ntss_ev_g
-    diff_ins["nts_da_g"]      = nts_da_g # DA
-    # max number of computation nodes of a stream reach and the number of entire stream reaches 
-    diff_ins["mxncomp_g"] = mxncomp_g
-    diff_ins["nrch_g"] = nrch_g
-    # synthetic (trapezoidal) xsection geometry data 
-    diff_ins["z_ar_g"] = z_ar_g
-    diff_ins["bo_ar_g"] = bo_ar_g
-    diff_ins["traps_ar_g"] = traps_ar_g
-    diff_ins["tw_ar_g"] = tw_ar_g
-    diff_ins["twcc_ar_g"] = twcc_ar_g
-    diff_ins["mann_ar_g"] = mann_ar_g
-    diff_ins["manncc_ar_g"] = manncc_ar_g
-    diff_ins["so_ar_g"] = so_ar_g
-    diff_ins["dx_ar_g"] = dx_ar_g
-    # python-to-fortran channel network mapping
-    diff_ins["frnw_col"] = frnw_col
-    diff_ins["frnw_g"] = frnw_g
-    # flow forcing data
-    diff_ins["qlat_g"] = qlat_g
-    diff_ins["ubcd_g"] = ubcd_g
-    diff_ins["dbcd_g"] = dbcd_g
-    diff_ins["qtrib_g"] = qtrib_g
-    # diffusive model internal parameters
-    diff_ins["paradim"] = paradim 
-    diff_ins["para_ar_g"] = para_ar_g
-    # natural xsection bathy data
-    diff_ins["mxnbathy_g"] = mxnbathy_g
-    diff_ins["x_bathy_g"] = x_bathy_g
-    diff_ins["z_bathy_g"] = z_bathy_g
-    diff_ins["mann_bathy_g"] = mann_bathy_g
-    diff_ins["size_bathy_g"] = size_bathy_g    
-    # initial flow value
-    diff_ins["iniq"] = iniq
-    # python-fortran crosswalk data
-    diff_ins["pynw"] = pynw
-    diff_ins["ordered_reaches"] = ordered_reaches    
-    # Data Assimilation
-    diff_ins["usgs_da_g"]   = usgs_da_g 
-    diff_ins["usgs_da_reach_g"] = usgs_da_reach_g         
-
+    if not refactored_diffusive_domain:
+        # for original hydrofabric
+        # model time steps
+        diff_ins["timestep_ar_g"] = timestep_ar_g  
+        diff_ins["nts_ql_g"]      = nts_ql_g
+        diff_ins["nts_ub_g"]      = nts_ub_g
+        diff_ins["nts_db_g"]      = nts_db_g
+        diff_ins["nts_qtrib_g"]   = nts_qtrib_g
+        diff_ins["ntss_ev_g"]     = ntss_ev_g
+        diff_ins["nts_da_g"]      = nts_da_g # DA
+        # max number of computation nodes of a stream reach and the number of entire stream reaches 
+        diff_ins["mxncomp_g"] = mxncomp_g
+        diff_ins["nrch_g"] = nrch_g
+        # synthetic (trapezoidal) xsection geometry data 
+        diff_ins["z_ar_g"] = z_ar_g
+        diff_ins["bo_ar_g"] = bo_ar_g
+        diff_ins["traps_ar_g"] = traps_ar_g
+        diff_ins["tw_ar_g"] = tw_ar_g
+        diff_ins["twcc_ar_g"] = twcc_ar_g
+        diff_ins["mann_ar_g"] = mann_ar_g
+        diff_ins["manncc_ar_g"] = manncc_ar_g
+        diff_ins["so_ar_g"] = so_ar_g
+        diff_ins["dx_ar_g"] = dx_ar_g
+        # python-to-fortran channel network mapping
+        diff_ins["frnw_col"] = frnw_col
+        diff_ins["frnw_g"] = frnw_g
+        # flow forcing data
+        diff_ins["qlat_g"] = qlat_g
+        diff_ins["ubcd_g"] = ubcd_g
+        diff_ins["dbcd_g"] = dbcd_g
+        diff_ins["qtrib_g"] = qtrib_g
+        # diffusive model internal parameters
+        diff_ins["paradim"] = paradim 
+        diff_ins["para_ar_g"] = para_ar_g
+        # natural xsection bathy data
+        diff_ins["mxnbathy_g"] = mxnbathy_g
+        diff_ins["x_bathy_g"] = x_bathy_g
+        diff_ins["z_bathy_g"] = z_bathy_g
+        diff_ins["mann_bathy_g"] = mann_bathy_g
+        diff_ins["size_bathy_g"] = size_bathy_g    
+        # initial flow value
+        diff_ins["iniq"] = iniq
+        # python-fortran crosswalk data
+        diff_ins["pynw"] = pynw
+        diff_ins["ordered_reaches"] = ordered_reaches    
+        # Data Assimilation
+        diff_ins["usgs_da_g"]   = usgs_da_g 
+        diff_ins["usgs_da_reach_g"] = usgs_da_reach_g
+        diff_ins["rdx_ar_g"] = rdx_ar_g 
+        diff_ins["cwnrow_g"] = crosswalk_nrow
+        diff_ins["cwncol_g"] = crosswalk_ncol
+        diff_ins["crosswalk_g"] =  crosswalk_g 
+    else:
+        # for refactored hydrofabric
+        # model time steps
+        diff_ins["timestep_ar_g"] = timestep_ar_g  
+        diff_ins["nts_ql_g"]      = nts_ql_g
+        diff_ins["nts_ub_g"]      = nts_ub_g
+        diff_ins["nts_db_g"]      = nts_db_g
+        diff_ins["nts_qtrib_g"]   = nts_qtrib_g
+        diff_ins["ntss_ev_g"]     = ntss_ev_g
+        diff_ins["nts_da_g"]      = nts_da_g 
+        # max number of computation nodes of a stream reach and the number of entire stream reaches 
+        diff_ins["mxncomp_g"] = mxncomp_g
+        diff_ins["nrch_g"] = nrch_g
+        # synthetic (trapezoidal) xsection geometry data 
+        diff_ins["z_ar_g"] = rz_ar_g
+        diff_ins["bo_ar_g"] = rbo_ar_g
+        diff_ins["traps_ar_g"] = rtraps_ar_g
+        diff_ins["tw_ar_g"] = rtw_ar_g
+        diff_ins["twcc_ar_g"] = rtwcc_ar_g
+        diff_ins["mann_ar_g"] = rmann_ar_g
+        diff_ins["manncc_ar_g"] = rmanncc_ar_g
+        diff_ins["so_ar_g"] = rso_ar_g
+        diff_ins["dx_ar_g"] = rdx_ar_g
+        # python-to-fortran channel network mapping
+        diff_ins["frnw_col"] = frnw_col
+        diff_ins["frnw_g"] = rfrnw_g
+        # flow forcing data
+        diff_ins["qlat_g"] = rqlat_g
+        diff_ins["ubcd_g"] = ubcd_g
+        diff_ins["dbcd_g"] = dbcd_g
+        diff_ins["qtrib_g"] = qtrib_g
+        # diffusive model internal parameters
+        diff_ins["paradim"] = paradim 
+        diff_ins["para_ar_g"] = para_ar_g
+        # natural xsection bathy data
+        diff_ins["mxnbathy_g"] = mxnbathy_g
+        diff_ins["x_bathy_g"] = x_bathy_g
+        diff_ins["z_bathy_g"] = z_bathy_g
+        diff_ins["mann_bathy_g"] = mann_bathy_g
+        diff_ins["size_bathy_g"] = size_bathy_g    
+        # initial flow value
+        diff_ins["iniq"] = riniq
+        # python-fortran crosswalk data
+        diff_ins["pynw"] = pynw
+        diff_ins["ordered_reaches"] = ordered_reaches    
+        # Data Assimilation
+        diff_ins["usgs_da_g"]   = usgs_da_g 
+        diff_ins["usgs_da_reach_g"] = usgs_da_reach_g
+        diff_ins["rdx_ar_g"] = rdx_ar_g 
+        diff_ins["cwnrow_g"] = crosswalk_nrow
+        diff_ins["cwncol_g"] = crosswalk_ncol
+        diff_ins["crosswalk_g"] =  crosswalk_g        
+    
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

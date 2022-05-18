@@ -76,7 +76,8 @@ contains
                     manncc_ar_g, so_ar_g, dx_ar_g,                                                    &
                     iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                       &
                     paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, &
-                    usgs_da_g, usgs_da_reach_g, q_ev_g, elv_ev_g)                                     
+                    usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g,            &
+                    q_ev_g, elv_ev_g)                                     
                     
 
     IMPLICIT NONE
@@ -125,31 +126,35 @@ contains
     integer, intent(in) :: frnw_col
     integer, intent(in) :: mxnbathy_g
     integer, intent(in) :: paradim
+    integer, intent(in) :: cwnrow_g
+    integer, intent(in) :: cwncol_g
     integer, dimension(nrch_g), intent(in) :: usgs_da_reach_g
     integer, dimension(nrch_g, frnw_col),  intent(in) :: frnw_ar_g
     integer, dimension(mxncomp_g, nrch_g), intent(in) :: size_bathy_g
     double precision, dimension(paradim ), intent(in) :: para_ar_g
     double precision, dimension(:)       , intent(in) :: timestep_ar_g(9)
     double precision, dimension(nts_db_g), intent(in) :: dbcd_g    
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: z_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: bo_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: traps_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: tw_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: twcc_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: mann_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: manncc_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: dx_ar_g
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: iniq
-    double precision, dimension(mxncomp_g,   nrch_g),   intent(in) :: so_ar_g
-    double precision, dimension(nts_ub_g,    nrch_g),   intent(in) :: ubcd_g
-    double precision, dimension(nts_qtrib_g, nrch_g),   intent(in) :: qtrib_g 
-    double precision, dimension(nts_da_g,    nrch_g),   intent(in) :: usgs_da_g 
-    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in ) :: qlat_g 
-    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: x_bathy_g
-    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: z_bathy_g
-    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),intent(in ) :: mann_bathy_g
-    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g
-    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_ev_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: z_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: bo_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: traps_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: tw_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: twcc_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: mann_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: manncc_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: dx_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: rdx_ar_g        
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: iniq
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: so_ar_g
+    double precision, dimension(nts_ub_g,    nrch_g),            intent(in) :: ubcd_g
+    double precision, dimension(nts_qtrib_g, nrch_g),            intent(in) :: qtrib_g 
+    double precision, dimension(nts_da_g,    nrch_g),            intent(in) :: usgs_da_g 
+    double precision, dimension(cwnrow_g, cwncol_g),             intent(in) :: crosswalk_g    
+    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g),   intent(in ) :: qlat_g 
+    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: x_bathy_g
+    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: z_bathy_g
+    double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: mann_bathy_g
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: q_ev_g
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: elv_ev_g
 
   ! Local variables    
     integer :: ncomp
@@ -167,7 +172,11 @@ contains
     integer :: ycolID
     integer :: iel
     integer :: dsbc_option
-    integer, dimension(:), allocatable :: dmy_frj
+    integer :: ts, cwrow 
+    integer :: ri, rj, oi, oj
+    integer :: nlnk, lnk
+    integer, dimension(:), allocatable   :: dmy_frj
+    integer, dimension(:,:), allocatable :: flag_lfrac
     double precision :: x
     double precision :: saveInterval, width
     double precision :: maxCourant
@@ -189,6 +198,9 @@ contains
     double precision :: q_usrch
     double precision :: tf0
     double precision :: convey
+    double precision :: equiv_one, slopeQ, intcQ
+    double precision :: slopeE, intcE, dst_lnk
+    double precision :: lfrac, dst_top, dst_btm
     double precision, dimension(:), allocatable :: tarr_ql
     double precision, dimension(:), allocatable :: varr_ql
     double precision, dimension(:), allocatable :: tarr_ub
@@ -201,7 +213,10 @@ contains
     double precision, dimension(:,:), allocatable :: skLeft
     double precision, dimension(:,:), allocatable :: skMain
     double precision, dimension(:,:), allocatable :: skRight
-    
+    double precision, dimension(:,:), allocatable :: used_lfrac    
+    double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
+    double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g
+        
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
@@ -317,6 +332,8 @@ contains
     allocate(usgs_da_reach(nlinks))
     allocate(usgs_da(nts_da, nlinks))
     allocate(dbcd(nts_db_g))
+    allocate(temp_q_ev_g(ntss_ev_g, mxncomp_g, nrch_g), temp_elv_ev_g(ntss_ev_g, mxncomp_g, nrch_g)) 
+
     
   !--------------------------------------------------------------------------------------------
     frnw_g        = frnw_ar_g ! network mapping matrix
@@ -344,7 +361,10 @@ contains
     dimensionless_Fc    = -999
     dimensionless_D     = -999
     dbcd                = 0.0 !TODO: pass downstream boundary values from Python   
-    
+    q_ev_g              = 0.0
+    elv_ev_g            = 0.0
+    temp_q_ev_g         = 0.0
+    temp_elv_ev_g       = 0.0    
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
 
@@ -429,6 +449,7 @@ contains
         end do
     end do  
   end if  
+      
   !-----------------------------------------------------------------------------
   ! Add uniform flow column to the hydraulic lookup table in order to avoid the 
   ! use of the trial-and-error iteration for solving normal depth
@@ -494,12 +515,10 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation, channel area, and volume
-
-    !do jm = 1, nmstem_rch
     do jm = nmstem_rch, 1, -1
       j     = mstem_frj(jm)  ! reach index
       ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
-      if (frnw_g(j, 2) < 0.0) then
+      if (frnw_g(j, 2) < 0) then 
       
         ! Initial depth at bottom node of tail water reach        
         if (dsbc_option == 1) then
@@ -555,13 +574,14 @@ contains
       if ( (mod( (t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) &
             .or. (t == tfin * 60.) ) then
         do j = 1, nlinks
-          if (all(mstem_frj /= j)) then ! NOT a mainstem reach
+          !if (all(mstem_frj /= j)) then ! NOT a mainstem reach
+          if (all(mstem_frj /= j).and.(frnw_g(j, 1) /= -33)) then ! NOT a mainstem reach 
             do n = 1, nts_qtrib_g
               varr_qtrib(n) = qtrib_g(n, j)
             end do
               q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
                                                       varr_qtrib, t)
-              q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)
+              q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)  
           end if
         end do
         ts_ev = ts_ev + 1
@@ -597,6 +617,7 @@ contains
       !+-------------------------------------------------------------------------
       !+                             PREDICTOR
       !+
+      !+    Applies only to mainstem
       !+-------------------------------------------------------------------------
       do jm = 1, nmstem_rch   ! loop over mainstem reaches [upstream-to-downstream]
         j     = mstem_frj(jm) ! reach index
@@ -620,13 +641,13 @@ contains
         !+ to network connections, i.e., serial or branching.
         !+ Refer to p.52, RM1_MESH
         !+++----------------------------------------------------------------
-        if (frnw_g(j, 3) > 0) then        ! reach j is not a headwater
+        if (frnw_g(j, 3) > 0) then        ! number of upstream reaches, so reach j is not a headwater
           newQ(1, j) = 0.0
           do k = 1, frnw_g(j, 3)          ! loop over ustream connected reaches
             usrchj = frnw_g(j, 3 + k) 
             if (any(mstem_frj == usrchj)) then
 
-              ! inflow from upstream mainstem reach
+              ! inflow from upstream mainstem reach's bottom node
               q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
             else
 
@@ -656,6 +677,7 @@ contains
       !+-------------------------------------------------------------------------
       !+                             CORRECTOR
       !+
+      !+    Applies only to mainstem
       !+-------------------------------------------------------------------------
       do jm = nmstem_rch, 1, -1 ! loop over mainstem reaches [downstream-to-upstream]
         j     = mstem_frj(jm)
@@ -743,10 +765,10 @@ contains
       t = t + dtini/60.
       
       ! Calculate dimensionless numbers for each reach
-      do jm = 1, nmstem_rch  !* mainstem reach only
-        j = mstem_frj(jm)
-        call calc_dimensionless_numbers(j)
-      end do
+      !do jm = 1, nmstem_rch  !* mainstem reach only
+      !  j = mstem_frj(jm)
+      !  call calc_dimensionless_numbers(j)
+      !end do
       
       ! diffusive wave simulation time print
       print*, "diffusive simulatoin time in minute=", t
@@ -791,8 +813,7 @@ contains
           !* water elevation for tributary/mainstem upstream boundary at a junction point
           do k = 1, frnw_g(j, 3) !* then number of upstream reaches
             usrchj = frnw_g(j, 3 + k) !* js corresponding to upstream reaches
-            if (all(mstem_frj /= usrchj)) then
-                  
+            if (all(mstem_frj /= usrchj)) then                  
               !* tributary upstream reach or mainstem upstream boundary reach
               wdepth                                = oldY(1, j) - z(1, j)
               elv_ev_g(1, frnw_g(usrchj,1), usrchj) = oldY(1,j)
@@ -812,6 +833,64 @@ contains
       pere    = -999
       
     end do  ! end of time loop
+    
+    !------------------------------------------------------------------------
+    ! map routing result from refactored hydrofabric to original hydrofabric
+    if (cwnrow_g > 0) then    
+        allocate(used_lfrac(mxncomp, nlinks))
+        allocate(flag_lfrac(mxncomp, nlinks))   
+        equiv_one = 0.9999    
+        temp_q_ev_g   = q_ev_g
+        temp_elv_ev_g = elv_ev_g
+
+        do ts=1, ntss_ev_g
+          used_lfrac = 0.0
+          flag_lfrac = 0
+          do cwrow = 1, cwnrow_g
+            ri     = int(crosswalk_g(cwrow, 1))
+            rj     = int(crosswalk_g(cwrow, 2))
+            nlnk   = int(crosswalk_g(cwrow, 3))
+            slopeQ = (temp_q_ev_g(ts, ri+1, rj) - temp_q_ev_g(ts, ri, rj)) / rdx_ar_g(ri,rj)
+            intcQ  = temp_q_ev_g(ts, ri, rj)
+            slopeE = (temp_elv_ev_g(ts, ri+1, rj) - temp_elv_ev_g(ts, ri, rj)) / rdx_ar_g(ri,rj)
+            intcE  = temp_elv_ev_g(ts, ri, rj)
+
+            dst_lnk = 0.0
+            do lnk = 1, nlnk
+              oi = int(crosswalk_g(cwrow, 4 + 3*(lnk-1)))
+              oj = int(crosswalk_g(cwrow, 5 + 3*(lnk-1)))
+              lfrac = crosswalk_g(cwrow,  6 + 3*(lnk-1))
+              
+              dst_top = dst_lnk
+              dst_lnk = dst_lnk + dx_ar_g(oi, oj)*lfrac
+              dst_btm = dst_lnk
+
+              used_lfrac(oi, oj) = used_lfrac(oi, oj) + lfrac          
+              if  (used_lfrac(oi, oj) < equiv_one) then
+                flag_lfrac(oi, oj) = flag_lfrac(oi, oj) + 1
+              end if
+
+              if ((used_lfrac(oi, oj) >= equiv_one).and.(flag_lfrac(oi, oj) == 0)) then
+                 q_ev_g(ts, oi, oj)     = intcQ + slopeQ*dst_top
+                 q_ev_g(ts, oi+1, oj)   = intcQ + slopeQ*dst_btm
+                 elv_ev_g(ts, oi, oj)   = intcE + slopeE*dst_top
+                 elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm
+
+              else if ((used_lfrac(oi, oj) < equiv_one).and.(flag_lfrac(oi, oj) == 1)) then
+                 q_ev_g(ts, oi, oj)   = intcQ + slopeQ*dst_top
+                 elv_ev_g(ts, oi, oj) = intcE + slopeE*dst_top
+
+              else if ((used_lfrac(oi, oj) >= equiv_one).and.(flag_lfrac(oi, oj) >= 1)) then
+                 q_ev_g(ts, oi+1, oj)   = intcQ + slopeQ*dst_btm
+                 elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm             
+                 flag_lfrac(oi, oj)     = 0
+              endif
+            end do
+           end do
+          end do
+          deallocate(used_lfrac)
+          deallocate(flag_lfrac)   
+        endif
     
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
@@ -1056,7 +1135,11 @@ contains
       ncomp  = frnw_g(j, 1)
     
       ! sum of lateral inflows along the reach
-      allqlat = sum(lateralFlow(2:ncomp - 1, j) * dx(2:ncomp - 1, j))
+      !allqlat = sum(lateralFlow(2:ncomp - 1, j) * dx(2:ncomp - 1, j))
+      allqlat = 0.0
+      do i = 2, ncomp - 1
+        allqlat = allqlat + lateralFlow(i, j) * dx(i, j)
+      end do
 
       !print *, '****** DIFFUSIVE FORWARD *****'
       !print *, '---------'
@@ -1334,9 +1417,9 @@ contains
         print*, t, i, j, newY(i,j), newY(i, j)-z(i, j), co(i)  
         print*, 'At j = ',j,', i = ',i, 'time =',t, &
                 'interpolation of conveyence was not possible, wl', &
-                newY(i,j), 'z',z(i,j),'previous wl',newY(i+1,j), &
-                'previous z',z(i+1,j), 'dimensionless_D(i,j)', &
-                dimensionless_D(i,j)
+                newY(i,j), 'z',z(i,j),'previous wl',newY(i+1,j) !, &
+                !'previous z',z(i+1,j), 'dimensionless_D(i,j)', &
+                !dimensionless_D(i,j)
   !      stop
          pause !test
       end if
@@ -1411,7 +1494,7 @@ contains
             print *, 'qp(i-1,j): ', qp(i-1,j)
             print*, 'depth is negative at time=,', t,'j= ', j,'i=',i-1, &
                     'newY =', (newY(jj,j),jj=1,ncomp)
-            print*, 'dimensionless_D',(dimensionless_D(jj,j),jj=1,ncomp)
+            !print*, 'dimensionless_D',(dimensionless_D(jj,j),jj=1,ncomp)
             print*, 'newQ',(newQ(jj,j),jj=1,ncomp)
             print*, 'Bed',(z(jj,j),jj=1,ncomp)
             print*, 'dx',(dx(jj,j),jj=1,ncomp-1)
@@ -1675,6 +1758,8 @@ contains
     allocate(newdKdA(nel))
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
+    
+    !open(unit=201, file="./output/xsec_natural.txt")
 
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.

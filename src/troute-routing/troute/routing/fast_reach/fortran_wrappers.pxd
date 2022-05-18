@@ -74,6 +74,10 @@ cdef extern from "pydiffusive.h":
                      int *size_bathy_g,
                      double *usgs_da_g,
                      int *usgs_da_reach_g,
+                     double *rdx_ar_g,
+                     int *cwnrow_g,
+                     int *cwncol_g,
+                     double *crosswalk_g,                  
                      double *q_ev_g,
                      double *elv_ev_g) nogil;
     

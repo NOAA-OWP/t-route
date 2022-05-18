@@ -1109,6 +1109,7 @@ def compute_diffusive_routing(
     waterbodies_df,
     topobathy_data,
     refactored_diffusive_domain,
+    refactored_reaches,
     ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
@@ -1126,10 +1127,14 @@ def compute_diffusive_routing(
                     
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
-        
+
         if not topobathy_data.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
-            topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
+            if refactored_diffusive_domain:
+                topobathy_data_bytw  = topobathy_data.loc[refactored_diffusive_domain[tw]['rlinks']] 
+            else:
+                topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
+            
         else:
             topobathy_data_bytw = pd.DataFrame()
             
@@ -1139,6 +1144,15 @@ def compute_diffusive_routing(
         else:
             diff_usgs_df = pd.DataFrame()
 
+        # tw in refactored hydrofabric
+        if refactored_diffusive_domain:
+            refactored_tw = refactored_diffusive_domain[tw]['refac_tw']
+            refactored_diffusive_domain_bytw = refactored_diffusive_domain[tw]
+            refactored_reaches_byrftw        = refactored_reaches[refactored_tw]
+        else:
+            refactored_diffusive_domain_bytw = None
+            refactored_reaches_byrftw        = None
+                 
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1158,7 +1172,10 @@ def compute_diffusive_routing(
             waterbodies_df,
             topobathy_data_bytw,
             diff_usgs_df,
-            refactored_diffusive_domain[tw],
+            refactored_diffusive_domain_bytw,
+            refactored_reaches_byrftw, 
+            #refactored_diffusive_domain[tw],
+            #refactored_reaches[refactored_tw],
         )
         
         # run the simulation
