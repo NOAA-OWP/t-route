@@ -545,11 +545,12 @@ contains
       end if              
      
       ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
-      ! ** At intial time oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
+      ! ** At intial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
       ! ** So, let's assume the values are all equal to flow at the bottom node.
       do i = 1, ncomp -1
         oldY(i,j) = newY(ncomp, j)
       end do
+      
       call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
 
       do i = 1,ncomp      

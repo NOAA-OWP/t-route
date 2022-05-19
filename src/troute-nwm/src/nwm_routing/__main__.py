@@ -78,6 +78,7 @@ def nwm_route(
     topobathy_data,
     refactored_diffusive_domain,
     refactored_reaches,
+    subnetwork_list,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -123,7 +124,12 @@ def nwm_route(
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
+        subnetwork_list,
     )
+    
+    # returns list, first item is run result, second item is subnetwork items
+    subnetwork_list = results[1]
+    results = results[0]
     
     if diffusive_network_data: # run diffusive side of a hybrid simulation
         
@@ -156,7 +162,7 @@ def nwm_route(
 
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
-    return results
+    return results, subnetwork_list
 
 
 def new_nwm_q0(run_results):
@@ -449,6 +455,11 @@ def main_v03(argv):
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - ic_end_time
 
+    # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
+    # on first iteration of for loop only. For additional loops this will be passed
+    # to function from inital loop. 
+    subnetwork_list = [None, None, None]
+        
     for run_set_iterator, run in enumerate(run_sets):
 
         t0 = run.get("t0")
@@ -497,7 +508,12 @@ def main_v03(argv):
             topobathy_data,
             refactored_diffusive_domain,
             refactored_reaches,
+            subnetwork_list,
         )
+        
+        # returns list, first item is run result, second item is subnetwork items
+        subnetwork_list = run_results[1]
+        run_results = run_results[0]
         
         if showtiming:
             route_end_time = time.time()
