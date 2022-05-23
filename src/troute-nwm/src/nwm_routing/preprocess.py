@@ -332,22 +332,32 @@ def nwm_network_preprocess(
 
         for tw in diffusive_domain:
             
+            mainstem_segs = diffusive_domain[tw]['links']           
+            
             # ===== build diffusive network data objects ==== 
             diffusive_network_data[tw] = {}
 
             # add diffusive domain segments
-            diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
+            #diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
+            diffusive_network_data[tw]['mainstem_segs'] =  mainstem_segs
             # diffusive domain tributary segments
             trib_segs = []
-            for s in diffusive_domain[tw]:
-                us_list = rconn[s]
+            #for s in diffusive_domain[tw]:
+            #    us_list = rconn[s]
+            #    for u in us_list:
+            #        if u not in diffusive_domain[tw]:
+            #            trib_segs.append(u)
+            for seg in mainstem_segs:
+                us_list = rconn[seg]
                 for u in us_list:
-                    if u not in diffusive_domain[tw]:
-                        trib_segs.append(u)
+                    if u not in mainstem_segs:
+                        trib_segs.append(u)            
+            
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
 
             # diffusive domain connections object
-            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
+            #diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
+            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}
             
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
@@ -361,7 +371,8 @@ def nwm_network_preprocess(
             
             # RouteLink parameters
             diffusive_network_data[tw]['param_df'] = param_df.filter(
-                (diffusive_domain[tw] + trib_segs),
+                #(diffusive_domain[tw] + trib_segs),
+                (mainstem_segs + trib_segs),
                 axis = 0,
             )
 
@@ -390,10 +401,12 @@ def nwm_network_preprocess(
         
             # ==== remove diffusive domain segs from MC domain ====        
             # drop indices from param_df
-            param_df = param_df.drop(diffusive_domain[tw])
+            #param_df = param_df.drop(diffusive_domain[tw])
+            param_df = param_df.drop(mainstem_segs)
         
             # remove keys from connections dictionary
-            for s in diffusive_domain[tw]:
+            #for s in diffusive_domain[tw]:
+            for s in mainstem_segs:
                 connections.pop(s)
             
             # update downstream connections of trib segs
