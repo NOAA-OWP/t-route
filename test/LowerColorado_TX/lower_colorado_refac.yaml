@@ -35,7 +35,7 @@ compute_parameters:
         wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
     hybrid_parameters:
         run_hybrid_routing: True
-        diffusive_domain: domain/diffusive_domain.yaml
+        diffusive_domain: domain/diffusive_domain_new.yaml
         use_natl_xsections: True
         topobathy_domain: domain/diffusive_natural_xs_03312022.nc
         run_refactored_network: True
