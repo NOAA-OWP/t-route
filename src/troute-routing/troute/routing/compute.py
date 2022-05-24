@@ -354,7 +354,7 @@ def compute_nhd_routing_v02(
             subnetwork_list = copy.deepcopy(subnetwork_list)
 
         else:
-            subnetworks_only_ordered_jit, reaches_ordered_bysubntw_clustered = subnetwork_list
+            subnetworks_only_ordered_jit, reaches_ordered_bysubntw_clustered = copy.deepcopy(subnetwork_list)
         
         if 1 == 1:
             LOG.info("JIT Preprocessing time %s seconds." % (time.time() - start_time))
@@ -418,6 +418,11 @@ def compute_nhd_routing_v02(
                     else:
                         lake_segs = []
                         waterbodies_df_sub = pd.DataFrame()
+                    
+                    #check if any DA reservoirs are offnetwork. if so change reservoir type to
+                    #1: levelpool
+                    tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
+                    waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
                     
                     param_df_sub = param_df.loc[
                         common_segs,
