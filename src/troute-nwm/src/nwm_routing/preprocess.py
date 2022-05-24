@@ -102,22 +102,35 @@ def nwm_network_preprocess(
     
     hybrid_params = compute_parameters.get("hybrid_parameters", False)
     if hybrid_params:
+        # switch parameters
+        # if run_hybrid = False, run MC only
+        # if run_hybrid = True, if use_topobathy = False, run MC+diffusive on RouteLink.nc
+        #    "      "      "  , if use_topobathy = True,  if run_refactored_network = False, run MC+diffusive on original hydrofabric
+        #    "      "      "  , if use_topobathy = True,  if run_refactored_network = True,  run MC+diffusive on refactored hydrofabric
+        run_hybrid             = hybrid_params.get('run_hybrid_routing', False)
+        use_topobathy          = hybrid_params.get('use_natl_xsections', False) 
+        run_refactored         = hybrid_params.get('run_refactored_network', False)
         
-        domain_file    = hybrid_params.get("diffusive_domain",   None)
-        run_hybrid     = hybrid_params.get('run_hybrid_routing', False)
-        topobathy_file = hybrid_params.get("topobathy_domain",   None)
-        use_topobathy  = hybrid_params.get('use_natl_xsections', False)
+        # file path parameters of non-refactored hydrofabric defined by RouteLink.nc
+        domain_file            = hybrid_params.get("diffusive_domain",   None)
+        topobathy_file         = hybrid_params.get("topobathy_domain",   None)
         
-        if domain_file and run_hybrid:
+        # file path parameters of refactored hydrofabric for diffusive wave channel routing 
+        refactored_domain_file    = hybrid_params.get("refactored_domain", None)
+        refactored_topobathy_file = hybrid_params.get("refactored_topobathy_domain", None)
+        #-------------------------------------------------------------------------
+        # for non-refactored hydofabric defined by RouteLink.nc
+        # TODO: By default, let's run both non-refactored and refactored hydrofabric for now. Place a switch in the future. 
+        if run_hybrid and domain_file:
             
             LOG.info('reading diffusive domain extent for MC/Diffusive hybrid simulation')
             
             # read diffusive domain dictionary from yaml or json
-            diffusive_domain = nhd_io.read_diffusive_domain(domain_file)
+            diffusive_domain = nhd_io.read_diffusive_domain(domain_file)           
             
-            if topobathy_file and use_topobathy:
+            if use_topobathy and topobathy_file:
                 
-                LOG.debug('Natural cross section data are provided.')
+                LOG.debug('Natural cross section data on original hydrofabric are provided.')
                 
                 # read topobathy domain netcdf file, set index to 'comid'
                 # TODO: replace 'link' with a user-specified indexing variable name.
@@ -127,7 +140,7 @@ def nwm_network_preprocess(
                 
             else:
                 topobathy_data = pd.DataFrame()
-                LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on complex trapezoidal geometry.')
+                LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on compound trapezoidal geometry.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
             diffusive_network_data = {}
@@ -137,12 +150,48 @@ def nwm_network_preprocess(
             diffusive_network_data = None
             topobathy_data = pd.DataFrame()
             LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
+            
+        #-------------------------------------------------------------------------
+        # for refactored hydofabric 
+        if run_hybrid and run_refactored and refactored_domain_file:
+            
+            LOG.info('reading refactored diffusive domain extent for MC/Diffusive hybrid simulation')
+            
+            # read diffusive domain dictionary from yaml or json
+            refactored_diffusive_domain = nhd_io.read_diffusive_domain(refactored_domain_file)           
+            
+            if use_topobathy and refactored_topobathy_file:
+                
+                LOG.debug('Natural cross section data of refactored hydrofabric are provided.')
+                
+                # read topobathy domain netcdf file, set index to 'comid'
+                # TODO: replace 'link' with a user-specified indexing variable name.
+                # ... if for whatever reason there is not a `link` variable in the 
+                # ... dataframe returned from read_netcdf, then the code would break here.
+                topobathy_data = (nhd_io.read_netcdf(refactored_topobathy_file).set_index('link'))
+                
+            else:
+                topobathy_data = pd.DataFrame()
+                LOG.debug('No natural cross section topobathy data of refactored hydrofabric provided. Hybrid simualtion will run on compound trapezoidal geometry.')
+             
+            # initialize a dictionary to hold network data for each of the diffusive domains
+            refactored_diffusive_network_data = {}
+        
+        else:
+            refactored_diffusive_domain       = None
+            refactored_diffusive_network_data = None
+            refactored_reaches                = {}
+            LOG.info('No refactored diffusive domain file specified in configuration file. This is an MC-only simulation')     
+   
     else:
-        diffusive_domain = None
-        diffusive_network_data = None
-        topobathy_data = pd.DataFrame()
+        diffusive_domain                  = None
+        diffusive_network_data            = None
+        topobathy_data                    = pd.DataFrame()
+        refactored_diffusive_domain       = None
+        refactored_diffusive_network_data = None   
+        refactored_reaches                = {}
         LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
-    
+
     #============================================================================
     # Build network connections graph, assemble parameter dataframe, 
     # establish segment-waterbody, and segment-gage mappings
@@ -152,7 +201,7 @@ def nwm_network_preprocess(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-    
+
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
     
@@ -276,29 +325,32 @@ def nwm_network_preprocess(
     #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
     
+    #
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
 
         for tw in diffusive_domain:
             
+            mainstem_segs = diffusive_domain[tw]['links']           
+            
             # ===== build diffusive network data objects ==== 
             diffusive_network_data[tw] = {}
-            
-            # add diffusive domain segments
-            diffusive_network_data[tw]['mainstem_segs'] = diffusive_domain[tw]
 
+            # add diffusive domain segments
+            diffusive_network_data[tw]['mainstem_segs'] =  mainstem_segs
             # diffusive domain tributary segments
             trib_segs = []
-            for s in diffusive_domain[tw]:
-                us_list = rconn[s]
+            for seg in mainstem_segs:
+                us_list = rconn[seg]
                 for u in us_list:
-                    if u not in diffusive_domain[tw]:
-                        trib_segs.append(u)
-            diffusive_network_data[tw]['tributary_segments'] = trib_segs
+                    if u not in mainstem_segs:
+                        trib_segs.append(u)            
             
+            diffusive_network_data[tw]['tributary_segments'] = trib_segs
+
             # diffusive domain connections object
-            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (diffusive_domain[tw] + trib_segs)}
+            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}
             
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
@@ -312,17 +364,39 @@ def nwm_network_preprocess(
             
             # RouteLink parameters
             diffusive_network_data[tw]['param_df'] = param_df.filter(
-                (diffusive_domain[tw] + trib_segs),
+                (mainstem_segs + trib_segs),
                 axis = 0,
             )
+
+            if refactored_diffusive_domain: 
+                diffusive_parameters = {'geo_file_path': refactored_topobathy_file}
+                refactored_connections = nnu.build_refac_connections(diffusive_parameters)
+                refac_tw = refactored_diffusive_domain[tw]['refac_tw']
+                refactored_diffusive_network_data[refac_tw] = {}                
+                refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
+                
+                # Build connections with rlink mainstem and link tributaries
+                refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections                
+                refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
+                
+                # diffusive domain reaches and upstream connections. 
+                # break network at tributary segments
+                _, refactored_reaches, refactored_conn_diff = nnu.organize_independent_networks(
+                                                            refactored_diffusive_network_data[refac_tw]['connections'],
+                                                            set(trib_segs),
+                                                            set(),
+                                                            )
+                refactored_diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_diffusive_domain[tw]['rlinks']
+            else:
+                refactored_reaches={}
+           
         
-            # ==== remove diffusive domain segs from MC domain ====
-        
+            # ==== remove diffusive domain segs from MC domain ====        
             # drop indices from param_df
-            param_df = param_df.drop(diffusive_domain[tw])
+            param_df = param_df.drop(mainstem_segs)
         
             # remove keys from connections dictionary
-            for s in diffusive_domain[tw]:
+            for s in mainstem_segs:
                 connections.pop(s)
             
             # update downstream connections of trib segs
@@ -422,6 +496,8 @@ def nwm_network_preprocess(
         usace_lake_gage_crosswalk,
         diffusive_network_data,
         topobathy_data,
+        refactored_diffusive_domain,
+        refactored_reaches,
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
