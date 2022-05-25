@@ -845,15 +845,6 @@ def build_refac_connections(diff_network_parameters):
 
     # set parameter dataframe index as segment id number, sort
     param_df = param_df.set_index("key").sort_index()
-
-    # get and apply domain mask
-    if "mask_file_path" in diff_network_parameters:
-        data_mask = nhd_io.read_mask(
-            pathlib.Path(diff_network_parameters["mask_file_path"]),
-            layer_string=diff_network_parameters.get("mask_layer_string", None),
-        )
-        data_mask = data_mask.set_index(data_mask.columns[0])
-        param_df = param_df.filter(data_mask.index, axis=0)
     
     # There can be an externally determined terminal code -- that's this first value
     terminal_codes = set()
