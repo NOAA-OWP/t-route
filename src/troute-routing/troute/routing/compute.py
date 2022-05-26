@@ -1182,7 +1182,7 @@ def compute_diffusive_routing(
         else:
             refactored_diffusive_domain_bytw = None
             refactored_reaches_byrftw        = None
-            
+                 
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
