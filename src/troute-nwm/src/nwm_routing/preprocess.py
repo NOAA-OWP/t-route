@@ -204,7 +204,6 @@ def nwm_network_preprocess(
 
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
-    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -329,7 +328,7 @@ def nwm_network_preprocess(
     if diffusive_domain:
         
         rconn = nhd_network.reverse_network(connections)
-
+        refactored_reaches={}
         for tw in diffusive_domain:
             
             mainstem_segs = diffusive_domain[tw]['links']           
@@ -348,10 +347,8 @@ def nwm_network_preprocess(
                         trib_segs.append(u)            
             
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
-
             # diffusive domain connections object
-            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}
-            
+            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
@@ -374,19 +371,22 @@ def nwm_network_preprocess(
                 refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
-                
+
                 # Build connections with rlink mainstem and link tributaries
                 refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections                
                 refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-                
+               
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
-                _, refactored_reaches, refactored_conn_diff = nnu.organize_independent_networks(
+                _, refactored_reaches_batch, refactored_conn_diff = nnu.organize_independent_networks(
                                                             refactored_diffusive_network_data[refac_tw]['connections'],
                                                             set(trib_segs),
                                                             set(),
                                                             )
+
+                refactored_reaches[refac_tw] = refactored_reaches_batch[refac_tw]
                 refactored_diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_diffusive_domain[tw]['rlinks']
+                             
             else:
                 refactored_reaches={}
            
@@ -398,11 +398,11 @@ def nwm_network_preprocess(
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
-            
+
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
-    
+
     #============================================================================
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
