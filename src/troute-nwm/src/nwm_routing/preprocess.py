@@ -138,6 +138,10 @@ def nwm_network_preprocess(
                 # ... dataframe returned from read_netcdf, then the code would break here.
                 topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
+                # TODO: Request GID make comID variable an integer in their product, so
+                # we do not need to change variable types, here.
+                topobathy_data.index = topobathy_data.index.astype(int)
+                
             else:
                 topobathy_data = pd.DataFrame()
                 LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on compound trapezoidal geometry.')
@@ -204,7 +208,6 @@ def nwm_network_preprocess(
 
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
-    
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
@@ -348,10 +351,8 @@ def nwm_network_preprocess(
                         trib_segs.append(u)            
             
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
-
             # diffusive domain connections object
-            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}
-            
+            diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
@@ -374,11 +375,11 @@ def nwm_network_preprocess(
                 refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
-                
+
                 # Build connections with rlink mainstem and link tributaries
                 refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections                
                 refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-  
+               
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
                 _, refactored_reaches_batch, refactored_conn_diff = nnu.organize_independent_networks(
