@@ -138,10 +138,6 @@ def nwm_network_preprocess(
                 # ... dataframe returned from read_netcdf, then the code would break here.
                 topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
-                # TODO: Request GID make comID variable an integer in their product, so
-                # we do not need to change variable types, here.
-                topobathy_data.index = topobathy_data.index.astype(int)
-                
             else:
                 topobathy_data = pd.DataFrame()
                 LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on compound trapezoidal geometry.')
