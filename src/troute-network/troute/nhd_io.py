@@ -1570,11 +1570,15 @@ def lastobs_df_output(
 
 def write_waterbody_netcdf(
     wbdy_filepath, 
-    wbdy_df, 
-    waterbodies_df, 
+    i_df,
+    q_df,
+    d_df,
+    waterbodies_df,
+    waterbody_types_df,
     t0, 
     dt, 
-    nts
+    nts,
+    time_index
 ):
     
     '''
@@ -1596,27 +1600,32 @@ def write_waterbody_netcdf(
     
     '''
     
+    i_df.index.name = 'lake_id'
+    i_df.columns = ['i']
+    i_df = i_df.sort_index()
+    q_df.index.name = 'lake_id'
+    q_df.columns = ['q']
+    q_df = q_df.sort_index()
+    d_df.index.name = 'lake_id'
+    d_df.columns = ['d']
+    d_df = d_df.sort_index()
+    
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    waterbodies_df = waterbodies_df.reset_index().rename(columns = {'lake_id': 'ID'})[['ID','lat','lon','crs']]
-    wbdy_feature_id = waterbodies_df.ID.to_numpy(dtype = "int64")
+    waterbodies_df = waterbodies_df[['lat','lon','crs']].sort_index()
+    wbdy_feature_id = waterbodies_df.index.to_numpy(dtype = "int64")
 
     # dataframe of waterbody types
-    wbdy_type = wbdy_df.loc[:,['ID','reservoir_type']].drop_duplicates().reservoir_type.to_numpy(dtype = 'int32')
-    
-    # array of simulated flow data at gage locations
-    wbdy_data = wbdy_df.drop(columns='reservoir_type').pivot(index=['ID','time'],columns='variable',values='value')
-    
+    waterbody_types_df = waterbody_types_df.sort_index()
+    wbdy_type = waterbody_types_df.reservoir_type.to_numpy(dtype = 'int32')
+
     # array of simulation time
-    wbdy_time = [t0 + timedelta(seconds = (wbdy_df.time.unique()[0] + 1).tolist() * dt)]
-    
-    # Merge waterbodies_df with wbdy_data
-    full_wbdy_data = pd.merge(waterbodies_df,wbdy_data,on = 'ID')
+    wbdy_time = [t0 + timedelta(seconds = (time_index + 1) * dt)]
     
     if wbdy_filepath:
         
         # open netCDF4 Dataset in write mode
         with netCDF4.Dataset(
-            filename = wbdy_filepath + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
+            filename = wbdy_filepath + '/' + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
             mode = 'w',
             format = "NETCDF4"
         ) as f:
@@ -1700,7 +1709,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LATITUDE[:] = full_wbdy_data.lat.tolist()
+            LATITUDE[:] = waterbodies_df.lat.tolist()
             f['latitude'].setncatts(
                 {
                     'long_name': 'Lake latitude',
@@ -1716,7 +1725,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LONGITUDE[:] = full_wbdy_data.lon.tolist()
+            LONGITUDE[:] = waterbodies_df.lon.tolist()
             f['longitude'].setncatts(
                 {
                     'long_name': 'Lake longitude',
@@ -1747,7 +1756,7 @@ def write_waterbody_netcdf(
                     datatype = "S1",
                     dimensions = ()
                 )
-            crs[:] = np.array(waterbodies_df.loc[0,'crs'],dtype = '|S1')
+            crs[:] = np.array(waterbodies_df['crs'].iat[0],dtype = '|S1')
             f['crs'].setncatts(
                 {
                     'transform_name': 'latitude longitude',
@@ -1770,7 +1779,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = -999900
                 )
-            inflow[:] = full_wbdy_data.i.tolist()
+            inflow[:] = i_df.i.tolist()
             f['inflow'].setncatts(
                 {
                     'long_name': 'Lake Inflow',
@@ -1791,7 +1800,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            outflow[:] = full_wbdy_data.q.tolist()
+            outflow[:] = q_df.q.tolist()
             f['outflow'].setncatts(
                 {
                     'long_name': 'Lake Outflow',
@@ -1812,7 +1821,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            depth[:] = full_wbdy_data.d.tolist()
+            depth[:] = d_df.d.tolist()
             f['water_sfc_elev'].setncatts(
                 {
                     'long_name': 'Water Surface Elevation',
