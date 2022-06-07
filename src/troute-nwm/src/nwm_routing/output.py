@@ -144,26 +144,25 @@ def nwm_output_generator(
             wbdy = pd.concat(
                 [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
                 copy=False,
-            ).reset_index().rename(columns = {'index': 'ID'})
+            )
 
             wbdy_id_list = waterbodies_df.index.values.tolist()
-            flow_df = flowveldepth.reset_index().rename(columns = {'index': 'ID'})
-            flow_df = flow_df[flow_df['ID'].isin(wbdy_id_list)]
-            q_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,1::3]],axis = 1).melt(id_vars = 'ID')
-            q_df['time'], q_df['variable'] = zip(*q_df.variable)
-            d_df = pd.concat([flow_df.loc[:,'ID'],flow_df.iloc[:,3::3]],axis = 1).melt(id_vars = 'ID')
-            d_df['time'], d_df['variable'] = zip(*d_df.variable)
-            i_df = wbdy[wbdy['ID'].isin(wbdy_id_list)].melt(id_vars = 'ID')
-            i_df['time'], i_df['variable'] = zip(*i_df.variable)
+            flow_df = flowveldepth.loc[wbdy_id_list]
+            wbdy = wbdy.loc[wbdy_id_list]
 
-            #combine each of the datafames created above and merge with reservoir_types_df
-            wbdy_df = pd.merge(pd.concat([i_df,q_df,d_df]),
-                               waterbody_types_df.reset_index().rename(columns = {'lake_id': 'ID'}),
-                               on = 'ID')
-            
-            #filter only timesteps at dt*qts_subdivisions intervals
-            timestep_index = np.where(((wbdy_df.time.unique() + 1) * dt) % (dt * qts_subdivisions) == 0)
-            wbdy_df = wbdy_df[wbdy_df.time.isin(timestep_index[0])]
+            timestep, variable = zip(*flow_df.columns.tolist())
+            timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
+            ts_set = set(timestep_index[0].tolist())
+            flow_df_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
+            flow_df = flow_df.iloc[:,flow_df_col_index]
+
+            timestep, variable = zip(*wbdy.columns.tolist())
+            timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
+            ts_set = set(timestep_index[0].tolist())
+            wbdy_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
+            i_df = wbdy.iloc[:,wbdy_col_index]
+            q_df = flow_df.iloc[:,0::3]
+            d_df = flow_df.iloc[:,2::3]
         
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
@@ -198,18 +197,23 @@ def nwm_output_generator(
     
     if wbdyo and not waterbodies_df.empty:
         
+        time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
         
-        for i in wbdy_df.time.unique():
+        for i in range(i_df.shape[1]):
             
             nhd_io.write_waterbody_netcdf(
                 wbdyo, 
-                wbdy_df[wbdy_df.time==i], 
-                waterbodies_df, 
+                i_df.iloc[:,[i]],
+                q_df.iloc[:,[i]],
+                d_df.iloc[:,[i]],
+                waterbodies_df,
+                waterbody_types_df,
                 t0, 
                 dt, 
                 nts,
+                time_index[i],
             )
         
         
