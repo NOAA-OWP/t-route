@@ -718,7 +718,7 @@ def write_chrtout(
         LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
         start = time.time()
         
-        with xr.open_dataset(chrtout_files[0]) as ds:
+        with xr.open_dataset(chrtout_files[0],engine='netcdf4') as ds:
             newindex = ds.feature_id.values
             
         qtrt = flow.reindex(newindex).to_numpy().astype("float32")
