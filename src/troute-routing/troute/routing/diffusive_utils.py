@@ -55,7 +55,15 @@ def adj_alt1(
 
 
 def fp_network_map(
-    mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
+                    mainstem_seg_list, 
+                    mx_jorder, 
+                    ordered_reaches, 
+                    rchbottom_reaches, 
+                    nrch_g, 
+                    frnw_col, 
+                    dbfksegID, 
+                    pynw,
+                    #upstream_boundary_link,
 ):
     """
     Channel network mapping between Python and Fortran
@@ -74,6 +82,7 @@ def fp_network_map(
     Returns
     -------
     frnw_g -- (nparray of int) Fortran-Python network mapping array
+    ub_idx_fr -- (int) Fortran reach index marking a link of mainstem at the upstream boundary
     """
 
     #  Store headwater reach and upstream reaches above a junction
@@ -87,10 +96,10 @@ def fp_network_map(
             ncomp = reach["number_segments"]
             frj = frj + 1
             frnw_g[frj, 0] = ncomp
-
+         
             if not reach["upstream_bottom_segments"]:
-                # headwater reach
-                frnw_g[frj, 2] = 0  # the number of upstream reaches
+                # for diffusive mainstem, this case can be tributaries at the conflunces with the mainstem or mainstem link at its upstream boundary
+                frnw_g[frj, 2] = 0  # to mark these tributaries
             else:
                 # reaches before a junction
                 nusrch = len(reach["upstream_bottom_segments"])
@@ -141,8 +150,8 @@ def fp_network_map(
                 frnw_g[frj, 3 + i] = (
                     frnw_g[frj, 3 + i] + 1
                 )  # upstream reach indicds for frj reach
-
-    return frnw_g
+    
+    return frnw_g 
 
 
 def fp_chgeo_map(
@@ -270,7 +279,6 @@ def fp_qlat_map(
 
     return qlat_g
 
-
 def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     """
     Upstream boundary condition mapping between Python and Fortran
@@ -287,7 +295,7 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     -------
     ubcd_g -- (ndarray of float32) upstream boundary data (m3/sec)
     """
-
+    '''
     ubcd_g = np.zeros((nts_ub_g, nrch_g))
     frj = -1
 
@@ -304,7 +312,10 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
                 idx_dssegID = np.where(np.asarray(list(set(ds_seg))) == head_segment)
                 for tsi in range(0, nts_ub_g):
                     ubcd_g[tsi, frj] = upstream_inflows[idx_dssegID, tsi]  # [m^3/s]
-
+    '''
+    ubcd_g = np.zeros((nts_ub_g, nrch_g))    
+    
+    
     return ubcd_g
 
 
@@ -566,8 +577,12 @@ def fp_refactored_network_map(
     nrch_g,
     frnw_g, 
     pynw, 
+    mainstem_seg_list,
+    trib_seg_list,
     refactored_diffusive_domain,
-    refactored_reaches):
+    refactored_reaches,
+    #upstream_boundary_link
+):
     """
     Data assimilatoin data mapping between Python and Fortran
     
@@ -598,16 +613,57 @@ def fp_refactored_network_map(
     head_rlink_frequency = Counter(refactored_diffusive_domain['incoming_tribs'].values())
     head_rlink_multi_trib_links = {key: value for key,value in head_rlink_frequency.items() if value>1}
     
+    # make sure multiple tributaries into a single rlink are seperated out by a mainstem link inbetween. Refer to edge cases,p52,RM6
+    reversed_pynw = {pynw[k]:k for k in pynw}
+    head_rlink_trial = list(head_rlink_multi_trib_links.keys()) 
+    head_rlink_2b_removed = []
+    
+    for i in range(len(head_rlink_trial)):
+        rlnk = head_rlink_trial[i]
+        trib_link = [k for k, v in refactored_diffusive_domain['incoming_tribs'].items() if v == rlnk]
+        # place tributary links in junction order
+        trib_link_ordered = []
+        for lnk in trib_seg_list:
+            if lnk in trib_link:
+                trib_link_ordered.append(lnk) 
+        
+        n_mseg = 0
+        for i2 in range(len(trib_link_ordered)-1):
+            junct_order1 = reversed_pynw[trib_link_ordered[i2]]
+            junct_order2 = reversed_pynw[trib_link_ordered[i2+1]]
+            if abs(junct_order1 - junct_order2) == 1:
+            # when no mainstem link is between these two tribs. That is, the two tribs both enter a mainstem link at the upper end. 
+                head_rlink_2b_removed.append(rlnk)
+                #if rlnk in head_rlink_trial:
+                #    head_rlink_multi_trib_links.pop(rlnk)
+                #    head_rlink_trial.remove(rlnk)
+            else:
+                # make sure a mainstem link exist inbetween related tribs
+                 for odr in range(junct_order1+1, junct_order2):
+                    lnk = pynw[odr]
+                    if lnk in mainstem_seg_list:
+                        n_mseg = n_mseg + 1      
+        
+        if n_mseg == 0:
+            # when no mainstem link between multiple trib links
+            head_rlink_2b_removed.append(rlnk)
+            #if rlnk in head_rlink_trial:
+            #    head_rlink_multi_trib_links.pop(rlnk)            
+        
+    unique_rlinks = list(set(head_rlink_2b_removed))
+    for rlnk in unique_rlinks:
+        head_rlink_multi_trib_links.pop(rlnk)
+
     # make a dictionary of  rlink head (as a key): [rlinks] in the reach (as a value)
     rordered_reaches = {}
     for frj in range(0, nrch_g):
         rreach = [x for x in refactored_reaches if rpynw[frj] in x][0]
         rordered_reaches[rpynw[frj]] = rreach
-        
+
     # find the number of nodes for refactored hydrofabric
     for frj in range(0, nrch_g):
         rfrnw_g[frj, 0] = len(rordered_reaches[rpynw[frj]]) + 1
-    
+  
     frj = -1
     while frj < nrch_g-1:
         frj = frj + 1  
@@ -643,7 +699,7 @@ def fp_refactored_network_map(
                     i = i + 1
                     rfrnw_g[rfrj, i] = frj2 + 1 # +1 becasue python row index + 1 = fortran row index
             frj = rfrj 
-    
+
     return rfrnw_g, rpynw, rordered_reaches 
 
 def fp_refactored_qlat_iniq_dx_map(
@@ -887,7 +943,6 @@ def fp_crosswalk_map(
     """
     crosswalk_nrow = len(refactored_diffusive_domain['lengthMap'].keys())
     crosswalk_ncol = 15 + 3
-    #crosswalk_g    = np.zeros((crosswalk_nrow, crosswalk_ncol), dtype="float32")
     crosswalk_g    = np.zeros((crosswalk_nrow, crosswalk_ncol))
 
     irow = -1    
@@ -895,16 +950,13 @@ def fp_crosswalk_map(
         if  rfrnw_g[frj, 2] > 0:
             # mainstem only
             rncomp = rfrnw_g[frj, 0]
-            
             for rseg in range(0, rncomp-1): #qlat at bottom node is not used in diffusive.f90 so set it zero.
                 irow = irow + 1
-                
                 rlinkid = rordered_reaches[rpynw[frj]][rseg]
                 crosswalk_g[irow, 0] = rseg + 1 # fortran index of [rseg,    ] for refactored 
                 crosswalk_g[irow, 1] = frj + 1  # fortran index of [    , frj] for refactored                 
                 
                 linkid_frac_list = refactored_diffusive_domain['lengthMap'][rlinkid].split(',')         
-      
                 linkid_list=[]
                 linkid_frac_float_list=[]
                 for seg in range(len(linkid_frac_list)):
@@ -912,7 +964,7 @@ def fp_crosswalk_map(
                     linkid,dxfrac = int(linkid_frac),linkid_frac-int(linkid_frac)
                     linkid_list.append(linkid) 
                     linkid_frac_float_list.append(linkid_frac)
-                
+
                 # order linkid_frac list from upstream to downstream
                 linkid_ordered = [x for x in linkid_mainstem_ordered if x in linkid_list] 
                 linkid_frac_float_ordered =[]
@@ -922,7 +974,6 @@ def fp_crosswalk_map(
                         # sometimes rlink goes further downstream of TW link so as to include more links that are not in diffusive domain.
                         idx = linkid_ordered.index(int(linkid_frac))
                         linkid_frac_float_ordered.insert(idx, linkid_frac)                
-                
                 crosswalk_g[irow, 2] = len(linkid_frac_float_ordered)  # number of links to cover a rlink     
                 
                 jcol = 3
@@ -940,6 +991,86 @@ def fp_crosswalk_map(
                         jcol = jcol + 3   
     
     return crosswalk_nrow, crosswalk_ncol, crosswalk_g 
+
+def fp_coastal_boundary_input_map(
+    tw,
+    coastal_boundary_depth_df, 
+    nrch_g,
+    t0,
+    #nsteps,
+    dt_db_g,
+    t0_g,
+    tfin_g):
+    """
+    Data assimilatoin data mapping between Python and Fortran
+    Parameters
+    ----------
+    tw -- (int) Tailwater segment ID
+    coastal_boundary_depth_df -- (DataFrame) coastal boundary depth data at one hour time steps
+    t0              -- (datetime) initial date
+    #nsteps          -- (int) number of simulation time steps
+    dt_db_g         -- (int)   coastal boundary input data timestep in sec
+    t0_g            -- (float) diffusive model's initial simulation time [hr] (by default, zero)
+    tfin_g          -- (float) diffusive model's final simulation time [hr] 
+    Returns
+    -------
+    dsbd_option     -- (int) 1 or 2 for coastal boundary depth data or normal depth data, respectively
+    nts_db_g        -- (int) number of coastal boundary input data timesteps
+    dbcd_g          -- (float) coastal boundary input data time series [m]
+    """
+    
+    nts_db_g  = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
+    dbcd_g    = np.ones(nts_db_g)    
+  
+    # test {
+    #import datetime
+    #strdate="2018-09-16 18:00:00" 
+    #datetimeobj=datetime.datetime.strptime(strdate, "%Y-%m-%d %H:%M:%S")
+    #t0 = datetimeobj
+    # } test
+    
+    if not coastal_boundary_depth_df.empty:    
+        dt_timeslice = timedelta(minutes=dt_db_g/60.0)
+        tfin         = t0 + dt_timeslice*(nts_db_g-1)
+        timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
+ 
+        timeslice_dbcd_list = []
+        tws = coastal_boundary_depth_df.index.values.tolist()
+        for i in range(len(timestamps)):
+            timeslice = np.full(len(tws), timestamps[i])
+            if str(timestamps[i]) in coastal_boundary_depth_df.columns:
+                depth = coastal_boundary_depth_df[str(timestamps[i])].tolist()
+            else: 
+                depth = np.nan
+
+            timeslice_dbcd = (pd.DataFrame({
+                                            'stationId' : tws,
+                                            'datetime'  : timeslice,
+                                            'depth'     : depth 
+                                            }).set_index(['stationId', 'datetime']).
+                                                unstack(1, fill_value = np.nan)['depth'])
+            
+            timeslice_dbcd_list.append(timeslice_dbcd)                         
+        
+        dbcd_df = pd.concat(timeslice_dbcd_list, axis=1, ignore_index=False)
+
+        # interpolate missing value in NaN (np.nan) inbetween available values. For extrapolation, the result is the same as 
+        # a last available value either in the left or right.  
+        dbcd_df_interpolated = dbcd_df.interpolate(axis='columns', limit_direction='both', limit=6)
+
+        # if still missing data exists, do not use the coastal depth data as diffusive downstream boundary condition
+        if dbcd_df_interpolated.isnull().values.any():
+            dsbd_option = 2 # instead, use normal depth as the downstream boundary condition
+            dbcd_g[:] = 0.0
+        else: 
+            dsbd_option = 1 # use the data as prepared
+            dbcd_g[:] = dbcd_df_interpolated.loc[tw].values
+            
+    else:
+        dsbd_option = 2 # instead, use normal depth as the downstream boundary condition
+        dbcd_g[:] = 0.0               
+
+    return dsbd_option, nts_db_g, dbcd_g
      
 def diffusive_input_data_v02(
     tw,
@@ -947,6 +1078,7 @@ def diffusive_input_data_v02(
     rconn,
     reach_list,
     mainstem_seg_list,
+    trib_seg_list,
     diffusive_parameters,
     param_df,
     qlat,
@@ -961,6 +1093,9 @@ def diffusive_input_data_v02(
     usgs_df,
     refactored_diffusive_domain,
     refactored_reaches,
+    coastal_boundary_depth_df,
+    #upstream_boundary_flow_bytw,
+    #upstream_boundary_link,
 ):
     
     """
@@ -988,20 +1123,21 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-    # lateral inflow timestep (sec)
-    dt_ql_g = dt * qts_subdivisions
-    # upstream boundary condition timestep (sec)
-    dt_ub_g = dt
-    # downstream boundary condition timestep (sec)
-    dt_db_g = dt * qts_subdivisions
-    # tributary inflow timestep (sec)
-    dt_qtrib_g = dt
+
+    # lateral inflow timestep (sec). Currently, lateral flow in CHAROUT files at one hour time step
+    dt_ql_g = 3600.0
+    # upstream boundary condition timestep = MC simulation time step (sec)
+    dt_ub_g = 300.0 
+    # downstream boundary condition timestep (sec) - currently, schism output timestep = 1 hr
+    dt_db_g = 3600.0  #dt * qts_subdivisions
+    # tributary inflow timestep (sec) - currently, MC simulation time step = 5 min
+    dt_qtrib_g = 300.0
     # usgs_df time step used for data assimilation. The original timestep of USGS streamflow is 15 min but later interpolated at every dt in min.
     dt_da_g = dt # [sec]
     # time interval at which flow and depth simulations are written out by Tulane diffusive model
     saveinterval_tu = dt
     # time interval at which depth is written out by cnt model
-    saveinterval_cnt = dt * (qts_subdivisions)
+    #saveinterval_cnt = dt * (qts_subdivisions)
     # time interval at which flow is computed and written out by cnt model
     # initial timestep interval used by Tulane diffusive model
     dtini_g = dt
@@ -1158,12 +1294,22 @@ def diffusive_input_data_v02(
             pynw[frj] = head_segment
 
     frnw_col = 8
-    frnw_g = fp_network_map(
-        mainstem_seg_list, mx_jorder, ordered_reaches, rchbottom_reaches, nrch_g, frnw_col, dbfksegID, pynw
-    )
+    frnw_g   = fp_network_map(
+                              mainstem_seg_list, 
+                              mx_jorder, 
+                              ordered_reaches, 
+                              rchbottom_reaches, 
+                              nrch_g, 
+                              frnw_col, 
+                              dbfksegID, 
+                              pynw,
+                              #upstream_boundary_link,
+                              )
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
+    
+    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
@@ -1187,7 +1333,16 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
-    
+    #test
+    np.savetxt("./output/z_ar.txt", z_ar_g, fmt='%15.5f')
+    np.savetxt("./output/bo_ar.txt", bo_ar_g, fmt='%15.5f')
+    np.savetxt("./output/traps_ar.txt", traps_ar_g, fmt='%15.5f')
+    np.savetxt("./output/tw_ar.txt", tw_ar_g, fmt='%15.5f')
+    np.savetxt("./output/twcc_ar.txt", twcc_ar_g, fmt='%15.5f')
+    np.savetxt("./output/mann_ar.txt", mann_ar_g, fmt='%15.5f')
+    np.savetxt("./output/manncc_ar.txt", manncc_ar_g, fmt='%15.5f')
+    np.savetxt("./output/so_ar.txt", so_ar_g, fmt='%15.6f') 
+    np.savetxt("./output/dx_ar.txt", dx_ar_g, fmt='%15.5f')      
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
     #                  Prepare initial conditions data
@@ -1211,6 +1366,20 @@ def diffusive_input_data_v02(
                 # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
+    #test   
+    frj= -1
+    with open("./output/iniq_ar.txt",'a') as pyqini:    
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:                  
+                seg_list= reach["segments_list"]
+                ncomp= reach["number_segments"]             
+                frj= frj+1     
+                for seg in range(0,ncomp):                               
+                    segID= seg_list[seg]                  
+                    dmy1= iniq[seg, frj]
+                    pyqini.write("%s %s %s %s\n" %\
+                                (str(segID), str(frj+1), str(seg+1), str(dmy1)) )                   
+                                # <- +1 is added to frj for accommodating Fortran indexing.     
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
@@ -1231,17 +1400,33 @@ def diffusive_input_data_v02(
         qlat,
         qlat_g,
     )
-
+    
+    #test
+    frj= -1
+    with open("./output/qlat_ar.txt",'a') as pyql:
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:                  
+                seg_list= reach["segments_list"]
+                ncomp= reach["number_segments"]             
+                frj= frj+1     
+                for seg in range(0,ncomp):                               
+                    segID= seg_list[seg]
+                    for tsi in range (0,nts_ql_g):
+                        t_min= dt_ql_g/60.0*float(tsi)                        
+                        dmy1= qlat_g[tsi, seg, frj]
+                        pyql.write("%s %s %s %s\n" %\
+                                (str(frj+1), str(seg+1), str(t_min), str(dmy1)) )                   
+                                # <- +1 is added to frj for accommodating Fortran indexing. 
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
-    ds_seg = []
-    upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <- this is a place holder until we figure out what to do with upstream boundary 
-    nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)
-    ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
-
+    #ds_seg = []
+    #upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <- this is a place holder until we figure out what to do with upstream boundary     
+    nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)  
+    #ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
+    ubcd_g = np.zeros((nts_ub_g, nrch_g)) 
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
@@ -1250,28 +1435,59 @@ def diffusive_input_data_v02(
 
     # this is a place holder that uses normal depth and the lower boundary.
     # we will need to revisit this 
-    nts_db_g = int((tfin_g - t0_g) * 3600.0 / dt_db_g)+1 
-    dbcd_g = np.zeros(nts_db_g)
+    #nts_db_g = int((tfin_g - t0_g) * 3600.0 / dt_db_g)+1 
+    #dbcd_g = np.zeros(nts_db_g)    
+    
+    dsbd_option, nts_db_g, dbcd_g =  fp_coastal_boundary_input_map(
+                                                    tw,
+                                                    coastal_boundary_depth_df, 
+                                                    nrch_g,
+                                                    t0,
+                                                    #nsteps,
+                                                    dt_db_g,
+                                                    t0_g,
+                                                    tfin_g)
+    
+    para_ar_g[10] = dsbd_option  # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
 
+    frj= -1
+    with open("./output/dbcd_ar.txt",'a') as dbcd:
+        for tsi in range (0, nts_db_g):
+            t_min = dt_db_g/60.0*float(tsi)                        
+            dmy1  = dbcd_g[tsi]
+            dbcd.write("%s %s\n" %\
+                        (str(t_min), str(dmy1)) )      
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-9-2
 
     #       Prepare tributary q time series data generated by MC that flow into a juction boundary  
     # ---------------------------------------------------------------------------------------------
-    nts_qtrib_g = int((tfin_g - t0_g) * 3600.0 / dt_qtrib_g) + 1
-    
+    nts_qtrib_g = int((tfin_g - t0_g) * 3600.0 / dt_qtrib_g) + 1 # Even MC-computed flow start from first 5 min, t0 is coverd by initial_conditions. 
     qtrib_g = np.zeros((nts_qtrib_g, nrch_g))
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             frj = frj + 1
             if head_segment not in mainstem_seg_list:
-                qtrib_g[1:,frj] = junction_inflows.loc[head_segment]
-                
+                qtrib_g[1:,frj] = junction_inflows.loc[head_segment]                
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
                 qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']
-
+    
+    frj= -1
+    #with open(os.path.join(output_path,"qtrib_ar.txt"),'a') as pyqtrib:
+    with open("./output/qtrib_ar.txt",'a') as pyqtrib:
+        for x in range(mx_jorder,-1,-1):   
+            for head_segment, reach in ordered_reaches[x]:                  
+                seg_list= reach["segments_list"]
+                ncomp= reach["number_segments"]             
+                frj= frj+1     
+                for tsi in range (0, nts_qtrib_g):
+                    t_min=  dt_qtrib_g/60.0*float(tsi)                        
+                    dmy1= qtrib_g[tsi, frj]
+                    pyqtrib.write("%s %s %s\n" %\
+                                 (str(frj+1), str(t_min), str(dmy1)) )  
+                                 # <- +1 is added to frj for accommodating Fortran indexing.            
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
@@ -1279,7 +1495,7 @@ def diffusive_input_data_v02(
     # ---------------------------------------------------------------------------------    
     if not refactored_diffusive_domain:
         x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
-                                                                           ordered_reaches,                                             
+                                                                           ordered_reaches,                             
                                                                            mainstem_seg_list, 
                                                                            topobathy_data_bytw,
                                                                            param_df, 
@@ -1287,7 +1503,31 @@ def diffusive_input_data_v02(
                                                                            mxncomp_g, 
                                                                            nrch_g,
                                                                            dbfksegID)
-  
+        #with open(os.path.join(output_path,"bathy_data.txt"),'a') as pybathy:
+        with open("./output/bathy_data.txt",'a') as pybathy:
+            for frj in range(0, nrch_g):
+                if  frnw_g[frj, 2] > 0:                
+                    ncomp=  frnw_g[frj, 0]            
+                    for seg in range(0,ncomp):  
+                           for idp in range(0, size_bathy_g[seg, frj]):
+                                dmy1 = x_bathy_g[idp, seg, frj]
+                                dmy2 = z_bathy_g[idp, seg, frj]
+                                dmy3 = mann_bathy_g[idp, seg, frj]                            
+                                pybathy.write("%s %s %s %s %s %s\n" %\
+                                     (str(idp+1), str(seg+1), str(frj+1), str(dmy1), str(dmy2), str(dmy3))) 
+
+        #with open(os.path.join(output_path,"bathy_data.txt"),'a') as pybathy:
+        with open("./output/size_bathy_data.txt",'a') as pysizebathy:
+            for frj in range(0, nrch_g):
+                if  frnw_g[frj, 2] > 0:                
+                    ncomp=  frnw_g[frj, 0]  
+                    for seg in range(0,ncomp):  
+                        dmy1 = size_bathy_g[seg, frj]                    
+                        pysizebathy.write("%s %s %s\n" %\
+                                     (str(seg+1), str(frj+1), str(dmy1)))
+                            
+                            
+                            
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-11
 
@@ -1304,7 +1544,20 @@ def diffusive_input_data_v02(
                                                 t0_g,
                                                 tfin_g)
     
- 
+    with open("./output/usgs_da_g.txt",'a') as pyusgs_da:
+        for frj in range(0, nrch_g):
+             for t in range(0, nts_da_g):
+                dmy1 =  usgs_da_g[t,frj]                    
+                pyusgs_da.write("%s %s %s\n" %\
+                               (str(t+1), str(frj+1), str(dmy1)))    
+                
+    with open("./output/usgs_da_reach_g.txt",'a') as pyusgs_da_reach:
+        for frj in range(0, nrch_g):            
+            dmy1 =  usgs_da_reach_g[frj]                   
+            pyusgs_da_reach.write("%s %s\n" %\
+                               (str(frj+1), str(dmy1)))
+
+
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-1
 
@@ -1315,12 +1568,17 @@ def diffusive_input_data_v02(
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------    
     if refactored_diffusive_domain:
-        rfrnw_g, rpynw, rordered_reaches  = fp_refactored_network_map(
-                                                    nrch_g,
-                                                    frnw_g, 
-                                                    pynw, 
-                                                    refactored_diffusive_domain,
-                                                    refactored_reaches)
+        rfrnw_g, rpynw, rordered_reaches = fp_refactored_network_map(
+                                                                    nrch_g,
+                                                                    frnw_g, 
+                                                                    pynw, 
+                                                                    mainstem_seg_list,
+                                                                    trib_seg_list,
+                                                                    refactored_diffusive_domain,
+                                                                    refactored_reaches,
+                                                                    #upstream_boundary_link,        
+                                                                    )
+        np.savetxt("./output/ref_frnw_ar.txt", rfrnw_g, fmt='%10i')
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-12-2
@@ -1354,6 +1612,35 @@ def diffusive_input_data_v02(
                 rordered_reaches,
                 refactored_diffusive_domain,
                 )
+        
+
+        with open("./output/ref_qlat_ar.txt",'a') as pyql:
+            for frj in range(0, nrch_g):
+                #if  rfrnw_g[frj, 2] > 0:
+                if 1==1:
+                    # mainstem only
+                    rncomp = rfrnw_g[frj, 0]
+                    for rseg in range(0, rncomp):                                   
+                        for tsi in range (0,nts_ql_g):
+                            t_min= dt_ql_g/60.0*float(tsi)                        
+                            dmy1= rqlat_g[tsi, rseg, frj]
+                            pyql.write("%s %s %s %s\n" %\
+                                (str(frj+1), str(rseg+1), str(t_min), str(dmy1)) )                   
+                                # <- +1 is added to frj for accommodating Fortran indexing. 
+               
+        np.savetxt("./output/ref_dx_ar.txt", rdx_ar_g, fmt='%15.5f')
+
+        with open("./output/ref_iniq_ar.txt",'a') as pyqini:    
+            for frj in range(0, nrch_g):
+                if 1==1:
+                #if  rfrnw_g[frj, 2] > 0:
+                    # mainstem only
+                    rncomp = rfrnw_g[frj, 0]
+                    for rseg in range(0, rncomp):                             
+                        dmy1= riniq[rseg, frj]
+                        pyqini.write("%s %s %s %s\n" %\
+                                    (str(segID), str(frj+1), str(rseg+1), str(dmy1)) )                   
+                                    # <- +1 is added to frj for accommodating Fortran indexing. 
 
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
@@ -1382,6 +1669,27 @@ def diffusive_input_data_v02(
                 rordered_reaches,            
                 refactored_diffusive_domain,
                 )  
+        
+        with open("./output/bathy_data.txt",'a') as pybathy:
+            for frj in range(0, nrch_g):
+                if  rfrnw_g[frj, 2] > 0:
+                    rncomp = rfrnw_g[frj, 0]
+                    for rseg in range(0,rncomp):  
+                        for idp in range(0, size_bathy_g[rseg, frj]):
+                            dmy1 = x_bathy_g[idp, rseg, frj]
+                            dmy2 = z_bathy_g[idp, rseg, frj]
+                            dmy3 = mann_bathy_g[idp, rseg, frj]                            
+                            pybathy.write("%s %s %s %s %s %s\n" %\
+                                     (str(idp+1), str(rseg+1), str(frj+1), str(dmy1), str(dmy2), str(dmy3))) 
+
+        with open("./output/size_bathy_data.txt",'a') as pysizebathy:
+            for frj in range(0, nrch_g):
+                if  rfrnw_g[frj, 2] > 0:
+                    rncomp = rfrnw_g[frj, 0]
+                    for rseg in range(0,rncomp):
+                            dmy1 = size_bathy_g[rseg, frj]                    
+                            pysizebathy.write("%s %s %s\n" %\
+                                     (str(rseg+1), str(frj+1), str(dmy1))) 
 
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
@@ -1423,8 +1731,9 @@ def diffusive_input_data_v02(
     else:
         crosswalk_nrow = int(0) 
         crosswalk_ncol = int(0)
-        crosswalk_g  = np.array([]).reshape(0,0)       
-
+        crosswalk_g  = np.array([]).reshape(0,0) 
+        
+    np.savetxt("./output/crosswalk_ar.txt", crosswalk_g, fmt='%10i')
     # ---------------------------------------------------------------------------------
     #                              Step 0-13
 
@@ -1485,7 +1794,8 @@ def diffusive_input_data_v02(
         diff_ins["rdx_ar_g"] = rdx_ar_g 
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
-        diff_ins["crosswalk_g"] =  crosswalk_g 
+        diff_ins["crosswalk_g"] =  crosswalk_g
+        #diff_ins["ub_idx_fr"] = ub_idx_fr
     else:
         # for refactored hydrofabric
         # model time steps
@@ -1537,8 +1847,8 @@ def diffusive_input_data_v02(
         diff_ins["rdx_ar_g"] = rdx_ar_g 
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
-        diff_ins["crosswalk_g"] =  crosswalk_g        
-    
+        diff_ins["crosswalk_g"] =  crosswalk_g   
+        #diff_ins["ub_idx_fr"] = rub_idx_fr    
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

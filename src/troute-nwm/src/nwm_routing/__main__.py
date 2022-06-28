@@ -73,12 +73,12 @@ def nwm_route(
     waterbody_parameters,
     waterbody_types_df,
     waterbody_type_specified,
-    diffusive_parameters,
     diffusive_network_data,
     topobathy_data,
     refactored_diffusive_domain,
     refactored_reaches,
     subnetwork_list,
+    coastal_boundary_depth_df,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -126,7 +126,7 @@ def nwm_route(
         waterbody_type_specified,
         subnetwork_list,
     )
-    
+
     # returns list, first item is run result, second item is subnetwork items
     subnetwork_list = results[1]
     results = results[0]
@@ -135,7 +135,25 @@ def nwm_route(
         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
- 
+        '''
+        # retrieve MC-computed streamflow value at upstream boundary of diffusive mainstem
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+
+        upstream_boundary_flow={}
+        for tw,v in  diffusive_network_data.items():
+            upstream_boundary_link     = diffusive_network_data[tw]['upstream_boundary_link']
+            flow_              = flowveldepth.loc[upstream_boundary_link][0::3]
+            # the very first value at time (0,q) is flow value at the first time step after initial time.
+            upstream_boundary_flow[tw] = flow_         
+        '''     
+
         # call diffusive wave simulation and append results to MC results
         results.extend(
             compute_diffusive_routing(
@@ -151,11 +169,11 @@ def nwm_route(
                 usgs_df,
                 lastobs_df,
                 da_parameter_dict,
-                diffusive_parameters,
                 waterbodies_df,
                 topobathy_data,
                 refactored_diffusive_domain,
                 refactored_reaches,
+                coastal_boundary_depth_df,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -307,7 +325,7 @@ def main_v03(argv):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
@@ -391,7 +409,7 @@ def main_v03(argv):
             segment_index = segment_index.append(
                 pd.Index(diffusive_network_data[tw]['mainstem_segs'])
             ) 
-    
+
     # TODO: This function modifies one of its arguments (waterbodies_df), which is somewhat poor practice given its otherwise functional nature. Consider refactoring
     waterbodies_df, q0, t0, lastobs_df, da_parameter_dict = nwm_initial_warmstate_preprocess(
         break_network_at_waterbodies,
@@ -401,7 +419,7 @@ def main_v03(argv):
         waterbodies_df,
         link_lake_crosswalk,
     )
-    
+
     if showtiming:
         ic_end_time = time.time()
         task_times['initial_condition_time'] += ic_end_time - network_end_time
@@ -433,10 +451,12 @@ def main_v03(argv):
         reservoir_usgs_df, 
         reservoir_usgs_param_df,
         reservoir_usace_df,
-        reservoir_usace_param_df
+        reservoir_usace_param_df,
+        coastal_boundary_depth_df
     ) = nwm_forcing_preprocess(
         run_sets[0],
         forcing_parameters,
+        hybrid_parameters,
         da_sets[0] if data_assimilation_parameters else {},
         data_assimilation_parameters,
         break_network_at_waterbodies,
@@ -459,7 +479,7 @@ def main_v03(argv):
     # on first iteration of for loop only. For additional loops this will be passed
     # to function from inital loop. 
     subnetwork_list = [None, None, None]
-        
+
     for run_set_iterator, run in enumerate(run_sets):
 
         t0 = run.get("t0")
@@ -503,12 +523,12 @@ def main_v03(argv):
             waterbody_parameters,
             waterbody_types_df,
             waterbody_type_specified,
-            diffusive_parameters,
             diffusive_network_data,
             topobathy_data,
             refactored_diffusive_domain,
             refactored_reaches,
             subnetwork_list,
+            coastal_boundary_depth_df,
         )
         
         # returns list, first item is run result, second item is subnetwork items
@@ -543,9 +563,11 @@ def main_v03(argv):
                 _,
                 reservoir_usace_df,
                 _,
+                coastal_boundary_depth_df,
             ) = nwm_forcing_preprocess(
                 run_sets[run_set_iterator + 1],
                 forcing_parameters,
+                hybrid_parameters,
                 da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
                 data_assimilation_parameters,
                 break_network_at_waterbodies,
@@ -700,7 +722,7 @@ async def main_v03_async(argv):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
@@ -847,7 +869,6 @@ async def main_v03_async(argv):
             waterbody_parameters,
             waterbody_types_df,
             waterbody_type_specified,
-            diffusive_parameters,
         )
 
         forcings_task = loop.run_in_executor(
@@ -936,7 +957,6 @@ async def main_v03_async(argv):
         waterbody_parameters,
         waterbody_types_df,
         waterbody_type_specified,
-        diffusive_parameters,
     )
 
     # nwm_final_output_generator()

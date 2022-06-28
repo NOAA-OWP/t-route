@@ -271,13 +271,13 @@ def compute_nhd_routing_v02(
                     subnetworks_only_ordered_jit[order].update(subnet_sets)
                     for subn_tw, subnetwork in subnet_sets.items():
                         subnetworks[subn_tw] = {k: intw[k] for k in subnetwork}
-
+            
             reaches_ordered_bysubntw = defaultdict(dict)
             for order, ordered_subn_dict in subnetworks_only_ordered_jit.items():
                 for subn_tw, subnet in ordered_subn_dict.items():
                     conn_subn = {k: connections[k] for k in subnet if k in connections}
                     rconn_subn = {k: rconn[k] for k in subnet if k in rconn}
-
+                    
                     if not waterbodies_df.empty and not usgs_df.empty:
                         path_func = partial(
                             nhd_network.split_at_gages_waterbodies_and_junctions,
@@ -350,6 +350,7 @@ def compute_nhd_routing_v02(
                             "tw": [],
                             "subn_reach_list": [],
                         }
+            
 
             # save subnetworks_only_ordered_jit and reaches_ordered_bysubntw_clustered in a list
             # to be passed on to next loop. Create a deep copy of this list to prevent it from being
@@ -390,7 +391,7 @@ def compute_nhd_routing_v02(
                     
                     #Declare empty dataframe
                     waterbody_types_df_sub = pd.DataFrame()
-                
+
                     if not waterbodies_df.empty:
                         lake_segs = list(waterbodies_df.index.intersection(segs))
                         waterbodies_df_sub = waterbodies_df.loc[
@@ -425,8 +426,12 @@ def compute_nhd_routing_v02(
                     
                     #check if any DA reservoirs are offnetwork. if so change reservoir type to
                     #1: levelpool
-                    #tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
-                    #waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
+                    tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
+      
+                    if tmp_lake_ids: 
+                        #waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
+                        for idx in tmp_lake_ids:
+                            waterbody_types_df_sub.at[idx,'reservoir_type'] = 1
                     
                     param_df_sub = param_df.loc[
                         common_segs,
@@ -445,7 +450,7 @@ def compute_nhd_routing_v02(
                             flowveldepth_interorder[us_subn_tw][
                                 "position_index"
                             ] = subn_tw_sortposition
-
+   
                     subn_reach_list = clustered_subns["subn_reach_list"]
                     upstreams = clustered_subns["upstreams"]
 
@@ -549,7 +554,7 @@ def compute_nhd_routing_v02(
                     )
 
                 results_subn[order] = parallel(jobs)
-
+   
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
                     for ci, (cluster, clustered_subns) in enumerate(
@@ -1077,7 +1082,7 @@ def compute_nhd_routing_v02(
                 waterbody_types_df_sub, 
                 t0
             )
-            
+
             results.append(
                 compute_func(
                     nts,
@@ -1140,11 +1145,13 @@ def compute_diffusive_routing(
     usgs_df,
     lastobs_df,
     da_parameter_dict,
-    diffusive_parameters,
     waterbodies_df,
     topobathy_data,
     refactored_diffusive_domain,
     refactored_reaches,
+    coastal_boundary_depth_df, 
+    #upstream_boundary_flow, 
+    #upstream_boundary_link,
     ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
@@ -1159,7 +1166,7 @@ def compute_diffusive_routing(
                 else:
                     trib_segs = np.append(trib_segs, i[0][x])
                     trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
-                    
+           
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 
@@ -1187,7 +1194,13 @@ def compute_diffusive_routing(
         else:
             refactored_diffusive_domain_bytw = None
             refactored_reaches_byrftw        = None
-                 
+  
+        # coastal boundary depth input data at TW
+        if tw in coastal_boundary_depth_df.index:
+            coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[tw].to_frame().T
+        else:
+            coastal_boundary_depth_bytw_df = pd.DataFrame()
+
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1195,6 +1208,7 @@ def compute_diffusive_routing(
             diffusive_network_data[tw]['rconn'],
             diffusive_network_data[tw]['reaches'],
             diffusive_network_data[tw]['mainstem_segs'],
+            diffusive_network_data[tw]['tributary_segments'],
             None, # place holder for diffusive parameters
             diffusive_network_data[tw]['param_df'],
             qlats,
@@ -1209,10 +1223,9 @@ def compute_diffusive_routing(
             diff_usgs_df,
             refactored_diffusive_domain_bytw,
             refactored_reaches_byrftw, 
-            #refactored_diffusive_domain[tw],
-            #refactored_reaches[refactored_tw],
+            coastal_boundary_depth_bytw_df,
         )
-        
+
         # run the simulation
         out_q, out_elv = diffusive.compute_diffusive(diffusive_inputs)
 

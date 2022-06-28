@@ -266,10 +266,12 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
         and reduce(set.intersection, reached.values())
     ):
         raise ValueError("Networks not disjoint")
-
+    #import pdb; pdb.set_trace()
     rv = {}
     for k, n in reached.items():
         rv[k] = {m: N.get(m, []) for m in n}
+    #import pdb; pdb.set_trace()
+    
     return rv
 
 

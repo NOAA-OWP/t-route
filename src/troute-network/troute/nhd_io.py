@@ -15,6 +15,8 @@ from toolz import compose
 import netCDF4
 from joblib import delayed, Parallel
 from cftime import date2num
+import dateutil.parser as dparser
+from datetime import datetime, timedelta
 
 from troute.nhd_network import reverse_dict
 
@@ -78,7 +80,7 @@ def read_config_file(custom_input_file):
     compute_parameters           (dict): Input parameters re computation settings
     forcing_parameters           (dict): Input parameters re model forcings
     restart_parameters           (dict): Input parameters re model restart
-    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    hybrid_parameters            (dict): Input parameters re diffusive wave model
     output_parameters            (dict): Input parameters re output writing
     parity_parameters            (dict): Input parameters re parity assessment
     data_assimilation_parameters (dict): Input parameters re data assimilation
@@ -106,7 +108,7 @@ def read_config_file(custom_input_file):
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
     restart_parameters = compute_parameters.get("restart_parameters", {})
-    diffusive_parameters = compute_parameters.get("diffusive_parameters", {})
+    hybrid_parameters = compute_parameters.get("hybrid_parameters", {})
     data_assimilation_parameters = compute_parameters.get(
         "data_assimilation_parameters", {}
     )
@@ -121,7 +123,7 @@ def read_config_file(custom_input_file):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
@@ -141,6 +143,30 @@ def read_diffusive_domain(domain_file):
                             (includeing tailwater segment) 
     
     '''
+    if domain_file[-4:] == "yaml":
+        with open(domain_file) as domain:
+            data = yaml.load(domain, Loader=yaml.SafeLoader)
+    else:
+        with open(domain_file) as domain:
+            data = json.load(domain)
+            
+    return data
+
+def read_coastal_boundary_domain(domain_file):
+    '''
+    Read coastal boundary domain from .ymal or .json file.
+    
+    Arguments
+    ---------
+    domain_file (str or pathlib.Path): Path of coastal boundary domain file
+    
+    Returns
+    -------
+    data (dict int: int): diffusive domain tailwater segments: coastal domain segments 
+                        
+    
+    '''
+
     if domain_file[-4:] == "yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
@@ -709,8 +735,8 @@ def write_chrtout(
         
         LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
         start = time.time()
-        
-        with xr.open_dataset(chrtout_files[0],engine='netcdf4') as ds:
+
+        with xr.open_dataset(chrtout_files[0], engine='netcdf4') as ds:
             newindex = ds.feature_id.values
             
         qtrt = flow.reindex(newindex).to_numpy().astype("float32")
@@ -1518,12 +1544,65 @@ def build_coastal_dataframe(coastal_boundary_elev):
     return coastal_df
 
 
-def build_coastal_ncdf_dataframe(coastal_ncdf):
-    with xr.open_dataset(coastal_ncdf) as ds:
-        coastal_ncdf_df = ds[["elev", "depth"]]
-        return coastal_ncdf_df.to_dataframe()
+def build_coastal_ncdf_dataframe(
+                                coastal_files, 
+                                coastal_boundary_domain,
+                                #interpolation_frequency,
+                                ):
+    #with xr.open_dataset(coastal_ncdf) as ds:
+    #    coastal_ncdf_df = ds[["elev", "depth"]]
+    #    return coastal_ncdf_df.to_dataframe()
+    
+    # retrieve coastal elevation, topo depth, and temporal data
+    ds = netCDF4.Dataset(filename = coastal_files,  mode = 'r', format = "NETCDF4")
+    
+    tws = list(coastal_boundary_domain.keys())
+    coastal_boundary_nodes = list(coastal_boundary_domain.values())
+    
+    elev_NAVD88 = ds.variables['elev'][:, coastal_boundary_nodes].filled(fill_value = np.nan)
+    depth_bathy = ds.variables['depth'][coastal_boundary_nodes].filled(fill_value = np.nan)
+    timesteps   = ds.variables['time'][:]    
+    start_date = ds.variables['time'].units
+    
+    start_date   = dparser.parse(start_date,fuzzy=True)
+    dt_schism    = 3600 # [sec]
+    dt_timeslice = timedelta(minutes=dt_schism/60.0)
+    start_date   = start_date # + dt_timeslice
+    #tfin         =  start_date + dt_timeslice*(len(timesteps)-1)
+    tfin         =  start_date + dt_timeslice*len(timesteps)
+    timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
+    timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
+        
+    eta= [max(0.0, -1.0*x) for x in depth_bathy]
+    
+    # create a dataframe of water depth at coastal domain nodes
+    timeslice_schism_list=[]
+    for t in range(0, len(timesteps)+1):
+        timeslice= np.full(len(tws), timestamps[t])
+        if t==0:
+            depth = np.nan
+        else:
+            depth = elev_NAVD88[t-1,:] - eta        
 
+        timeslice_schism  = (pd.DataFrame({
+                                'stationId' : tws,
+                                'datetime'  : timeslice,
+                                #'depth'     : elev_NAVD88[:,t] - eta
+                                'depth'     : depth #elev_NAVD88[t,:] - eta
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['depth'])
 
+        timeslice_schism_list.append(timeslice_schism)
+
+    
+    coastal_boundary_depth_df = pd.concat(timeslice_schism_list, axis=1, ignore_index=False)
+    
+    # linearly extrapolate depth value at start date
+    coastal_boundary_depth_df.iloc[:,0] = 2.0*coastal_boundary_depth_df.iloc[:,1] - coastal_boundary_depth_df.iloc[:,2]   
+ 
+    return coastal_boundary_depth_df    
+ 
 def lastobs_df_output(
     lastobs_df,
     dt,
@@ -1562,15 +1641,11 @@ def lastobs_df_output(
 
 def write_waterbody_netcdf(
     wbdy_filepath, 
-    i_df,
-    q_df,
-    d_df,
-    waterbodies_df,
-    waterbody_types_df,
+    wbdy_df, 
+    waterbodies_df, 
     t0, 
     dt, 
-    nts,
-    time_index
+    nts
 ):
     
     '''
@@ -1592,32 +1667,27 @@ def write_waterbody_netcdf(
     
     '''
     
-    i_df.index.name = 'lake_id'
-    i_df.columns = ['i']
-    i_df = i_df.sort_index()
-    q_df.index.name = 'lake_id'
-    q_df.columns = ['q']
-    q_df = q_df.sort_index()
-    d_df.index.name = 'lake_id'
-    d_df.columns = ['d']
-    d_df = d_df.sort_index()
-    
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    waterbodies_df = waterbodies_df[['lat','lon','crs']].sort_index()
-    wbdy_feature_id = waterbodies_df.index.to_numpy(dtype = "int64")
+    waterbodies_df = waterbodies_df.reset_index().rename(columns = {'lake_id': 'ID'})[['ID','lat','lon','crs']]
+    wbdy_feature_id = waterbodies_df.ID.to_numpy(dtype = "int64")
 
     # dataframe of waterbody types
-    waterbody_types_df = waterbody_types_df.sort_index()
-    wbdy_type = waterbody_types_df.reservoir_type.to_numpy(dtype = 'int32')
-
+    wbdy_type = wbdy_df.loc[:,['ID','reservoir_type']].drop_duplicates().reservoir_type.to_numpy(dtype = 'int32')
+    
+    # array of simulated flow data at gage locations
+    wbdy_data = wbdy_df.drop(columns='reservoir_type').pivot(index=['ID','time'],columns='variable',values='value')
+    
     # array of simulation time
-    wbdy_time = [t0 + timedelta(seconds = (time_index + 1) * dt)]
+    wbdy_time = [t0 + timedelta(seconds = (wbdy_df.time.unique()[0] + 1).tolist() * dt)]
+    
+    # Merge waterbodies_df with wbdy_data
+    full_wbdy_data = pd.merge(waterbodies_df,wbdy_data,on = 'ID')
     
     if wbdy_filepath:
         
         # open netCDF4 Dataset in write mode
         with netCDF4.Dataset(
-            filename = wbdy_filepath + '/' + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
+            filename = wbdy_filepath + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
             mode = 'w',
             format = "NETCDF4"
         ) as f:
@@ -1701,7 +1771,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LATITUDE[:] = waterbodies_df.lat.tolist()
+            LATITUDE[:] = full_wbdy_data.lat.tolist()
             f['latitude'].setncatts(
                 {
                     'long_name': 'Lake latitude',
@@ -1717,7 +1787,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LONGITUDE[:] = waterbodies_df.lon.tolist()
+            LONGITUDE[:] = full_wbdy_data.lon.tolist()
             f['longitude'].setncatts(
                 {
                     'long_name': 'Lake longitude',
@@ -1748,7 +1818,7 @@ def write_waterbody_netcdf(
                     datatype = "S1",
                     dimensions = ()
                 )
-            crs[:] = np.array(waterbodies_df['crs'].iat[0],dtype = '|S1')
+            crs[:] = np.array(waterbodies_df.loc[0,'crs'],dtype = '|S1')
             f['crs'].setncatts(
                 {
                     'transform_name': 'latitude longitude',
@@ -1771,7 +1841,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = -999900
                 )
-            inflow[:] = i_df.i.tolist()
+            inflow[:] = full_wbdy_data.i.tolist()
             f['inflow'].setncatts(
                 {
                     'long_name': 'Lake Inflow',
@@ -1792,7 +1862,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            outflow[:] = q_df.q.tolist()
+            outflow[:] = full_wbdy_data.q.tolist()
             f['outflow'].setncatts(
                 {
                     'long_name': 'Lake Outflow',
@@ -1813,7 +1883,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            depth[:] = d_df.d.tolist()
+            depth[:] = full_wbdy_data.d.tolist()
             f['water_sfc_elev'].setncatts(
                 {
                     'long_name': 'Water Surface Elevation',

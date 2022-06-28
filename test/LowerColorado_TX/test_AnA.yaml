@@ -9,13 +9,14 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_path: domain/RouteLink.nc
+        geo_file_path: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc  #domain/RouteLink.nc
+        mask_file_path: domain/coastal_subset.txt
     waterbody_parameters:
         #----------
         break_network_at_waterbodies: True 
         level_pool:
             #----------
-            level_pool_waterbody_parameter_file_path: domain/LAKEPARM.nc
+            level_pool_waterbody_parameter_file_path: /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc #domain/LAKEPARM.nc
         rfc:
             #----------
             reservoir_parameter_file                : domain/reservoir_index_AnA.nc
@@ -25,37 +26,43 @@ network_topology_parameters:
 #--------------------------------------------------------------------------------
 compute_parameters:
     #----------
-    parallel_compute_method: serial
+    parallel_compute_method: by-subnetwork-jit-clustered #serial 
     compute_kernel         : V02-structured
     assume_short_ts        : True
     subnetwork_target_size : 10000
     cpu_pool               : 36
     restart_parameters:
         #----------
-        wrf_hydro_channel_restart_file           : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
-        wrf_hydro_channel_ID_crosswalk_file      : domain/RouteLink.nc
-        wrf_hydro_waterbody_restart_file         : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
-        wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM.nc
-        wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc
+        #wrf_hydro_channel_restart_file           : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        lite_channel_restart_file: /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/channel_restart_202006011200
+        wrf_hydro_channel_ID_crosswalk_file      : /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc  #domain/RouteLink.nc
+        #wrf_hydro_waterbody_restart_file         : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        lite_waterbody_restart_file              : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/waterbody_restart_202006011200
+        wrf_hydro_waterbody_ID_crosswalk_file    : /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc 
+        wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc 
     hybrid_parameters:
         run_hybrid_routing: True
-        diffusive_domain  : domain/diffusive_domain_new.yaml
+        diffusive_domain  : domain/coastal_domain_subset.yaml   
         use_natl_xsections: True
-        topobathy_domain  : domain/diffusive_natural_xs_03312022.nc 
+        topobathy_domain  : domain/f1_nxsec/final_diffusive_natural_xs.nc 
         run_refactored_network: True
-        refactored_domain: domain/lcra_refactored_diffusive_domain_042122.yaml
-        refactored_topobathy_domain: domain/lcra_refac_diffusive_natural_xs_042122.nc
+        refactored_domain: domain/refactored_coastal_domain_subset.yaml 
+        refactored_topobathy_domain: domain/f1_nxsec/refac_final_diffusive_natural_xs.nc 
+        coastal_boundary_domain: domain/coastal_boundary_domain.yaml
     forcing_parameters:
         #----------
-        qts_subdivisions        : 12
-        dt                      : 300
-        qlat_input_folder       : channel_forcing
-        qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
-        nts                     : 336
-        max_loop_size           : 28    
+        qts_subdivisions            : 12
+        dt                          : 300
+        qlat_input_folder          : channel_forcing/202006
+        #qlat_input_folder           : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/forcings_channel
+        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1"
+        coastal_boundary_input_file : boundary_forcing/schout_1.nc  
+        nts                         : 24 #336
+        max_loop_size               : 24 #28    
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_TimeSlice/
+        #usgs_timeslices_folder   : usgs_TimeSlice/
+        usgs_timeslices_folder   : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/NWM_timeslice_data
         usace_timeslices_folder  : usace_TimeSlice/
         timeslice_lookback_hours : 48 
         qc_threshold             : 1
@@ -63,15 +70,16 @@ compute_parameters:
             #----------
             streamflow_nudging            : True
             diffusive_streamflow_nudging  : False
-            gage_segID_crosswalk_file     : domain/RouteLink.nc
+            gage_segID_crosswalk_file     : /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc  #domain/RouteLink.nc
             crosswalk_gage_field          : 'gages'
             crosswalk_segID_field         : 'link'
-            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc
+            #wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2020-06-04_12:00:00.nc
+            wrf_hydro_lastobs_file        : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_lastobs_outputs/nudgingLastObs.2020-06-01_12:00:00.nc                      
             lastobs_output_folder         : lastobs/
         reservoir_da:
             #----------
             reservoir_persistence_usgs  : True
-            reservoir_persistence_usace : True
+            reservoir_persistence_usace : False
             gage_lakeID_crosswalk_file  : domain/reservoir_index_AnA.nc
 #--------------------------------------------------------------------------------
 output_parameters:
@@ -82,7 +90,7 @@ output_parameters:
         lite_restart_output_directory: restart/
     chrtout_output:
         #----------
-        wrf_hydro_channel_output_source_folder: channel_forcing/
+        wrf_hydro_channel_output_source_folder: channel_forcing/202006
     chanobs_output:
         #----------
         chanobs_output_directory: output/
