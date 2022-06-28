@@ -216,6 +216,11 @@ contains
     double precision, dimension(:,:), allocatable :: used_lfrac    
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g
+    
+    open(unit=11, file="./output/cn-mod results at timesteps.txt")
+    open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
+    open(unit=201, file="./output/boundaryIO_test.txt")
+    open(unit=202, file="./output/Q compute at junct.txt")
         
   !-----------------------------------------------------------------------------
   ! Time domain parameters
@@ -546,9 +551,10 @@ contains
      
       ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
       ! ** At intial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
-      ! ** So, let's assume the values are all equal to flow at the bottom node.
+      ! ** So, let's assume the depth values are all nodes equal to depth at the bottom node.
+      wdepth = newY(ncomp, j) - z(ncomp, j)
       do i = 1, ncomp -1
-        oldY(i,j) = newY(ncomp, j)
+        oldY(i,j) = wdepth + z(i, j)      
       end do
       
       call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
@@ -563,6 +569,16 @@ contains
       end do
       
     end do
+    
+               !test
+           do jm = 1, nmstem_rch
+             j = mstem_frj(jm)
+             do i=1, frnw_g(j,1)
+                write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j), newY(i,j)&
+                                                     ,z(i,j), newY(i, j)-z(i,j)
+            end do
+           end do
+
 
   !-----------------------------------------------------------------------------
   ! Write tributary results to output arrays
@@ -650,6 +666,7 @@ contains
 
               ! inflow from upstream mainstem reach's bottom node
               q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
+              write(202,*) "usrch at mstem:", t, j, usrchj,  q_usrch
             else
 
               ! inflow from upstream tributary reach
@@ -658,15 +675,19 @@ contains
               end do
               tf0 = t +  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
+                write(202,*) "usrch at trib :", t, j, usrchj,  q_usrch
             end if
 
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch
+            write(202,*) "usrch at ttal:", t, j, usrchj, newQ(1,j)
           end do        
         else
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
         end if
+        
+        write(201,*) t, 1, j, newQ(1,j)
 
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
@@ -773,6 +794,16 @@ contains
       
       ! diffusive wave simulation time print
       print*, "diffusive simulatoin time in minute=", t
+           !test
+           do jm = 1, nmstem_rch
+             j = mstem_frj(jm)
+             do i=1, frnw_g(j,1)
+                write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j),  newY(i,j)&
+                                                     ,z(i,j), newY(i, j)-z(i,j)
+            end do
+           end do
+
+    
 
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
@@ -892,6 +923,17 @@ contains
           deallocate(used_lfrac)
           deallocate(flag_lfrac)   
         endif
+        
+            !* test
+            do ts=1, ntss_ev_g
+            do jm = 1, nmstem_rch
+                j = mstem_frj(jm)
+            do i=1, frnw_g(j,1)
+                write(101,"(f10.1, 2I10, 4F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j),&
+                                                    elv_ev_g(ts, i, j), z(i,j), elv_ev_g(ts, i, j)-z(i,j)
+            end do
+            end do
+            end do
     
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
@@ -1119,7 +1161,8 @@ contains
       double precision :: currentQ
       double precision :: eei_ghost, ffi_ghost, exi_ghost
       double precision :: fxi_ghost, qp_ghost, qpx_ghost
-
+    
+      open(unit=501, file="./output/Q NaN invest.txt")
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
     !* Note: lateralFlow(1,j) is already added to the boundary
@@ -1254,30 +1297,30 @@ contains
       qpx_ghost = 0.
       
       ! when a reach has usgs streamflow data at its location, apply DA
-      if (usgs_da_reach(j) /= 0) then
+      !if (usgs_da_reach(j) /= 0) then
         
-        allocate(varr_da(nts_da))
-        do n = 1, nts_da
-            varr_da(n) = usgs_da(n, j)
-        end do
-        qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t + dtini/60.)
-        flag_da = 1
+      !  allocate(varr_da(nts_da))
+      !  do n = 1, nts_da
+      !      varr_da(n) = usgs_da(n, j)
+      !  end do
+      !  qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t + dtini/60.)
+      !  flag_da = 1
         ! check usgs_da value is in good quality
-        irow = locate(tarr_da, t + dtini/60.)
-        if (irow == nts_da) then
-          irow = irow-1
-        endif        
-        if ((varr_da(irow)<= -4443.999).or.(varr_da(irow+1)<= -4443.999)) then
+      !  irow = locate(tarr_da, t + dtini/60.)
+      !  if (irow == nts_da) then
+      !    irow = irow-1
+      !  endif        
+      !  if ((varr_da(irow)<= -4443.999).or.(varr_da(irow+1)<= -4443.999)) then
           ! when usgs data is missing or in poor quality
           qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
           flag_da = 0
-        endif
-        deallocate(varr_da)
-      else
+      !  endif
+      !  deallocate(varr_da)
+     ! else
         
         qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
         flag_da = 0
-      endif
+     ! endif
       
       qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
 
@@ -1287,17 +1330,18 @@ contains
       end do
 
       ! when a reach hasn't been applied to DA 
-      if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
+     ! if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
        qp(1, j) = newQ(1, j)
        qp(1, j) = qp(1, j) + allqlat
-      endif
+     ! endif
+     
      
       do i = 1, ncomp
         if (abs(qp(i, j)) < q_llm) then
-          qp(i, j) = q_llm
+          qp(i, j) = q_llm    
         end if
       end do
-      
+
       ! update newQ
       do i = 1, ncomp
         newQ(i, j) = qp(i, j)
@@ -1547,7 +1591,8 @@ contains
     double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
     double precision            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
     double precision            :: rtsafe    
-   
+    open(unit=301, file="./output/rtsafe_check.txt")
+    
     y_ulm_multi = 2.0
     y_llm_multi = 0.1
     
@@ -1567,7 +1612,9 @@ contains
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x1, y_ds, fl, df)
 
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x2, y_ds, fh, df)
-
+    
+    write(301, *) "ini:", i, j, Q_cur, Q_ds, y_norm, y_old, x1, x2, fl, fh
+    
     if ((fl > 0.0 .and. fh > 0.0) .or. (fl < 0.0 .and. fh < 0.0)) then
       rtsafe = y_norm
       return
@@ -1600,16 +1647,26 @@ contains
         dxold  = dxx
         dxx    = 0.50 * (xh - xl)
         rtsafe = xl + dxx
-        if (xl == rtsafe) return   ! change in root is negligible.
+         write(301, *) "iter:", i, j, iter, rtsafe
+        if (xl == rtsafe) then 
+         write(301, *) "fnal:", i, j, iter, rtsafe
+         return   ! change in root is negligible.
+        endif 
       else                         ! newton step acceptable. take it.
         dxold  = dxx
         dxx    = f / df
         temp   = rtsafe
         rtsafe = rtsafe - dxx
-        if (temp == rtsafe) return
+        if (temp == rtsafe) then
+          write(301, *) "fnal:", i, j, iter, rtsafe
+          return
+        endif 
       end if
       
-      if (abs(dxx) < xacc) return  ! convergence criterion.
+      if (abs(dxx) < xacc) then 
+        write(301, *) "fnal:", i, j, iter, rtsafe
+        return  ! convergence criterion.
+      endif
 
       ! one new function evaluation per iteration.
       call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, rtsafe, y_ds, f, df)
@@ -1623,6 +1680,7 @@ contains
 
     ! when root is not converged:
     rtsafe = y_norm
+    write(301, *) "fnal:", i, j, iter, rtsafe
     
   end function rtsafe
 
@@ -1740,11 +1798,11 @@ contains
     ! subroutine local variables
     integer          :: i_area, i_find, num
     integer          :: i1, i2
-    integer          :: ic, iel, ii, iel_start, iel_incr_start
+    integer          :: ic, iel, ii, ii2, iv, iel_start, iel_incr_start, iel_decr_start, ndmy
     double precision :: el_min, el_max, el_range, el_incr, el_now, x1, y1, x2, y2, x_start, x_end
     double precision :: f2m, cal_area, cal_peri, cal_topW
     double precision :: mN_start, mN_end, cal_equiv_mann
-    double precision :: pos_slope, incr_rate   
+    double precision :: pos_slope, incr_rate, max_value  
     integer,          dimension(:), allocatable :: i_start, i_end
     double precision, dimension(:), allocatable :: x_bathy_leftzero
     double precision, dimension(:), allocatable :: xcs, ycs, manncs
@@ -1752,7 +1810,10 @@ contains
     double precision, dimension(:), allocatable :: redi1All
     double precision, dimension(:), allocatable :: conv1, tpW1
     double precision, dimension(:), allocatable :: newdKdA
-    double precision, dimension(:), allocatable :: compoundSKK, elev
+    double precision, dimension(:), allocatable :: compoundSKK, elev, dmyarr
+    
+    !test
+    double precision :: dmy1, dmy2, dmy3 
 
     allocate(el1(nel), a1(nel), peri1(nel), redi1(nel), redi1All(nel))
     allocate(equiv_mann(nel), conv1(nel), tpW1(nel))
@@ -1760,7 +1821,7 @@ contains
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
     
-    !open(unit=201, file="./output/xsec_natural.txt")
+    open(unit=301, file="./output/xsec_natural_check.txt")
 
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.
@@ -1781,6 +1842,10 @@ contains
       xcs(ic)    = x1 * f2m
       ycs(ic)    = y1 * f2m
       manncs(ic) = mann_bathy(ic-1, idx_node, idx_reach)
+      ! avoid too large (egregiously) manning's N value
+      if  (manncs(ic).gt.0.15) then !0.15 is typical value for Floodplain trees
+        manncs(ic) = 0.15
+      endif      
     end do
 
     num = maxTableLength
@@ -1909,6 +1974,11 @@ contains
       end if
 
       compoundSKK(iel) = 1.0 / equiv_mann(iel)
+       !if ((idx_reach==206).or.(idx_reach==44)) then
+        write(301,*) "bf smooth", idx_node, idx_reach, iel, el1(iel), a1(iel), peri1(iel), tpW1(iel), &
+                    redi1(iel), equiv_mann(iel), conv1(iel), newdKdA(iel)
+       !endif
+    
     enddo 
 
     ! smooth conveyance curve (a function of elevation) so as to have monotonically increasing curve
@@ -1947,23 +2017,76 @@ contains
     iel_start = 2
     incr_rate = 0.02
     do iel = iel_start, nel
+      !test
+      !if  ((idx_node.eq.9).and.(idx_reach==2)) then
+      !  print*,"iel=", iel
+      !endif      
       if (newdKdA(iel) <= newdKdA(iel-1)) then
         ! -- find j* such that conv1(j*) >> conv1(j-1)
         ii = iel
-        do while (newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1))
+        do while ((newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1)).and.(ii < nel))
           ii = ii + 1
         end do
+        !if  ((idx_node.eq.9).and.(idx_reach==2)) then       
+        !  print*, "i:", idx_node, "j:", idx_reach
+        !  print*, iel, "cr.dKdA", newdKdA(iel), "wanted.dKdA", (1.0 + incr_rate) * newdKdA(iel-1)
+        !  print*, "iel:", iel, "ii:", ii
+        !endif
+        ! when there is no dK/dA values larger than the one at iel, reduce the starting value by a half to search again
+        if (ii.ge.nel) then
+          !max_value = 0.5*newdKdA(nel)
+         
+          !ndmy = nel - iel + 1
+          !allocate(dmyarr(ndmy))
+          !iv = 0
+          !do ii2 = iel, nel
+          !  iv = iv + 1
+          !  dmyarr(iv) = newdKdA(ii2)
+          !end do
+          !iel_incr_start = locate(dmyarr, max_value) + iel
+          !deallocate(dmyarr)            
+          
+          !ii2 = iel
+          !print*, "incr_start", iel_incr_start, "decr_start", ii2, "cr.dKdA vs. max_val", newdKdA(ii2), max_value          
+          !do while ((newdKdA(ii2) >= max_value).and.(ii2 > 1))
+          !  print*, "searching ii2", ii2, newdKdA(ii2) 
+          !  ii2 = ii2 - 1
+          !end do
+          !iel_decr_start = ii2+1 
+          !print*, "final i_decr i_incr", iel_decr_start, iel_incr_start, &
+          !        "final values", newdKdA(iel_decr_start), newdKdA(iel_incr_start)
+          iel_incr_start = ii  
+        else
+          iel_decr_start = iel
+          iel_incr_start = ii          
         
-        iel_incr_start = ii
-        pos_slope      = (newdKdA(iel_incr_start) - newdKdA(iel-1)) / (el1(iel_incr_start) - el1(iel-1))
-
-        do ii = iel, iel_incr_start - 1
-          newdKdA(ii) = newdKdA(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
-        enddo
-
-        iel_start = iel_incr_start
-      endif
+        
+          !pos_slope      = (newdKdA(iel_incr_start) - newdKdA(iel-1)) / (el1(iel_incr_start) - el1(iel-1))
+          pos_slope       = ( newdKdA(iel_incr_start) - newdKdA(iel_decr_start-1)) / &
+                                            (el1(iel_incr_start) - el1(iel_decr_start-1))
+        
+          !do ii = iel, iel_incr_start - 1
+          do ii = iel_decr_start, iel_incr_start - 1
+            ! newdKdA(ii) = newdKdA(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
+            newdKdA(ii) = newdKdA(iel_decr_start-1) + pos_slope * (el1(ii) - el1(iel_decr_start-1))
+            !if  ((idx_node==10).and.(idx_reach==2)) then
+            !     print*, "fixed dKdA", ii, newdKdA(ii)
+            !endif
+          enddo
+        endif
+        !iel_start = iel_incr_start
+        !if  ((idx_node.eq.9).and.(idx_reach==2)) then
+        ! print*, "next iel_start", iel_start
+        !endif
+      endif 
     enddo
+
+     !test
+      !if ((idx_reach==206).or.(idx_reach==44)) then
+        do iel = 1, nel
+          write(301,*) "af smooth", idx_node, idx_reach, iel, el1(iel), conv1(iel), newdKdA(iel)
+        enddo
+      !endif
 
     ! finally build lookup table
     do iel = 1,  nel
@@ -2610,9 +2733,14 @@ contains
       
       ! function arguments
       double precision, intent(in) :: x1, y1, x2, y2, x
-       
-      LInterpol = (y2 - y1) / (x2 - x1) * (x - x1) + y1
-    
+      
+      if (abs(x2-x1).lt.0.0001) then
+       ! to prevent absurdly small value in the denominator
+       LInterpol = 0.5*(y1 + y2)
+      else
+       LInterpol = (y2 - y1) / (x2 - x1) * (x - x1) + y1
+      endif
+      
     end function LInterpol
 
     double precision function intp_y(nrow, xarr, yarr, x)
