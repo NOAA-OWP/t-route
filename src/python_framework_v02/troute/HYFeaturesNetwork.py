@@ -187,6 +187,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         #print(df)
         #raise( "BREAK" )
         self._dataframe = read_json(geo_file_path)
+        self._dataframe['toID'] = self._dataframe['toID'].apply(node_key_func_nexus)
         #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
         #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
         self._flowpath_dict = read_nexus_file(
