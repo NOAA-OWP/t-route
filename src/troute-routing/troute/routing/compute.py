@@ -427,7 +427,7 @@ def compute_nhd_routing_v02(
                     #check if any DA reservoirs are offnetwork. if so change reservoir type to
                     #1: levelpool
                     tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
-      
+
                     if tmp_lake_ids: 
                         #waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
                         for idx in tmp_lake_ids:
@@ -581,7 +581,7 @@ def compute_nhd_routing_v02(
 
         if 1 == 1:
             LOG.info("PARALLEL TIME %s seconds." % (time.time() - start_para_time))
-
+        
     elif parallel_compute_method == "by-subnetwork-jit":
         # Create subnetwork objects if they have not already been created
         if not subnetwork_list[0] or not subnetwork_list[1] or not subnetwork_list[2]:
@@ -1155,18 +1155,25 @@ def compute_diffusive_routing(
     ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
-
+        #import pdb; pdb.set_trace()
+        trib_segs = None
+        trib_flow = None
         # extract junction inflows from results array
         for j, i in enumerate(results):
             x = np.in1d(i[0], diffusive_network_data[tw]['tributary_segments'])
+            print(f"j: {j}")
             if sum(x) > 0:
                 if j == 0:
                     trib_segs = i[0][x]
                     trib_flow = i[1][x, ::3]
                 else:
-                    trib_segs = np.append(trib_segs, i[0][x])
-                    trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
-           
+                    if trib_segs is None:
+                        trib_segs = i[0][x]
+                        trib_flow = i[1][x, ::3]                        
+                    else:
+                        trib_segs = np.append(trib_segs, i[0][x])
+                        trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+        #import pdb; pdb.set_trace()
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 

@@ -131,8 +131,8 @@ def nwm_route(
     subnetwork_list = results[1]
     results = results[0]
     
-    if diffusive_network_data: # run diffusive side of a hybrid simulation
-        
+    # run diffusive side of a hybrid simulation
+    if diffusive_network_data:         
         LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
         start_time_diff = time.time()
         '''
@@ -145,14 +145,14 @@ def nwm_route(
             [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
             copy=False,
         )
-
-        upstream_boundary_flow={}
-        for tw,v in  diffusive_network_data.items():
-            upstream_boundary_link     = diffusive_network_data[tw]['upstream_boundary_link']
-            flow_              = flowveldepth.loc[upstream_boundary_link][0::3]
+        '''
+        #upstream_boundary_flow={}
+        #for tw,v in  diffusive_network_data.items():
+        #    upstream_boundary_link     = diffusive_network_data[tw]['upstream_boundary_link']
+        #    flow_              = flowveldepth.loc[upstream_boundary_link][0::3]
             # the very first value at time (0,q) is flow value at the first time step after initial time.
-            upstream_boundary_flow[tw] = flow_         
-        '''     
+        #    upstream_boundary_flow[tw] = flow_         
+          
 
         # call diffusive wave simulation and append results to MC results
         results.extend(
@@ -330,7 +330,7 @@ def main_v03(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
-   
+
     showtiming = log_parameters.get("showtiming", None)
     if showtiming:
         task_times = {}

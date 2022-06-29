@@ -205,7 +205,7 @@ def nwm_network_preprocess(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-
+    
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
     break_network_at_waterbodies = waterbody_parameters.get(
@@ -331,82 +331,15 @@ def nwm_network_preprocess(
     #
     if diffusive_domain:
         rconn_diff0 = nhd_network.reverse_network(connections)
-        
-
-        # test for diffusive domains with waterbodies inbetween
-        
         tw = list(diffusive_domain.keys())[0] # for a single diffusive domain for now. TODO: treat multiple diffusive domains 
         mainstem_segs = diffusive_domain[tw]['links']
-        #wbody_conn_diffusive_domain = {k:v for k, v in wbody_conn.items() if k in (mainstem_segs)}
-        '''
-        # get unique values of waterbodies in diffusive domain
-        wbody_diffusive_domain=[]
-        for val in wbody_conn_diffusive_domain.values():
-            if val in wbody_diffusive_domain:
-                continue
-            else:
-                wbody_diffusive_domain.append(val)
-     
-        # subset an individual diffusive domain into multiple by waterbodies
-        if wbody_diffusive_domain:
-            # Identify a list of upstream boundary links at upper end of the given diffusive_domain 
-            upstream_boundary_links = []
-            
-            # mainstem links without any links under waterbodies
-            #mainstem_segs_no_links_wbody = mainstem_segs
-            links_wbody = list(wbody_conn_diffusive_domain.keys())
-            # remove links under waterbodies
-            #for s in links_wbody:
-            #    mainstem_segs_no_links_wbody.remove(s)
-            # add waterbodies
-            #for s in wbody_diffusive_domain:
-            #    mainstem_segs_no_links_wbody.append(s)
-                
-            #for link in mainstem_segs_no_links_wbody:
-            #    if not any(item in rconn_diff0[link] for item in mainstem_segs_no_links_wbody):
-            #        upstream_boundary_links.append(rconn_diff0[link][0])
-            #upstream_boundary_links.append(1619595)  # TODO: make it from yaml file
-            
-            # Identify a list of upstream boundary links at the second downstream link from a waterbody 
-            # (the first link is used as a tributary releasing waterbody outflow). 
-            for wbody in wbody_diffusive_domain:
-                wbody_first_downstream_link = connections[wbody]
-                wbody_second_downstream_link = connections[wbody_first_downstream_link[0]]
-                upstream_boundary_links.append(wbody_second_downstream_link[0])
-                
-            # Identify tailwater links
-            tw_links = []
-            tw_links.append(tw)
-            for link in wbody_diffusive_domain:
-                wbody_first_upstream_link = rconn_diff0[link]
-                tw_links.append(wbody_first_upstream_link[0])
-                
-            # make a list of links between tws and upstream_boundary_links
-            diffusive_domain_new = defaultdict(dict)
-            for seg in upstream_boundary_links: 
-                inner_dict={}
-                inner_dict['rfc'] = ['wgrfc']
-                inner_dict['rpu'] = ['12d']                
-                diffusive_links = []
-                diffusive_links.append(seg)
-                seg = connections[seg][0]                
-                while seg not in tw_links:
-                    diffusive_links.append(seg)
-                    seg = connections[seg][0]
-                diffusive_links.append(seg)
-                inner_dict['links']= diffusive_links                
-                #diffusive_domain_new.update(inner_dict)
-                diffusive_domain_new[seg] = inner_dict
-            diffusive_domain = diffusive_domain_new
-        '''
-
-            
         refactored_reaches = {}
         
         for tw in diffusive_domain:
-            mainstem_segs = diffusive_domain[tw]['links']    
-            upstream_boundary_mainstem_link = diffusive_domain[tw]['upstream_boundary_link_mainstem']                                         # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
+            mainstem_segs = diffusive_domain[tw]['links']
+            # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
             # in turn not under any waterbody. This boundary mainstem link should be turned into a tributary segment.
+            upstream_boundary_mainstem_link = diffusive_domain[tw]['upstream_boundary_link_mainstem']         
             if upstream_boundary_mainstem_link[0] in mainstem_segs:
                 mainstem_segs.remove(upstream_boundary_mainstem_link[0])
             
@@ -424,24 +357,11 @@ def nwm_network_preprocess(
                 for u in us_list:
                     if u not in mainstem_segs:
                         trib_segs.append(u) 
-                     
-                        
 
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
             # diffusive domain connections object
             diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
- 
-            '''
-            # remove key-value pairs where value indicates waterbody
-            if wbody_diffusive_domain:
-                for k, v in diffusive_network_data[tw]['connections'].items():
-                    print(f"key: {k} value: {v}")
-                    if v and v[0] in wbody_diffusive_domain:                    
-                        key_remove = k
-                if key_remove:
-                    diffusive_network_data[tw]['connections'].pop(key_remove)
-           '''   
-     
+
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
@@ -459,22 +379,6 @@ def nwm_network_preprocess(
                 axis = 0,
             )
 
-            # upstream boundary id on diffusive mainstem so
-            '''
-            for link in mainstem_segs:
-                if not any(item in rconn_diff0[link] for item in mainstem_segs):
-                    import pdb; pdb.set_trace() 
-                    for rl in rconn_diff0[link]:  
-                        if rl not in trib_segs:
-                    #diffusive_network_data[tw]['upstream_boundary_link'] = rconn_diff0[link][0]
-                        import pdb; pdb.set_trace()    
-                        diffusive_network_data[tw]['upstream_boundary_link'] = rl
-            
-            for link in mainstem_segs:
-                for us_link in rconn_diff0[link]:  
-                    if us_link not in trib_segs and us_link not in mainstem_segs:                          
-                        diffusive_network_data[tw]['upstream_boundary_link'] = us_link
-           '''
             diffusive_network_data[tw]['upstream_boundary_link'] = upstream_boundary_mainstem_link
             
             if refactored_diffusive_domain: 
@@ -491,33 +395,11 @@ def nwm_network_preprocess(
                 refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
-                
-                #trib_segs_no_ubmslink = trib_segs
-                #trib_segs_no_ubmslink.remove(upstream_boundary_mainstem_link[0])
-                # Build connections with rlink mainstem and link tributaries
-                #refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections
                 refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections_tw                 
-                #refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})  
-                
 
-                #for k in trib_segs_no_ubmslink:
                 for k in trib_segs:
-                    #if k != upstream_boundary_mainstem_link[0]: <- removed after inserting usbd_ms_link:rlink in 'incoming_tribs
                     refactored_diffusive_network_data[refac_tw]['connections'][k]= [refactored_diffusive_domain[tw]['incoming_tribs'][k]]
-  
-                # for k in trib_segs:
-                #    if not k in (link_lake_crosswalk.keys()):
-                        # when a trib.segment (=k) is not any waterbody,
-                #        refactored_diffusive_network_data[refac_tw]['connections'][k] = [refactored_diffusive_domain[tw]['incoming_tribs'][k]]
-                #    else:
-                        # when a trib.segment (=k) is a waterbody,
-                #        last_link_under_waterbo =  link_lake_crosswalk[k]
-                #        first_link_after_waterbo = connections[k]                                               
-                                        
-                #refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs) if not k in (link_lake_crosswalk.keys()) })                
-                
-                
-                #import pdb; pdb.set_trace() 
+
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
                 _, refactored_reaches_batch, refactored_conn_diff = nnu.organize_independent_networks(
@@ -526,26 +408,11 @@ def nwm_network_preprocess(
                                                             set(),
                                                             )
                 refactored_reaches[refac_tw] = refactored_reaches_batch[refac_tw]
-               
-                # update: I inserted usbd_ms_link:rlink in 'incoming_tribs'
-                # change rlink corresponding to upstream boundary mainstem link into upstream bounary mainstem link
-                #rlink_usbdmslink = refactored_diffusive_domain[tw]['outputs_xwalk'][upstream_boundary_mainstem_link[0]]
-                #for i in range(len(refactored_reaches[refac_tw])):                    
-                #    if rlink_usbdmslink in refactored_reaches[refac_tw][i]:
-                #        refactored_reaches[refac_tw][i].remove(rlink_usbdmslink)
-                #        refactored_reaches[refac_tw].insert(i, upstream_boundary_mainstem_link)
-                        
-                #import pdb; pdb.set_trace()         
-                        
-                
-               
                 refactored_diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_diffusive_domain[tw]['rlinks']
                 refactored_diffusive_network_data[refac_tw]['upstream_boundary_link'] = diffusive_network_data[tw]['upstream_boundary_link'] 
-                #refactored_diffusive_network_data[refac_tw]['upstream_boundary_link'] = diffusive_network_data[tw]['upstream_boundary_link']            
             else:
                 refactored_reaches={}
-           
-            #import pdb; pdb.set_trace()
+
             # ==== remove diffusive domain segs from MC domain ====        
             # drop indices from param_df
             param_df = param_df.drop(mainstem_segs)
@@ -553,16 +420,15 @@ def nwm_network_preprocess(
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
-            #import pdb; pdb.set_trace()
+
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
-            #import pdb; pdb.set_trace()
+
     #============================================================================
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
-    start_time = time.time()
-    
+    start_time = time.time() 
     gage_break_segments = set()
     wbody_break_segments = set()
     if break_network_at_waterbodies:
