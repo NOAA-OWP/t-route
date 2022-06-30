@@ -10,7 +10,6 @@ import time
 import yaml
 import xarray as xr
 import pandas as pd
-import geopandas as gpd
 import numpy as np
 from toolz import compose
 import netCDF4
@@ -52,18 +51,11 @@ def read_csv(geo_file_path, header="infer", layer_string=None):
     else:
         return pd.read_csv(geo_file_path, header=header)
 
-
-def read_geopandas(geo_file_path, layer_string=None, driver_string=None):
-    return gpd.read_file(geo_file_path, driver=driver_string, layer_string=layer_string)
-
-
 def read(geo_file_path, layer_string=None, driver_string=None):
     if geo_file_path.suffix == ".nc":
         return read_netcdf(geo_file_path)
     else:
-        return read_geopandas(
-            geo_file_path, layer_string=layer_string, driver_string=driver_string
-        )
+        raise RuntimeError("Cannot read file {}. Unsupported file type {}.".format(geo_file_path, geo_file_path.suffix))
 
 
 def read_mask(path, layer_string=None):
