@@ -22,8 +22,7 @@ gcc-gfortran
 ```
 
 ... and the following non-default python modules:
-```
-geopandas 
+``` 
 numpy 
 pandas 
 xarray 
@@ -47,7 +46,7 @@ The following sequence of commands should provide a sense of the operation of th
 
 ```
 # install required python modules
-$ pip3 install geopandas numpy pandas xarray netcdf4 joblib toolz pyyaml Cython
+$ pip3 install numpy pandas xarray netcdf4 joblib toolz pyyaml Cython
 
 # clone t-toute
 $ git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
