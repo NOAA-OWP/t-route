@@ -139,7 +139,7 @@ def _prep_da_positions_byreach(reach_list, gage_index):
 
     return reach_key, gage_reach_i
 
-def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df, waterbody_types_df_sub, t0):
+def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df, waterbody_types_df_sub, t0, exclude_segments=None):
     '''
     Helper function to build reservoir DA data arrays for routing computations
 
@@ -173,6 +173,8 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
         usgs_wbodies_sub      = waterbody_types_df_sub[
                                     waterbody_types_df_sub['reservoir_type']==2
                                 ].index
+        if exclude_segments:
+            usgs_wbodies_sub = set(usgs_wbodies_sub).difference(set(exclude_segments))
         reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
         reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
         reservoir_usgs_update_time = reservoir_usgs_param_df['update_time'].loc[usgs_wbodies_sub].to_numpy()
@@ -194,6 +196,8 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
         usace_wbodies_sub      = waterbody_types_df_sub[
                                     waterbody_types_df_sub['reservoir_type']==3
                                 ].index
+        if exclude_segments:
+            usace_wbodies_sub = set(usace_wbodies_sub).difference(set(exclude_segments))
         reservoir_usace_df_sub = reservoir_usace_df.loc[usace_wbodies_sub]
         reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
         reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
@@ -421,8 +425,8 @@ def compute_nhd_routing_v02(
                     
                     #check if any DA reservoirs are offnetwork. if so change reservoir type to
                     #1: levelpool
-                    tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
-                    waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
+                    #tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
+                    #waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
                     
                     param_df_sub = param_df.loc[
                         common_segs,
@@ -480,7 +484,8 @@ def compute_nhd_routing_v02(
                         reservoir_usace_df, 
                         reservoir_usace_param_df,
                         waterbody_types_df_sub, 
-                        t0
+                        t0,
+                        offnetwork_upstreams
                     )
                     
                     # results_subn[order].append(

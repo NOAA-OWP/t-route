@@ -577,7 +577,7 @@ def main_v03(argv):
                     if reservoir_usace_df.empty and len(reservoir_usace_param_df.index) > 0:
                         reservoir_usace_df = pd.DataFrame(
                             data    = np.nan, 
-                            index   = reservoir_usgs_param_df.index, 
+                            index   = reservoir_usace_param_df.index, 
                             columns = [t0]
                         )
 
