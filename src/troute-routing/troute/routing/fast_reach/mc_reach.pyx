@@ -1,17 +1,15 @@
-# cython: language_level=3, boundscheck=True, wraparound=False, profile=True
+# cython: language_level=3, boundscheck=True, wraparound=False
 
 import numpy as np
 from itertools import chain
 from operator import itemgetter
 from array import array
-from numpy cimport ndarray  # TODO: Do we need to import numpy and ndarray separately?
+from numpy cimport ndarray
 from libc.math cimport isnan, NAN
-cimport numpy as np  # TODO: We are cimporting and importing numpy into the same symbol, 'np'. Problem?
+cimport numpy as np 
 cimport cython
 from libc.stdlib cimport malloc, free
 from libc.stdio cimport printf
-#Note may get slightly better performance using cython mem module (pulls from python's heap)
-#from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from troute.network.musking.mc_reach cimport MC_Segment, MC_Reach, _MC_Segment, get_mc_segment
 
 from troute.network.reach cimport Reach, _Reach, compute_type
@@ -20,13 +18,6 @@ from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from cython.parallel import prange
 
-#import cProfile
-#pr = cProfile.Profile()
-#NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
-#the mc_reach.so will have an undefined symbol _muskingcunge, and reach.so will have a ____pyx_f_5reach_muskingcunge
-#if you cimport reach, then call explicitly reach.muskingcung, then mc_reach.so maps to the correct module symbol
-#____pyx_f_5reach_muskingcunge
-#from reach cimport muskingcunge, QVD
 cimport troute.routing.fast_reach.reach as reach
 from troute.routing.fast_reach.simple_da cimport obs_persist_shift, simple_da_with_decay, simple_da
 
@@ -65,81 +56,69 @@ cpdef object binary_find(object arr, object els):
 
 
 @cython.boundscheck(False)
-cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
-    """
-    Kernel to compute reach.
-    Input buffer is array matching following description:
-    axis 0 is reach
-    axis 1 is inputs in th following order:
-        qlat, dt, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        qup and quc are initial conditions.
-    Output buffer matches the same dimsions as input buffer in axis 0
-    Input is nxm (n reaches by m variables)
-    Ouput is nx3 (n reaches by 3 return values)
-        0: current flow, 1: current depth, 2: current velocity
-    """
-    cdef reach.QVD rv
-    cdef reach.QVD *out = &rv
-
+cpdef void compute_reach_kernel(float[:] qup, float[:] quc, float[:,:] lateral_flows, int nseg, int nts, float[::1,:] input_buf, float[:,:,:] output_buf, bint assume_short_ts, bint return_courant=False):
+    
     cdef:
-        float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
-        int i
-
-    for i in range(nreach):
-        qlat = input_buf[i, 0] # n x 1
-        dt = input_buf[i, 1] # n x 1
-        dx = input_buf[i, 2] # n x 1
-        bw = input_buf[i, 3]
-        tw = input_buf[i, 4]
-        twcc =input_buf[i, 5]
-        n = input_buf[i, 6]
-        ncc = input_buf[i, 7]
-        cs = input_buf[i, 8]
-        s0 = input_buf[i, 9]
-        qdp = input_buf[i, 10]
-        velp = input_buf[i, 11]
-        depthp = input_buf[i, 12]
-
-        reach.muskingcunge(
-                    dt,
-                    qup,
-                    quc,
-                    qdp,
-                    qlat,
-                    dx,
-                    bw,
-                    tw,
-                    twcc,
-                    n,
-                    ncc,
-                    cs,
-                    s0,
-                    velp,
-                    depthp,
-                    out)
-
-#        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?
-        output_buf[i, 0] = out.qdc
-        output_buf[i, 1] = out.velc
-        output_buf[i, 2] = out.depthc
-
-        if return_courant:
-            output_buf[i, 3] = out.cn
-            output_buf[i, 4] = out.ck
-            output_buf[i, 5] = out.X
-
-        qup = qdp
-
-        if assume_short_ts:
-            quc = qup
-        else:
-            quc = out.qdc
+        float dt
+        int i 
+        float[:] qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        float[:,:,:] out = np.empty((nseg, nts, 6), dtype = 'float32', order = 'F')
+        float[:,:] lateral_flows_F    
+    
+    if nseg == 1:
+        lateral_flows_F = lateral_flows[:nseg,:].T
+    else:
+        lateral_flows_F = np.asfortranarray(lateral_flows[:nseg,:])
+    
+    # extract input arrays from input_buf
+    dt     = input_buf[0, 0]
+    dx     = input_buf[:nseg, 1]
+    bw     = input_buf[:nseg, 2]
+    tw     = input_buf[:nseg, 3]
+    twcc   = input_buf[:nseg, 4]
+    n      = input_buf[:nseg, 5]
+    ncc    = input_buf[:nseg, 6]
+    cs     = input_buf[:nseg, 7]
+    s0     = input_buf[:nseg, 8]
+    qdp    = input_buf[:nseg, 9]
+    velp   = input_buf[:nseg, 10]
+    depthp = input_buf[:nseg, 11]
+        
+    reach.computereach(
+        dt,
+        nseg,
+        nts,
+        qup,
+        quc,
+        qdp,
+        lateral_flows_F,
+        dx,
+        bw,
+        tw,
+        twcc,
+        n,
+        ncc,
+        cs,
+        s0,
+        velp,
+        depthp,
+        out[:,:,0],
+        out[:,:,1],
+        out[:,:,2],
+        out[:,:,3],
+        out[:,:,4],
+        out[:,:,5],
+    )
+        
+    output_buf[:nseg,:,0] = out[:,:,0]
+    output_buf[:nseg,:,1] = out[:,:,1]
+    output_buf[:nseg,:,2] = out[:,:,2]
 
 cdef void fill_buffer_column(const Py_ssize_t[:] srows,
     const Py_ssize_t scol,
     const Py_ssize_t[:] drows,
     const Py_ssize_t dcol,
-    const float[:, :] src, float[:, ::1] out) nogil except *:
+    const float[:, :] src, float[:, ::1] out) except *:
 
     cdef Py_ssize_t i
     for i in range(srows.shape[0]):
@@ -244,15 +223,12 @@ cpdef object compute_network_structured(
     #lists to hold segment ids
     cdef list segment_ids
     cdef list upstream_ids
-    #flow accumulation variables
-    cdef float upstream_flows, previous_upstream_flows
     #starting timestep, shifted by 1 to account for initial conditions
     cdef int timestep = 1
     cdef float routing_period = dt  # TODO: harmonize the dt with the value from the param_df dt (see line 153) #cdef float routing_period = data_values[0][0]
-    #buffers to pass to compute_reach_kernel
-    cdef float[:,:] buf_view
-    cdef float[:,:] out_buf
-    cdef float[:] lateral_flows
+    
+
+    
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
@@ -419,10 +395,18 @@ cpdef object compute_network_structured(
                 flowveldepth_nd[fill_index, 0, 0] = init_array[fill_index, 0] # initial flow condition
                 flowveldepth_nd[fill_index, 0, 2] = init_array[fill_index, 2] # initial depth condition
 
+    
+    #buffers to pass to compute_reach_kernel
+    cdef float[::1,:] buf_view
+    cdef float[:,:,:] out_buf
+    cdef float[:,:] lateral_flows
+    cdef float[:] upstream_flows, previous_upstream_flows
+    cdef int _i, _t
+    
     #Init buffers
-    lateral_flows = np.zeros( max_buff_size, dtype='float32' )
-    buf_view = np.zeros( (max_buff_size, 13), dtype='float32')
-    out_buf = np.full( (max_buff_size, 3), -1, dtype='float32')
+    lateral_flows           = np.zeros( (max_buff_size, nsteps), dtype='float32')
+    buf_view                = np.zeros( (max_buff_size, 12), dtype='float32', order = 'F')
+    out_buf                 = np.full( (max_buff_size, nsteps, 6), -1, dtype='float32')
 
     cdef int num_reaches = len(reach_objects)
     #Dynamically allocate a C array of reach structs
@@ -439,8 +423,104 @@ cpdef object compute_network_structured(
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
-    
+    for i in range(num_reaches):
+                
+        # get reach object, which contains parameters and states 
+        # needed for reach calculations
+        r = &reach_structs[i]
+        
+        #------------------------------------------------------------------------
+        #
+        #    Organize reach forcing: upstream inflows and lateral inflows
+        #
+        #------------------------------------------------------------------------
+        # initialize upstream flow arrays
+        upstream_flows          = np.zeros( (nsteps), dtype='float32', order = 'F')
+        previous_upstream_flows = np.zeros( (nsteps), dtype='float32', order = 'F')
+        
+        # step through time and populate upstream and lateral flow arrays
+        for _t in range(nsteps): 
+
+            # populate upstream flows arrays
+            for _i in range(r._num_upstream_ids):
+                id = r._upstream_ids[_i]
+                previous_upstream_flows[_t] += flowveldepth[id, _t, 0]
+                if assume_short_ts:
+                    upstream_flows[_t]          += flowveldepth[id, _t, 0]
+                else:
+                    upstream_flows[_t]          += flowveldepth[id, _t+1, 0]
+                    
+            # populate lateral flow array
+            if r.type == compute_type.MC_REACH:
+                for _i in range(r.reach.mc_reach.num_segments):
+                    segment = get_mc_segment(r, _i)
+                    lateral_flows[_i, _t] = qlat_array[ segment.id, <int>(_t/qts_subdivisions)]
+        
+        #------------------------------------------------------------------------
+        #
+        #                      Muskingum-Cunge Reach
+        #
+        #------------------------------------------------------------------------
+        #print('Executing MC calculations for reach with tail segment', data_idx[segment.id])
+        if r.type == compute_type.MC_REACH: 
+            
+            # build reach parameter and initial condition buffer
+            for _i in range(r.reach.mc_reach.num_segments):
+                segment = get_mc_segment(r, _i)
+                buf_view[_i, 0] = segment.dt
+                buf_view[_i, 1] = segment.dx
+                buf_view[_i, 2] = segment.bw
+                buf_view[_i, 3] = segment.tw
+                buf_view[_i, 4] = segment.twcc
+                buf_view[_i, 5] = segment.n
+                buf_view[_i, 6] = segment.ncc
+                buf_view[_i, 7] = segment.cs
+                buf_view[_i, 8] = segment.s0
+                buf_view[_i, 9] = flowveldepth[segment.id, 0, 0]
+                buf_view[_i, 10] = 0.0
+                buf_view[_i, 11] = flowveldepth[segment.id, 0, 2]
+
+            # compute reach routing - all timesteps
+            compute_reach_kernel(
+                previous_upstream_flows, 
+                upstream_flows,
+                lateral_flows,
+                r.reach.mc_reach.num_segments, 
+                nsteps,
+                buf_view,
+                out_buf,
+                assume_short_ts
+            )
+
+            for _i in range(r.reach.mc_reach.num_segments):
+                segment = get_mc_segment(r, _i)
+                flowveldepth[segment.id, 1:, 0] = out_buf[_i, :, 0]
+                flowveldepth[segment.id, 1:, 1] = out_buf[_i, :, 1]
+                flowveldepth[segment.id, 1:, 2] = out_buf[_i, :, 2]
+                
+        #------------------------------------------------------------------------
+        #
+        #                      Reservoir Reach
+        #
+        #------------------------------------------------------------------------   
+        if r.type == compute_type.RESERVOIR_LP: 
+                
+            #print('Executing levelpool calculations for lake', r.reach.lp.lake_number)
+            for _t in range(nsteps): 
+            
+                # levelpool reservoir storage/outflow calculation
+                run_lp_c(r, upstream_flows[_t], 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                
+                # populate flowveldepth array with levelpool
+                flowveldepth[r.id, _t+1, 0] = reservoir_outflow
+                flowveldepth[r.id, _t+1, 1] = 0.0
+                flowveldepth[r.id, _t+1, 2] = reservoir_water_elevation
+                
+            
+    '''
     while timestep < nsteps+1:
+        print('timestep:', timestep)
+        
         for i in range(num_reaches):
             r = &reach_structs[i]
             #Need to get quc and qup
@@ -562,6 +642,8 @@ cpdef object compute_network_structured(
             else:
                 #Create compute reach kernel input buffer
                 for _i in range(r.reach.mc_reach.num_segments):
+                    #if _i == 0:
+                    #    print('reach_head:', segment.id)
                     segment = get_mc_segment(r, _i)#r._segments[_i]
                     buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
                     buf_view[_i, 1] = segment.dt
@@ -577,12 +659,41 @@ cpdef object compute_network_structured(
                     buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                     buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
+
+                # Extract input data for a single-reach, single-timestep computation
+                
+                if data_idx[segment.id] == 5785357:
+                    input_arguments = {
+                        'nseg': r.reach.mc_reach.num_segments,
+                        'qup': previous_upstream_flows,
+                        'quc': upstream_flows, 
+                        'input_buf': np.asarray(buf_view, dtype = 'float32'),
+                        'out_buf': np.asarray(out_buf, dtype = 'float32'),
+                        'assume_short_ts': True
+                    }
+                    np.save(
+                        '/glade/u/home/adamw/projects/t-route/test/jobs/prifile_cython/single_reach_args.npy',
+                        input_arguments
+                    )
+                    exit()
+                
+
+                
+                
+                compute_reach_kernel_NEW(previous_upstream_flows, upstream_flows,
+                                     r.reach.mc_reach.num_segments, buf_view,
+                                     out_buf,
+                                     assume_short_ts)
+                
+                
+
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
                                      assume_short_ts)
+          
 
-                #Copy the output out
+            #Copy the output out
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)
                     flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
@@ -591,6 +702,7 @@ cpdef object compute_network_structured(
                         printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
                     flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
                     flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
+                    
 
             # For each reach,
             # at the end of flow calculation, Check if there is something to assimilate
@@ -641,6 +753,7 @@ cpdef object compute_network_structured(
         # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
         timestep += 1
+        '''
 
     #pr.disable()
     #pr.print_stats(sort='time')

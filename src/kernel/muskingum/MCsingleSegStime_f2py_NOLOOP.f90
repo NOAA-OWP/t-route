@@ -5,6 +5,75 @@ module muskingcunge_module
 
 contains
 
+subroutine reachcompute(dt, nseg, nts, qup_top, quc_top, qdp_rch, ql_rch, dx_rch,& 
+                        bw_rch, tw_rch, twcc_rch,n_rch, ncc_rch, cs_rch, s0_rch,&
+                        velp_rch, depthp_rch, qdc_rch, velc_rch, depthc_rch, ck_rch,&
+                        cn_rch, X_rch)
+    
+    implicit none
+    
+    integer, intent(in) :: nseg, nts
+    real(prec), intent(in) :: dt
+    real(prec), dimension(nts), intent(in) :: qup_top, quc_top
+    real(prec), dimension(nseg, nts), intent(in) :: ql_rch
+    real(prec), dimension(nseg), intent(in) :: qdp_rch
+    real(prec), dimension(nseg), intent(in) :: dx_rch, bw_rch, tw_rch, twcc_rch
+    real(prec), dimension(nseg), intent(in) :: n_rch, ncc_rch, cs_rch, s0_rch
+    real(prec), dimension(nseg), intent(in) :: velp_rch
+    real(prec), dimension(nseg), intent(in) :: depthp_rch
+    real(prec), dimension(nseg, nts), intent(out) :: qdc_rch, velc_rch, depthc_rch
+    real(prec), dimension(nseg, nts), intent(out) :: ck_rch, cn_rch, X_rch
+    
+    integer :: i, t
+    real(prec) :: quc, qup
+    real(prec) :: qdc, velc, depthc
+    real(prec) :: ck, cn, X
+    
+    real(prec), dimension(:), allocatable :: flow_init, depth_init
+    allocate(flow_init(nseg))
+    allocate(depth_init(nseg))
+    
+    flow_init  = qdp_rch
+    depth_init = depthp_rch
+                
+    do t = 1, nts
+    
+        qup = qup_top(t)
+        quc = quc_top(t)
+        do i = 1, nseg
+          
+          call muskingcungenwm(dt, qup, quc, flow_init(i), ql_rch(i,t), dx_rch(i),& 
+                               bw_rch(i), tw_rch(i), twcc_rch(i), n_rch(i), ncc_rch(i),& 
+                               cs_rch(i), s0_rch(i), velp_rch(i), depth_init(i), qdc,& 
+                               velc, depthc, ck, cn, X)
+                               
+          ! write results to output arrays
+          qdc_rch(i,t) = qdc
+          velc_rch(i,t) = velc
+          depthc_rch(i,t) = depthc
+
+          ck_rch(i,t) = ck
+          cn_rch(i,t) = cn
+          X_rch(i,t) = X
+
+          ! upstream upstream previous flow of the next segment 
+          ! is equal to  the downstream previous of the current segment
+          qup = flow_init(i)
+
+          ! short timestep assumption
+          ! TODO: make this optional
+          ! current upstream inflow is the previous upstream inflow
+          quc = qup
+          
+          flow_init(i)  = qdc
+          depth_init(i) = depthc
+
+        end do
+        
+    end do
+    
+end subroutine reachcompute
+
 subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
     n, ncc, cs, s0, velp, depthp, qdc, velc, depthc, ck, cn, X)
 
@@ -156,7 +225,7 @@ subroutine muskingcungenwm(dt, qup, quc, qdp, ql, dx, bw, tw, twcc,&
             endif
         else
             qdc = ((C1*qup)+(C2*quc)+(C3*qdp) + C4) !-- pg 295 Bedient huber
-            !write(*,*)"C1", C1, "qup", qup, "C2", C2, "quc", quc, "C3", C3, "qdp", qdp, "C4", C4
+            !write(*,*)"C1", C1, "qup", qup, "C2", C2,0 "quc", quc, "C3", C3, "qdp", qdp, "C4", C4
             !qdc = -333.3
         endif
 

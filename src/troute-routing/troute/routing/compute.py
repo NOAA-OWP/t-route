@@ -1078,6 +1078,46 @@ def compute_nhd_routing_v02(
                 t0
             )
             
+            
+            '''
+            # write data to pickle file
+            argument_data = {
+            'nsteps': nts,
+            'dt': dt,
+            'qts_subdivisions': qts_subdivisions,
+            'reaches_wTypes': reaches_list_with_type,
+            'upstream_connections': independent_networks[tw],
+            'data_idx': param_df_sub.index.values.astype("int64"),
+            'data_cols': param_df_sub.columns.values,
+            'data_values': param_df_sub.values,
+            'initial_conditions': q0_sub.values.astype("float32"),
+            'qlat_values': qlat_sub.values.astype("float32"),
+            'lake_numbers_col': lake_segs,
+            'wbody_cols': waterbodies_df_sub.values,
+            'waterbody_parameters': waterbody_parameters,
+            'reservoir_types': waterbody_types_df_sub.values.astype("int32"),
+            'reservoir_type_specified': waterbody_type_specified,
+            'model_start_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+            'usgs_values': usgs_df_sub.values.astype("float32"),
+            'usgs_positions': np.array(da_positions_list_byseg, dtype="int32"),
+            'usgs_positions_reach': np.array(da_positions_list_byreach, dtype="int32"),
+            'usgs_positions_gage': np.array(da_positions_list_bygage, dtype="int32"),
+            'lastobs_values_init': lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+            'time_since_lastobs_init': lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+            'da_decay_coefficient': da_decay_coefficient,
+            'reservoir_usgs_obs': reservoir_usgs_df_sub.values.astype("float32"),
+            'reservoir_usgs_wbody_idx': reservoir_usgs_df_sub.index.values.astype("int32"),
+            'reservoir_usgs_time': reservoir_usgs_df_time.astype('float32'),
+            'reservoir_usace_obs': reservoir_usace_df_sub.values.astype("float32"),
+            'reservoir_usace_wbody_idx': reservoir_usace_df_sub.index.values.astype("int32"),
+            'reservoir_usace_time': reservoir_usace_df_time.astype('float32'),
+            'upstream_results': {},
+            'assume_short_ts': assume_short_ts,
+            'return_courant': False,
+            'da_check_gage': return_courant,
+            }
+            import pdb; pdb.set_trace()
+            '''
             results.append(
                 compute_func(
                     nts,

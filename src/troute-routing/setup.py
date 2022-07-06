@@ -20,19 +20,20 @@ ext = "pyx" if USE_CYTHON else "c"
 reach = Extension(
     "troute.routing.fast_reach.reach",
     sources=["troute/routing/fast_reach/reach.{}".format(ext)],
+    include_dirs=[np.get_include()],
     extra_objects=[
         "troute/routing/fast_reach/mc_single_seg.o",
         "troute/routing/fast_reach/pymc_single_seg.o",
     ],
     extra_compile_args=["-O2", "-g"],
-    # libraries=["gfortran"],
+    libraries=["gfortran"],
 )
 
 mc_reach = Extension(
     "troute.routing.fast_reach.mc_reach",
     sources=["troute/routing/fast_reach/mc_reach.{}".format(ext)],
     include_dirs=[np.get_include()],
-    libraries=[],
+    libraries=["gfortran"],
     library_dirs=[],
     extra_objects=[],
     extra_compile_args=["-O2", "-g"],
