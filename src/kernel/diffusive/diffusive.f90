@@ -201,6 +201,7 @@ contains
     double precision :: equiv_one, slopeQ, intcQ
     double precision :: slopeE, intcE, dst_lnk
     double precision :: lfrac, dst_top, dst_btm
+    double precision :: mindepth_nstab
     double precision, dimension(:), allocatable :: tarr_ql
     double precision, dimension(:), allocatable :: varr_ql
     double precision, dimension(:), allocatable :: tarr_ub
@@ -221,6 +222,8 @@ contains
     open(unit=101, file="./output/cn-mod simulated discharge depth elev_lowercolorado.txt")
     open(unit=201, file="./output/boundaryIO_test.txt")
     open(unit=202, file="./output/Q compute at junct.txt")
+    open(unit=203, file="./output/timestep calc.txt")
+    open(unit=204, file="./output/downstream boundary check.txt")
         
   !-----------------------------------------------------------------------------
   ! Time domain parameters
@@ -258,7 +261,8 @@ contains
     so_llm      = para_ar_g(9)  ! lower limit of channel bed slope (default: 0.0001)
     theta       = para_ar_g(10) ! weight for computing 2nd derivative: 
                                 ! 0: explicit, 1: implicit (default: 1.0)
-    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth                        
+    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth   
+    mindepth_nstab = 0.1        ! minimum water depth for numerical stability when estimated/observed downstream boundary depth data is used.
   !-----------------------------------------------------------------------------
   ! Some parameters for using natural cross section bathymetry data
     mxnbathy = mxnbathy_g  ! maximum size of bathymetry data points
@@ -365,7 +369,7 @@ contains
     dimensionless_Di    = -999
     dimensionless_Fc    = -999
     dimensionless_D     = -999
-    dbcd                = 0.0 !TODO: pass downstream boundary values from Python   
+    dbcd                = dbcd_g   
     q_ev_g              = 0.0
     elv_ev_g            = 0.0
     temp_q_ev_g         = 0.0
@@ -509,7 +513,7 @@ contains
     ! time step series for downstream boundary data
     do n=1, nts_db_g
         tarr_db(n) = t0 * 60.0 + dt_db * &
-                      real(n-1,KIND(dt_db)) / 60.0 ! [min]       
+                      real(n-1,KIND(dt_db)) / 60.0 ! [min]                 
     end do
     
     ! time step seris for data assimilation for discharge at bottom node of a related reach
@@ -532,10 +536,16 @@ contains
         ! **** COMING SOON **** 
           do n = 1, nts_db_g
             varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+            !write(204,*) "varr_db", n, dbcd(n), varr_db(n)
           end do
           t              = t0 * 60.0
           oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
           newY(ncomp, j) = oldY(ncomp, j)  
+          !write(204,*) "1st depth", t, newY(ncomp, j)- z(ncomp, j)
+          if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
+            newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
+          end if          
+          !write(204,*) "2nd depth",t, newY(ncomp, j)- z(ncomp, j)
         else if (dsbc_option == 2) then
         ! normal depth as TW boundary condition
           xcolID         = 10
@@ -571,13 +581,13 @@ contains
     end do
     
                !test
-           do jm = 1, nmstem_rch
-             j = mstem_frj(jm)
-             do i=1, frnw_g(j,1)
-                write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j), newY(i,j)&
-                                                     ,z(i,j), newY(i, j)-z(i,j)
-            end do
-           end do
+          !do jm = 1, nmstem_rch
+          !   j = mstem_frj(jm)
+          !   do i=1, frnw_g(j,1)
+          !      write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j), newY(i,j)&
+          !                                           ,z(i,j), newY(i, j)-z(i,j)
+          !  end do
+          ! end do
 
 
   !-----------------------------------------------------------------------------
@@ -605,7 +615,8 @@ contains
       end if
       t = t + dtini / 60. !* [min]
     end do
-
+    
+    !write(203,*) "maxCelerity:", maxCelerity, "minDx:", minDx  
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
     qpx                     = 0.
@@ -642,8 +653,10 @@ contains
 
         ! Calculate the duration of this timestep (dtini)
         ! Timestep duration is selected to maintain numerical stability
-        if (j == mstem_frj(1)) call calculateDT(t0, t, saveInterval, cfl, &
-                                                tfin, maxCelDx, dtini_given)
+        if (j == mstem_frj(1)) then 
+          call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
+          !write(203,*) j, t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given, dtini
+        end if                                        
 
         ! estimate lateral flow at current time t
         do i = 1, ncomp - 1
@@ -666,7 +679,7 @@ contains
 
               ! inflow from upstream mainstem reach's bottom node
               q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
-              write(202,*) "usrch at mstem:", t, j, usrchj,  q_usrch
+              !write(202,*) "usrch at mstem:", t, j, usrchj,  q_usrch
             else
 
               ! inflow from upstream tributary reach
@@ -675,19 +688,19 @@ contains
               end do
               tf0 = t +  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
-                write(202,*) "usrch at trib :", t, j, usrchj,  q_usrch
+               !write(202,*) "usrch at trib :", t, j, usrchj,  q_usrch
             end if
 
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch
-            write(202,*) "usrch at ttal:", t, j, usrchj, newQ(1,j)
+            !write(202,*) "usrch at ttal:", t, j, usrchj, newQ(1,j)
           end do        
         else
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
         end if
         
-        write(201,*) t, 1, j, newQ(1,j)
+        !write(201,*) t, 1, j, newQ(1,j)
 
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
@@ -729,6 +742,12 @@ contains
             !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
             !end do          
             newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.)
+            !write(204,*) "1st depth", t, newY(ncomp, j)- z(ncomp, j)
+            ! to prevent too small water depth at boundary
+            if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
+              newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
+            end if 
+            !write(204,*) "2nd depth", t, newY(ncomp, j)- z(ncomp, j)
             xcolID  = 1
             ycolID  = 2
             newArea(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
@@ -751,13 +770,15 @@ contains
 !        if (j == mstem_frj(1)) then
         if (jm == 1) then
           maxCelDx    = 0.
-          maxCelerity = 0.
+          !maxCelerity = 0.
           do i = 1, nmstem_rch
-            do kkk = 2, frnw_g(mstem_frj(i), 1)
-              maxCelDx    = max(maxCelDx,                     &
-                                celerity(kkk, mstem_frj(i)) / &
-                                dx(kkk-1, mstem_frj(i)))
-              maxCelerity = max(maxCelerity, celerity(kkk,i))
+            !do kkk = 2, frnw_g(mstem_frj(i), 1)
+            do kkk = 1, frnw_g(mstem_frj(i), 1)-1
+              maxCelDx    = max(maxCelDx, celerity(kkk, mstem_frj(i)) / dx(kkk, mstem_frj(i)))
+              !maxCelDx    = max(maxCelDx, celerity(kkk, mstem_frj(i)) / dx(kkk-1, mstem_frj(i)))
+              !maxCelerity = max(maxCelerity, celerity(kkk,i))
+              !write(203,*) "t i j celerity dx maxCelDx:", t, kkk, j, celerity(kkk, mstem_frj(i)), &
+              !                                dx(kkk, mstem_frj(i)), maxCelDx
             end do
           end do
         endif
@@ -795,13 +816,13 @@ contains
       ! diffusive wave simulation time print
       print*, "diffusive simulatoin time in minute=", t
            !test
-           do jm = 1, nmstem_rch
-             j = mstem_frj(jm)
-             do i=1, frnw_g(j,1)
-                write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j),  newY(i,j)&
-                                                     ,z(i,j), newY(i, j)-z(i,j)
-            end do
-           end do
+           !do jm = 1, nmstem_rch
+           !  j = mstem_frj(jm)
+           !  do i=1, frnw_g(j,1)
+           !     write(11,"(f10.1, 2I10, 4F20.4)") t, i, j, newQ(i, j),  newY(i,j)&
+           !                                          ,z(i,j), newY(i, j)-z(i,j)
+           ! end do
+           !end do
 
     
 
@@ -925,15 +946,15 @@ contains
         endif
         
             !* test
-            do ts=1, ntss_ev_g
-            do jm = 1, nmstem_rch
-                j = mstem_frj(jm)
-            do i=1, frnw_g(j,1)
-                write(101,"(f10.1, 2I10, 4F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j),&
-                                                    elv_ev_g(ts, i, j), z(i,j), elv_ev_g(ts, i, j)-z(i,j)
-            end do
-            end do
-            end do
+            !do ts=1, ntss_ev_g
+            !do jm = 1, nmstem_rch
+            !    j = mstem_frj(jm)
+            !do i=1, frnw_g(j,1)
+            !    write(101,"(f10.1, 2I10, 4F20.4)") saveInterval*real(ts-1)/60.0, i, j, q_ev_g(ts, i, j),&
+            !                                        elv_ev_g(ts, i, j), z(i,j), elv_ev_g(ts, i, j)-z(i,j)
+            !end do
+            !end do
+            !end do
     
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
@@ -974,15 +995,15 @@ contains
   !   Language: Fortran 90.
   !   This code is written to JULES coding standards v1.
   !-----------------------------------------------------------------------------
-  
+
   ! Subroutine arguments
     double precision, intent(in) :: initialTime       ! [sec]
     double precision, intent(in) :: time              ! [hrs]
     double precision, intent(in) :: saveInterval      ! [sec]
     double precision, intent(in) :: tfin              ! [hrs]
     double precision, intent(in) :: given_dt          ! [sec]
-    double precision, intent(in) :: maxAllowCourantNo 
-    double precision, intent(in) :: max_C_dx
+    double precision, intent(in) :: maxAllowCourantNo ! = cfl
+    double precision, intent(in) :: max_C_dx          ! = maxCelDx
       
   ! Local variables
     integer :: a
@@ -1002,7 +1023,7 @@ contains
 
     ! if dtini extends beyond final time, then truncate it
     if (time + dtini / 60. > tfin * 60.) dtini = (tfin * 60. - time) * 60.
-    
+
   end subroutine  
 
   subroutine calc_dimensionless_numbers(j)
@@ -1613,7 +1634,7 @@ contains
 
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x2, y_ds, fh, df)
     
-    write(301, *) "ini:", i, j, Q_cur, Q_ds, y_norm, y_old, x1, x2, fl, fh
+    !write(301, *) "ini:", i, j, Q_cur, Q_ds, y_norm, y_old, x1, x2, fl, fh
     
     if ((fl > 0.0 .and. fh > 0.0) .or. (fl < 0.0 .and. fh < 0.0)) then
       rtsafe = y_norm
@@ -1647,9 +1668,9 @@ contains
         dxold  = dxx
         dxx    = 0.50 * (xh - xl)
         rtsafe = xl + dxx
-         write(301, *) "iter:", i, j, iter, rtsafe
+         !write(301, *) "iter:", i, j, iter, rtsafe
         if (xl == rtsafe) then 
-         write(301, *) "fnal:", i, j, iter, rtsafe
+         !write(301, *) "fnal:", i, j, iter, rtsafe
          return   ! change in root is negligible.
         endif 
       else                         ! newton step acceptable. take it.
@@ -1658,13 +1679,13 @@ contains
         temp   = rtsafe
         rtsafe = rtsafe - dxx
         if (temp == rtsafe) then
-          write(301, *) "fnal:", i, j, iter, rtsafe
+          !write(301, *) "fnal:", i, j, iter, rtsafe
           return
         endif 
       end if
       
       if (abs(dxx) < xacc) then 
-        write(301, *) "fnal:", i, j, iter, rtsafe
+        !write(301, *) "fnal:", i, j, iter, rtsafe
         return  ! convergence criterion.
       endif
 
@@ -1680,7 +1701,7 @@ contains
 
     ! when root is not converged:
     rtsafe = y_norm
-    write(301, *) "fnal:", i, j, iter, rtsafe
+    !write(301, *) "fnal:", i, j, iter, rtsafe
     
   end function rtsafe
 
@@ -1975,8 +1996,8 @@ contains
 
       compoundSKK(iel) = 1.0 / equiv_mann(iel)
        !if ((idx_reach==206).or.(idx_reach==44)) then
-        write(301,*) "bf smooth", idx_node, idx_reach, iel, el1(iel), a1(iel), peri1(iel), tpW1(iel), &
-                    redi1(iel), equiv_mann(iel), conv1(iel), newdKdA(iel)
+        !write(301,*) "bf smooth", idx_node, idx_reach, iel, el1(iel), a1(iel), peri1(iel), tpW1(iel), &
+        !            redi1(iel), equiv_mann(iel), conv1(iel), newdKdA(iel)
        !endif
     
     enddo 
@@ -2083,9 +2104,9 @@ contains
 
      !test
       !if ((idx_reach==206).or.(idx_reach==44)) then
-        do iel = 1, nel
-          write(301,*) "af smooth", idx_node, idx_reach, iel, el1(iel), conv1(iel), newdKdA(iel)
-        enddo
+        !do iel = 1, nel
+        !  write(301,*) "af smooth", idx_node, idx_reach, iel, el1(iel), conv1(iel), newdKdA(iel)
+        !enddo
       !endif
 
     ! finally build lookup table

@@ -227,7 +227,6 @@ def read_lakeparm(
     Reads LAKEPARM file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
-
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
     
@@ -239,7 +238,6 @@ def read_lakeparm(
     
     Returns:
     df1 (DataFrame):
-
     """
 
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
@@ -411,23 +409,17 @@ def get_ql_from_wrf_hydro_mf(
     value_col: column/field in the CHRTOUT files with the lateral inflow value
     gw_col: column/field in the CHRTOUT files with the groundwater bucket flux value
     runoff_col: column/field in the CHRTOUT files with the runoff from terrain routing value
-
     In general the CHRTOUT files contain one value per time step. At present, there is
     no capability for handling non-uniform timesteps in the qlaterals.
-
     The qlateral may also be input using comma delimited file -- see
     `get_ql_from_csv`
-
-
     Note/Todo:
     For later needs, filtering for specific features or times may
     be accomplished with one of:
         ds.loc[{selectors}]
         ds.sel({selectors})
         ds.isel({selectors})
-
     Returns from these selection functions are sub-datasets.
-
     For example:
     ```
     (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
@@ -436,7 +428,6 @@ def get_ql_from_wrf_hydro_mf(
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     2018-01-02 00:00:00 4186117     41.233807 -75.413895   0.006460
     ```
-
     or...
     ```
     (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
@@ -511,12 +502,20 @@ def write_chanobs(
     -------------
     
     '''
+    # TODO: for and if statements are improvised just in case when link of gage location is not in flowveldepth, which should be fixed
+    link_na = []
+    for link in list(link_gage_df.index):
+        if link not in list(flowveldepth.index):
+            link_na.append(link)
+    link_gage_df_nona = link_gage_df.drop(link_na)
     
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")
+    #gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")
+    gage_feature_id = link_gage_df_nona.index.to_numpy(dtype = "int64")
     
-    # array of simulated flow data at gage locations
-    gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+    # array of simulated flow data at gage locations    
+    #gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+    gage_flow_data = flowveldepth.loc[link_gage_df_nona.index].iloc[:,::3].to_numpy(dtype="float32") 
     
     # array of simulation time
     gage_flow_time = [t0 + timedelta(seconds = (i+1) * dt) for i in range(nts)]
@@ -597,7 +596,6 @@ def write_chanobs(
                     fill_value = np.nan
                 )
             y[:] = gage_flow_data.T
-
             # =========== GLOBAL ATTRIBUTES ===============  
             f.setncatts(
                 {
@@ -735,8 +733,8 @@ def write_chrtout(
         
         LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
         start = time.time()
-
-        with xr.open_dataset(chrtout_files[0], engine='netcdf4') as ds:
+        
+        with xr.open_dataset(chrtout_files[0],engine='netcdf4') as ds:
             newindex = ds.feature_id.values
             
         qtrt = flow.reindex(newindex).to_numpy().astype("float32")
@@ -769,10 +767,8 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
     value_col: column/field in the CHRTOUT files with the lateral inflow value
-
     In general the CHRTOUT files contain one value per time step. At present, there is
     no capability for handling non-uniform timesteps in the qlaterals.
-
     The qlateral may also be input using comma delimited file -- see
     `get_ql_from_csv`
     """
@@ -969,12 +965,10 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
     usgs_csv - csv file with SEGMENT IDs in the left-most column labeled with "link",
                         and date-headed values from time-slice files in the format
                         "2018-09-18 00:00:00"
-
     It is assumed that the segment crosswalk and interpolation have both
     already been performed, so we do not need to comprehend
     the potentially non-numeric byte-strings associated with gage IDs, nor
     do we need to interpolate anything here as when we read from the timeslices.
-
     If that were necessary, we might use a solution such as proposed here:
     https://stackoverflow.com/a/35058538
     note that explicit typing of the index cannot be done on read and
@@ -1247,7 +1241,6 @@ def get_channel_restart_from_wrf_hydro(
     default_us_flow_column: name used in remainder of program to refer to this column of the dataset
     default_ds_flow_column: name used in remainder of program to refer to this column of the dataset
     default_depth_column: name used in remainder of program to refer to this column of the dataset
-
     The Restart file gives hlink, qlink1, and qlink2 values for channels --
     the order is simply the same as that found in the Route-Link files.
     *Subnote 1*: The order of these values is NOT the order found in the CHRTOUT files,
@@ -1379,7 +1372,6 @@ def write_hydro_rst(
 ):
     """
     Write t-route flow and depth data to WRF-Hydro restart files. 
-
     Agruments
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
@@ -1392,7 +1384,6 @@ def write_hydro_rst(
         troute_us_flow_var_name (str):
         troute_ds_flow_var_name (str):
         troute_depth_var_name (str):
-
     Returns
     -------
     """
@@ -1499,7 +1490,6 @@ def get_reservoir_restart_from_wrf_hydro(
     waterbody_depth_column: column in the restart file to use for downstream flow initial state
     default_waterbody_flow_column: name used in remainder of program to refer to this column of the dataset
     default_waterbody_depth_column: name used in remainder of program to refer to this column of the dataset
-
     The Restart file gives qlakeo and resht values for waterbodies.
     The order of values in the file is the same as the order in the LAKEPARM file from WRF-Hydro.
     However, there are many instances where only a subset of waterbodies described in the lakeparm
@@ -1544,6 +1534,11 @@ def build_coastal_dataframe(coastal_boundary_elev):
     return coastal_df
 
 
+def build_coastal_ncdf_dataframe(coastal_ncdf):
+    with xr.open_dataset(coastal_ncdf) as ds:
+        coastal_ncdf_df = ds[["elev", "depth"]]
+        return coastal_ncdf_df.to_dataframe()
+
 def build_coastal_ncdf_dataframe(
                                 coastal_files, 
                                 coastal_boundary_domain,
@@ -1574,6 +1569,7 @@ def build_coastal_ncdf_dataframe(
     timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
         
     eta= [max(0.0, -1.0*x) for x in depth_bathy]
+    depth_bathy_list = [x for x in depth_bathy]
     
     # create a dataframe of water depth at coastal domain nodes
     timeslice_schism_list=[]
@@ -1582,13 +1578,12 @@ def build_coastal_ncdf_dataframe(
         if t==0:
             depth = np.nan
         else:
-            depth = elev_NAVD88[t-1,:] - eta        
-
+            #depth = elev_NAVD88[t-1,:] - eta        
+            depth =  elev_NAVD88[t-1,:] + depth_bathy_list
         timeslice_schism  = (pd.DataFrame({
                                 'stationId' : tws,
                                 'datetime'  : timeslice,
-                                #'depth'     : elev_NAVD88[:,t] - eta
-                                'depth'     : depth #elev_NAVD88[t,:] - eta
+                                'depth'     : depth
                             }).
                              set_index(['stationId', 'datetime']).
                              unstack(1, fill_value = np.nan)['depth'])
@@ -1600,7 +1595,7 @@ def build_coastal_ncdf_dataframe(
     
     # linearly extrapolate depth value at start date
     coastal_boundary_depth_df.iloc[:,0] = 2.0*coastal_boundary_depth_df.iloc[:,1] - coastal_boundary_depth_df.iloc[:,2]   
- 
+
     return coastal_boundary_depth_df    
  
 def lastobs_df_output(
@@ -1641,11 +1636,15 @@ def lastobs_df_output(
 
 def write_waterbody_netcdf(
     wbdy_filepath, 
-    wbdy_df, 
-    waterbodies_df, 
+    i_df,
+    q_df,
+    d_df,
+    waterbodies_df,
+    waterbody_types_df,
     t0, 
     dt, 
-    nts
+    nts,
+    time_index
 ):
     
     '''
@@ -1667,27 +1666,32 @@ def write_waterbody_netcdf(
     
     '''
     
+    i_df.index.name = 'lake_id'
+    i_df.columns = ['i']
+    i_df = i_df.sort_index()
+    q_df.index.name = 'lake_id'
+    q_df.columns = ['q']
+    q_df = q_df.sort_index()
+    d_df.index.name = 'lake_id'
+    d_df.columns = ['d']
+    d_df = d_df.sort_index()
+    
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    waterbodies_df = waterbodies_df.reset_index().rename(columns = {'lake_id': 'ID'})[['ID','lat','lon','crs']]
-    wbdy_feature_id = waterbodies_df.ID.to_numpy(dtype = "int64")
+    waterbodies_df = waterbodies_df[['lat','lon','crs']].sort_index()
+    wbdy_feature_id = waterbodies_df.index.to_numpy(dtype = "int64")
 
     # dataframe of waterbody types
-    wbdy_type = wbdy_df.loc[:,['ID','reservoir_type']].drop_duplicates().reservoir_type.to_numpy(dtype = 'int32')
-    
-    # array of simulated flow data at gage locations
-    wbdy_data = wbdy_df.drop(columns='reservoir_type').pivot(index=['ID','time'],columns='variable',values='value')
-    
+    waterbody_types_df = waterbody_types_df.sort_index()
+    wbdy_type = waterbody_types_df.reservoir_type.to_numpy(dtype = 'int32')
+
     # array of simulation time
-    wbdy_time = [t0 + timedelta(seconds = (wbdy_df.time.unique()[0] + 1).tolist() * dt)]
-    
-    # Merge waterbodies_df with wbdy_data
-    full_wbdy_data = pd.merge(waterbodies_df,wbdy_data,on = 'ID')
+    wbdy_time = [t0 + timedelta(seconds = (time_index + 1) * dt)]
     
     if wbdy_filepath:
         
         # open netCDF4 Dataset in write mode
         with netCDF4.Dataset(
-            filename = wbdy_filepath + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
+            filename = wbdy_filepath + '/' + str(wbdy_time[0].strftime('%Y%m%d%H%M')) + '.LAKEOUT.nc',
             mode = 'w',
             format = "NETCDF4"
         ) as f:
@@ -1771,7 +1775,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LATITUDE[:] = full_wbdy_data.lat.tolist()
+            LATITUDE[:] = waterbodies_df.lat.tolist()
             f['latitude'].setncatts(
                 {
                     'long_name': 'Lake latitude',
@@ -1787,7 +1791,7 @@ def write_waterbody_netcdf(
                 dimensions = ("feature_id",),
                 fill_value = np.nan
             )
-            LONGITUDE[:] = full_wbdy_data.lon.tolist()
+            LONGITUDE[:] = waterbodies_df.lon.tolist()
             f['longitude'].setncatts(
                 {
                     'long_name': 'Lake longitude',
@@ -1818,7 +1822,7 @@ def write_waterbody_netcdf(
                     datatype = "S1",
                     dimensions = ()
                 )
-            crs[:] = np.array(waterbodies_df.loc[0,'crs'],dtype = '|S1')
+            crs[:] = np.array(waterbodies_df['crs'].iat[0],dtype = '|S1')
             f['crs'].setncatts(
                 {
                     'transform_name': 'latitude longitude',
@@ -1841,7 +1845,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = -999900
                 )
-            inflow[:] = full_wbdy_data.i.tolist()
+            inflow[:] = i_df.i.tolist()
             f['inflow'].setncatts(
                 {
                     'long_name': 'Lake Inflow',
@@ -1862,7 +1866,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            outflow[:] = full_wbdy_data.q.tolist()
+            outflow[:] = q_df.q.tolist()
             f['outflow'].setncatts(
                 {
                     'long_name': 'Lake Outflow',
@@ -1883,7 +1887,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = np.nan
                 )
-            depth[:] = full_wbdy_data.d.tolist()
+            depth[:] = d_df.d.tolist()
             f['water_sfc_elev'].setncatts(
                 {
                     'long_name': 'Water Surface Elevation',

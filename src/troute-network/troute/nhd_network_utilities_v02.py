@@ -152,11 +152,10 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
 
     # reverse network connections graph - identify upstream adjacents of each segment
     rconn = nhd_network.reverse_network(connections)
-    #import pdb; pdb.set_trace()
     
     # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
-    #import pdb; pdb.set_trace()
+
     # construct network reaches
     reaches_bytw = {}
     for tw, net in independent_networks.items():

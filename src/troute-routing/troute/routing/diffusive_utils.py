@@ -1051,9 +1051,13 @@ def fp_coastal_boundary_input_map(
                                                 unstack(1, fill_value = np.nan)['depth'])
             
             timeslice_dbcd_list.append(timeslice_dbcd)                         
-        
-        dbcd_df = pd.concat(timeslice_dbcd_list, axis=1, ignore_index=False)
 
+        dbcd_df = pd.concat(timeslice_dbcd_list, axis=1, ignore_index=False)
+        
+        # replace zero or negative water depth by the smallest postive value
+        psmindepth =  dbcd_df.where(dbcd_df>0).min(1).loc[tw]
+        dbcd_df.loc[tw, dbcd_df.loc[tw]<= 0] = psmindepth        
+        
         # interpolate missing value in NaN (np.nan) inbetween available values. For extrapolation, the result is the same as 
         # a last available value either in the left or right.  
         dbcd_df_interpolated = dbcd_df.interpolate(axis='columns', limit_direction='both', limit=6)
@@ -1309,7 +1313,7 @@ def diffusive_input_data_v02(
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')
     
-    np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
+    #np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
@@ -1333,6 +1337,7 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
+    '''
     #test
     np.savetxt("./output/z_ar.txt", z_ar_g, fmt='%15.5f')
     np.savetxt("./output/bo_ar.txt", bo_ar_g, fmt='%15.5f')
@@ -1343,6 +1348,7 @@ def diffusive_input_data_v02(
     np.savetxt("./output/manncc_ar.txt", manncc_ar_g, fmt='%15.5f')
     np.savetxt("./output/so_ar.txt", so_ar_g, fmt='%15.6f') 
     np.savetxt("./output/dx_ar.txt", dx_ar_g, fmt='%15.5f')      
+    '''
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
     #                  Prepare initial conditions data
@@ -1366,6 +1372,7 @@ def diffusive_input_data_v02(
                 # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
+    '''
     #test   
     frj= -1
     with open("./output/iniq_ar.txt",'a') as pyqini:    
@@ -1380,7 +1387,7 @@ def diffusive_input_data_v02(
                     pyqini.write("%s %s %s %s\n" %\
                                 (str(segID), str(frj+1), str(seg+1), str(dmy1)) )                   
                                 # <- +1 is added to frj for accommodating Fortran indexing.     
-
+    '''
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
@@ -1449,7 +1456,7 @@ def diffusive_input_data_v02(
                                                     tfin_g)
     
     para_ar_g[10] = dsbd_option  # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
-
+    
     frj= -1
     with open("./output/dbcd_ar.txt",'a') as dbcd:
         for tsi in range (0, nts_db_g):
@@ -1525,9 +1532,7 @@ def diffusive_input_data_v02(
                         dmy1 = size_bathy_g[seg, frj]                    
                         pysizebathy.write("%s %s %s\n" %\
                                      (str(seg+1), str(frj+1), str(dmy1)))
-                            
-                            
-                            
+                   
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-11
 

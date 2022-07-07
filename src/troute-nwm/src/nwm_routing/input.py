@@ -10,6 +10,7 @@ from .log_level_set import log_level_set
 LOG = logging.getLogger('')
 
 def _input_handler_v03(args):
+    
     '''
     Read user inputs from configuration file and set logging level
     
@@ -26,16 +27,15 @@ def _input_handler_v03(args):
     compute_parameters           (dict): Input parameters re computation settings
     forcing_parameters           (dict): Input parameters re model forcings
     restart_parameters           (dict): Input parameters re model restart
-    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    hybrid_parameters            (dict): Input parameters re MC/diffusive wave model
     output_parameters            (dict): Input parameters re output writing
     parity_parameters            (dict): Input parameters re parity assessment
     data_assimilation_parameters (dict): Input parameters re data assimilation
 
     '''
-    
     # get name of user configuration file (e.g. test.yaml)
     custom_input_file = args.custom_input_file
-    
+
     # read data from user configuration file
     (
         log_parameters,
@@ -45,7 +45,7 @@ def _input_handler_v03(args):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
@@ -65,7 +65,7 @@ def _input_handler_v03(args):
                 compute_parameters,
                 forcing_parameters,
                 restart_parameters,
-                diffusive_parameters,
+                hybrid_parameters,
                 output_parameters,
                 parity_parameters,
                 data_assimilation_parameters
@@ -79,7 +79,7 @@ def _input_handler_v03(args):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,

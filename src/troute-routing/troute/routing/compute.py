@@ -1155,13 +1155,11 @@ def compute_diffusive_routing(
     ):
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
-        #import pdb; pdb.set_trace()
         trib_segs = None
         trib_flow = None
         # extract junction inflows from results array
         for j, i in enumerate(results):
             x = np.in1d(i[0], diffusive_network_data[tw]['tributary_segments'])
-            print(f"j: {j}")
             if sum(x) > 0:
                 if j == 0:
                     trib_segs = i[0][x]
@@ -1173,7 +1171,7 @@ def compute_diffusive_routing(
                     else:
                         trib_segs = np.append(trib_segs, i[0][x])
                         trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
-        #import pdb; pdb.set_trace()
+
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 
