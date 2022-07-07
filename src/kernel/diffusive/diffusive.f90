@@ -179,7 +179,7 @@ contains
     integer, dimension(:,:), allocatable :: flag_lfrac
     double precision :: x
     double precision :: saveInterval, width
-    double precision :: maxCourant
+    !double precision :: maxCourant
     double precision :: dtini_given
     double precision :: timesDepth
     double precision :: t
@@ -799,9 +799,9 @@ contains
             courant(i) = (newQ(i, j) + newQ(i+1, j)) / (newArea(i, j) + newArea(i+1, j)) * dtini / dx(i, j)
           endif
         end do
-        if (maxCourant < maxval(courant(1:ncomp - 1))) then
-          maxCourant = maxval(courant(1:ncomp-1))
-        end if
+        !if (maxCourant < maxval(courant(1:ncomp - 1))) then
+        !  maxCourant = maxval(courant(1:ncomp-1))
+        !end if
       end do
 
       ! Advance model time
