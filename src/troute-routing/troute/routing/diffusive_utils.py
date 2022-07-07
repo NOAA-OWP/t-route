@@ -1311,9 +1311,7 @@ def diffusive_input_data_v02(
                               )
 
     # covert data type from integer to float for frnw  
-    dfrnw_g = frnw_g.astype('float')
-    
-    #np.savetxt("./output/frnw_ar.txt", frnw_g, fmt='%10i')
+    dfrnw_g = frnw_g.astype('float')    
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
@@ -1337,18 +1335,7 @@ def diffusive_input_data_v02(
         mxncomp_g,
         nrch_g,
     )
-    '''
-    #test
-    np.savetxt("./output/z_ar.txt", z_ar_g, fmt='%15.5f')
-    np.savetxt("./output/bo_ar.txt", bo_ar_g, fmt='%15.5f')
-    np.savetxt("./output/traps_ar.txt", traps_ar_g, fmt='%15.5f')
-    np.savetxt("./output/tw_ar.txt", tw_ar_g, fmt='%15.5f')
-    np.savetxt("./output/twcc_ar.txt", twcc_ar_g, fmt='%15.5f')
-    np.savetxt("./output/mann_ar.txt", mann_ar_g, fmt='%15.5f')
-    np.savetxt("./output/manncc_ar.txt", manncc_ar_g, fmt='%15.5f')
-    np.savetxt("./output/so_ar.txt", so_ar_g, fmt='%15.6f') 
-    np.savetxt("./output/dx_ar.txt", dx_ar_g, fmt='%15.5f')      
-    '''
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-6
     #                  Prepare initial conditions data
@@ -1372,22 +1359,7 @@ def diffusive_input_data_v02(
                 # set lower limit on initial flow condition
                 if iniq[seg, frj]<0.0001:
                     iniq[seg, frj]=0.0001
-    '''
-    #test   
-    frj= -1
-    with open("./output/iniq_ar.txt",'a') as pyqini:    
-        for x in range(mx_jorder,-1,-1):   
-            for head_segment, reach in ordered_reaches[x]:                  
-                seg_list= reach["segments_list"]
-                ncomp= reach["number_segments"]             
-                frj= frj+1     
-                for seg in range(0,ncomp):                               
-                    segID= seg_list[seg]                  
-                    dmy1= iniq[seg, frj]
-                    pyqini.write("%s %s %s %s\n" %\
-                                (str(segID), str(frj+1), str(seg+1), str(dmy1)) )                   
-                                # <- +1 is added to frj for accommodating Fortran indexing.     
-    '''
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-7
 
@@ -1408,22 +1380,6 @@ def diffusive_input_data_v02(
         qlat_g,
     )
     
-    #test
-    frj= -1
-    with open("./output/qlat_ar.txt",'a') as pyql:
-        for x in range(mx_jorder,-1,-1):   
-            for head_segment, reach in ordered_reaches[x]:                  
-                seg_list= reach["segments_list"]
-                ncomp= reach["number_segments"]             
-                frj= frj+1     
-                for seg in range(0,ncomp):                               
-                    segID= seg_list[seg]
-                    for tsi in range (0,nts_ql_g):
-                        t_min= dt_ql_g/60.0*float(tsi)                        
-                        dmy1= qlat_g[tsi, seg, frj]
-                        pyql.write("%s %s %s %s\n" %\
-                                (str(frj+1), str(seg+1), str(t_min), str(dmy1)) )                   
-                                # <- +1 is added to frj for accommodating Fortran indexing. 
     # ---------------------------------------------------------------------------------
     #                              Step 0-8
 
@@ -1455,15 +1411,8 @@ def diffusive_input_data_v02(
                                                     t0_g,
                                                     tfin_g)
     
-    para_ar_g[10] = dsbd_option  # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
-    
-    frj= -1
-    with open("./output/dbcd_ar.txt",'a') as dbcd:
-        for tsi in range (0, nts_db_g):
-            t_min = dt_db_g/60.0*float(tsi)                        
-            dmy1  = dbcd_g[tsi]
-            dbcd.write("%s %s\n" %\
-                        (str(t_min), str(dmy1)) )      
+    para_ar_g[10] = dsbd_option  # downstream water depth boundary condition: 1: given water depth data, 2: normal depth    
+   
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-9-2
 
@@ -1479,22 +1428,8 @@ def diffusive_input_data_v02(
                 qtrib_g[1:,frj] = junction_inflows.loc[head_segment]                
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
-                qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']
-    
-    frj= -1
-    #with open(os.path.join(output_path,"qtrib_ar.txt"),'a') as pyqtrib:
-    with open("./output/qtrib_ar.txt",'a') as pyqtrib:
-        for x in range(mx_jorder,-1,-1):   
-            for head_segment, reach in ordered_reaches[x]:                  
-                seg_list= reach["segments_list"]
-                ncomp= reach["number_segments"]             
-                frj= frj+1     
-                for tsi in range (0, nts_qtrib_g):
-                    t_min=  dt_qtrib_g/60.0*float(tsi)                        
-                    dmy1= qtrib_g[tsi, frj]
-                    pyqtrib.write("%s %s %s\n" %\
-                                 (str(frj+1), str(t_min), str(dmy1)) )  
-                                 # <- +1 is added to frj for accommodating Fortran indexing.            
+                qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']    
+         
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 
@@ -1510,28 +1445,6 @@ def diffusive_input_data_v02(
                                                                            mxncomp_g, 
                                                                            nrch_g,
                                                                            dbfksegID)
-        #with open(os.path.join(output_path,"bathy_data.txt"),'a') as pybathy:
-        with open("./output/bathy_data.txt",'a') as pybathy:
-            for frj in range(0, nrch_g):
-                if  frnw_g[frj, 2] > 0:                
-                    ncomp=  frnw_g[frj, 0]            
-                    for seg in range(0,ncomp):  
-                           for idp in range(0, size_bathy_g[seg, frj]):
-                                dmy1 = x_bathy_g[idp, seg, frj]
-                                dmy2 = z_bathy_g[idp, seg, frj]
-                                dmy3 = mann_bathy_g[idp, seg, frj]                            
-                                pybathy.write("%s %s %s %s %s %s\n" %\
-                                     (str(idp+1), str(seg+1), str(frj+1), str(dmy1), str(dmy2), str(dmy3))) 
-
-        #with open(os.path.join(output_path,"bathy_data.txt"),'a') as pybathy:
-        with open("./output/size_bathy_data.txt",'a') as pysizebathy:
-            for frj in range(0, nrch_g):
-                if  frnw_g[frj, 2] > 0:                
-                    ncomp=  frnw_g[frj, 0]  
-                    for seg in range(0,ncomp):  
-                        dmy1 = size_bathy_g[seg, frj]                    
-                        pysizebathy.write("%s %s %s\n" %\
-                                     (str(seg+1), str(frj+1), str(dmy1)))
                    
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-11
@@ -1549,20 +1462,6 @@ def diffusive_input_data_v02(
                                                 t0_g,
                                                 tfin_g)
     
-    with open("./output/usgs_da_g.txt",'a') as pyusgs_da:
-        for frj in range(0, nrch_g):
-             for t in range(0, nts_da_g):
-                dmy1 =  usgs_da_g[t,frj]                    
-                pyusgs_da.write("%s %s %s\n" %\
-                               (str(t+1), str(frj+1), str(dmy1)))    
-                
-    with open("./output/usgs_da_reach_g.txt",'a') as pyusgs_da_reach:
-        for frj in range(0, nrch_g):            
-            dmy1 =  usgs_da_reach_g[frj]                   
-            pyusgs_da_reach.write("%s %s\n" %\
-                               (str(frj+1), str(dmy1)))
-
-
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-1
 
@@ -1583,7 +1482,6 @@ def diffusive_input_data_v02(
                                                                     refactored_reaches,
                                                                     #upstream_boundary_link,        
                                                                     )
-        np.savetxt("./output/ref_frnw_ar.txt", rfrnw_g, fmt='%10i')
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-12-2
@@ -1617,35 +1515,6 @@ def diffusive_input_data_v02(
                 rordered_reaches,
                 refactored_diffusive_domain,
                 )
-        
-
-        with open("./output/ref_qlat_ar.txt",'a') as pyql:
-            for frj in range(0, nrch_g):
-                #if  rfrnw_g[frj, 2] > 0:
-                if 1==1:
-                    # mainstem only
-                    rncomp = rfrnw_g[frj, 0]
-                    for rseg in range(0, rncomp):                                   
-                        for tsi in range (0,nts_ql_g):
-                            t_min= dt_ql_g/60.0*float(tsi)                        
-                            dmy1= rqlat_g[tsi, rseg, frj]
-                            pyql.write("%s %s %s %s\n" %\
-                                (str(frj+1), str(rseg+1), str(t_min), str(dmy1)) )                   
-                                # <- +1 is added to frj for accommodating Fortran indexing. 
-               
-        np.savetxt("./output/ref_dx_ar.txt", rdx_ar_g, fmt='%15.5f')
-
-        with open("./output/ref_iniq_ar.txt",'a') as pyqini:    
-            for frj in range(0, nrch_g):
-                if 1==1:
-                #if  rfrnw_g[frj, 2] > 0:
-                    # mainstem only
-                    rncomp = rfrnw_g[frj, 0]
-                    for rseg in range(0, rncomp):                             
-                        dmy1= riniq[rseg, frj]
-                        pyqini.write("%s %s %s %s\n" %\
-                                    (str(segID), str(frj+1), str(rseg+1), str(dmy1)) )                   
-                                    # <- +1 is added to frj for accommodating Fortran indexing. 
 
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
@@ -1675,27 +1544,6 @@ def diffusive_input_data_v02(
                 refactored_diffusive_domain,
                 )  
         
-        with open("./output/bathy_data.txt",'a') as pybathy:
-            for frj in range(0, nrch_g):
-                if  rfrnw_g[frj, 2] > 0:
-                    rncomp = rfrnw_g[frj, 0]
-                    for rseg in range(0,rncomp):  
-                        for idp in range(0, size_bathy_g[rseg, frj]):
-                            dmy1 = x_bathy_g[idp, rseg, frj]
-                            dmy2 = z_bathy_g[idp, rseg, frj]
-                            dmy3 = mann_bathy_g[idp, rseg, frj]                            
-                            pybathy.write("%s %s %s %s %s %s\n" %\
-                                     (str(idp+1), str(rseg+1), str(frj+1), str(dmy1), str(dmy2), str(dmy3))) 
-
-        with open("./output/size_bathy_data.txt",'a') as pysizebathy:
-            for frj in range(0, nrch_g):
-                if  rfrnw_g[frj, 2] > 0:
-                    rncomp = rfrnw_g[frj, 0]
-                    for rseg in range(0,rncomp):
-                            dmy1 = size_bathy_g[rseg, frj]                    
-                            pysizebathy.write("%s %s %s\n" %\
-                                     (str(rseg+1), str(frj+1), str(dmy1))) 
-
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
 
@@ -1737,8 +1585,7 @@ def diffusive_input_data_v02(
         crosswalk_nrow = int(0) 
         crosswalk_ncol = int(0)
         crosswalk_g  = np.array([]).reshape(0,0) 
-        
-    np.savetxt("./output/crosswalk_ar.txt", crosswalk_g, fmt='%10i')
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-13
 
@@ -1800,7 +1647,6 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g
-        #diff_ins["ub_idx_fr"] = ub_idx_fr
     else:
         # for refactored hydrofabric
         # model time steps
@@ -1853,7 +1699,7 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g   
-        #diff_ins["ub_idx_fr"] = rub_idx_fr    
+
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

@@ -56,7 +56,7 @@ compute_parameters:
         qlat_input_folder          : /glade/scratch/donghakim/HurricaneLaura/channel_forcing 
         qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1"
           coastal_boundary_input_file : /glade/scratch/camaron/schout_1.nc  
-        nts                         : 288  #288 for 1day; 2592 for 9 days
+        nts                         : 2592  #288 for 1day; 2592 for 9 days
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
