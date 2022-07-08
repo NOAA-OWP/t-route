@@ -9,14 +9,14 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_path: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc  
+        geo_file_path: domain/RouteLink_NWMv2.1.nc  
         mask_file_path: domain/coastal_10diffusive.txt
     waterbody_parameters:
         #----------
         break_network_at_waterbodies: True 
         level_pool:
             #----------
-            level_pool_waterbody_parameter_file_path: /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc 
+            level_pool_waterbody_parameter_file_path: domain/LAKEPARM_NWMv2.1.nc 
         rfc:
             #----------
             reservoir_parameter_file                : domain/reservoir_index_AnA.nc
@@ -33,13 +33,13 @@ compute_parameters:
     cpu_pool               : 36
     restart_parameters:
         #----------
-        wrf_hydro_channel_restart_file: /glade/scratch/donghakim/HurricaneLaura/restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
-        #lite_channel_restart_file: /glade/scratch/donghakim/HurricaneLaura/restart/RESTART.2020082600_DOMAIN1
-        wrf_hydro_channel_ID_crosswalk_file    : /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc
-        wrf_hydro_waterbody_restart_file: /glade/scratch/donghakim/HurricaneLaura/restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
-        #lite_waterbody_restart_file              : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_Restarts/waterbody_restart_202006011200
-        wrf_hydro_waterbody_ID_crosswalk_file    : /glade/scratch/adamw/CONUS_1yr/domain/LAKEPARM_NWMv2.1.nc 
-        wrf_hydro_waterbody_crosswalk_filter_file: /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc 
+        wrf_hydro_channel_restart_file        : restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
+        #lite_channel_restart_file            : restart/RESTART.2020082600_DOMAIN1
+        wrf_hydro_channel_ID_crosswalk_file   : domain/RouteLink_NWMv2.1.nc
+        wrf_hydro_waterbody_restart_file      : restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
+        #lite_waterbody_restart_file          : restart/waterbody_restart_202006011200
+        wrf_hydro_waterbody_ID_crosswalk_file : domain/LAKEPARM_NWMv2.1.nc 
+        wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink_NWMv2.1.nc 
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/coastal_domain_subset.yaml  
@@ -52,11 +52,11 @@ compute_parameters:
     forcing_parameters:
         #----------
         qts_subdivisions            : 12
-        dt                          : 300
-        qlat_input_folder          : /glade/scratch/donghakim/HurricaneLaura/channel_forcing 
+        dt                          : 300 # [sec]
+        qlat_input_folder           : channel_forcing 
         qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1"
-          coastal_boundary_input_file : /glade/scratch/camaron/schout_1.nc  
-        nts                         : 2592  #288 for 1day; 2592 for 9 days
+        coastal_boundary_input_file : boundary_forcing  
+        nts                         : 2592 # 288 for 1day; 2592 for 9 days
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
@@ -68,10 +68,10 @@ compute_parameters:
             #----------
             streamflow_nudging            : False
             diffusive_streamflow_nudging  : False
-            gage_segID_crosswalk_file     : /glade/scratch/adamw/CONUS_1yr/domain/RouteLink_NWMv2.1.nc  
+            gage_segID_crosswalk_file     : domain/RouteLink_NWMv2.1.nc  
             crosswalk_gage_field          : 'gages'
             crosswalk_segID_field         : 'link'
-            wrf_hydro_lastobs_file        : /glade/scratch/casali/Coastal_Inland/NWM_Coastal_Run_Data/DA_Simulation/Restart_Files/Troute_lastobs_outputs/nudgingLastObs.2020-06-01_12:00:00.nc                    
+            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2020-06-01_12:00:00.nc                    
             lastobs_output_folder         : lastobs/
         reservoir_da:
             #----------
@@ -81,16 +81,16 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    test_output: output/LowerColorado_flowveldepth.pkl
+    test_output: output/HurricaneLaura_flowveldepth.pkl
     lite_restart:
         #----------
         lite_restart_output_directory: restart/
     chrtout_output:
         #----------
-        wrf_hydro_channel_output_source_folder: /glade/scratch/donghakim/HurricaneLaura/channel_forcing
+        wrf_hydro_channel_output_source_folder: channel_forcing/
     chanobs_output:
         #----------
         chanobs_output_directory: output/
-        chanobs_filepath        : Chanobs.nc
+        chanobs_filepath        : HurricaneLaura_chanobs.nc
     lakeout_output: lakeout/
     
