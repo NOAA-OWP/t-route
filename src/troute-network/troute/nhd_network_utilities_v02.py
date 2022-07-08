@@ -155,7 +155,7 @@ def organize_independent_networks(connections, wbody_break_segments, gage_break_
     
     # identify independent drainage networks
     independent_networks = nhd_network.reachable_network(rconn)
-
+    
     # construct network reaches
     reaches_bytw = {}
     for tw, net in independent_networks.items():
