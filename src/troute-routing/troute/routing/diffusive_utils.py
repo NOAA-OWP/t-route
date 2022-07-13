@@ -1136,8 +1136,8 @@ def diffusive_input_data_v02(
     para_ar_g     = np.zeros(paradim)
     para_ar_g[0]  = 0.95    # Courant number (default: 0.95)
     para_ar_g[1]  = 0.5     # lower limit of celerity (default: 0.5)
-    para_ar_g[2]  = 10.0    # lower limit of diffusivity (default: 50)
-    para_ar_g[3]  = 40000.0  # upper limit of diffusivity (default: 1000)
+    para_ar_g[2]  = 10.0    # lower limit of diffusivity (default: 10)
+    para_ar_g[3]  = 10000.0  # upper limit of diffusivity (default: 10000)
     para_ar_g[4]  = -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[5]  = -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[6]  = 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
