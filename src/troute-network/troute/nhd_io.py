@@ -504,11 +504,11 @@ def write_chanobs(
     '''
     # TODO: for and if statements are improvised just in case when link of gage location is not in flowveldepth, which should be fixed
     link_na = []
-    for link in list(link_gage_df.index):
-        if link not in list(flowveldepth.index):
+    for link in link_gage_df.index:
+        if link not in flowveldepth.index:
             link_na.append(link)
     link_gage_df_nona = link_gage_df.drop(link_na)
-    
+
     # array of segment linkIDs at gage locations. Results from these segments will be written
     #gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")
     gage_feature_id = link_gage_df_nona.index.to_numpy(dtype = "int64")
