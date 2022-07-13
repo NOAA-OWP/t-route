@@ -295,26 +295,7 @@ def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
     -------
     ubcd_g -- (ndarray of float32) upstream boundary data (m3/sec)
     """
-    '''
-    ubcd_g = np.zeros((nts_ub_g, nrch_g))
-    frj = -1
-
-    #loop over every segment in network
-    for frj in range(nrch_g):
-
-        #if this is a head segment
-        if frnw_g[frj, 2] == 0:  # the number of upstream reaches is zero.
-            
-            head_segment = pynw[frj]
-            
-            if head_segment in set(ds_seg):
-                
-                idx_dssegID = np.where(np.asarray(list(set(ds_seg))) == head_segment)
-                for tsi in range(0, nts_ub_g):
-                    ubcd_g[tsi, frj] = upstream_inflows[idx_dssegID, tsi]  # [m^3/s]
-    '''
-    ubcd_g = np.zeros((nts_ub_g, nrch_g))    
-    
+    ubcd_g = np.zeros((nts_ub_g, nrch_g))        
     
     return ubcd_g
 
@@ -997,8 +978,6 @@ def fp_coastal_boundary_input_map(
     coastal_boundary_depth_df, 
     nrch_g,
     t0,
-    #nsteps,
-    dt_db_g,
     t0_g,
     tfin_g):
     """
@@ -1008,27 +987,23 @@ def fp_coastal_boundary_input_map(
     tw -- (int) Tailwater segment ID
     coastal_boundary_depth_df -- (DataFrame) coastal boundary depth data at one hour time steps
     t0              -- (datetime) initial date
-    #nsteps          -- (int) number of simulation time steps
-    dt_db_g         -- (int)   coastal boundary input data timestep in sec
     t0_g            -- (float) diffusive model's initial simulation time [hr] (by default, zero)
     tfin_g          -- (float) diffusive model's final simulation time [hr] 
+    
     Returns
     -------
+    dt_db_g         -- (int)   coastal boundary input data timestep in sec
     dsbd_option     -- (int) 1 or 2 for coastal boundary depth data or normal depth data, respectively
     nts_db_g        -- (int) number of coastal boundary input data timesteps
     dbcd_g          -- (float) coastal boundary input data time series [m]
     """
     
-    nts_db_g  = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
-    dbcd_g    = np.ones(nts_db_g)    
+    date_time_obj1 = datetime.strptime(coastal_boundary_depth_df.columns[1], '%Y-%m-%d %H:%M:%S')
+    date_time_obj0 = datetime.strptime(coastal_boundary_depth_df.columns[0], '%Y-%m-%d %H:%M:%S')
+    dt_db_g        = (date_time_obj1 - date_time_obj0).total_seconds()    
+    nts_db_g       = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
+    dbcd_g         = np.ones(nts_db_g)    
   
-    # test {
-    #import datetime
-    #strdate="2018-09-16 18:00:00" 
-    #datetimeobj=datetime.datetime.strptime(strdate, "%Y-%m-%d %H:%M:%S")
-    #t0 = datetimeobj
-    # } test
-    
     if not coastal_boundary_depth_df.empty:    
         dt_timeslice = timedelta(minutes=dt_db_g/60.0)
         tfin         = t0 + dt_timeslice*(nts_db_g-1)
@@ -1074,7 +1049,7 @@ def fp_coastal_boundary_input_map(
         dsbd_option = 2 # instead, use normal depth as the downstream boundary condition
         dbcd_g[:] = 0.0               
 
-    return dsbd_option, nts_db_g, dbcd_g
+    return dt_db_g, dsbd_option, nts_db_g, dbcd_g
      
 def diffusive_input_data_v02(
     tw,
@@ -1098,8 +1073,6 @@ def diffusive_input_data_v02(
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df,
-    #upstream_boundary_flow_bytw,
-    #upstream_boundary_link,
 ):
     
     """
@@ -1132,8 +1105,6 @@ def diffusive_input_data_v02(
     dt_ql_g = 3600.0
     # upstream boundary condition timestep = MC simulation time step (sec)
     dt_ub_g = 300.0 
-    # downstream boundary condition timestep (sec) - currently, schism output timestep = 1 hr
-    dt_db_g = 3600.0  #dt * qts_subdivisions
     # tributary inflow timestep (sec) - currently, MC simulation time step = 5 min
     dt_qtrib_g = 300.0
     # usgs_df time step used for data assimilation. The original timestep of USGS streamflow is 15 min but later interpolated at every dt in min.
@@ -1156,7 +1127,7 @@ def diffusive_input_data_v02(
     timestep_ar_g[3] = saveinterval_tu 
     timestep_ar_g[4] = dt_ql_g
     timestep_ar_g[5] = dt_ub_g
-    timestep_ar_g[6] = dt_db_g
+    # timestep_ar_g[6] =  dt_db_g <- defined after calling fp_coastal_boundary_input_map
     timestep_ar_g[7] = dt_qtrib_g
     timestep_ar_g[8] = dt_da_g
 
@@ -1165,8 +1136,8 @@ def diffusive_input_data_v02(
     para_ar_g     = np.zeros(paradim)
     para_ar_g[0]  = 0.95    # Courant number (default: 0.95)
     para_ar_g[1]  = 0.5     # lower limit of celerity (default: 0.5)
-    para_ar_g[2]  = 50.0    # lower limit of diffusivity (default: 50)
-    para_ar_g[3]  = 5000.0  # upper limit of diffusivity (default: 1000)
+    para_ar_g[2]  = 10.0    # lower limit of diffusivity (default: 50)
+    para_ar_g[3]  = 40000.0  # upper limit of diffusivity (default: 1000)
     para_ar_g[4]  = -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[5]  = -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[6]  = 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
@@ -1385,32 +1356,23 @@ def diffusive_input_data_v02(
 
     #       Prepare upstream boundary (top segments of head basin reaches) data
     # ---------------------------------------------------------------------------------
-    #ds_seg = []
-    #upstream_flow_array = np.zeros((len(ds_seg), nsteps+1)) # <- this is a place holder until we figure out what to do with upstream boundary     
+    # currently all zeroes by default.  
     nts_ub_g = int((tfin_g - t0_g) * 3600.0 / dt_ub_g)  
-    #ubcd_g = fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_flow_array)
     ubcd_g = np.zeros((nts_ub_g, nrch_g)) 
     # ---------------------------------------------------------------------------------
     #                              Step 0-9
 
     #       Prepare downstrea boundary (bottom segments of TW reaches) data
-    # ---------------------------------------------------------------------------------
-
-    # this is a place holder that uses normal depth and the lower boundary.
-    # we will need to revisit this 
-    #nts_db_g = int((tfin_g - t0_g) * 3600.0 / dt_db_g)+1 
-    #dbcd_g = np.zeros(nts_db_g)    
+    # ---------------------------------------------------------------------------------   
+    dt_db_g, dsbd_option, nts_db_g, dbcd_g =  fp_coastal_boundary_input_map(
+                                                                        tw,
+                                                                        coastal_boundary_depth_df, 
+                                                                        nrch_g,
+                                                                        t0,
+                                                                        t0_g,
+                                                                        tfin_g)
     
-    dsbd_option, nts_db_g, dbcd_g =  fp_coastal_boundary_input_map(
-                                                    tw,
-                                                    coastal_boundary_depth_df, 
-                                                    nrch_g,
-                                                    t0,
-                                                    #nsteps,
-                                                    dt_db_g,
-                                                    t0_g,
-                                                    tfin_g)
-    
+    timestep_ar_g[6] = dt_db_g
     para_ar_g[10] = dsbd_option  # downstream water depth boundary condition: 1: given water depth data, 2: normal depth    
    
     # ---------------------------------------------------------------------------------------------

@@ -331,8 +331,6 @@ def nwm_network_preprocess(
     #
     if diffusive_domain:
         rconn_diff0 = nhd_network.reverse_network(connections)
-        tw = list(diffusive_domain.keys())[0] # for a single diffusive domain for now. TODO: treat multiple diffusive domains 
-        mainstem_segs = diffusive_domain[tw]['links']
         refactored_reaches = {}
         
         for tw in diffusive_domain:
@@ -384,14 +382,17 @@ def nwm_network_preprocess(
             if refactored_diffusive_domain: 
                 diffusive_parameters = {'geo_file_path': refactored_topobathy_file}
                 refactored_connections = nnu.build_refac_connections(diffusive_parameters)
-                
-                # subset refactored_connections for 
+
+                # list of stream segments of a single refactored diffusive domain 
                 rlinks_tw = refactored_diffusive_domain[tw]['rlinks']
                 refactored_connections_tw = {}
+                
+                # Subset a connection dictionary (upstream segment as key : downstream segments as values) from refactored_connections
+                # for a single refactored diffusive domain defined by a current tw. 
                 for k in rlinks_tw:
                     if k in refactored_connections.keys():
                         refactored_connections_tw[k] = refactored_connections[k]
-                
+
                 refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
@@ -407,6 +408,7 @@ def nwm_network_preprocess(
                                                             set(trib_segs),
                                                             set(),
                                                             )
+
                 refactored_reaches[refac_tw] = refactored_reaches_batch[refac_tw]
                 refactored_diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_diffusive_domain[tw]['rlinks']
                 refactored_diffusive_network_data[refac_tw]['upstream_boundary_link'] = diffusive_network_data[tw]['upstream_boundary_link'] 
@@ -1235,37 +1237,23 @@ def nwm_forcing_preprocess(
 
     #---------------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
-    
-    #coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
-    #coastal_ncdf = forcing_parameters.get("coastal_ncdf", None)
-
-    #if coastal_boundary_elev:
-    #    LOG.info("creating coastal dataframe ...")
-    #    coastal_df = nhd_io.build_coastal_dataframe(coastal_boundary_elev)
-
-    #if coastal_ncdf:
-    #    LOG.info("creating coastal ncdf dataframe ...")
-    #    coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
-    
     coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
     coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
-    #interpolation_frequency = forcing_parameters.get('coastal_boundary_input_interpolation_frequency', 3600) 
 
     if coastal_boundary_elev_files:
         start_time = time.time()    
+        LOG.info("creating coastal dataframe ...")
         
         coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
         coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
                                                     coastal_boundary_elev_files,
                                                     coastal_boundary_domain,
-                                                    #interpolation_frequency,
                                                     )
                 
         LOG.debug(
             "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
             % (time.time() - start_time)
-        )
-            
+        )            
     else:
         coastal_boundary_depth_df = pd.DataFrame()
  

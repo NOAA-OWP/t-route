@@ -1542,12 +1542,7 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
 def build_coastal_ncdf_dataframe(
                                 coastal_files, 
                                 coastal_boundary_domain,
-                                #interpolation_frequency,
                                 ):
-    #with xr.open_dataset(coastal_ncdf) as ds:
-    #    coastal_ncdf_df = ds[["elev", "depth"]]
-    #    return coastal_ncdf_df.to_dataframe()
-    
     # retrieve coastal elevation, topo depth, and temporal data
     ds = netCDF4.Dataset(filename = coastal_files,  mode = 'r', format = "NETCDF4")
     
@@ -1556,30 +1551,28 @@ def build_coastal_ncdf_dataframe(
     
     elev_NAVD88 = ds.variables['elev'][:, coastal_boundary_nodes].filled(fill_value = np.nan)
     depth_bathy = ds.variables['depth'][coastal_boundary_nodes].filled(fill_value = np.nan)
-    timesteps   = ds.variables['time'][:]    
-    start_date = ds.variables['time'].units
+    timesteps   = ds.variables['time'][:]
+    if len(timesteps) > 1:
+        dt_schism = timesteps[1]-timesteps[0]
+    else:
+        raise RuntimeError("schism provided less than 2 time steps")
     
+    start_date = ds.variables['time'].units
     start_date   = dparser.parse(start_date,fuzzy=True)
-    dt_schism    = 3600 # [sec]
     dt_timeslice = timedelta(minutes=dt_schism/60.0)
-    start_date   = start_date # + dt_timeslice
-    #tfin         =  start_date + dt_timeslice*(len(timesteps)-1)
     tfin         =  start_date + dt_timeslice*len(timesteps)
     timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
     timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
-        
-    eta= [max(0.0, -1.0*x) for x in depth_bathy]
-    depth_bathy_list = [x for x in depth_bathy]
-    
+         
     # create a dataframe of water depth at coastal domain nodes
     timeslice_schism_list=[]
     for t in range(0, len(timesteps)+1):
         timeslice= np.full(len(tws), timestamps[t])
         if t==0:
             depth = np.nan
-        else:
-            #depth = elev_NAVD88[t-1,:] - eta        
-            depth =  elev_NAVD88[t-1,:] + depth_bathy_list
+        else:   
+            depth =  elev_NAVD88[t-1,:] + depth_bathy
+        
         timeslice_schism  = (pd.DataFrame({
                                 'stationId' : tws,
                                 'datetime'  : timeslice,
@@ -1589,7 +1582,6 @@ def build_coastal_ncdf_dataframe(
                              unstack(1, fill_value = np.nan)['depth'])
 
         timeslice_schism_list.append(timeslice_schism)
-
     
     coastal_boundary_depth_df = pd.concat(timeslice_schism_list, axis=1, ignore_index=False)
     

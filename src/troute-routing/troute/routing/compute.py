@@ -1150,9 +1150,8 @@ def compute_diffusive_routing(
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df, 
-    #upstream_boundary_flow, 
-    #upstream_boundary_link,
     ):
+
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
         trib_segs = None
