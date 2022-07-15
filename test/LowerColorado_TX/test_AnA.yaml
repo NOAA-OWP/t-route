@@ -10,7 +10,7 @@ network_topology_parameters:
     supernetwork_parameters:
         #----------
         geo_file_path: domain/RouteLink_NWMv2.1.nc  
-        mask_file_path: domain/coastal_10diffusive.txt
+        mask_file_path: domain/coastal_subset.txt
     waterbody_parameters:
         #----------
         break_network_at_waterbodies: True 
