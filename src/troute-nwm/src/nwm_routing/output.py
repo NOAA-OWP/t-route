@@ -383,7 +383,7 @@ def nwm_output_generator(
         )
     
         start_time = time.time()
-
+       
         parity_check(
             parity_set, results,
         )

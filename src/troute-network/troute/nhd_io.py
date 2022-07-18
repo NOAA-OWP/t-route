@@ -15,6 +15,8 @@ from toolz import compose
 import netCDF4
 from joblib import delayed, Parallel
 from cftime import date2num
+import dateutil.parser as dparser
+from datetime import datetime, timedelta
 
 from troute.nhd_network import reverse_dict
 
@@ -78,7 +80,7 @@ def read_config_file(custom_input_file):
     compute_parameters           (dict): Input parameters re computation settings
     forcing_parameters           (dict): Input parameters re model forcings
     restart_parameters           (dict): Input parameters re model restart
-    diffusive_parameters         (dict): Input parameters re diffusive wave model
+    hybrid_parameters            (dict): Input parameters re diffusive wave model
     output_parameters            (dict): Input parameters re output writing
     parity_parameters            (dict): Input parameters re parity assessment
     data_assimilation_parameters (dict): Input parameters re data assimilation
@@ -106,7 +108,7 @@ def read_config_file(custom_input_file):
     compute_parameters = data.get("compute_parameters", {})
     forcing_parameters = compute_parameters.get("forcing_parameters", {})
     restart_parameters = compute_parameters.get("restart_parameters", {})
-    diffusive_parameters = compute_parameters.get("diffusive_parameters", {})
+    hybrid_parameters = compute_parameters.get("hybrid_parameters", {})
     data_assimilation_parameters = compute_parameters.get(
         "data_assimilation_parameters", {}
     )
@@ -121,7 +123,7 @@ def read_config_file(custom_input_file):
         compute_parameters,
         forcing_parameters,
         restart_parameters,
-        diffusive_parameters,
+        hybrid_parameters,
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
@@ -141,6 +143,30 @@ def read_diffusive_domain(domain_file):
                             (includeing tailwater segment) 
     
     '''
+    if domain_file[-4:] == "yaml":
+        with open(domain_file) as domain:
+            data = yaml.load(domain, Loader=yaml.SafeLoader)
+    else:
+        with open(domain_file) as domain:
+            data = json.load(domain)
+            
+    return data
+
+def read_coastal_boundary_domain(domain_file):
+    '''
+    Read coastal boundary domain from .ymal or .json file.
+    
+    Arguments
+    ---------
+    domain_file (str or pathlib.Path): Path of coastal boundary domain file
+    
+    Returns
+    -------
+    data (dict int: int): diffusive domain tailwater segments: coastal domain segments 
+                        
+    
+    '''
+
     if domain_file[-4:] == "yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
@@ -201,7 +227,6 @@ def read_lakeparm(
     Reads LAKEPARM file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
-
     Completely replaces the read_waterbody_df function from prior versions
     of the v02 routing code.
     
@@ -213,7 +238,6 @@ def read_lakeparm(
     
     Returns:
     df1 (DataFrame):
-
     """
 
     # TODO: avoid or parameterize "feature_id" or ... return to name-blind dataframe version
@@ -385,23 +409,17 @@ def get_ql_from_wrf_hydro_mf(
     value_col: column/field in the CHRTOUT files with the lateral inflow value
     gw_col: column/field in the CHRTOUT files with the groundwater bucket flux value
     runoff_col: column/field in the CHRTOUT files with the runoff from terrain routing value
-
     In general the CHRTOUT files contain one value per time step. At present, there is
     no capability for handling non-uniform timesteps in the qlaterals.
-
     The qlateral may also be input using comma delimited file -- see
     `get_ql_from_csv`
-
-
     Note/Todo:
     For later needs, filtering for specific features or times may
     be accomplished with one of:
         ds.loc[{selectors}]
         ds.sel({selectors})
         ds.isel({selectors})
-
     Returns from these selection functions are sub-datasets.
-
     For example:
     ```
     (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":ds.time.values[:2]})['q_lateral'].to_dataframe()
@@ -410,7 +428,6 @@ def get_ql_from_wrf_hydro_mf(
     2018-01-01 13:00:00 4186117     41.233807 -75.413895   0.006496
     2018-01-02 00:00:00 4186117     41.233807 -75.413895   0.006460
     ```
-
     or...
     ```
     (Pdb) ds.sel({"feature_id":[4186117, 4186169],"time":[np.datetime64('2018-01-01T13:00:00')]})['q_lateral'].to_dataframe()
@@ -485,12 +502,20 @@ def write_chanobs(
     -------------
     
     '''
-    
+    # TODO: for and if statements are improvised just in case when link of gage location is not in flowveldepth, which should be fixed
+    link_na = []
+    for link in link_gage_df.index:
+        if link not in flowveldepth.index:
+            link_na.append(link)
+    link_gage_df_nona = link_gage_df.drop(link_na)
+
     # array of segment linkIDs at gage locations. Results from these segments will be written
-    gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")
+    #gage_feature_id = link_gage_df.index.to_numpy(dtype = "int64")    
+    gage_feature_id = link_gage_df_nona.index.to_numpy(dtype = "int64")
     
-    # array of simulated flow data at gage locations
-    gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+    # array of simulated flow data at gage locations    
+    #gage_flow_data = flowveldepth.loc[link_gage_df.index].iloc[:,::3].to_numpy(dtype="float32") 
+    gage_flow_data = flowveldepth.loc[link_gage_df_nona.index].iloc[:,::3].to_numpy(dtype="float32") 
     
     # array of simulation time
     gage_flow_time = [t0 + timedelta(seconds = (i+1) * dt) for i in range(nts)]
@@ -571,7 +596,6 @@ def write_chanobs(
                     fill_value = np.nan
                 )
             y[:] = gage_flow_data.T
-
             # =========== GLOBAL ATTRIBUTES ===============  
             f.setncatts(
                 {
@@ -743,10 +767,8 @@ def get_ql_from_wrf_hydro(qlat_files, index_col="station_id", value_col="q_later
     qlat_files: globbed list of CHRTOUT files containing desired lateral inflows
     index_col: column/field in the CHRTOUT files with the segment/link id
     value_col: column/field in the CHRTOUT files with the lateral inflow value
-
     In general the CHRTOUT files contain one value per time step. At present, there is
     no capability for handling non-uniform timesteps in the qlaterals.
-
     The qlateral may also be input using comma delimited file -- see
     `get_ql_from_csv`
     """
@@ -943,12 +965,10 @@ def get_usgs_df_from_csv(usgs_csv, routelink_subset_file, index_col="link"):
     usgs_csv - csv file with SEGMENT IDs in the left-most column labeled with "link",
                         and date-headed values from time-slice files in the format
                         "2018-09-18 00:00:00"
-
     It is assumed that the segment crosswalk and interpolation have both
     already been performed, so we do not need to comprehend
     the potentially non-numeric byte-strings associated with gage IDs, nor
     do we need to interpolate anything here as when we read from the timeslices.
-
     If that were necessary, we might use a solution such as proposed here:
     https://stackoverflow.com/a/35058538
     note that explicit typing of the index cannot be done on read and
@@ -1221,7 +1241,6 @@ def get_channel_restart_from_wrf_hydro(
     default_us_flow_column: name used in remainder of program to refer to this column of the dataset
     default_ds_flow_column: name used in remainder of program to refer to this column of the dataset
     default_depth_column: name used in remainder of program to refer to this column of the dataset
-
     The Restart file gives hlink, qlink1, and qlink2 values for channels --
     the order is simply the same as that found in the Route-Link files.
     *Subnote 1*: The order of these values is NOT the order found in the CHRTOUT files,
@@ -1353,7 +1372,6 @@ def write_hydro_rst(
 ):
     """
     Write t-route flow and depth data to WRF-Hydro restart files. 
-
     Agruments
     ---------
         data (Data Frame): t-route simulated flow, velocity and depth data
@@ -1366,7 +1384,6 @@ def write_hydro_rst(
         troute_us_flow_var_name (str):
         troute_ds_flow_var_name (str):
         troute_depth_var_name (str):
-
     Returns
     -------
     """
@@ -1473,7 +1490,6 @@ def get_reservoir_restart_from_wrf_hydro(
     waterbody_depth_column: column in the restart file to use for downstream flow initial state
     default_waterbody_flow_column: name used in remainder of program to refer to this column of the dataset
     default_waterbody_depth_column: name used in remainder of program to refer to this column of the dataset
-
     The Restart file gives qlakeo and resht values for waterbodies.
     The order of values in the file is the same as the order in the LAKEPARM file from WRF-Hydro.
     However, there are many instances where only a subset of waterbodies described in the lakeparm
@@ -1523,7 +1539,57 @@ def build_coastal_ncdf_dataframe(coastal_ncdf):
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
 
+def build_coastal_ncdf_dataframe(
+                                coastal_files, 
+                                coastal_boundary_domain,
+                                ):
+    # retrieve coastal elevation, topo depth, and temporal data
+    ds = netCDF4.Dataset(filename = coastal_files,  mode = 'r', format = "NETCDF4")
+    
+    tws = list(coastal_boundary_domain.keys())
+    coastal_boundary_nodes = list(coastal_boundary_domain.values())
+    
+    elev_NAVD88 = ds.variables['elev'][:, coastal_boundary_nodes].filled(fill_value = np.nan)
+    depth_bathy = ds.variables['depth'][coastal_boundary_nodes].filled(fill_value = np.nan)
+    timesteps   = ds.variables['time'][:]
+    if len(timesteps) > 1:
+        dt_schism = timesteps[1]-timesteps[0]
+    else:
+        raise RuntimeError("schism provided less than 2 time steps")
+    
+    start_date = ds.variables['time'].units
+    start_date   = dparser.parse(start_date,fuzzy=True)
+    dt_timeslice = timedelta(minutes=dt_schism/60.0)
+    tfin         =  start_date + dt_timeslice*len(timesteps)
+    timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
+    timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
+         
+    # create a dataframe of water depth at coastal domain nodes
+    timeslice_schism_list=[]
+    for t in range(0, len(timesteps)+1):
+        timeslice= np.full(len(tws), timestamps[t])
+        if t==0:
+            depth = np.nan
+        else:   
+            depth =  elev_NAVD88[t-1,:] + depth_bathy
+        
+        timeslice_schism  = (pd.DataFrame({
+                                'stationId' : tws,
+                                'datetime'  : timeslice,
+                                'depth'     : depth
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['depth'])
 
+        timeslice_schism_list.append(timeslice_schism)
+    
+    coastal_boundary_depth_df = pd.concat(timeslice_schism_list, axis=1, ignore_index=False)
+    
+    # linearly extrapolate depth value at start date
+    coastal_boundary_depth_df.iloc[:,0] = 2.0*coastal_boundary_depth_df.iloc[:,1] - coastal_boundary_depth_df.iloc[:,2]   
+
+    return coastal_boundary_depth_df    
+ 
 def lastobs_df_output(
     lastobs_df,
     dt,

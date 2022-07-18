@@ -138,6 +138,10 @@ def nwm_network_preprocess(
                 # ... dataframe returned from read_netcdf, then the code would break here.
                 topobathy_data = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
+                # TODO: Request GID make comID variable an integer in their product, so
+                # we do not need to change variable types, here.
+                topobathy_data.index = topobathy_data.index.astype(int)
+                
             else:
                 topobathy_data = pd.DataFrame()
                 LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on compound trapezoidal geometry.')
@@ -201,7 +205,7 @@ def nwm_network_preprocess(
     connections, param_df, wbody_conn, gages = nnu.build_connections(
         supernetwork_parameters,
     )
-
+    
     link_gage_df = pd.DataFrame.from_dict(gages)
     link_gage_df.index.name = 'link'
     break_network_at_waterbodies = waterbody_parameters.get(
@@ -326,29 +330,36 @@ def nwm_network_preprocess(
     
     #
     if diffusive_domain:
+        rconn_diff0 = nhd_network.reverse_network(connections)
+        refactored_reaches = {}
         
-        rconn = nhd_network.reverse_network(connections)
-        refactored_reaches={}
         for tw in diffusive_domain:
-            
-            mainstem_segs = diffusive_domain[tw]['links']           
+            mainstem_segs = diffusive_domain[tw]['links']
+            # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
+            # in turn not under any waterbody. This boundary mainstem link should be turned into a tributary segment.
+            upstream_boundary_mainstem_link = diffusive_domain[tw]['upstream_boundary_link_mainstem']         
+            if upstream_boundary_mainstem_link[0] in mainstem_segs:
+                mainstem_segs.remove(upstream_boundary_mainstem_link[0])
             
             # ===== build diffusive network data objects ==== 
             diffusive_network_data[tw] = {}
 
             # add diffusive domain segments
             diffusive_network_data[tw]['mainstem_segs'] =  mainstem_segs
+
             # diffusive domain tributary segments
             trib_segs = []
+
             for seg in mainstem_segs:
-                us_list = rconn[seg]
+                us_list = rconn_diff0[seg]
                 for u in us_list:
                     if u not in mainstem_segs:
-                        trib_segs.append(u)            
-            
+                        trib_segs.append(u) 
+
             diffusive_network_data[tw]['tributary_segments'] = trib_segs
             # diffusive domain connections object
             diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
+
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = nnu.organize_independent_networks(
@@ -356,6 +367,7 @@ def nwm_network_preprocess(
                 set(trib_segs),
                 set(),
             )
+            
             diffusive_network_data[tw]['rconn'] = rconn_diff
             diffusive_network_data[tw]['reaches'] = reaches[tw]
             
@@ -365,17 +377,30 @@ def nwm_network_preprocess(
                 axis = 0,
             )
 
+            diffusive_network_data[tw]['upstream_boundary_link'] = upstream_boundary_mainstem_link
+            
             if refactored_diffusive_domain: 
                 diffusive_parameters = {'geo_file_path': refactored_topobathy_file}
                 refactored_connections = nnu.build_refac_connections(diffusive_parameters)
+
+                # list of stream segments of a single refactored diffusive domain 
+                rlinks_tw = refactored_diffusive_domain[tw]['rlinks']
+                refactored_connections_tw = {}
+                
+                # Subset a connection dictionary (upstream segment as key : downstream segments as values) from refactored_connections
+                # for a single refactored diffusive domain defined by a current tw. 
+                for k in rlinks_tw:
+                    if k in refactored_connections.keys():
+                        refactored_connections_tw[k] = refactored_connections[k]
+
                 refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
+                refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections_tw                 
 
-                # Build connections with rlink mainstem and link tributaries
-                refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections                
-                refactored_diffusive_network_data[refac_tw]['connections'].update({k: [refactored_diffusive_domain[tw]['incoming_tribs'][k]] for k in (trib_segs)})
-               
+                for k in trib_segs:
+                    refactored_diffusive_network_data[refac_tw]['connections'][k]= [refactored_diffusive_domain[tw]['incoming_tribs'][k]]
+
                 # diffusive domain reaches and upstream connections. 
                 # break network at tributary segments
                 _, refactored_reaches_batch, refactored_conn_diff = nnu.organize_independent_networks(
@@ -386,15 +411,14 @@ def nwm_network_preprocess(
 
                 refactored_reaches[refac_tw] = refactored_reaches_batch[refac_tw]
                 refactored_diffusive_network_data[refac_tw]['mainstem_segs'] = refactored_diffusive_domain[tw]['rlinks']
-                             
+                refactored_diffusive_network_data[refac_tw]['upstream_boundary_link'] = diffusive_network_data[tw]['upstream_boundary_link'] 
             else:
                 refactored_reaches={}
-           
-        
+
             # ==== remove diffusive domain segs from MC domain ====        
             # drop indices from param_df
             param_df = param_df.drop(mainstem_segs)
-        
+
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
@@ -406,8 +430,7 @@ def nwm_network_preprocess(
     #============================================================================
     # Identify Independent Networks and Reaches by Network
     LOG.info("organizing connections into reaches ...")
-    start_time = time.time()
-    
+    start_time = time.time() 
     gage_break_segments = set()
     wbody_break_segments = set()
     if break_network_at_waterbodies:
@@ -415,7 +438,7 @@ def nwm_network_preprocess(
         
     if break_network_at_gages:
         gage_break_segments = gage_break_segments.union(gages['gages'].keys())
-        
+ 
     independent_networks, reaches_bytw, rconn = nnu.organize_independent_networks(
         connections,
         wbody_break_segments,
@@ -685,7 +708,7 @@ def nwm_initial_warmstate_preprocess(
             restart_parameters['lite_channel_restart_file']
         )
         t0_str = None
-    
+
     # build initial states from user-provided restart parameters
     else:
         q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
@@ -704,7 +727,7 @@ def nwm_initial_warmstate_preprocess(
 
         # convert timestamp from string to datetime
         t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-        
+
     # get initial time from user inputs
     if restart_parameters.get("start_datetime", None):
         t0_str = restart_parameters.get("start_datetime")
@@ -765,6 +788,7 @@ def nwm_initial_warmstate_preprocess(
 def nwm_forcing_preprocess(
     run,
     forcing_parameters,
+    hybrid_parameters,
     da_run,
     data_assimilation_parameters,
     break_network_at_waterbodies,
@@ -1213,18 +1237,26 @@ def nwm_forcing_preprocess(
 
     #---------------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
-    
-    coastal_boundary_elev = forcing_parameters.get("coastal_boundary_elev_data", None)
-    coastal_ncdf = forcing_parameters.get("coastal_ncdf", None)
+    coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
+    coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
 
-    if coastal_boundary_elev:
+    if coastal_boundary_elev_files:
+        start_time = time.time()    
         LOG.info("creating coastal dataframe ...")
-        coastal_df = nhd_io.build_coastal_dataframe(coastal_boundary_elev)
-
-    if coastal_ncdf:
-        LOG.info("creating coastal ncdf dataframe ...")
-        coastal_ncdf_df = nhd_io.build_coastal_ncdf_dataframe(coastal_ncdf)
-
+        
+        coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
+        coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
+                                                    coastal_boundary_elev_files,
+                                                    coastal_boundary_domain,
+                                                    )
+                
+        LOG.debug(
+            "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+        )            
+    else:
+        coastal_boundary_depth_df = pd.DataFrame()
+ 
     #---------------------------------------------------------------------------
     # Trim the time-extent of the streamflow_da usgs_df
     # what happens if there are timeslice files missing on the front-end? 
@@ -1233,4 +1265,4 @@ def nwm_forcing_preprocess(
     if not usgs_df.empty:
         usgs_df = usgs_df.loc[:,t0:]
     
-    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df
+    return qlats_df, usgs_df, reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df, coastal_boundary_depth_df

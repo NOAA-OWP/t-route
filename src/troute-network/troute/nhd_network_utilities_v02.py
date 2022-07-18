@@ -845,7 +845,7 @@ def build_refac_connections(diff_network_parameters):
 
     # set parameter dataframe index as segment id number, sort
     param_df = param_df.set_index("key").sort_index()  
-   
+    
     # There can be an externally determined terminal code -- that's this first value
     terminal_codes = set()
     terminal_codes.update(terminal_code)
@@ -865,4 +865,3 @@ def build_refac_connections(diff_network_parameters):
     )
 
     return connections
-

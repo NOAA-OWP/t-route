@@ -269,7 +269,7 @@ def reachable_network(N, sources=None, targets=None, check_disjoint=True):
 
     rv = {}
     for k, n in reached.items():
-        rv[k] = {m: N.get(m, []) for m in n}
+        rv[k] = {m: N.get(m, []) for m in n}    
     return rv
 
 

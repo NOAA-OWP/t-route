@@ -179,7 +179,7 @@ contains
     integer, dimension(:,:), allocatable :: flag_lfrac
     double precision :: x
     double precision :: saveInterval, width
-    double precision :: maxCourant
+    !double precision :: maxCourant
     double precision :: dtini_given
     double precision :: timesDepth
     double precision :: t
@@ -201,6 +201,7 @@ contains
     double precision :: equiv_one, slopeQ, intcQ
     double precision :: slopeE, intcE, dst_lnk
     double precision :: lfrac, dst_top, dst_btm
+    double precision :: mindepth_nstab
     double precision, dimension(:), allocatable :: tarr_ql
     double precision, dimension(:), allocatable :: varr_ql
     double precision, dimension(:), allocatable :: tarr_ub
@@ -215,8 +216,8 @@ contains
     double precision, dimension(:,:), allocatable :: skRight
     double precision, dimension(:,:), allocatable :: used_lfrac    
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
-    double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g
-        
+    double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
+       
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
@@ -253,7 +254,8 @@ contains
     so_llm      = para_ar_g(9)  ! lower limit of channel bed slope (default: 0.0001)
     theta       = para_ar_g(10) ! weight for computing 2nd derivative: 
                                 ! 0: explicit, 1: implicit (default: 1.0)
-    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth                        
+    dsbc_option = para_ar_g(11) ! downstream water depth boundary condition option 1:given water depth data, 2:normal depth   
+    mindepth_nstab = 0.1        ! minimum water depth for numerical stability when estimated/observed downstream boundary depth data is used.
   !-----------------------------------------------------------------------------
   ! Some parameters for using natural cross section bathymetry data
     mxnbathy = mxnbathy_g  ! maximum size of bathymetry data points
@@ -360,7 +362,7 @@ contains
     dimensionless_Di    = -999
     dimensionless_Fc    = -999
     dimensionless_D     = -999
-    dbcd                = 0.0 !TODO: pass downstream boundary values from Python   
+    dbcd                = dbcd_g   
     q_ev_g              = 0.0
     elv_ev_g            = 0.0
     temp_q_ev_g         = 0.0
@@ -504,7 +506,7 @@ contains
     ! time step series for downstream boundary data
     do n=1, nts_db_g
         tarr_db(n) = t0 * 60.0 + dt_db * &
-                      real(n-1,KIND(dt_db)) / 60.0 ! [min]       
+                      real(n-1,KIND(dt_db)) / 60.0 ! [min]                 
     end do
     
     ! time step seris for data assimilation for discharge at bottom node of a related reach
@@ -531,6 +533,9 @@ contains
           t              = t0 * 60.0
           oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
           newY(ncomp, j) = oldY(ncomp, j)  
+          if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
+            newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
+          end if          
         else if (dsbc_option == 2) then
         ! normal depth as TW boundary condition
           xcolID         = 10
@@ -546,9 +551,10 @@ contains
      
       ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
       ! ** At intial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
-      ! ** So, let's assume the values are all equal to flow at the bottom node.
+      ! ** So, let's assume the depth values are all nodes equal to depth at the bottom node.
+      wdepth = newY(ncomp, j) - z(ncomp, j)
       do i = 1, ncomp -1
-        oldY(i,j) = newY(ncomp, j)
+        oldY(i,j) = wdepth + z(i, j)      
       end do
       
       call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
@@ -589,7 +595,7 @@ contains
       end if
       t = t + dtini / 60. !* [min]
     end do
-
+ 
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
     qpx                     = 0.
@@ -626,8 +632,9 @@ contains
 
         ! Calculate the duration of this timestep (dtini)
         ! Timestep duration is selected to maintain numerical stability
-        if (j == mstem_frj(1)) call calculateDT(t0, t, saveInterval, cfl, &
-                                                tfin, maxCelDx, dtini_given)
+        if (j == mstem_frj(1)) then 
+          call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
+        end if                                        
 
         ! estimate lateral flow at current time t
         do i = 1, ncomp - 1
@@ -667,7 +674,7 @@ contains
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
         end if
-
+        
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
         
@@ -702,12 +709,12 @@ contains
           ! Downstream boundary at TAILWATER
           ! reach index j has NO downstream connection (it IS a tailwater reach)
           if (dsbc_option == 1) then  
-          ! use downstream boundary data source to set bottom node WSEL value
-          ! ***** COMING SOON *****
-            !do n = 1, nts_db_g  <-- already executed when initial values of Q and Y are computed.
-            !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
-            !end do          
+          ! use downstream boundary data source to set bottom node WSEL value       
             newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.)
+            ! to prevent too small water depth at boundary
+            if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
+              newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
+            end if 
             xcolID  = 1
             ycolID  = 2
             newArea(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, newY(ncomp,j)) ! area of normal elevation
@@ -727,16 +734,11 @@ contains
         
         ! Identify the maximum calculated celerity/dx ratio at this timestep
         ! maxCelDx is used to determine the duration of the next timestep
-!        if (j == mstem_frj(1)) then
         if (jm == 1) then
           maxCelDx    = 0.
-          maxCelerity = 0.
           do i = 1, nmstem_rch
-            do kkk = 2, frnw_g(mstem_frj(i), 1)
-              maxCelDx    = max(maxCelDx,                     &
-                                celerity(kkk, mstem_frj(i)) / &
-                                dx(kkk-1, mstem_frj(i)))
-              maxCelerity = max(maxCelerity, celerity(kkk,i))
+            do kkk = 1, frnw_g(mstem_frj(i), 1)-1
+              maxCelDx    = max(maxCelDx, celerity(kkk, mstem_frj(i)) / dx(kkk, mstem_frj(i)))
             end do
           end do
         endif
@@ -757,9 +759,9 @@ contains
             courant(i) = (newQ(i, j) + newQ(i+1, j)) / (newArea(i, j) + newArea(i+1, j)) * dtini / dx(i, j)
           endif
         end do
-        if (maxCourant < maxval(courant(1:ncomp - 1))) then
-          maxCourant = maxval(courant(1:ncomp-1))
-        end if
+        !if (maxCourant < maxval(courant(1:ncomp - 1))) then
+        !  maxCourant = maxval(courant(1:ncomp-1))
+        !end if
       end do
 
       ! Advance model time
@@ -773,7 +775,7 @@ contains
       
       ! diffusive wave simulation time print
       print*, "diffusive simulatoin time in minute=", t
-
+   
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
         do jm = 1, nmstem_rch
@@ -891,8 +893,8 @@ contains
           end do
           deallocate(used_lfrac)
           deallocate(flag_lfrac)   
-        endif
-    
+        endif        
+   
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
     deallocate(volRemain, froud, courant, oldQ, newQ, oldArea, newArea, oldY, newY)
@@ -932,15 +934,15 @@ contains
   !   Language: Fortran 90.
   !   This code is written to JULES coding standards v1.
   !-----------------------------------------------------------------------------
-  
+
   ! Subroutine arguments
     double precision, intent(in) :: initialTime       ! [sec]
     double precision, intent(in) :: time              ! [hrs]
     double precision, intent(in) :: saveInterval      ! [sec]
     double precision, intent(in) :: tfin              ! [hrs]
     double precision, intent(in) :: given_dt          ! [sec]
-    double precision, intent(in) :: maxAllowCourantNo 
-    double precision, intent(in) :: max_C_dx
+    double precision, intent(in) :: maxAllowCourantNo ! = cfl
+    double precision, intent(in) :: max_C_dx          ! = maxCelDx
       
   ! Local variables
     integer :: a
@@ -960,7 +962,7 @@ contains
 
     ! if dtini extends beyond final time, then truncate it
     if (time + dtini / 60. > tfin * 60.) dtini = (tfin * 60. - time) * 60.
-    
+
   end subroutine  
 
   subroutine calc_dimensionless_numbers(j)
@@ -1119,7 +1121,7 @@ contains
       double precision :: currentQ
       double precision :: eei_ghost, ffi_ghost, exi_ghost
       double precision :: fxi_ghost, qp_ghost, qpx_ghost
-
+    
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
     !* Note: lateralFlow(1,j) is already added to the boundary
@@ -1254,30 +1256,30 @@ contains
       qpx_ghost = 0.
       
       ! when a reach has usgs streamflow data at its location, apply DA
-      if (usgs_da_reach(j) /= 0) then
+      !if (usgs_da_reach(j) /= 0) then
         
-        allocate(varr_da(nts_da))
-        do n = 1, nts_da
-            varr_da(n) = usgs_da(n, j)
-        end do
-        qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t + dtini/60.)
-        flag_da = 1
+      !  allocate(varr_da(nts_da))
+      !  do n = 1, nts_da
+      !      varr_da(n) = usgs_da(n, j)
+      !  end do
+      !  qp(ncomp,j) = intp_y(nts_da, tarr_da, varr_da, t + dtini/60.)
+      !  flag_da = 1
         ! check usgs_da value is in good quality
-        irow = locate(tarr_da, t + dtini/60.)
-        if (irow == nts_da) then
-          irow = irow-1
-        endif        
-        if ((varr_da(irow)<= -4443.999).or.(varr_da(irow+1)<= -4443.999)) then
+      !  irow = locate(tarr_da, t + dtini/60.)
+      !  if (irow == nts_da) then
+      !    irow = irow-1
+      !  endif        
+      !  if ((varr_da(irow)<= -4443.999).or.(varr_da(irow+1)<= -4443.999)) then
           ! when usgs data is missing or in poor quality
           qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
           flag_da = 0
-        endif
-        deallocate(varr_da)
-      else
+      !  endif
+      !  deallocate(varr_da)
+     ! else
         
         qp(ncomp,j)  = eei(ncomp) * qp_ghost + ffi(ncomp)
         flag_da = 0
-      endif
+     ! endif
       
       qpx(ncomp,j) = exi(ncomp) *qpx_ghost + fxi(ncomp)
 
@@ -1287,17 +1289,18 @@ contains
       end do
 
       ! when a reach hasn't been applied to DA 
-      if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
+     ! if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
        qp(1, j) = newQ(1, j)
        qp(1, j) = qp(1, j) + allqlat
-      endif
+     ! endif
+     
      
       do i = 1, ncomp
         if (abs(qp(i, j)) < q_llm) then
-          qp(i, j) = q_llm
+          qp(i, j) = q_llm    
         end if
       end do
-      
+
       ! update newQ
       do i = 1, ncomp
         newQ(i, j) = qp(i, j)
@@ -1366,7 +1369,6 @@ contains
     double precision :: tempDepthi_1
     double precision :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
 
-
   !-----------------------------------------------------------------------------
     ncomp = frnw_g(j, 1)
     S_ncomp = (-z(ncomp, j) + z(ncomp-1, j)) / dx(ncomp-1, j)
@@ -1404,15 +1406,13 @@ contains
       topwTable = xsec_tab(6,:,i,j)
       skkkTable = xsec_tab(11,:,i,j)
               
-      xt=newY(i, j)
-      
+      xt=newY(i, j)      
  
       ! Estimate co(i) (???? what is this?) by interpolation
       currentSquareDepth = (elevTable - z(i, j)) ** 2.
       call r_interpol(currentSquareDepth, convTable, nel, &
                       (newY(i, j)-z(i, j)) ** 2.0, co(i)) 
                    
-      
       if (co(i) .eq. -9999) then
         ! test                
         print*, t, i, j, newY(i,j), newY(i, j)-z(i, j), co(i)  
@@ -1452,7 +1452,7 @@ contains
 !      chnWidth = min(chnWidth, bo(i, j))
 
       ! ???? What exactly is happening, here ????
-      if (depthCalOk(i) .eq. 1) then
+      !if (depthCalOk(i) .eq. 1) then
       
         ! Calculate celerity, diffusivity and velocity
         celerity2(i)    = 5.0 / 3.0 * abs(sfi) ** 0.3 * &
@@ -1462,15 +1462,15 @@ contains
         vel             = qp(i, j) / newArea(i, j)
         
         ! Check celerity value
-        if (celerity2(i) .gt. 3.0 * vel) celerity2(i) = vel * 3.0
-      else
-        if (qp(i, j) .lt. 1) then
-          celerity2(i) = C_llm
-        else
-          celerity2(i) = 1.0
-        end if
-        diffusivity2(i) =  diffusivity(i,j)
-      end if
+        !if (celerity2(i) .gt. 3.0 * vel) celerity2(i) = vel * 3.0
+      !else
+      !  if (qp(i, j) .lt. 1) then
+      !    celerity2(i) = C_llm
+      !  else
+      !    celerity2(i) = 1.0
+      !  end if
+      !  diffusivity2(i) =  diffusivity(i,j)
+      !end if
       
       if (i .gt. 1) then       
         ! ====================================================
@@ -1514,7 +1514,6 @@ contains
       if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
       if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
     end do
-
   end subroutine mesh_diffusive_backward
 
   function rtsafe(i, j, Q_cur, Q_ds, z_cur, z_ds, y_ds)
@@ -1547,7 +1546,7 @@ contains
     double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
     double precision            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
     double precision            :: rtsafe    
-   
+    
     y_ulm_multi = 2.0
     y_llm_multi = 0.1
     
@@ -1566,8 +1565,8 @@ contains
        
     call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x1, y_ds, fl, df)
 
-    call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x2, y_ds, fh, df)
-
+    call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, x2, y_ds, fh, df)    
+   
     if ((fl > 0.0 .and. fh > 0.0) .or. (fl < 0.0 .and. fh < 0.0)) then
       rtsafe = y_norm
       return
@@ -1600,16 +1599,16 @@ contains
         dxold  = dxx
         dxx    = 0.50 * (xh - xl)
         rtsafe = xl + dxx
-        if (xl == rtsafe) return   ! change in root is negligible.
+        if (xl == rtsafe) return       
       else                         ! newton step acceptable. take it.
         dxold  = dxx
         dxx    = f / df
         temp   = rtsafe
         rtsafe = rtsafe - dxx
-        if (temp == rtsafe) return
+        if (temp == rtsafe) return      
       end if
       
-      if (abs(dxx) < xacc) return  ! convergence criterion.
+      if (abs(dxx) < xacc) return 
 
       ! one new function evaluation per iteration.
       call funcd_diffdepth(i, j, Q_cur, Q_ds, z_cur, z_ds, rtsafe, y_ds, f, df)
@@ -1740,11 +1739,11 @@ contains
     ! subroutine local variables
     integer          :: i_area, i_find, num
     integer          :: i1, i2
-    integer          :: ic, iel, ii, iel_start, iel_incr_start
+    integer          :: ic, iel, ii, ii2, iv, iel_start, iel_incr_start, iel_decr_start, ndmy
     double precision :: el_min, el_max, el_range, el_incr, el_now, x1, y1, x2, y2, x_start, x_end
     double precision :: f2m, cal_area, cal_peri, cal_topW
     double precision :: mN_start, mN_end, cal_equiv_mann
-    double precision :: pos_slope, incr_rate   
+    double precision :: pos_slope, incr_rate, max_value  
     integer,          dimension(:), allocatable :: i_start, i_end
     double precision, dimension(:), allocatable :: x_bathy_leftzero
     double precision, dimension(:), allocatable :: xcs, ycs, manncs
@@ -1752,7 +1751,10 @@ contains
     double precision, dimension(:), allocatable :: redi1All
     double precision, dimension(:), allocatable :: conv1, tpW1
     double precision, dimension(:), allocatable :: newdKdA
-    double precision, dimension(:), allocatable :: compoundSKK, elev
+    double precision, dimension(:), allocatable :: compoundSKK, elev, dmyarr
+    
+    !test
+    double precision :: dmy1, dmy2, dmy3 
 
     allocate(el1(nel), a1(nel), peri1(nel), redi1(nel), redi1All(nel))
     allocate(equiv_mann(nel), conv1(nel), tpW1(nel))
@@ -1760,8 +1762,6 @@ contains
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
     
-    !open(unit=201, file="./output/xsec_natural.txt")
-
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.
 
@@ -1781,6 +1781,10 @@ contains
       xcs(ic)    = x1 * f2m
       ycs(ic)    = y1 * f2m
       manncs(ic) = mann_bathy(ic-1, idx_node, idx_reach)
+      ! avoid too large (egregiously) manning's N value
+      if  (manncs(ic).gt.0.15) then !0.15 is typical value for Floodplain trees
+        manncs(ic) = 0.15
+      endif      
     end do
 
     num = maxTableLength
@@ -1908,7 +1912,7 @@ contains
         newdKdA(iel) = (conv1(iel) - conv1(iel-1)) / (a1(iel) - a1(iel-1))
       end if
 
-      compoundSKK(iel) = 1.0 / equiv_mann(iel)
+      compoundSKK(iel) = 1.0 / equiv_mann(iel)   
     enddo 
 
     ! smooth conveyance curve (a function of elevation) so as to have monotonically increasing curve
@@ -1946,23 +1950,30 @@ contains
     ! smooth dKdA curve (a function of elevation) so as to have monotonically increasing curve
     iel_start = 2
     incr_rate = 0.02
-    do iel = iel_start, nel
+    do iel = iel_start, nel 
       if (newdKdA(iel) <= newdKdA(iel-1)) then
         ! -- find j* such that conv1(j*) >> conv1(j-1)
         ii = iel
-        do while (newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1))
+        do while ((newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1)).and.(ii < nel))
           ii = ii + 1
         end do
+
+        ! when there is no dK/dA values larger than the one at iel, reduce the starting value by a half to search again
+        if (ii.ge.nel) then
+          iel_incr_start = ii  
         
-        iel_incr_start = ii
-        pos_slope      = (newdKdA(iel_incr_start) - newdKdA(iel-1)) / (el1(iel_incr_start) - el1(iel-1))
-
-        do ii = iel, iel_incr_start - 1
-          newdKdA(ii) = newdKdA(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
-        enddo
-
-        iel_start = iel_incr_start
-      endif
+        else
+          iel_decr_start = iel
+          iel_incr_start = ii          
+          pos_slope       = ( newdKdA(iel_incr_start) - newdKdA(iel_decr_start-1)) / &
+                                            (el1(iel_incr_start) - el1(iel_decr_start-1))
+     
+          do ii = iel_decr_start, iel_incr_start - 1
+            newdKdA(ii) = newdKdA(iel_decr_start-1) + pos_slope * (el1(ii) - el1(iel_decr_start-1))
+          enddo
+        
+        endif
+      endif 
     enddo
 
     ! finally build lookup table
@@ -2610,9 +2621,14 @@ contains
       
       ! function arguments
       double precision, intent(in) :: x1, y1, x2, y2, x
-       
-      LInterpol = (y2 - y1) / (x2 - x1) * (x - x1) + y1
-    
+      
+      if (abs(x2-x1).lt.0.0001) then
+       ! to prevent absurdly small value in the denominator
+       LInterpol = 0.5*(y1 + y2)
+      else
+       LInterpol = (y2 - y1) / (x2 - x1) * (x - x1) + y1
+      endif
+      
     end function LInterpol
 
     double precision function intp_y(nrow, xarr, yarr, x)
