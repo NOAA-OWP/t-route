@@ -74,11 +74,12 @@ def nwm_route(
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_network_data,
-    topobathy_data,
+    topobathy,
     refactored_diffusive_domain,
     refactored_reaches,
     subnetwork_list,
     coastal_boundary_depth_df,
+    nonrefactored_topobathy,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -126,14 +127,13 @@ def nwm_route(
         waterbody_type_specified,
         subnetwork_list,
     )
-
+    LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
     # returns list, first item is run result, second item is subnetwork items
     subnetwork_list = results[1]
     results = results[0]
     
     # run diffusive side of a hybrid simulation
-    if diffusive_network_data:         
-        LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
+    if diffusive_network_data:
         start_time_diff = time.time()
         '''
         # retrieve MC-computed streamflow value at upstream boundary of diffusive mainstem
@@ -170,10 +170,11 @@ def nwm_route(
                 lastobs_df,
                 da_parameter_dict,
                 waterbodies_df,
-                topobathy_data,
+                topobathy,
                 refactored_diffusive_domain,
                 refactored_reaches,
                 coastal_boundary_depth_df,
+                nonrefactored_topobathy, 
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -364,7 +365,10 @@ def main_v03(argv):
             usgs_lake_gage_crosswalk, 
             usace_lake_gage_crosswalk,
             diffusive_network_data,
-            topobathy_data,
+            topobathy,
+            refactored_diffusive_domain,
+            refactored_reaches,
+            nonrefactored_topobathy,
         ) = unpack_nwm_preprocess_data(
             preprocessing_parameters
         )
@@ -387,9 +391,10 @@ def main_v03(argv):
             usgs_lake_gage_crosswalk, 
             usace_lake_gage_crosswalk,
             diffusive_network_data,
-            topobathy_data,
+            topobathy,
             refactored_diffusive_domain,
             refactored_reaches,
+            nonrefactored_topobathy,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
@@ -524,11 +529,12 @@ def main_v03(argv):
             waterbody_types_df,
             waterbody_type_specified,
             diffusive_network_data,
-            topobathy_data,
+            topobathy,
             refactored_diffusive_domain,
             refactored_reaches,
             subnetwork_list,
             coastal_boundary_depth_df,
+            nonrefactored_topobathy,
         )
         
         # returns list, first item is run result, second item is subnetwork items

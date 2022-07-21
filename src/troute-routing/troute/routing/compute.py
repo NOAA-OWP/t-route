@@ -1146,10 +1146,11 @@ def compute_diffusive_routing(
     lastobs_df,
     da_parameter_dict,
     waterbodies_df,
-    topobathy_data,
+    topobathy,
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df, 
+    nonrefactored_topobathy,
     ):
 
     results_diffusive = []
@@ -1174,16 +1175,19 @@ def compute_diffusive_routing(
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 
-        if not topobathy_data.empty:
+        if not topobathy.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
             if refactored_diffusive_domain:
-                topobathy_data_bytw  = topobathy_data.loc[refactored_diffusive_domain[tw]['rlinks']] 
+                topobathy_bytw               = topobathy.loc[refactored_diffusive_domain[tw]['rlinks']] 
+                nonrefactored_topobathy_bytw = nonrefactored_topobathy.loc[diffusive_network_data[tw]['mainstem_segs']]                 
             else:
-                topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
+                topobathy_bytw               = topobathy.loc[diffusive_network_data[tw]['mainstem_segs']] 
+                nonrefactored_topobathy_bytw = pd.DataFrame()
             
         else:
-            topobathy_data_bytw = pd.DataFrame()
-            
+            topobathy_bytw = pd.DataFrame()
+            nonrefactored_topobathy_bytw = pd.DataFrame()
+  
         # diffusive streamflow DA activation switch
         if da_parameter_dict['diffusive_streamflow_nudging']==True:
             diff_usgs_df = usgs_df
@@ -1223,11 +1227,12 @@ def compute_diffusive_routing(
             nts,
             dt,
             waterbodies_df,
-            topobathy_data_bytw,
+            topobathy_bytw,
             diff_usgs_df,
             refactored_diffusive_domain_bytw,
             refactored_reaches_byrftw, 
             coastal_boundary_depth_bytw_df,
+            nonrefactored_topobathy_bytw,
         )
 
         # run the simulation
