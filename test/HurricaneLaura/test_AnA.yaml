@@ -11,6 +11,11 @@ network_topology_parameters:
         #----------
         geo_file_path: domain/RouteLink_NWMv2.1.nc  
         mask_file_path: domain/coastal_10diffusive.txt
+        synthetic_wb_segments:
+            - 4800002
+            - 4800004
+            - 4800006
+            - 4800007
     waterbody_parameters:
         #----------
         break_network_at_waterbodies: True 
