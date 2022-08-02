@@ -154,7 +154,7 @@ def nwm_network_preprocess(
             diffusive_network_data = None
             topobathy              = pd.DataFrame()
             LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
-        nonrefactored_topobathy = pd.DataFrame()    
+        unrefactored_topobathy = pd.DataFrame()    
         #-------------------------------------------------------------------------
         # for refactored hydofabric 
         if run_hybrid and run_refactored and refactored_domain_file:
@@ -174,10 +174,10 @@ def nwm_network_preprocess(
                 # ... dataframe returned from read_netcdf, then the code would break here.
                 topobathy = (nhd_io.read_netcdf(refactored_topobathy_file).set_index('link'))
 
-                # nonrefactored_topobaty_data is passed to diffusive kernel to provide thalweg elevation of non_refactored topobathy 
+                # unrefactored_topobaty_data is passed to diffusive kernel to provide thalweg elevation of unrefactored topobathy 
                 # for crosswalking water elevations between non-refactored and refactored hydrofabrics. 
-                nonrefactored_topobathy       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
-                nonrefactored_topobathy.index = nonrefactored_topobathy.index.astype(int)
+                unrefactored_topobathy       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
+                unrefactored_topobathy.index = unrefactored_topobathy.index.astype(int)
                 
             else:
                 topobathy               = pd.DataFrame()
@@ -196,7 +196,7 @@ def nwm_network_preprocess(
         diffusive_domain                  = None
         diffusive_network_data            = None
         topobathy                         = pd.DataFrame()
-        nonrefactored_topobathy           = pd.DataFrame() 
+        unrefactored_topobathy           = pd.DataFrame() 
         refactored_diffusive_domain       = None
         refactored_diffusive_network_data = None   
         refactored_reaches                = {}
@@ -527,7 +527,7 @@ def nwm_network_preprocess(
         topobathy,
         refactored_diffusive_domain,
         refactored_reaches,
-        nonrefactored_topobathy,
+        unrefactored_topobathy,
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
@@ -558,7 +558,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         topobathy                    = inputs.get('topobathy_data',None)        
         refactored_diffusive_domain  = inputs.get('refactored_diffusive_domain',None)
         refactored_reaches           = inputs.get('refactored_reaches',None)
-        nonrefactored_topobathy      = inputs.get(' nonrefactored_topobathy',None)
+        unrefactored_topobathy       = inputs.get('unrefactored_topobathy',None)
 
     else:
         LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
@@ -583,7 +583,7 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         topobathy,
         refactored_diffusive_domain,
         refactored_reaches,
-        nonrefactored_topobathy,
+        unrefactored_topobathy,
     )
 
 

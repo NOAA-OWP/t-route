@@ -77,7 +77,8 @@ cdef extern from "pydiffusive.h":
                      double *rdx_ar_g,
                      int *cwnrow_g,
                      int *cwncol_g,
-                     double *crosswalk_g,                  
+                     double *crosswalk_g, 
+                     double *z_thalweg_g,
                      double *q_ev_g,
                      double *elv_ev_g) nogil;
     

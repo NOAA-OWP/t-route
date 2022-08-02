@@ -32,23 +32,20 @@ def adj_alt1(
             for seg in range(0, ncomp):
                 segID = seg_list[seg]
                 if seg == ncomp - 1 and seg_list.count(dbfksegID) == 0:
-                    # At junction, the altitude of fake segment of an upstream reach
+                    # At junction, the altitude of bottom node of an upstream reach
                     # is equal to that of the first segment of the downstream reach
 
-                    # head segment id of downstream reach from a junction
-                    dsrchID = reach["downstream_head_segment"]
-                    
+                    # head segment id of downstream reach after a junction
+                    dsrchID = reach["downstream_head_segment"]                    
                     z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
 
                 elif seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
-                    # Terminal downstream fakesegment
+                    # channel slope-adjusted bottom elevation at the bottom node of TW reach
                     ## AD HOC: need to be corrected later
-                    segID2 = seg_list[seg - 1]
-                    
+                    segID2 = seg_list[seg - 1]                    
                     z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'] * param_df.loc[segID2, 'dx']
                     
-                else:
-                    
+                else:                    
                     z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt']
 
     return z_all
@@ -1054,20 +1051,20 @@ def fp_coastal_boundary_input_map(
 def fp_thalweg_elev_map(
                 ordered_reaches,
                 mainstem_seg_list, 
-                nonrefactored_topobathy_bytw,
+                unrefactored_topobathy_bytw,
                 param_df, 
                 mx_jorder, 
                 mxncomp_g, 
                 nrch_g,
                 dbfksegID):
     """
-    natural cross section mapping between Python and Fortran using eHydro_ned_cross_sections data
+    thalweg elevation profile of natural cross sections on unrefactored hydrofabric for crosswalking b/t refactored and unrefactored hydrofabrics
     
     Parameters
     ----------
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
-    nonrefactored_topobathy_bytw -- (DataFrame) natural cross section's x and z values with manning's N on non-refactored hydrofabric   
+    unrefactored_topobathy_bytw -- (DataFrame) natural cross section's x and z values with manning's N on unrefactored hydrofabric   
     param_df --(DataFrame) geomorphic parameters
     mx_jorder -- (int) max junction order
     mxncomp_g -- (int) maximum number of nodes in a reach
@@ -1077,8 +1074,7 @@ def fp_thalweg_elev_map(
     
     Returns
     -------
-    z_thalweg_g -- (numpy of float64s) elevation of bathy data points
-
+    z_thalweg_g -- (numpy of float64s) channel bottom altitude on unrefactored channel networks
     
     Notes
     -----
@@ -1086,15 +1082,13 @@ def fp_thalweg_elev_map(
       except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
       with so*0.5*dx 
     """  
-    if not nonrefactored_topobathy_bytw.empty:
-        
+    if not unrefactored_topobathy_bytw.empty:        
         # initialize arrays to store thalweg elevation values
         z_thalweg_g  = np.zeros((mxncomp_g, nrch_g)) 
-
+        
         # loop over reach orders.
         frj = -1
         for x in range(mx_jorder, -1, -1):
-
             # loop through all reaches of order x
             for head_segment, reach in ordered_reaches[x]:
                 frj = frj + 1
@@ -1121,9 +1115,9 @@ def fp_thalweg_elev_map(
                             
                         else:
                             seg_idx = segID
-                        import pdb; pdb.set_trace()  
+
                         # find channel bottom's lowest elevation value
-                        z_thalweg_g[seg, frj] = nonrefactored_topobathy_bytw.loc[seg_idx].z.min()
+                        z_thalweg_g[seg, frj] = unrefactored_topobathy_bytw.loc[seg_idx].z.min()
               
                         # if terminal node of the network, then adjust the thalweg elevation using
                         # channel slope and length data
@@ -1138,6 +1132,40 @@ def fp_thalweg_elev_map(
     
     return z_thalweg_g
 
+def fp_thalweg_elev_routelink_map(
+                                  mx_jorder, 
+                                  ordered_reaches, 
+                                  z_all, 
+                                  mxncomp_g, 
+                                  nrch_g,
+                                  ):
+    """
+    thalweg elevation profile of synthetic cross sections of RouteLink.nc for crosswalking b/t refactored and RouteLink hydrofabrics
+    
+    Parameters
+    ----------
+    mx_jorder -- (int) maximum network reach order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    z_all -- (dict) adjusted altitude dictionary
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    
+    Returns
+    -------
+    z_thalweg_g -- (numpy of float64s) channel bottom altitude (meters) from RouteLink.nc 
+    """
+    z_thalweg_g = np.zeros((mxncomp_g, nrch_g))
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp):
+                segID = seg_list[seg]
+                z_thalweg_g[seg, frj] = z_all[segID]["adj.alt"][0]
+
+    return z_thalweg_g
      
 def diffusive_input_data_v02(
     tw,
@@ -1161,7 +1189,7 @@ def diffusive_input_data_v02(
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df,
-    nonrefactored_topobathy_bytw,
+    unrefactored_topobathy_bytw,
 ):
     
     """
@@ -1348,7 +1376,6 @@ def diffusive_input_data_v02(
     #                                 Step 0-4
     #     Make Fortran-Python channel network mapping variables.
     # --------------------------------------------------------------------------------------
-
     # build a list of head segments in descending reach order [headwater -> tailwater]
     pynw = {}
     frj = -1
@@ -1372,7 +1399,6 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')    
-
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -1518,7 +1544,7 @@ def diffusive_input_data_v02(
 
     #              Prepare python-fortarn map for refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------    
@@ -1538,7 +1564,7 @@ def diffusive_input_data_v02(
 
     #       Prepare qlateral, iniq, and dx for refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------       
@@ -1571,7 +1597,7 @@ def diffusive_input_data_v02(
 
     #       Prepare topobathy data on refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------  
@@ -1593,19 +1619,31 @@ def diffusive_input_data_v02(
                 rordered_reaches,            
                 refactored_diffusive_domain,                          
                 )
-        # find thalweg elevation values of non-refactored hydrofabric. Those values will be used for crosswalking water elev bt non-refactored
-        # and refactored hydrofabrics
+        # find thalweg values of natural xsections on unrefactored hydrofabric
+        '''
         z_thalweg_g = fp_thalweg_elev_map(
                                           ordered_reaches,
                                           mainstem_seg_list, 
-                                          nonrefactored_topobathy_bytw,
+                                          unrefactored_topobathy_bytw,
                                           param_df, 
                                           mx_jorder, 
                                           mxncomp_g, 
                                           nrch_g,
                                           dbfksegID,
                                           ) 
-        
+        '''
+        # find thalweg values of synthetic xsections of RouteLink.nc
+        z_thalweg_g = fp_thalweg_elev_routelink_map(
+                                                    mx_jorder, 
+                                                    ordered_reaches, 
+                                                    z_all, 
+                                                    mxncomp_g, 
+                                                    nrch_g,
+                                                    )
+    else: 
+        #if refactored diffusive domain is not used, then pass out empty arrays
+        z_thalweg_g  = np.array([]).reshape(0,0)
+
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
 
@@ -1620,6 +1658,7 @@ def diffusive_input_data_v02(
         rmann_ar_g = np.zeros((mxncomp_g, nrch_g))
         rmanncc_ar_g = np.zeros((mxncomp_g, nrch_g))
         rso_ar_g = np.zeros((mxncomp_g, nrch_g))
+        # rdx_ar_g has already been prepared in fp_refactored_qlat_iniq_dx_map
     else: 
         rdx_ar_g = np.array([]).reshape(0,0) 
     
@@ -1646,7 +1685,7 @@ def diffusive_input_data_v02(
     else:
         crosswalk_nrow = int(0) 
         crosswalk_ncol = int(0)
-        crosswalk_g  = np.array([]).reshape(0,0) 
+        crosswalk_g  = np.array([]).reshape(0,0)
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-13
@@ -1709,6 +1748,7 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g
+        diff_ins["z_thalweg_g"] = z_thalweg_g
     else:
         # for refactored hydrofabric
         # model time steps
@@ -1761,7 +1801,7 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g   
-
+        diff_ins["z_thalweg_g"] = z_thalweg_g
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):
