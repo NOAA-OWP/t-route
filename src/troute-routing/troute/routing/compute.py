@@ -423,16 +423,7 @@ def compute_nhd_routing_v02(
                     else:
                         lake_segs = []
                         waterbodies_df_sub = pd.DataFrame()
-                    
-                    #check if any DA reservoirs are offnetwork. if so change reservoir type to
-                    #1: levelpool
-                    tmp_lake_ids = list(set(waterbody_types_df_sub.index).intersection(offnetwork_upstreams))
 
-                    if tmp_lake_ids: 
-                        #waterbody_types_df_sub.at[tmp_lake_ids,'reservoir_type'] = 1
-                        for idx in tmp_lake_ids:
-                            waterbody_types_df_sub.at[idx,'reservoir_type'] = 1
-                    
                     param_df_sub = param_df.loc[
                         common_segs,
                         ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
@@ -1146,10 +1137,11 @@ def compute_diffusive_routing(
     lastobs_df,
     da_parameter_dict,
     waterbodies_df,
-    topobathy_data,
+    topobathy,
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df, 
+    unrefactored_topobathy,
     ):
 
     results_diffusive = []
@@ -1174,16 +1166,21 @@ def compute_diffusive_routing(
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
 
-        if not topobathy_data.empty:
+        if not topobathy.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
             if refactored_diffusive_domain:
-                topobathy_data_bytw  = topobathy_data.loc[refactored_diffusive_domain[tw]['rlinks']] 
+                topobathy_bytw               = topobathy.loc[refactored_diffusive_domain[tw]['rlinks']] 
+                # TODO: missing topobathy data in one of diffuisve domains, so inactivate the next line for now. 
+                #unrefactored_topobathy_bytw  = unrefactored_topobathy.loc[diffusive_network_data[tw]['mainstem_segs']]
+                unrefactored_topobathy_bytw = pd.DataFrame()
             else:
-                topobathy_data_bytw  = topobathy_data.loc[diffusive_network_data[tw]['mainstem_segs']] 
+                topobathy_bytw               = topobathy.loc[diffusive_network_data[tw]['mainstem_segs']] 
+                unrefactored_topobathy_bytw = pd.DataFrame()
             
         else:
-            topobathy_data_bytw = pd.DataFrame()
-            
+            topobathy_bytw = pd.DataFrame()
+            unrefactored_topobathy_bytw = pd.DataFrame()
+  
         # diffusive streamflow DA activation switch
         if da_parameter_dict['diffusive_streamflow_nudging']==True:
             diff_usgs_df = usgs_df
@@ -1223,11 +1220,12 @@ def compute_diffusive_routing(
             nts,
             dt,
             waterbodies_df,
-            topobathy_data_bytw,
+            topobathy_bytw,
             diff_usgs_df,
             refactored_diffusive_domain_bytw,
             refactored_reaches_byrftw, 
             coastal_boundary_depth_bytw_df,
+            unrefactored_topobathy_bytw,
         )
 
         # run the simulation

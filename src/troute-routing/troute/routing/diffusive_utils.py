@@ -32,23 +32,20 @@ def adj_alt1(
             for seg in range(0, ncomp):
                 segID = seg_list[seg]
                 if seg == ncomp - 1 and seg_list.count(dbfksegID) == 0:
-                    # At junction, the altitude of fake segment of an upstream reach
+                    # At junction, the altitude of bottom node of an upstream reach
                     # is equal to that of the first segment of the downstream reach
 
-                    # head segment id of downstream reach from a junction
-                    dsrchID = reach["downstream_head_segment"]
-                    
+                    # head segment id of downstream reach after a junction
+                    dsrchID = reach["downstream_head_segment"]                    
                     z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
 
                 elif seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
-                    # Terminal downstream fakesegment
+                    # channel slope-adjusted bottom elevation at the bottom node of TW reach
                     ## AD HOC: need to be corrected later
-                    segID2 = seg_list[seg - 1]
-                    
+                    segID2 = seg_list[seg - 1]                    
                     z_all[segID]["adj.alt"][0] = z_all[segID2]["adj.alt"][0] - param_df.loc[segID2, 's0'] * param_df.loc[segID2, 'dx']
                     
-                else:
-                    
+                else:                    
                     z_all[segID]["adj.alt"][0] = param_df.loc[segID, 'alt']
 
     return z_all
@@ -385,7 +382,7 @@ def fp_dbcd_map(usgsID2tw=None, usgssDT=None, usgseDT=None, usgspCd=None):
 def fp_naturalxsec_map(
                 ordered_reaches,
                 mainstem_seg_list, 
-                topobathy_data_bytw,
+                topobathy_bytw,
                 param_df, 
                 mx_jorder, 
                 mxncomp_g, 
@@ -398,7 +395,7 @@ def fp_naturalxsec_map(
     ----------
     ordered_reaches -- (dict) reaches and reach metadata by junction order
     mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
-    topobathy_data_bytw --  
+    topobathy_bytw -- (DataFrame) natural cross section's x and z values with manning's N   
     param_df --(DataFrame) geomorphic parameters
     mx_jorder -- (int) max junction order
     mxncomp_g -- (int) maximum number of nodes in a reach
@@ -419,10 +416,10 @@ def fp_naturalxsec_map(
       except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
       with so*0.5*dx 
     """  
-    if not topobathy_data_bytw.empty:
+    if not topobathy_bytw.empty:
         
         # maximum number of stations along a single cross section
-        mxnbathy_g = topobathy_data_bytw.index.value_counts().max()
+        mxnbathy_g = topobathy_bytw.index.value_counts().max()
 
         # initialize arrays to store cross section data
         x_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
@@ -468,15 +465,15 @@ def fp_naturalxsec_map(
                             seg_idx = segID
                             
                         # how many stations are in the node cross section?
-                        nstations = len(topobathy_data_bytw.loc[seg_idx])
+                        nstations = len(topobathy_bytw.loc[seg_idx])
                         
                         # populate cross section size (# of stations) array
                         size_bathy_g[seg, frj] = nstations
                         
                         # populate cross section x, z and mannings n arrays
-                        x_bathy_g[0:nstations, seg, frj]    = topobathy_data_bytw.loc[seg_idx].xid_d
-                        z_bathy_g[0:nstations, seg, frj]    = topobathy_data_bytw.loc[seg_idx].z
-                        mann_bathy_g[0:nstations, seg, frj] = topobathy_data_bytw.loc[seg_idx].n
+                        x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].xid_d
+                        z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].z
+                        mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].n
                         
                         # if terminal node of the network, then adjust the cross section z data using
                         # channel slope and length data
@@ -792,7 +789,7 @@ def fp_refactored_naturalxsec_map(
     tw,
     mxncomp_g,
     nrch_g,                                                    
-    topobathy_data_bytw, 
+    topobathy_bytw, 
     param_df,
     rfrnw_g, 
     rpynw,
@@ -808,7 +805,7 @@ def fp_refactored_naturalxsec_map(
     tw,
     mxncomp_g -- (int) maximum number of nodes in a reach
     nrch_g -- (int) number of reaches in the network
-    topobathy_data_bytw --(DataFrame) natural channel cross section data of a channel network draining into a tailwater node
+    topobathy_bytw --(DataFrame) natural channel cross section's x and z values with manning's N
     param_df --(DataFrame) geomorphic parameters
     rfrnw_g -- (nparray of int) Fortran-Python network mapping array on refactored hydrofabric
     rpynw -- (dict) ordered reach head segments on refactored hydrofabric
@@ -824,9 +821,9 @@ def fp_refactored_naturalxsec_map(
     mxnbathy_g -- (integer) maximum size of bathy data points on refactored hydrofabric
     """    
     
-    if not topobathy_data_bytw.empty:
+    if not topobathy_bytw.empty:
         # maximum number of stations along a single cross section
-        mxnbathy_g = topobathy_data_bytw.index.value_counts().max()
+        mxnbathy_g = topobathy_bytw.index.value_counts().max()
 
         # initialize arrays to store cross section data
         x_bathy_g    = np.zeros((mxnbathy_g, mxncomp_g, nrch_g))
@@ -864,15 +861,15 @@ def fp_refactored_naturalxsec_map(
                         rlinkid = rlink_list[rseg]
                     
                     # how many topo data points in a given cross section?
-                    nstations = len(topobathy_data_bytw.loc[rlinkid])
+                    nstations = len(topobathy_bytw.loc[rlinkid])
                         
                     # populate cross section size (# of stations) array
                     size_bathy_g[rseg, frj] = nstations
                         
                     # populate cross section x, z and mannings n arrays
-                    x_bathy_g[0:nstations, rseg, frj]    = topobathy_data_bytw.loc[rlinkid].xid_d
-                    z_bathy_g[0:nstations, rseg, frj]    = topobathy_data_bytw.loc[rlinkid].z
-                    mann_bathy_g[0:nstations, rseg, frj] = topobathy_data_bytw.loc[rlinkid].n
+                    x_bathy_g[0:nstations, rseg, frj]    = topobathy_bytw.loc[rlinkid].xid_d
+                    z_bathy_g[0:nstations, rseg, frj]    = topobathy_bytw.loc[rlinkid].z
+                    mann_bathy_g[0:nstations, rseg, frj] = topobathy_bytw.loc[rlinkid].n
                         
                     # if terminal node of the network, then adjust the cross section z data using
                     # channel slope and length data
@@ -1050,6 +1047,125 @@ def fp_coastal_boundary_input_map(
         dbcd_g[:] = 0.0               
 
     return dt_db_g, dsbd_option, nts_db_g, dbcd_g
+
+def fp_thalweg_elev_map(
+                ordered_reaches,
+                mainstem_seg_list, 
+                unrefactored_topobathy_bytw,
+                param_df, 
+                mx_jorder, 
+                mxncomp_g, 
+                nrch_g,
+                dbfksegID):
+    """
+    thalweg elevation profile of natural cross sections on unrefactored hydrofabric for crosswalking b/t refactored and unrefactored hydrofabrics
+    
+    Parameters
+    ----------
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    mainstem_seg_list -- (int) a list of link IDs of segs of related mainstem reaches 
+    unrefactored_topobathy_bytw -- (DataFrame) natural cross section's x and z values with manning's N on unrefactored hydrofabric   
+    param_df --(DataFrame) geomorphic parameters
+    mx_jorder -- (int) max junction order
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    dbfksegID -- (int) segment ID of fake node (=bottom node) of TW reach that hosts downstream boundary 
+                        condition for a network that is being routed. 
+    
+    Returns
+    -------
+    z_thalweg_g -- (numpy of float64s) channel bottom altitude on unrefactored channel networks
+    
+    Notes
+    -----
+    - In node-configuration, bottom node takes bathy of the first segment of the downtream reach
+      except TW reach where the bottom node bathy is interpolated by bathy of the last segment 
+      with so*0.5*dx 
+    """  
+    if not unrefactored_topobathy_bytw.empty:        
+        # initialize arrays to store thalweg elevation values
+        z_thalweg_g  = np.zeros((mxncomp_g, nrch_g)) 
+        
+        # loop over reach orders.
+        frj = -1
+        for x in range(mx_jorder, -1, -1):
+            # loop through all reaches of order x
+            for head_segment, reach in ordered_reaches[x]:
+                frj = frj + 1
+                # list of segments in this reach
+                seg_list = reach["segments_list"]
+                # number of segments in this reach
+                ncomp = reach["number_segments"]
+
+                # determine if this reach is part of the mainstem diffusive domain
+                if head_segment in mainstem_seg_list: 
+                    # loop through segments in mainstem reach
+                    for seg, segID in enumerate(seg_list):
+                        # identify the index in topobathy dataframe that contains
+                        # the data we want for this node.
+                        if seg == ncomp-1 and x > 0:                             
+                            # if last node of a reach, but not the last node in the network
+                            # use cross section of downstream neighbor
+                            seg_idx = reach["downstream_head_segment"][0]
+                        
+                        elif segID == dbfksegID:                            
+                            # if last node of reach AND last node in the network,
+                            # use cross section of upstream neighbor
+                            seg_idx = seg_list[seg-1]
+                            
+                        else:
+                            seg_idx = segID
+
+                        # find channel bottom's lowest elevation value
+                        z_thalweg_g[seg, frj] = unrefactored_topobathy_bytw.loc[seg_idx].z.min()
+              
+                        # if terminal node of the network, then adjust the thalweg elevation using
+                        # channel slope and length data
+                        if segID == dbfksegID:
+                            So = param_df.loc[seg_idx].s0
+                            dx = param_df.loc[seg_idx].dx
+                            z_thalweg_g[seg, frj] = z_thalweg_g[seg, frj] - So * dx  
+
+    else: 
+        #if the bathy dataframe is empty, then pass out empty arrays
+        z_thalweg_g  = np.array([]).reshape(0,0)
+    
+    return z_thalweg_g
+
+def fp_thalweg_elev_routelink_map(
+                                  mx_jorder, 
+                                  ordered_reaches, 
+                                  z_all, 
+                                  mxncomp_g, 
+                                  nrch_g,
+                                  ):
+    """
+    thalweg elevation profile of synthetic cross sections of RouteLink.nc for crosswalking b/t refactored and RouteLink hydrofabrics
+    
+    Parameters
+    ----------
+    mx_jorder -- (int) maximum network reach order
+    ordered_reaches -- (dict) reaches and reach metadata by junction order
+    z_all -- (dict) adjusted altitude dictionary
+    mxncomp_g -- (int) maximum number of nodes in a reach
+    nrch_g -- (int) number of reaches in the network
+    
+    Returns
+    -------
+    z_thalweg_g -- (numpy of float64s) channel bottom altitude (meters) from RouteLink.nc 
+    """
+    z_thalweg_g = np.zeros((mxncomp_g, nrch_g))
+    frj = -1
+    for x in range(mx_jorder, -1, -1):
+        for head_segment, reach in ordered_reaches[x]:
+            seg_list = reach["segments_list"]
+            ncomp = reach["number_segments"]
+            frj = frj + 1
+            for seg in range(0, ncomp):
+                segID = seg_list[seg]
+                z_thalweg_g[seg, frj] = z_all[segID]["adj.alt"][0]
+
+    return z_thalweg_g
      
 def diffusive_input_data_v02(
     tw,
@@ -1068,11 +1184,12 @@ def diffusive_input_data_v02(
     nsteps,
     dt,
     waterbodies_df,
-    topobathy_data_bytw,
+    topobathy_bytw,
     usgs_df,
     refactored_diffusive_domain,
     refactored_reaches,
     coastal_boundary_depth_df,
+    unrefactored_topobathy_bytw,
 ):
     
     """
@@ -1090,7 +1207,7 @@ def diffusive_input_data_v02(
     initial_conditions -- (ndarray of float32) initial flow (m3/sec) and depth (m above ch bottom) states for network nodes
     upstream_results -- (dict) with values of 1d arrays upstream flow, velocity, and depth   
     qts_subdivisions -- (int) number of qlateral timestep subdivisions    
-    topobathy_data_bytw --(DataFrame) natural channel cross section data of a channel network draining into a tailwater node
+    topobathy_bytw --(DataFrame) natural channel cross section data of a channel network draining into a tailwater node
     usgs_df --(DataFrame) observed usgs flow data
     refactored_diffusive_domain -- (dict) geometric relationship information between original and refactored hydrofabrics
     refactored_reaches -- (list of lists) lists of stream segment IDs of diffusive mainstems on refactored hydrofabrics including 
@@ -1259,7 +1376,6 @@ def diffusive_input_data_v02(
     #                                 Step 0-4
     #     Make Fortran-Python channel network mapping variables.
     # --------------------------------------------------------------------------------------
-
     # build a list of head segments in descending reach order [headwater -> tailwater]
     pynw = {}
     frj = -1
@@ -1283,7 +1399,6 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')    
-
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -1401,7 +1516,7 @@ def diffusive_input_data_v02(
         x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g = fp_naturalxsec_map(        
                                                                            ordered_reaches,                             
                                                                            mainstem_seg_list, 
-                                                                           topobathy_data_bytw,
+                                                                           topobathy_bytw,
                                                                            param_df, 
                                                                            mx_jorder,
                                                                            mxncomp_g, 
@@ -1429,7 +1544,7 @@ def diffusive_input_data_v02(
 
     #              Prepare python-fortarn map for refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------    
@@ -1442,7 +1557,6 @@ def diffusive_input_data_v02(
                                                                     trib_seg_list,
                                                                     refactored_diffusive_domain,
                                                                     refactored_reaches,
-                                                                    #upstream_boundary_link,        
                                                                     )
 
     # ---------------------------------------------------------------------------------
@@ -1450,7 +1564,7 @@ def diffusive_input_data_v02(
 
     #       Prepare qlateral, iniq, and dx for refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------       
@@ -1483,7 +1597,7 @@ def diffusive_input_data_v02(
 
     #       Prepare topobathy data on refactored hydrofabric   
     #
-    #  link : stream segment of non-refactored hydrofabric
+    #  link : stream segment of unrefactored hydrofabric
     #  rlink: steream segment of refactored hydrofabric (refactored mainly to 
     #                                                    increase min.lenght of segment)
     # ---------------------------------------------------------------------------------------------  
@@ -1498,14 +1612,38 @@ def diffusive_input_data_v02(
                 tw,
                 mxncomp_g,
                 nrch_g,                                                    
-                topobathy_data_bytw, 
+                topobathy_bytw, 
                 param_df,
                 rfrnw_g, 
                 rpynw,
                 rordered_reaches,            
-                refactored_diffusive_domain,
-                )  
-        
+                refactored_diffusive_domain,                          
+                )
+        # find thalweg values of natural xsections on unrefactored hydrofabric
+        '''
+        z_thalweg_g = fp_thalweg_elev_map(
+                                          ordered_reaches,
+                                          mainstem_seg_list, 
+                                          unrefactored_topobathy_bytw,
+                                          param_df, 
+                                          mx_jorder, 
+                                          mxncomp_g, 
+                                          nrch_g,
+                                          dbfksegID,
+                                          ) 
+        '''
+        # find thalweg values of synthetic xsections of RouteLink.nc
+        z_thalweg_g = fp_thalweg_elev_routelink_map(
+                                                    mx_jorder, 
+                                                    ordered_reaches, 
+                                                    z_all, 
+                                                    mxncomp_g, 
+                                                    nrch_g,
+                                                    )
+    else: 
+        #if refactored diffusive domain is not used, then pass out empty arrays
+        z_thalweg_g  = np.array([]).reshape(0,0)
+
     # ---------------------------------------------------------------------------------------------
     #                              Step 0-12-3
 
@@ -1520,6 +1658,7 @@ def diffusive_input_data_v02(
         rmann_ar_g = np.zeros((mxncomp_g, nrch_g))
         rmanncc_ar_g = np.zeros((mxncomp_g, nrch_g))
         rso_ar_g = np.zeros((mxncomp_g, nrch_g))
+        # rdx_ar_g has already been prepared in fp_refactored_qlat_iniq_dx_map
     else: 
         rdx_ar_g = np.array([]).reshape(0,0) 
     
@@ -1546,7 +1685,7 @@ def diffusive_input_data_v02(
     else:
         crosswalk_nrow = int(0) 
         crosswalk_ncol = int(0)
-        crosswalk_g  = np.array([]).reshape(0,0) 
+        crosswalk_g  = np.array([]).reshape(0,0)
 
     # ---------------------------------------------------------------------------------
     #                              Step 0-13
@@ -1609,6 +1748,7 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g
+        diff_ins["z_thalweg_g"] = z_thalweg_g
     else:
         # for refactored hydrofabric
         # model time steps
@@ -1661,7 +1801,7 @@ def diffusive_input_data_v02(
         diff_ins["cwnrow_g"] = crosswalk_nrow
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g   
-
+        diff_ins["z_thalweg_g"] = z_thalweg_g
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

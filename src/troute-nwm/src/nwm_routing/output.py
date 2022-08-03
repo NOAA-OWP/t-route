@@ -163,7 +163,7 @@ def nwm_output_generator(
             i_df = wbdy.iloc[:,wbdy_col_index]
             q_df = flow_df.iloc[:,0::3]
             d_df = flow_df.iloc[:,2::3]
-        
+
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
@@ -200,7 +200,7 @@ def nwm_output_generator(
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
-        
+
         for i in range(i_df.shape[1]):
             
             nhd_io.write_waterbody_netcdf(

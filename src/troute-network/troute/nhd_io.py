@@ -1657,7 +1657,6 @@ def write_waterbody_netcdf(
     -------------
     
     '''
-    
     i_df.index.name = 'lake_id'
     i_df.columns = ['i']
     i_df = i_df.sort_index()
@@ -1837,6 +1836,7 @@ def write_waterbody_netcdf(
                     dimensions = ("feature_id"),
                     fill_value = -999900
                 )
+
             inflow[:] = i_df.i.tolist()
             f['inflow'].setncatts(
                 {

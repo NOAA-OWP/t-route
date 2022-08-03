@@ -71,12 +71,12 @@ module diffusive
   
 contains
 
-  subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,    &
-                    mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,    &
-                    manncc_ar_g, so_ar_g, dx_ar_g,                                                    &
-                    iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                       &
-                    paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, &
-                    usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g,            &
+  subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,      &
+                    mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,      &
+                    manncc_ar_g, so_ar_g, dx_ar_g,                                                      &
+                    iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
+                    paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g,   &
+                    usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g, z_thalweg_g, &
                     q_ev_g, elv_ev_g)                                     
                     
 
@@ -145,6 +145,7 @@ contains
     double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: rdx_ar_g        
     double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: iniq
     double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: so_ar_g
+    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: z_thalweg_g
     double precision, dimension(nts_ub_g,    nrch_g),            intent(in) :: ubcd_g
     double precision, dimension(nts_qtrib_g, nrch_g),            intent(in) :: qtrib_g 
     double precision, dimension(nts_da_g,    nrch_g),            intent(in) :: usgs_da_g 
@@ -198,9 +199,9 @@ contains
     double precision :: q_usrch
     double precision :: tf0
     double precision :: convey
-    double precision :: equiv_one, slopeQ, intcQ
-    double precision :: slopeE, intcE, dst_lnk
-    double precision :: lfrac, dst_top, dst_btm
+    double precision :: equiv_one
+    double precision :: slopeQ, intcQ, slopeE, intcE, slopeD, intcD
+    double precision :: lfrac, dst_lnk, dst_top, dst_btm
     double precision :: mindepth_nstab
     double precision, dimension(:), allocatable :: tarr_ql
     double precision, dimension(:), allocatable :: varr_ql
@@ -217,7 +218,7 @@ contains
     double precision, dimension(:,:), allocatable :: used_lfrac    
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
-       
+
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
@@ -837,14 +838,17 @@ contains
       
     end do  ! end of time loop
     
-    !------------------------------------------------------------------------
-    ! map routing result from refactored hydrofabric to original hydrofabric
+    !---------------------------------------------------------------------------
+    ! map routing result from refactored hydrofabric to unrefactored hydrofabric
     if (cwnrow_g > 0) then    
         allocate(used_lfrac(mxncomp, nlinks))
         allocate(flag_lfrac(mxncomp, nlinks))   
-        equiv_one = 0.9999    
+        equiv_one = 0.99    
         temp_q_ev_g   = q_ev_g
         temp_elv_ev_g = elv_ev_g
+        
+        q_ev_g = 0.0
+        elv_ev_g = 0.0
 
         do ts=1, ntss_ev_g
           used_lfrac = 0.0
@@ -853,10 +857,15 @@ contains
             ri     = int(crosswalk_g(cwrow, 1))
             rj     = int(crosswalk_g(cwrow, 2))
             nlnk   = int(crosswalk_g(cwrow, 3))
+            ! flow slope and y-interceptor
             slopeQ = (temp_q_ev_g(ts, ri+1, rj) - temp_q_ev_g(ts, ri, rj)) / rdx_ar_g(ri,rj)
             intcQ  = temp_q_ev_g(ts, ri, rj)
+            ! elevation slope and y-interceptor
             slopeE = (temp_elv_ev_g(ts, ri+1, rj) - temp_elv_ev_g(ts, ri, rj)) / rdx_ar_g(ri,rj)
             intcE  = temp_elv_ev_g(ts, ri, rj)
+            ! depth slope and y-interceptor
+            slopeD = ((temp_elv_ev_g(ts, ri+1, rj)-z(ri+1, rj)) - (temp_elv_ev_g(ts, ri, rj)-z(ri, rj))) / rdx_ar_g(ri,rj)
+            intcD  = temp_elv_ev_g(ts, ri, rj) - z(ri, rj)
 
             dst_lnk = 0.0
             do lnk = 1, nlnk
@@ -876,16 +885,24 @@ contains
               if ((used_lfrac(oi, oj) >= equiv_one).and.(flag_lfrac(oi, oj) == 0)) then
                  q_ev_g(ts, oi, oj)     = intcQ + slopeQ*dst_top
                  q_ev_g(ts, oi+1, oj)   = intcQ + slopeQ*dst_btm
-                 elv_ev_g(ts, oi, oj)   = intcE + slopeE*dst_top
-                 elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm
-
+                 ! linear interpolation by elevation
+                 !elv_ev_g(ts, oi, oj)   = intcE + slopeE*dst_top                 
+                 !elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm    
+                 ! linear interpolation by depth
+                 elv_ev_g(ts, oi, oj)   = intcD + slopeD*dst_top + z_thalweg_g(oi, oj)
+                 elv_ev_g(ts, oi+1, oj) = intcD + slopeD*dst_btm + z_thalweg_g(oi+1, oj)
               else if ((used_lfrac(oi, oj) < equiv_one).and.(flag_lfrac(oi, oj) == 1)) then
                  q_ev_g(ts, oi, oj)   = intcQ + slopeQ*dst_top
-                 elv_ev_g(ts, oi, oj) = intcE + slopeE*dst_top
-
+                 ! linear interpolation by elevation
+                 !elv_ev_g(ts, oi, oj) = intcE + slopeE*dst_top
+                 ! linear interpolation by depth
+                 elv_ev_g(ts, oi, oj) = intcD + slopeD*dst_top + z_thalweg_g(oi, oj)
               else if ((used_lfrac(oi, oj) >= equiv_one).and.(flag_lfrac(oi, oj) >= 1)) then
                  q_ev_g(ts, oi+1, oj)   = intcQ + slopeQ*dst_btm
-                 elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm             
+                 ! linear interpolation by elevation
+                 !elv_ev_g(ts, oi+1, oj) = intcE + slopeE*dst_btm   
+                 ! linear interpolation by depth
+                 elv_ev_g(ts, oi+1, oj) = intcD + slopeD*dst_btm + z_thalweg_g(oi+1, oj)
                  flag_lfrac(oi, oj)     = 0
               endif
             end do
@@ -893,7 +910,7 @@ contains
           end do
           deallocate(used_lfrac)
           deallocate(flag_lfrac)   
-        endif        
+        endif    
    
     deallocate(frnw_g)
     deallocate(area, bo, pere, areap, qp, z,  depth, sk, co, dx) 
