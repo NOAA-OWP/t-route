@@ -72,12 +72,13 @@ rfc_reservoirs = Extension(
     extra_compile_args=["-g"],
 )
 
-package_data = {"troute.network": ["reach.pxd", "__init__.pxd"],
-                "troute.network.musking": ["mc_reach.pxd", "__init__.pxd"],
+package_data = {"troute": ["__init__.pxd"],
+                "troute.network": ["reach.pxd", "__init__.pxd", "reach_structs.h", "reach_structs.c"],
+                "troute.network.musking": ["mc_reach.pxd", "__init__.pxd", "mc_reach_structs.h", "mc_reach_structs.c"],
                 "troute.network.reservoirs":["__init__.pxd"],
-                "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd"],
-                #"troute.network.reservoirs.hybrid":["__init__.pxd", "hybrid.pxd"],
-                "troute.network.reservoirs.rfc":["__init__.pxd", "rfc.pxd"],
+                "troute.network.reservoirs.levelpool":["__init__.pxd", "levelpool.pxd", "levelpool_structs.h", "levelpool_structs.c"],
+                "troute.network.reservoirs.hybrid":["__init__.pxd", "hybrid.pxd", "hybrid_structs.h", "hybrid_structs.c"],
+                "troute.network.reservoirs.rfc":["__init__.pxd", "rfc.pxd", "rfc_structs.h", "rfc_structs.c"],
                  }
 ext_modules = [reach, levelpool_reservoirs, rfc_reservoirs, musk]
 
@@ -89,7 +90,7 @@ if USE_CYTHON:
 setup(
     name="troute.network",
     namespace_packages=["troute"],
-    packages=find_namespace_packages(include=["troute.*"]),#["troute.network", "troute.network.reservoirs", "troute.network.reservoirs.levelpool"],
+    packages=['troute']+find_namespace_packages(include=["troute.*"]),#["troute.network", "troute.network.reservoirs", "troute.network.reservoirs.levelpool"],
     ext_modules=ext_modules,
     ext_package="",
     package_data=package_data,
