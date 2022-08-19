@@ -468,6 +468,250 @@ def _run_everything_v02(
     return results, pd.DataFrame.from_dict(network.gages)
 
 
+def _handle_output_v02(
+    results,
+    link_gage_df,
+    run_parameters,
+    supernetwork_parameters,
+    restart_parameters,
+    output_parameters,
+    parity_parameters,
+    data_assimilation_parameters,
+):
+    ################### Output Handling
+    dt = run_parameters.get("dt", None)
+    nts = run_parameters.get("nts", None)
+    t0 = run_parameters.get("t0", None)
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    debuglevel = run_parameters.get("debuglevel", 0)
+
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print(f"Handling output ...")
+
+    csv_output = output_parameters.get("csv_output", None)
+    csv_output_folder = None
+    if csv_output:
+        csv_output_folder = output_parameters["csv_output"].get(
+            "csv_output_folder", None
+        )
+        csv_output_segments = csv_output.get("csv_output_segments", None)
+        
+    if (debuglevel <= -1) or csv_output_folder:
+
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+
+        if run_parameters.get("return_courant", False):
+            courant_columns = pd.MultiIndex.from_product(
+                [range(nts), ["cn", "ck", "X"]]
+            ).to_flat_index()
+            courant = pd.concat(
+                [
+                    pd.DataFrame(r[2], index=r[0], columns=courant_columns)
+                    for r in results
+                ],
+                copy=False,
+            )
+
+        if csv_output_folder:
+            
+            if verbose:
+                print("- writing flow, velocity, and depth results to .csv")
+                
+            # create filenames
+            # TO DO: create more descriptive filenames
+            extension = ".csv"
+            extension = ".h5"
+            if supernetwork_parameters.get("title_string", None):
+                filename_fvd = (
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + extension
+                )
+                filename_courant = (
+                    "courant_" + supernetwork_parameters["title_string"] + extension
+                )
+            else:
+                run_time_stamp = datetime.now().isoformat()
+                filename_fvd = "flowveldepth_" + run_time_stamp + extension
+                filename_courant = "courant_" + run_time_stamp + extension
+
+            output_path = Path(csv_output_folder).resolve()
+
+            flowveldepth = flowveldepth.sort_index()
+            
+            # no csv_output_segments are specified, then write results for all segments
+            if not csv_output_segments:
+                csv_output_segments = flowveldepth.index
+            
+            #flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
+            flowveldepth.loc[csv_output_segments].to_hdf(output_path.joinpath(filename_fvd), key="qvd")
+            if run_parameters.get("return_courant", False):
+                courant = courant.sort_index()
+                courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
+
+            # TODO: need to identify the purpose of these outputs
+            # if the need is to output the usgs_df dataframe,
+            # then that could be done in the dataframe IO somewhere above.
+            # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+
+        if debuglevel <= -1:
+            print(flowveldepth)
+
+    # directory containing WRF Hydro restart files
+    wrf_hydro_restart_read_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_source_directory", None
+    )
+    wrf_hydro_restart_write_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_read_dir
+    )
+    if wrf_hydro_restart_read_dir:
+
+        wrf_hydro_channel_restart_new_extension = output_parameters.get(
+            "wrf_hydro_channel_restart_new_extension", "TRTE"
+        )
+
+        # list of WRF Hydro restart files
+        wrf_hydro_restart_files = sorted(
+            Path(wrf_hydro_restart_read_dir).glob(
+                output_parameters["wrf_hydro_channel_restart_pattern_filter"]
+                + "[!"
+                + wrf_hydro_channel_restart_new_extension
+                + "]"
+            )
+        )
+
+        if len(wrf_hydro_restart_files) > 0:
+            
+            if verbose:
+                print("- writing restart files")
+                
+            qvd_columns = pd.MultiIndex.from_product(
+                [range(nts), ["q", "v", "d"]]
+            ).to_flat_index()
+
+            flowveldepth = pd.concat(
+                [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+                copy=False,
+            )
+                
+            nhd_io.write_channel_restart_to_wrf_hydro(
+                flowveldepth,
+                wrf_hydro_restart_files,
+                # TODO: remove this dependence on the restart_parameters
+                Path(wrf_hydro_restart_write_dir),
+                restart_parameters.get("wrf_hydro_channel_restart_file"),
+                run_parameters.get("dt"),
+                run_parameters.get("nts"),
+                t0,
+                restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                restart_parameters.get(
+                    "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                ),
+                wrf_hydro_channel_restart_new_extension,
+            )
+        else:
+            # print error and raise exception
+            str = "WRF Hydro restart files not found - Aborting restart write sequence"
+            raise AssertionError(str)
+
+    chrtout_read_folder = output_parameters.get(
+        "wrf_hydro_channel_output_source_folder", None
+    )
+    chrtout_write_folder = output_parameters.get(
+        "wrf_hydro_channel_final_output_folder", chrtout_read_folder
+    )
+    if chrtout_read_folder:
+        
+        if verbose:
+            print("- writing results to CHRTOUT")
+        
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+        wrf_hydro_channel_output_new_extension = output_parameters.get(
+            "wrf_hydro_channel_output_new_extension", "TRTE"
+        )
+        chrtout_files = sorted(
+            Path(chrtout_read_folder).glob(
+                output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
+            )
+        )
+
+        nhd_io.write_q_to_wrf_hydro(
+            flowveldepth,
+            chrtout_files,
+            Path(chrtout_write_folder),
+            run_parameters["qts_subdivisions"],
+            wrf_hydro_channel_output_new_extension,
+        )
+
+    data_assimilation_folder = data_assimilation_parameters.get(
+    "data_assimilation_timeslices_folder", None
+    )
+    lastobs_output_folder = data_assimilation_parameters.get(
+    "lastobs_output_folder", None
+    )
+    if data_assimilation_folder and lastobs_output_folder:
+        # create a new lastobs DataFrame from the last itteration of run results
+        # lastobs_df = new_lastobs(run_results, dt * nts)
+        # lastobs_df_copy = lastobs_df.copy()
+        lastobs_df = new_lastobs(results, dt * nts)
+        nhd_io.lastobs_df_output(
+            lastobs_df,
+            dt,
+            nts,
+            t0,
+            link_gage_df['gages'],
+            lastobs_output_folder,
+        )
+
+    if verbose:
+        print("output complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+    ################### Parity Check
+
+    if (
+        "parity_check_input_folder" in parity_parameters
+        or "parity_check_file" in parity_parameters
+        or "parity_check_waterbody_file" in parity_parameters
+    ):
+
+        if verbose:
+            print(
+                "conducting parity check, comparing WRF Hydro results against t-route results"
+            )
+        if showtiming:
+            start_time = time.time()
+
+        parity_parameters["nts"] = nts
+        parity_parameters["dt"] = dt
+
+        build_tests.parity_check(
+            parity_parameters,
+            results,
+        )
+
+        if verbose:
+            print("parity check complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
 '''
 Version 3 and earlier
 '''
