@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import troute.nhd_io as nhd_io
+import troute.nhd_network_utilities_v02 as nnu
 import pandas as pd
+import numpy as np
 import pathlib
 import time
 
