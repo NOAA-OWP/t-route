@@ -167,7 +167,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
 	
-	# TODO: join timeslice folder and files into complete path upstream in workflow
+    # TODO: join timeslice folder and files into complete path upstream in workflow
     res_timeslices_folder = pathlib.Path(res_timeslices_folder)
     res_files = [res_timeslices_folder.joinpath(f) for f in
                  da_run[res_source + '_timeslice_files']]
@@ -287,7 +287,7 @@ class AllDA(DataAssimilation):
     """
     
     """
-    slots = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict", "_waterbody_types_df", "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk"]
+    __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict", "_waterbody_types_df", "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk"]
     def __init__(self, data_assimilation_parameters, run_parameters, waterbody_parameters, network, da_run):
         lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
             data_assimilation_parameters
