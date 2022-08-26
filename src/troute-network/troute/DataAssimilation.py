@@ -36,7 +36,7 @@ def build_data_assimilation_folder_v02(data_assimilation_parameters, run_paramet
         network.link_gage_df,
         # next two lines assume we've already verified that streamflow_da is true and contains the necessary dictionary items.
         #TODO: reorganize how DA objects are called/created in __main__.py to ensure we have all necessary info...
-        data_assimilation_parameters.get('streamflow_da',None).get('crosswalk_gage_field','gages')
+        data_assimilation_parameters.get('streamflow_da',None).get('crosswalk_gage_field','gages'),
         data_assimilation_parameters.get('streamflow_da',None).get('crosswalk_segID_field','link'),
         usgs_files,
         data_assimilation_parameters.get("qc_threshold", 1),
@@ -114,45 +114,45 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     
     '''
     usgs_timeslices_folder = data_assimilation_parameters.get("usgs_timeslices_folder", None)
-	lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
-	lastobs_start          = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",0)
-	lastobs_type           = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
-	crosswalk_file         = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
-	crosswalk_gage_field   = streamflow_da_parameters.get('crosswalk_gage_field','gages')
-	crosswalk_segID_field  = streamflow_da_parameters.get('crosswalk_segID_field','link')
-	da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
-	qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
-	interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
+    lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+    lastobs_start          = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",0)
+    lastobs_type           = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
+    crosswalk_file         = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+    crosswalk_gage_field   = streamflow_da_parameters.get('crosswalk_gage_field','gages')
+    crosswalk_segID_field  = streamflow_da_parameters.get('crosswalk_segID_field','link')
+    da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
+    qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
+    interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
+    
+    # TODO: join timeslice folder and files into complete path upstream
+    usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
+    usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
+                  da_run['usgs_timeslice_files']]
 	
-	# TODO: join timeslice folder and files into complete path upstream
-	usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
-	usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
-				  da_run['usgs_timeslice_files']]
-	
-	if usgs_files:
-		usgs_df = (
-			nhd_io.get_obs_from_timeslices(
-				network.link_gage_df,
-				crosswalk_gage_field,
-				crosswalk_segID_field,
-				usgs_files,
-				qc_threshold,
-				interpolation_limit,
-				run_parameters.get("dt"),
-				network.t0,
-				run_parameters.get("cpu_pool", None)
-			).
-			loc[link_gage_df.index]
-		)
+    if usgs_files:
+        usgs_df = (
+            nhd_io.get_obs_from_timeslices(
+                network.link_gage_df,
+                crosswalk_gage_field,
+                crosswalk_segID_field,
+                usgs_files,
+                qc_threshold,
+                interpolation_limit,
+                run_parameters.get("dt"),
+                network.t0,
+                run_parameters.get("cpu_pool", None)
+            ).
+            loc[link_gage_df.index]
+        )
 		
 		# replace link ids with lake ids, for gages at waterbody outlets, 
 		# otherwise, gage data will not be assimilated at waterbody outlet
 		# segments.
-		if network.link_lake_crosswalk:
-			usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
-
-	else:
-		usgs_df = pd.DataFrame()
+        if network.link_lake_crosswalk:
+            usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+    
+    else:
+        usgs_df = pd.DataFrame()
     
     return usgs_df
 
@@ -161,33 +161,33 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
     
     '''
     res_timeslices_folder  = data_assimilation_parameters.get(res_source + "_timeslices_folder",None)
-	crosswalk_file         = reservoir_da_parameters.get("gage_lakeID_crosswalk_file", None)
-	crosswalk_gage_field   = streamflow_da_parameters.get('crosswalk_' + res_source + '_gage_field',res_source + '_gage_id')
-	crosswalk_lakeID_field = streamflow_da_parameters.get('crosswalk_' + res_source + '_lakeID_field',res_source + '_lake_id')
-	qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
-	interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
+    crosswalk_file         = reservoir_da_parameters.get("gage_lakeID_crosswalk_file", None)
+    crosswalk_gage_field   = streamflow_da_parameters.get('crosswalk_' + res_source + '_gage_field',res_source + '_gage_id')
+    crosswalk_lakeID_field = streamflow_da_parameters.get('crosswalk_' + res_source + '_lakeID_field',res_source + '_lake_id')
+    qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
+    interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
 	
 	# TODO: join timeslice folder and files into complete path upstream in workflow
-	res_timeslices_folder = pathlib.Path(res_timeslices_folder)
-	res_files = [res_timeslices_folder.joinpath(f) for f in
-				  da_run[res_source + '_timeslice_files']]
+    res_timeslices_folder = pathlib.Path(res_timeslices_folder)
+    res_files = [res_timeslices_folder.joinpath(f) for f in
+                 da_run[res_source + '_timeslice_files']]
 			
-	if res_files:
+    if res_files:
 		
-		reservoir_df = nhd_io.get_obs_from_timeslices(
-			lake_gage_crosswalk,
-			crosswalk_gage_field,
-			crosswalk_lakeID_field,
-			res_files,
-			qc_threshold,
-			interpolation_limit,
-			900,                      # 15 minutes, as secs
-			network.t0,
-			run_parameters.get("cpu_pool", None)
-		)
+        reservoir_df = nhd_io.get_obs_from_timeslices(
+            lake_gage_crosswalk,
+            crosswalk_gage_field,
+            crosswalk_lakeID_field,
+            res_files,
+            qc_threshold,
+            interpolation_limit,
+            900,                      # 15 minutes, as secs
+            network.t0,
+            run_parameters.get("cpu_pool", None)
+        )
 		
-	else:
-		reservoir_df = pd.DataFrame() 
+    else:
+        reservoir_df = pd.DataFrame() 
 	
     # create reservoir hybrid DA initial parameters dataframe    
     if reservoir_df.empty == False:
