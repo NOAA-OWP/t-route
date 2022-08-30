@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import pathlib
 import time
+from collections import defaultdict
 
 #FIXME parameterize into construciton
 showtiming = True
@@ -15,35 +16,6 @@ def build_data_assimilation_csv(data_assimilation_parameters):
     return nhd_io.get_usgs_df_from_csv(
         data_assimilation_parameters["data_assimilation_csv"],
         data_assimilation_parameters["wrf_hydro_da_channel_ID_crosswalk_file"],
-    )
-
-def build_data_assimilation_folder_v02(data_assimilation_parameters, run_parameters, network):
-
-    usgs_timeslices_folder = pathlib.Path(
-        data_assimilation_parameters["data_assimilation_timeslices_folder"],
-    ).resolve()
-    if "data_assimilation_filter" in data_assimilation_parameters:
-        da_glob_filter = data_assimilation_parameters["data_assimilation_filter"]
-        usgs_files = sorted(usgs_timeslices_folder.glob(da_glob_filter))
-    elif "usgs_timeslice_files" in data_assimilation_parameters:
-        usgs_files = data_assimilation_parameters.get("usgs_timeslice_files", None)
-        usgs_files = [usgs_timeslices_folder.joinpath(f) for f in usgs_files]
-    else:
-        print("No Files Found for DA")
-        # TODO: Handle this with a real exception
-    
-    return nhd_io.get_obs_from_timeslices(
-        network.link_gage_df,
-        # next two lines assume we've already verified that streamflow_da is true and contains the necessary dictionary items.
-        #TODO: reorganize how DA objects are called/created in __main__.py to ensure we have all necessary info...
-        data_assimilation_parameters.get('streamflow_da',None).get('crosswalk_gage_field','gages'),
-        data_assimilation_parameters.get('streamflow_da',None).get('crosswalk_segID_field','link'),
-        usgs_files,
-        data_assimilation_parameters.get("qc_threshold", 1),
-        data_assimilation_parameters.get("data_assimilation_interpolation_limit", 59),
-        900, # 15 minutes, as secs
-        run_parameters["t0"],
-        network.cpu_pool, #verify
     )
 
 def build_data_assimilation_folder(data_assimilation_parameters, run_parameters):
@@ -142,7 +114,7 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
                 network.t0,
                 run_parameters.get("cpu_pool", None)
             ).
-            loc[link_gage_df.index]
+            loc[network.link_gage_df.index]
         )
 		
 		# replace link ids with lake ids, for gages at waterbody outlets, 
@@ -204,6 +176,84 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
         
     return reservoir_df, reservoir_param_df
     
+def _set_reservoir_da_params(run_results):
+    '''
+    Update persistence reservoir DA parameters for subsequent loops
+    '''
+    
+    reservoir_usgs_param_df = pd.DataFrame(data = [], 
+                                           index = [], 
+                                           columns = [
+                                               'update_time', 'prev_persisted_outflow', 
+                                               'persistence_update_time', 'persistence_index'
+                                           ]
+                                          )
+    reservoir_usace_param_df = pd.DataFrame(data = [], 
+                                           index = [], 
+                                           columns = [
+                                               'update_time', 'prev_persisted_outflow', 
+                                               'persistence_update_time', 'persistence_index'
+                                           ]
+                                          )
+    
+    for r in run_results:
+        
+        if len(r[4][0]) > 0:
+            tmp_usgs = pd.DataFrame(data = r[4][1], index = r[4][0], columns = ['update_time'])
+            tmp_usgs['prev_persisted_outflow'] = r[4][2]
+            tmp_usgs['persistence_update_time'] = r[4][4]
+            tmp_usgs['persistence_index'] = r[4][3]
+            reservoir_usgs_param_df = pd.concat([reservoir_usgs_param_df, tmp_usgs])
+        
+        if len(r[5][0]) > 0:
+            tmp_usace = pd.DataFrame(data = r[5][1], index = r[5][0], columns = ['update_time'])
+            tmp_usace['prev_persisted_outflow'] = r[5][2]
+            tmp_usace['persistence_update_time'] = r[5][4]
+            tmp_usace['persistence_index'] = r[5][3]
+            reservoir_usace_param_df = pd.concat([reservoir_usace_param_df, tmp_usace])
+    
+    return reservoir_usgs_param_df, reservoir_usace_param_df
+
+def new_lastobs(run_results, time_increment):
+    """
+    Creates new "lastobs" dataframe for the next simulation chunk.
+
+    run_results - output from the compute kernel sequence, organized
+        (because that is how it comes out of the kernel) by network.
+        For each item in the result, there are four elements, the
+        fourth of which is a tuple containing: 1) a list of the
+        segments ids where data assimilation was performed (if any)
+        in that network; 2) a list of the last valid observation
+        applied at that segment; 3) a list of the time in seconds
+        from the beginning of the last simulation that the
+        observation was applied.
+    time_increment - length of the prior simulation. To prepare the
+        next lastobs state, we have to convert the time since the prior
+        simulation start to a time since the new simulation start.
+        If the most recent observation was right at the end of the
+        prior loop, then the value in the incoming run_result will
+        be equal to the time_increment and the output value will be
+        zero. If observations were not present at the last timestep,
+        the last obs time will be calculated to a negative value --
+        the number of seconds ago that the last valid observation
+        was used for assimilation.
+    """
+    df = pd.concat(
+        [
+            pd.DataFrame(
+                # TODO: Add time_increment (or subtract?) from time_since_lastobs
+                np.array([rr[3][1],rr[3][2]]).T,
+                index=rr[3][0],
+                columns=["time_since_lastobs", "lastobs_discharge"]
+            )
+            for rr in run_results
+            if not rr[3][0].size == 0
+        ],
+        copy=False,
+    )
+    df["time_since_lastobs"] = df["time_since_lastobs"] - time_increment
+
+    return df
 
 class DataAssimilation(ABC):
     """
@@ -326,7 +376,7 @@ class AllDA(DataAssimilation):
         if reservoir_da_parameters:
             usgs_persistence  = reservoir_da_parameters.get('reservoir_persistence_usgs', False)
             usace_persistence = reservoir_da_parameters.get('reservoir_persistence_usace', False)
-            param_file   = reservoir_da.get('gage_lakeID_crosswalk_file',None)
+            param_file   = reservoir_da_parameters.get('gage_lakeID_crosswalk_file',None)
         
         # check if RFC-type reservoirs are set to true
         rfc_params = waterbody_parameters.get('rfc')
@@ -347,24 +397,7 @@ class AllDA(DataAssimilation):
         # then build and return USGS dataframe
         if (nudging or usgs_persistence) and usgs_timeslices_folder:
 
-            start_time = time.time()
-            LOG.info(
-                "Creating a DataFrame of USGS gage observations ..."
-            )
-            
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-            
-            LOG.debug(
-                "USGS observation DataFrame creation complete in %s seconds." \
-                % (time.time() - start_time)
-            )
-            
-        ##### is the following snippet of code needed?
-        if not self._last_obs_df.index.empty:
-            if not self._usgs_df.empty and not self._usgs_df.index.equals(self._last_obs_df.index):
-                print("USGS Dataframe Index Does Not Match Last Observations Dataframe Index")
-                self._usgs_df = self._usgs_df.loc[self._last_obs_df.index]
-        #####
                 
         #--------------------------------------------------------------------------------
         # Assemble Reservoir dataframes
@@ -407,13 +440,14 @@ class AllDA(DataAssimilation):
             usgs_lake_gage_crosswalk = None
             usace_lake_gage_crosswalk = None
         
-        self._waterbodies_df = waterbodies_df
+        self._waterbody_types_df = waterbody_types_df
         self._usgs_lake_gage_crosswalk = usgs_lake_gage_crosswalk
         self._usace_lake_gage_crosswalk = usace_lake_gage_crosswalk
         
 
         if usgs_persistence:
-            if usgs_df.emtpy == False: # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
+            # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
+            if self._usgs_df.empty == False: 
                 
                 gage_lake_df = (
                     usgs_lake_gage_crosswalk.
@@ -423,7 +457,7 @@ class AllDA(DataAssimilation):
                 
                 # build dataframe that crosswalks gageIDs to segmentIDs
                 gage_link_df = (
-                    link_gage_df['gages'].
+                    network.link_gage_df['gages'].
                     reset_index().
                     set_index(['gages'])
                 )
@@ -438,7 +472,7 @@ class AllDA(DataAssimilation):
 
                 # resample `usgs_df` to 15 minute intervals
                 usgs_df_15min = (
-                    usgs_df.
+                    self._usgs_df.
                     transpose().
                     resample('15min').asfreq().
                     transpose()
@@ -485,7 +519,7 @@ class AllDA(DataAssimilation):
         if usace_persistence:
             (
                 reservoir_usace_df,
-                reservoir_ucace_param_df
+                reservoir_usace_param_df
             ) = _create_reservoir_df(
                 data_assimilation_parameters,
                 reservoir_da_parameters,
@@ -503,14 +537,132 @@ class AllDA(DataAssimilation):
         self._reservoir_usgs_param_df = reservoir_usgs_param_df
         self._reservoir_usace_df = reservoir_usace_df
         self._reservoir_usace_param_df = reservoir_usace_param_df
+        
+        # Trim the time-extent of the streamflow_da usgs_df
+        # what happens if there are timeslice files missing on the front-end? 
+        # if the first column is some timestamp greater than t0, then this will throw
+        # an error. Need to think through this more. 
+        if not self._usgs_df.empty:
+            self._usgs_df = self._usgs_df.loc[:,network.t0:]
 
 
+    def update(self, run_results, data_assimilation_parameters, run_parameters, network, da_run):
+        '''
+        
+        '''
+        # get reservoir DA initial parameters for next loop itteration
+        self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_reservoir_da_params(run_results)
+        
+        # update usgs_df if it is not empty
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
+        
+        if not self._usgs_df.empty:
+            self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            
+            gage_lake_df = (
+                self._usgs_lake_gage_crosswalk.
+                reset_index().
+                set_index(['usgs_gage_id']) # <- TODO use input parameter for this
+            )
+                
+            # build dataframe that crosswalks gageIDs to segmentIDs
+            gage_link_df = (
+                network.link_gage_df['gages'].
+                reset_index().
+                set_index(['gages'])
+            )
+            
+            # build dataframe that crosswalks segmentIDs to lakeIDs
+            link_lake_df = (
+                gage_lake_df.
+                join(gage_link_df, how = 'inner').
+                reset_index().set_index('link').
+                drop(['index'], axis = 1)
+            )
+
+            # resample `usgs_df` to 15 minute intervals
+            usgs_df_15min = (
+                self._usgs_df.
+                transpose().
+                resample('15min').asfreq().
+                transpose()
+            )
+            
+            # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
+            self._reservoir_usgs_df = (
+                usgs_df_15min.join(link_lake_df, how = 'inner').
+                reset_index().
+                set_index('usgs_lake_id').
+                drop(['index'], axis = 1)
+            )
+        
+        else:
+            (
+                self._reservoir_usgs_df,
+                _,
+            ) = _create_reservoir_df(
+                data_assimilation_parameters,
+                reservoir_da_parameters,
+                streamflow_da_parameters,
+                run_parameters,
+                network,
+                da_run,
+                lake_gage_crosswalk = self._usgs_lake_gage_crosswalk,
+                res_source = 'usgs')
+        
+        # USACE
+        (
+            self._reservoir_usace_df,
+            _,
+        ) = _create_reservoir_df(
+            data_assimilation_parameters,
+            reservoir_da_parameters,
+            streamflow_da_parameters,
+            run_parameters,
+            network,
+            da_run,
+            lake_gage_crosswalk = self._usace_lake_gage_crosswalk,
+            res_source = 'usace')
+        
+        # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
+        # but there are DA parameters from the previous loop, then create a
+        # dummy observations df. This allows the reservoir persistence to continue across loops.
+        # USGS Reservoirs
+        if not self._waterbody_types_df.empty:
+            if 2 in self._waterbody_types_df['reservoir_type'].unique():
+                if self._reservoir_usgs_df.empty and len(self._reservoir_usgs_param_df.index) > 0:
+                    self._reservoir_usgs_df = pd.DataFrame(
+                        data    = np.nan, 
+                        index   = self._reservoir_usgs_param_df.index, 
+                        columns = [network.t0]
+                    )
+
+            # USACE Reservoirs   
+            if 3 in self._waterbody_types_df['reservoir_type'].unique():
+                if self._reservoir_usace_df.empty and len(self._reservoir_usace_param_df.index) > 0:
+                    self._reservoir_usace_df = pd.DataFrame(
+                        data    = np.nan, 
+                        index   = self._reservoir_usace_param_df.index, 
+                        columns = [network.t0]
+                    )
+
+            '''
+            # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
+            if 4 in self._waterbody_types_df['reservoir_type'].unique():
+                waterbody_parameters = update_lookback_hours(run_parameters.get("dt"), run_parameters.get("nts"), waterbody_parameters)
+            '''
+        
+        if streamflow_da_parameters:
+            if streamflow_da_parameters.get('streamflow_nudging', False):
+                self._last_obs_df = new_lastobs(run_results, run_parameters.get("dt") * run_parameters.get("nts"))
+    
     @property
     def assimilation_parameters(self):
         return self._da_parameter_dict
     
     @property
-    def last_obs(self):
+    def lastobs_df(self):
         return self._last_obs_df
 
     @property
@@ -544,3 +696,16 @@ class AllDA(DataAssimilation):
     @property
     def usace_lake_gage_crosswalk(self):
         return self._usace_lake_gage_crosswalk
+
+    
+    
+    
+    
+#############################################################################
+# FOR TESTING PURPOSES-------------------------------------------------------
+#############################################################################
+
+class testnetwork():
+    """
+    
+    """
