@@ -8,7 +8,8 @@ from collections import defaultdict
 from pathlib import Path
 import concurrent.futures
 
-from troute.NHDNetwork import NHDNetwork
+#from troute.NHDNetwork import NHDNetwork
+from troute.NHDNetwork_v4 import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
 from troute.DataAssimilation import NudgingDA
 
@@ -766,7 +767,7 @@ def nwm_route(
     refactored_reaches,
     subnetwork_list,
     coastal_boundary_depth_df,
-    nonrefactored_topobathy,
+    unrefactored_topobathy,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -861,7 +862,7 @@ def nwm_route(
                 refactored_diffusive_domain,
                 refactored_reaches,
                 coastal_boundary_depth_df,
-                nonrefactored_topobathy, 
+                unrefactored_topobathy, 
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
@@ -894,10 +895,11 @@ def new_nwm_q0(run_results):
     )
 
 
-def get_waterbody_water_elevation(waterbodies_df, q0):
+#def get_waterbody_water_elevation(waterbodies_df, q0):
+def get_waterbody_flow(waterbodies_df, q0):
     """
     Update the starting water_elevation of each lake/reservoir
-    with depth values from q0
+    with flow values from q0
     """
     waterbodies_df.update(q0)
 
@@ -1055,7 +1057,7 @@ def main_v03(argv):
             topobathy,
             refactored_diffusive_domain,
             refactored_reaches,
-            nonrefactored_topobathy,
+            unrefactored_topobathy,
         ) = unpack_nwm_preprocess_data(
             preprocessing_parameters
         )
@@ -1081,7 +1083,7 @@ def main_v03(argv):
             topobathy,
             refactored_diffusive_domain,
             refactored_reaches,
-            nonrefactored_topobathy,
+            unrefactored_topobathy,
         ) = nwm_network_preprocess(
             supernetwork_parameters,
             waterbody_parameters,
@@ -1221,7 +1223,7 @@ def main_v03(argv):
             refactored_reaches,
             subnetwork_list,
             coastal_boundary_depth_df,
-            nonrefactored_topobathy,
+            unrefactored_topobathy,
         )
         
         # returns list, first item is run result, second item is subnetwork items
@@ -1234,7 +1236,7 @@ def main_v03(argv):
 
         # create initial conditions for next loop itteration
         q0 = new_nwm_q0(run_results)
-        waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
+        waterbodies_df = get_waterbody_flow(waterbodies_df, q0) # get_waterbody_water_elevation(waterbodies_df, q0)
 
         
         # get reservoir DA initial parameters for next loop itteration
@@ -1401,6 +1403,322 @@ def main_v03(argv):
             )
         )
 
+def main_v04(argv):
+    """
+    High level orchestration of ngen t-route simulations for NWM application
+    """
+    args = _handle_args_v03(argv)
+    
+    # unpack user inputs
+    (
+        log_parameters,
+        preprocessing_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        hybrid_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    ) = _input_handler_v03(args)
+
+    showtiming = log_parameters.get("showtiming", None)
+    if showtiming:
+        task_times = {}
+        task_times['initial_condition_time'] = 0
+        task_times['forcing_time'] = 0
+        task_times['route_time'] = 0
+        task_times['output_time'] = 0
+        main_start_time = time.time()
+    
+    cpu_pool = compute_parameters.get("cpu_pool", None)
+ 
+    # Build routing network data objects. Network data objects specify river 
+    # network connectivity, channel geometry, and waterbody parameters.
+    if "ngen_nexus_file" in supernetwork_parameters:
+         network = HYFeaturesNetwork(supernetwork_parameters,
+                                    waterbody_parameters=waterbody_parameters,
+                                    restart_parameters=restart_parameters,
+                                    forcing_parameters=forcing_parameters,
+                                    verbose=verbose, showtiming=showtiming) 
+    else:
+        network = NHDNetwork(
+                             supernetwork_parameters,
+                             waterbody_parameters,
+                             restart_parameters,
+                             preprocessing_parameters,
+                             forcing_parameters,
+                             compute_parameters,
+                             hybrid_parameters,
+                             data_assimilation_parameters,
+                             output_parameters,
+                             cpu_pool,
+                             task_times,
+                             verbose = False,
+                             showtiming = showtiming,          
+                            )
+    
+    # To be consistent with t-route naming conventions or move dynamic attributes from network to local attributes
+    param_df = network.dataframe
+    q0 = network.q0
+    qlats = network.qlateral(network.t0, forcing_parameters, network.run_sets[0], cpu_pool, network.segment_index)
+    
+    parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
+    subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
+    assume_short_ts = compute_parameters.get("assume_short_ts", False)
+    return_courant = compute_parameters.get("return_courant", False)
+    
+    # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
+    if "wrf_hydro_parity_check" in output_parameters:
+        parity_sets = nnu.build_parity_sets(parity_parameters, network.run_sets)
+    else:
+        parity_sets = []
+        
+    # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
+    # on first iteration of for loop only. For additional loops this will be passed
+    # to function from inital loop.     
+    subnetwork_list = [None, None, None]
+
+    for run_set_iterator, run in enumerate(network.run_sets):
+        t0 = run.get("t0")
+        dt = run.get("dt")
+        nts = run.get("nts")
+
+        if parity_sets:
+            parity_sets[run_set_iterator]["dt"] = dt
+            parity_sets[run_set_iterator]["nts"] = nts
+
+        if showtiming:
+            route_start_time = time.time()
+
+        run_results = nwm_route(
+            network.connections, 
+            network.reverse_network, 
+            network.waterbody_connections, 
+            network._reaches_by_tw,
+            parallel_compute_method,
+            compute_kernel,
+            subnetwork_target_size,
+            cpu_pool,
+            t0,
+            dt,
+            nts,
+            qts_subdivisions,
+            network.independent_networks, 
+            param_df,
+            q0,
+            qlats,
+            network.usgs_df,
+            network.lastobs_df,
+            network.reservoir_usgs_df,
+            network.reservoir_usgs_param_df,
+            network.reservoir_usace_df,
+            network.reservoir_usace_param_df,
+            network.da_parameter_dict,
+            assume_short_ts,
+            return_courant,
+            network._waterbody_df,
+            waterbody_parameters,
+            network._waterbody_types_df, 
+            network.waterbody_type_specified,
+            network.diffusive_network_data,
+            network.topobathy,
+            network.refactored_diffusive_domain,
+            network.refactored_reaches,
+            subnetwork_list,
+            network.coastal_boundary_depth,
+            network.unrefactored_topobathy,
+        )
+        
+        # returns list, first item is run result, second item is subnetwork items
+        subnetwork_list = run_results[1]
+        run_results = run_results[0]
+        
+        if showtiming:
+            route_end_time = time.time()
+            task_times['route_time'] += route_end_time - route_start_time
+  
+        # create initial conditions for next loop itteration
+        q0 = new_nwm_q0(run_results)
+        network._waterbody_df = get_waterbody_flow(network._waterbody_df, q0)               
+        
+        # get reservoir DA initial parameters for next loop itteration
+        network.reservoir_usgs_param_df, network.reservoir_usace_param_df = set_reservoir_da_prams(run_results)
+        
+        # TODO move the conditional call to write_lite_restart to nwm_output_generator.
+        if "lite_restart" in output_parameters:
+            nhd_io.write_lite_restart(
+                q0, 
+                network._waterbody_df, 
+                t0 + timedelta(seconds = dt * nts), 
+                output_parameters['lite_restart']
+            )
+
+        if run_set_iterator < len(network.run_sets) - 1:
+            # TODO: Currently, updating qlateral and DA data are done seperately. More refining of retrieveing those data will be forthcoming. 
+            '''
+            (
+                qlats, #network.qlateral, #qlats, 
+                network.usgs_df, 
+                reservoir_usgs_df, #network.reservoir_usgs_df, 
+                _,
+                reservoir_usace_df, #network.reservoir_usace_df,
+                _,
+                coastal_boundary_depth_df, #network.coastal_boundary_depth_df,
+            ) = nwm_forcing_preprocess(
+                network.run_sets[run_set_iterator + 1], #run_sets[run_set_iterator + 1],
+                forcing_parameters,
+                hybrid_parameters,
+                network.da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
+                data_assimilation_parameters,
+                network.break_network_at_waterbodies,
+                network.segment_index,
+                network.link_gage_df,
+                network.usgs_lake_gage_crosswalk, 
+                network.usace_lake_gage_crosswalk,
+                network.link_lake_crosswalk,
+                network.lastobs_df.index,
+                cpu_pool,
+                t0 + timedelta(seconds = dt * nts),
+            )
+            '''
+            qlats = network.qlateral(t0 + timedelta(seconds = dt * nts), 
+                                     forcing_parameters,
+                                     network.run_sets[run_set_iterator + 1], 
+                                     cpu_pool, 
+                                     network.segment_index)
+
+            # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
+            # but there are DA parameters from the previous loop, then create a
+            # dummy observations df. This allows the reservoir persistence to continue across loops.
+            # USGS Reservoirs
+            if not network._waterbody_types_df.empty:
+                if 2 in network._waterbody_types_df['reservoir_type'].unique():
+                    if network.reservoir_usgs_df.empty and len(network.reservoir_usgs_param_df.index) > 0:
+                        network.reservoir_usgs_df = pd.DataFrame(
+                            data    = np.nan, 
+                            index   = network.reservoir_usgs_param_df.index, 
+                            columns = [t0]
+                        )
+
+                # USACE Reservoirs   
+                if 3 in network._waterbody_types_df['reservoir_type'].unique():
+                    if network.reservoir_usace_df.empty and len(network.reservoir_usace_param_df.index) > 0:
+                        network.reservoir_usace_df = pd.DataFrame(
+                            data    = np.nan, 
+                            index   = network.reservoir_usace_param_df.index, 
+                            columns = [t0]
+                        )
+
+                # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
+                if 4 in network._waterbody_types_df['reservoir_type'].unique():    
+                    waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)     
+
+            if showtiming:
+                forcing_end_time = time.time()
+                task_times['forcing_time'] += forcing_end_time - route_end_time
+  
+            if showtiming:
+                ic_end_time = time.time()
+                task_times['initial_condition_time'] += ic_end_time - forcing_end_time
+
+        if showtiming:
+            ic_start_time = time.time()
+        
+        # if streamflow DA is ON, then create a new lastobs dataframe
+        if data_assimilation_parameters:
+            streamflow_da = data_assimilation_parameters.get('streamflow_da',False)
+            if streamflow_da:
+                if streamflow_da.get('streamflow_nudging', False):
+                    network.lastobs_df = new_lastobs(run_results, dt * nts)
+            
+        if showtiming:
+            ic_end_time = time.time()
+            task_times['initial_condition_time'] += ic_end_time - ic_start_time
+        
+        nwm_output_generator(
+            run,
+            run_results,
+            supernetwork_parameters,
+            output_parameters,
+            parity_parameters,
+            restart_parameters,
+            parity_sets[run_set_iterator] if parity_parameters else {},
+            qts_subdivisions,
+            compute_parameters.get("return_courant", False),
+            cpu_pool,
+            network._waterbody_df,
+            network._waterbody_types_df,
+            data_assimilation_parameters,
+            network.lastobs_df,
+            network.link_gage_df,
+            network.link_lake_crosswalk,
+        )
+        
+        if showtiming:
+            output_end_time = time.time()
+            task_times['output_time'] += output_end_time - ic_end_time
+            
+    if showtiming:
+        task_times['total_time'] = time.time() - main_start_time
+
+    LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
+    
+    if showtiming:
+        print('************ TIMING SUMMARY ************')
+        print('----------------------------------------')
+        print(
+            'Network graph construction: {} secs, {} %'\
+            .format(
+                round(task_times['network_time'],2),
+                round(task_times['network_time']/task_times['total_time'] * 100,2)
+            )
+        )
+        print(
+            'Initial condition handling: {} secs, {} %'\
+            .format(
+                round(task_times['initial_condition_time'],2),
+                round(task_times['initial_condition_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Forcing array construction: {} secs, {} %'\
+            .format(
+                round(task_times['forcing_time'],2),
+                round(task_times['forcing_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Routing computations: {} secs, {} %'\
+            .format(
+                round(task_times['route_time'],2),
+                round(task_times['route_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Output writing: {} secs, {} %'\
+            .format(
+                round(task_times['output_time'],2),
+                round(task_times['output_time']/task_times['total_time'] * 100,2)
+            )
+        )
+        print('----------------------------------------')
+        print(
+            'Total execution time: {} secs'\
+            .format(
+                round(task_times['network_time'],2) +
+                round(task_times['initial_condition_time'],2) +
+                round(task_times['forcing_time'],2) +
+                round(task_times['route_time'],2) +
+                round(task_times['output_time'],2)
+            )
+        )        
+        
+            
 async def main_v03_async(argv):
     """
     Handles the creation of the input parameter dictionaries
@@ -1587,7 +1905,7 @@ async def main_v03_async(argv):
             lastobs_df = new_lastobs(run_results, dt * nts)
 
         # TODO: Confirm this works with Waterbodies turned off
-        waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
+        waterbodies_df =get_waterbody_flow(waterbodies_df, q0) #get_waterbody_water_elevation(waterbodies_df, q0)
 
         if waterbody_type_specified:
             waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
@@ -1663,7 +1981,7 @@ async def main_v03_async(argv):
     if data_assimilation_parameters:
         lastobs_df = new_lastobs(run_results, dt * nts)
 
-    waterbodies_df = get_waterbody_water_elevation(waterbodies_df, q0)
+    waterbodies_df = get_waterbody_flow(waterbodies_df, q0) # get_waterbody_water_elevation(waterbodies_df, q0)
 
     if waterbody_type_specified:
         waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)
@@ -1721,11 +2039,16 @@ if __name__ == "__main__":
         help="Use version 2 or 3 of the input format. Default 3",
     )
     v_args = v_parser.parse_known_args()
-    if v_args[0].input_version == 4:
-        LOG.info("Running main v03 - async looping")
-        coroutine = main_v03_async(v_args[1])
-        asyncio.run(coroutine)
+    #if v_args[0].input_version == 4:
+    #    LOG.info("Running main v03 - async looping")
+    #    coroutine = main_v03_async(v_args[1])
+    #    asyncio.run(coroutine)
         # loop.run_until_complete(coroutine)
+
     if v_args[0].input_version == 3:
         LOG.info("Running main v03 - looping")
         main_v03(v_args[1])
+    if v_args[0].input_version == 4:
+        LOG.info("Running main v04 - looping")
+        main_v04(v_args[1])
+

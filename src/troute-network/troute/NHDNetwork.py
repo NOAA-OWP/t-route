@@ -1,4 +1,4 @@
-from  .AbstractNetwork import AbstractNetwork
+ from  .AbstractNetwork import AbstractNetwork
 import xarray as xr
 import pathlib
 from collections import defaultdict

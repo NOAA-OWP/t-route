@@ -1526,23 +1526,18 @@ def get_reservoir_restart_from_wrf_hydro(
 
     return init_waterbody_states
 
-
 def build_coastal_dataframe(coastal_boundary_elev):
     coastal_df = pd.read_csv(
         coastal_boundary_elev, sep="  ", header=None, engine="python"
     )
     return coastal_df
 
-
 def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
 
-def build_coastal_ncdf_dataframe(
-                                coastal_files, 
-                                coastal_boundary_domain,
-                                ):
+def build_coastal_ncdf_dataframe(coastal_files, coastal_boundary_domain):                                
     # retrieve coastal elevation, topo depth, and temporal data
     ds = netCDF4.Dataset(filename = coastal_files,  mode = 'r', format = "NETCDF4")
     
@@ -1552,6 +1547,7 @@ def build_coastal_ncdf_dataframe(
     elev_NAVD88 = ds.variables['elev'][:, coastal_boundary_nodes].filled(fill_value = np.nan)
     depth_bathy = ds.variables['depth'][coastal_boundary_nodes].filled(fill_value = np.nan)
     timesteps   = ds.variables['time'][:]
+ 
     if len(timesteps) > 1:
         dt_schism = timesteps[1]-timesteps[0]
     else:
@@ -1563,7 +1559,7 @@ def build_coastal_ncdf_dataframe(
     tfin         =  start_date + dt_timeslice*len(timesteps)
     timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
     timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
-         
+    
     # create a dataframe of water depth at coastal domain nodes
     timeslice_schism_list=[]
     for t in range(0, len(timesteps)+1):
@@ -1584,7 +1580,7 @@ def build_coastal_ncdf_dataframe(
         timeslice_schism_list.append(timeslice_schism)
     
     coastal_boundary_depth_df = pd.concat(timeslice_schism_list, axis=1, ignore_index=False)
-    
+
     # linearly extrapolate depth value at start date
     coastal_boundary_depth_df.iloc[:,0] = 2.0*coastal_boundary_depth_df.iloc[:,1] - coastal_boundary_depth_df.iloc[:,2]   
 
