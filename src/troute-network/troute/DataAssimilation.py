@@ -83,7 +83,21 @@ def _reindex_link_to_lake_id(target_df, crosswalk):
 
 def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
+    Function for reading USGS timeslice files and creating a dataframe
+    of USGS gage observations. This dataframe is used for streamflow
+    nudging and can be used for constructing USGS reservoir dataframes.
     
+    Arguments:
+    ----------
+    - data_assimilation_parameters (dict): user input data re data assimilation
+    - streamflow_da_parameters     (dict): user input data re streamflow nudging
+    - run_parameters               (dict): user input data re subset of compute configuration
+    - network                    (Object): network object created from abstract class
+    - da_run                       (list): list of data assimilation files separated by for loop chunks
+    
+    Returns:
+    --------
+    - usgs_df (DataFrame): dataframe of USGS gage observations
     '''
     usgs_timeslices_folder = data_assimilation_parameters.get("usgs_timeslices_folder", None)
     lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
@@ -130,7 +144,28 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
 
 def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, streamflow_da_parameters, run_parameters, network, da_run, lake_gage_crosswalk, res_source):
     '''
+    Function for reading USGS/USACE timeslice files and creating a dataframe
+    of reservoir observations and initial parameters. 
+    These dataframes are used for reservoir DA.
     
+    Arguments:
+    ----------
+    - data_assimilation_parameters (dict): user input data re data assimilation
+    - reservoir_da_parameters      (dict): user input data re reservoir data assimilation
+    - streamflow_da_parameters     (dict): user input data re streamflow nudging
+    - run_parameters               (dict): user input data re subset of compute configuration
+    - network                    (Object): network object created from abstract class
+    - da_run                       (list): list of data assimilation files separated
+                                           by for loop chunks
+    - lake_gage_crosswalk          (dict): usgs/usace gage ids and corresponding segment ids at
+                                           which they are located
+    - res_source                    (str): either 'usgs' or 'usace', specifiying which type of
+                                           reservoir dataframe to create (must match lake_gage_crosswalk
+    
+    Returns:
+    --------
+    - reservoir_usgs/usace_df       (DataFrame): USGS/USACE reservoir observations
+    - reservoir_usgs/usace_param_df (DataFrame): USGS/USACE reservoir hybrid DA initial parameters
     '''
     res_timeslices_folder  = data_assimilation_parameters.get(res_source + "_timeslices_folder",None)
     crosswalk_file         = reservoir_da_parameters.get("gage_lakeID_crosswalk_file", None)
@@ -179,6 +214,21 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
 def _set_reservoir_da_params(run_results):
     '''
     Update persistence reservoir DA parameters for subsequent loops
+    Arguments:
+    ----------
+    - run_results (list): output from the compute kernel sequence, organized
+        (because that is how it comes out of the kernel) by network.
+        For each item in the result, there are seven elements, the
+        fifth (usgs) and sixth (usace) of which are lists of five elements 
+        containing: 1) a list of the segments ids where data assimilation 
+        was performed (if any) in that network; 2) a list of the lupdate time; 
+        3) a list of the previously persisted outflow; 4) a list of the 
+        persistence index; 5) a list of hte persistence update time.
+    
+    Returns:
+    --------
+    - reservoir_usgs_param_df (DataFrame): USGS reservoir DA parameters
+    - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
     '''
     
     reservoir_usgs_param_df = pd.DataFrame(data = [], 
@@ -218,16 +268,18 @@ def new_lastobs(run_results, time_increment):
     """
     Creates new "lastobs" dataframe for the next simulation chunk.
 
-    run_results - output from the compute kernel sequence, organized
+    Arguments:
+    ----------
+    - run_results (list): output from the compute kernel sequence, organized
         (because that is how it comes out of the kernel) by network.
-        For each item in the result, there are four elements, the
+        For each item in the result, there are seven elements, the
         fourth of which is a tuple containing: 1) a list of the
         segments ids where data assimilation was performed (if any)
         in that network; 2) a list of the last valid observation
         applied at that segment; 3) a list of the time in seconds
         from the beginning of the last simulation that the
         observation was applied.
-    time_increment - length of the prior simulation. To prepare the
+    - time_increment (int): length of the prior simulation. To prepare the
         next lastobs state, we have to convert the time since the prior
         simulation start to a time since the new simulation start.
         If the most recent observation was right at the end of the
@@ -237,6 +289,10 @@ def new_lastobs(run_results, time_increment):
         the last obs time will be calculated to a negative value --
         the number of seconds ago that the last valid observation
         was used for assimilation.
+        
+    Returns:
+    --------
+    - lastobs_df (DataFrame): Last gage observations data for DA
     """
     df = pd.concat(
         [
@@ -335,7 +391,35 @@ class NudgingDA(DataAssimilation):
     
 class AllDA(DataAssimilation):
     """
+    Object containing all data assimilation information. Created from user input
+    and a network object that defines the network and forcing parameters. TODO: this
+    could be broken up into separate objects specific to each type of DA (streamflow
+    nudging, reservoir persistence, etc.). But for now it is all done here.
     
+    Arguments:
+    ----------
+    - data_assimilation_parameters (dict): user input data re data assimilation
+    - run_parameters               (dict): user input data re subset of compute configuration
+    - waterbody_parameters         (dict): user input data re waterbody parameters
+    - network                    (Object): network object created from abstract class
+    - da_run                       (list): list of data assimilation files separated
+                                           by for loop chunks
+    
+    Returns:
+    --------
+    - data_assimilation               (Object): Object containing all data assimilation information
+        - usgs_df                  (DataFrame): dataframe of USGS gage observations
+        - lastobs_df               (DataFrame): Last gage observations data for DA
+        - reservoir_usgs_df        (DataFrame): USGS reservoir observations
+        - reservoir_usgs_param_df  (DataFrame): USGS reservoir DA parameters
+        - reservoir_usace_df       (DataFrame): USACE reservoir observations
+        - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
+        - da_parameter_dict             (dict): user input data re data assimilation
+        - waterbody_types_df       (DataFrame): Waterbody type codes (1:levelpool, 2:USGS, 3:USACE, 4:RFC)
+        - usgs_lake_gage_crosswalk      (dict): usgs gage ids and corresponding segment 
+                                                ids at which they are located
+        - usace_lake_gage_crossalk      (dict): usace gage ids and corresponding segment 
+                                                ids at which they are located
     """
     __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict", "_waterbody_types_df", "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk"]
     def __init__(self, data_assimilation_parameters, run_parameters, waterbody_parameters, network, da_run):
@@ -548,7 +632,37 @@ class AllDA(DataAssimilation):
 
     def update(self, run_results, data_assimilation_parameters, run_parameters, network, da_run):
         '''
+        Function to update data assimilation object for the next loop iteration.
         
+        Arguments:
+        ----------
+        - run_results                  (list): output from the compute kernel sequence,
+                                               organized (because that is how it comes 
+                                               out of the kernel) by network.
+                                               For each item in the result, there are 
+                                               seven elements, the fifth (usgs) and sixth 
+                                               (usace) of which are lists of five elements 
+                                               containing: 1) a list of the segments ids 
+                                               where data assimilation was performed (if any) 
+                                               in that network; 2) a list of the lupdate time; 
+                                               3) a list of the previously persisted outflow; 
+                                               4) a list of the persistence index; 5) a list 
+                                               of the persistence update time.
+        - data_assimilation_parameters (dict): user input data re data assimilation
+        - run_parameters               (dict): user input data re subset of compute configuration
+        - network                    (Object): network object created from abstract class
+        - da_run                       (list): list of data assimilation files separated
+                                               by for loop chunks
+        
+        Returns:
+        --------
+        - data_assimilation               (Object): Object containing all data assimilation information
+            - usgs_df                  (DataFrame): dataframe of USGS gage observations
+            - lastobs_df               (DataFrame): Last gage observations data for DA
+            - reservoir_usgs_df        (DataFrame): USGS reservoir observations
+            - reservoir_usgs_param_df  (DataFrame): USGS reservoir DA parameters
+            - reservoir_usace_df       (DataFrame): USACE reservoir observations
+            - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
         '''
         # get reservoir DA initial parameters for next loop itteration
         self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_reservoir_da_params(run_results)
@@ -557,47 +671,49 @@ class AllDA(DataAssimilation):
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
         reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
         
-        if not self._usgs_df.empty:
+        if streamflow_da_parameters.get('streamflow_nudging', False):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             
-            gage_lake_df = (
-                self._usgs_lake_gage_crosswalk.
-                reset_index().
-                set_index(['usgs_gage_id']) # <- TODO use input parameter for this
-            )
+            if reservoir_da_parameters.get('reservoir_persistence_usgs', False):
                 
-            # build dataframe that crosswalks gageIDs to segmentIDs
-            gage_link_df = (
-                network.link_gage_df['gages'].
-                reset_index().
-                set_index(['gages'])
-            )
-            
-            # build dataframe that crosswalks segmentIDs to lakeIDs
-            link_lake_df = (
-                gage_lake_df.
-                join(gage_link_df, how = 'inner').
-                reset_index().set_index('link').
-                drop(['index'], axis = 1)
-            )
-
-            # resample `usgs_df` to 15 minute intervals
-            usgs_df_15min = (
-                self._usgs_df.
-                transpose().
-                resample('15min').asfreq().
-                transpose()
-            )
-            
-            # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
-            self._reservoir_usgs_df = (
-                usgs_df_15min.join(link_lake_df, how = 'inner').
-                reset_index().
-                set_index('usgs_lake_id').
-                drop(['index'], axis = 1)
-            )
+                gage_lake_df = (
+                    self._usgs_lake_gage_crosswalk.
+                    reset_index().
+                    set_index(['usgs_gage_id']) # <- TODO use input parameter for this
+                )
+                
+                # build dataframe that crosswalks gageIDs to segmentIDs
+                gage_link_df = (
+                    network.link_gage_df['gages'].
+                    reset_index().
+                    set_index(['gages'])
+                )
+                
+                # build dataframe that crosswalks segmentIDs to lakeIDs
+                link_lake_df = (
+                    gage_lake_df.
+                    join(gage_link_df, how = 'inner').
+                    reset_index().set_index('link').
+                    drop(['index'], axis = 1)
+                )
+                
+                # resample `usgs_df` to 15 minute intervals
+                usgs_df_15min = (
+                    self._usgs_df.
+                    transpose().
+                    resample('15min').asfreq().
+                    transpose()
+                )
+                
+                # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
+                self._reservoir_usgs_df = (
+                    usgs_df_15min.join(link_lake_df, how = 'inner').
+                    reset_index().
+                    set_index('usgs_lake_id').
+                    drop(['index'], axis = 1)
+                )
         
-        else:
+        elif reservoir_da_parameters.get('reservoir_persistence_usgs', False):
             (
                 self._reservoir_usgs_df,
                 _,
@@ -612,18 +728,20 @@ class AllDA(DataAssimilation):
                 res_source = 'usgs')
         
         # USACE
-        (
-            self._reservoir_usace_df,
-            _,
-        ) = _create_reservoir_df(
-            data_assimilation_parameters,
-            reservoir_da_parameters,
-            streamflow_da_parameters,
-            run_parameters,
-            network,
-            da_run,
-            lake_gage_crosswalk = self._usace_lake_gage_crosswalk,
-            res_source = 'usace')
+        if reservoir_da_parameters.get('reservoir_persistence_usace', False):
+            
+            (
+                self._reservoir_usace_df,
+                _,
+            ) = _create_reservoir_df(
+                data_assimilation_parameters,
+                reservoir_da_parameters,
+                streamflow_da_parameters,
+                run_parameters,
+                network,
+                da_run,
+                lake_gage_crosswalk = self._usace_lake_gage_crosswalk,
+                res_source = 'usace')
         
         # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
         # but there are DA parameters from the previous loop, then create a
@@ -656,6 +774,13 @@ class AllDA(DataAssimilation):
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
                 self._last_obs_df = new_lastobs(run_results, run_parameters.get("dt") * run_parameters.get("nts"))
+        
+        # Trim the time-extent of the streamflow_da usgs_df
+        # what happens if there are timeslice files missing on the front-end? 
+        # if the first column is some timestamp greater than t0, then this will throw
+        # an error. Need to think through this more. 
+        if not self._usgs_df.empty:
+            self._usgs_df = self._usgs_df.loc[:,network.t0:]
     
     @property
     def assimilation_parameters(self):
@@ -696,16 +821,3 @@ class AllDA(DataAssimilation):
     @property
     def usace_lake_gage_crosswalk(self):
         return self._usace_lake_gage_crosswalk
-
-    
-    
-    
-    
-#############################################################################
-# FOR TESTING PURPOSES-------------------------------------------------------
-#############################################################################
-
-class testnetwork():
-    """
-    
-    """
