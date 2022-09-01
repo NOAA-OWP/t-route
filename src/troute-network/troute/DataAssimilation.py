@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import pathlib
 import time
+import xarray as xr
 from collections import defaultdict
 
 #FIXME parameterize into construciton
@@ -264,6 +265,110 @@ def _set_reservoir_da_params(run_results):
     
     return reservoir_usgs_param_df, reservoir_usace_param_df
 
+def build_lastobs_df(
+        lastobsfile,
+        crosswalk_file,
+        time_shift           = 0,
+        crosswalk_gage_field = "gages",
+        crosswalk_link_field = "link",
+        obs_discharge_id     = "discharge",
+        time_idx_id          = "timeInd",
+        station_id           = "stationId",
+        station_idx_id       = "stationIdInd",
+        time_id              = "time",
+        discharge_nan        = -9999.0,
+        ref_t_attr_id        = "modelTimeAtOutput",
+        route_link_idx       = "feature_id",
+    ):
+    '''
+    Constructs a DataFame of "lastobs" data used in streamflow DA routine
+    "lastobs" information is just like it sounds. It is the magnitude and
+    timing of the last valid observation at each gage in the model domain. 
+    We use this information to jump start initialize the DA process, both 
+    for forecast and AnA simulations. 
+    
+    Arguments
+    ---------
+    
+    Returns
+    -------
+    
+    Notes
+    -----
+    
+    '''
+    
+    # open crosswalking file and construct dataframe relating gageID to segmentID
+    with xr.open_dataset(crosswalk_file) as ds:
+        gage_list = list(map(bytes.strip, ds[crosswalk_gage_field].values))
+        gage_mask = list(map(bytes.isalnum, gage_list))
+        gage_da   = list(map(bytes.strip, ds[crosswalk_gage_field][gage_mask].values))
+        data_var_dict = {
+            crosswalk_gage_field: gage_da,
+            crosswalk_link_field: ds[crosswalk_link_field].values[gage_mask],
+        }
+        gage_link_df = pd.DataFrame(data = data_var_dict).set_index([crosswalk_gage_field])
+            
+    with xr.open_dataset(lastobsfile) as ds:
+        
+        gages    = np.char.strip(ds[station_id].values)
+        
+        ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
+        
+        last_ts = ds[time_idx_id].values[-1]
+        
+        df_discharge = (
+            ds[obs_discharge_id].to_dataframe().                 # discharge to MultiIndex DF
+            replace(to_replace = discharge_nan, value = np.nan). # replace null values with nan
+            unstack(level = 0)                                   # unstack to single Index (timeInd)    
+        )
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(ds.time.values[i, idx].decode('utf-8'))
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
+
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+    data_var_dict = {
+        'gages'               : gages,
+        'time_since_lastobs'  : lastobs_times,
+        'lastobs_discharge'   : last_observations
+    }
+
+    lastobs_df = (
+        pd.DataFrame(data = data_var_dict).
+        set_index('gages').
+        join(gage_link_df, how = 'inner').
+        reset_index().
+        set_index(crosswalk_link_field)
+    )
+    lastobs_df = lastobs_df[
+        [
+            'gages',
+            'time_since_lastobs',
+            'lastobs_discharge',
+        ]
+    ]
+    
+    return lastobs_df
+
 def new_lastobs(run_results, time_increment):
     """
     Creates new "lastobs" dataframe for the next simulation chunk.
@@ -423,20 +528,7 @@ class AllDA(DataAssimilation):
     """
     __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict", "_waterbody_types_df", "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk"]
     def __init__(self, data_assimilation_parameters, run_parameters, waterbody_parameters, network, da_run):
-        lastobs_df, da_parameter_dict = nnu.build_data_assimilation_lastobs(
-            data_assimilation_parameters
-        )
-    
-        # replace link ids with lake ids, for gages at waterbody outlets, 
-        # otherwise, gage data will not be assimilated at waterbody outlet
-        # segments.
-        if network.link_lake_crosswalk:
-            lastobs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
-            
-        self._last_obs_df = lastobs_df
-        self._da_parameter_dict = da_parameter_dict
-        # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
-        
+                
         #---------------------------------------------------------------------------
         # Determine which DA features to turn on
         #---------------------------------------------------------------------------
@@ -449,7 +541,7 @@ class AllDA(DataAssimilation):
         if streamflow_da_parameters:
             nudging = streamflow_da_parameters.get('streamflow_nudging', False)
 
-        usgs_timeslices_folder = data_assimilation_parameters.get('usgs_timeslices_folder',None)
+        usgs_timeslices_folder = data_assimilation_parameters.get('usgs_timeslices_folder', None)
         
         # isolate user-input parameters for reservoir data assimilation
         reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
@@ -460,7 +552,7 @@ class AllDA(DataAssimilation):
         if reservoir_da_parameters:
             usgs_persistence  = reservoir_da_parameters.get('reservoir_persistence_usgs', False)
             usace_persistence = reservoir_da_parameters.get('reservoir_persistence_usace', False)
-            param_file   = reservoir_da_parameters.get('gage_lakeID_crosswalk_file',None)
+            param_file   = reservoir_da_parameters.get('gage_lakeID_crosswalk_file', None)
         
         # check if RFC-type reservoirs are set to true
         rfc_params = waterbody_parameters.get('rfc')
@@ -472,12 +564,44 @@ class AllDA(DataAssimilation):
         
         level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
                 
-                
+        
+        #--------------------------------------------------------------------------------
+        # Produce lastobs_df if streamflow nudging is turned on
+        #--------------------------------------------------------------------------------
+        lastobs_df = pd.DataFrame()
+        da_parameter_dict = {}
+        
+        if nudging:
+            lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+            lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+            lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
+            
+            if lastobs_file:
+                lastobs_df = build_lastobs_df(
+                    lastobs_file,
+                    lastobs_crosswalk_file,
+                    lastobs_start,
+                )
+            
+            da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+            da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get("diffusive_streamflow_nudging", False)
+
+            # replace link ids with lake ids, for gages at waterbody outlets, 
+            # otherwise, gage data will not be assimilated at waterbody outlet
+            # segments.
+            if network.link_lake_crosswalk:
+                lastobs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
+            
+        self._last_obs_df = lastobs_df
+        self._da_parameter_dict = da_parameter_dict
+        # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
+        
+        
         #--------------------------------------------------------------------------------
         # Assemble USGS observation data for Streamflow DA or USGS Reservoir Persistence
         #--------------------------------------------------------------------------------
 
-        # if user requested nudging or usgs_persistence and a specified a USGS TimeSlice directory, 
+        # if user requested nudging or usgs_persistence and specified a USGS TimeSlice directory, 
         # then build and return USGS dataframe
         if (nudging or usgs_persistence) and usgs_timeslices_folder:
 
