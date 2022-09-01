@@ -416,6 +416,96 @@ def new_lastobs(run_results, time_increment):
 
     return df
 
+def read_reservoir_parameter_file(
+    reservoir_parameter_file, 
+    usgs_hybrid,
+    usace_hybrid,
+    rfc_forecast,
+    lake_index_field="lake_id", 
+    usgs_gage_id_field = "usgs_gage_id",
+    usgs_lake_id_field = "usgs_lake_id",
+    usace_gage_id_field = "usace_gage_id",
+    usace_lake_id_field = "usace_lake_id",
+    lake_id_mask=None,
+):
+
+    """
+    Reads reservoir parameter file, which is separate from the LAKEPARM file.
+    Extracts reservoir "type" codes and returns in a DataFrame
+    type 1: Levelool
+    type 2: USGS Hybrid Persistence
+    type 3: USACE Hybrid Persistence
+    type 4: RFC
+    This function is only called if Hybrid Persistence or RFC type reservoirs
+    are active.
+    
+    Arguments
+    ---------
+    - reservoir_parameter_file (str): full file path of the reservoir parameter
+                                      file
+    
+    - usgs_hybrid          (boolean): If True, then USGS Hybrid DA will be coded
+    
+    - usace_hybrid         (boolean): If True, then USACE Hybrid DA will be coded
+    
+    - rfc_forecast         (boolean): If True, then RFC Forecast DA will be coded
+    
+    - lake_index_field         (str): field containing lake IDs in reservoir 
+                                      parameter file
+    
+    - lake_id_mask     (dict_values): Waterbody IDs in the model domain 
+    
+    Returns
+    -------
+    - df1 (Pandas DataFrame): Reservoir type codes, indexed by lake_id
+    
+    Notes
+    -----
+    
+    """
+    with xr.open_dataset(reservoir_parameter_file) as ds:
+        ds = ds.swap_dims({"feature_id": lake_index_field})
+        ds_new = ds["reservoir_type"]
+        df1 = ds_new.sel({lake_index_field: list(lake_id_mask)}).to_dataframe()
+        
+        ds_vars = [i for i in ds.data_vars] 
+        
+        if (usgs_gage_id_field in ds_vars) and (usgs_lake_id_field in ds_vars):
+            usgs_crosswalk = pd.DataFrame(
+                data = ds[usgs_gage_id_field].to_numpy(), 
+                index = ds[usgs_lake_id_field].to_numpy(), 
+                columns = [usgs_gage_id_field]
+            )
+            usgs_crosswalk.index.name = usgs_lake_id_field
+        else:
+            usgs_crosswalk = None
+        
+        if (usace_gage_id_field in ds_vars) and (usace_lake_id_field in ds_vars):
+            usace_crosswalk = pd.DataFrame(
+                data = ds[usace_gage_id_field].to_numpy(), 
+                index = ds[usace_lake_id_field].to_numpy(), 
+                columns = [usace_gage_id_field]
+            )
+            usace_crosswalk.index.name = usace_lake_id_field
+        else:
+            usace_crosswalk = None
+        
+    # drop duplicate indices
+    df1 = (df1.reset_index()
+           .drop_duplicates(subset="lake_id")
+           .set_index("lake_id")
+          )
+    
+    # recode to levelpool (1) for reservoir DA types set to false
+    if usgs_hybrid == False:
+        df1[df1['reservoir_type'] == 2] = 1
+    if usace_hybrid == False:
+        df1[df1['reservoir_type'] == 3] = 1
+    if rfc_forecast == False:
+        df1[df1['reservoir_type'] == 4] = 1
+    
+    return df1, usgs_crosswalk, usace_crosswalk
+
 class DataAssimilation(ABC):
     """
     
@@ -624,7 +714,7 @@ class AllDA(DataAssimilation):
                     waterbody_types_df, 
                     usgs_lake_gage_crosswalk, 
                     usace_lake_gage_crosswalk
-                ) = nhd_io.read_reservoir_parameter_file(
+                ) = read_reservoir_parameter_file(
                     param_file,
                     usgs_persistence,
                     usace_persistence,
@@ -637,7 +727,6 @@ class AllDA(DataAssimilation):
                     network.wbody_conn.values(),
                 )
             else:
-                waterbody_type_specified = True
                 waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
                 usgs_lake_gage_crosswalk = None
                 usace_lake_gage_crosswalk = None
