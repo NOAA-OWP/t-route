@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import troute.nhd_io as nhd_io
-import troute.nhd_network_utilities_v02 as nnu
 import pandas as pd
 import numpy as np
 import pathlib
@@ -610,13 +609,8 @@ class AllDA(DataAssimilation):
         - reservoir_usace_df       (DataFrame): USACE reservoir observations
         - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
         - da_parameter_dict             (dict): user input data re data assimilation
-        - waterbody_types_df       (DataFrame): Waterbody type codes (1:levelpool, 2:USGS, 3:USACE, 4:RFC)
-        - usgs_lake_gage_crosswalk      (dict): usgs gage ids and corresponding segment 
-                                                ids at which they are located
-        - usace_lake_gage_crossalk      (dict): usace gage ids and corresponding segment 
-                                                ids at which they are located
     """
-    __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict", "_waterbody_types_df", "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk"]
+    __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict"]
     def __init__(self, data_assimilation_parameters, run_parameters, waterbody_parameters, network, da_run):
                 
         #---------------------------------------------------------------------------
@@ -701,53 +695,12 @@ class AllDA(DataAssimilation):
         # Assemble Reservoir dataframes
         #--------------------------------------------------------------------------------
         
-        # if any reservoir DA is turned on, load info from reservoir parameter file:
-        break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)
-        if not network.wbody_conn: 
-            # Turn off any further reservoir processing if the network contains no waterbodies
-            break_network_at_waterbodies = False
-        
-        if break_network_at_waterbodies:
-            if (param_file and (usgs_persistence or usace_persistence)) or (param_file and rfc_forecast):
-                waterbody_type_specified = True
-                (
-                    waterbody_types_df, 
-                    usgs_lake_gage_crosswalk, 
-                    usace_lake_gage_crosswalk
-                ) = read_reservoir_parameter_file(
-                    param_file,
-                    usgs_persistence,
-                    usace_persistence,
-                    rfc_forecast,
-                    level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
-                    reservoir_da_parameters.get('crosswalk_usgs_gage_field', 'usgs_gage_id'),
-                    reservoir_da_parameters.get('crosswalk_usgs_lakeID_field', 'usgs_lake_id'),
-                    reservoir_da_parameters.get('crosswalk_usace_gage_field', 'usace_gage_id'),
-                    reservoir_da_parameters.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
-                    network.wbody_conn.values(),
-                )
-            else:
-                waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
-                usgs_lake_gage_crosswalk = None
-                usace_lake_gage_crosswalk = None
-        
-        else:
-            # Declare empty dataframes
-            waterbody_types_df = pd.DataFrame()
-            usgs_lake_gage_crosswalk = None
-            usace_lake_gage_crosswalk = None
-        
-        self._waterbody_types_df = waterbody_types_df
-        self._usgs_lake_gage_crosswalk = usgs_lake_gage_crosswalk
-        self._usace_lake_gage_crosswalk = usace_lake_gage_crosswalk
-        
-
         if usgs_persistence:
             # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
             if self._usgs_df.empty == False: 
                 
                 gage_lake_df = (
-                    usgs_lake_gage_crosswalk.
+                    network.usgs_lake_gage_crosswalk.
                     reset_index().
                     set_index(['usgs_gage_id']) # <- TODO use input parameter for this
                 )
@@ -807,7 +760,7 @@ class AllDA(DataAssimilation):
                     run_parameters,
                     network,
                     da_run,
-                    lake_gage_crosswalk = usgs_lake_gage_crosswalk,
+                    lake_gage_crosswalk = network.usgs_lake_gage_crosswalk,
                     res_source = 'usgs')
         else:
             reservoir_usgs_df = pd.DataFrame()
@@ -824,7 +777,7 @@ class AllDA(DataAssimilation):
                 run_parameters,
                 network,
                 da_run,
-                lake_gage_crosswalk = usace_lake_gage_crosswalk,
+                lake_gage_crosswalk = network.usace_lake_gage_crosswalk,
                 res_source = 'usace')
         else:
             reservoir_usace_df = pd.DataFrame()
@@ -890,7 +843,7 @@ class AllDA(DataAssimilation):
             if reservoir_da_parameters.get('reservoir_persistence_usgs', False):
                 
                 gage_lake_df = (
-                    self._usgs_lake_gage_crosswalk.
+                    network.usgs_lake_gage_crosswalk.
                     reset_index().
                     set_index(['usgs_gage_id']) # <- TODO use input parameter for this
                 )
@@ -937,7 +890,7 @@ class AllDA(DataAssimilation):
                 run_parameters,
                 network,
                 da_run,
-                lake_gage_crosswalk = self._usgs_lake_gage_crosswalk,
+                lake_gage_crosswalk = network.usgs_lake_gage_crosswalk,
                 res_source = 'usgs')
         
         # USACE
@@ -953,15 +906,15 @@ class AllDA(DataAssimilation):
                 run_parameters,
                 network,
                 da_run,
-                lake_gage_crosswalk = self._usace_lake_gage_crosswalk,
+                lake_gage_crosswalk = network.usace_lake_gage_crosswalk,
                 res_source = 'usace')
         
         # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
         # but there are DA parameters from the previous loop, then create a
         # dummy observations df. This allows the reservoir persistence to continue across loops.
         # USGS Reservoirs
-        if not self._waterbody_types_df.empty:
-            if 2 in self._waterbody_types_df['reservoir_type'].unique():
+        if not network.waterbody_types_df.empty:
+            if 2 in network.waterbody_types_df['reservoir_type'].unique():
                 if self._reservoir_usgs_df.empty and len(self._reservoir_usgs_param_df.index) > 0:
                     self._reservoir_usgs_df = pd.DataFrame(
                         data    = np.nan, 
@@ -970,7 +923,7 @@ class AllDA(DataAssimilation):
                     )
 
             # USACE Reservoirs   
-            if 3 in self._waterbody_types_df['reservoir_type'].unique():
+            if 3 in network.waterbody_types_df['reservoir_type'].unique():
                 if self._reservoir_usace_df.empty and len(self._reservoir_usace_param_df.index) > 0:
                     self._reservoir_usace_df = pd.DataFrame(
                         data    = np.nan, 
@@ -980,7 +933,7 @@ class AllDA(DataAssimilation):
 
             '''
             # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
-            if 4 in self._waterbody_types_df['reservoir_type'].unique():
+            if 4 in network.waterbody_types_df['reservoir_type'].unique():
                 waterbody_parameters = update_lookback_hours(run_parameters.get("dt"), run_parameters.get("nts"), waterbody_parameters)
             '''
         
@@ -1022,15 +975,3 @@ class AllDA(DataAssimilation):
     @property
     def reservoir_usace_param_df(self):
         return self._reservoir_usace_param_df
-    
-    @property
-    def waterbody_types_df(self):
-        return self._waterbody_types_df
-    
-    @property
-    def usgs_lake_gage_crosswalk(self):
-        return self._usgs_lake_gage_crosswalk
-    
-    @property
-    def usace_lake_gage_crosswalk(self):
-        return self._usace_lake_gage_crosswalk
