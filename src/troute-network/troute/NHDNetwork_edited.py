@@ -6,6 +6,7 @@ import troute.nhd_io as nhd_io
 import troute.nhd_preprocess as nhd_prep
 import pandas as pd
 import time
+from datetime import datetime, timedelta
 
 __showtiming__ = True #FIXME pass flag
 __verbose__ = True #FIXME pass verbosity
@@ -248,12 +249,19 @@ class NHDNetwork(AbstractNetwork):
         self._waterbody_df.update(self._q0)
 
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
-        """Extract waterbody mapping from dataframe.
-        TODO deprecate in favor of below property???"""
+        """
+        Extract waterbody mapping from dataframe.
+        """
         return (
             rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
         )
 
+    def new_t0(self, dt, nts):
+        """
+        Update t0 value for next loop iteration
+        """
+        self._t0 += timedelta(seconds = dt * nts)
+        
     @property
     def waterbody_connections(self):
         if self._waterbody_connections is None :
