@@ -225,7 +225,28 @@ class NHDNetwork(AbstractNetwork):
             self._t0,
         )
     
+    def new_nhd_q0(self, run_results):
+        """
+        Prepare a new q0 dataframe with initial flow and depth to act as
+        a warmstate for the next simulation chunk.
+        """
+        self._q0 = pd.concat(
+            [
+                pd.DataFrame(
+                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
+                )
+                for r in run_results
+            ],
+            copy=False,
+        )
     
+    def update_waterbody_water_elevation(self):
+        """
+        Update the starting water_elevation of each lake/reservoir
+        with depth values from q0
+        """
+        self._waterbody_df.update(self._q0)
+
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
         """Extract waterbody mapping from dataframe.
         TODO deprecate in favor of below property???"""
