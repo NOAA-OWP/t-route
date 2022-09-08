@@ -193,107 +193,35 @@ def main_v04(argv):
             route_end_time = time.time()
             task_times['route_time'] += route_end_time - route_start_time
 
-        #TODO: Update everythin below here to match with new network classes...
-        
-        
-        
         # create initial conditions for next loop itteration
-        q0 = new_nwm_q0(run_results)
-        network._waterbody_df = get_waterbody_flow(network._waterbody_df, q0)               
+        network.new_nhd_q0(run_results)
+        network.update_waterbody_water_elevation()               
         
-        # get reservoir DA initial parameters for next loop itteration
-        network.reservoir_usgs_param_df, network.reservoir_usace_param_df = set_reservoir_da_prams(run_results)
+        if run_set_iterator < len(run_sets) - 1:
+            # update t0
+            network.new_t0(dt,nts)
+            
+            # update forcing data
+            network.assemble_forcings(run_sets[run_set_iterator + 1],
+                                      forcing_parameters,
+                                      hybrid_parameters,
+                                      cpu_pool)
+            
+            # get reservoir DA initial parameters for next loop iteration
+            data_assimilation.update(run_results,
+                                     data_assimilation_parameters,
+                                     run_parameters,
+                                     network,
+                                     da_sets[run_set_iterator + 1])
         
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
                 q0, 
-                network._waterbody_df, 
+                network.waterbody_df, 
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
             )
-
-        if run_set_iterator < len(network.run_sets) - 1:
-            # TODO: Currently, updating qlateral and DA data are done seperately. More refining of retrieveing those data will be forthcoming. 
-            '''
-            (
-                qlats, #network.qlateral, #qlats, 
-                network.usgs_df, 
-                reservoir_usgs_df, #network.reservoir_usgs_df, 
-                _,
-                reservoir_usace_df, #network.reservoir_usace_df,
-                _,
-                coastal_boundary_depth_df, #network.coastal_boundary_depth_df,
-            ) = nwm_forcing_preprocess(
-                network.run_sets[run_set_iterator + 1], #run_sets[run_set_iterator + 1],
-                forcing_parameters,
-                hybrid_parameters,
-                network.da_sets[run_set_iterator + 1] if data_assimilation_parameters else {},
-                data_assimilation_parameters,
-                network.break_network_at_waterbodies,
-                network.segment_index,
-                network.link_gage_df,
-                network.usgs_lake_gage_crosswalk, 
-                network.usace_lake_gage_crosswalk,
-                network.link_lake_crosswalk,
-                network.lastobs_df.index,
-                cpu_pool,
-                t0 + timedelta(seconds = dt * nts),
-            )
-            '''
-            qlats = network.qlateral(t0 + timedelta(seconds = dt * nts), 
-                                     forcing_parameters,
-                                     network.run_sets[run_set_iterator + 1], 
-                                     cpu_pool, 
-                                     network.segment_index)
-
-            # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
-            # but there are DA parameters from the previous loop, then create a
-            # dummy observations df. This allows the reservoir persistence to continue across loops.
-            # USGS Reservoirs
-            if not network._waterbody_types_df.empty:
-                if 2 in network._waterbody_types_df['reservoir_type'].unique():
-                    if network.reservoir_usgs_df.empty and len(network.reservoir_usgs_param_df.index) > 0:
-                        network.reservoir_usgs_df = pd.DataFrame(
-                            data    = np.nan, 
-                            index   = network.reservoir_usgs_param_df.index, 
-                            columns = [t0]
-                        )
-
-                # USACE Reservoirs   
-                if 3 in network._waterbody_types_df['reservoir_type'].unique():
-                    if network.reservoir_usace_df.empty and len(network.reservoir_usace_param_df.index) > 0:
-                        network.reservoir_usace_df = pd.DataFrame(
-                            data    = np.nan, 
-                            index   = network.reservoir_usace_param_df.index, 
-                            columns = [t0]
-                        )
-
-                # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
-                if 4 in network._waterbody_types_df['reservoir_type'].unique():    
-                    waterbody_parameters = update_lookback_hours(dt, nts, waterbody_parameters)     
-
-            if showtiming:
-                forcing_end_time = time.time()
-                task_times['forcing_time'] += forcing_end_time - route_end_time
-  
-            if showtiming:
-                ic_end_time = time.time()
-                task_times['initial_condition_time'] += ic_end_time - forcing_end_time
-
-        if showtiming:
-            ic_start_time = time.time()
-        
-        # if streamflow DA is ON, then create a new lastobs dataframe
-        if data_assimilation_parameters:
-            streamflow_da = data_assimilation_parameters.get('streamflow_da',False)
-            if streamflow_da:
-                if streamflow_da.get('streamflow_nudging', False):
-                    network.lastobs_df = new_lastobs(run_results, dt * nts)
-            
-        if showtiming:
-            ic_end_time = time.time()
-            task_times['initial_condition_time'] += ic_end_time - ic_start_time
         
         nwm_output_generator(
             run,
@@ -306,10 +234,10 @@ def main_v04(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
-            network._waterbody_df,
-            network._waterbody_types_df,
+            network.waterbody_df,
+            network.waterbody_types_df,
             data_assimilation_parameters,
-            network.lastobs_df,
+            data_assimilation.lastobs_df,
             network.link_gage_df,
             network.link_lake_crosswalk,
         )
@@ -2063,11 +1991,16 @@ if __name__ == "__main__":
         help="Use version 2 or 3 of the input format. Default 3",
     )
     v_args = v_parser.parse_known_args()
+    '''
     if v_args[0].input_version == 4:
         LOG.info("Running main v03 - async looping")
         coroutine = main_v03_async(v_args[1])
         asyncio.run(coroutine)
         # loop.run_until_complete(coroutine)
+    '''
     if v_args[0].input_version == 3:
         LOG.info("Running main v03 - looping")
         main_v03(v_args[1])
+    if v_args[0].input_version == 4:
+        LOG.info("Running main v04 - looping")
+        main_v04(v_args[1])
