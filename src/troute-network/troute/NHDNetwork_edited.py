@@ -221,7 +221,9 @@ class NHDNetwork(AbstractNetwork):
             forcing_parameters, 
             hybrid_parameters, 
             self._segment_index, 
-            cpu_pool)
+            cpu_pool,
+            self._t0,
+        )
     
     
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):

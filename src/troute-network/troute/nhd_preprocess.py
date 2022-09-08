@@ -822,6 +822,7 @@ def nhd_forcing(
     hybrid_parameters,
     segment_index,
     cpu_pool,
+    t0,
 ):
     """
     Assemble model forcings. Forcings include hydrological lateral inflows (qlats)
@@ -857,7 +858,7 @@ def nhd_forcing(
     qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
     qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
 
-    '''
+    
     # TODO: find a better way to deal with these defaults and overrides.
     run["t0"]                           = run.get("t0", t0)
     run["nts"]                          = run.get("nts")
@@ -868,7 +869,7 @@ def nhd_forcing(
     run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
     run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
     run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
-    '''
+    
     #---------------------------------------------------------------------------
     # Assemble lateral inflow data
     #---------------------------------------------------------------------------
