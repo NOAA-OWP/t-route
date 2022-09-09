@@ -57,7 +57,6 @@ def main_v04(argv):
     showtiming = log_parameters.get("showtiming", None)
     if showtiming:
         task_times = {}
-        #task_times['initial_condition_time'] = 0
         task_times['forcing_time'] = 0
         task_times['route_time'] = 0
         task_times['output_time'] = 0
@@ -91,7 +90,7 @@ def main_v04(argv):
     
     if showtiming:
         network_end_time = time.time()
-        task_times['network_time'] = network_end_time - network_start_time
+        task_times['network_creation_time'] = network_end_time - network_start_time
     
     # Create run_sets: sets of forcing files for each loop
     run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
@@ -213,8 +212,15 @@ def main_v04(argv):
                                      run_parameters,
                                      network,
                                      da_sets[run_set_iterator + 1])
+            
+            if showtiming:
+                forcing_end_time = time.time()
+                task_times['forcing_time'] += forcing_end_time - route_end_time
         
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
+        if showtiming:
+            output_start_time = time.time()
+            
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
                 q0, 
@@ -244,7 +250,7 @@ def main_v04(argv):
         
         if showtiming:
             output_end_time = time.time()
-            task_times['output_time'] += output_end_time - ic_end_time
+            task_times['output_time'] += output_end_time - output_start_time
             
     if showtiming:
         task_times['total_time'] = time.time() - main_start_time
@@ -261,13 +267,6 @@ def main_v04(argv):
                 round(task_times['network_time']/task_times['total_time'] * 100,2)
             )
         )
-        print(
-            'Initial condition handling: {} secs, {} %'\
-            .format(
-                round(task_times['initial_condition_time'],2),
-                round(task_times['initial_condition_time']/task_times['total_time'] * 100,2)
-            )
-        ) 
         print(
             'Forcing array construction: {} secs, {} %'\
             .format(
@@ -294,7 +293,6 @@ def main_v04(argv):
             'Total execution time: {} secs'\
             .format(
                 round(task_times['network_time'],2) +
-                round(task_times['initial_condition_time'],2) +
                 round(task_times['forcing_time'],2) +
                 round(task_times['route_time'],2) +
                 round(task_times['output_time'],2)
