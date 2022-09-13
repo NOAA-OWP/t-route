@@ -3,8 +3,10 @@ import xarray as xr
 import pathlib
 from collections import defaultdict
 import troute.nhd_io as nhd_io
+import troute.nhd_preprocess as nhd_prep
 import pandas as pd
 import time
+from datetime import datetime, timedelta
 
 __showtiming__ = True #FIXME pass flag
 __verbose__ = True #FIXME pass verbosity
@@ -73,8 +75,17 @@ class NHDNetwork(AbstractNetwork):
     """
     
     """
+     __slots__ = ["_dataframe", "_waterbody_connections", "_gages",  
+                 "_terminal_codes", "_connections", "_waterbody_df", 
+                 "_waterbody_types_df", "_independent_networks", 
+                 "_reaches_by_tw", "_reverse_network", "_q0", "_t0", 
+                 "_qlateral", "_waterbody_type_specified",
+                 "_link_lake_crosswalk", "_link_gage_df", "_usgs_lake_gage_crosswalk",
+                 "_usace_lake_gage_crosswalk", "_diffusive_network_data",
+                 "_topobathy", "_refactored_diffusive_domain", "_refactored_reaches",
+                 "_nonrefactored_topobathy", "_segment_index", "_coastal_boundary_depth_df"]
     
-    def __init__(self, supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
+    def __init__(supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, compute_parameters=None, data_assimilation_parameters=None, preprocessing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
         """
         
         """
@@ -86,7 +97,26 @@ class NHDNetwork(AbstractNetwork):
         if __showtiming__:
             start_time = time.time()
         geo_file_path = pathlib.Path(supernetwork_parameters["geo_file_path"])
-        cols = supernetwork_parameters["columns"]
+        cols = supernetwork_parameters.get(
+            'columns', 
+            {
+                'key'       : 'link',
+                'downstream': 'to',
+                'dx'        : 'Length',
+                'n'         : 'n',
+                'ncc'       : 'nCC',
+                's0'        : 'So',
+                'bw'        : 'BtmWdth',
+                'waterbody' : 'NHDWaterbodyComID',
+                'gages'     : 'gages',
+                'tw'        : 'TopWdth',
+                'twcc'      : 'TopWdthCC',
+                'alt'       : 'alt',
+                'musk'      : 'MusK',
+                'musx'      : 'MusX',
+                'cs'        : 'ChSlp',
+            }
+        )
         terminal_code = supernetwork_parameters.get("terminal_code", 0)
         mask = supernetwork_parameters.get("mask_file_path", None)
         mask_layer = supernetwork_parameters.get("mask_layer_string", None)
@@ -97,138 +127,132 @@ class NHDNetwork(AbstractNetwork):
         break_network_at_gages = supernetwork_parameters.get(
             "break_network_at_gages", False
         )
+        
+        #------------------------------------------------
+        # Preprocess network attributes
+        #------------------------------------------------
+        
+        (self._connections,
+         self._dataframe,
+         self._waterbody_connections,
+         self._waterbody_df,
+         self._waterbody_types_df,
+         break_network_at_waterbodies,
+         self._waterbody_type_specified,
+         self._link_lake_crosswalk,
+         self._independent_networks,
+         self._reaches_by_tw,
+         self._reverse_network,
+         self._link_gage_df,
+         self._usgs_lake_gage_crosswalk, 
+         self._usace_lake_gage_crosswalk,
+         self._diffusive_network_data,
+         self._topobathy,
+         self._refactored_diffusive_domain,
+         self._refactored_reaches,
+         self._nonrefactored_topobathy
+        ) = nhd_prep.build_nhd_network(
+            supernetwork_parameters,
+            waterbody_parameters,
+            preprocessing_parameters,
+            compute_parameters,
+            data_assimilation_parameters
+        )
+        
         break_points = {"break_network_at_waterbodies": break_network_at_waterbodies,
                         "break_network_at_gages": break_network_at_gages}
-        with xr.open_dataset(geo_file_path) as ds:
-            self._dataframe = ds.to_dataframe()
         
-        if mask:
-            data_mask = nhd_io.read_mask(
-                pathlib.Path(mask),
-                layer_string=mask_layer,
-            )
-            self._dataframe = self._dataframe.filter(
-                data_mask.iloc[:, mask_key], axis=0
-            )
+        # list of all segments in the domain (MC + diffusive)
+        self._segment_index = self._dataframe.index
+        if self._diffusive_network_data:
+            for tw in self._diffusive_network_data:
+                self._segment_index = self._segment_index.append(
+                    pd.Index(self._diffusive_network_data[tw]['mainstem_segs'])
+                ) 
 
-        self._waterbody_types_df = pd.DataFrame()
-        self._waterbody_df = pd.DataFrame()
         #FIXME the base class constructor is finiky
         #as it requires the _dataframe, then sets some 
         #initial default properties...which, at the moment
         #are used by the subclass constructor.
         #So it needs to be called at just the right spot...
-        super().__init__(cols, terminal_code, break_points)
-        #Load waterbody/reservoir info
-        if waterbody_parameters:
-            #FIXME later, DO ALL LAKE PARAMS BETTER
-            levelpool_params = waterbody_parameters.get('level_pool', None)
-            if not levelpool_params:
-                raise(RuntimeError("No supplied levelpool parameters in routing config"))
-            
-            lake_id = levelpool_params.get("level_pool_waterbody_id", "lake_id")
-            self._waterbody_df = nhd_io.read_level_pool_waterbody_df(
-                levelpool_params["level_pool_waterbody_parameter_file_path"],
-                lake_id,
-                self.waterbody_connections.values()
-            )
-            # Remove duplicate lake_ids and rows
-            self._waterbody_df = (
-                self._waterbody_df.reset_index()
-                .drop_duplicates(subset=lake_id)
-                .set_index(lake_id)
-            )
-            self._waterbody_df["qd0"] = 0.0
-            self._waterbody_df["h0"] = -1e9
-            hybrid_params = waterbody_parameters.get('hybrid_and_rfc', None)
-            try:
-                self._waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                    hybrid_params["reservoir_parameter_file"],
-                    lake_id,
-                    self.waterbody_connections.values(),
-                )
-                # Remove duplicate lake_ids and rows
-                self._waterbody_types_df = (
-                self._waterbody_types_df.reset_index()
-                .drop_duplicates(subset=lake_id)
-                .set_index(lake_id)
-                )
-            except:
-                self._waterbody_types_df = pd.DataFrame()
+        #super().__init__(cols, terminal_code, break_points)
+        
         if __verbose__:
             print("supernetwork connections set complete")
         if __showtiming__:
             print("... in %s seconds." % (time.time() - start_time))
             
+        #-----------------------------------------------------
+        # Set initial waterbody and channel states
+        #-----------------------------------------------------
+        
         if __verbose__:
-            print("setting waterbody initial states ...")
+            print("setting waterbody and channel initial states ...")
         if __showtiming__:
             start_time = time.time()
-        waterbodies_initial_states_df = pd.DataFrame(columns=self._waterbody_df.columns, index=self._waterbody_df.index)
-        waterbodies_initial_states_df['qd0'] = 0.0 #Create the qd0 column
-        waterbodies_initial_states_df['h0'] = -1e9 #Create  the h0 column
-        if restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
-            waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
-                restart_parameters["wrf_hydro_waterbody_restart_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"],
-                restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                restart_parameters[
-                    "wrf_hydro_waterbody_crosswalk_filter_file_field_name"
-                ],
-            )
-
-        #Merge the data, keep the initial states by defining `how="right"`
-        #self._waterbody_df = pd.merge(
-        #    self._waterbody_df, waterbodies_initial_states_df, on="lake_id", suffixes=("_default", None)
-        #)
-        #NJF easier just to copy only what is needed?
-        self._waterbody_df['qd0'] = waterbodies_initial_states_df['qd0'].astype('float32')
-        self._waterbody_df['h0'] = waterbodies_initial_states_df['h0'].astype('float32')
-        print(self._waterbody_df)
+        
+        (self._waterbody_df,
+         self._q0,
+         self._t0,) = nhd_prep.nhd_initial_warmstate_preprocess(
+            break_network_at_waterbodies,
+            restart_parameters,
+            data_assimilation_parameters,
+            self._segment_index,
+            self._waterbody_df,
+            self._link_lake_crosswalk,
+        )
+        
         if __verbose__:
-            print("waterbody initial states complete")
+            print("waterbody and channel initial states complete")
         if __showtiming__:
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
-        # STEP 4: Handle Channel Initial States
-        if __showtiming__:
-            start_time = time.time()
-        if __verbose__:
-            print("setting channel initial states ...")
-        #Get channel restarts
-        channel_restart_file = restart_parameters.get("channel_restart_file", None)
+        
 
-        wrf_hydro_channel_restart_file = restart_parameters.get(
-            "wrf_hydro_channel_restart_file", None
+    def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, cpu_pool):
+        """
+        Assembles model forcings for hydrological lateral inflows and coastal boundary 
+        depths (hybrid simulations). Run this function after network initialization
+        and after any iteration loop in main.
+        """
+        (self._qlateral, 
+         self._coastal_boundary_depth_df
+        ) = nhd_prep.nhd_forcing(
+            run, 
+            forcing_parameters, 
+            hybrid_parameters, 
+            self._segment_index, 
+            cpu_pool,
+            self._t0,
         )
-
-        if channel_restart_file:
-            self._q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
-            self._q0 = self._q0[self._q0.index.isin(self._dataframe.index)]
-            # TODO is this the same???
-            #self._q0 = self._q0.loc[self._dataframe.index]
-        elif wrf_hydro_channel_restart_file:
-
-            self._q0 = nhd_io.get_channel_restart_from_wrf_hydro(
-                restart_parameters["wrf_hydro_channel_restart_file"],
-                restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-                restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"],
-                restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"],
-                restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"],
-                restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"],
-            )
-            self._q0 = self._q0[self._q0.index.isin(self._dataframe.index)]
-            # TODO is this the same???
-            #self._q0 = self._q0.loc[self._dataframe.index]
-            self.t0 = nhd_io.get_param_str(wrf_hydro_channel_restart_file, "Restart_Time")
-        if __verbose__:
-          print("channel initial states complete")
-        if __showtiming__:
-          print("... in %s seconds." % (time.time() - start_time))
-        #Make sure waterbody parameter data is the correct type
-        #self._waterbody_df = self._waterbody_df[['']]
-        self._qlateral = read_qlats(forcing_parameters, self._dataframe.index)
+    
+    def new_nhd_q0(self, run_results):
+        """
+        Prepare a new q0 dataframe with initial flow and depth to act as
+        a warmstate for the next simulation chunk.
+        """
+        self._q0 = pd.concat(
+            [
+                pd.DataFrame(
+                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
+                )
+                for r in run_results
+            ],
+            copy=False,
+        )
+    
+    def update_waterbody_water_elevation(self):
+        """
+        Update the starting water_elevation of each lake/reservoir
+        with depth values from q0
+        """
+        self._waterbody_df.update(self._q0)
+    
+    def new_t0(self, dt, nts):
+        """
+        Update t0 value for next loop iteration
+        """
+        self._t0 += timedelta(seconds = dt * nts)
 
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
         """Extract waterbody mapping from dataframe.
@@ -259,3 +283,99 @@ class NHDNetwork(AbstractNetwork):
     @property
     def waterbody_null(self):
         return -9999
+    
+    @property
+    def param_df(self):
+        return self._dataframe
+
+    @property
+    def wbody_conn(self):
+        return self._waterbody_connections
+
+    @property
+    def terminal_codes(self):
+        return self._terminal_codes
+
+    @property
+    def connections(self):
+        return self._connections
+
+    @property
+    def waterbody_df(self):
+        return self._waterbody_df
+
+    @property
+    def waterbody_types_df(self):
+        return self._waterbody_types_df
+    
+    @property
+    def independent_networks(self):
+        return self._independent_networks
+    
+    @property
+    def reaches_by_tw(self):
+        return self._reaches_by_tw
+    
+    @property
+    def rconn(self):
+        return self._reverse_network
+    
+    @property
+    def q0(self):
+        return self._q0
+    
+    @property
+    def t0(self):
+        return self._t0
+    
+    @property
+    def qlats(self):
+        return self._qlateral
+    
+    @property
+    def waterbody_type_specified(self):
+        return self._waterbody_type_specified
+    
+    @property
+    def link_lake_crosswalk(self):
+        return self._link_lake_crosswalk
+    
+    @property
+    def link_gage_df(self):
+        return self._link_gage_df
+    
+    @property
+    def usgs_lake_gage_crosswalk(self):
+        return self._usgs_lake_gage_crosswalk
+    
+    @property
+    def usace_lake_gage_crosswalk(self):
+        return self._usace_lake_gage_crosswalk
+    
+    @property
+    def diffusive_network_data(self):
+        return self._diffusive_network_data
+    
+    @property
+    def topobathy(self):
+        return self._topobathy
+    
+    @property
+    def refactored_diffusive_domain(self):
+        return self._refactored_diffusive_domain
+    
+    @property
+    def refactored_reaches(self):
+        return self._refactored_reaches
+    
+    @property
+    def nonrefactored_topobathy(self):
+        return self._nonrefactored_topobathy
+    
+    @property
+    def segment_index(self):
+        return self._segment_index
+    
+    @property
+    def coastal_boundary_depth_df(self):
+        return self._coastal_boundary_depth_df
