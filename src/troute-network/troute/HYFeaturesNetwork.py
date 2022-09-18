@@ -7,6 +7,8 @@ import time
 import re
 import troute.nhd_io as nhd_io #FIXME
 from itertools import chain
+import geopandas as gpd
+from pathlib import Path
 
 __verbose__ = False
 __showtiming__ = False
@@ -16,6 +18,13 @@ def node_key_func_nexus(x):
 
 def node_key_func_wb(x):
     return int(x[3:])
+
+def numeric_id(flowpath):
+    id = flowpath['id'].split('-')[-1]
+    toid = flowpath['toid'].split('-')[-1]
+    flowpath['id'] = int(id)
+    flowpath['toid'] = int(toid)
+    return flowpath
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -69,7 +78,7 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     id_regex = re.compile(r".*nex-(\d+)_.*.csv")
     nexuses_flows_df = pd.concat(
             #Read the nexus csv file
-            (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(
+            (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c', skipinitialspace=True, parse_dates=True).rename(
                 #Rename the flow column to the id of the nexus
                 columns={2:int(id_regex.match(f.name).group(1))})
             for f in nexus_files_list #Build the generator for each required file
@@ -139,21 +148,31 @@ def read_nexus_file(nexus_file_path):
 
     return nexus_to_downstream_flowpath_dict
 
-def read_json(file_path):
+def read_json(file_path, edge_list):
     dfs = []
-    with open(file_path) as data_file:
-        json_data = json.load(data_file)
-
-        def node_key_func(x):
-            return int(x[3:])
-        
-        for key_wb, value_params in json_data.items():
-            df = pd.json_normalize(value_params)
-            df['ID'] = node_key_func(key_wb)
-            dfs.append(df)
-    df_main = pd.concat(dfs, ignore_index=True)
+    with open(edge_list) as edge_file:
+        edge_data = json.load(edge_file)
+        edge_map = {}
+        for id_dict in edge_data:
+            edge_map[ id_dict['id'] ] = id_dict['toid']
+        with open(file_path) as data_file:
+            json_data = json.load(data_file)  
+            for key_wb, value_params in json_data.items():
+                df = pd.json_normalize(value_params)
+                df['id'] = key_wb
+                df['toid'] = edge_map[key_wb]
+                dfs.append(df)
+        df_main = pd.concat(dfs, ignore_index=True)
 
     return df_main
+
+def read_geopkg(file_path):
+    flowpaths = gpd.read_file(file_path, layer="flowpaths")
+    attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
+    #merge all relevant data into a single dataframe
+    flowpaths = pd.merge(flowpaths, attributes, on='id')
+
+    return flowpaths
 
 class HYFeaturesNetwork(AbstractNetwork):
     """
@@ -172,7 +191,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         if __showtiming__:
             start_time = time.time()
         geo_file_path = supernetwork_parameters["geo_file_path"]
-        nexus_file_path = supernetwork_parameters["ngen_nexus_file"]
         cols = supernetwork_parameters["columns"]
         terminal_code = supernetwork_parameters.get("terminal_code", 0)
         break_network_at_waterbodies = supernetwork_parameters.get(
@@ -183,16 +201,28 @@ class HYFeaturesNetwork(AbstractNetwork):
         )
         break_points = {"break_network_at_waterbodies": break_network_at_waterbodies,
                         "break_network_at_gages": break_network_at_gages}
-        #df = pd.read_json(geo_file_path, orient="index")
-        #print(df)
-        #raise( "BREAK" )
-        self._dataframe = read_json(geo_file_path)
-        self._dataframe['toID'] = self._dataframe['toID'].apply(node_key_func_nexus)
-        #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
-        #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
-        self._flowpath_dict = read_nexus_file(
-            pathlib.Path(nexus_file_path)
-        )
+        file_type = Path(geo_file_path).suffix
+        if(  file_type == '.gpkg' ):
+            self._dataframe = read_geopkg(geo_file_path)
+            #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
+            #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
+        elif( file_type == '.json') :
+            #df = pd.read_json(geo_file_path, orient="index")
+            #print(df)
+            #raise( "BREAK" )
+            edge_list = supernetwork_parameters['flowpath_edge_list']
+            # attribute_file_path = supernetwork_parameters['flowpath_attributes']
+            self._dataframe = read_json(geo_file_path, edge_list)
+            #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
+            #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
+        else:
+            raise RuntimeError("Unsupported file type: {}".format(file_type))
+
+        #Don't need the string prefix anymore, drop it
+        mask = ~ self._dataframe['toid'].str.startswith("tnex")
+        self._dataframe = self._dataframe.apply(numeric_id, axis=1)
+        #make the flowpath linkage, ignore the terminal nexus
+        self._flowpath_dict = dict(zip(self._dataframe.loc[mask].toid, self._dataframe.loc[mask].id))
         self._waterbody_types_df = pd.DataFrame()
         self._waterbody_df = pd.DataFrame()
         #FIXME the base class constructor is finiky
