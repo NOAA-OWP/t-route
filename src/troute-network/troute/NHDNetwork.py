@@ -1,4 +1,4 @@
-from  .AbstractNetwork import AbstractNetwork
+from .AbstractNetwork import AbstractNetwork
 import xarray as xr
 import pathlib
 from collections import defaultdict
@@ -75,13 +75,13 @@ class NHDNetwork(AbstractNetwork):
     """
     
     """
-     __slots__ = ["_waterbody_type_specified", "_link_lake_crosswalk", "_link_gage_df",
-                  "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
-                  "_diffusive_network_data", "_topobathy", "_refactored_diffusive_domain",
-                  "_refactored_reaches", "_nonrefactored_topobathy", "_segment_index",
-                  "_coastal_boundary_depth_df"]
+    __slots__ = ["_waterbody_type_specified", "_link_lake_crosswalk", "_link_gage_df",
+                 "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
+                 "_diffusive_network_data", "_topobathy", "_refactored_diffusive_domain",
+                 "_refactored_reaches", "_nonrefactored_topobathy", "_segment_index",
+                 "_coastal_boundary_depth_df"]
     
-    def __init__(supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, compute_parameters=None, data_assimilation_parameters=None, preprocessing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
+    def __init__(self, supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, compute_parameters=None, data_assimilation_parameters=None, preprocessing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
         """
         
         """
