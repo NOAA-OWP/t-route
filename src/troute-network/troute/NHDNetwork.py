@@ -75,15 +75,11 @@ class NHDNetwork(AbstractNetwork):
     """
     
     """
-     __slots__ = ["_dataframe", "_waterbody_connections", "_gages",  
-                 "_terminal_codes", "_connections", "_waterbody_df", 
-                 "_waterbody_types_df", "_independent_networks", 
-                 "_reaches_by_tw", "_reverse_network", "_q0", "_t0", 
-                 "_qlateral", "_waterbody_type_specified",
-                 "_link_lake_crosswalk", "_link_gage_df", "_usgs_lake_gage_crosswalk",
-                 "_usace_lake_gage_crosswalk", "_diffusive_network_data",
-                 "_topobathy", "_refactored_diffusive_domain", "_refactored_reaches",
-                 "_nonrefactored_topobathy", "_segment_index", "_coastal_boundary_depth_df"]
+     __slots__ = ["_waterbody_type_specified", "_link_lake_crosswalk", "_link_gage_df",
+                  "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
+                  "_diffusive_network_data", "_topobathy", "_refactored_diffusive_domain",
+                  "_refactored_reaches", "_nonrefactored_topobathy", "_segment_index",
+                  "_coastal_boundary_depth_df"]
     
     def __init__(supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, compute_parameters=None, data_assimilation_parameters=None, preprocessing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
         """
@@ -96,37 +92,7 @@ class NHDNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if __showtiming__:
             start_time = time.time()
-        geo_file_path = pathlib.Path(supernetwork_parameters["geo_file_path"])
-        cols = supernetwork_parameters.get(
-            'columns', 
-            {
-                'key'       : 'link',
-                'downstream': 'to',
-                'dx'        : 'Length',
-                'n'         : 'n',
-                'ncc'       : 'nCC',
-                's0'        : 'So',
-                'bw'        : 'BtmWdth',
-                'waterbody' : 'NHDWaterbodyComID',
-                'gages'     : 'gages',
-                'tw'        : 'TopWdth',
-                'twcc'      : 'TopWdthCC',
-                'alt'       : 'alt',
-                'musk'      : 'MusK',
-                'musx'      : 'MusX',
-                'cs'        : 'ChSlp',
-            }
-        )
-        terminal_code = supernetwork_parameters.get("terminal_code", 0)
-        mask = supernetwork_parameters.get("mask_file_path", None)
-        mask_layer = supernetwork_parameters.get("mask_layer_string", None)
-        mask_key = supernetwork_parameters.get("mask_key", None)
-        break_network_at_waterbodies = supernetwork_parameters.get(
-        "break_network_at_waterbodies", False
-        )
-        break_network_at_gages = supernetwork_parameters.get(
-            "break_network_at_gages", False
-        )
+        
         
         #------------------------------------------------
         # Preprocess network attributes
@@ -159,9 +125,6 @@ class NHDNetwork(AbstractNetwork):
             data_assimilation_parameters
         )
         
-        break_points = {"break_network_at_waterbodies": break_network_at_waterbodies,
-                        "break_network_at_gages": break_network_at_gages}
-        
         # list of all segments in the domain (MC + diffusive)
         self._segment_index = self._dataframe.index
         if self._diffusive_network_data:
@@ -170,12 +133,44 @@ class NHDNetwork(AbstractNetwork):
                     pd.Index(self._diffusive_network_data[tw]['mainstem_segs'])
                 ) 
 
+        '''
         #FIXME the base class constructor is finiky
         #as it requires the _dataframe, then sets some 
         #initial default properties...which, at the moment
         #are used by the subclass constructor.
         #So it needs to be called at just the right spot...
-        #super().__init__(cols, terminal_code, break_points)
+        cols = supernetwork_parameters.get(
+            'columns', 
+            {
+                'key'       : 'link',
+                'downstream': 'to',
+                'dx'        : 'Length',
+                'n'         : 'n',
+                'ncc'       : 'nCC',
+                's0'        : 'So',
+                'bw'        : 'BtmWdth',
+                'waterbody' : 'NHDWaterbodyComID',
+                'gages'     : 'gages',
+                'tw'        : 'TopWdth',
+                'twcc'      : 'TopWdthCC',
+                'alt'       : 'alt',
+                'musk'      : 'MusK',
+                'musx'      : 'MusX',
+                'cs'        : 'ChSlp',
+            }
+        )
+        terminal_code = supernetwork_parameters.get("terminal_code", 0)
+        break_network_at_waterbodies = supernetwork_parameters.get(
+        "break_network_at_waterbodies", False
+        )
+        break_network_at_gages = supernetwork_parameters.get(
+            "break_network_at_gages", False
+        )
+        
+        break_points = {"break_network_at_waterbodies": break_network_at_waterbodies,
+                        "break_network_at_gages": break_network_at_gages}
+        super().__init__(cols, terminal_code, break_points)
+        '''
         
         if __verbose__:
             print("supernetwork connections set complete")
@@ -283,18 +278,10 @@ class NHDNetwork(AbstractNetwork):
     @property
     def waterbody_null(self):
         return -9999
-    
-    @property
-    def param_df(self):
-        return self._dataframe
 
     @property
     def wbody_conn(self):
         return self._waterbody_connections
-
-    @property
-    def terminal_codes(self):
-        return self._terminal_codes
 
     @property
     def connections(self):
