@@ -287,42 +287,6 @@ class NHDNetwork(AbstractNetwork):
     @property
     def wbody_conn(self):
         return self._waterbody_connections
-
-    @property
-    def connections(self):
-        return self._connections
-
-    @property
-    def waterbody_df(self):
-        return self._waterbody_df
-
-    @property
-    def waterbody_types_df(self):
-        return self._waterbody_types_df
-    
-    @property
-    def independent_networks(self):
-        return self._independent_networks
-    
-    @property
-    def reaches_by_tw(self):
-        return self._reaches_by_tw
-    
-    @property
-    def rconn(self):
-        return self._reverse_network
-    
-    @property
-    def q0(self):
-        return self._q0
-    
-    @property
-    def t0(self):
-        return self._t0
-    
-    @property
-    def qlats(self):
-        return self._qlateral
     
     @property
     def waterbody_type_specified(self):
