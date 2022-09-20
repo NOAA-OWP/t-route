@@ -823,6 +823,7 @@ def nhd_forcing(
     segment_index,
     cpu_pool,
     t0,
+    coastal_boundary_depth_df,
 ):
     """
     Assemble model forcings. Forcings include hydrological lateral inflows (qlats)
@@ -896,25 +897,24 @@ def nhd_forcing(
     #---------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
     #---------------------------------------------------------------------
-    coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
-    coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
-
-    if coastal_boundary_elev_files:
-        start_time = time.time()    
-        LOG.info("creating coastal dataframe ...")
+    # Run if coastal_boundary_depth_df has not already been created:
+    if coastal_boundary_depth_df.empty:
+        coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
+        coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
         
-        coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
-        coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
-                                                    coastal_boundary_elev_files,
-                                                    coastal_boundary_domain,
-                                                    )
+        if coastal_boundary_elev_files:
+            start_time = time.time()    
+            LOG.info("creating coastal dataframe ...")
+            
+            coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
+            coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
+                coastal_boundary_elev_files,
+                coastal_boundary_domain,
+            )
                 
-        LOG.debug(
-            "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
-            % (time.time() - start_time)
-        )            
-    else:
-        coastal_boundary_depth_df = pd.DataFrame()
+            LOG.debug(
+                "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
+                % (time.time() - start_time)
+            )            
 
-    
     return qlats_df, coastal_boundary_depth_df

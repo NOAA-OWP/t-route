@@ -203,6 +203,10 @@ class NHDNetwork(AbstractNetwork):
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
         
+        # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
+        # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
+        self._coastal_boundary_depth_df = pd.DataFrame()
+        
 
     def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, cpu_pool):
         """
@@ -219,6 +223,7 @@ class NHDNetwork(AbstractNetwork):
             self._segment_index, 
             cpu_pool,
             self._t0,
+            self._coastal_boundary_depth_df,
         )
     
     def new_nhd_q0(self, run_results):
