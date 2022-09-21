@@ -2032,7 +2032,7 @@ if __name__ == "__main__":
     v_parser.add_argument(
         "-V",
         "--input-version",
-        default=3,
+        default=4,
         nargs="?",
         choices=[2, 3, 4],
         type=int,

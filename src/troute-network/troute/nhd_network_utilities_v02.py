@@ -639,7 +639,6 @@ def build_forcing_sets(
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
         
     # TODO: Throw errors if insufficient input data are available
-
     if run_sets:
         
         # append final_timestamp variable to each set_list
@@ -654,8 +653,10 @@ def build_forcing_sets(
             
     elif qlat_input_folder:
         
-        # Construct run_set dictionary from user-specified parameters
-    
+       ## Construct run_set dictionary from user-specified parameters
+        
+        # Unpack user-specified forcing parameters
+ 
         # get the first and seconded files from an ordered list of all forcing files
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
@@ -729,7 +730,6 @@ def build_forcing_sets(
             nts_last = nts_accum
             k += max_loop_size
             j += 1
-    
     return run_sets
 
 def build_qlateral_array(
@@ -740,7 +740,6 @@ def build_qlateral_array(
     file_run_size=None,
 ):
     # TODO: set default/optional arguments
-
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
     nts = forcing_parameters.get("nts", 1)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)

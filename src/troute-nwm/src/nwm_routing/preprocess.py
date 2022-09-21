@@ -893,12 +893,10 @@ def nwm_forcing_preprocess(
     run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
 
     #---------------------------------------------------------------------------
-    # Assemble lateral inflow data
+    # Assemble lateral inflow data <- *update 8/29/2022: qlats_df is separately computed in NHDNetwork.py
     #---------------------------------------------------------------------------
-    
     start_time = time.time()
     LOG.info("Creating a DataFrame of lateral inflow forcings ...")
-
     qlats_df = nnu.build_qlateral_array(
         run,
         cpu_pool,
