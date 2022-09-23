@@ -118,7 +118,7 @@ def main_v04(argv):
                               run_parameters,
                               waterbody_parameters,
                               network,
-                              da_run[0])
+                              da_sets[0])
     
     if showtiming:
         forcing_end_time = time.time()
