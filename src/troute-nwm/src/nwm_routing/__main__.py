@@ -173,7 +173,7 @@ def main_v04(argv):
             data_assimilation.reservoir_usgs_param_df,
             data_assimilation.reservoir_usace_df,
             data_assimilation.reservoir_usace_param_df,
-            data_assimilation.da_parameter_dict,
+            data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
             network.waterbody_df,
@@ -228,7 +228,7 @@ def main_v04(argv):
             
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
-                q0, 
+                network.q0, 
                 network.waterbody_df, 
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
