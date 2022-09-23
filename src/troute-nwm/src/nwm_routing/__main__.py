@@ -8,6 +8,10 @@ from collections import defaultdict
 from pathlib import Path
 import concurrent.futures
 
+from troute.NHDNetwork import NHDNetwork
+from troute.HYFeaturesNetwork import HYFeaturesNetwork
+from troute.DataAssimilation import AllDA
+
 import numpy as np
 import pandas as pd
 
@@ -28,6 +32,962 @@ import troute.routing.diffusive_utils as diff_utils
 
 LOG = logging.getLogger('')
 
+'''
+High level orchestration of ngen t-route simulations for NWM application
+'''
+def main_v04(argv):
+
+    args = _handle_args_v03(argv)
+    
+    # unpack user inputs
+    (
+        log_parameters,
+        preprocessing_parameters,
+        supernetwork_parameters,
+        waterbody_parameters,
+        compute_parameters,
+        forcing_parameters,
+        restart_parameters,
+        hybrid_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    ) = _input_handler_v03(args)
+    run_parameters = {
+        'dt': forcing_parameters.get('dt'),
+        'nts': forcing_parameters.get('nts'),
+        'cpu_pool': compute_parameters.get('cpu_pool')
+    }
+
+    showtiming = log_parameters.get("showtiming", None)
+    if showtiming:
+        task_times = {}
+        task_times['forcing_time'] = 0
+        task_times['route_time'] = 0
+        task_times['output_time'] = 0
+        main_start_time = time.time()
+    
+    cpu_pool = compute_parameters.get("cpu_pool", None)
+ 
+    # Build routing network data objects. Network data objects specify river 
+    # network connectivity, channel geometry, and waterbody parameters. Also
+    # perform initial warmstate preprocess.
+    if showtiming:
+        network_start_time = time.time()
+
+    if "ngen_nexus_file" in supernetwork_parameters:
+         network = HYFeaturesNetwork(supernetwork_parameters,
+                                    waterbody_parameters=waterbody_parameters,
+                                    restart_parameters=restart_parameters,
+                                    forcing_parameters=forcing_parameters,
+                                    verbose=verbose, showtiming=showtiming) 
+    else:
+        network = NHDNetwork(supernetwork_parameters,
+                             waterbody_parameters,
+                             restart_parameters,
+                             forcing_parameters,
+                             compute_parameters,
+                             data_assimilation_parameters,
+                             preprocessing_parameters,
+                             verbose=True,
+                             showtiming=showtiming,          
+                            )
+    
+    if showtiming:
+        network_end_time = time.time()
+        task_times['network_creation_time'] = network_end_time - network_start_time
+    
+    # Create run_sets: sets of forcing files for each loop
+    run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
+
+    # Create da_sets: sets of TimeSlice files for each loop
+    if "data_assimilation_parameters" in compute_parameters:
+        da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
+        
+    # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
+    if "wrf_hydro_parity_check" in output_parameters:
+        parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
+    else:
+        parity_sets = []
+    
+    # Create forcing data within network object for first loop iteration
+    network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, cpu_pool)
+        
+    # Create data assimilation object from da_sets for first loop iteration
+    data_assimilation = AllDA(data_assimilation_parameters,
+                              run_parameters,
+                              waterbody_parameters,
+                              network,
+                              da_sets[0])
+    
+    if showtiming:
+        forcing_end_time = time.time()
+        task_times['forcing_time'] += forcing_end_time - network_end_time
+    
+
+    parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
+    subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
+    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
+    compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
+    assume_short_ts = compute_parameters.get("assume_short_ts", False)
+    return_courant = compute_parameters.get("return_courant", False)
+        
+    # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
+    # on first iteration of for loop only. For additional loops this will be passed
+    # to function from inital loop.     
+    subnetwork_list = [None, None, None]
+
+    for run_set_iterator, run in enumerate(run_sets):
+        
+        t0 = run.get("t0")
+        dt = run.get("dt")
+        nts = run.get("nts")
+
+        if parity_sets:
+            parity_sets[run_set_iterator]["dt"] = dt
+            parity_sets[run_set_iterator]["nts"] = nts
+
+        if showtiming:
+            route_start_time = time.time()
+
+        run_results = nwm_route(
+            network.connections, 
+            network.rconn, 
+            network.wbody_conn, 
+            network.reaches_by_tw,
+            parallel_compute_method,
+            compute_kernel,
+            subnetwork_target_size,
+            cpu_pool,
+            network.t0,
+            dt,
+            nts,
+            qts_subdivisions,
+            network.independent_networks, 
+            network.param_df,
+            network.q0,
+            network.qlats,
+            data_assimilation.usgs_df,
+            data_assimilation.lastobs_df,
+            data_assimilation.reservoir_usgs_df,
+            data_assimilation.reservoir_usgs_param_df,
+            data_assimilation.reservoir_usace_df,
+            data_assimilation.reservoir_usace_param_df,
+            data_assimilation.assimilation_parameters,
+            assume_short_ts,
+            return_courant,
+            network.waterbody_df,
+            waterbody_parameters,
+            network.waterbody_types_df, 
+            network.waterbody_type_specified,
+            network.diffusive_network_data,
+            network.topobathy,
+            network.refactored_diffusive_domain,
+            network.refactored_reaches,
+            subnetwork_list,
+            network.coastal_boundary_depth_df,
+            network.nonrefactored_topobathy,
+        )
+        
+        # returns list, first item is run result, second item is subnetwork items
+        subnetwork_list = run_results[1]
+        run_results = run_results[0]
+        
+        if showtiming:
+            route_end_time = time.time()
+            task_times['route_time'] += route_end_time - route_start_time
+
+        # create initial conditions for next loop itteration
+        network.new_nhd_q0(run_results)
+        network.update_waterbody_water_elevation()               
+        
+        if run_set_iterator < len(run_sets) - 1:
+            # update t0
+            network.new_t0(dt,nts)
+            
+            # update forcing data
+            network.assemble_forcings(run_sets[run_set_iterator + 1],
+                                      forcing_parameters,
+                                      hybrid_parameters,
+                                      cpu_pool)
+            
+            # get reservoir DA initial parameters for next loop iteration
+            data_assimilation.update(run_results,
+                                     data_assimilation_parameters,
+                                     run_parameters,
+                                     network,
+                                     da_sets[run_set_iterator + 1])
+            
+            if showtiming:
+                forcing_end_time = time.time()
+                task_times['forcing_time'] += forcing_end_time - route_end_time
+        
+        # TODO move the conditional call to write_lite_restart to nwm_output_generator.
+        if showtiming:
+            output_start_time = time.time()
+            
+        if "lite_restart" in output_parameters:
+            nhd_io.write_lite_restart(
+                network.q0, 
+                network.waterbody_df, 
+                t0 + timedelta(seconds = dt * nts), 
+                output_parameters['lite_restart']
+            )
+        
+        nwm_output_generator(
+            run,
+            run_results,
+            supernetwork_parameters,
+            output_parameters,
+            parity_parameters,
+            restart_parameters,
+            parity_sets[run_set_iterator] if parity_parameters else {},
+            qts_subdivisions,
+            compute_parameters.get("return_courant", False),
+            cpu_pool,
+            network.waterbody_df,
+            network.waterbody_types_df,
+            data_assimilation_parameters,
+            data_assimilation.lastobs_df,
+            network.link_gage_df,
+            network.link_lake_crosswalk,
+        )
+        
+        if showtiming:
+            output_end_time = time.time()
+            task_times['output_time'] += output_end_time - output_start_time
+            
+    if showtiming:
+        task_times['total_time'] = time.time() - main_start_time
+
+    LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
+    
+    if showtiming:
+        print('************ TIMING SUMMARY ************')
+        print('----------------------------------------')
+        print(
+            'Network graph construction: {} secs, {} %'\
+            .format(
+                round(task_times['network_time'],2),
+                round(task_times['network_time']/task_times['total_time'] * 100,2)
+            )
+        )
+        print(
+            'Forcing array construction: {} secs, {} %'\
+            .format(
+                round(task_times['forcing_time'],2),
+                round(task_times['forcing_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Routing computations: {} secs, {} %'\
+            .format(
+                round(task_times['route_time'],2),
+                round(task_times['route_time']/task_times['total_time'] * 100,2)
+            )
+        ) 
+        print(
+            'Output writing: {} secs, {} %'\
+            .format(
+                round(task_times['output_time'],2),
+                round(task_times['output_time']/task_times['total_time'] * 100,2)
+            )
+        )
+        print('----------------------------------------')
+        print(
+            'Total execution time: {} secs'\
+            .format(
+                round(task_times['network_time'],2) +
+                round(task_times['forcing_time'],2) +
+                round(task_times['route_time'],2) +
+                round(task_times['output_time'],2)
+            )
+        ) 
+
+
+'''
+NGEN functions (_v02)
+'''
+def _handle_args_v02(argv):
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--debuglevel",
+        help="Set the debuglevel",
+        dest="debuglevel",
+        choices=[0, 1, 2, 3],
+        default=0,
+        type=int,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Verbose output (leave blank for quiet output)",
+        dest="verbose",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--qlat-dt",
+        "--qlateral-time-step",
+        help="Set the default qlateral timestep length",
+        dest="qdt",
+        default=3600,
+    )
+    parser.add_argument(
+        "--qN",
+        "--qts-subdivisions",
+        help="number of simulation timesteps per qlateral timestep",
+        dest="qts_subdivisions",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--dt",
+        "--simulation-time-step",
+        help="Set the default simulation timestep length",
+        dest="dt",
+        default=300,
+    )
+    parser.add_argument(
+        "--nts",
+        "--number-of-simulation-timesteps",
+        help="Set the number of timesteps to execute. If used with ql_file or ql_folder, nts must be less than len(ql) x qN.",
+        dest="nts",
+        default=144,
+        type=int,
+    )
+
+    # change this so after --test, the user enters a test choice
+    parser.add_argument(
+        "--test",
+        help="Select a test case, routing results will be compared against WRF hydro for parity",
+        choices=["pocono1"],
+        dest="test_case",
+    )
+
+    parser.add_argument(
+        "--sts",
+        "--assume-short-ts",
+        help="Use the previous timestep value for upstream flow",
+        dest="assume_short_ts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--courant",
+        "--return-courant-metrics",
+        help="Return Courant evaluation metrics for each segment/timestep",
+        dest="return_courant",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-ocsv",
+        "--write-output-csv",
+        nargs="?",
+        help="Write csv output files to this folder (omit flag for no csv writing)",
+        dest="csv_output_folder",
+        const="../../test/output/text",
+    )
+    parser.add_argument(
+        "-t",
+        "--showtiming",
+        help="Set the showtiming (leave blank for no timing information)",
+        dest="showtiming",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-w",
+        "--break-at-waterbodies",
+        help="Use the waterbodies in the route-link dataset to divide the computation (leave blank for no splitting)",
+        dest="break_network_at_waterbodies",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--parallel",
+        nargs="?",
+        help="Use the parallel computation engine (omit flag for serial computation)",
+        dest="parallel_compute_method",
+        const="by-network",
+    )
+    parser.add_argument(
+        "--subnet-size",
+        help="Set the target size (number of segments) for grouped subnetworks.",
+        dest="subnetwork_target_size",
+        default=-1,
+        type=int,
+    )
+    parser.add_argument(
+        "--cpu-pool",
+        help="Assign the number of cores to multiprocess across.",
+        dest="cpu_pool",
+        type=int,
+        default=-1,
+    )
+    parser.add_argument(
+        "--compute-method",
+        nargs="?",
+        help="Use the cython version of the compute_network code [options: 'V02-caching'; 'V02-structured'; 'V02-structured-obj' ... ).",
+        dest="compute_method",
+        default="VO2-caching",
+    )
+    supernetwork_arg_group = parser.add_mutually_exclusive_group()
+    supernetwork_arg_group.add_argument(
+        "-n",
+        "--supernetwork",
+        help="Choose from among the pre-programmed supernetworks (Pocono_TEST1, Pocono_TEST2, LowerColorado_Conchos_FULL_RES, Brazos_LowerColorado_ge5, Brazos_LowerColorado_FULL_RES, Brazos_LowerColorado_Named_Streams, CONUS_ge5, Mainstems_CONUS, CONUS_Named_Streams, CONUS_FULL_RES_v20)",
+        choices=[
+            "Pocono_TEST1",
+            "Pocono_TEST2",
+            "LowerColorado_Conchos_FULL_RES",
+            "Brazos_LowerColorado_ge5",
+            "Brazos_LowerColorado_FULL_RES",
+            "Brazos_LowerColorado_Named_Streams",
+            "CONUS_ge5",
+            "Mainstems_CONUS",
+            "CONUS_Named_Streams",
+            "CONUS_FULL_RES_v20",
+            "CapeFear_FULL_RES",
+            "Florence_FULL_RES",
+        ],
+        # TODO: accept multiple or a Path (argparse Action perhaps)
+        # action='append',
+        # nargs=1,
+        dest="supernetwork",
+        default="Pocono_TEST1",
+    )
+    supernetwork_arg_group.add_argument(
+        "-f",
+        "--custom-input-file",
+        dest="custom_input_file",
+        help="OR... please enter the path of a .yaml or .json file containing a custom supernetwork information. See for example test/input/yaml/CustomInput.yaml and test/input/json/CustomInput.json.",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-file",
+        dest="wrf_hydro_channel_restart_file",
+        help="provide a WRF-Hydro channel warm state file (may be the same as waterbody restart file)",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-ID-crosswalk-file",
+        dest="wrf_hydro_channel_ID_crosswalk_file",
+        help="provide an xarray-readable file that defines the order of the outputs in the channel restart file. Specify the ID field with --wrf_hydro_channel_ID_crosswalk_file_field_name",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-ID-crosswalk-file-field-name",
+        dest="wrf_hydro_channel_ID_crosswalk_file_field_name",
+        help="Name of the column providing the channel segment IDs in the channel crosswalk file",
+        default="ID",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-upstream-flow-field-name",
+        dest="wrf_hydro_channel_restart_upstream_flow_field_name",
+        help="Name of the column providing the upstream flow at the beginning of the simulation.",
+        default="qlink1",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-downstream-flow-field-name",
+        dest="wrf_hydro_channel_restart_downstream_flow_field_name",
+        help="Name of the column providing the downstream flow at the beginning of the simulation.",
+        default="qlink2",
+    )
+    parser.add_argument(
+        "--wrf-hydro-channel-restart-depth-flow-field-name",
+        dest="wrf_hydro_channel_restart_depth_flow_field_name",
+        help="Name of the column providing the depth of flow at the beginning of the simulation.",
+        default="hlink",
+    )
+    # TODO: Refine exclusivity of ql args (currently not going to accept more than one arg; more than one is needed for qlw, for instance.)
+    ql_arg_group = parser.add_mutually_exclusive_group()
+    ql_arg_group.add_argument(
+        "--qlc",
+        "--constant_qlateral",
+        help="Constant qlateral to apply to all time steps at all segments",
+        dest="qlat_const",
+        type=float,
+        default=10,
+    )
+    ql_arg_group.add_argument(
+        "--qlf",
+        "--single_file_qlateral",
+        help="QLaterals arranged with segment IDs as rows and timesteps as columns in a single .csv",
+        dest="qlat_input_file",
+    )
+    ql_arg_group.add_argument(
+        "--qlw",
+        "--ql_wrf_hydro_folder",
+        help="QLaterals in separate netcdf files as found in standard WRF-Hydro output",
+        dest="qlat_input_folder",
+    )
+    ql_arg_group.add_argument(
+        "--qlic",
+        "--qlat_file_index_col",
+        help="QLateral index column number",
+        dest="qlat_file_index_col",
+        default="feature_id",
+    )
+    ql_arg_group.add_argument(
+        "--qlvc",
+        "--qlat_file_value_col",
+        help="QLateral value column number",
+        dest="qlat_file_value_col",
+        default="q_lateral",
+    )
+    parser.add_argument(
+        "--qlat_file_pattern_filter",
+        help="Provide a globbing pattern to identify files in the Wrf-Hydro qlateral output file folder",
+        dest="qlat_file_pattern_filter",
+        default="q_lateral",
+    )
+    parser.add_argument("--ql", help="QLat input data", dest="ql", default=None)
+
+    parser.add_argument(
+        "--data_assimilation_folder_path",
+        help="Provide a path to a folder containing the usgs time slice files",
+        dest="data_assimilation_parameters_folder",
+        default=None,
+    )
+    parser.add_argument(
+        "--data_assimilation_filter",
+        help="Provide a glob pattern filter for ncdf files (e.g., 2020-03-21*.usgsTimeSlice.ncdf)",
+        dest="data_assimilation_filter",
+        default=None,
+    )
+    parser.add_argument(
+        "--data_assimilation_csv",
+        help="Provide a csv with the timeslices prepared for use",
+        dest="data_assimilation_csv",
+        default=None,
+    )
+    return parser.parse_args(argv)
+
+
+def main_v02(argv):
+    args = _handle_args_v02(argv)
+    (
+        supernetwork_parameters,
+        waterbody_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+    ) = _input_handler_v02(args)
+
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    if showtiming:
+        main_start_time = time.time()
+
+    _results, _link_gage_df = _run_everything_v02(
+        supernetwork_parameters,
+        waterbody_parameters,
+        forcing_parameters,
+        restart_parameters,
+        output_parameters,
+        run_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+        diffusive_parameters,
+        coastal_parameters,
+    )
+
+    _handle_output_v02(
+        _results,
+        _link_gage_df,
+        run_parameters,
+        supernetwork_parameters,
+        restart_parameters,
+        output_parameters,
+        parity_parameters,
+        data_assimilation_parameters,
+    )
+
+    if verbose:
+        print("process complete")
+    if showtiming:
+        print("%s seconds." % (time.time() - main_start_time))
+
+
+def _run_everything_v02(
+    supernetwork_parameters,
+    waterbody_parameters,
+    forcing_parameters,
+    restart_parameters,
+    output_parameters,
+    run_parameters,
+    parity_parameters,
+    data_assimilation_parameters,
+    diffusive_parameters,
+    coastal_parameters,
+):
+
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    debuglevel = run_parameters.get("debuglevel", 0)
+    break_network_at_waterbodies = run_parameters.get(
+        "break_network_at_waterbodies", False
+    )
+    #NJF hacking this into supernetwork parameters to
+    #avoid having to pass runtime params to network init, which deosn't seem quite right...
+    supernetwork_parameters["break_network_at_waterbodies"] = break_network_at_waterbodies
+    forcing_parameters["qts_subdivisions"] = run_parameters["qts_subdivisions"]
+    forcing_parameters["nts"] = run_parameters["nts"]
+    
+    # STEP 1: Build network
+    if "ngen_nexus_file" in supernetwork_parameters:
+        network = HYFeaturesNetwork(supernetwork_parameters,
+                                    waterbody_parameters=waterbody_parameters,
+                                    restart_parameters=restart_parameters,
+                                    forcing_parameters=forcing_parameters,
+                                    verbose=verbose, showtiming=showtiming)
+    else:
+        network = NHDNetwork(supernetwork_parameters,
+                             waterbody_parameters=waterbody_parameters,
+                             restart_parameters=restart_parameters,
+                             forcing_parameters=forcing_parameters,
+                             verbose=verbose, showtiming=showtiming)
+
+    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
+    if synthetic_wb_segments:
+        network.set_synthetic_wb_segments( synthetic_wb_segments, synthetic_wb_id_offset )
+    #FIXME
+    network.astype("float32", ["dx", "n", "ncc", "s0", "bw", "tw", "twcc", "musk", "musx", "cs", "alt"])
+
+    #TODO: This could probably done in networkwork construction,
+    #But requires a hefty refactoring of network construction to get everything
+    #built in the correct order...for now just leave it as is...
+    if break_network_at_waterbodies:
+        network.replace_waterbodies()
+    
+    run_parameters["t0"] = network.t0
+
+    # to the total number of columns (hours) multiplied 
+    # by qts_subdivisions, number of timesteps per forcing 
+    # (qlateral) timestep.
+    # NJF adjusted based on ngen usage.  This probably isn't
+    # appropriate in all situations.
+    # TODO allow a network to "override" nts
+    qlats = network.qlateral
+    if "ngen_nexus_file" in supernetwork_parameters:
+        if len(network.qlateral.columns) != run_parameters["nts"] * run_parameters.get("qts_subdivisions", 1):
+            print("WARNING: Lateral flow time series is larger than provided nts. Adjusting nts.\n"+\
+                "If this was unintended, double check the configuration number of time steps and the "+
+                "lateral flow input time series")
+            run_parameters["nts"] = (len(network.qlateral.columns)) \
+        * run_parameters.get("qts_subdivisions", 1)
+
+
+    # STEP 6
+    #TODO factory create the DA object from params to pick the right one
+    #i.e. EmptyDA, NudgingDA, NewAndImprovedDA...
+    data_assimilation = NudgingDA(data_assimilation_parameters, run_parameters)
+
+    ################### Main Execution Loop across ordered networks
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        if run_parameters.get("return_courant", False):
+            print(
+                f"executing routing computation, with Courant evaluation metrics returned"
+            )
+        else:
+            print(f"executing routing computation ...")
+
+    # TODO: align compute_kernel and compute_method in run_parameters
+    if run_parameters.get("compute_kernel", None):
+        compute_func = run_parameters.get("compute_kernel", None)
+    else:
+        compute_func = run_parameters.get("compute_method", None)
+    # TODO: Remove below. --compute-method=V02-structured-obj did not work on command line
+    # compute_func = fast_reach.compute_network_structured_obj
+
+    results = compute_nhd_routing_v02(
+        network.connections,
+        network.reverse_network,
+        network.waterbody_connections,
+        network.reaches_by_tailwater,
+        compute_func,
+        run_parameters.get("parallel_compute_method", None),
+        run_parameters.get("subnetwork_target_size", 1),
+        # The default here might be the whole network or some percentage...
+        run_parameters.get("cpu_pool", None),
+        run_parameters.get("dt"),
+        run_parameters.get("nts", 1),
+        run_parameters.get("qts_subdivisions", 1),
+        network.independent_networks,
+        network.dataframe,
+        network.q0,
+        network.qlateral,
+        data_assimilation.usgs_df,
+        data_assimilation.last_obs,
+        data_assimilation.asssimilation_parameters,
+        run_parameters.get("assume_short_ts", False),
+        run_parameters.get("return_courant", False),
+        network.waterbody_dataframe,
+        waterbody_parameters,  # TODO: Can we remove the dependence on this input? It's like passing argv down into the compute kernel -- seems like we can strip out the specifically needed items.
+        network.waterbody_types_dataframe,
+        not network.waterbody_types_dataframe.index.empty,
+        diffusive_parameters,
+    )
+
+    if verbose:
+        print("ordered reach computation complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+    return results, pd.DataFrame.from_dict(network.gages)
+
+
+def _handle_output_v02(
+    results,
+    link_gage_df,
+    run_parameters,
+    supernetwork_parameters,
+    restart_parameters,
+    output_parameters,
+    parity_parameters,
+    data_assimilation_parameters,
+):
+    ################### Output Handling
+    dt = run_parameters.get("dt", None)
+    nts = run_parameters.get("nts", None)
+    t0 = run_parameters.get("t0", None)
+    verbose = run_parameters.get("verbose", None)
+    showtiming = run_parameters.get("showtiming", None)
+    debuglevel = run_parameters.get("debuglevel", 0)
+
+    if showtiming:
+        start_time = time.time()
+    if verbose:
+        print(f"Handling output ...")
+
+    csv_output = output_parameters.get("csv_output", None)
+    csv_output_folder = None
+    if csv_output:
+        csv_output_folder = output_parameters["csv_output"].get(
+            "csv_output_folder", None
+        )
+        csv_output_segments = csv_output.get("csv_output_segments", None)
+        
+    if (debuglevel <= -1) or csv_output_folder:
+
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+
+        if run_parameters.get("return_courant", False):
+            courant_columns = pd.MultiIndex.from_product(
+                [range(nts), ["cn", "ck", "X"]]
+            ).to_flat_index()
+            courant = pd.concat(
+                [
+                    pd.DataFrame(r[2], index=r[0], columns=courant_columns)
+                    for r in results
+                ],
+                copy=False,
+            )
+
+        if csv_output_folder:
+            
+            if verbose:
+                print("- writing flow, velocity, and depth results to .csv")
+                
+            # create filenames
+            # TO DO: create more descriptive filenames
+            extension = ".csv"
+            extension = ".h5"
+            if supernetwork_parameters.get("title_string", None):
+                filename_fvd = (
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + extension
+                )
+                filename_courant = (
+                    "courant_" + supernetwork_parameters["title_string"] + extension
+                )
+            else:
+                run_time_stamp = datetime.now().isoformat()
+                filename_fvd = "flowveldepth_" + run_time_stamp + extension
+                filename_courant = "courant_" + run_time_stamp + extension
+
+            output_path = Path(csv_output_folder).resolve()
+
+            flowveldepth = flowveldepth.sort_index()
+            
+            # no csv_output_segments are specified, then write results for all segments
+            if not csv_output_segments:
+                csv_output_segments = flowveldepth.index
+            
+            #flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
+            flowveldepth.loc[csv_output_segments].to_hdf(output_path.joinpath(filename_fvd), key="qvd")
+            if run_parameters.get("return_courant", False):
+                courant = courant.sort_index()
+                courant.loc[csv_output_segments].to_csv(output_path.joinpath(filename_courant))
+
+            # TODO: need to identify the purpose of these outputs
+            # if the need is to output the usgs_df dataframe,
+            # then that could be done in the dataframe IO somewhere above.
+            # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
+            # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
+
+        if debuglevel <= -1:
+            print(flowveldepth)
+
+    # directory containing WRF Hydro restart files
+    wrf_hydro_restart_read_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_source_directory", None
+    )
+    wrf_hydro_restart_write_dir = output_parameters.get(
+        "wrf_hydro_channel_restart_output_directory", wrf_hydro_restart_read_dir
+    )
+    if wrf_hydro_restart_read_dir:
+
+        wrf_hydro_channel_restart_new_extension = output_parameters.get(
+            "wrf_hydro_channel_restart_new_extension", "TRTE"
+        )
+
+        # list of WRF Hydro restart files
+        wrf_hydro_restart_files = sorted(
+            Path(wrf_hydro_restart_read_dir).glob(
+                output_parameters["wrf_hydro_channel_restart_pattern_filter"]
+                + "[!"
+                + wrf_hydro_channel_restart_new_extension
+                + "]"
+            )
+        )
+
+        if len(wrf_hydro_restart_files) > 0:
+            
+            if verbose:
+                print("- writing restart files")
+                
+            qvd_columns = pd.MultiIndex.from_product(
+                [range(nts), ["q", "v", "d"]]
+            ).to_flat_index()
+
+            flowveldepth = pd.concat(
+                [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+                copy=False,
+            )
+                
+            nhd_io.write_channel_restart_to_wrf_hydro(
+                flowveldepth,
+                wrf_hydro_restart_files,
+                # TODO: remove this dependence on the restart_parameters
+                Path(wrf_hydro_restart_write_dir),
+                restart_parameters.get("wrf_hydro_channel_restart_file"),
+                run_parameters.get("dt"),
+                run_parameters.get("nts"),
+                t0,
+                restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file"),
+                restart_parameters.get(
+                    "wrf_hydro_channel_ID_crosswalk_file_field_name"
+                ),
+                wrf_hydro_channel_restart_new_extension,
+            )
+        else:
+            # print error and raise exception
+            str = "WRF Hydro restart files not found - Aborting restart write sequence"
+            raise AssertionError(str)
+
+    chrtout_read_folder = output_parameters.get(
+        "wrf_hydro_channel_output_source_folder", None
+    )
+    chrtout_write_folder = output_parameters.get(
+        "wrf_hydro_channel_final_output_folder", chrtout_read_folder
+    )
+    if chrtout_read_folder:
+        
+        if verbose:
+            print("- writing results to CHRTOUT")
+        
+        qvd_columns = pd.MultiIndex.from_product(
+            [range(nts), ["q", "v", "d"]]
+        ).to_flat_index()
+
+        flowveldepth = pd.concat(
+            [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results],
+            copy=False,
+        )
+        wrf_hydro_channel_output_new_extension = output_parameters.get(
+            "wrf_hydro_channel_output_new_extension", "TRTE"
+        )
+        chrtout_files = sorted(
+            Path(chrtout_read_folder).glob(
+                output_parameters["wrf_hydro_channel_output_file_pattern_filter"]
+            )
+        )
+
+        nhd_io.write_q_to_wrf_hydro(
+            flowveldepth,
+            chrtout_files,
+            Path(chrtout_write_folder),
+            run_parameters["qts_subdivisions"],
+            wrf_hydro_channel_output_new_extension,
+        )
+
+    data_assimilation_folder = data_assimilation_parameters.get(
+    "data_assimilation_timeslices_folder", None
+    )
+    lastobs_output_folder = data_assimilation_parameters.get(
+    "lastobs_output_folder", None
+    )
+    if data_assimilation_folder and lastobs_output_folder:
+        # create a new lastobs DataFrame from the last itteration of run results
+        # lastobs_df = new_lastobs(run_results, dt * nts)
+        # lastobs_df_copy = lastobs_df.copy()
+        lastobs_df = new_lastobs(results, dt * nts)
+        nhd_io.lastobs_df_output(
+            lastobs_df,
+            dt,
+            nts,
+            t0,
+            link_gage_df['gages'],
+            lastobs_output_folder,
+        )
+
+    if verbose:
+        print("output complete")
+    if showtiming:
+        print("... in %s seconds." % (time.time() - start_time))
+
+    ################### Parity Check
+
+    if (
+        "parity_check_input_folder" in parity_parameters
+        or "parity_check_file" in parity_parameters
+        or "parity_check_waterbody_file" in parity_parameters
+    ):
+
+        if verbose:
+            print(
+                "conducting parity check, comparing WRF Hydro results against t-route results"
+            )
+        if showtiming:
+            start_time = time.time()
+
+        parity_parameters["nts"] = nts
+        parity_parameters["dt"] = dt
+
+        build_tests.parity_check(
+            parity_parameters,
+            results,
+        )
+
+        if verbose:
+            print("parity check complete")
+        if showtiming:
+            print("... in %s seconds." % (time.time() - start_time))
+
+'''
+Version 3 and earlier
+'''
 def _handle_args_v03(argv):
     '''
     Handle command line input argument - filepath of configuration file
@@ -331,7 +1291,7 @@ def main_v03(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
-
+    
     showtiming = log_parameters.get("showtiming", None)
     if showtiming:
         task_times = {}
@@ -1034,11 +1994,16 @@ if __name__ == "__main__":
         help="Use version 2 or 3 of the input format. Default 3",
     )
     v_args = v_parser.parse_known_args()
+    '''
     if v_args[0].input_version == 4:
         LOG.info("Running main v03 - async looping")
         coroutine = main_v03_async(v_args[1])
         asyncio.run(coroutine)
         # loop.run_until_complete(coroutine)
+    '''
     if v_args[0].input_version == 3:
         LOG.info("Running main v03 - looping")
         main_v03(v_args[1])
+    if v_args[0].input_version == 4:
+        LOG.info("Running main v04 - looping")
+        main_v04(v_args[1])
