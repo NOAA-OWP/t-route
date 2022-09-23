@@ -10,7 +10,7 @@ import concurrent.futures
 
 from troute.NHDNetwork import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
-#from troute.DataAssimilation import AllDA
+from troute.DataAssimilation import AllDA
 
 import numpy as np
 import pandas as pd
@@ -53,6 +53,11 @@ def main_v04(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
+    run_parameters = {
+        'dt': forcing_parameters.get('dt'),
+        'nts': forcing_parameters.get('nts'),
+        'cpu_pool': compute_parameters.get('cpu_pool')
+    }
 
     showtiming = log_parameters.get("showtiming", None)
     if showtiming:
