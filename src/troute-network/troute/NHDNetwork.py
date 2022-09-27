@@ -75,13 +75,24 @@ class NHDNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_waterbody_type_specified", "_link_lake_crosswalk", "_link_gage_df",
-                 "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
-                 "_diffusive_network_data", "_topobathy", "_refactored_diffusive_domain",
-                 "_refactored_reaches", "_nonrefactored_topobathy", "_segment_index",
-                 "_coastal_boundary_depth_df"]
+    __slots__ = ["waterbody_type_specified", "link_lake_crosswalk", "link_gage_df",
+                 "usgs_lake_gage_crosswalk", "usace_lake_gage_crosswalk",
+                 "diffusive_network_data", "topobathy_df", "refactored_diffusive_domain",
+                 "refactored_reaches", "unrefactored_topobathy_df", "segment_index"]
     
-    def __init__(self, supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, compute_parameters=None, data_assimilation_parameters=None, preprocessing_parameters=None, verbose=False, showtiming=False, layer_string=None, driver_string=None,):
+    def __init__(
+                self, 
+                supernetwork_parameters, 
+                waterbody_parameters=None, 
+                restart_parameters=None, 
+                forcing_parameters=None, 
+                compute_parameters=None, 
+                data_assimilation_parameters=None, 
+                preprocessing_parameters=None, 
+                verbose=False, 
+                showtiming=False, 
+                layer_string=None, 
+                driver_string=None,):
         """
         
         """
@@ -104,19 +115,19 @@ class NHDNetwork(AbstractNetwork):
          self._waterbody_df,
          self._waterbody_types_df,
          break_network_at_waterbodies,
-         self._waterbody_type_specified,
-         self._link_lake_crosswalk,
+         self.waterbody_type_specified,
+         self.link_lake_crosswalk,
          self._independent_networks,
          self._reaches_by_tw,
          self._reverse_network,
-         self._link_gage_df,
-         self._usgs_lake_gage_crosswalk, 
-         self._usace_lake_gage_crosswalk,
-         self._diffusive_network_data,
-         self._topobathy,
-         self._refactored_diffusive_domain,
-         self._refactored_reaches,
-         self._nonrefactored_topobathy
+         self.link_gage_df,
+         self.usgs_lake_gage_crosswalk, 
+         self.usace_lake_gage_crosswalk,
+         self.diffusive_network_data,
+         self.topobathy_df,
+         self.refactored_diffusive_domain,
+         self.refactored_reaches,
+         self.unrefactored_topobathy_df
         ) = nhd_prep.build_nhd_network(
             supernetwork_parameters,
             waterbody_parameters,
@@ -126,11 +137,11 @@ class NHDNetwork(AbstractNetwork):
         )
         
         # list of all segments in the domain (MC + diffusive)
-        self._segment_index = self._dataframe.index
-        if self._diffusive_network_data:
-            for tw in self._diffusive_network_data:
-                self._segment_index = self._segment_index.append(
-                    pd.Index(self._diffusive_network_data[tw]['mainstem_segs'])
+        self.segment_index = self._dataframe.index
+        if self.diffusive_network_data:
+            for tw in self.diffusive_network_data:
+                self.segment_index = self.segment_index.append(
+                    pd.Index(self.diffusive_network_data[tw]['mainstem_segs'])
                 ) 
 
         '''
@@ -192,9 +203,9 @@ class NHDNetwork(AbstractNetwork):
             break_network_at_waterbodies,
             restart_parameters,
             data_assimilation_parameters,
-            self._segment_index,
+            self.segment_index,
             self._waterbody_df,
-            self._link_lake_crosswalk,
+            self.link_lake_crosswalk,
         )
         
         if __verbose__:
@@ -202,7 +213,7 @@ class NHDNetwork(AbstractNetwork):
         if __showtiming__:
             print("... in %s seconds." % (time.time() - start_time))
             start_time = time.time()
-        
+
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
@@ -219,10 +230,10 @@ class NHDNetwork(AbstractNetwork):
         ) = nhd_prep.nhd_forcing(
             run, 
             forcing_parameters, 
-            hybrid_parameters, 
-            self._segment_index, 
+            hybrid_parameters,
+            self.segment_index,
             cpu_pool,
-            self._t0,
+            self._t0,             
             self._coastal_boundary_depth_df,
         )
     
@@ -241,10 +252,11 @@ class NHDNetwork(AbstractNetwork):
             copy=False,
         )
     
-    def update_waterbody_water_elevation(self):
+    #def update_waterbody_water_elevation(self):   
+    def update_waterbody_water_elevation(self):           
         """
         Update the starting water_elevation of each lake/reservoir
-        with depth values from q0
+        with flow and depth values from q0
         """
         self._waterbody_df.update(self._q0)
     
@@ -284,54 +296,6 @@ class NHDNetwork(AbstractNetwork):
     def waterbody_null(self):
         return -9999
 
-    @property
-    def wbody_conn(self):
-        return self._waterbody_connections
-    
-    @property
-    def waterbody_type_specified(self):
-        return self._waterbody_type_specified
-    
-    @property
-    def link_lake_crosswalk(self):
-        return self._link_lake_crosswalk
-    
-    @property
-    def link_gage_df(self):
-        return self._link_gage_df
-    
-    @property
-    def usgs_lake_gage_crosswalk(self):
-        return self._usgs_lake_gage_crosswalk
-    
-    @property
-    def usace_lake_gage_crosswalk(self):
-        return self._usace_lake_gage_crosswalk
-    
-    @property
-    def diffusive_network_data(self):
-        return self._diffusive_network_data
-    
-    @property
-    def topobathy(self):
-        return self._topobathy
-    
-    @property
-    def refactored_diffusive_domain(self):
-        return self._refactored_diffusive_domain
-    
-    @property
-    def refactored_reaches(self):
-        return self._refactored_reaches
-    
-    @property
-    def nonrefactored_topobathy(self):
-        return self._nonrefactored_topobathy
-    
-    @property
-    def segment_index(self):
-        return self._segment_index
-    
-    @property
-    def coastal_boundary_depth_df(self):
-        return self._coastal_boundary_depth_df
+    #@property
+    #def wbody_conn(self):
+    #    return self._waterbody_connections    

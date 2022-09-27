@@ -17,7 +17,7 @@ class AbstractNetwork(ABC):
                 "_terminal_codes", "_connections", "_waterbody_df", 
                 "_waterbody_types_df", "_independent_networks", 
                 "_reaches_by_tw", "_reverse_network", "_q0", "_t0", 
-                "_qlateral", "_break_segments"]
+                "_qlateral", "_break_segments", "_coastal_boundary_depth_df"]
     
     def __init__(self, cols=None, terminal_code=None, break_points=None, verbose=False, showtiming=False):
         global __verbose__, __showtiming__
@@ -214,6 +214,13 @@ class AbstractNetwork(ABC):
     @property
     def terminal_codes(self):
         return self._terminal_codes
+    
+    @property
+    def coastal_boundary_depth_df(self):
+        """
+        
+        """
+        return self._coastal_boundary_depth_df
 
     def set_synthetic_wb_segments(self, synthetic_wb_segments, synthetic_wb_id_offset):
         """
@@ -273,3 +280,4 @@ class AbstractNetwork(ABC):
             self._dataframe[columns] = self._dataframe[columns].astype(type)
         else:
             self._dataframe = self._dataframe.astype(type)
+            

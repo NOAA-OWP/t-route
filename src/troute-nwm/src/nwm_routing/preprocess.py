@@ -86,7 +86,7 @@ def nwm_network_preprocess(
     rconn                       (dict of int: [int]): {segment id: [upstream adjacent segment ids]}
     pd.DataFrame.from_dict(gages)        (DataFrame): Gage ids and corresponding segment ids at which they are located
     diffusive_network_data            (dict or None): Network data objects for diffusive domain
-    topobathy                            (DataFrame): Natural cross section data for diffusive domain
+    topobathy_df                         (DataFrame): Natural cross section data for diffusive domain
     
     Notes
     -----
@@ -136,14 +136,14 @@ def nwm_network_preprocess(
                 # TODO: replace 'link' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `link` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
+                topobathy_df = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
                 
                 # TODO: Request GID make comID variable an integer in their product, so
                 # we do not need to change variable types, here.
-                topobathy.index = topobathy.index.astype(int)
+                topobathy_df.index = topobathy_df.index.astype(int)
                 
             else:
-                topobathy = pd.DataFrame()
+                topobathy_df = pd.DataFrame()
                 LOG.debug('No natural cross section topobathy data provided. Hybrid simualtion will run on compound trapezoidal geometry.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
@@ -152,9 +152,9 @@ def nwm_network_preprocess(
         else:
             diffusive_domain       = None
             diffusive_network_data = None
-            topobathy              = pd.DataFrame()
+            topobathy_df              = pd.DataFrame()
             LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
-        unrefactored_topobathy = pd.DataFrame()    
+        unrefactored_topobathy_df = pd.DataFrame()    
         #-------------------------------------------------------------------------
         # for refactored hydofabric 
         if run_hybrid and run_refactored and refactored_domain_file:
@@ -172,15 +172,15 @@ def nwm_network_preprocess(
                 # TODO: replace 'link' with a user-specified indexing variable name.
                 # ... if for whatever reason there is not a `link` variable in the 
                 # ... dataframe returned from read_netcdf, then the code would break here.
-                topobathy = (nhd_io.read_netcdf(refactored_topobathy_file).set_index('link'))
+                topobathy_df = (nhd_io.read_netcdf(refactored_topobathy_file).set_index('link'))
 
                 # unrefactored_topobaty_data is passed to diffusive kernel to provide thalweg elevation of unrefactored topobathy 
                 # for crosswalking water elevations between non-refactored and refactored hydrofabrics. 
-                unrefactored_topobathy       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
-                unrefactored_topobathy.index = unrefactored_topobathy.index.astype(int)
+                unrefactored_topobathy_df       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
+                unrefactored_topobathy_df.index = unrefactored_topobathy_df.index.astype(int)
                 
             else:
-                topobathy               = pd.DataFrame()
+                topobathy_df               = pd.DataFrame()
                 LOG.debug('No natural cross section topobathy data of refactored hydrofabric provided. Hybrid simualtion will run on compound trapezoidal geometry.')
              
             # initialize a dictionary to hold network data for each of the diffusive domains
@@ -195,8 +195,8 @@ def nwm_network_preprocess(
     else:
         diffusive_domain                  = None
         diffusive_network_data            = None
-        topobathy                         = pd.DataFrame()
-        unrefactored_topobathy           = pd.DataFrame() 
+        topobathy_df                      = pd.DataFrame()
+        unrefactored_topobathy_df         = pd.DataFrame() 
         refactored_diffusive_domain       = None
         refactored_diffusive_network_data = None   
         refactored_reaches                = {}
@@ -482,7 +482,7 @@ def nwm_network_preprocess(
                  'usgs_lake_gage_crosswalk': usgs_lake_gage_crosswalk, 
                  'usace_lake_gage_crosswalk': usace_lake_gage_crosswalk,
                  'diffusive_network_data': diffusive_network_data,
-                 'topobathy_data': topobathy,
+                 'topobathy_data': topobathy_df,
                 }
             )
             try:
@@ -524,10 +524,10 @@ def nwm_network_preprocess(
         usgs_lake_gage_crosswalk, 
         usace_lake_gage_crosswalk,
         diffusive_network_data,
-        topobathy,
+        topobathy_df,
         refactored_diffusive_domain,
         refactored_reaches,
-        unrefactored_topobathy,
+        unrefactored_topobathy_df,
     )
 
 def unpack_nwm_preprocess_data(preprocessing_parameters):
@@ -555,10 +555,10 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         usgs_lake_gage_crosswalk     = inputs.get('usgs_lake_gage_crosswalk',None)
         usace_lake_gage_crosswalk    = inputs.get('usace_lake_gage_crosswalk',None)
         diffusive_network_data       = inputs.get('diffusive_network_data',None)
-        topobathy                    = inputs.get('topobathy_data',None)        
+        topobathy_df                 = inputs.get('topobathy_data',None)        
         refactored_diffusive_domain  = inputs.get('refactored_diffusive_domain',None)
         refactored_reaches           = inputs.get('refactored_reaches',None)
-        unrefactored_topobathy       = inputs.get('unrefactored_topobathy',None)
+        unrefactored_topobathy_df    = inputs.get('unrefactored_topobathy',None)
 
     else:
         LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
@@ -580,10 +580,10 @@ def unpack_nwm_preprocess_data(preprocessing_parameters):
         usgs_lake_gage_crosswalk, 
         usace_lake_gage_crosswalk,
         diffusive_network_data,
-        topobathy,
+        topobathy_df,
         refactored_diffusive_domain,
         refactored_reaches,
-        unrefactored_topobathy,
+        unrefactored_topobathy_df,
     )
 
 

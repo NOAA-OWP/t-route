@@ -667,15 +667,18 @@ class AllDA(DataAssimilation):
                     lastobs_start,
                 )
             
-            da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
-            da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get("diffusive_streamflow_nudging", False)
+            #da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+            #da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get("diffusive_streamflow_nudging", False)
 
             # replace link ids with lake ids, for gages at waterbody outlets, 
             # otherwise, gage data will not be assimilated at waterbody outlet
             # segments.
             if network.link_lake_crosswalk:
                 lastobs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
-            
+        
+        da_parameter_dict["da_decay_coefficient"] = data_assimilation_parameters.get("da_decay_coefficient", 120)
+        da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get("diffusive_streamflow_nudging", False)
+        
         self._last_obs_df = lastobs_df
         self._da_parameter_dict = da_parameter_dict
         # TODO: Add parameters here for interpolation length (14/59), QC threshold (1.0)
@@ -684,12 +687,13 @@ class AllDA(DataAssimilation):
         #--------------------------------------------------------------------------------
         # Assemble USGS observation data for Streamflow DA or USGS Reservoir Persistence
         #--------------------------------------------------------------------------------
-
         # if user requested nudging or usgs_persistence and specified a USGS TimeSlice directory, 
         # then build and return USGS dataframe
         if (nudging or usgs_persistence) and usgs_timeslices_folder:
 
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+        else:
+            self._usgs_df = pd.DataFrame()
                 
         #--------------------------------------------------------------------------------
         # Assemble Reservoir dataframes
@@ -913,8 +917,8 @@ class AllDA(DataAssimilation):
         # but there are DA parameters from the previous loop, then create a
         # dummy observations df. This allows the reservoir persistence to continue across loops.
         # USGS Reservoirs
-        if not network.waterbody_types_df.empty:
-            if 2 in network.waterbody_types_df['reservoir_type'].unique():
+        if not network._waterbody_types_df.empty:
+            if 2 in network._waterbody_types_df['reservoir_type'].unique():
                 if self._reservoir_usgs_df.empty and len(self._reservoir_usgs_param_df.index) > 0:
                     self._reservoir_usgs_df = pd.DataFrame(
                         data    = np.nan, 
@@ -923,7 +927,7 @@ class AllDA(DataAssimilation):
                     )
 
             # USACE Reservoirs   
-            if 3 in network.waterbody_types_df['reservoir_type'].unique():
+            if 3 in network._waterbody_types_df['reservoir_type'].unique():
                 if self._reservoir_usace_df.empty and len(self._reservoir_usace_param_df.index) > 0:
                     self._reservoir_usace_df = pd.DataFrame(
                         data    = np.nan, 
@@ -933,7 +937,7 @@ class AllDA(DataAssimilation):
 
             '''
             # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
-            if 4 in network.waterbody_types_df['reservoir_type'].unique():
+            if 4 in network._waterbody_types_df['reservoir_type'].unique():
                 waterbody_parameters = update_lookback_hours(run_parameters.get("dt"), run_parameters.get("nts"), waterbody_parameters)
             '''
         
