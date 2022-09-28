@@ -374,7 +374,7 @@ def _run_everything_v02(
     forcing_parameters["nts"] = run_parameters["nts"]
     
     # STEP 1: Build network
-    if "ngen_nexus_file" in supernetwork_parameters:
+    if "flowpath_edge_list" in supernetwork_parameters or Path(supernetwork_parameters['geo_file_path']).suffix == 'gpkg':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters=waterbody_parameters,
                                     restart_parameters=restart_parameters,
