@@ -1,5 +1,9 @@
 import argparse
 import time
+import logging
+import pandas as pd
+import numpy as np
+from datetime import timedelta
 #from .input import _input_handler_v03
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_io as nhd_io
@@ -7,7 +11,10 @@ import troute.nhd_io as nhd_io
 #from .output import nwm_output_generator
 from troute.NHDNetwork import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
+from troute.DataAssimilation import AllDA
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
+
+LOG = logging.getLogger('')
 
 def initialize_network(argv):
     
@@ -34,21 +41,21 @@ def initialize_network(argv):
         'cpu_pool': compute_parameters.get('cpu_pool')
     }
     
-    showtiming = log_parameters.get("showtiming", None)
-    if showtiming:
-        task_times = {}
-        task_times['forcing_time'] = 0
-        task_times['route_time'] = 0
-        task_times['output_time'] = 0
-        main_start_time = time.time()
+#    showtiming = log_parameters.get("showtiming", None)
+#    if showtiming:
+#        task_times = {}
+#        task_times['forcing_time'] = 0
+#        task_times['route_time'] = 0
+#        task_times['output_time'] = 0
+#        main_start_time = time.time()
     
     cpu_pool = compute_parameters.get("cpu_pool", None)
  
     # Build routing network data objects. Network data objects specify river 
     # network connectivity, channel geometry, and waterbody parameters. Also
     # perform initial warmstate preprocess.
-    if showtiming:
-        network_start_time = time.time()
+#    if showtiming:
+#        network_start_time = time.time()
 
     if "ngen_nexus_file" in supernetwork_parameters:
          network = HYFeaturesNetwork(supernetwork_parameters,
@@ -65,12 +72,12 @@ def initialize_network(argv):
                              data_assimilation_parameters=data_assimilation_parameters,
                              preprocessing_parameters=preprocessing_parameters,
                              verbose=True,
-                             showtiming=showtiming,          
+                             showtiming=False #showtiming,          
                             )
     
-    if showtiming:
-        network_end_time = time.time()
-        task_times['network_time'] = network_end_time - network_start_time
+#    if showtiming:
+#        network_end_time = time.time()
+#        task_times['network_time'] = network_end_time - network_start_time
     
     all_parameters = [log_parameters, 
                       preprocessing_parameters,
@@ -136,8 +143,8 @@ def build_data_assimilation(network, data_assimilation_parameters, waterbody_par
     
     return data_assimilation
 
-def run_routing(network, data_assimliation, run_sets, compute_parameters, forcing_parameters, waterbody_parameters,
-                output_parameters, parity_sets):
+def run_routing(network, data_assimilation, run_sets, da_sets, compute_parameters, forcing_parameters, waterbody_parameters,
+                output_parameters, hybrid_parameters, data_assimilation_parameters, run_parameters, parity_sets):
     '''
     
     '''
@@ -147,6 +154,7 @@ def run_routing(network, data_assimliation, run_sets, compute_parameters, forcin
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
+    cpu_pool = compute_parameters.get("cpu_pool", 1)
         
     # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
     # on first iteration of for loop only. For additional loops this will be passed
@@ -163,26 +171,26 @@ def run_routing(network, data_assimliation, run_sets, compute_parameters, forcin
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
-        if showtiming:
-            route_start_time = time.time()
+#        if showtiming:
+#            route_start_time = time.time()
 
         run_results = nwm_route(
             network.connections, 
-            network.rconn, 
-            network.wbody_conn, 
-            network.reaches_by_tw,
+            network.reverse_network, 
+            network.waterbody_connections, 
+            network._reaches_by_tw, ## check: def name is different from return self._ ..
             parallel_compute_method,
             compute_kernel,
             subnetwork_target_size,
-            compute_parameters.get('cpu_pool', None),
-            network.t0,
+            cpu_pool,
+            network.t0,  ## check if t0 is being updated
             dt,
             nts,
             qts_subdivisions,
             network.independent_networks, 
-            network.param_df,
+            network.dataframe,
             network.q0,
-            network.qlats,
+            network._qlateral,
             data_assimilation.usgs_df,
             data_assimilation.lastobs_df,
             data_assimilation.reservoir_usgs_df,
@@ -192,26 +200,26 @@ def run_routing(network, data_assimliation, run_sets, compute_parameters, forcin
             data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
-            network.waterbody_df,
+            network._waterbody_df, ## check:  network._waterbody_df ?? def name is different from return self._ ..
             waterbody_parameters,
-            network.waterbody_types_df, 
+            network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
             network.waterbody_type_specified,
             network.diffusive_network_data,
-            network.topobathy,
+            network.topobathy_df,
             network.refactored_diffusive_domain,
             network.refactored_reaches,
             subnetwork_list,
             network.coastal_boundary_depth_df,
-            network.nonrefactored_topobathy,
+            network.unrefactored_topobathy_df,
         )
         
         # returns list, first item is run result, second item is subnetwork items
         subnetwork_list = run_results[1]
         run_results = run_results[0]
         
-        if showtiming:
-            route_end_time = time.time()
-            task_times['route_time'] += route_end_time - route_start_time
+#        if showtiming:
+#            route_end_time = time.time()
+#            task_times['route_time'] += route_end_time - route_start_time
 
         # create initial conditions for next loop itteration
         network.new_nhd_q0(run_results)
@@ -234,22 +242,22 @@ def run_routing(network, data_assimliation, run_sets, compute_parameters, forcin
                                      network,
                                      da_sets[run_set_iterator + 1])
             
-            if showtiming:
-                forcing_end_time = time.time()
-                task_times['forcing_time'] += forcing_end_time - route_end_time
+#            if showtiming:
+#                forcing_end_time = time.time()
+#                task_times['forcing_time'] += forcing_end_time - route_end_time
         
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
-        if showtiming:
-            output_start_time = time.time()
+#        if showtiming:
+#            output_start_time = time.time()
             
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
                 network.q0, 
-                network.waterbody_df, 
+                network._waterbody_df, 
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
             )
-        
+        '''
         nwm_output_generator(
             run,
             run_results,
@@ -261,18 +269,19 @@ def run_routing(network, data_assimliation, run_sets, compute_parameters, forcin
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
-            network.waterbody_df,
-            network.waterbody_types_df,
+            network._waterbody_df,
+            network._waterbody_types_df,
             data_assimilation_parameters,
             data_assimilation.lastobs_df,
             network.link_gage_df,
             network.link_lake_crosswalk,
         )
-        
-        if showtiming:
-            output_end_time = time.time()
-            task_times['output_time'] += output_end_time - output_start_time
-        
+        '''
+#        if showtiming:
+#            output_end_time = time.time()
+#            task_times['output_time'] += output_end_time - output_start_time
+    return run_results
+
         
 def _handle_args_v03(argv):
     '''
@@ -504,3 +513,108 @@ def nwm_route(
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
     return results, subnetwork_list
+
+def create_output_dataframes(results, run_sets, waterbodies_df, link_lake_crosswalk):
+    
+    nts = run_sets[len(run_sets) - 1].get('nts')
+    dt = run_sets[len(run_sets) - 1].get('dt')
+    qts_subdivisions = run_sets[len(run_sets) - 1].get('qts_subdivisions')
+    
+    qvd_columns = pd.MultiIndex.from_product(
+        [range(nts), ["q", "v", "d"]]
+    ).to_flat_index()
+    
+    flowveldepth = pd.concat(
+        [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results], copy=False,
+    )
+    
+    # create waterbody dataframe for output to netcdf file
+    i_columns = pd.MultiIndex.from_product(
+        [range(nts), ["i"]]
+    ).to_flat_index()
+    
+    wbdy = pd.concat(
+        [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
+        copy=False,
+    )
+    
+    wbdy_id_list = waterbodies_df.index.values.tolist()
+    '''
+    flow_df = flowveldepth.loc[wbdy_id_list]
+    wbdy = wbdy.loc[wbdy_id_list]
+    
+    timestep, variable = zip(*flow_df.columns.tolist())
+    timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
+    ts_set = set(timestep_index[0].tolist())
+    flow_df_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
+    flow_df = flow_df.iloc[:,flow_df_col_index]
+    
+    timestep, variable = zip(*wbdy.columns.tolist())
+    timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
+    ts_set = set(timestep_index[0].tolist())
+    wbdy_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
+    
+    i_lakeout_df = wbdy.iloc[:,wbdy_col_index]
+    q_lakeout_df = flow_df.iloc[:,0::3]
+    d_lakeout_df = flow_df.iloc[:,2::3]
+    '''
+    i_lakeout_df = wbdy.loc[wbdy_id_list]
+    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,0::3]
+    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,2::3]
+    # lakeout = pd.concat([i_df, q_df, d_df], axis=1)
+    
+    # replace waterbody lake_ids with outlet link ids
+    flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
+    
+    q_channel_df = flowveldepth.iloc[:,0::3]
+    v_channel_df = flowveldepth.iloc[:,1::3]
+    d_channel_df = flowveldepth.iloc[:,2::3]
+
+    date_column_names = pd.date_range(start=run_sets[-1].get('t0') + timedelta(seconds=run_sets[-1].get('dt')), 
+              end=run_sets[-1].get('final_timestamp'), 
+              freq=str(run_sets[-1].get('dt'))+'S')
+    
+    i_lakeout_df.columns = date_column_names
+    q_lakeout_df.columns = date_column_names
+    d_lakeout_df.columns = date_column_names
+    q_channel_df.columns = date_column_names
+    v_channel_df.columns = date_column_names
+    d_channel_df.columns = date_column_names
+    
+    return q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df
+    
+def _reindex_lake_to_link_id(target_df, crosswalk):
+    '''
+    Utility function for replacing lake ID index values
+    with link ID values in a dataframe. This is used to 
+    reinedex results dataframes
+    
+    Arguments:
+    ----------
+    - target_df (DataFrame): Data frame to be reinexed
+    - crosswalk      (dict): Relates lake ids to outlet link ids
+    
+    Returns:
+    --------
+    - target_df (DataFrame): Re-indexed with link ids replacing 
+                             lake ids
+    '''
+
+    # evaluate intersection of lake ids and target_df index values
+    # i.e. what are the index positions of lake ids that need replacing?
+    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
+    idxs = target_df.index.to_numpy()
+    lake_index_intersect = np.intersect1d(
+        idxs, 
+        lakeids, 
+        return_indices = True
+    )
+
+    # replace lake ids with link IDs in the target_df index array
+    linkids = np.fromiter(crosswalk.values(), dtype = int)
+    idxs[lake_index_intersect[1]] = linkids[lake_index_intersect[2]]
+
+    # (re) set the target_df index
+    target_df.set_index(idxs, inplace = True)
+    
+    return target_df

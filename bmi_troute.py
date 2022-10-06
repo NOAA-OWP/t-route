@@ -50,7 +50,12 @@ class bmi_troute(Bmi):
     # Output variable names (CSDMS standard names)
     #---------------------------------------------
     _output_var_names = ['channel_exit_water_x-section__volume_flow_rate',
-                         'channel_water__mean_depth']
+                         'channel_water_flow__speed',
+                         'channel_water__mean_depth',
+                         'lake_water~incoming__volume_flow_rate',
+                         'lake_water~outgoing__volume_flow_rate',
+                         'lake_surface__elevation' #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
+                        ]
 
     #------------------------------------------------------
     # Create a Python dictionary that maps CSDMS Standard
@@ -58,7 +63,11 @@ class bmi_troute(Bmi):
     #------------------------------------------------------
     _var_name_units_map = {
         'channel_exit_water_x-section__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        'channel_water_flow__speed':['streamflow_ms','m s-1'],
         'channel_water__mean_depth':['streamflow_m','m'],
+        'lake_water~incoming__volume_flow_rate':['waterbody_cms','m3 s-1'],
+        'lake_water~outgoing__volume_flow_rate':['waterbody_cms','m3 s-1'],
+        'lake_surface__elevation':['waterbody_m','m'],
         #--------------   Dynamic inputs --------------------------------
         'land_surface_water__runoff_volume_flux':['streamflow_cms','m3 s-1']
     }
@@ -121,27 +130,33 @@ class bmi_troute(Bmi):
          self._run_parameters,
         ) = tr.initialize_network(self._cfg_bmi)
     
-    def build_run_sets(self):
-        """
-        Use input parameters to create lists of run_sets and da_sets. Lists will be of length
-        one if t-route looping is not needed, and greater than one if it is.
-        """
-        # Create run_sets: sets of forcing files for each loop
-        self._run_sets = nnu.build_forcing_sets(self._forcing_parameters, self._network.t0)
-        
-        # Create da_sets: sets of TimeSlice files for each loop
-        if "data_assimilation_parameters" in self._compute_parameters:
-            self._da_sets = nnu.build_da_sets(self._data_assimilation_parameters, self._run_sets, self._network.t0)
-        
-        # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
-        if "wrf_hydro_parity_check" in self._output_parameters:
-            self._parity_sets = nnu.build_parity_sets(self._parity_parameters, self._run_sets)
-        else:
-            self._parity_sets = []
-    
     def update(self):
         """Advance model by one time step."""
-        self._model.advance_in_time()
+        self._run_results = tr.run_routing(
+            self._network, 
+            self._data_assimilation, 
+            self._run_sets, 
+            self._da_sets,
+            self._compute_parameters, 
+            self._forcing_parameters, 
+            self._waterbody_parameters,
+            self._output_parameters,
+            self._hybrid_parameters,
+            self._data_assimilation_parameters,
+            self._run_parameters,
+            self._parity_sets)
+        
+        (self._values['channel_exit_water_x-section__volume_flow_rate'], 
+         self._values['channel_water_flow__speed'], 
+         self._values['channel_water__mean_depth'], 
+         self._values['lake_water~incoming__volume_flow_rate'], 
+         self._values['lake_water~outgoing__volume_flow_rate'], 
+         self._values['lake_surface__elevation'],
+        ) = tr.create_output_dataframes(
+            self._run_results, 
+            self._run_sets, 
+            self._network._waterbody_df,
+            self._network.link_lake_crosswalk)
 
     def update_frac(self, time_frac):
         """Update model by a fraction of a time step.
@@ -271,21 +286,19 @@ class bmi_troute(Bmi):
         """
         return self._values[var_name]
 
-    def get_value(self, var_name, dest):
+    def get_value(self, var_name):
         """Copy of values.
         Parameters
         ----------
         var_name : str
             Name of variable as CSDMS Standard Name.
-        dest : ndarray
-            A numpy array into which to place the values.
         Returns
         -------
-        array_like
+        output_df : pd.DataFrame
             Copy of values.
         """
-        dest[:] = self.get_value_ptr(var_name).flatten()
-        return dest
+        output_df = self.get_value_ptr(var_name)
+        return output_df
 
     def get_value_at_indices(self, var_name, dest, indices):
         """Get values at particular indices.
@@ -305,17 +318,34 @@ class bmi_troute(Bmi):
         dest[:] = self.get_value_ptr(var_name).take(indices)
         return dest
 
-    def set_value(self, var_name, src):
-        """Set model values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        src : array_like
-            Array of new values.
-        """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
+    def set_value(self):
+        """Set model values"""
+        (
+            self._run_sets,
+            self._da_sets,
+            self._parity_sets
+        ) = tr.build_run_sets(self._network,
+                              self._forcing_parameters,
+                              self._compute_parameters, 
+                              self._data_assimilation_parameters,
+                              self._output_parameters,
+                              self._parity_parameters)
+        
+        # Create forcing data within network object for first loop iteration
+        self._network.assemble_forcings(
+            self._run_sets[0], 
+            self._forcing_parameters, 
+            self._hybrid_parameters, 
+            self._compute_parameters.get('cpu_pool', None))
+        
+        # Create data assimilation object from da_sets for first loop iteration
+        self._data_assimilation = tr.build_data_assimilation(
+            self._network,
+            self._data_assimilation_parameters,
+            self._waterbody_parameters,
+            self._da_sets[0],
+            self._forcing_parameters,
+            self._compute_parameters)
 
     def set_value_at_indices(self, name, inds, src):
         """Set model values at particular indices.
