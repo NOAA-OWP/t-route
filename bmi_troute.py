@@ -129,6 +129,12 @@ class bmi_troute(Bmi):
          self._data_assimilation_parameters,
          self._run_parameters,
         ) = tr.initialize_network(self._cfg_bmi)
+        
+        self._start_time = 0.0
+        self._end_time = self._forcing_parameters.get('dt') * self._forcing_parameters.get('nts')
+        self._time = 0.0
+        self._time_step = self._forcing_parameters.get('dt')
+        self._time_units = 's'
     
     def update(self):
         """Advance model by one time step."""
@@ -157,6 +163,8 @@ class bmi_troute(Bmi):
             self._run_sets, 
             self._network._waterbody_df,
             self._network.link_lake_crosswalk)
+        
+        self._time += self._forcing_parameters.get('dt') * self._forcing_parameters.get('nts')
 
     def update_frac(self, time_frac):
         """Update model by a fraction of a time step.
@@ -175,13 +183,25 @@ class bmi_troute(Bmi):
         Parameters
         ----------
         then : float
-            Time to run model until.
+            Time to run model until in seconds.
         """
         n_steps = (then - self.get_current_time()) / self.get_time_step()
+        
+        full_nts = self._forcing_parameters.get('nts')
+        self._forcing_parameters['nts'] = n_steps
+        
+        self.set_value()
+        self.update()
 
+        self._network.t0 = self._run_sets[-1].get('final_timestamp')
+        self._forcing_parameters['nts'] = full_nts - n_steps
+        self.set_value()
+        
+        '''
         for _ in range(int(n_steps)):
             self.update()
         self.update_frac(n_steps - int(n_steps))
+        '''
 
     def finalize(self):
         """Finalize model."""
@@ -410,10 +430,10 @@ class bmi_troute(Bmi):
         return self._end_time
 
     def get_current_time(self):
-        return self._model.time
+        return self._time
 
     def get_time_step(self):
-        return self._model.time_step
+        return self._time_step
 
     def get_time_units(self):
         return self._time_units
