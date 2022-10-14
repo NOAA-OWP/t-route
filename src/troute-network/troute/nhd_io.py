@@ -733,7 +733,7 @@ def write_chrtout(
         
         LOG.debug("Reindexing the flow DataFrame to align with `feature_id` dimension in CHRTOUT files")
         start = time.time()
-        
+
         with xr.open_dataset(chrtout_files[0],engine='netcdf4') as ds:
             newindex = ds.feature_id.values
             
@@ -1543,6 +1543,7 @@ def build_coastal_ncdf_dataframe(
                                 coastal_files, 
                                 coastal_boundary_domain,
                                 ):
+
     # retrieve coastal elevation, topo depth, and temporal data
     ds = netCDF4.Dataset(filename = coastal_files,  mode = 'r', format = "NETCDF4")
     
@@ -1563,7 +1564,7 @@ def build_coastal_ncdf_dataframe(
     tfin         =  start_date + dt_timeslice*len(timesteps)
     timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
     timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
-         
+    
     # create a dataframe of water depth at coastal domain nodes
     timeslice_schism_list=[]
     for t in range(0, len(timesteps)+1):

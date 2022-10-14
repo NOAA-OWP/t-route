@@ -201,7 +201,7 @@ def nhd_network_preprocess(
             diffusive_network_data = None
             topobathy_df           = pd.DataFrame()
             LOG.info('No diffusive domain file specified in configuration file. This is an MC-only simulation')
-        unrefactored_topobathy = pd.DataFrame()    
+        unrefactored_topobathy_df  = pd.DataFrame()    
         #-------------------------------------------------------------------------
         # for refactored hydofabric 
         if run_hybrid and run_refactored and refactored_domain_file:
@@ -223,8 +223,8 @@ def nhd_network_preprocess(
 
                 # unrefactored_topobaty_data is passed to diffusive kernel to provide thalweg elevation of unrefactored topobathy 
                 # for crosswalking water elevations between non-refactored and refactored hydrofabrics. 
-                unrefactored_topobathy       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
-                unrefactored_topobathy.index = unrefactored_topobathy.index.astype(int)
+                unrefactored_topobathy_df       = (nhd_io.read_netcdf(topobathy_file).set_index('link'))
+                unrefactored_topobathy_df.index = unrefactored_topobathy_df.index.astype(int)
                 
             else:
                 topobathy_df               = pd.DataFrame()
@@ -243,12 +243,11 @@ def nhd_network_preprocess(
         diffusive_domain                  = None
         diffusive_network_data            = None
         topobathy_df                      = pd.DataFrame()
-        unrefactored_topobathy            = pd.DataFrame() 
+        unrefactored_topobathy_df         = pd.DataFrame() 
         refactored_diffusive_domain       = None
         refactored_diffusive_network_data = None   
         refactored_reaches                = {}
         LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
-
     #============================================================================
     # Build network connections graph, assemble parameter dataframe, 
     # establish segment-waterbody, and segment-gage mappings
@@ -429,24 +428,23 @@ def nhd_network_preprocess(
                 (mainstem_segs + trib_segs),
                 axis = 0,
             )
-
             diffusive_network_data[tw]['upstream_boundary_link'] = upstream_boundary_mainstem_link
-            
+
             if refactored_diffusive_domain: 
                 diffusive_parameters = {'geo_file_path': refactored_topobathy_file}
                 refactored_connections = nnu.build_refac_connections(diffusive_parameters)
 
                 # list of stream segments of a single refactored diffusive domain 
+                refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 rlinks_tw = refactored_diffusive_domain[tw]['rlinks']
-                refactored_connections_tw = {}
-                
+                refactored_connections_tw = {}   
+
                 # Subset a connection dictionary (upstream segment as key : downstream segments as values) from refactored_connections
                 # for a single refactored diffusive domain defined by a current tw. 
                 for k in rlinks_tw:
-                    if k in refactored_connections.keys():
+                    if k in refactored_connections.keys() and k != refac_tw:
                         refactored_connections_tw[k] = refactored_connections[k]
 
-                refac_tw = refactored_diffusive_domain[tw]['refac_tw']
                 refactored_diffusive_network_data[refac_tw] = {}                
                 refactored_diffusive_network_data[refac_tw]['tributary_segments'] = trib_segs
                 refactored_diffusive_network_data[refac_tw]['connections'] = refactored_connections_tw                 
@@ -574,7 +572,7 @@ def nhd_network_preprocess(
         topobathy_df,
         refactored_diffusive_domain,
         refactored_reaches,
-        unrefactored_topobathy,
+        unrefactored_topobathy_df,
     )
 
 def unpack_nhd_preprocess_data(preprocessing_parameters):
@@ -605,7 +603,7 @@ def unpack_nhd_preprocess_data(preprocessing_parameters):
         topobathy_df                 = inputs.get('topobathy_data',None)        
         refactored_diffusive_domain  = inputs.get('refactored_diffusive_domain',None)
         refactored_reaches           = inputs.get('refactored_reaches',None)
-        unrefactored_topobathy       = inputs.get('unrefactored_topobathy',None)
+        unrefactored_topobathy_df    = inputs.get('unrefactored_topobathy',None)
 
     else:
         LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
@@ -630,7 +628,7 @@ def unpack_nhd_preprocess_data(preprocessing_parameters):
         topobathy_df,
         refactored_diffusive_domain,
         refactored_reaches,
-        unrefactored_topobathy,
+        unrefactored_topobathy_df,
     )
 
 
@@ -681,7 +679,7 @@ def nhd_initial_warmstate_preprocess(
     #----------------------------------------------------------------------------
     # Assemble waterbody initial states (outflow and pool elevation
     #----------------------------------------------------------------------------
-    
+
     if break_network_at_waterbodies:
 
         start_time = time.time()
@@ -892,7 +890,6 @@ def nhd_forcing(
         "lateral inflow DataFrame creation complete in %s seconds." \
         % (time.time() - start_time)
     )
-
 
     #---------------------------------------------------------------------
     # Assemble coastal coupling data [WIP]
