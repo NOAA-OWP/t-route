@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from pathlib import Path
 import pandas as pd
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
@@ -66,6 +67,25 @@ def restart_parameters():
 def network(request, waterbody_parameters, restart_parameters, forcing_parameters):
     type = request.param
     return HYFeaturesNetwork(supernetwork_parameters(type), waterbody_parameters, restart_parameters, forcing_parameters, verbose=True, showtiming=False)
+
+
+@pytest.mark.parametrize("network",["gpkg", "json"], indirect=True )
+def test_downstream_flowpath_dict(network):
+    ans = {3:2, 2:1, 4:5}
+    assert(network.downstream_flowpath_dict == ans)
+
+
+@pytest.mark.parametrize("network",["json"], indirect=True )
+def test_qlateral(network):
+    # check wb-2, wb-3, and wb-4
+    for nxid in [2,3,4]:
+        df_qlat = pd.read_csv(_workdir.joinpath('data/nex-%d_output.csv'%nxid),
+                              index_col=0, names=['date','flow'])
+        assert(np.all(network.qlateral.loc[nxid,:].values-df_qlat['flow'].values==0))
+    # wb-1 and wb-5 (headwaters) should have no inflow
+    assert(np.all(network.qlateral.loc[1,:]==0))
+    assert(np.all(network.qlateral.loc[5,:]==0))
+
 
 @pytest.mark.parametrize("network",["gpkg", "json"], indirect=True)
 def test_init(network):
