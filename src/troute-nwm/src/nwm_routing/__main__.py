@@ -11,6 +11,7 @@ import concurrent.futures
 from troute.NHDNetwork import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
 from troute.DataAssimilation import AllDA
+import troute.main_utilities as mu
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,8 @@ LOG = logging.getLogger('')
 High level orchestration of ngen t-route simulations for NWM application
 '''
 def main_v04(argv):
+    
+    args = _handle_args_v03(argv)
 
     (
         network,
@@ -51,7 +54,7 @@ def main_v04(argv):
         parity_parameters,
         data_assimilation_parameters,
         run_parameters
-    ) = mu.initialize_network(argv)
+    ) = mu.initialize_network(args)
    
     (
         run_sets,
@@ -75,14 +78,19 @@ def main_v04(argv):
                               da_sets[0])
 
     run_results = mu.run_routing(network,
-                                 data_assimliation,
+                                 data_assimilation,
                                  run_sets,
+                                 da_sets,
                                  compute_parameters,
                                  forcing_parameters,
                                  waterbody_parameters,
                                  output_parameters,
+                                 hybrid_parameters,
+                                 data_assimilation_parameters,
+                                 run_parameters,
                                  parity_sets)
-            
+           
+    '''
     if showtiming:
         task_times['total_time'] = time.time() - main_start_time
 
@@ -129,7 +137,7 @@ def main_v04(argv):
                 round(task_times['output_time'],2)
             )
         ) 
-
+'''
 
 '''
 NGEN functions (_v02)

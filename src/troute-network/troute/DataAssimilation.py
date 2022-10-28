@@ -6,6 +6,7 @@ import pathlib
 import time
 import xarray as xr
 from collections import defaultdict
+from datetime import datetime
 
 #FIXME parameterize into construciton
 showtiming = True

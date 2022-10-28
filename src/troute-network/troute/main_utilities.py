@@ -16,9 +16,7 @@ from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_ro
 
 LOG = logging.getLogger('')
 
-def initialize_network(argv):
-    
-    args = _handle_args_v03(argv)
+def initialize_network(args):
     
     # unpack user inputs
     (
@@ -79,7 +77,7 @@ def initialize_network(argv):
 #        network_end_time = time.time()
 #        task_times['network_time'] = network_end_time - network_start_time
     
-    all_parameters = [log_parameters, 
+    all_parameters = [log_parameters, #TODO: Delete this...
                       preprocessing_parameters,
                       supernetwork_parameters,
                       waterbody_parameters,
@@ -514,14 +512,10 @@ def nwm_route(
 
     return results, subnetwork_list
 
-def create_output_dataframes(results, run_sets, waterbodies_df, link_lake_crosswalk):
-    
-    nts = run_sets[len(run_sets) - 1].get('nts')
-    dt = run_sets[len(run_sets) - 1].get('dt')
-    qts_subdivisions = run_sets[len(run_sets) - 1].get('qts_subdivisions')
+def create_output_dataframes(results, nts, waterbodies_df, link_lake_crosswalk):
     
     qvd_columns = pd.MultiIndex.from_product(
-        [range(nts), ["q", "v", "d"]]
+        [range(int(nts)), ["q", "v", "d"]]
     ).to_flat_index()
     
     flowveldepth = pd.concat(
@@ -530,7 +524,7 @@ def create_output_dataframes(results, run_sets, waterbodies_df, link_lake_crossw
     
     # create waterbody dataframe for output to netcdf file
     i_columns = pd.MultiIndex.from_product(
-        [range(nts), ["i"]]
+        [range(int(nts)), ["i"]]
     ).to_flat_index()
     
     wbdy = pd.concat(
@@ -539,49 +533,22 @@ def create_output_dataframes(results, run_sets, waterbodies_df, link_lake_crossw
     )
     
     wbdy_id_list = waterbodies_df.index.values.tolist()
-    '''
-    flow_df = flowveldepth.loc[wbdy_id_list]
-    wbdy = wbdy.loc[wbdy_id_list]
-    
-    timestep, variable = zip(*flow_df.columns.tolist())
-    timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
-    ts_set = set(timestep_index[0].tolist())
-    flow_df_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-    flow_df = flow_df.iloc[:,flow_df_col_index]
-    
-    timestep, variable = zip(*wbdy.columns.tolist())
-    timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
-    ts_set = set(timestep_index[0].tolist())
-    wbdy_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-    
-    i_lakeout_df = wbdy.iloc[:,wbdy_col_index]
-    q_lakeout_df = flow_df.iloc[:,0::3]
-    d_lakeout_df = flow_df.iloc[:,2::3]
-    '''
-    i_lakeout_df = wbdy.loc[wbdy_id_list]
-    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,0::3]
-    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,2::3]
+
+    i_lakeout_df = wbdy.loc[wbdy_id_list].iloc[:,-1]
+    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-3]
+    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-1]
     # lakeout = pd.concat([i_df, q_df, d_df], axis=1)
     
     # replace waterbody lake_ids with outlet link ids
     flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
     
-    q_channel_df = flowveldepth.iloc[:,0::3]
-    v_channel_df = flowveldepth.iloc[:,1::3]
-    d_channel_df = flowveldepth.iloc[:,2::3]
+    q_channel_df = flowveldepth.iloc[:,-3]
+    v_channel_df = flowveldepth.iloc[:,-2]
+    d_channel_df = flowveldepth.iloc[:,-1]
+    
+    segment_ids = flowveldepth.index.values.tolist()
 
-    date_column_names = pd.date_range(start=run_sets[-1].get('t0') + timedelta(seconds=run_sets[-1].get('dt')), 
-              end=run_sets[-1].get('final_timestamp'), 
-              freq=str(run_sets[-1].get('dt'))+'S')
-    
-    i_lakeout_df.columns = date_column_names
-    q_lakeout_df.columns = date_column_names
-    d_lakeout_df.columns = date_column_names
-    q_channel_df.columns = date_column_names
-    v_channel_df.columns = date_column_names
-    d_channel_df.columns = date_column_names
-    
-    return q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df
+    return q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
     
 def _reindex_lake_to_link_id(target_df, crosswalk):
     '''
