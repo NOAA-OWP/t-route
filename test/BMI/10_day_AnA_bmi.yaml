@@ -1,0 +1,84 @@
+# 
+#--------------------------------------------------------------------------------
+log_parameters:
+    #----------
+    showtiming: True
+    log_level : DEBUG
+#--------------------------------------------------------------------------------
+network_topology_parameters:
+    #----------
+    supernetwork_parameters:
+        #----------
+        geo_file_path: /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/RouteLink_NWMv2.1.nc
+        synthetic_wb_segments:
+            - 4800002
+            - 4800004
+            - 4800006
+            - 4800007
+    waterbody_parameters:
+        #----------
+        break_network_at_waterbodies: True 
+        level_pool:
+            #----------
+            level_pool_waterbody_parameter_file_path: /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/LAKEPARM_NWMv2.1.nc
+        rfc:
+            #----------
+            reservoir_parameter_file                : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/reservoir_index_AnA_NWMv2.1.nc
+            reservoir_rfc_forecasts                 : True
+            reservoir_rfc_forecasts_time_series_path: /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/DA_Inputs/BayFlood/rfc_timeseries
+            reservoir_rfc_forecasts_lookback_hours  : 28
+#--------------------------------------------------------------------------------
+compute_parameters:
+    #----------
+    parallel_compute_method: by-network
+    compute_kernel         : V02-structured
+    assume_short_ts        : True
+    subnetwork_target_size : 10000
+    cpu_pool               : 36
+    restart_parameters:
+        #----------
+        wrf_hydro_channel_restart_file           : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Restarts/BayFlood/v21/HYDRO_RST.2021-10-20_00:00_DOMAIN1
+        wrf_hydro_channel_ID_crosswalk_file      : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/RouteLink_NWMv2.1.nc
+        wrf_hydro_waterbody_restart_file         : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Restarts/BayFlood/v21/HYDRO_RST.2021-10-20_00:00_DOMAIN1
+        wrf_hydro_waterbody_ID_crosswalk_file    : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/LAKEPARM_NWMv2.1.nc
+        wrf_hydro_waterbody_crosswalk_filter_file: /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/RouteLink_NWMv2.1.nc
+    forcing_parameters:
+        #----------
+        qts_subdivisions        : 12
+        dt                      : 300
+        qlat_input_folder       : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/ChannelForcings/BayFlood/
+        qlat_file_pattern_filter: "*.CHRTOUT_DOMAIN1"
+        nts                     : 2880 #4032 #2880
+        max_loop_size           : 1   
+    data_assimilation_parameters:
+        #----------
+        usgs_timeslices_folder   : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/DA_Inputs/BayFlood/usgs_timeslices
+        usace_timeslices_folder  : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/DA_Inputs/BayFlood/usace_timeslices
+        timeslice_lookback_hours : 24 
+        qc_threshold             : 1
+        streamflow_da:
+            #----------
+            streamflow_nudging       : True
+            gage_segID_crosswalk_file: /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/RouteLink_NWMv2.1.nc
+            crosswalk_gage_field     : 'gages'
+            crosswalk_segID_field    : 'link'
+            wrf_hydro_lastobs_file   : #/glade/work/adamw/CONUS/RESTART/nudgingLastObs.2021-08-23_12:00:00.nc #####################
+            lastobs_output_folder    : #/glade/work/adamw/CONUS/lastobs_troute ######################################
+        reservoir_da:
+            #----------
+            reservoir_persistence_usgs  : True
+            reservoir_persistence_usace : True
+            gage_lakeID_crosswalk_file  : /glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/reservoir_index_AnA_NWMv2.1.nc
+            
+#--------------------------------------------------------------------------------
+output_parameters:
+    #----------
+    lite_restart:
+        #----------
+        lite_restart_output_directory: /glade/scratch/shorvath/PR_577_tests/10_day_AnA/restart_troute
+#    chrtout_output:
+#        #----------
+#        wrf_hydro_channel_output_source_folder: /glade/scratch/shorvath/PR_577_tests/10_day_AnA/CHRTOUT_troute
+#    lakeout_output: /glade/scratch/shorvath/PR_577_tests/10_day_AnA/LAKEOUT
+
+    
