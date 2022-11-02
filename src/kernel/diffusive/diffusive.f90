@@ -675,10 +675,10 @@ contains
         
           ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
         end if
-        
+
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
-        
+
         call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval, j)
 
       end do  ! end of j loop for predictor
@@ -1138,7 +1138,6 @@ contains
       double precision :: currentQ
       double precision :: eei_ghost, ffi_ghost, exi_ghost
       double precision :: fxi_ghost, qp_ghost, qpx_ghost
-    
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
     !* Note: lateralFlow(1,j) is already added to the boundary
@@ -1303,15 +1302,14 @@ contains
       do i = ncomp-1, 1, -1
         qp(i, j)  = eei(i) * qp(i+1, j) + ffi(i)
         qpx(i, j) = exi(i) * qpx(i+1, j) + fxi(i)
-      end do
+     end do
 
       ! when a reach hasn't been applied to DA 
      ! if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
        qp(1, j) = newQ(1, j)
        qp(1, j) = qp(1, j) + allqlat
      ! endif
-     
-     
+    
       do i = 1, ncomp
         if (abs(qp(i, j)) < q_llm) then
           qp(i, j) = q_llm    

@@ -267,7 +267,7 @@ def nwm_output_generator(
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
-
+        
         if chrtout_read_folder:
 
             chrtout_files = sorted(

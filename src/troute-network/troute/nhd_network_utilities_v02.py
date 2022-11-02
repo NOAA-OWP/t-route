@@ -255,7 +255,7 @@ def build_forcing_sets(
         raise TypeError("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
     except AssertionError:
         raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
-    
+
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
         
     # TODO: Throw errors if insufficient input data are available
@@ -275,7 +275,7 @@ def build_forcing_sets(
     elif qlat_input_folder:
         
         # Construct run_set dictionary from user-specified parameters
-    
+
         # get the first and seconded files from an ordered list of all forcing files
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))

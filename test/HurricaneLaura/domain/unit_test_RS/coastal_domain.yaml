@@ -1,0 +1,11 @@
+1622721:
+  links:
+  - 1622701
+  - 1622703
+  - 1622721
+  rfc:
+  - wgrfc
+  rpu:
+  - 12d
+  upstream_boundary_link_mainstem:
+  - 1622701
