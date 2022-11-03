@@ -1089,8 +1089,8 @@ cpdef object compute_network_structured(
     # Check shapes
     if qlat_values.shape[0] != data_idx.shape[0]:
         raise ValueError(f"Number of rows in Qlat is incorrect: expected ({data_idx.shape[0]}), got ({qlat_values.shape[0]})")
-    if qlat_values.shape[1] < nsteps:
-        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at most ({data_idx.shape[0]}), got ({qlat_values.shape[1]}). The number of columns in Qlat must be equal to or less than the number of routing timesteps")
+    if qlat_values.shape[1] < nsteps/qts_subdivisions:
+        raise ValueError(f"Number of columns (timesteps) in Qlat is incorrect: expected at least ({data_idx.shape[1]/nsteps}), got ({qlat_values.shape[1]}). The number of columns in Qlat must be at least the number of routing timesteps")
     if data_values.shape[0] != data_idx.shape[0] or data_values.shape[1] != data_cols.shape[0]:
         raise ValueError(f"data_values shape mismatch")
     #define and initialize the final output array, add one extra time step for initial conditions
