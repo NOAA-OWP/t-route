@@ -78,7 +78,7 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     id_regex = re.compile(r".*nex-(\d+)_.*.csv")
     nexuses_flows_df = pd.concat(
             #Read the nexus csv file
-            (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(
+            (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c', skipinitialspace=True).rename(
                 #Rename the flow column to the id of the nexus
                 columns={2:int(id_regex.match(f.name).group(1))})
             for f in nexus_files_list #Build the generator for each required file
