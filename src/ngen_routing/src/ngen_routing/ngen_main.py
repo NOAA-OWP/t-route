@@ -7,6 +7,11 @@ import pandas as pd
 import sys
 import os
 
+from functools import partial
+import hashlib
+non_crypto_md5 = partial(hashlib.md5, usedforsecurity=False)
+hashlib.md5 = non_crypto_md5
+
 if not hasattr(sys, 'argv'):
     sys.argv  = ['']
 
