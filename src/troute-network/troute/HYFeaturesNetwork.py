@@ -244,10 +244,11 @@ class HYFeaturesNetwork(AbstractNetwork):
             raise RuntimeError("Unsupported file type: {}".format(file_type))
 
         #Don't need the string prefix anymore, drop it
-        mask = ~ self._dataframe['toid'].str.startswith("tnex")
         self._dataframe = self._dataframe.apply(numeric_id, axis=1)
-        #make the flowpath linkage, ignore the terminal nexus
-        self._flowpath_dict = dict(zip(self._dataframe.loc[mask].toid, self._dataframe.loc[mask].id))
+        #make the flowpath linkage.  Since we can/do add flow at terminal nodes,
+        #we include all nodes here, even if the qlat of that terminal is adjusted
+        #to another node upstream later.
+        self._flowpath_dict = dict(zip(self._dataframe.toid, self._dataframe.id))
         self._waterbody_types_df = pd.DataFrame()
         self._waterbody_df = pd.DataFrame()
         #FIXME the base class constructor is finiky
@@ -358,9 +359,11 @@ class HYFeaturesNetwork(AbstractNetwork):
           print("channel initial states complete")
         if __showtiming__:
           print("... in %s seconds." % (time.time() - start_time))
-        terminal = self._dataframe[
-                ~self._dataframe["downstream"].isin(self._dataframe.index)
-            ]["downstream"]
+        #This is NEARLY redundant to the self.terminal_codes property, but in this case
+        #we actually need the mapping of what is upstream of that terminal node as well.
+        #we also only want terminals that actually exist based on definition, not user input
+        terminal_mask = ~self._dataframe["downstream"].isin(self._dataframe.index)
+        terminal = self._dataframe.loc[ terminal_mask ]["downstream"]
         upstream_terminal = dict()
         for key, value in terminal.items():
             upstream_terminal.setdefault(value, set()).add(key)
