@@ -44,7 +44,7 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
         df = df.loc[lake_id_mask]
     return df
 
-def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
+def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict, terminal_links):
     # STEP 5: Read (or set) QLateral Inputs
     if __showtiming__:
         start_time = time.time()
@@ -92,7 +92,32 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(index={int(k):v})
         for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
         ).T
-    
+
+    #For a terminal nexus, we want to include the lateral flow from the catchment contributing to that nexus
+    #one way to do that is to cheat and put that lateral flow at the upstream...this is probably the simplest way
+    #right now.  The other is to create a virtual channel segment downstream to "route" i.e accumulate into
+    #but it isn't clear right now how to do that with flow/velocity/depth requirements
+    #find the terminal nodes
+    for tnx, up in terminal_links.items():
+        print(up, tnx)
+        #print(nexuses_flows_df)
+        #first need to ensure there is an upstream location to dump to
+        for nex in up:
+            try:
+                #FIXME if multiple upstreams exist in this case then a choice is to be made as to which it goes into
+                #some cases the choice is easy cause the upstream doesn't exist, but in others, it may not be so simple
+                #in such cases where multiple valid upstream nexuses exist, perhaps the mainstem should be used?
+                qlat_df.loc[up] += nexuses_flows_df.loc[tnx]
+                break #flow added, don't add it again!
+            except KeyError:
+                #this upstream doesn't actually exist on the network (maybe it is a headwater?)
+                #or perhaps the output file doesnt exist?  If this is the case, this isn't a good trap
+                #but for now, add the flow to a known good nexus upstream of the terminal
+                continue
+            #TODO what happens if can't put the qlat anywhere?  Right now this silently ignores the issue...
+        qlat_df.drop(tnx, inplace=True)
+        #print(nexuses_flows_df)
+
     # The segment_index has the full network set of segments/flowpaths. 
     # Whereas the set of flowpaths that are downstream of nexuses is a 
     # subset of the segment_index. Therefore, all of the segments/flowpaths
@@ -219,10 +244,11 @@ class HYFeaturesNetwork(AbstractNetwork):
             raise RuntimeError("Unsupported file type: {}".format(file_type))
 
         #Don't need the string prefix anymore, drop it
-        mask = ~ self._dataframe['toid'].str.startswith("tnex")
         self._dataframe = self._dataframe.apply(numeric_id, axis=1)
-        #make the flowpath linkage, ignore the terminal nexus
-        self._flowpath_dict = dict(zip(self._dataframe.loc[mask].toid, self._dataframe.loc[mask].id))
+        #make the flowpath linkage.  Since we can/do add flow at terminal nodes,
+        #we include all nodes here, even if the qlat of that terminal is adjusted
+        #to another node upstream later.
+        self._flowpath_dict = dict(zip(self._dataframe.toid, self._dataframe.id))
         self._waterbody_types_df = pd.DataFrame()
         self._waterbody_df = pd.DataFrame()
         #FIXME the base class constructor is finiky
@@ -333,8 +359,15 @@ class HYFeaturesNetwork(AbstractNetwork):
           print("channel initial states complete")
         if __showtiming__:
           print("... in %s seconds." % (time.time() - start_time))
-        
-        self._qlateral = read_qlats(forcing_parameters, self._dataframe.index, self.downstream_flowpath_dict)
+        #This is NEARLY redundant to the self.terminal_codes property, but in this case
+        #we actually need the mapping of what is upstream of that terminal node as well.
+        #we also only want terminals that actually exist based on definition, not user input
+        terminal_mask = ~self._dataframe["downstream"].isin(self._dataframe.index)
+        terminal = self._dataframe.loc[ terminal_mask ]["downstream"]
+        upstream_terminal = dict()
+        for key, value in terminal.items():
+            upstream_terminal.setdefault(value, set()).add(key)
+        self._qlateral = read_qlats(forcing_parameters, self._dataframe.index, self.downstream_flowpath_dict, upstream_terminal)
         #Mask out all non-simulated waterbodies
         self._dataframe['waterbody'] = self.waterbody_null
         #This also remaps the initial NHDComID identity to the HY_Features Waterbody ID for the reservoir...
