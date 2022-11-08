@@ -86,7 +86,7 @@ def read_config_file(custom_input_file):
     data_assimilation_parameters (dict): Input parameters re data assimilation
 
     '''
-    
+    import pdb; pdb.set_trace()
     if custom_input_file[-4:] == "yaml":
         with open(custom_input_file) as custom_file:
             data = yaml.load(custom_file, Loader=yaml.SafeLoader)
@@ -99,6 +99,37 @@ def read_config_file(custom_input_file):
     supernetwork_parameters = network_topology_parameters.get(
         "supernetwork_parameters", None
     )
+    # add attributes when HYfeature network is selected
+    if supernetwork_parameters['geo_file_path'][-4:] == "gpkg":
+        params = {
+            "title_string":"HY_Features Test",
+            "geo_file_path":supernetwork_parameters['geo_file_path'],
+            "flowpath_edge_list": None,
+            "columns": {
+                #link????
+                "key": "id",
+                "downstream": "toid",
+                "dx": "lengthkm",
+                "n": "n",  # TODO: rename to `manningn`
+                "ncc": "nCC",  # TODO: rename to `mannningncc`
+                "s0": "So",
+                "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
+                #waterbody: "NHDWaterbodyComID",
+                "tw": "TopWdth",  # TODO: rename to `topwidth`
+                "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
+                #alt: "alt",
+                "musk": "MusK",
+                "musx": "MusX",
+                "cs": "ChSlp"  # TODO: rename to `sideslope`
+                },
+            "waterbody_null_code": -9999,
+            "terminal_code": 0,
+            "waterbody_null_code": -9999,
+            "driver_string": "NetCDF",
+            "layer_string": 0
+            }
+        supernetwork_parameters['hyfeature_params'] = params
+        
     preprocessing_parameters = network_topology_parameters.get(
         "preprocessing_parameters", {}
     )        

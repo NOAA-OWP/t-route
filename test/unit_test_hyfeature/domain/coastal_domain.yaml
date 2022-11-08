@@ -1,0 +1,10 @@
+10237:
+  links:
+  - 10236
+  - 10237
+  rfc:
+  - wgrfc
+  rpu:
+  - 12d
+  upstream_boundary_link_mainstem:
+  - 10236
