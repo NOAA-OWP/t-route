@@ -67,15 +67,17 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     #is empty, the following concat raises a ValueError which
     #It may be sufficient to catch this exception and warn that
     #there may not be any pattern matching files in the dir
-
-    nexus_files_list = list(nexus_files)
+    
+    #Add tnx for backwards compatability
+    nexus_files_list = list(nexus_files) + list(nexus_input_folder.glob('tnx*.csv'))
 
     if len(nexus_files_list) == 0:
         raise ValueError('No nexus input files found. Recommend checking \
         nexus_input_folder path in YAML configuration.')
 
     #pd.concat((pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(columns={2:id_regex.match(f).group(1)}) for f in all_files[0:2]), axis=1).T
-    id_regex = re.compile(r".*nex-(\d+)_.*.csv")
+    #add tnx/tnex for backwards compatability
+    id_regex = re.compile(r"(?:nex|tnx|tnex)-(\d+)_.*.csv")
     nexuses_flows_df = pd.concat(
             #Read the nexus csv file
             (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c', skipinitialspace=True).rename(
@@ -179,6 +181,7 @@ def read_json(file_path, edge_list):
         edge_data = json.load(edge_file)
         edge_map = {}
         for id_dict in edge_data:
+            id_dict = {k.lower(): v for k, v in id_dict.items()}
             edge_map[ id_dict['id'] ] = id_dict['toid']
         with open(file_path) as data_file:
             json_data = json.load(data_file)  
