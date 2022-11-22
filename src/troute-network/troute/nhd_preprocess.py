@@ -735,12 +735,11 @@ def nhd_initial_warmstate_preprocess(
             "waterbody initial states complete in %s seconds."\
             % (time.time() - start_time))
         start_time = time.time()
-
+    
     #----------------------------------------------------------------------------
     # Assemble channel initial states (flow and depth)
     # also establish simulation initialization timestamp
     #----------------------------------------------------------------------------
-    
     start_time = time.time()
     LOG.info("setting channel initial states ...")
 

@@ -417,6 +417,7 @@ def hyfeature_hybrid_routing_preprocess(
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
+    # FIXME: Make this commented out alive
     '''
     if preprocessing_parameters.get('preprocess_only', False):
 

@@ -129,13 +129,13 @@ def main_v04(argv):
     network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, cpu_pool)
     
     # Create data assimilation object from da_sets for first loop iteration
-    if supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
+    # TODO: Add data_assimilation for hyfeature network
+    if 1==2:
         data_assimilation = AllDA(data_assimilation_parameters,
                                   run_parameters,
                                   waterbody_parameters,
                                   network,
                                   da_sets[0])
-    # TODO: apply data_assimilation for hyfeature network
 
     if showtiming:
         forcing_end_time = time.time()
@@ -165,7 +165,7 @@ def main_v04(argv):
 
         if showtiming:
             route_start_time = time.time()
-        import pdb; pdb.set_trace()
+
         run_results = nwm_route(
             network.connections, 
             network.reverse_network, 
@@ -204,7 +204,7 @@ def main_v04(argv):
             network.coastal_boundary_depth_df,
             network.unrefactored_topobathy_df,
         )
-        import pdb; pdb.set_trace()        
+      
         # returns list, first item is run result, second item is subnetwork items
         subnetwork_list = run_results[1]
         run_results = run_results[0]
@@ -214,7 +214,7 @@ def main_v04(argv):
             task_times['route_time'] += route_end_time - route_start_time
 
         # create initial conditions for next loop itteration
-        network.new_nhd_q0(run_results)
+        network.new_q0(run_results)
         network.update_waterbody_water_elevation()    
         
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
@@ -238,7 +238,9 @@ def main_v04(argv):
                                       cpu_pool)
             
             # get reservoir DA initial parameters for next loop iteration
-            data_assimilation.update(run_results,
+            # TODO: Add data_assimilation for hyfeature network
+            if 1==2: 
+                data_assimilation.update(run_results,
                                      data_assimilation_parameters,
                                      run_parameters,
                                      network,
@@ -265,9 +267,9 @@ def main_v04(argv):
             network._waterbody_df,  ## check:  network._waterbody_df ?? def name is different from return self._ ..
             network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
             data_assimilation_parameters,
-            data_assimilation.lastobs_df,
-            network.link_gage_df,
-            network.link_lake_crosswalk,
+            pd.DataFrame(), #data_assimilation.lastobs_df,
+            pd.DataFrame(), #network.link_gage_df,
+            None, #network.link_lake_crosswalk, 
         )
 
         if showtiming:

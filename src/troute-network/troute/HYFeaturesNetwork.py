@@ -11,6 +11,7 @@ import geopandas as gpd
 from pathlib import Path
 import math
 import troute.hyfeature_preprocess as hyfeature_prep
+from datetime import datetime, timedelta
 
 __verbose__ = False
 __showtiming__ = False
@@ -355,6 +356,34 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self.refactored_reaches,
                 self.unrefactored_topobathy_df)
 
+    def new_q0(self, run_results):
+        """
+        Prepare a new q0 dataframe with initial flow and depth to act as
+        a warmstate for the next simulation chunk.
+        """
+        self._q0 = pd.concat(
+            [
+                pd.DataFrame(
+                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
+                )
+                for r in run_results
+            ],
+            copy=False,
+        )
+        return self._q0
+    
+    def update_waterbody_water_elevation(self):           
+        """
+        Update the starting water_elevation of each lake/reservoir
+        with flow and depth values from q0
+        """
+        self._waterbody_df.update(self._q0)
+        
+    def new_t0(self, dt, nts):
+        """
+        Update t0 value for next loop iteration
+        """
+        self._t0 += timedelta(seconds = dt * nts)
 
     @property
     def downstream_flowpath_dict(self):

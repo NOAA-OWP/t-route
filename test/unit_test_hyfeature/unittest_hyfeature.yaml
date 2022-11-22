@@ -94,7 +94,7 @@ output_parameters:
         lite_restart_output_directory: restart/
     chrtout_output:
         #----------
-        wrf_hydro_channel_output_source_folder: channel_forcing/
+        #wrf_hydro_channel_output_source_folder: channel_forcing/
     chanobs_output:
         #----------
         chanobs_output_directory: output/ 

@@ -249,7 +249,7 @@ def compute_nhd_routing_v02(
     waterbody_type_specified,
     subnetwork_list,
 ):
-    import pdb; pdb.set_trace()
+
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
     param_df = param_df.astype("float32")
@@ -1201,7 +1201,7 @@ def compute_diffusive_routing(
             coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[tw].to_frame().T
         else:
             coastal_boundary_depth_bytw_df = pd.DataFrame()
-        import pdb; pdb.set_trace()
+
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,

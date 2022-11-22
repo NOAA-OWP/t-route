@@ -196,7 +196,7 @@ class NHDNetwork(AbstractNetwork):
             print("setting waterbody and channel initial states ...")
         if __showtiming__:
             start_time = time.time()
-        
+
         (self._waterbody_df,
          self._q0,
          self._t0,) = nhd_prep.nhd_initial_warmstate_preprocess(
@@ -237,7 +237,7 @@ class NHDNetwork(AbstractNetwork):
             self._coastal_boundary_depth_df,
         )
     
-    def new_nhd_q0(self, run_results):
+    def new_q0(self, run_results):
         """
         Prepare a new q0 dataframe with initial flow and depth to act as
         a warmstate for the next simulation chunk.

@@ -208,8 +208,8 @@ def build_qlateral_array(
         # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids 
         qlats_df = pd.concat( (nexuses_lateralflows_df.loc[int(k)].rename(v)
                             for k,v in nexus_to_upstream_flowpath_dict.items() ), axis=1
-                            ).T        
-        
+                            ).T 
+        qlats_df.columns=range(len(nexus_files))
         qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
     elif qlat_input_file:
         qlats_df = nhd_io.get_ql_from_csv(qlat_input_file)
