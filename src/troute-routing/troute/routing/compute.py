@@ -249,7 +249,7 @@ def compute_nhd_routing_v02(
     waterbody_type_specified,
     subnetwork_list,
 ):
-
+    import pdb; pdb.set_trace()
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
     param_df = param_df.astype("float32")
@@ -543,7 +543,6 @@ def compute_nhd_routing_v02(
                             return_courant,
                         )
                     )
-
                 results_subn[order] = parallel(jobs)
    
                 if order > 0:  # This is not needed for the last rank of subnetworks
@@ -1180,9 +1179,10 @@ def compute_diffusive_routing(
         else:
             topobathy_bytw = pd.DataFrame()
             unrefactored_topobathy_bytw = pd.DataFrame()
-  
+
         # diffusive streamflow DA activation switch
-        if da_parameter_dict['diffusive_streamflow_nudging']==True:
+        #if da_parameter_dict['diffusive_streamflow_nudging']==True:
+        if 'diffusive_streamflow_nudging' in da_parameter_dict:
             diff_usgs_df = usgs_df
         else:
             diff_usgs_df = pd.DataFrame()
@@ -1201,7 +1201,7 @@ def compute_diffusive_routing(
             coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[tw].to_frame().T
         else:
             coastal_boundary_depth_bytw_df = pd.DataFrame()
-
+        import pdb; pdb.set_trace()
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
