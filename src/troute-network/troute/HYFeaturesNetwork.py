@@ -29,24 +29,6 @@ def numeric_id(flowpath):
     flowpath['toid'] = int(toid)
     return flowpath
 
-def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
-    """
-    Reads lake.json file and prepares a dataframe, filtered
-    to the relevant reservoirs, to provide the parameters
-    for level-pool reservoir computation.
-    """
-    def node_key_func(x):
-        return int(x[3:])
-    df = pd.read_json(parm_file, orient="index")
-
-    df.index = df.index.map(node_key_func)
-    df.index.name = lake_index_field
-    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
-    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
-    if lake_id_mask:
-        df = df.loc[lake_id_mask]
-    return df
-
 def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
     # STEP 5: Read (or set) QLateral Inputs
     if __showtiming__:

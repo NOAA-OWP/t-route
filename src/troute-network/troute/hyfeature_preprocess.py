@@ -4,10 +4,12 @@ import logging
 from datetime import datetime
 from collections import defaultdict
 from pathlib import Path
+import os
 
 import pandas as pd
 import numpy as np
 import xarray as xr
+import geopandas as gpd
 
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
@@ -85,10 +87,9 @@ def build_hyfeature_network(supernetwork_parameters,
         waterbody_df["qd0"] = 0.0
         waterbody_df["h0"] = -1e9
 
-        hybrid_params = waterbody_parameters.get('hybrid_and_rfc', None)
-        try: #FIXME for HYFeatures/ngen this will likely be a lot different...
-            waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                                    hybrid_params["reservoir_parameter_file"],
+        try:
+            waterbody_types_df = read_ngen_waterbody_type_df(
+                                    levelpool_params["reservoir_parameter_file"],
                                     lake_id,
                                     #self.waterbody_connections.values(),
                                     )
@@ -98,34 +99,12 @@ def build_hyfeature_network(supernetwork_parameters,
                                 .drop_duplicates(subset=lake_id)
                                 .set_index(lake_id)
                                 )
-        except:
-            waterbody_types_df = pd.DataFrame(index=waterbody_df.index)
-            waterbody_types_df['reservoir_type'] = 1
+
+        except ValueError:
             #FIXME any reservoir operations requires some type
             #So make this default to 1 (levelpool)
-            #At this point, need to adjust some waterbody/channel parameters based on lakes/reservoirs
-            #HACK for bad hydrofabric
-            def make_list(s):
-                if isinstance(s, list):
-                    return s
-                else:
-                    return [s]
-
-            waterbody_df['member_wbs'] = waterbody_df['member_wbs'].apply(make_list)
-            waterbody_df['partial_length_percent'] = waterbody_df['partial_length_percent'].apply(make_list)
-            adjust = [ zip(x, y) 
-                        for x, y in 
-                        zip(waterbody_df['member_wbs'], waterbody_df['partial_length_percent'])
-                    ]
-            #adjust is a generator of a list of list of tuples...use chain to flatten
-            for wb, percent in chain.from_iterable(adjust):
-                # FIXME not sure why some of these are 100%, if that  is the case
-                # shouldn't they just not be in the topology???
-                wb = node_key_func_wb(wb)
-                #Need to adjust waterbodys/channels that  interact with this waterbody
-                #Hack for wonky hydrofabric
-                if percent != 'NA':
-                    dataframe.loc[wb, 'dx'] = dataframe.loc[wb, 'dx'] - dataframe.loc[wb, 'dx']*float(percent)
+            waterbody_types_df = pd.DataFrame(index=waterbody_df.index)
+            waterbody_types_df['reservoir_type'] = 1        
               
     return (dataframe,           
             flowpath_dict,  
@@ -679,9 +658,7 @@ def hyfeature_initial_warmstate_preprocess(
     # That is because that is how they are used downstream. Need to
     # trace that back and decide if there is one of those two ways
     # that is optimal and make both returns that way.
-    
 
-    
 def hyfeature_forcing(
     run,
     forcing_parameters,
@@ -784,3 +761,46 @@ def hyfeature_forcing(
             )            
 
     return qlats_df, coastal_boundary_depth_df
+
+def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    Reads lake.json file and prepares a dataframe, filtered
+    to the relevant reservoirs, to provide the parameters
+    for level-pool reservoir computation.
+    """
+    def node_key_func(x):
+        return int(x[3:])
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="lake_attributes").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
+    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+    return df
+
+def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    """
+    #FIXME: this function is likely not correct. Unclear how we will get 
+    # reservoir type from the gpkg files. Information should be in 'crosswalk'
+    # layer, but as of now (Nov 22, 2022) there doesn't seem to be a differentiation
+    # between USGS reservoirs, USACE reservoirs, or RFC reservoirs...
+    def node_key_func(x):
+        return int(x[3:])
+    
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="crosswalk").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+        
+    return df

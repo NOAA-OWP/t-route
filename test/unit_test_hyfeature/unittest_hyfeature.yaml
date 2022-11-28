@@ -17,12 +17,13 @@ network_topology_parameters:
             #- 4800004
             #- 4800006
             #- 4800007
-    #waterbody_parameters:
+    waterbody_parameters:
         #----------
-        #break_network_at_waterbodies: False 
-        #level_pool:
+        break_network_at_waterbodies: False 
+        level_pool:
             #----------
-            #level_pool_waterbody_parameter_file_path: domain/LAKEPARM_NWMv2.1.nc 
+            level_pool_waterbody_parameter_file_path: domain/gauge_01069700.gpkg #domain/LAKEPARM_NWMv2.1.nc 
+            reservoir_parameter_file                : domain/gauge_01069700.gpkg #domain/reservoir_index_AnA.nc
         #rfc:
             #----------
             #reservoir_parameter_file                : domain/reservoir_index_AnA.nc
