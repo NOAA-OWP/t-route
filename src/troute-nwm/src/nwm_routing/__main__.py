@@ -29,6 +29,7 @@ import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import troute.routing.diffusive_utils as diff_utils
+import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
 
@@ -53,7 +54,7 @@ def main_v04(argv):
         parity_parameters,
         data_assimilation_parameters,
     ) = _input_handler_v03(args)
-    
+
     run_parameters = {
         'dt': forcing_parameters.get('dt'),
         'nts': forcing_parameters.get('nts'),
@@ -75,14 +76,24 @@ def main_v04(argv):
     # perform initial warmstate preprocess.
     if showtiming:
         network_start_time = time.time()
+        
+    #if "ngen_nexus_file" in supernetwork_parameters:
+    if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
+        network = HYFeaturesNetwork(supernetwork_parameters,
+                                    waterbody_parameters,
+                                    restart_parameters,
+                                    forcing_parameters,
+                                    verbose=True, showtiming=showtiming) 
 
-    if "ngen_nexus_file" in supernetwork_parameters:
-         network = HYFeaturesNetwork(supernetwork_parameters,
-                                    waterbody_parameters=waterbody_parameters,
-                                    restart_parameters=restart_parameters,
-                                    forcing_parameters=forcing_parameters,
-                                    verbose=verbose, showtiming=showtiming) 
-    else:
+        network.create_routing_network(network.connections,
+                                       network.dataframe, 
+                                       network.waterbody_connections,
+                                       network.gages,
+                                       preprocessing_parameters, 
+                                       compute_parameters,
+                                       waterbody_parameters,)
+        
+    elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
                              waterbody_parameters,
                              restart_parameters,
@@ -97,9 +108,12 @@ def main_v04(argv):
     if showtiming:
         network_end_time = time.time()
         task_times['network_creation_time'] = network_end_time - network_start_time
-   
+
     # Create run_sets: sets of forcing files for each loop
-    run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
+    if supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
+        run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
+    elif supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
+        run_sets = hnu.build_forcing_sets(forcing_parameters, network.t0)
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
@@ -113,19 +127,21 @@ def main_v04(argv):
 
     # Create forcing data within network object for first loop iteration
     network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, cpu_pool)
-
+    
     # Create data assimilation object from da_sets for first loop iteration
-    data_assimilation = AllDA(data_assimilation_parameters,
-                              run_parameters,
-                              waterbody_parameters,
-                              network,
-                              da_sets[0])
+    # TODO: Add data_assimilation for hyfeature network
+    if 1==2:
+        data_assimilation = AllDA(data_assimilation_parameters,
+                                  run_parameters,
+                                  waterbody_parameters,
+                                  network,
+                                  da_sets[0])
 
     if showtiming:
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - network_end_time
-    
 
+   
     parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
     subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
@@ -137,7 +153,6 @@ def main_v04(argv):
     # on first iteration of for loop only. For additional loops this will be passed
     # to function from inital loop.     
     subnetwork_list = [None, None, None]
- 
     for run_set_iterator, run in enumerate(run_sets):
         
         t0 = run.get("t0")
@@ -168,13 +183,13 @@ def main_v04(argv):
             network.dataframe,
             network.q0,
             network._qlateral,
-            data_assimilation.usgs_df,
-            data_assimilation.lastobs_df,
-            data_assimilation.reservoir_usgs_df,
-            data_assimilation.reservoir_usgs_param_df,
-            data_assimilation.reservoir_usace_df,
-            data_assimilation.reservoir_usace_param_df,
-            data_assimilation.assimilation_parameters,
+            pd.DataFrame(), #data_assimilation.usgs_df,
+            pd.DataFrame(), #data_assimilation.lastobs_df,
+            pd.DataFrame(), #data_assimilation.reservoir_usgs_df,
+            pd.DataFrame(), #data_assimilation.reservoir_usgs_param_df,
+            pd.DataFrame(), #data_assimilation.reservoir_usace_df,
+            pd.DataFrame(), #data_assimilation.reservoir_usace_param_df,
+            {}, #data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
             network._waterbody_df, ## check:  network._waterbody_df ?? def name is different from return self._ ..
@@ -189,17 +204,17 @@ def main_v04(argv):
             network.coastal_boundary_depth_df,
             network.unrefactored_topobathy_df,
         )
- 
+      
         # returns list, first item is run result, second item is subnetwork items
         subnetwork_list = run_results[1]
         run_results = run_results[0]
-        
+
         if showtiming:
             route_end_time = time.time()
             task_times['route_time'] += route_end_time - route_start_time
 
         # create initial conditions for next loop itteration
-        network.new_nhd_q0(run_results)
+        network.new_q0(run_results)
         network.update_waterbody_water_elevation()    
         
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
@@ -210,7 +225,8 @@ def main_v04(argv):
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
             )      
-   
+
+        # Prepare input forcing for next time loop simulation when mutiple time loops are presented.
         if run_set_iterator < len(run_sets) - 1:
             # update t0
             network.new_t0(dt,nts)
@@ -222,7 +238,9 @@ def main_v04(argv):
                                       cpu_pool)
             
             # get reservoir DA initial parameters for next loop iteration
-            data_assimilation.update(run_results,
+            # TODO: Add data_assimilation for hyfeature network
+            if 1==2: 
+                data_assimilation.update(run_results,
                                      data_assimilation_parameters,
                                      run_parameters,
                                      network,
@@ -249,15 +267,16 @@ def main_v04(argv):
             network._waterbody_df,  ## check:  network._waterbody_df ?? def name is different from return self._ ..
             network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
             data_assimilation_parameters,
-            data_assimilation.lastobs_df,
-            network.link_gage_df,
-            network.link_lake_crosswalk,
+            pd.DataFrame(), #data_assimilation.lastobs_df,
+            pd.DataFrame(), #network.link_gage_df,
+            None, #network.link_lake_crosswalk, 
         )
-        
+
         if showtiming:
             output_end_time = time.time()
             task_times['output_time'] += output_end_time - output_start_time
-            
+    # end of for run_set_iterator, run in enumerate(run_sets):
+    
     if showtiming:
         task_times['total_time'] = time.time() - main_start_time
 

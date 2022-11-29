@@ -209,12 +209,15 @@ def build_channel_initial_state(
     wrf_hydro_channel_restart_file = restart_parameters.get(
         "wrf_hydro_channel_restart_file", None
     )
+    
+    hyfeature_channel_restart_file = restart_parameters.get(
+        "hyfeature_channel_restart_file", None
+    )
 
     if channel_restart_file:
         q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
-
+        
     elif wrf_hydro_channel_restart_file:
-
         q0 = nhd_io.get_channel_restart_from_wrf_hydro(
             restart_parameters["wrf_hydro_channel_restart_file"],
             restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
@@ -223,6 +226,11 @@ def build_channel_initial_state(
             restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
             restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
         )
+    elif hyfeature_channel_restart_file: 
+        # FIXME: fix this cold start when acutal restart file for hyfeature network rolls in.
+        q0 = pd.DataFrame(
+            0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+        )
     else:
         # Set cold initial state
         # assume to be zero
@@ -230,6 +238,7 @@ def build_channel_initial_state(
         q0 = pd.DataFrame(
             0, index=segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
         )
+  
     # TODO: If needed for performance improvement consider filtering mask file on read.
     if not segment_index.empty:
         q0 = q0[q0.index.isin(segment_index)]
@@ -247,7 +256,7 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
-
+    
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
         assert qlat_input_folder.is_dir() == True
@@ -259,7 +268,6 @@ def build_forcing_sets(
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
         
     # TODO: Throw errors if insufficient input data are available
-
     if run_sets:
         
         # append final_timestamp variable to each set_list
@@ -316,7 +324,7 @@ def build_forcing_sets(
                 assert J.is_file() == True
             except AssertionError:
                 raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
-                
+ 
         # build run sets list
         run_sets = []
         k = 0
@@ -349,7 +357,6 @@ def build_forcing_sets(
             nts_last = nts_accum
             k += max_loop_size
             j += 1
-    
     return run_sets
 
 def build_qlateral_array(
@@ -382,7 +389,7 @@ def build_qlateral_array(
         qlat_file_value_col = forcing_parameters.get("qlat_file_value_col", "q_lateral")
         gw_bucket_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col","qBucket")
         terrain_ro_col = forcing_parameters.get("qlat_file_terrain_runoff_col","qSfcLatRunoff")
-        
+
         # Parallel reading of qlateral data from CHRTOUT
         with Parallel(n_jobs=cpu_pool) as parallel:
 

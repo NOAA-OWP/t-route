@@ -543,7 +543,6 @@ def compute_nhd_routing_v02(
                             return_courant,
                         )
                     )
-
                 results_subn[order] = parallel(jobs)
    
                 if order > 0:  # This is not needed for the last rank of subnetworks
@@ -1180,9 +1179,10 @@ def compute_diffusive_routing(
         else:
             topobathy_bytw = pd.DataFrame()
             unrefactored_topobathy_bytw = pd.DataFrame()
-  
+
         # diffusive streamflow DA activation switch
-        if da_parameter_dict['diffusive_streamflow_nudging']==True:
+        #if da_parameter_dict['diffusive_streamflow_nudging']==True:
+        if 'diffusive_streamflow_nudging' in da_parameter_dict:
             diff_usgs_df = usgs_df
         else:
             diff_usgs_df = pd.DataFrame()

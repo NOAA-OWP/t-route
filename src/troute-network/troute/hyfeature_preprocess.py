@@ -3,108 +3,127 @@ import pathlib
 import logging
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
+import os
 
 import pandas as pd
 import numpy as np
 import xarray as xr
+import geopandas as gpd
 
 import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
+from troute.nhd_network import reverse_dict
+import troute.HYFeaturesNetwork as hyf_network
+import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
 
-def build_nhd_network(supernetwork_parameters,waterbody_parameters,
-                      preprocessing_parameters,compute_parameters,
-                      data_assimilation_parameters):
+def build_hyfeature_network(supernetwork_parameters,
+                            waterbody_parameters,
+):
     
-    # Build routing network data objects. Network data objects specify river 
-    # network connectivity, channel geometry, and waterbody parameters.
-    if preprocessing_parameters.get('use_preprocessed_data', False): 
+    geo_file_path = supernetwork_parameters["geo_file_path"]
+    cols          = supernetwork_parameters["columns"]
+    terminal_code = supernetwork_parameters.get("terminal_code", 0)
+    
+    break_network_at_waterbodies = supernetwork_parameters.get("break_network_at_waterbodies", False)        
+    break_network_at_gages       = supernetwork_parameters.get("break_network_at_gages", False)       
+    break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
+                                     "break_network_at_gages": break_network_at_gages}
         
-        # get data from pre-processed file
-        (
-            connections,
-            param_df,
-            wbody_conn,
-            waterbodies_df,
-            waterbody_types_df,
-            break_network_at_waterbodies,
-            waterbody_type_specified,
-            link_lake_crosswalk,
-            independent_networks,
-            reaches_bytw,
-            rconn,
-            link_gage_df,
-            usgs_lake_gage_crosswalk, 
-            usace_lake_gage_crosswalk,
-            diffusive_network_data,
-            topobathy_df,
-            refactored_diffusive_domain,
-            refactored_reaches,
-            unrefactored_topobathy_df,
-        ) = unpack_nhd_preprocess_data(
-            preprocessing_parameters
-        )
+    file_type = Path(geo_file_path).suffix
+    if(  file_type == '.gpkg' ):        
+        dataframe = hyf_network.read_geopkg(geo_file_path)
+    elif( file_type == '.json') :
+        edge_list = supernetwork_parameters['flowpath_edge_list']
+        dataframe = hyf_network.read_json(geo_file_path, edge_list) 
     else:
+        raise RuntimeError("Unsupported file type: {}".format(file_type))
+
+    # Don't need the string prefix anymore, drop it
+    mask = ~ dataframe['toid'].str.startswith("tnex") 
+    dataframe = dataframe.apply(hyf_network.numeric_id, axis=1)
         
-        # build data objects from scratch
-        (
-            connections,
-            param_df,
-            wbody_conn,
-            waterbodies_df,
-            waterbody_types_df,
-            break_network_at_waterbodies,
-            waterbody_type_specified,
-            link_lake_crosswalk,
-            independent_networks,
-            reaches_bytw,
-            rconn,
-            link_gage_df,
-            usgs_lake_gage_crosswalk, 
-            usace_lake_gage_crosswalk,
-            diffusive_network_data,
-            topobathy_df,
-            refactored_diffusive_domain,
-            refactored_reaches,
-            unrefactored_topobathy_df,
-        ) = nhd_network_preprocess(
-            supernetwork_parameters,
-            waterbody_parameters,
-            preprocessing_parameters,
-            compute_parameters,
-            data_assimilation_parameters,
-        )
+    # make the flowpath linkage, ignore the terminal nexus
+    flowpath_dict = dict(zip(dataframe.loc[mask].toid, dataframe.loc[mask].id))
+    waterbody_types_df = pd.DataFrame()
+    waterbody_df = pd.DataFrame()
+    waterbody_type_specified = False
+
+ # **********  need to be included in flowpath_attributes  *************   
+    # FIXME once again, order here can hurt....to hack `alt` in, either need to
+    # put it as a column in the config, or do this AFTER the super constructor
+    # otherwise the alt column gets sliced out...
+    dataframe['alt'] = 1.0 #FIXME get the right value for this...
     
-    return (connections,
-            param_df,
-            wbody_conn,
-            waterbodies_df,
-            waterbody_types_df,
-            break_network_at_waterbodies,
+    #Load waterbody/reservoir info
+    #For ngen HYFeatures, the reservoirs to be simulated
+    #are determined by the lake.json file
+    #we limit waterbody_connections to only the flowpaths
+    #that coincide with a lake listed in this file
+    #see `waterbody_connections`
+    if waterbody_parameters:
+        # FIXME later, DO ALL LAKE PARAMS BETTER
+        levelpool_params = waterbody_parameters.get('level_pool', None)
+        if not levelpool_params:
+            # FIXME should not be a hard requirement
+            raise(RuntimeError("No supplied levelpool parameters in routing config"))
+            
+        lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
+        waterbody_df = read_ngen_waterbody_df(
+                    levelpool_params["level_pool_waterbody_parameter_file_path"],
+                    lake_id,
+                    #self.waterbody_connections.values()
+                    )
+            
+        # Remove duplicate lake_ids and rows
+        waterbody_df = (
+                        waterbody_df.reset_index()
+                        .drop_duplicates(subset=lake_id)
+                        .set_index(lake_id)
+                        )
+        waterbody_df["qd0"] = 0.0
+        waterbody_df["h0"] = -1e9
+
+        try:
+            waterbody_types_df = read_ngen_waterbody_type_df(
+                                    levelpool_params["reservoir_parameter_file"],
+                                    lake_id,
+                                    #self.waterbody_connections.values(),
+                                    )
+            # Remove duplicate lake_ids and rows
+            waterbody_types_df =(
+                                 waterbody_types_df.reset_index()
+                                .drop_duplicates(subset=lake_id)
+                                .set_index(lake_id)
+                                )
+
+        except ValueError:
+            #FIXME any reservoir operations requires some type
+            #So make this default to 1 (levelpool)
+            waterbody_types_df = pd.DataFrame(index=waterbody_df.index)
+            waterbody_types_df['reservoir_type'] = 1        
+              
+    return (dataframe,           
+            flowpath_dict,  
+            waterbody_types_df, 
+            waterbody_df, 
             waterbody_type_specified,
-            link_lake_crosswalk,
-            independent_networks,
-            reaches_bytw,
-            rconn,
-            link_gage_df,
-            usgs_lake_gage_crosswalk, 
-            usace_lake_gage_crosswalk,
-            diffusive_network_data,
-            topobathy_df,
-            refactored_diffusive_domain,
-            refactored_reaches,
-            unrefactored_topobathy_df
+            cols,
+            terminal_code,
+            break_points,
            )
-    
-    
-def nhd_network_preprocess(
-    supernetwork_parameters,
-    waterbody_parameters,
+
+def hyfeature_hybrid_routing_preprocess(
+    connections,
+    param_df,
+    wbody_conn,
+    gages,
     preprocessing_parameters,
     compute_parameters,
-    data_assimilation_parameters,
+    waterbody_parameters, 
 ):
     '''
     Creation of routing network data objects. Logical ordering of lower-level
@@ -248,136 +267,8 @@ def nhd_network_preprocess(
         refactored_diffusive_network_data = None   
         refactored_reaches                = {}
         LOG.info('No hybrid parameters specified in configuration file. This is an MC-only simulation')
-    #============================================================================
-    # Build network connections graph, assemble parameter dataframe, 
-    # establish segment-waterbody, and segment-gage mappings
-    LOG.info("creating network connections graph")
-    start_time = time.time()
     
-    connections, param_df, wbody_conn, gages = nnu.build_connections(
-        supernetwork_parameters,
-    )
-    
-    link_gage_df = pd.DataFrame.from_dict(gages)
-    link_gage_df.index.name = 'link'
-    break_network_at_waterbodies = waterbody_parameters.get(
-        "break_network_at_waterbodies", False
-    )
-    
-    # if streamflow DA, then break network at gages
-    break_network_at_gages = False
-    streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
-    if streamflow_da:
-        break_network_at_gages = streamflow_da.get('streamflow_nudging', False)
-
-    if not wbody_conn: 
-        # Turn off any further reservoir processing if the network contains no 
-        # waterbodies
-        break_network_at_waterbodies = False
-
-    # if waterbodies are being simulated, adjust the connections graph so that 
-    # waterbodies are collapsed to single nodes. Also, build a mapping between 
-    # waterbody outlet segments and lake ids
-    if break_network_at_waterbodies:
-        connections, link_lake_crosswalk = nhd_network.replace_waterbodies_connections(
-            connections, wbody_conn
-        )
-    else:
-        link_lake_crosswalk = None
-
-    LOG.debug("network connections graph created in %s seconds." % (time.time() - start_time))
-
-    #============================================================================
-    # Retrieve and organize waterbody parameters
-
-    waterbody_type_specified = False
-    if break_network_at_waterbodies:
-        
-        # Read waterbody parameters from LAKEPARM file
-        level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
-        waterbodies_df = nhd_io.read_lakeparm(
-            level_pool_params['level_pool_waterbody_parameter_file_path'],
-            level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
-            wbody_conn.values()
-        )
-
-        # Remove duplicate lake_ids and rows
-        waterbodies_df = (
-            waterbodies_df.reset_index()
-            .drop_duplicates(subset="lake_id")
-            .set_index("lake_id")
-        )
-
-        # Declare empty dataframe
-        waterbody_types_df = pd.DataFrame()
-
-        # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
-        reservoir_da = data_assimilation_parameters.get(
-            'reservoir_da', 
-            {}
-        )
-        
-        if reservoir_da:
-            usgs_hybrid  = reservoir_da.get(
-                'reservoir_persistence_usgs', 
-                False
-            )
-            usace_hybrid = reservoir_da.get(
-                'reservoir_persistence_usace', 
-                False
-            )
-            param_file   = reservoir_da.get(
-                'gage_lakeID_crosswalk_file',
-                None
-            )
-        else:
-            param_file = None
-            usace_hybrid = False
-            usgs_hybrid = False
-            
-        # check if RFC-type reservoirs are set to true
-        rfc_params = waterbody_parameters.get('rfc')
-        if rfc_params:
-            rfc_forecast = rfc_params.get(
-                'reservoir_rfc_forecasts',
-                False
-            )
-            param_file = rfc_params.get('reservoir_parameter_file',None)
-        else:
-            rfc_forecast = False
-
-        if (param_file and reservoir_da) or (param_file and rfc_forecast):
-            waterbody_type_specified = True
-            (
-                waterbody_types_df, 
-                usgs_lake_gage_crosswalk, 
-                usace_lake_gage_crosswalk
-            ) = nhd_io.read_reservoir_parameter_file(
-                param_file,
-                usgs_hybrid,
-                usace_hybrid,
-                rfc_forecast,
-                level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
-                reservoir_da.get('crosswalk_usgs_gage_field', 'usgs_gage_id'),
-                reservoir_da.get('crosswalk_usgs_lakeID_field', 'usgs_lake_id'),
-                reservoir_da.get('crosswalk_usace_gage_field', 'usace_gage_id'),
-                reservoir_da.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
-                wbody_conn.values(),
-            )
-        else:
-            waterbody_type_specified = True
-            waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
-            usgs_lake_gage_crosswalk = None
-            usace_lake_gage_crosswalk = None
-
-    else:
-        # Declare empty dataframes
-        waterbody_types_df = pd.DataFrame()
-        waterbodies_df = pd.DataFrame()
-        usgs_lake_gage_crosswalk = None
-        usace_lake_gage_crosswalk = None
-
-    #============================================================================
+ #============================================================================
     # build diffusive domain data and edit MC domain data for hybrid simulation
     
     #
@@ -422,7 +313,7 @@ def nhd_network_preprocess(
             
             diffusive_network_data[tw]['rconn'] = rconn_diff
             diffusive_network_data[tw]['reaches'] = reaches[tw]
-            
+
             # RouteLink parameters
             diffusive_network_data[tw]['param_df'] = param_df.filter(
                 (mainstem_segs + trib_segs),
@@ -484,6 +375,14 @@ def nhd_network_preprocess(
     start_time = time.time() 
     gage_break_segments = set()
     wbody_break_segments = set()
+    
+    break_network_at_waterbodies = waterbody_parameters.get(
+        "break_network_at_waterbodies", False
+    )
+    
+    # if streamflow DA, then break network at gages
+    break_network_at_gages = False
+    
     if break_network_at_waterbodies:
         wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
         
@@ -497,7 +396,8 @@ def nhd_network_preprocess(
     )
     
     LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
-    
+    # FIXME: Make this commented out alive
+    '''
     if preprocessing_parameters.get('preprocess_only', False):
 
         LOG.debug("saving preprocessed network data to disk for future use")
@@ -552,93 +452,24 @@ def nhd_network_preprocess(
                 "No destination folder specified for preprocessing. Please specify preprocess_output_folder in configuration file. Aborting preprocessing routine"
             )
             quit()
-
-    return (
-        connections,
-        param_df,
-        wbody_conn,
-        waterbodies_df,
-        waterbody_types_df,
-        break_network_at_waterbodies,  
-        waterbody_type_specified, 
-        link_lake_crosswalk,
-        independent_networks,
-        reaches_bytw,
-        rconn,
-        link_gage_df,
-        usgs_lake_gage_crosswalk, 
-        usace_lake_gage_crosswalk,
-        diffusive_network_data,
-        topobathy_df,
-        refactored_diffusive_domain,
-        refactored_reaches,
-        unrefactored_topobathy_df,
-    )
-
-def unpack_nhd_preprocess_data(preprocessing_parameters):
+        '''
+    return(independent_networks,
+           reaches_bytw,
+           rconn,
+           diffusive_network_data,
+           topobathy_df, 
+           refactored_diffusive_domain,
+           refactored_reaches,
+           unrefactored_topobathy_df,   
+            )
     
-    preprocess_filepath = preprocessing_parameters.get('preprocess_source_file',None)
-    if preprocess_filepath:
-        try:
-            inputs = np.load(pathlib.Path(preprocess_filepath),allow_pickle='TRUE').item()
-        except:
-            LOG.critical('Canonot find %s' % pathlib.Path(preprocess_filepath))
-            quit()
-              
-        connections                  = inputs.get('connections',None)            
-        param_df                     = inputs.get('param_df',None)
-        wbody_conn                   = inputs.get('wbody_conn',None)
-        waterbodies_df               = inputs.get('waterbodies_df',None)
-        waterbody_types_df           = inputs.get('waterbody_types_df',None)
-        break_network_at_waterbodies = inputs.get('break_network_at_waterbodies',None)
-        waterbody_type_specified     = inputs.get('waterbody_type_specified',None)
-        link_lake_crosswalk          = inputs.get('link_lake_crosswalk', None)
-        independent_networks         = inputs.get('independent_networks',None)
-        reaches_bytw                 = inputs.get('reaches_bytw',None)
-        rconn                        = inputs.get('rconn',None)
-        gages                        = inputs.get('link_gage_df',None)
-        usgs_lake_gage_crosswalk     = inputs.get('usgs_lake_gage_crosswalk',None)
-        usace_lake_gage_crosswalk    = inputs.get('usace_lake_gage_crosswalk',None)
-        diffusive_network_data       = inputs.get('diffusive_network_data',None)
-        topobathy_df                 = inputs.get('topobathy_data',None)        
-        refactored_diffusive_domain  = inputs.get('refactored_diffusive_domain',None)
-        refactored_reaches           = inputs.get('refactored_reaches',None)
-        unrefactored_topobathy_df    = inputs.get('unrefactored_topobathy',None)
-
-    else:
-        LOG.critical("use_preprocessed_data = True, but no preprocess_source_file is specified. Aborting the simulation.")
-        quit()
-                         
-    return (
-        connections,
-        param_df,
-        wbody_conn,
-        waterbodies_df,
-        waterbody_types_df,
-        break_network_at_waterbodies,
-        waterbody_type_specified,
-        link_lake_crosswalk,
-        independent_networks,
-        reaches_bytw,
-        rconn,
-        gages,
-        usgs_lake_gage_crosswalk, 
-        usace_lake_gage_crosswalk,
-        diffusive_network_data,
-        topobathy_df,
-        refactored_diffusive_domain,
-        refactored_reaches,
-        unrefactored_topobathy_df,
-    )
-
-
-def nhd_initial_warmstate_preprocess(
-    break_network_at_waterbodies,
+def hyfeature_initial_warmstate_preprocess(
+    # break_network_at_waterbodies,
     restart_parameters,
-    data_assimilation_parameters,
+    # data_assimilation_parameters,
     segment_index,
-    waterbodies_df,
-    link_lake_crosswalk,
+    # waterbodies_df,
+    # link_lake_crosswalk,
 ):
 
     '''
@@ -679,7 +510,7 @@ def nhd_initial_warmstate_preprocess(
     #----------------------------------------------------------------------------
     # Assemble waterbody initial states (outflow and pool elevation
     #----------------------------------------------------------------------------
-
+    '''
     if break_network_at_waterbodies:
 
         start_time = time.time()
@@ -735,25 +566,37 @@ def nhd_initial_warmstate_preprocess(
             "waterbody initial states complete in %s seconds."\
             % (time.time() - start_time))
         start_time = time.time()
-    
+    '''
+
     #----------------------------------------------------------------------------
     # Assemble channel initial states (flow and depth)
     # also establish simulation initialization timestamp
-    #----------------------------------------------------------------------------
+    #----------------------------------------------------------------------------    
     start_time = time.time()
     LOG.info("setting channel initial states ...")
 
     # if lite restart file is provided, the read channel initial states from it
     if restart_parameters.get("lite_channel_restart_file", None):
-        
+        # FIXME: Change it for hyfeature!
+        '''
         q0, t0 = nhd_io.read_lite_restart(
             restart_parameters['lite_channel_restart_file']
         )
         t0_str = None
+        ''' 
+    # when a restart file for hyfeature is provied, then read initial states from it.
+    elif restart_parameters.get("hyfeature_channel_restart_file", None):        
+        q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)        
+        channel_initial_states_file = restart_parameters["hyfeature_channel_restart_file"]
+        df     = pd.read_csv(channel_initial_states_file)
+        t0_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
+        t0     = datetime.strptime(t0_str,"%Y-%m-%d_%H:%M:%S")
 
     # build initial states from user-provided restart parameters
     else:
-        q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)
+        # FIXME: Change it for hyfeature!
+        '''
+        q0 = nnu.build_channel_initial_state(restart_parameters, segment_index)       
 
         # get initialization time from restart file
         if restart_parameters.get("wrf_hydro_channel_restart_file", None):
@@ -769,7 +612,7 @@ def nhd_initial_warmstate_preprocess(
 
         # convert timestamp from string to datetime
         t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-
+        '''
     # get initial time from user inputs
     if restart_parameters.get("start_datetime", None):
         t0_str = restart_parameters.get("start_datetime")
@@ -803,7 +646,11 @@ def nhd_initial_warmstate_preprocess(
     )
     start_time = time.time()
 
-    return waterbodies_df, q0, t0
+    return (
+            #waterbodies_df,
+            q0, 
+            t0,
+            )
     # TODO: This returns a full dataframe (waterbodies_df) with the
     # merged initial states for waterbodies, but only the
     # initial state values (q0; not merged with the channel properties)
@@ -812,11 +659,11 @@ def nhd_initial_warmstate_preprocess(
     # trace that back and decide if there is one of those two ways
     # that is optimal and make both returns that way.
 
-
-def nhd_forcing(
+def hyfeature_forcing(
     run,
     forcing_parameters,
     hybrid_parameters,
+    nexus_to_upstream_flowpath_dict,
     segment_index,
     cpu_pool,
     t0,
@@ -834,7 +681,6 @@ def nhd_forcing(
     - hybrid_parameters  (dict): User-input simulation hybrid parameters
     - segment_index     (Int64): Reach segment ids
     - cpu_pool            (int): Number of CPUs in the process-parallel pool
-
     Returns
     -------
     - qlats_df                 (Pandas DataFrame): Lateral inflow data, indexed by 
@@ -850,7 +696,7 @@ def nhd_forcing(
     # Unpack user-specified forcing parameters
     dt                           = forcing_parameters.get("dt", None)
     qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
-    qlat_input_folder            = forcing_parameters.get("qlat_input_folder", None)
+    nexus_input_folder           = forcing_parameters.get("nexus_input_folder", None)
     qlat_file_index_col          = forcing_parameters.get("qlat_file_index_col", "feature_id")
     qlat_file_value_col          = forcing_parameters.get("qlat_file_value_col", "q_lateral")
     qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
@@ -862,7 +708,7 @@ def nhd_forcing(
     run["nts"]                          = run.get("nts")
     run["dt"]                           = run.get("dt", dt)
     run["qts_subdivisions"]             = run.get("qts_subdivisions", qts_subdivisions)
-    run["qlat_input_folder"]            = run.get("qlat_input_folder", qlat_input_folder)
+    run["nexus_input_folder"]           = run.get("nexus_input_folder", nexus_input_folder)
     run["qlat_file_index_col"]          = run.get("qlat_file_index_col", qlat_file_index_col)
     run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
     run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
@@ -879,9 +725,10 @@ def nhd_forcing(
     # TODO: add an option for reading qlat data from BMI/model engine
     from_file = True
     if from_file:
-        qlats_df = nnu.build_qlateral_array(
+        qlats_df = hnu.build_qlateral_array(
             run,
             cpu_pool,
+            nexus_to_upstream_flowpath_dict,
             segment_index,
         )
 
@@ -914,3 +761,46 @@ def nhd_forcing(
             )            
 
     return qlats_df, coastal_boundary_depth_df
+
+def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    Reads lake.json file and prepares a dataframe, filtered
+    to the relevant reservoirs, to provide the parameters
+    for level-pool reservoir computation.
+    """
+    def node_key_func(x):
+        return int(x[3:])
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="lake_attributes").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
+    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+    return df
+
+def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    """
+    #FIXME: this function is likely not correct. Unclear how we will get 
+    # reservoir type from the gpkg files. Information should be in 'crosswalk'
+    # layer, but as of now (Nov 22, 2022) there doesn't seem to be a differentiation
+    # between USGS reservoirs, USACE reservoirs, or RFC reservoirs...
+    def node_key_func(x):
+        return int(x[3:])
+    
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="crosswalk").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+        
+    return df

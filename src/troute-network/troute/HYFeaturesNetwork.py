@@ -9,6 +9,9 @@ import troute.nhd_io as nhd_io #FIXME
 from itertools import chain
 import geopandas as gpd
 from pathlib import Path
+import math
+import troute.hyfeature_preprocess as hyfeature_prep
+from datetime import datetime, timedelta
 
 __verbose__ = False
 __showtiming__ = False
@@ -25,24 +28,6 @@ def numeric_id(flowpath):
     flowpath['id'] = int(id)
     flowpath['toid'] = int(toid)
     return flowpath
-
-def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
-    """
-    Reads lake.json file and prepares a dataframe, filtered
-    to the relevant reservoirs, to provide the parameters
-    for level-pool reservoir computation.
-    """
-    def node_key_func(x):
-        return int(x[3:])
-    df = pd.read_json(parm_file, orient="index")
-
-    df.index = df.index.map(node_key_func)
-    df.index.name = lake_index_field
-    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
-    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
-    if lake_id_mask:
-        df = df.loc[lake_id_mask]
-    return df
 
 def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
     # STEP 5: Read (or set) QLateral Inputs
@@ -92,6 +77,9 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(index={int(k):v})
         for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
         ).T
+    #qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(v)
+    #    for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
+    #    ).T
     
     # The segment_index has the full network set of segments/flowpaths. 
     # Whereas the set of flowpaths that are downstream of nexuses is a 
@@ -99,22 +87,19 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
     # that are not accounted for in the set of flowpaths downstream of
     # nexuses need to be added to the qlateral dataframe and padded with
     # zeros.
-
-    #tq0 = time.time()
     all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlat_df.columns)) ), index=segment_index,
             columns=qlat_df.columns )
-
     all_df.loc[ qlat_df.index ] = qlat_df
-
-    #tq1 =  time.time()
-    #print("Time to fill null qlats: {}".format(tq1-tq0))
-    # Sort qlats
     qlat_df = all_df.sort_index()
 
     # Set new nts based upon total nexus inputs
     nts = (qlat_df.shape[1]) * qts_subdivisions
-
     max_col = 1 + nts // qts_subdivisions
+    
+    #dt      = 300 # [sec]
+    #dt_qlat = 3600 # [sec]
+    #nts     = 24 # steps
+    #max_col = math.ceil(nts*dt/dt_qlat)
 
     if len(qlat_df.columns) > max_col:
         qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
@@ -178,8 +163,21 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_flowpath_dict"]
-    def __init__(self, supernetwork_parameters, waterbody_parameters=None, restart_parameters=None, forcing_parameters=None, verbose=False, showtiming=False):
+    __slots__ = ["_flowpath_dict", 
+                 "segment_index", 
+                 "waterbody_type_specified",
+                 "diffusive_network_data", 
+                 "topobathy_df", 
+                 "refactored_diffusive_domain",
+                 "refactored_reaches", 
+                 "unrefactored_topobathy_df"]
+    def __init__(self, 
+                 supernetwork_parameters, 
+                 waterbody_parameters=None, 
+                 restart_parameters=None, 
+                 forcing_parameters=None, 
+                 verbose=False, 
+                 showtiming=False):
         """
         
         """
@@ -190,156 +188,97 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if __showtiming__:
             start_time = time.time()
-        geo_file_path = supernetwork_parameters["geo_file_path"]
-        cols = supernetwork_parameters["columns"]
-        terminal_code = supernetwork_parameters.get("terminal_code", 0)
-        break_network_at_waterbodies = supernetwork_parameters.get(
-            "break_network_at_waterbodies", False
+
+        #------------------------------------------------
+        # Preprocess network attributes
+        #------------------------------------------------        
+        (self._dataframe,            
+         self._flowpath_dict, 
+         self._waterbody_types_df,
+         self._waterbody_df,
+         self.waterbody_type_specified,
+         cols,
+         terminal_code,
+         break_points,
+        ) = hyfeature_prep.build_hyfeature_network(
+            supernetwork_parameters,
+            waterbody_parameters
         )
-        break_network_at_gages = supernetwork_parameters.get(
-            "break_network_at_gages", False
-        )
-        break_points = {"break_network_at_waterbodies": break_network_at_waterbodies,
-                        "break_network_at_gages": break_network_at_gages}
-        file_type = Path(geo_file_path).suffix
-        if(  file_type == '.gpkg' ):
-            self._dataframe = read_geopkg(geo_file_path)
-            #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
-            #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
-        elif( file_type == '.json') :
-            #df = pd.read_json(geo_file_path, orient="index")
-            #print(df)
-            #raise( "BREAK" )
-            edge_list = supernetwork_parameters['flowpath_edge_list']
-            # attribute_file_path = supernetwork_parameters['flowpath_attributes']
-            self._dataframe = read_json(geo_file_path, edge_list)
-            #df["NHDWaterbodyComID"].fillna(-9999, inplace=True)
-            #df["NHDWaterbodyComID"] = df["NHDWaterbodyComID"].astype("int64")
-        else:
-            raise RuntimeError("Unsupported file type: {}".format(file_type))
-
-        #Don't need the string prefix anymore, drop it
-        mask = ~ self._dataframe['toid'].str.startswith("tnex")
-        self._dataframe = self._dataframe.apply(numeric_id, axis=1)
-        #make the flowpath linkage, ignore the terminal nexus
-        self._flowpath_dict = dict(zip(self._dataframe.loc[mask].toid, self._dataframe.loc[mask].id))
-        self._waterbody_types_df = pd.DataFrame()
-        self._waterbody_df = pd.DataFrame()
-        #FIXME the base class constructor is finiky
-        #as it requires the _dataframe, then sets some 
-        #initial default properties...which, at the moment
-        #are used by the subclass constructor.
-        #So it needs to be called at just the right spot...
-        super().__init__(cols, terminal_code, break_points)
-        #FIXME once again, order here can hurt....to hack `alt` in, either need to
-        #put it as a column in the config, or do this AFTER the super constructor
-        #otherwise the alt column gets sliced out...
-        self._dataframe['alt'] = 1.0 #FIXME get the right value for this...
-        #Load waterbody/reservoir info
-        #For ngen HYFeatures, the reservoirs to be simulated
-        #are determined by the lake.json file
-        #we limit waterbody_connections to only the flowpaths
-        #that coincide with a lake listed in this file
-        #see `waterbody_connections`
-
-        if waterbody_parameters:
-            #FIXME later, DO ALL LAKE PARAMS BETTER
-            levelpool_params = waterbody_parameters.get('level_pool', None)
-            if not levelpool_params:
-                #FIXME should not be a hard requirement
-                raise(RuntimeError("No supplied levelpool parameters in routing config"))
-            
-            lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
-            self._waterbody_df = read_ngen_waterbody_df(
-                levelpool_params["level_pool_waterbody_parameter_file_path"],
-                lake_id,
-                #self.waterbody_connections.values()
-            )
-            
-            # Remove duplicate lake_ids and rows
-            self._waterbody_df = (
-                self._waterbody_df.reset_index()
-                .drop_duplicates(subset=lake_id)
-                .set_index(lake_id)
-            )
-            self._waterbody_df["qd0"] = 0.0
-            self._waterbody_df["h0"] = -1e9
-
-            hybrid_params = waterbody_parameters.get('hybrid_and_rfc', None)
-            try: #FIXME for HYFeatures/ngen this will likely be a lot different...
-                self._waterbody_types_df = nhd_io.read_reservoir_parameter_file(
-                    hybrid_params["reservoir_parameter_file"],
-                    lake_id,
-                    #self.waterbody_connections.values(),
-                )
-                # Remove duplicate lake_ids and rows
-                self._waterbody_types_df = (
-                self._waterbody_types_df.reset_index()
-                .drop_duplicates(subset=lake_id)
-                .set_index(lake_id)
-                )
-            except:
-                self._waterbody_types_df = pd.DataFrame(index=self._waterbody_df.index)
-                self._waterbody_types_df['reservoir_type'] = 1
-                #FIXME any reservoir operations requires some type
-                #So make this default to 1 (levelpool)
-                #At this point, need to adjust some waterbody/channel parameters based on lakes/reservoirs
-                #HACK for bad hydrofabric
-                def make_list(s):
-                    if isinstance(s, list):
-                        return s
-                    else:
-                        return [s]
-
-                self._waterbody_df['member_wbs'] = self._waterbody_df['member_wbs'].apply(make_list)
-                self._waterbody_df['partial_length_percent'] = self._waterbody_df['partial_length_percent'].apply(make_list)
-                adjust = [ zip(x, y) 
-                        for x, y in 
-                        zip(self._waterbody_df['member_wbs'], self._waterbody_df['partial_length_percent'])
-                        ]
-                #adjust is a generator of a list of list of tuples...use chain to flatten
-                for wb, percent in chain.from_iterable(adjust):
-                    #print(wb, percent)
-                    #FIXME not sure why some of these are 100%, if that  is the case
-                    #shouldn't they just not be in the topology???
-                    wb = node_key_func_wb(wb)
-                    #Need to adjust waterbodys/channels that  interact with this waterbody
-                    #Hack for wonky hydrofabric
-                    if percent != 'NA':
-                        self._dataframe.loc[wb, 'dx'] = self._dataframe.loc[wb, 'dx'] - self._dataframe.loc[wb, 'dx']*float(percent)
-                    #print(self._dataframe.loc[wb, 'dx'])
-
+        
+        # called to mainly initialize _waterbody_connections, _connections, _independent_networks,
+        # _reverse_network, _reaches_by_tw
+        super().__init__(cols, terminal_code, break_points)    
+        
         if __verbose__:
             print("supernetwork connections set complete")
         if __showtiming__:
             print("... in %s seconds." % (time.time() - start_time))   
-        #TODO/FIXME reservoir restart load
-        #TODO/FIXME channel restart load
-        # STEP 4: Handle Channel Initial States
+        
+   
+            
+        # list of all segments in the domain (MC + diffusive)
+        self.segment_index = self._dataframe.index
+        #if self.diffusive_network_data:
+        #    for tw in self.diffusive_network_data:
+        #        self.segment_index = self.segment_index.append(
+        #            pd.Index(self.diffusive_network_data[tw]['mainstem_segs'])
+        #        )     
+            
+        #------------------------------------------------
+        #  Handle Channel Initial States
+        #------------------------------------------------ 
+        if __verbose__:
+            print("setting waterbody and channel initial states ...")
         if __showtiming__:
             start_time = time.time()
-        if __verbose__:
-            print("setting channel initial states ...")
-        #Get channel restarts
-        channel_restart_file = restart_parameters.get("channel_restart_file", None)
 
-        if channel_restart_file:
-            self._q0 = nhd_io.get_channel_restart_from_csv(channel_restart_file)
-            self._q0 = self._q0[self._q0.index.isin(self._dataframe.index)]
-            # TODO is this the same???
-            #self._q0 = self._q0.loc[self._dataframe.index]
-        #TODO/FIXME channel restart t0? self._t0 = ???
-        if __verbose__:
-          print("channel initial states complete")
-        if __showtiming__:
-          print("... in %s seconds." % (time.time() - start_time))
+        (#self._waterbody_df,
+         self._q0,
+         self._t0,) = hyfeature_prep.hyfeature_initial_warmstate_preprocess(
+            #break_network_at_waterbodies,
+            restart_parameters,
+            #data_assimilation_parameters,
+            self.segment_index,
+            #self._waterbody_df,
+            #self.link_lake_crosswalk,
+        )
         
-        self._qlateral = read_qlats(forcing_parameters, self._dataframe.index, self.downstream_flowpath_dict)
+        if __verbose__:
+            print("waterbody and channel initial states complete")
+        if __showtiming__:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+            
+        # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
+        # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
+        self._coastal_boundary_depth_df = pd.DataFrame()
+        
+    
+    def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, cpu_pool):
+        """
+        Assembles model forcings for hydrological lateral inflows and coastal boundary 
+        depths (hybrid simulations). Run this function after network initialization
+        and after any iteration loop in main.
+        """
+        (self._qlateral, 
+         self._coastal_boundary_depth_df
+        ) = hyfeature_prep.hyfeature_forcing(
+            run, 
+            forcing_parameters, 
+            hybrid_parameters,
+            self._flowpath_dict,
+            self.segment_index,
+            cpu_pool,
+            self._t0,             
+            self._coastal_boundary_depth_df,
+        )
+
         #Mask out all non-simulated waterbodies
         self._dataframe['waterbody'] = self.waterbody_null
+        
         #This also remaps the initial NHDComID identity to the HY_Features Waterbody ID for the reservoir...
         self._dataframe.loc[self._waterbody_df.index, 'waterbody'] = self._waterbody_df.index.name
-
+        
         #FIXME should waterbody_df and param_df overlap IDS?  Doesn't seem like it should...
         #self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
         #For now, doing it in property waterbody_connections...
@@ -358,7 +297,76 @@ class HYFeaturesNetwork(AbstractNetwork):
         return (
             rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
         )
-            
+ 
+    
+    def create_routing_network(self, 
+                               conn, 
+                               param_df, 
+                               wbody_conn, gages, 
+                               preprocessing_parameters, 
+                               compute_parameters,
+                               waterbody_parameters
+    ): 
+
+        #--------------------------------------------------------------------------
+        # Creation of routing network data objects. Logical ordering of lower-level
+        # function calls that build individual network data objects.
+        #--------------------------------------------------------------------------        
+        (self._independent_networks,
+         self._reaches_by_tw,
+         self._reverse_network,
+         self.diffusive_network_data,
+         self.topobathy_df,
+         self.refactored_diffusive_domain,
+         self.refactored_reaches,
+         self.unrefactored_topobathy_df
+        ) = hyfeature_prep.hyfeature_hybrid_routing_preprocess(
+            conn,
+            param_df,
+            wbody_conn,
+            gages,
+            preprocessing_parameters,
+            compute_parameters,
+            waterbody_parameters, 
+        )
+        return (self._independent_networks,
+                self._reaches_by_tw,
+                self._reverse_network,
+                self.diffusive_network_data,
+                self.topobathy_df,
+                self.refactored_diffusive_domain,
+                self.refactored_reaches,
+                self.unrefactored_topobathy_df)
+
+    def new_q0(self, run_results):
+        """
+        Prepare a new q0 dataframe with initial flow and depth to act as
+        a warmstate for the next simulation chunk.
+        """
+        self._q0 = pd.concat(
+            [
+                pd.DataFrame(
+                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
+                )
+                for r in run_results
+            ],
+            copy=False,
+        )
+        return self._q0
+    
+    def update_waterbody_water_elevation(self):           
+        """
+        Update the starting water_elevation of each lake/reservoir
+        with flow and depth values from q0
+        """
+        self._waterbody_df.update(self._q0)
+        
+    def new_t0(self, dt, nts):
+        """
+        Update t0 value for next loop iteration
+        """
+        self._t0 += timedelta(seconds = dt * nts)
+
     @property
     def downstream_flowpath_dict(self):
         return self._flowpath_dict
@@ -407,4 +415,5 @@ class HYFeaturesNetwork(AbstractNetwork):
     
     @property
     def waterbody_null(self):
-        return np.nan#pd.NA
+        return np.nan #pd.NA
+
