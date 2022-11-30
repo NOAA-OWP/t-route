@@ -44,10 +44,20 @@ def build_forcing_sets(
         binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
         nexus_files = nexus_input_folder.glob(forcing_glob_filter)
 
+        #Check that directory/files specified will work
+        if not binary_folder:
+            raise(RuntimeError("No output binary qlat folder supplied in config"))
+        elif not os.path.exists(binary_folder):
+            raise(RuntimeError("Output binary qlat folder supplied in config does not exist"))
+        elif len(os.listdir(binary_folder)) != 0:
+            raise(RuntimeError("Output binary qlat folder supplied in config is not empty"))
+
         #Add tnx for backwards compatability
         nexus_files_list = list(nexus_files) + list(nexus_input_folder.glob('tnx*.csv'))
         #Convert files to binary hourly files, reset nexus input information
         nexus_input_folder, forcing_glob_filter = nex_files_to_binary(nexus_files_list, binary_folder)
+        forcing_parameters["nexus_input_folder"] = nexus_input_folder
+        forcing_parameters["nexus_file_pattern_filter"] = forcing_glob_filter
         
     # TODO: Throw errors if insufficient input data are available
     if run_sets:        
@@ -213,8 +223,9 @@ def build_qlateral_array(
         '''
         dfs=[]
         for f in nexus_files:
-            df = pd.read_csv(f).set_index(['feature_id']) 
+            df = read_file(f).set_index(['feature_id']) 
             dfs.append(df)
+        
         # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
         nexuses_lateralflows_df = pd.concat(dfs, axis=1)  
         
@@ -254,9 +265,10 @@ def nex_files_to_binary(nexus_files, binary_folder):
         df['Datetime']= pd.to_datetime(df['Datetime']).dt.strftime("%Y%m%d%H%M")
 
         # reformat the dataframe
-        df['id'] = get_id_from_filename(f)
-        df = df.pivot(index="id", columns="Datetime", values="qlat")
-        
+        df['feature_id'] = get_id_from_filename(f)
+        df = df.pivot(index="feature_id", columns="Datetime", values="qlat")
+        df.columns.name = None
+
         for col in df.columns:
             table_new = pa.Table.from_pandas(df.loc[:, [col]])
             
@@ -279,7 +291,7 @@ def get_id_from_filename(file_name):
 
 def read_file(file_name):
     extension = file_name.suffix
-    if extension=='csv':
+    if extension=='.csv':
         df = pd.read_csv(file_name)
     elif extension=='.parquet':
         df = pq.read_table(file_name).to_pandas().reset_index()
