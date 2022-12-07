@@ -296,5 +296,6 @@ def read_file(file_name):
     elif extension=='.parquet':
         df = pq.read_table(file_name).to_pandas().reset_index()
         df.index.name = None
-    
+    else:
+        raise ValueError(f"Unknown file suffix: {extension}")
     return df
