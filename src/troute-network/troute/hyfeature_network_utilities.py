@@ -84,12 +84,10 @@ def build_forcing_sets(
 
         # Deduce the timeinterval of the forcing data from the output timestamps of the first
         # two ordered CHRTOUT files
-        df     = read_file(first_file)
-        t1_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
-        t1     = datetime.strptime(t1_str,"%Y-%m-%d_%H:%M:%S")
-        df     = read_file(second_file)
-        t2_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
-        t2     = datetime.strptime(t2_str,"%Y-%m-%d_%H:%M:%S")
+        df = read_file(first_file)
+        t1 = pd.to_datetime(df.columns[1])
+        df = read_file(second_file)
+        t2 = pd.to_datetime(df.columns[1])
         dt_qlat_timedelta = t2 - t1
         dt_qlat = dt_qlat_timedelta.seconds
 
