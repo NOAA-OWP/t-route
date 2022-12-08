@@ -23,7 +23,7 @@ LOG = logging.getLogger('')
 def build_hyfeature_network(supernetwork_parameters,
                             waterbody_parameters,
 ):
-    
+
     geo_file_path = supernetwork_parameters["geo_file_path"]
     cols          = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
@@ -692,7 +692,7 @@ def hyfeature_forcing(
     -----
     
     """
-   
+
     # Unpack user-specified forcing parameters
     dt                           = forcing_parameters.get("dt", None)
     qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
