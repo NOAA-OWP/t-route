@@ -16,19 +16,6 @@ from datetime import datetime, timedelta
 __verbose__ = False
 __showtiming__ = False
 
-def node_key_func_nexus(x):
-    return int(x[4:])
-
-def node_key_func_wb(x):
-    return int(x[3:])
-
-def numeric_id(flowpath):
-    id = flowpath['id'].split('-')[-1]
-    toid = flowpath['toid'].split('-')[-1]
-    flowpath['id'] = int(id)
-    flowpath['toid'] = int(toid)
-    return flowpath
-
 def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
     # STEP 5: Read (or set) QLateral Inputs
     if __showtiming__:
@@ -111,6 +98,7 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
 
     return qlat_df
 
+<<<<<<< HEAD
 def read_nexus_file(nexus_file_path):
 
     #Currently reading data in format:
@@ -158,6 +146,8 @@ def read_geopkg(file_path):
     flowpaths = pd.merge(flowpaths, attributes, on='id')
     return flowpaths
 
+=======
+>>>>>>> initial commit
 class HYFeaturesNetwork(AbstractNetwork):
     """
     
@@ -187,6 +177,23 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if __showtiming__:
             start_time = time.time()
+        
+        #------------------------------------------------
+        # Load Geo File
+        #------------------------------------------------
+        (self._dataframe,
+         self._flowpath_dict,
+         self._waterbody_df,
+         self._waterbody_types_df,
+        ) = hyfeature_prep.read_geo_file(
+            supernetwork_parameters,
+            waterbody_parameters,
+        )
+
+
+
+
+
 
         #------------------------------------------------
         # Preprocess network attributes
