@@ -15,10 +15,76 @@ import troute.nhd_network_utilities_v02 as nnu
 import troute.nhd_network as nhd_network
 import troute.nhd_io as nhd_io
 from troute.nhd_network import reverse_dict
-import troute.HYFeaturesNetwork as hyf_network
 import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
+
+def read_geo_file(
+    supernetwork_parameters,
+    waterbody_parameters,
+):
+    
+    geo_file_path = supernetwork_parameters["geo_file_path"]
+        
+    file_type = Path(geo_file_path).suffix
+    if(  file_type == '.gpkg' ):        
+        dataframe = read_geopkg(geo_file_path)
+    elif( file_type == '.json') :
+        edge_list = supernetwork_parameters['flowpath_edge_list']
+        dataframe = read_json(geo_file_path, edge_list) 
+    else:
+        raise RuntimeError("Unsupported file type: {}".format(file_type))
+
+    # Don't need the string prefix anymore, drop it
+    mask = ~ dataframe['toid'].str.startswith("tnex") 
+    dataframe = dataframe.apply(numeric_id, axis=1)
+        
+    # make the flowpath linkage, ignore the terminal nexus
+    flowpath_dict = dict(zip(dataframe.loc[mask].toid, dataframe.loc[mask].id))
+    
+    # **********  need to be included in flowpath_attributes  *************
+    dataframe['alt'] = 1.0 #FIXME get the right value for this...  
+
+    #Load waterbody/reservoir info
+    if waterbody_parameters:
+        levelpool_params = waterbody_parameters.get('level_pool', None)
+        if not levelpool_params:
+            # FIXME should not be a hard requirement
+            raise(RuntimeError("No supplied levelpool parameters in routing config"))
+            
+        lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
+        waterbody_df = read_ngen_waterbody_df(
+                    levelpool_params["level_pool_waterbody_parameter_file_path"],
+                    lake_id,
+                    )
+            
+        # Remove duplicate lake_ids and rows
+        waterbody_df = (
+                        waterbody_df.reset_index()
+                        .drop_duplicates(subset=lake_id)
+                        .set_index(lake_id)
+                        )
+
+        try:
+            waterbody_types_df = read_ngen_waterbody_type_df(
+                                    levelpool_params["reservoir_parameter_file"],
+                                    lake_id,
+                                    #self.waterbody_connections.values(),
+                                    )
+            # Remove duplicate lake_ids and rows
+            waterbody_types_df =(
+                                 waterbody_types_df.reset_index()
+                                .drop_duplicates(subset=lake_id)
+                                .set_index(lake_id)
+                                )
+
+        except ValueError:
+            #FIXME any reservoir operations requires some type
+            #So make this default to 1 (levelpool)
+            waterbody_types_df = pd.DataFrame(index=waterbody_df.index)
+            waterbody_types_df['reservoir_type'] = 1    
+              
+    return dataframe, flowpath_dict, waterbody_df, waterbody_types_df
 
 def build_hyfeature_network(supernetwork_parameters,
                             waterbody_parameters,
@@ -764,7 +830,7 @@ def hyfeature_forcing(
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
-    Reads lake.json file and prepares a dataframe, filtered
+    Reads .gpkg or lake.json file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
     """
@@ -777,8 +843,7 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
 
     df.index = df.index.map(node_key_func)
     df.index.name = lake_index_field
-    #df = df.set_index(lake_index_field, append=True).reset_index(level=0)
-    #df.rename(columns={'level_0':'wb-id'}, inplace=True)
+
     if lake_id_mask:
         df = df.loc[lake_id_mask]
     return df
@@ -804,3 +869,37 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         df = df.loc[lake_id_mask]
         
     return df
+
+def read_geopkg(file_path):
+    flowpaths = gpd.read_file(file_path, layer="flowpaths")
+    attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
+    #merge all relevant data into a single dataframe
+    flowpaths = pd.merge(flowpaths, attributes, on='id')
+
+    return flowpaths
+
+def read_json(file_path, edge_list):
+    dfs = []
+    with open(edge_list) as edge_file:
+        edge_data = json.load(edge_file)
+        edge_map = {}
+        for id_dict in edge_data:
+            edge_map[ id_dict['id'] ] = id_dict['toid']
+        with open(file_path) as data_file:
+            json_data = json.load(data_file)  
+            for key_wb, value_params in json_data.items():
+                df = pd.json_normalize(value_params)
+                df['id'] = key_wb
+                df['toid'] = edge_map[key_wb]
+                dfs.append(df)
+        df_main = pd.concat(dfs, ignore_index=True)
+
+    return df_main
+
+def numeric_id(flowpath):
+    id = flowpath['id'].split('-')[-1]
+    toid = flowpath['toid'].split('-')[-1]
+    flowpath['id'] = int(id)
+    flowpath['toid'] = int(toid)
+
+    return flowpath

@@ -16,19 +16,6 @@ from datetime import datetime, timedelta
 __verbose__ = False
 __showtiming__ = False
 
-def node_key_func_nexus(x):
-    return int(x[4:])
-
-def node_key_func_wb(x):
-    return int(x[3:])
-
-def numeric_id(flowpath):
-    id = flowpath['id'].split('-')[-1]
-    toid = flowpath['toid'].split('-')[-1]
-    flowpath['id'] = int(id)
-    flowpath['toid'] = int(toid)
-    return flowpath
-
 def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
     # STEP 5: Read (or set) QLateral Inputs
     if __showtiming__:
@@ -111,54 +98,6 @@ def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_d
 
     return qlat_df
 
-def read_nexus_file(nexus_file_path):
-
-    #Currently reading data in format:
-    #[
-       #{
-         #"ID": "wb-44",
-         #"toID": "nex-45"
-         #},
-    with open(nexus_file_path) as data_file:
-        json_data_list = json.load(data_file)
-
-    nexus_to_downstream_flowpath_dict_str = {}
-
-    for id_dict in json_data_list:
-        if "nex" in id_dict['ID']:
-            nexus_to_downstream_flowpath_dict_str[id_dict['ID']] = id_dict['toID']
-
-    # Extract the ID integer values
-    nexus_to_downstream_flowpath_dict = {node_key_func_nexus(k): node_key_func_wb(v) for k, v in nexus_to_downstream_flowpath_dict_str.items()}
-
-    return nexus_to_downstream_flowpath_dict
-
-def read_json(file_path, edge_list):
-    dfs = []
-    with open(edge_list) as edge_file:
-        edge_data = json.load(edge_file)
-        edge_map = {}
-        for id_dict in edge_data:
-            edge_map[ id_dict['id'] ] = id_dict['toid']
-        with open(file_path) as data_file:
-            json_data = json.load(data_file)  
-            for key_wb, value_params in json_data.items():
-                df = pd.json_normalize(value_params)
-                df['id'] = key_wb
-                df['toid'] = edge_map[key_wb]
-                dfs.append(df)
-        df_main = pd.concat(dfs, ignore_index=True)
-
-    return df_main
-
-def read_geopkg(file_path):
-    flowpaths = gpd.read_file(file_path, layer="flowpaths")
-    attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
-    #merge all relevant data into a single dataframe
-    flowpaths = pd.merge(flowpaths, attributes, on='id')
-
-    return flowpaths
-
 class HYFeaturesNetwork(AbstractNetwork):
     """
     
@@ -188,6 +127,23 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if __showtiming__:
             start_time = time.time()
+        
+        #------------------------------------------------
+        # Load Geo File
+        #------------------------------------------------
+        (self._dataframe,
+         self._flowpath_dict,
+         self._waterbody_df,
+         self._waterbody_types_df,
+        ) = hyfeature_prep.read_geo_file(
+            supernetwork_parameters,
+            waterbody_parameters,
+        )
+
+
+
+
+
 
         #------------------------------------------------
         # Preprocess network attributes
