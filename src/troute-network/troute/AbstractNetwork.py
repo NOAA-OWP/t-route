@@ -5,7 +5,8 @@ from datetime import datetime
 import time
 
 from troute.nhd_network import reverse_dict, extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
-
+import troute.nhd_io as nhd_io
+import troute.abstractnetwork_preprocess as abs_prep 
 __verbose__ = False
 __showtiming__ = False
 
@@ -19,7 +20,18 @@ class AbstractNetwork(ABC):
                 "_reaches_by_tw", "_reverse_network", "_q0", "_t0", 
                 "_qlateral", "_break_segments", "_coastal_boundary_depth_df"]
     
-    def __init__(self, cols=None, terminal_code=None, break_points=None, verbose=False, showtiming=False):
+    def __init__(
+        self, 
+        compute_parameters, 
+        waterbody_parameters,
+        restart_parameters,
+        cols=None, 
+        terminal_code=None, 
+        break_points=None, 
+        verbose=False, 
+        showtiming=False
+        ):
+
         global __verbose__, __showtiming__
         __verbose__ = verbose
         __showtiming__ = showtiming
@@ -44,7 +56,7 @@ class AbstractNetwork(ABC):
             self._dataframe = self._dataframe.rename(columns=reverse_dict(cols))
             self.set_index("key")
             self.sort_index()
-        self._waterbody_connections = None
+        self._waterbody_connections = {}
         self._gages = None
         self._connections = None
         self._independent_networks = None
@@ -83,6 +95,160 @@ class AbstractNetwork(ABC):
                 self._break_segments = self._break_segments | set(self.waterbody_connections.values())
             if break_points["break_network_at_gages"]:
                 self._break_segments = self._break_segments | set(self.gages.values())
+        
+        self._connections = extract_connections(self._dataframe, 'downstream', self._terminal_codes)
+
+        (
+            self._dataframe,
+            self._connections,
+            self.diffusive_network_data,
+            self.topobathy_df,
+            self.refactored_diffusive_domain,
+            self.refactored_reaches,
+            self.unrefactored_topobathy_df
+        ) = abs_prep.build_diffusive_domain(
+            compute_parameters,
+            self._dataframe,
+            self._connections,
+            )
+        
+        (
+            self._independent_networks,
+            self._reaches_by_tw, 
+            self._reverse_network
+        ) = abs_prep.create_independent_networks(
+            waterbody_parameters, 
+            self._connections, 
+            self._waterbody_connections, 
+            #gages, #TODO update how gages are provided when we figure out DA
+            )
+        
+        (
+            self._waterbody_df,
+            self._q0, 
+            self._t0
+        ) = abs_prep.initial_warmstate_preprocess(
+            break_points["break_network_at_waterbodies"],
+            restart_parameters,
+            self._dataframe.index,
+            self._waterbody_df,
+            )
+        
+    def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool):
+        """
+        Assemble model forcings. Forcings include hydrological lateral inflows (qlats)
+        and coastal boundary depths for hybrid runs
+        
+        Aguments
+        --------
+        - run                      (dict): List of forcing files pertaining to a 
+                                    single run-set
+        - forcing_parameters       (dict): User-input simulation forcing parameters
+        - hybrid_parameters        (dict): User-input simulation hybrid parameters
+        - supernetwork_parameters  (dict): User-input simulation supernetwork parameters
+        - segment_index           (Int64): Reach segment ids
+        - cpu_pool                  (int): Number of CPUs in the process-parallel pool
+
+        Returns
+        -------
+        - qlats_df                 (Pandas DataFrame): Lateral inflow data, indexed by 
+                                                    segment ID
+        - coastal_bounary_depth_df (Pandas DataFrame): Coastal boundary water depths,
+                                                    indexed by segment ID
+        
+        Notes
+        -----
+        
+        """
+    
+        # Unpack user-specified forcing parameters
+        dt                           = forcing_parameters.get("dt", None)
+        qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
+        qlat_input_folder            = forcing_parameters.get("qlat_input_folder", None)
+        qlat_file_index_col          = forcing_parameters.get("qlat_file_index_col", "feature_id")
+        qlat_file_value_col          = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+        qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
+        qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
+
+    
+        # TODO: find a better way to deal with these defaults and overrides.
+        run["t0"]                           = run.get("t0", self.t0)
+        run["nts"]                          = run.get("nts")
+        run["dt"]                           = run.get("dt", dt)
+        run["qts_subdivisions"]             = run.get("qts_subdivisions", qts_subdivisions)
+        run["qlat_input_folder"]            = run.get("qlat_input_folder", qlat_input_folder)
+        run["qlat_file_index_col"]          = run.get("qlat_file_index_col", qlat_file_index_col)
+        run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
+        run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
+        run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
+        
+        #---------------------------------------------------------------------------
+        # Assemble lateral inflow data
+        #---------------------------------------------------------------------------
+
+        # Place holder, if reading qlats from a file use this.
+        # TODO: add an option for reading qlat data from BMI/model engine
+        from_file = True
+        if from_file:
+            self._qlateral = abs_prep.build_qlateral_array(
+                run,
+                cpu_pool,
+                self._flowpath_dict,
+                supernetwork_parameters, 
+                self._dataframe.index,
+            )
+
+        #---------------------------------------------------------------------
+        # Assemble coastal coupling data [WIP]
+        #---------------------------------------------------------------------
+        # Run if coastal_boundary_depth_df has not already been created:
+        if self._coastal_boundary_depth_df.empty:
+            coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
+            coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
+            
+            if coastal_boundary_elev_files:
+                #start_time = time.time()    
+                #LOG.info("creating coastal dataframe ...")
+                
+                coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
+                self._coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
+                    coastal_boundary_elev_files,
+                    coastal_boundary_domain,
+                )
+                    
+                #LOG.debug(
+                #    "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
+                #    % (time.time() - start_time)
+                #)            
+
+    def new_q0(self, run_results):
+        """
+        Prepare a new q0 dataframe with initial flow and depth to act as
+        a warmstate for the next simulation chunk.
+        """
+        self._q0 = pd.concat(
+            [
+                pd.DataFrame(
+                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
+                )
+                for r in run_results
+            ],
+            copy=False,
+        )
+        return self._q0
+    
+    def update_waterbody_water_elevation(self):           
+        """
+        Update the starting water_elevation of each lake/reservoir
+        with flow and depth values from q0
+        """
+        self._waterbody_df.update(self._q0)
+        
+    def new_t0(self, dt, nts):
+        """
+        Update t0 value for next loop iteration
+        """
+        self._t0 += timedelta(seconds = dt * nts)
 
     @property
     def network_break_segments(self):
