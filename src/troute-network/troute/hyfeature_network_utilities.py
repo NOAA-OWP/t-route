@@ -139,15 +139,11 @@ def build_forcing_sets(
             else:
                 run_sets[j]['nts'] = int(nts - nts_last)
 
-            final_nexout        = nexus_input_folder.joinpath(run_sets[j]['nexus_files'
-                    ][-1])            
+            final_nexout = nexus_input_folder.joinpath(run_sets[j]['nexus_files'][-1]) 
             #final_timestamp_str = nhd_io.get_param_str(final_nexout,
             #        'model_output_valid_time')
-            df                  = read_file(final_nexout)
-            final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
-            
-            run_sets[j]['final_timestamp'] = \
-                datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+            df = read_file(final_nexout)
+            run_sets[j]['final_timestamp'] = pd.to_datetime(df.columns[1])
 
             nts_last = nts_accum
             k += max_loop_size
