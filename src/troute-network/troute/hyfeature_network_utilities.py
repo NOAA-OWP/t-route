@@ -44,13 +44,13 @@ def build_forcing_sets(
             raise RuntimeError("No output binary qlat folder supplied in config")
         elif not os.path.exists(binary_folder):
             raise RuntimeError("Output binary qlat folder supplied in config does not exist")
-        else:
-            try:
-                next(pathlib.Path(binary_folder).glob('*.parquet'))
-                raise RuntimeError("Output binary qlat folder supplied in config is not empty (already contains '.parquet' files)")
-            except StopIteration:
-                # Directory is empty
-                pass
+
+        try:
+            next(pathlib.Path(binary_folder).glob('*.parquet'))
+            raise RuntimeError("Output binary qlat folder supplied in config is not empty (already contains '.parquet' files)")
+        except StopIteration:
+            # Directory is empty
+            pass
 
         #Add tnx for backwards compatability
         nexus_files_list = list(nexus_files) + list(nexus_input_folder.glob('tnx*.csv'))
