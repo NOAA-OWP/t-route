@@ -29,13 +29,13 @@ def build_forcing_sets(
     max_loop_size      = forcing_parameters.get("max_loop_size", 12)
     dt                 = forcing_parameters.get("dt", None)
 
-    try:
+    if nexus_input_folder is not None:
         nexus_input_folder = pathlib.Path(nexus_input_folder)
-        assert nexus_input_folder.is_dir() == True
-    except TypeError:
-        raise TypeError("Aborting simulation because no nexus_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
-    except AssertionError:
-        raise AssertionError("Aborting simulation because the nexus_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
+        if not nexus_input_folder.is_dir():
+            raise ValueError(f"Aborting simulation because the nexus_input_folder: {nexus_input_folder} does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file")
+    else:
+        raise TypeError("Aborting simulation because no nexus_input_folder is specified in the forcing_parameters section of the .yaml control file.")
+    
 
     forcing_glob_filter = forcing_parameters.get("nexus_file_pattern_filter", "*.NEXOUT")
 
