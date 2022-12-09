@@ -107,37 +107,30 @@ def build_forcing_sets(
         #                 range(nfiles)]
         # ** Correction ** Because qlat file at time t is constantly applied throughout [t, t+1],
         #               ** n + 1 should be replaced by n
-        datetime_list = [t0 + dt_qlat_timedelta * (n) for n in
-                         range(nfiles)]        
-        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
-                             datetime_list]
+        # Existence of each file is checked, raising an error if an expected file is missing.
+        forcing_filenames = []
+        for n in range(nfiles):
+            fn_dt = (t0 + dt_qlat_timedelta * n).strftime("%Y%m%d%H%M")
+            fn = nexus_input_folder.joinpath(fn_dt + forcing_glob_filter[1:])
+            if fn.is_file():
+                forcing_filenames.append(fn)
+            else:
+                raise FileNotFoundError(f"Forcing file {fn} is missing. Aborting simulation.")
 
-        # list of forcing files
-        forcing_filename_list = [d_str + forcing_glob_filter[1:] for d_str in
-                                 datetime_list_str]
-        
-        # check that all forcing files exist
-        for f in forcing_filename_list:
-            try:
-                J = pathlib.Path(nexus_input_folder.joinpath(f))     
-                assert J.is_file() == True
-            except AssertionError:
-                raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
-                
         # build run sets list
         run_sets = []
         k = 0
         j = 0
         nts_accum = 0
         nts_last = 0
-        while k < len(forcing_filename_list):
+        while k < len(forcing_filenames):
             run_sets.append({})
 
-            if k + max_loop_size < len(forcing_filename_list):
-                run_sets[j]['nexus_files'] = forcing_filename_list[k:k
+            if k + max_loop_size < len(forcing_filenames):
+                run_sets[j]['nexus_files'] = forcing_filenames[k:k
                     + max_loop_size]
             else:
-                run_sets[j]['nexus_files'] = forcing_filename_list[k:]
+                run_sets[j]['nexus_files'] = forcing_filenames[k:]
 
             nts_accum += len(run_sets[j]['nexus_files']) * qts_subdivisions
             if nts_accum <= nts:
