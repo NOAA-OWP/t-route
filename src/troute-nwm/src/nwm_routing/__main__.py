@@ -30,6 +30,7 @@ import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import troute.routing.diffusive_utils as diff_utils
 import troute.hyfeature_network_utilities as hnu
+import troute.abstractnetwork_preprocess as abs_prep
 
 LOG = logging.getLogger('')
 
@@ -84,14 +85,6 @@ def main_v04(argv):
                                     restart_parameters,
                                     forcing_parameters,
                                     verbose=True, showtiming=showtiming) 
-
-        network.create_routing_network(network.connections,
-                                       network.dataframe, 
-                                       network.waterbody_connections,
-                                       network.gages,
-                                       preprocessing_parameters, 
-                                       compute_parameters,
-                                       waterbody_parameters,)
         
     elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
@@ -110,10 +103,17 @@ def main_v04(argv):
         task_times['network_creation_time'] = network_end_time - network_start_time
 
     # Create run_sets: sets of forcing files for each loop
+    run_sets = abs_prep.build_forcing_sets(
+        supernetwork_parameters, 
+        forcing_parameters, 
+        network.t0
+        )
+    '''
     if supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
         run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
     elif supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
         run_sets = hnu.build_forcing_sets(forcing_parameters, network.t0)
+    '''
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
@@ -126,22 +126,22 @@ def main_v04(argv):
         parity_sets = []
 
     # Create forcing data within network object for first loop iteration
-    network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, cpu_pool)
+    network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool)
     
     # Create data assimilation object from da_sets for first loop iteration
     # TODO: Add data_assimilation for hyfeature network
-    if 1==2:
-        data_assimilation = AllDA(data_assimilation_parameters,
-                                  run_parameters,
-                                  waterbody_parameters,
-                                  network,
-                                  da_sets[0])
+    data_assimilation = AllDA(
+        data_assimilation_parameters,
+        run_parameters,
+        waterbody_parameters,
+        network,
+        da_sets[0]
+        )
 
     if showtiming:
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - network_end_time
 
-   
     parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
     subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
@@ -183,18 +183,18 @@ def main_v04(argv):
             network.dataframe,
             network.q0,
             network._qlateral,
-            pd.DataFrame(), #data_assimilation.usgs_df,
-            pd.DataFrame(), #data_assimilation.lastobs_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usgs_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usgs_param_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usace_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usace_param_df,
-            {}, #data_assimilation.assimilation_parameters,
+            data_assimilation.usgs_df,
+            data_assimilation.lastobs_df,
+            data_assimilation.reservoir_usgs_df,
+            data_assimilation.reservoir_usgs_param_df,
+            data_assimilation.reservoir_usace_df,
+            data_assimilation.reservoir_usace_param_df,
+            data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
-            network._waterbody_df, ## check:  network._waterbody_df ?? def name is different from return self._ ..
+            network.waterbody_dataframe,
             waterbody_parameters,
-            network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
+            network.waterbody_types_dataframe,
             network.waterbody_type_specified,
             network.diffusive_network_data,
             network.topobathy_df,

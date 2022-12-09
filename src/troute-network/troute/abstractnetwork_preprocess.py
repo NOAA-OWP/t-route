@@ -24,6 +24,7 @@ LOG = logging.getLogger('')
 
 def build_diffusive_domain(
     compute_parameters,
+    param_df,
     connections,
 ):
     
@@ -244,8 +245,9 @@ def create_independent_networks(
     waterbody_parameters, 
     connections, 
     wbody_conn, 
-    gages,
+    gages = pd.DataFrame() #FIXME update default value when we update 'break_network_at_gages',
     ):
+
     LOG.info("organizing connections into reaches ...")
     start_time = time.time() 
     gage_break_segments = set()
@@ -256,6 +258,7 @@ def create_independent_networks(
     )
     
     # if streamflow DA, then break network at gages
+    #TODO update to work with HYFeatures, need to determine how we'll do DA...
     break_network_at_gages = False
     
     if break_network_at_waterbodies:
@@ -274,7 +277,7 @@ def create_independent_networks(
 
     return independent_networks, reaches_bytw, rconn
 
-def hyfeature_initial_warmstate_preprocess(
+def initial_warmstate_preprocess(
     break_network_at_waterbodies,
     restart_parameters,
     segment_index,
@@ -529,7 +532,7 @@ def build_forcing_sets(
 
         # Deduce the timeinterval of the forcing data from the output timestamps of the first
         # two ordered CHRTOUT files
-        if geo_file_type=='HYFeaturesNetowrk':
+        if geo_file_type=='HYFeaturesNetwork':
             df     = read_file(first_file)
             t1_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
             t1     = datetime.strptime(t1_str,"%Y-%m-%d_%H:%M:%S")
@@ -602,7 +605,7 @@ def build_forcing_sets(
             final_qlat = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1]) 
             if geo_file_type=='NHDNetwork':           
                 final_timestamp_str = nhd_io.get_param_str(final_qlat,'model_output_valid_time')
-            elif geo_file_type=='HYFeaturesNetowrk':
+            elif geo_file_type=='HYFeaturesNetwork':
                 df = read_file(final_qlat)
                 final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
             
