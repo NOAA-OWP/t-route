@@ -16,8 +16,9 @@ class AbstractNetwork(ABC):
     """
     __slots__ = ["_dataframe", "_waterbody_connections", "_gages",  
                 "_terminal_codes", "_connections", "_waterbody_df", 
-                "_waterbody_types_df", "_independent_networks", 
-                "_reaches_by_tw", "_reverse_network", "_q0", "_t0", 
+                "_waterbody_types_df", "_waterbody_type_specified",
+                "_independent_networks", "_reaches_by_tw", 
+                "_reverse_network", "_q0", "_t0", 
                 "_qlateral", "_break_segments", "_coastal_boundary_depth_df"]
     
     def __init__(
@@ -31,7 +32,7 @@ class AbstractNetwork(ABC):
         verbose=False, 
         showtiming=False
         ):
-
+        
         global __verbose__, __showtiming__
         __verbose__ = verbose
         __showtiming__ = showtiming
@@ -65,6 +66,7 @@ class AbstractNetwork(ABC):
         self._q0 = None
         self._t0 = None
         self._qlateral = None
+        self._waterbody_type_specified = None
         #qlat_const = forcing_parameters.get("qlat_const", 0)
         #FIXME qlat_const
         """ Figure out a good way to default initialize to qlat_const/c
@@ -86,9 +88,10 @@ class AbstractNetwork(ABC):
                 ~self._dataframe["downstream"].isin(self._dataframe.index)
             ]["downstream"].values
         )
+        
          # There can be an externally determined terminal code -- that's this value
         self._terminal_codes.add(terminal_code)
-
+        
         self._break_segments = set()
         if break_points:
             if break_points["break_network_at_waterbodies"]:
@@ -97,7 +100,7 @@ class AbstractNetwork(ABC):
                 self._break_segments = self._break_segments | set(self.gages.values())
         
         self._connections = extract_connections(self._dataframe, 'downstream', self._terminal_codes)
-
+        
         (
             self._dataframe,
             self._connections,
@@ -111,7 +114,7 @@ class AbstractNetwork(ABC):
             self._dataframe,
             self._connections,
             )
-        
+
         (
             self._independent_networks,
             self._reaches_by_tw, 
@@ -310,6 +313,12 @@ class AbstractNetwork(ABC):
     @property
     def waterbody_types_dataframe(self):
         return self._waterbody_types_df
+    
+    @property
+    def waterbody_type_specified(self):
+        if self._waterbody_type_specified is None:
+            self._waterbody_type_specified = False
+        return self._waterbody_type_specified
 
     @property
     def connections(self):

@@ -366,7 +366,7 @@ def initial_warmstate_preprocess(
             )
 
         waterbodies_df = pd.merge(
-            waterbodies_df, waterbodies_initial_states_df, on="lake_id"
+            waterbodies_df, waterbodies_initial_states_df, on="wb-id"
         )
 
         LOG.debug(
@@ -625,6 +625,10 @@ def build_qlateral_array(
     supernetwork_parameters, 
     segment_index=pd.Index([]),
 ):
+
+    start_time = time.time()
+    LOG.info("Creating a DataFrame of lateral inflow forcings ...")
+    
     # TODO: set default/optional arguments
     qts_subdivisions = run.get("qts_subdivisions", 1)
     nts = run.get("nts", 1)
@@ -674,7 +678,9 @@ def build_qlateral_array(
                 index = idx,
                 columns = range(len(qlat_files))
             )
-        elif geo_file_type=='HYFeaturesNetowrk':
+
+            qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
+        elif geo_file_type=='HYFeaturesNetwork':
             dfs=[]
             for f in qlat_files:
                 df = read_file(f).set_index(['feature_id']) 
@@ -683,13 +689,24 @@ def build_qlateral_array(
             # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
             nexuses_lateralflows_df = pd.concat(dfs, axis=1)  
             
-            # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids 
+            # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids
             qlats_df = pd.concat( (nexuses_lateralflows_df.loc[int(k)].rename(v)
                                 for k,v in nexus_to_upstream_flowpath_dict.items() ), axis=1
                                 ).T 
             qlats_df.columns=range(len(qlat_files))
+            qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
 
-        qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
+            # The segment_index has the full network set of segments/flowpaths. 
+            # Whereas the set of flowpaths that are downstream of nexuses is a 
+            # subset of the segment_index. Therefore, all of the segments/flowpaths
+            # that are not accounted for in the set of flowpaths downstream of
+            # nexuses need to be added to the qlateral dataframe and padded with
+            # zeros.
+            all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlats_df.columns)) ), index=segment_index,
+                columns=qlats_df.columns )
+            all_df.loc[ qlats_df.index ] = qlats_df
+            qlats_df = all_df.sort_index()
+
     elif qlat_input_file:
         qlats_df = nhd_io.get_ql_from_csv(qlat_input_file)
     else:
@@ -708,6 +725,11 @@ def build_qlateral_array(
 
     if not segment_index.empty:
         qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
+    
+    LOG.debug(
+        "lateral inflow DataFrame creation complete in %s seconds." \
+            % (time.time() - start_time)
+            )
 
     return qlats_df
 

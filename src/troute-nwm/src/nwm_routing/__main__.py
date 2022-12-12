@@ -82,6 +82,7 @@ def main_v04(argv):
     if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters,
+                                    data_assimilation_parameters,
                                     restart_parameters,
                                     forcing_parameters,
                                     verbose=True, showtiming=showtiming) 
