@@ -22,8 +22,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     
     """
     __slots__ = ["_flowpath_dict", 
-                 "segment_index", 
-                 "waterbody_type_specified",
+                 "segment_index",
                  "diffusive_network_data", 
                  "topobathy_df", 
                  "refactored_diffusive_domain",
@@ -31,7 +30,8 @@ class HYFeaturesNetwork(AbstractNetwork):
                  "unrefactored_topobathy_df"]
     def __init__(self, 
                  supernetwork_parameters, 
-                 waterbody_parameters=None, 
+                 waterbody_parameters,
+                 data_assimilation_parameters,
                  restart_parameters=None, 
                  compute_parameters=None, 
                  verbose=False, 
@@ -58,11 +58,14 @@ class HYFeaturesNetwork(AbstractNetwork):
             supernetwork_parameters,
             waterbody_parameters,
         )
-
+        
         cols                         = supernetwork_parameters.get('columns',None)
         terminal_code                = supernetwork_parameters.get('terminal_code',0)
-        break_network_at_waterbodies = supernetwork_parameters.get("break_network_at_waterbodies", False)        
-        break_network_at_gages       = supernetwork_parameters.get("break_network_at_gages", False)       
+        break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)        
+        streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
+        break_network_at_gages       = False       
+        if streamflow_da:
+            break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
         break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                         "break_network_at_gages": break_network_at_gages}
 
