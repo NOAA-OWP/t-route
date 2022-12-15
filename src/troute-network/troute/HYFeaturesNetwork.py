@@ -1,17 +1,9 @@
 from .AbstractNetwork import AbstractNetwork
-import pathlib
-import json
 import pandas as pd
 import numpy as np
 import time
-import re
 import troute.nhd_io as nhd_io #FIXME
-from itertools import chain
-import geopandas as gpd
-from pathlib import Path
-import math
 import troute.hyfeature_preprocess as hyfeature_prep
-from datetime import datetime, timedelta
 
 __verbose__ = False
 __showtiming__ = False
@@ -104,11 +96,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     __slots__ = ["_flowpath_dict", 
                  "segment_index",
-                 "diffusive_network_data", 
-                 "topobathy_df", 
-                 "refactored_diffusive_domain",
-                 "refactored_reaches", 
-                 "unrefactored_topobathy_df"]
+                 ]
     def __init__(self, 
                  supernetwork_parameters, 
                  waterbody_parameters,
@@ -133,15 +121,21 @@ class HYFeaturesNetwork(AbstractNetwork):
         #------------------------------------------------
         (self._dataframe,
          self._flowpath_dict,
+         self._connections,
          self._waterbody_df,
          self._waterbody_types_df,
+         self._terminal_codes,
         ) = hyfeature_prep.read_geo_file(
             supernetwork_parameters,
             waterbody_parameters,
         )
         
+        if __verbose__:
+            print("supernetwork connections set complete")
+        if __showtiming__:
+            print("... in %s seconds." % (time.time() - start_time))
+            
         cols                         = supernetwork_parameters.get('columns',None)
-        terminal_code                = supernetwork_parameters.get('terminal_code',0)
         break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)        
         streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
         break_network_at_gages       = False       
@@ -150,69 +144,15 @@ class HYFeaturesNetwork(AbstractNetwork):
         break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                         "break_network_at_gages": break_network_at_gages}
 
-
-
-
-
-        #------------------------------------------------
-        # Preprocess network attributes
-        #------------------------------------------------        
-        (self._dataframe,            
-         self._flowpath_dict, 
-         self._waterbody_types_df,
-         self._waterbody_df,
-         self.waterbody_type_specified,
-         cols,
-         terminal_code,
-         break_points,
-        ) = hyfeature_prep.build_hyfeature_network(
-            supernetwork_parameters,
-            waterbody_parameters
-        )
-        
-        # called to mainly initialize _waterbody_connections, _connections, _independent_networks,
-        # _reverse_network, _reaches_by_tw
-        super().__init__(cols, terminal_code, break_points)    
-        
-        if __verbose__:
-            print("supernetwork connections set complete")
-        if __showtiming__:
-            print("... in %s seconds." % (time.time() - start_time))   
-        
-   
-            
-        # list of all segments in the domain (MC + diffusive)
-        self.segment_index = self._dataframe.index
-        #if self.diffusive_network_data:
-        #    for tw in self.diffusive_network_data:
-        #        self.segment_index = self.segment_index.append(
-        #            pd.Index(self.diffusive_network_data[tw]['mainstem_segs'])
-        #        )     
-            
-        #------------------------------------------------
-        #  Handle Channel Initial States
-        #------------------------------------------------ 
-        if __verbose__:
-            print("setting waterbody and channel initial states ...")
-        if __showtiming__:
-            start_time = time.time()
-
-        (#self._waterbody_df,
-         self._q0,
-         self._t0,) = hyfeature_prep.hyfeature_initial_warmstate_preprocess(
-            #break_network_at_waterbodies,
-            restart_parameters,
-            #data_assimilation_parameters,
-            self.segment_index,
-            #self._waterbody_df,
-            #self.link_lake_crosswalk,
-        )
-        
-        if __verbose__:
-            print("waterbody and channel initial states complete")
-        if __showtiming__:
-            print("... in %s seconds." % (time.time() - start_time))
-            start_time = time.time()
+        super().__init__(
+            compute_parameters, 
+            waterbody_parameters,
+            restart_parameters, 
+            cols, 
+            break_points,
+            verbose=__verbose__,
+            showtiming=__showtiming__,
+            )   
             
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't

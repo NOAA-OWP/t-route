@@ -239,13 +239,11 @@ def main_v04(argv):
                                       cpu_pool)
             
             # get reservoir DA initial parameters for next loop iteration
-            # TODO: Add data_assimilation for hyfeature network
-            if 1==2: 
-                data_assimilation.update(run_results,
-                                     data_assimilation_parameters,
-                                     run_parameters,
-                                     network,
-                                     da_sets[run_set_iterator + 1])
+            data_assimilation.update(run_results,
+                                    data_assimilation_parameters,
+                                    run_parameters,
+                                    network,
+                                    da_sets[run_set_iterator + 1])
             
             if showtiming:
                 forcing_end_time = time.time()
@@ -253,7 +251,9 @@ def main_v04(argv):
 
         if showtiming:
             output_start_time = time.time()
-
+        
+        '''
+        #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
             run_results,
@@ -268,10 +268,11 @@ def main_v04(argv):
             network._waterbody_df,  ## check:  network._waterbody_df ?? def name is different from return self._ ..
             network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
             data_assimilation_parameters,
-            pd.DataFrame(), #data_assimilation.lastobs_df,
+            data_assimilation.lastobs_df,
             pd.DataFrame(), #network.link_gage_df,
             None, #network.link_lake_crosswalk, 
         )
+        '''
 
         if showtiming:
             output_end_time = time.time()

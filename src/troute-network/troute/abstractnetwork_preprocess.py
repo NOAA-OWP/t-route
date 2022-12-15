@@ -154,7 +154,7 @@ def build_diffusive_domain(
 
             # diffusive domain tributary segments
             trib_segs = []
-
+            
             for seg in mainstem_segs:
                 us_list = rconn_diff0[seg]
                 for u in us_list:
@@ -315,6 +315,9 @@ def initial_warmstate_preprocess(
     -----
     '''
 
+    # generalize waterbody ID's to be used with any network
+    index_id = waterbodies_df.index.names[0]
+
     #----------------------------------------------------------------------------
     # Assemble waterbody initial states (outflow and pool elevation
     #----------------------------------------------------------------------------
@@ -335,7 +338,7 @@ def initial_warmstate_preprocess(
             waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_waterbody_restart_file"],
                 restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", 'lake_id'),
+                restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", index_id),
                 restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
                 restart_parameters.get(
                     "wrf_hydro_waterbody_crosswalk_filter_file_field_name",
@@ -366,7 +369,7 @@ def initial_warmstate_preprocess(
             )
 
         waterbodies_df = pd.merge(
-            waterbodies_df, waterbodies_initial_states_df, on="wb-id"
+            waterbodies_df, waterbodies_initial_states_df, on=index_id
         )
 
         LOG.debug(
@@ -551,7 +554,7 @@ def build_forcing_sets(
         # determine qts_subdivisions
         qts_subdivisions = dt_qlat / dt
         if dt_qlat % dt == 0:
-            qts_subdivisions = dt_qlat / dt
+            qts_subdivisions = int(dt_qlat / dt)
         # make sure that qts_subdivisions = dt_qlat / dt
         forcing_parameters['qts_subdivisions']= qts_subdivisions
 
@@ -661,9 +664,9 @@ def build_qlateral_array(
                 jobs = []
                 for f in qlat_files:
                     jobs.append(
-                        #delayed(nhd_io.get_ql_from_chrtout)
+                        delayed(nhd_io.get_ql_from_chrtout)
                         #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
-                        delayed(nhd_io.get_ql_from_csv)
+                        #delayed(nhd_io.get_ql_from_csv)
                         (f)                    
                     )
                 ql_list = parallel(jobs)
