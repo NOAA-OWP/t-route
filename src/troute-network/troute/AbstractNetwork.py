@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 from functools import partial
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 from troute.nhd_network import reverse_dict, extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
 import troute.nhd_io as nhd_io
 import troute.abstractnetwork_preprocess as abs_prep 
-__verbose__ = False
-__showtiming__ = False
 
 class AbstractNetwork(ABC):
     """
@@ -19,7 +17,9 @@ class AbstractNetwork(ABC):
                 "_waterbody_types_df", "_waterbody_type_specified",
                 "_independent_networks", "_reaches_by_tw", 
                 "_reverse_network", "_q0", "_t0", 
-                "_qlateral", "_break_segments", "_coastal_boundary_depth_df"]
+                "_qlateral", "_break_segments", "_coastal_boundary_depth_df",
+                "diffusive_network_data", "topobathy_df", "refactored_diffusive_domain",
+                "refactored_reaches", "unrefactored_topobathy_df", "segment_index"]
     
     def __init__(
         self, 
@@ -27,15 +27,15 @@ class AbstractNetwork(ABC):
         waterbody_parameters,
         restart_parameters,
         cols=None, 
-        terminal_code=None, 
         break_points=None, 
         verbose=False, 
         showtiming=False
         ):
-        
+
         global __verbose__, __showtiming__
         __verbose__ = verbose
         __showtiming__ = showtiming
+
         if cols:
             self._dataframe = self._dataframe[list(cols.values())]
             # Rename parameter columns to standard names: from route-link names
@@ -57,9 +57,8 @@ class AbstractNetwork(ABC):
             self._dataframe = self._dataframe.rename(columns=reverse_dict(cols))
             self.set_index("key")
             self.sort_index()
-        self._waterbody_connections = {}
-        self._gages = None
-        self._connections = None
+        self._waterbody_connections = {} #TODO set in individual network objects?...
+        self._gages = None #TODO set in individual network objects?...
         self._independent_networks = None
         self._reverse_network = None
         self._reaches_by_tw = None
@@ -78,28 +77,12 @@ class AbstractNetwork(ABC):
             dtype="float32",
         )
         """
-        # there may be off-domain nodes that are not explicitly identified
-        # but which are terminal (i.e., off-domain) as a result of a mask or some other
-        # an interior domain truncation that results in a
-        # otherwise valid node value being pointed to, but which is masked out or
-        # being intentionally separated into another domain.
-        self._terminal_codes = set(
-            self._dataframe[
-                ~self._dataframe["downstream"].isin(self._dataframe.index)
-            ]["downstream"].values
-        )
-        
-         # There can be an externally determined terminal code -- that's this value
-        self._terminal_codes.add(terminal_code)
-        
         self._break_segments = set()
         if break_points:
             if break_points["break_network_at_waterbodies"]:
                 self._break_segments = self._break_segments | set(self.waterbody_connections.values())
             if break_points["break_network_at_gages"]:
                 self._break_segments = self._break_segments | set(self.gages.values())
-        
-        self._connections = extract_connections(self._dataframe, 'downstream', self._terminal_codes)
         
         (
             self._dataframe,
@@ -126,6 +109,11 @@ class AbstractNetwork(ABC):
             #gages, #TODO update how gages are provided when we figure out DA
             )
         
+        if __verbose__:
+            print("setting waterbody and channel initial states ...")
+        if __showtiming__:
+            start_time = time.time()
+
         (
             self._waterbody_df,
             self._q0, 
@@ -137,6 +125,12 @@ class AbstractNetwork(ABC):
             self._waterbody_df,
             )
         
+        if __verbose__:
+            print("waterbody and channel initial states complete")
+        if __showtiming__:
+            print("... in %s seconds." % (time.time() - start_time))
+            start_time = time.time()
+
     def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool):
         """
         Assemble model forcings. Forcings include hydrological lateral inflows (qlats)

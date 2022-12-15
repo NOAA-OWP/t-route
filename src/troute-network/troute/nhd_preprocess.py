@@ -14,6 +14,238 @@ import troute.nhd_io as nhd_io
 
 LOG = logging.getLogger('')
 
+def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters):
+    '''
+    Construct network connections network, parameter dataframe, waterbody mapping, 
+    and gage mapping. This is an intermediate-level function that calls several 
+    lower level functions to read data, conduct network operations, and extract mappings.
+    
+    Arguments
+    ---------
+    supernetwork_parameters (dict): User input network parameters
+    
+    Returns:
+    --------
+    connections (dict int: [int]): Network connections
+    param_df          (DataFrame): Geometry and hydraulic parameters
+    wbodies       (dict, int: int): segment-waterbody mapping
+    gages         (dict, int: int): segment-gage mapping
+    
+    '''
+    
+    # crosswalking dictionary between variables names in input dataset and 
+    # variable names recognized by troute.routing module.
+    cols = supernetwork_parameters.get(
+        'columns', 
+        {
+        'key'       : 'link',
+        'downstream': 'to',
+        'dx'        : 'Length',
+        'n'         : 'n',
+        'ncc'       : 'nCC',
+        's0'        : 'So',
+        'bw'        : 'BtmWdth',
+        'waterbody' : 'NHDWaterbodyComID',
+        'gages'     : 'gages',
+        'tw'        : 'TopWdth',
+        'twcc'      : 'TopWdthCC',
+        'alt'       : 'alt',
+        'musk'      : 'MusK',
+        'musx'      : 'MusX',
+        'cs'        : 'ChSlp',
+        }
+    )
+    
+    # numeric code used to indicate network terminal segments
+    terminal_code = supernetwork_parameters.get("terminal_code", 0)
+
+    # read parameter dataframe 
+    param_df = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
+
+    # select the column names specified in the values in the cols dict variable
+    param_df = param_df[list(cols.values())]
+    
+    # rename dataframe columns to keys in the cols dict variable
+    param_df = param_df.rename(columns=nhd_network.reverse_dict(cols))
+    
+    # handle synthetic waterbody segments
+    synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
+    synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
+    if synthetic_wb_segments:
+        # rename the current key column to key32
+        key32_d = {"key":"key32"}
+        param_df = param_df.rename(columns=key32_d)
+        # create a key index that is int64
+        # copy the links into the new column
+        param_df["key"] = param_df.key32.astype("int64")
+        # update the values of the synthetic reservoir segments
+        fix_idx = param_df.key.isin(set(synthetic_wb_segments))
+        param_df.loc[fix_idx,"key"] = (param_df[fix_idx].key + synthetic_wb_id_offset).astype("int64")
+
+    # set parameter dataframe index as segment id number, sort
+    param_df = param_df.set_index("key").sort_index()
+
+    # get and apply domain mask
+    if "mask_file_path" in supernetwork_parameters:
+        data_mask = nhd_io.read_mask(
+            pathlib.Path(supernetwork_parameters["mask_file_path"]),
+            layer_string=supernetwork_parameters.get("mask_layer_string", None),
+        )
+        data_mask = data_mask.set_index(data_mask.columns[0])
+        param_df = param_df.filter(data_mask.index, axis=0)
+
+    # map segment ids to waterbody ids
+    wbodies = {}
+    if "waterbody" in cols:
+        wbodies = nhd_network.extract_waterbody_connections(
+            param_df[["waterbody"]]
+        )
+        param_df = param_df.drop("waterbody", axis=1)
+
+    # map segment ids to gage ids
+    gages = {}
+    if "gages" in cols:
+        gages = nhd_network.gage_mapping(param_df[["gages"]])
+        param_df = param_df.drop("gages", axis=1)
+        
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.add(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        param_df[~param_df["downstream"].isin(param_df.index)]["downstream"].values
+    )
+    
+    # build connections dictionary
+    connections = nhd_network.extract_connections(
+        param_df, "downstream", terminal_codes=terminal_codes
+    )
+    param_df = param_df.drop("downstream", axis=1)
+
+    param_df = param_df.astype("float32")
+
+    break_network_at_waterbodies = waterbody_parameters.get(
+        "break_network_at_waterbodies", False
+    )
+
+    # if waterbodies are being simulated, adjust the connections graph so that 
+    # waterbodies are collapsed to single nodes. Also, build a mapping between 
+    # waterbody outlet segments and lake ids
+    if break_network_at_waterbodies:
+        connections, link_lake_crosswalk = nhd_network.replace_waterbodies_connections(
+            connections, wbodies
+        )
+    else:
+        link_lake_crosswalk = None
+
+    #============================================================================
+    # Retrieve and organize waterbody parameters
+
+    waterbody_type_specified = False
+    if break_network_at_waterbodies:
+        
+        # Read waterbody parameters from LAKEPARM file
+        level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
+        waterbodies_df = nhd_io.read_lakeparm(
+            level_pool_params['level_pool_waterbody_parameter_file_path'],
+            level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+            wbodies.values()
+        )
+
+        # Remove duplicate lake_ids and rows
+        waterbodies_df = (
+            waterbodies_df.reset_index()
+            .drop_duplicates(subset="lake_id")
+            .set_index("lake_id")
+        )
+
+        # Declare empty dataframe
+        waterbody_types_df = pd.DataFrame()
+
+        # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
+        reservoir_da = data_assimilation_parameters.get(
+            'reservoir_da', 
+            {}
+        )
+        
+        if reservoir_da:
+            usgs_hybrid  = reservoir_da.get(
+                'reservoir_persistence_usgs', 
+                False
+            )
+            usace_hybrid = reservoir_da.get(
+                'reservoir_persistence_usace', 
+                False
+            )
+            param_file   = reservoir_da.get(
+                'gage_lakeID_crosswalk_file',
+                None
+            )
+        else:
+            param_file = None
+            usace_hybrid = False
+            usgs_hybrid = False
+            
+        # check if RFC-type reservoirs are set to true
+        rfc_params = waterbody_parameters.get('rfc')
+        if rfc_params:
+            rfc_forecast = rfc_params.get(
+                'reservoir_rfc_forecasts',
+                False
+            )
+            param_file = rfc_params.get('reservoir_parameter_file',None)
+        else:
+            rfc_forecast = False
+
+        if (param_file and reservoir_da) or (param_file and rfc_forecast):
+            waterbody_type_specified = True
+            (
+                waterbody_types_df, 
+                usgs_lake_gage_crosswalk, 
+                usace_lake_gage_crosswalk
+            ) = nhd_io.read_reservoir_parameter_file(
+                param_file,
+                usgs_hybrid,
+                usace_hybrid,
+                rfc_forecast,
+                level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
+                reservoir_da.get('crosswalk_usgs_gage_field', 'usgs_gage_id'),
+                reservoir_da.get('crosswalk_usgs_lakeID_field', 'usgs_lake_id'),
+                reservoir_da.get('crosswalk_usace_gage_field', 'usace_gage_id'),
+                reservoir_da.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
+                wbodies.values(),
+            )
+        else:
+            waterbody_type_specified = True
+            waterbody_types_df = pd.DataFrame(data = 1, index = waterbodies_df.index, columns = ['reservoir_type'])
+            usgs_lake_gage_crosswalk = None
+            usace_lake_gage_crosswalk = None
+
+    else:
+        # Declare empty dataframes
+        waterbody_types_df = pd.DataFrame()
+        waterbodies_df = pd.DataFrame()
+        usgs_lake_gage_crosswalk = None
+        usace_lake_gage_crosswalk = None
+
+    return (
+        param_df,
+        connections,
+        terminal_codes,
+        waterbodies_df, 
+        waterbody_types_df,
+        waterbody_type_specified,
+        wbodies, 
+        link_lake_crosswalk,
+        gages,
+        usgs_lake_gage_crosswalk, 
+        usace_lake_gage_crosswalk)
+
+
 def build_nhd_network(supernetwork_parameters,waterbody_parameters,
                       preprocessing_parameters,compute_parameters,
                       data_assimilation_parameters):

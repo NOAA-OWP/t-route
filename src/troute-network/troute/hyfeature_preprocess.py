@@ -45,6 +45,26 @@ def read_geo_file(
     # **********  need to be included in flowpath_attributes  *************
     dataframe['alt'] = 1.0 #FIXME get the right value for this...  
 
+    # numeric code used to indicate network terminal segments
+    terminal_code = supernetwork_parameters.get("terminal_code", 0)
+
+    # There can be an externally determined terminal code -- that's this first value
+    terminal_codes = set()
+    terminal_codes.add(terminal_code)
+    # ... but there may also be off-domain nodes that are not explicitly identified
+    # but which are terminal (i.e., off-domain) as a result of a mask or some other
+    # an interior domain truncation that results in a
+    # otherwise valid node value being pointed to, but which is masked out or
+    # being intentionally separated into another domain.
+    terminal_codes = terminal_codes | set(
+        dataframe[~dataframe["downstream"].isin(dataframe.index)]["downstream"].values
+    )
+
+    # build connections dictionary
+    connections = nhd_network.extract_connections(
+        dataframe, "downstream", terminal_codes=terminal_codes
+    )
+
     #Load waterbody/reservoir info
     if waterbody_parameters:
         levelpool_params = waterbody_parameters.get('level_pool', None)
@@ -84,7 +104,7 @@ def read_geo_file(
             waterbody_types_df = pd.DataFrame(index=waterbody_df.index)
             waterbody_types_df['reservoir_type'] = 1    
               
-    return dataframe, flowpath_dict, waterbody_df, waterbody_types_df
+    return dataframe, flowpath_dict, connections, waterbody_df, waterbody_types_df, terminal_codes
 
 def build_hyfeature_network(supernetwork_parameters,
                             waterbody_parameters,

@@ -746,7 +746,7 @@ def write_chrtout(
         LOG.debug("%d CHRTOUT files will be written." % (nfiles_to_write))
         LOG.debug("Extracting flow DataFrame on qts_subdivisions from FVD DataFrame")
         start = time.time()
-        
+
         flow = flowveldepth.loc[:, ::3].iloc[:, qts_subdivisions-1::qts_subdivisions]
         
         LOG.debug("Extracting flow DataFrame took %s seconds." % (time.time() - start))
