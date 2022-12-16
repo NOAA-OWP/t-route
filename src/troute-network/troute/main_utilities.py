@@ -40,21 +40,21 @@ def initialize_network(args):
         'cpu_pool': compute_parameters.get('cpu_pool')
     }
     
-#    showtiming = log_parameters.get("showtiming", None)
-#    if showtiming:
-#        task_times = {}
-#        task_times['forcing_time'] = 0
-#        task_times['route_time'] = 0
-#        task_times['output_time'] = 0
-#        main_start_time = time.time()
+    showtiming = log_parameters.get("showtiming", None)
+    if showtiming:
+        task_times = {}
+        task_times['forcing_time'] = 0
+        task_times['route_time'] = 0
+        task_times['output_time'] = 0
+        main_start_time = time.time()
     
     cpu_pool = compute_parameters.get("cpu_pool", None)
  
     # Build routing network data objects. Network data objects specify river 
     # network connectivity, channel geometry, and waterbody parameters. Also
     # perform initial warmstate preprocess.
-#    if showtiming:
-#        network_start_time = time.time()
+    if showtiming:
+        network_start_time = time.time()
 
     #if "ngen_nexus_file" in supernetwork_parameters:
     if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
@@ -83,9 +83,9 @@ def initialize_network(args):
                              showtiming=False #showtiming,          
                             )
     
-#    if showtiming:
-#        network_end_time = time.time()
-#        task_times['network_time'] = network_end_time - network_start_time
+    if showtiming:
+        network_end_time = time.time()
+        task_times['network_time'] = network_end_time - network_start_time
 
     all_parameters = [log_parameters, #TODO: Delete this...
                       preprocessing_parameters,

@@ -57,16 +57,18 @@ compute_parameters:
         coastal_boundary_domain: domain/coastal_boundary_domain.yaml
     forcing_parameters:
         #----------
-        qts_subdivisions            : 12
-        dt                          : 300 # [sec]
-        qlat_input_folder           : channel_forcing/ 
-        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1"
-        nexus_input_folder          : channel_forcing/ 
-        nexus_file_pattern_filter   : "*NEXOUT.csv" #OR "*NEXOUT.parquet" OR "nex-*"
-        binary_nexus_file_folder    : binary_files # this is required if nexus_file_pattern_filter="nex-*"
-        coastal_boundary_input_file : channel_forcing/schout_1.nc  
-        nts                         : 288 #288 for 1day
-        max_loop_size               : 1 # [hr]  
+        qts_subdivisions                        : 12
+        dt                                      : 300 # [sec]
+        qlat_input_folder                       : channel_forcing/ 
+        qlat_file_pattern_filter                : "*.CHRTOUT_DOMAIN1"
+        nexus_input_folder                      : channel_forcing/ 
+        nexus_file_pattern_filter               : "*NEXOUT.csv" #OR "*NEXOUT.parquet" OR "nex-*"
+        binary_nexus_file_folder                : binary_files # this is required if nexus_file_pattern_filter="nex-*"
+        coastal_boundary_input_file             : channel_forcing/schout_1.nc  
+        downstream_boundary_input_folder        : channel_forcing/
+        downstream_boundary_file_pattern_filter : "*SCHISM.nc"
+        nts                                     : 288 #288 for 1day
+        max_loop_size                           : 2 # [hr]  
     data_assimilation_parameters:
         #----------
         usgs_timeslices_folder   : #usgs_TimeSlice/

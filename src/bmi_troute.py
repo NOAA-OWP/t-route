@@ -173,8 +173,7 @@ class bmi_troute(Bmi):
     
     def update(self):
         """Advance model by one time step."""
-        
-        
+                
         # Set input data into t-route objects
         self._network._qlateral = pd.DataFrame(self._values['land_surface_water_source__volume_flow_rate'],
                                                             index=self._network.dataframe.index.to_numpy())
