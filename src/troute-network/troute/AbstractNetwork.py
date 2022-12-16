@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 
-from troute.nhd_network import reverse_dict, extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
+from troute.nhd_network import extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
 import troute.nhd_io as nhd_io
 import troute.abstractnetwork_preprocess as abs_prep 
 
@@ -26,7 +26,6 @@ class AbstractNetwork(ABC):
         compute_parameters, 
         waterbody_parameters,
         restart_parameters,
-        cols=None, 
         break_points=None, 
         verbose=False, 
         showtiming=False
@@ -36,36 +35,12 @@ class AbstractNetwork(ABC):
         __verbose__ = verbose
         __showtiming__ = showtiming
 
-        if cols:
-            self._dataframe = self._dataframe[list(cols.values())]
-            # Rename parameter columns to standard names: from route-link names
-            #        key: "link"
-            #        downstream: "to"
-            #        dx: "Length"
-            #        n: "n"  # TODO: rename to `manningn`
-            #        ncc: "nCC"  # TODO: rename to `mannningncc`
-            #        s0: "So"  # TODO: rename to `bedslope`
-            #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
-            #        waterbody: "NHDWaterbodyComID"
-            #        gages: "gages"
-            #        tw: "TopWdth"  # TODO: rename to `topwidth`
-            #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-            #        alt: "alt"
-            #        musk: "MusK"
-            #        musx: "MusX"
-            #        cs: "ChSlp"  # TODO: rename to `sideslope`
-            self._dataframe = self._dataframe.rename(columns=reverse_dict(cols))
-            self.set_index("key")
-            self.sort_index()
-        self._waterbody_connections = {} #TODO set in individual network objects?...
-        self._gages = None #TODO set in individual network objects?...
         self._independent_networks = None
         self._reverse_network = None
         self._reaches_by_tw = None
         self._q0 = None
         self._t0 = None
         self._qlateral = None
-        self._waterbody_type_specified = None
         #qlat_const = forcing_parameters.get("qlat_const", 0)
         #FIXME qlat_const
         """ Figure out a good way to default initialize to qlat_const/c
