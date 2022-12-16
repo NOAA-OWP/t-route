@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import netCDF4
 from joblib import delayed, Parallel
+import xarray as xr
 
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
@@ -253,6 +254,7 @@ def build_forcing_sets(
     
     run_sets = forcing_parameters.get("qlat_forcing_sets", None)
     qlat_input_folder = forcing_parameters.get("qlat_input_folder", None)
+    downstream_boundary_input_folder = forcing_parameters.get("downstream_boundary_input_folder", None)
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
@@ -266,6 +268,7 @@ def build_forcing_sets(
         raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
 
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
+    downstream_boundary_glob_filter = forcing_parameters.get("downstream_boundary_file_pattern_filter", "*SCHISM.nc")
         
     # TODO: Throw errors if insufficient input data are available
     if run_sets:
@@ -357,6 +360,64 @@ def build_forcing_sets(
             nts_last = nts_accum
             k += max_loop_size
             j += 1
+            
+    # creates downstream boundary forcing file list
+    if downstream_boundary_input_folder:
+        # get the first and seconded files from an ordered list of all forcing files
+        downstream_boundary_input_folder = pathlib.Path(downstream_boundary_input_folder)
+        all_files = sorted(downstream_boundary_input_folder.glob(downstream_boundary_glob_filter))
+        first_file = all_files[0]
+        second_file = all_files[1]
+
+        # Deduce the timeinterval of the forcing data from the output timestamps of the first
+        df     = read_file(first_file)
+        t1_str = pd.to_datetime(df.time.iloc[0]).strftime("%Y-%m-%d_%H:%M:%S")
+        t1     = datetime.strptime(t1_str,"%Y-%m-%d_%H:%M:%S")
+        df     = read_file(second_file)
+        t2_str = pd.to_datetime(df.time.iloc[0]).strftime("%Y-%m-%d_%H:%M:%S")
+        t2     = datetime.strptime(t2_str,"%Y-%m-%d_%H:%M:%S")
+        dt_downstream_boundary_timedelta = t2 - t1
+        dt_downstream_boundary           = dt_downstream_boundary_timedelta.seconds   
+
+        bts_subdivisions = dt_downstream_boundary / dt
+        # the number of files required for the simulation
+        nfiles = int(np.ceil(nts / bts_subdivisions)) + 1
+        
+        # list of downstream boundary file datetimes
+        # n+1 because downstream boundary values, for example, during next 2hr simulation are 
+        # values at t0, t0+1hr, t0+2hr and schism currently do not store value at t0 (to be interpolated)
+        datetime_list = [t0 + dt_downstream_boundary_timedelta * (n+1) for n in
+                         range(nfiles)]        
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                             datetime_list]
+        # list of downstream boundary files
+        downstream_boundary_filename_list = [d_str + downstream_boundary_glob_filter[1:] for d_str in
+                                 datetime_list_str]  
+        
+        # check that all forcing files exist
+        for f in downstream_boundary_filename_list:
+            try:
+                J = pathlib.Path(downstream_boundary_input_folder.joinpath(f))     
+                assert J.is_file() == True
+            except AssertionError:
+                raise AssertionError("Aborting simulation because downstream boundary file", J, "cannot be not found.") from None
+    
+        # build run sets list
+        k = 0
+        j = 0
+        nts_accum = 0
+        nts_last = 0
+        while k < len(downstream_boundary_filename_list)-1:
+            #run_sets.append({})
+
+            if k + max_loop_size < len(downstream_boundary_filename_list):
+                run_sets[j]['downstream_boundary_files'] = downstream_boundary_filename_list[k:k
+                    + max_loop_size+1]                
+            else:
+                run_sets[j]['downstream_boundary_files'] = downstream_boundary_filename_list[k:]
+            k += max_loop_size
+            j += 1
+            
     return run_sets
 
 def build_qlateral_array(
@@ -872,3 +933,14 @@ def build_refac_connections(diff_network_parameters):
     )
 
     return connections
+
+def read_file(file_name):
+    extension = file_name.suffix
+    if extension=='.csv':
+        df = pd.read_csv(file_name)
+    elif extension=='.parquet':
+        df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    elif extension=='.nc':
+        df = xr.open_dataset(file_name)
+        df = df.to_dataframe()   

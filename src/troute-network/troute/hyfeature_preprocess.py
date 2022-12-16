@@ -694,30 +694,31 @@ def hyfeature_forcing(
     """
    
     # Unpack user-specified forcing parameters
-    dt                           = forcing_parameters.get("dt", None)
-    qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
-    nexus_input_folder           = forcing_parameters.get("nexus_input_folder", None)
-    qlat_file_index_col          = forcing_parameters.get("qlat_file_index_col", "feature_id")
-    qlat_file_value_col          = forcing_parameters.get("qlat_file_value_col", "q_lateral")
-    qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
-    qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
+    dt                               = forcing_parameters.get("dt", None)
+    qts_subdivisions                 = forcing_parameters.get("qts_subdivisions", None)
+    nexus_input_folder               = forcing_parameters.get("nexus_input_folder", None)
+    qlat_file_index_col              = forcing_parameters.get("qlat_file_index_col", "feature_id")
+    qlat_file_value_col              = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+    qlat_file_gw_bucket_flux_col     = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
+    qlat_file_terrain_runoff_col     = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
+    downstream_boundary_input_folder = forcing_parameters.get("downstream_boundary_input_folder", None)
 
   
     # TODO: find a better way to deal with these defaults and overrides.
-    run["t0"]                           = run.get("t0", t0)
-    run["nts"]                          = run.get("nts")
-    run["dt"]                           = run.get("dt", dt)
-    run["qts_subdivisions"]             = run.get("qts_subdivisions", qts_subdivisions)
-    run["nexus_input_folder"]           = run.get("nexus_input_folder", nexus_input_folder)
-    run["qlat_file_index_col"]          = run.get("qlat_file_index_col", qlat_file_index_col)
-    run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
-    run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
-    run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
+    run["t0"]                               = run.get("t0", t0)
+    run["nts"]                              = run.get("nts")
+    run["dt"]                               = run.get("dt", dt)
+    run["qts_subdivisions"]                 = run.get("qts_subdivisions", qts_subdivisions)
+    run["nexus_input_folder"]               = run.get("nexus_input_folder", nexus_input_folder)
+    run["qlat_file_index_col"]              = run.get("qlat_file_index_col", qlat_file_index_col)
+    run["qlat_file_value_col"]              = run.get("qlat_file_value_col", qlat_file_value_col)
+    run["qlat_file_gw_bucket_flux_col"]     = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
+    run["qlat_file_terrain_runoff_col"]     = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
+    run["downstream_boundary_input_folder"] = run.get("downstream_boundary_input_folder", downstream_boundary_input_folder)
     
     #---------------------------------------------------------------------------
     # Assemble lateral inflow data
     #---------------------------------------------------------------------------
-    
     start_time = time.time()
     LOG.info("Creating a DataFrame of lateral inflow forcings ...")
 
@@ -741,7 +742,8 @@ def hyfeature_forcing(
     # Assemble coastal coupling data [WIP]
     #---------------------------------------------------------------------
     # Run if coastal_boundary_depth_df has not already been created:
-    if coastal_boundary_depth_df.empty:
+    #if coastal_boundary_depth_df.empty:
+    if 1==1:
         coastal_boundary_elev_files = forcing_parameters.get('coastal_boundary_input_file', None) 
         coastal_boundary_domain_files = hybrid_parameters.get('coastal_boundary_domain', None)    
         
@@ -750,11 +752,20 @@ def hyfeature_forcing(
             LOG.info("creating coastal dataframe ...")
             
             coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
+            
+            # create dataframe for hourly schism data
+            coastal_boundary_depth_df = nhd_io.build_coastal_dataframe(
+                                                run, 
+                                                coastal_boundary_domain,
+            )                 
+            
+            # create dataframe for multi hourly schism data         
+            '''          
             coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
                 coastal_boundary_elev_files,
                 coastal_boundary_domain,
             )
-                
+            '''     
             LOG.debug(
                 "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
                 % (time.time() - start_time)
