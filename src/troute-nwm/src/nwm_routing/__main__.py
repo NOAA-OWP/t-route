@@ -236,6 +236,7 @@ def main_v04(argv):
             network.assemble_forcings(run_sets[run_set_iterator + 1],
                                       forcing_parameters,
                                       hybrid_parameters,
+                                      supernetwork_parameters,
                                       cpu_pool)
             
             # get reservoir DA initial parameters for next loop iteration

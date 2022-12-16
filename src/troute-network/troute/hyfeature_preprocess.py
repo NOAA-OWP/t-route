@@ -43,7 +43,31 @@ def read_geo_file(
     flowpath_dict = dict(zip(dataframe.loc[mask].toid, dataframe.loc[mask].id))
     
     # **********  need to be included in flowpath_attributes  *************
-    dataframe['alt'] = 1.0 #FIXME get the right value for this...  
+    dataframe['alt'] = 1.0 #FIXME get the right value for this... 
+
+    cols = supernetwork_parameters.get('columns',None)
+    
+    if cols:
+        dataframe = dataframe[list(cols.values())]
+        # Rename parameter columns to standard names: from route-link names
+        #        key: "link"
+        #        downstream: "to"
+        #        dx: "Length"
+        #        n: "n"  # TODO: rename to `manningn`
+        #        ncc: "nCC"  # TODO: rename to `mannningncc`
+        #        s0: "So"  # TODO: rename to `bedslope`
+        #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+        #        waterbody: "NHDWaterbodyComID"
+        #        gages: "gages"
+        #        tw: "TopWdth"  # TODO: rename to `topwidth`
+        #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+        #        alt: "alt"
+        #        musk: "MusK"
+        #        musx: "MusX"
+        #        cs: "ChSlp"  # TODO: rename to `sideslope`
+        dataframe = dataframe.rename(columns=reverse_dict(cols))
+        dataframe.set_index("key", inplace=True)
+        dataframe.sort_index()
 
     # numeric code used to indicate network terminal segments
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
@@ -57,12 +81,12 @@ def read_geo_file(
     # otherwise valid node value being pointed to, but which is masked out or
     # being intentionally separated into another domain.
     terminal_codes = terminal_codes | set(
-        dataframe[~dataframe["toid"].isin(dataframe.index)]["toid"].values
+        dataframe[~dataframe["downstream"].isin(dataframe.index)]["downstream"].values
     )
 
     # build connections dictionary
     connections = nhd_network.extract_connections(
-        dataframe, "toid", terminal_codes=terminal_codes
+        dataframe, "downstream", terminal_codes=terminal_codes
     )
 
     #Load waterbody/reservoir info

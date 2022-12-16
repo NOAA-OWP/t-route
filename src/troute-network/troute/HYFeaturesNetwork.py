@@ -140,7 +140,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         if __showtiming__:
             print("... in %s seconds." % (time.time() - start_time))
             
-        cols                         = supernetwork_parameters.get('columns',None)
         break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)        
         streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
         break_network_at_gages       = False       
@@ -148,28 +147,6 @@ class HYFeaturesNetwork(AbstractNetwork):
             break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
         break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                         "break_network_at_gages": break_network_at_gages}
-        
-        if cols:
-            self._dataframe = self._dataframe[list(cols.values())]
-            # Rename parameter columns to standard names: from route-link names
-            #        key: "link"
-            #        downstream: "to"
-            #        dx: "Length"
-            #        n: "n"  # TODO: rename to `manningn`
-            #        ncc: "nCC"  # TODO: rename to `mannningncc`
-            #        s0: "So"  # TODO: rename to `bedslope`
-            #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
-            #        waterbody: "NHDWaterbodyComID"
-            #        gages: "gages"
-            #        tw: "TopWdth"  # TODO: rename to `topwidth`
-            #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-            #        alt: "alt"
-            #        musk: "MusK"
-            #        musx: "MusX"
-            #        cs: "ChSlp"  # TODO: rename to `sideslope`
-            self._dataframe = self._dataframe.rename(columns=reverse_dict(cols))
-            self.set_index("key")
-            self.sort_index()
 
         super().__init__(
             compute_parameters, 
