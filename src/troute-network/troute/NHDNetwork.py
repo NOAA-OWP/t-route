@@ -85,8 +85,7 @@ class NHDNetwork(AbstractNetwork):
         super().__init__(
             compute_parameters, 
             waterbody_parameters,
-            restart_parameters, 
-            cols,
+            restart_parameters,
             break_points,
             verbose=__verbose__,
             showtiming=__showtiming__,

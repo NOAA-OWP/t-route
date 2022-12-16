@@ -57,12 +57,12 @@ def read_geo_file(
     # otherwise valid node value being pointed to, but which is masked out or
     # being intentionally separated into another domain.
     terminal_codes = terminal_codes | set(
-        dataframe[~dataframe["downstream"].isin(dataframe.index)]["downstream"].values
+        dataframe[~dataframe["toid"].isin(dataframe.index)]["toid"].values
     )
 
     # build connections dictionary
     connections = nhd_network.extract_connections(
-        dataframe, "downstream", terminal_codes=terminal_codes
+        dataframe, "toid", terminal_codes=terminal_codes
     )
 
     #Load waterbody/reservoir info
