@@ -68,17 +68,17 @@ compute_parameters:
         qc_threshold             : 1
         streamflow_da:
             #----------
-            streamflow_nudging            : False
+            streamflow_nudging            : True
             diffusive_streamflow_nudging  : False
             gage_segID_crosswalk_file     : domain/RouteLink.nc  
             crosswalk_gage_field          : 'gages'
             crosswalk_segID_field         : 'link'
-            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_13:00:00.nc                    
+            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc                    
             lastobs_output_folder         : lastobs/
         reservoir_da:
             #----------
-            reservoir_persistence_usgs  : False
-            reservoir_persistence_usace : False
+            reservoir_persistence_usgs  : True
+            reservoir_persistence_usace : True
             gage_lakeID_crosswalk_file  : domain/reservoir_index_AnA.nc
 #--------------------------------------------------------------------------------
 output_parameters:
