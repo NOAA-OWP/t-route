@@ -385,7 +385,6 @@ def hyfeature_hybrid_routing_preprocess(
 
     # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
     '''
-    import pdb; pdb.set_trace()
     headlink_mainstem = 242
     twlink_mainstem = 160    
     uslink_mainstem = headlink_mainstem
@@ -397,7 +396,6 @@ def hyfeature_hybrid_routing_preprocess(
         uslink_mainstem = dslink_mainstem   
     diffusive_domain={}
     diffusive_domain[twlink_mainstem] = mainstem_list
-    import pdb; pdb.set_trace()
     '''
     
     if break_network_at_waterbodies:
