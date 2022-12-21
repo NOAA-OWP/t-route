@@ -235,6 +235,17 @@ def build_qlateral_array(
                             ).T 
         qlats_df.columns=range(len(nexus_files))
         qlats_df = qlats_df[qlats_df.index.isin(segment_index)]
+ 
+        # The segment_index has the full network set of segments/flowpaths. 
+        # Whereas the set of flowpaths that are downstream of nexuses is a 
+        # subset of the segment_index. Therefore, all of the segments/flowpaths
+        # that are not accounted for in the set of flowpaths downstream of
+        # nexuses need to be added to the qlateral dataframe and padded with
+        # zeros.
+        all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlats_df.columns)) ), index=segment_index,
+                    columns=qlats_df.columns )
+        all_df.loc[ qlats_df.index ] = qlats_df
+        qlats_df = all_df.sort_index()    
     elif qlat_input_file:
         qlats_df = nhd_io.get_ql_from_csv(qlat_input_file)
     else:

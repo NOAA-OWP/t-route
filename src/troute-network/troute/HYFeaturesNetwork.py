@@ -156,7 +156,6 @@ def read_geopkg(file_path):
     attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
     #merge all relevant data into a single dataframe
     flowpaths = pd.merge(flowpaths, attributes, on='id')
-
     return flowpaths
 
 class HYFeaturesNetwork(AbstractNetwork):
@@ -274,10 +273,10 @@ class HYFeaturesNetwork(AbstractNetwork):
         )
 
         #Mask out all non-simulated waterbodies
-        self._dataframe['waterbody'] = self.waterbody_null
+        #self._dataframe['waterbody'] = self.waterbody_null
         
         #This also remaps the initial NHDComID identity to the HY_Features Waterbody ID for the reservoir...
-        self._dataframe.loc[self._waterbody_df.index, 'waterbody'] = self._waterbody_df.index.name
+        #self._dataframe.loc[self._waterbody_df.index, 'waterbody'] = self._waterbody_df.index.name
         
         #FIXME should waterbody_df and param_df overlap IDS?  Doesn't seem like it should...
         #self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)

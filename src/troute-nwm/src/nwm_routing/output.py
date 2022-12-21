@@ -200,9 +200,7 @@ def nwm_output_generator(
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
-
-        for i in range(i_df.shape[1]):
-            
+        for i in range(i_df.shape[1]):            
             nhd_io.write_waterbody_netcdf(
                 wbdyo, 
                 i_df.iloc[:,[i]],
@@ -215,7 +213,6 @@ def nwm_output_generator(
                 nts,
                 time_index[i],
             )
-        
         
         LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
     

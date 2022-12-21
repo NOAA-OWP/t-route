@@ -122,7 +122,7 @@ def fp_network_map(
                             #    usrch_hseg_mainstem_j=j
                                 # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
                             #    frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
-
+              
             if seg_list.count(dbfksegID) > 0:
                 # a reach where downstream boundary condition is set.
                 frnw_g[
@@ -147,7 +147,7 @@ def fp_network_map(
                 frnw_g[frj, 3 + i] = (
                     frnw_g[frj, 3 + i] + 1
                 )  # upstream reach indicds for frj reach
-    
+
     return frnw_g 
 
 
@@ -1191,7 +1191,7 @@ def diffusive_input_data_v02(
     coastal_boundary_depth_df,
     unrefactored_topobathy_bytw,
 ):
-    
+
     """
     Build input data objects for diffusive wave model
     
@@ -1384,7 +1384,7 @@ def diffusive_input_data_v02(
             frj = frj + 1
             pynw[frj] = head_segment
 
-    frnw_col = 8
+    frnw_col = 15
     frnw_g   = fp_network_map(
                               mainstem_seg_list, 
                               mx_jorder, 
