@@ -253,7 +253,6 @@ def main_v04(argv):
         if showtiming:
             output_start_time = time.time()
         
-        '''
         #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
@@ -266,14 +265,14 @@ def main_v04(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
-            network._waterbody_df,  ## check:  network._waterbody_df ?? def name is different from return self._ ..
-            network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
+            network.waterbody_dataframe,
+            network.waterbody_types_dataframe,
             data_assimilation_parameters,
             data_assimilation.lastobs_df,
-            pd.DataFrame(), #network.link_gage_df,
-            None, #network.link_lake_crosswalk, 
+            network.link_gage_df,
+            network.link_lake_crosswalk, 
         )
-        '''
+        
 
         if showtiming:
             output_end_time = time.time()
