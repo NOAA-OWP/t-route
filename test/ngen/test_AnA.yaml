@@ -91,7 +91,7 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-#    test_output: output/lcr_flowveldepth.pkl
+    test_output: output/lcr_flowveldepth.pkl
     lite_restart:
         #----------
         lite_restart_output_directory:
@@ -100,7 +100,7 @@ output_parameters:
 #        wrf_hydro_channel_output_source_folder: channel_forcing/
     chanobs_output:
         #----------
-#        chanobs_output_directory: output/
-#        chanobs_filepath        : lcr_chanobs.nc
+        chanobs_output_directory: output/
+        chanobs_filepath        : lcr_chanobs.nc
 #    lakeout_output: lakeout/
     
