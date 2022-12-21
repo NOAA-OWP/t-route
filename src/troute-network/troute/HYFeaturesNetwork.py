@@ -1,103 +1,99 @@
 from .AbstractNetwork import AbstractNetwork
 import pandas as pd
 import numpy as np
+import geopandas as gpd
 import time
+import os
+import json
+from pathlib import Path
+
 import troute.nhd_io as nhd_io #FIXME
 import troute.hyfeature_preprocess as hyfeature_prep
-from troute.nhd_network import reverse_dict
+from troute.nhd_network import reverse_dict, extract_connections
 
 __verbose__ = False
 __showtiming__ = False
 
-def read_qlats(forcing_parameters, segment_index, nexus_to_downstream_flowpath_dict):
-    # STEP 5: Read (or set) QLateral Inputs
-    if __showtiming__:
-        start_time = time.time()
-    if __verbose__:
-        print("creating qlateral array ...")
-    qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
-    nts = forcing_parameters.get("nts", 1)
-    nexus_input_folder = forcing_parameters.get("nexus_input_folder", None)
-    nexus_input_folder = pathlib.Path(nexus_input_folder)
-    #rt0 = time.time() #FIXME showtiming flag
-    if not "nexus_file_pattern_filter" in forcing_parameters:
-        raise( RuntimeError("No value for nexus file pattern in config" ) )
+def read_geopkg(file_path):
+    flowpaths = gpd.read_file(file_path, layer="flowpaths")
+    attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
+    #merge all relevant data into a single dataframe
+    flowpaths = pd.merge(flowpaths, attributes, on='id')
+
+    return flowpaths
+
+def read_json(file_path, edge_list):
+    dfs = []
+    with open(edge_list) as edge_file:
+        edge_data = json.load(edge_file)
+        edge_map = {}
+        for id_dict in edge_data:
+            edge_map[ id_dict['id'] ] = id_dict['toid']
+        with open(file_path) as data_file:
+            json_data = json.load(data_file)  
+            for key_wb, value_params in json_data.items():
+                df = pd.json_normalize(value_params)
+                df['id'] = key_wb
+                df['toid'] = edge_map[key_wb]
+                dfs.append(df)
+        df_main = pd.concat(dfs, ignore_index=True)
+
+    return df_main
+
+def numeric_id(flowpath):
+    id = flowpath['id'].split('-')[-1]
+    toid = flowpath['toid'].split('-')[-1]
+    flowpath['id'] = int(id)
+    flowpath['toid'] = int(toid)
+
+def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    Reads .gpkg or lake.json file and prepares a dataframe, filtered
+    to the relevant reservoirs, to provide the parameters
+    for level-pool reservoir computation.
+    """
+    def node_key_func(x):
+        return int(x[3:])
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="lake_attributes").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
+
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+    return df
+
+def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
+    """
+    """
+    #FIXME: this function is likely not correct. Unclear how we will get 
+    # reservoir type from the gpkg files. Information should be in 'crosswalk'
+    # layer, but as of now (Nov 22, 2022) there doesn't seem to be a differentiation
+    # between USGS reservoirs, USACE reservoirs, or RFC reservoirs...
+    def node_key_func(x):
+        return int(x[3:])
     
-    nexus_file_pattern_filter = forcing_parameters.get(
-        "nexus_file_pattern_filter", "nex-*"
-    )
-    nexus_files = nexus_input_folder.glob(nexus_file_pattern_filter)
-    #TODO Find a way to test that we found some files
-    #without consuming the generator...Otherwise, if nexus_files
-    #is empty, the following concat raises a ValueError which
-    #It may be sufficient to catch this exception and warn that
-    #there may not be any pattern matching files in the dir
+    if os.path.splitext(parm_file)[1]=='.gpkg':
+        df = gpd.read_file(parm_file, layer="crosswalk").set_index('id')
+    elif os.path.splitext(parm_file)[1]=='.json':
+        df = pd.read_json(parm_file, orient="index")
 
-    nexus_files_list = list(nexus_files)
+    df.index = df.index.map(node_key_func)
+    df.index.name = lake_index_field
+    if lake_id_mask:
+        df = df.loc[lake_id_mask]
+        
+    return df
 
-    if len(nexus_files_list) == 0:
-        raise ValueError('No nexus input files found. Recommend checking \
-        nexus_input_folder path in YAML configuration.')
-
-    #pd.concat((pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c').rename(columns={2:id_regex.match(f).group(1)}) for f in all_files[0:2]), axis=1).T
-    id_regex = re.compile(r".*nex-(\d+)_.*.csv")
-    nexuses_flows_df = pd.concat(
-            #Read the nexus csv file
-            (pd.read_csv(f, index_col=0, usecols=[1,2], header=None, engine='c', skipinitialspace=True, parse_dates=True).rename(
-                #Rename the flow column to the id of the nexus
-                columns={2:int(id_regex.match(f.name).group(1))})
-            for f in nexus_files_list #Build the generator for each required file
-            ),  axis=1).T #Have now concatenated a single df (along axis 1).  Transpose it.
-    missing = nexuses_flows_df[ nexuses_flows_df.isna().any(axis=1) ]
-    if  not missing.empty:
-        raise ValueError("The following nexus inputs are incomplete: "+str(missing.index))
-    rt1 = time.time()
-    #print("Time to build nexus_flows_df: {} seconds".format(rt1-rt0))
-
-    qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(index={int(k):v})
-        for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
-        ).T
-    #qlat_df = pd.concat( (nexuses_flows_df.loc[int(k)].rename(v)
-    #    for k,v in nexus_to_downstream_flowpath_dict.items() ), axis=1
-    #    ).T
-    
-    # The segment_index has the full network set of segments/flowpaths. 
-    # Whereas the set of flowpaths that are downstream of nexuses is a 
-    # subset of the segment_index. Therefore, all of the segments/flowpaths
-    # that are not accounted for in the set of flowpaths downstream of
-    # nexuses need to be added to the qlateral dataframe and padded with
-    # zeros.
-    all_df = pd.DataFrame( np.zeros( (len(segment_index), len(qlat_df.columns)) ), index=segment_index,
-            columns=qlat_df.columns )
-    all_df.loc[ qlat_df.index ] = qlat_df
-    qlat_df = all_df.sort_index()
-
-    # Set new nts based upon total nexus inputs
-    nts = (qlat_df.shape[1]) * qts_subdivisions
-    max_col = 1 + nts // qts_subdivisions
-    
-    #dt      = 300 # [sec]
-    #dt_qlat = 3600 # [sec]
-    #nts     = 24 # steps
-    #max_col = math.ceil(nts*dt/dt_qlat)
-
-    if len(qlat_df.columns) > max_col:
-        qlat_df.drop(qlat_df.columns[max_col:], axis=1, inplace=True)
-
-    if __verbose__:
-        print("qlateral array complete")
-    if __showtiming__:
-        print("... in %s seconds." % (time.time() - start_time))
-
-    return qlat_df
 
 class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_flowpath_dict", 
-                 "segment_index",
-                 ]
+    __slots__ = []
     def __init__(self, 
                  supernetwork_parameters, 
                  waterbody_parameters,
@@ -131,9 +127,12 @@ class HYFeaturesNetwork(AbstractNetwork):
             waterbody_parameters,
         )
         
+        #TODO Update for waterbodies and DA specific to HYFeatures...
         self._waterbody_connections = {}
         self._waterbody_type_specified = None
         self._gages = None
+        self._link_lake_crosswalk = None
+
 
         if __verbose__:
             print("supernetwork connections set complete")
@@ -324,4 +323,114 @@ class HYFeaturesNetwork(AbstractNetwork):
     @property
     def waterbody_null(self):
         return np.nan #pd.NA
+    
+    def read_geo_file(
+        self,
+        supernetwork_parameters,
+        waterbody_parameters,
+    ):
+        
+        geo_file_path = supernetwork_parameters["geo_file_path"]
+            
+        file_type = Path(geo_file_path).suffix
+        if(  file_type == '.gpkg' ):        
+            self._dataframe = read_geopkg(geo_file_path)
+        elif( file_type == '.json') :
+            edge_list = supernetwork_parameters['flowpath_edge_list']
+            self._dataframe = read_json(geo_file_path, edge_list) 
+        else:
+            raise RuntimeError("Unsupported file type: {}".format(file_type))
+
+        # Don't need the string prefix anymore, drop it
+        mask = ~ self.dataframe['toid'].str.startswith("tnex") 
+        self._dataframe = self.dataframe.apply(numeric_id, axis=1)
+            
+        # make the flowpath linkage, ignore the terminal nexus
+        self._flowpath_dict = dict(zip(self.dataframe.loc[mask].toid, self.dataframe.loc[mask].id))
+        
+        # **********  need to be included in flowpath_attributes  *************
+        self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
+
+        cols = supernetwork_parameters.get('columns',None)
+        
+        if cols:
+            self._dataframe = self.dataframe[list(cols.values())]
+            # Rename parameter columns to standard names: from route-link names
+            #        key: "link"
+            #        downstream: "to"
+            #        dx: "Length"
+            #        n: "n"  # TODO: rename to `manningn`
+            #        ncc: "nCC"  # TODO: rename to `mannningncc`
+            #        s0: "So"  # TODO: rename to `bedslope`
+            #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
+            #        waterbody: "NHDWaterbodyComID"
+            #        gages: "gages"
+            #        tw: "TopWdth"  # TODO: rename to `topwidth`
+            #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
+            #        alt: "alt"
+            #        musk: "MusK"
+            #        musx: "MusX"
+            #        cs: "ChSlp"  # TODO: rename to `sideslope`
+            self._dataframe = self.dataframe.rename(columns=reverse_dict(cols))
+            self._dataframe.set_index("key", inplace=True)
+            self._dataframe = self.dataframe.sort_index()
+
+        # numeric code used to indicate network terminal segments
+        terminal_code = supernetwork_parameters.get("terminal_code", 0)
+
+        # There can be an externally determined terminal code -- that's this first value
+        self._terminal_codes = set()
+        self._terminal_codes.add(terminal_code)
+        # ... but there may also be off-domain nodes that are not explicitly identified
+        # but which are terminal (i.e., off-domain) as a result of a mask or some other
+        # an interior domain truncation that results in a
+        # otherwise valid node value being pointed to, but which is masked out or
+        # being intentionally separated into another domain.
+        self._terminal_codes = self.terminal_codes | set(
+            self.dataframe[~self.dataframe["downstream"].isin(self.dataframe.index)]["downstream"].values
+        )
+
+        # build connections dictionary
+        self._connections = extract_connections(
+            self.dataframe, "downstream", terminal_codes=self.terminal_codes
+        )
+
+        #Load waterbody/reservoir info
+        if waterbody_parameters:
+            levelpool_params = waterbody_parameters.get('level_pool', None)
+            if not levelpool_params:
+                # FIXME should not be a hard requirement
+                raise(RuntimeError("No supplied levelpool parameters in routing config"))
+                
+            lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
+            self._waterbody_df = read_ngen_waterbody_df(
+                        levelpool_params["level_pool_waterbody_parameter_file_path"],
+                        lake_id,
+                        )
+                
+            # Remove duplicate lake_ids and rows
+            self._waterbody_df = (
+                            self.waterbody_dataframe.reset_index()
+                            .drop_duplicates(subset=lake_id)
+                            .set_index(lake_id)
+                            )
+
+            try:
+                self._waterbody_types_df = read_ngen_waterbody_type_df(
+                                        levelpool_params["reservoir_parameter_file"],
+                                        lake_id,
+                                        #self.waterbody_connections.values(),
+                                        )
+                # Remove duplicate lake_ids and rows
+                self._waterbody_types_df =(
+                                    self.waterbody_types_dataframe.reset_index()
+                                    .drop_duplicates(subset=lake_id)
+                                    .set_index(lake_id)
+                                    )
+
+            except ValueError:
+                #FIXME any reservoir operations requires some type
+                #So make this default to 1 (levelpool)
+                self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
+                self._waterbody_types_df['reservoir_type'] = 1
 

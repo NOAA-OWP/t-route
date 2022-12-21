@@ -67,7 +67,7 @@ def read_geo_file(
         #        cs: "ChSlp"  # TODO: rename to `sideslope`
         dataframe = dataframe.rename(columns=reverse_dict(cols))
         dataframe.set_index("key", inplace=True)
-        dataframe.sort_index()
+        dataframe = dataframe.sort_index()
 
     # numeric code used to indicate network terminal segments
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
