@@ -32,7 +32,7 @@ def build_hyfeature_network(supernetwork_parameters,
     break_network_at_gages       = supernetwork_parameters.get("break_network_at_gages", False)       
     break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                      "break_network_at_gages": break_network_at_gages}
-        
+
     file_type = Path(geo_file_path).suffix
     if(  file_type == '.gpkg' ):        
         dataframe = hyf_network.read_geopkg(geo_file_path)
@@ -379,9 +379,24 @@ def hyfeature_hybrid_routing_preprocess(
     break_network_at_waterbodies = waterbody_parameters.get(
         "break_network_at_waterbodies", False
     )
-    
+
     # if streamflow DA, then break network at gages
     break_network_at_gages = False
+
+    # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
+    '''
+    headlink_mainstem = 242
+    twlink_mainstem = 160    
+    uslink_mainstem = headlink_mainstem
+    dslink_mainstem = 1 # initial value
+    mainstem_list =[headlink_mainstem]
+    while dslink_mainstem != twlink_mainstem:
+        dslink_mainstem = connections[uslink_mainstem][0]
+        mainstem_list.append(dslink_mainstem)
+        uslink_mainstem = dslink_mainstem   
+    diffusive_domain={}
+    diffusive_domain[twlink_mainstem] = mainstem_list
+    '''
     
     if break_network_at_waterbodies:
         wbody_break_segments = wbody_break_segments.union(wbody_conn.values())
