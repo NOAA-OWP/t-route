@@ -27,21 +27,11 @@ class AbstractNetwork(ABC):
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
                 "_qlateral", "_break_segments", "_coastal_boundary_depth_df",
                 "_diffusive_network_data", "_topobathy_df", "_refactored_diffusive_domain",
-                "_refactored_reaches", "_unrefactored_topobathy_df", "_segment_index"]
+                "_refactored_reaches", "_unrefactored_topobathy_df", "_segment_index",
+                "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
+                "restart_parameters", "compute_parameters", "verbose", "showtiming", "break_points"]
     
-    def __init__(
-        self, 
-        compute_parameters, 
-        waterbody_parameters,
-        restart_parameters,
-        break_points=None, 
-        verbose=False, 
-        showtiming=False
-        ):
-
-        global __verbose__, __showtiming__
-        __verbose__ = verbose
-        __showtiming__ = showtiming
+    def __init__(self,):
 
         self._independent_networks = None
         self._reverse_network = None
@@ -62,17 +52,17 @@ class AbstractNetwork(ABC):
         """
         self._break_segments = set()
         
-        if break_points:
-            if break_points["break_network_at_waterbodies"]:
+        if self.break_points:
+            if self.break_points["break_network_at_waterbodies"]:
                 self._break_segments = self._break_segments | set(self.waterbody_connections.values())
-            if break_points["break_network_at_gages"]:
+            if self.break_points["break_network_at_gages"]:
                 self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
         
-        self.build_diffusive_domain(compute_parameters)
+        #self.build_diffusive_domain(compute_parameters)
 
-        self.create_independent_networks(waterbody_parameters)
+        self.create_independent_networks()
 
-        self.initial_warmstate_preprocess(break_points["break_network_at_waterbodies"],restart_parameters)
+        self.initial_warmstate_preprocess())
 
 
     def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool):
@@ -211,16 +201,16 @@ class AbstractNetwork(ABC):
         """
         if self._independent_networks is None:
             # STEP 2: Identify Independent Networks and Reaches by Network
-            if __showtiming__:
+            if self.showtiming:
                 start_time = time.time()
-            if __verbose__:
+            if self.verbose:
                 print("organizing connections into reaches ...")
 
             self._independent_networks = reachable_network(self.reverse_network)
             
-            if __verbose__:
+            if self.verbose:
                 print("reach organization complete")
-            if __showtiming__:
+            if self.showtiming:
                 print("... in %s seconds." % (time.time() - start_time))
         return self._independent_networks
     
@@ -327,26 +317,6 @@ class AbstractNetwork(ABC):
         link_gage_df = pd.DataFrame.from_dict(self._gages)
         link_gage_df.index.name = 'link'
         return link_gage_df
-
-    @property
-    def diffusive_network_data(self):
-        return self._diffusive_network_data
-    
-    @property
-    def topobathy_df(self):
-        return self._topobathy_df
-    
-    @property
-    def refactored_diffusive_domain(self):
-        return self._refactored_diffusive_domain
-    
-    @property
-    def refactored_reaches(self):
-        return self._refactored_reaches
-    
-    @property
-    def unrefactored_topobathy_df(self):
-        return self._unrefactored_topobathy_df
 
     @property
     @abstractmethod
@@ -645,14 +615,14 @@ class AbstractNetwork(ABC):
                 for us in trib_segs:
                     self._connections[us] = []
 
-    def create_independent_networks(self, waterbody_parameters):
+    def create_independent_networks(self,):
 
         LOG.info("organizing connections into reaches ...")
         start_time = time.time() 
         gage_break_segments = set()
         wbody_break_segments = set()
         
-        break_network_at_waterbodies = waterbody_parameters.get(
+        break_network_at_waterbodies = self.waterbody_parameters.get(
             "break_network_at_waterbodies", False
         )
         
@@ -678,7 +648,7 @@ class AbstractNetwork(ABC):
         
         LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
 
-    def initial_warmstate_preprocess(self, break_network_at_waterbodies, restart_parameters,):
+    def initial_warmstate_preprocess(self,):
 
         '''
         Assemble model initial condition data:
@@ -711,13 +681,15 @@ class AbstractNetwork(ABC):
         -----
         '''
 
+        restart_parameters = self.restart_parameters
+
         # generalize waterbody ID's to be used with any network
         index_id = self.waterbody_dataframe.index.names[0]
 
         #----------------------------------------------------------------------------
         # Assemble waterbody initial states (outflow and pool elevation
         #----------------------------------------------------------------------------
-        if break_network_at_waterbodies:
+        if self.break_points['break_network_at_waterbodies']:
 
             start_time = time.time()
             LOG.info("setting waterbody initial states ...")
