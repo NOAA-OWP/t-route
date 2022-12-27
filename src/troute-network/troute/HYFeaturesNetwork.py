@@ -1,4 +1,4 @@
-from .AbstractNetwork import AbstractNetwork
+from .RoutingScheme import RoutingScheme
 import pandas as pd
 import numpy as np
 import geopandas as gpd
@@ -89,7 +89,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
     return df
 
 
-class HYFeaturesNetwork(AbstractNetwork):
+class HYFeaturesNetwork(RoutingScheme):
     """
     
     """
@@ -105,27 +105,23 @@ class HYFeaturesNetwork(AbstractNetwork):
         """
         
         """
-        global __verbose__, __showtiming__
-        __verbose__ = verbose
-        __showtiming__ = showtiming
-        if __verbose__:
+        self.supernetwork_parameters = supernetwork_parameters
+        self.waterbody_parameters = waterbody_parameters
+        self.data_assimilation_parameters = data_assimilation_parameters
+        self.restart_parameters = restart_parameters
+        self.compute_parameters = compute_parameters
+        self.verbose = verbose
+        self.showtiming = showtiming
+
+        if self.verbose:
             print("creating supernetwork connections set")
-        if __showtiming__:
+        if self.showtiming:
             start_time = time.time()
         
         #------------------------------------------------
         # Load Geo File
         #------------------------------------------------
-        (self._dataframe,
-         self._flowpath_dict,
-         self._connections,
-         self._waterbody_df,
-         self._waterbody_types_df,
-         self._terminal_codes,
-        ) = hyfeature_prep.read_geo_file(
-            supernetwork_parameters,
-            waterbody_parameters,
-        )
+        self.read_geo_file()
         
         #TODO Update for waterbodies and DA specific to HYFeatures...
         self._waterbody_connections = {}
@@ -134,27 +130,20 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._link_lake_crosswalk = None
 
 
-        if __verbose__:
+        if self.verbose:
             print("supernetwork connections set complete")
-        if __showtiming__:
+        if self.showtiming:
             print("... in %s seconds." % (time.time() - start_time))
             
-        break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)        
-        streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
+        break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)        
+        streamflow_da = self.data_assimilation_parameters.get('streamflow_da', False)
         break_network_at_gages       = False       
         if streamflow_da:
             break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
-        break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
+        self.break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                         "break_network_at_gages": break_network_at_gages}
 
-        super().__init__(
-            compute_parameters, 
-            waterbody_parameters,
-            restart_parameters,
-            break_points,
-            verbose=__verbose__,
-            showtiming=__showtiming__,
-            )   
+        super().__init__()   
             
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
@@ -324,19 +313,15 @@ class HYFeaturesNetwork(AbstractNetwork):
     def waterbody_null(self):
         return np.nan #pd.NA
     
-    def read_geo_file(
-        self,
-        supernetwork_parameters,
-        waterbody_parameters,
-    ):
+    def read_geo_file(self,):
         
-        geo_file_path = supernetwork_parameters["geo_file_path"]
+        geo_file_path = self.supernetwork_parameters["geo_file_path"]
             
         file_type = Path(geo_file_path).suffix
         if(  file_type == '.gpkg' ):        
             self._dataframe = read_geopkg(geo_file_path)
         elif( file_type == '.json') :
-            edge_list = supernetwork_parameters['flowpath_edge_list']
+            edge_list = self.supernetwork_parameters['flowpath_edge_list']
             self._dataframe = read_json(geo_file_path, edge_list) 
         else:
             raise RuntimeError("Unsupported file type: {}".format(file_type))
@@ -351,7 +336,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         # **********  need to be included in flowpath_attributes  *************
         self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
 
-        cols = supernetwork_parameters.get('columns',None)
+        cols = self.supernetwork_parameters.get('columns',None)
         
         if cols:
             self._dataframe = self.dataframe[list(cols.values())]
@@ -376,7 +361,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._dataframe = self.dataframe.sort_index()
 
         # numeric code used to indicate network terminal segments
-        terminal_code = supernetwork_parameters.get("terminal_code", 0)
+        terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
 
         # There can be an externally determined terminal code -- that's this first value
         self._terminal_codes = set()
@@ -396,8 +381,8 @@ class HYFeaturesNetwork(AbstractNetwork):
         )
 
         #Load waterbody/reservoir info
-        if waterbody_parameters:
-            levelpool_params = waterbody_parameters.get('level_pool', None)
+        if self.waterbody_parameters:
+            levelpool_params = self.waterbody_parameters.get('level_pool', None)
             if not levelpool_params:
                 # FIXME should not be a hard requirement
                 raise(RuntimeError("No supplied levelpool parameters in routing config"))
