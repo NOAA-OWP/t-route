@@ -58,7 +58,10 @@ class RoutingScheme(AbstractNetwork):
     """
     
     """
-    __slots__ = ["hybrid_params"]
+    __slots__ = ["hybrid_params", "_diffusive_domain", "_coastal_boundary_depth_df",
+                "_diffusive_network_data", "_topobathy_df", "_refactored_diffusive_domain",
+                "_refactored_diffusive_network_data", "_refactored_reaches", 
+                "_unrefactored_topobathy_df",]
 
     def __init__(self,):
         """
@@ -145,12 +148,13 @@ class RoutingScheme(AbstractNetwork):
 
         super().__init__()
 
-    
+    @property
     def diffusive_network_data(self,):
         return self._diffusive_network_data
 
+    @property
     def topobathy_df(self,):
-        if self._topobathy_df.empty():
+        if self._topobathy_df.empty:
             run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
             use_topobathy = self.hybrid_params.get('use_natl_xsections', False)
 
@@ -166,7 +170,8 @@ class RoutingScheme(AbstractNetwork):
                     self._topobathy_df.index = self._topobathy_df.index.astype(int)
 
         return self._topobathy_df
-
+    
+    @property
     def refactored_diffusive_domain(self,):
         if not self._refactored_diffusive_domain:
             run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
@@ -179,6 +184,7 @@ class RoutingScheme(AbstractNetwork):
         
         return self._refactored_diffusive_domain
     
+    @property
     def refactored_reaches(self,):
         if not self._refactored_reaches:
             run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
@@ -225,8 +231,9 @@ class RoutingScheme(AbstractNetwork):
 
         return self._refactored_reaches
     
+    @property
     def unrefactored_topobathy_df(self,):
-        if self._unrefactored_topobathy_df.empty():
+        if self._unrefactored_topobathy_df.empty:
             run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
             use_topobathy = self.hybrid_params.get('use_natl_xsections', False)
             run_refactored = self.hybrid_params.get('run_refactored_network', False)
