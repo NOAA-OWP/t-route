@@ -45,6 +45,7 @@ def numeric_id(flowpath):
     toid = flowpath['toid'].split('-')[-1]
     flowpath['id'] = int(id)
     flowpath['toid'] = int(toid)
+    return flowpath
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -209,7 +210,7 @@ class HYFeaturesNetwork(RoutingScheme):
     def read_geo_file(self,):
         
         geo_file_path = self.supernetwork_parameters["geo_file_path"]
-            
+        
         file_type = Path(geo_file_path).suffix
         if(  file_type == '.gpkg' ):        
             self._dataframe = read_geopkg(geo_file_path)
@@ -218,11 +219,11 @@ class HYFeaturesNetwork(RoutingScheme):
             self._dataframe = read_json(geo_file_path, edge_list) 
         else:
             raise RuntimeError("Unsupported file type: {}".format(file_type))
-
+        
         # Don't need the string prefix anymore, drop it
         mask = ~ self.dataframe['toid'].str.startswith("tnex") 
         self._dataframe = self.dataframe.apply(numeric_id, axis=1)
-            
+        
         # make the flowpath linkage, ignore the terminal nexus
         self._flowpath_dict = dict(zip(self.dataframe.loc[mask].toid, self.dataframe.loc[mask].id))
         

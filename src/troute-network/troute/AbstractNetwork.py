@@ -25,9 +25,7 @@ class AbstractNetwork(ABC):
                 "_waterbody_types_df", "_waterbody_type_specified",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
-                "_qlateral", "_break_segments", "_coastal_boundary_depth_df",
-                "_diffusive_network_data", "_topobathy_df", "_refactored_diffusive_domain",
-                "_refactored_reaches", "_unrefactored_topobathy_df", "_segment_index",
+                "_qlateral", "_break_segments", "_segment_index",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "verbose", "showtiming", "break_points"]
     
@@ -62,7 +60,7 @@ class AbstractNetwork(ABC):
 
         self.create_independent_networks()
 
-        self.initial_warmstate_preprocess())
+        self.initial_warmstate_preprocess()
 
 
     def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool):
@@ -305,7 +303,7 @@ class AbstractNetwork(ABC):
         """
         # list of all segments in the domain (MC + diffusive)
         self._segment_index = self.dataframe.index
-        if self.diffusive_network_data:
+        if self._diffusive_network_data:
             for tw in self.diffusive_network_data:
                 self._segment_index = self._segment_index.append(
                     pd.Index(self.diffusive_network_data[tw]['mainstem_segs'])

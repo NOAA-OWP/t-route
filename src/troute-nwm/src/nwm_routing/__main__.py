@@ -77,14 +77,14 @@ def main_v04(argv):
     # perform initial warmstate preprocess.
     if showtiming:
         network_start_time = time.time()
-        
+    
     #if "ngen_nexus_file" in supernetwork_parameters:
     if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters,
                                     data_assimilation_parameters,
                                     restart_parameters,
-                                    forcing_parameters,
+                                    compute_parameters,
                                     verbose=True, showtiming=showtiming) 
         
     elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
