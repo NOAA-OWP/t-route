@@ -363,3 +363,82 @@ class NHDNetwork(AbstractNetwork):
             self._waterbody_df = pd.DataFrame()
             self._usgs_lake_gage_crosswalk = None
             self._usace_lake_gage_crosswalk = None
+    
+    def build_qlateral_array(self, run, cpu_pool):
+        
+        # TODO: set default/optional arguments
+        qts_subdivisions = run.get("qts_subdivisions", 1)
+        nts = run.get("nts", 1)
+        qlat_input_folder = run.get("qlat_input_folder", None)
+        qlat_input_file = run.get("qlat_input_file", None)
+
+        if qlat_input_folder:
+            qlat_input_folder = pathlib.Path(qlat_input_folder)
+            if "qlat_files" in run:
+                qlat_files = run.get("qlat_files")
+                qlat_files = [qlat_input_folder.joinpath(f) for f in qlat_files]
+            elif "qlat_file_pattern_filter" in run:
+                qlat_file_pattern_filter = run.get(
+                    "qlat_file_pattern_filter", "*CHRT_OUT*"
+                )
+                qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
+
+            qlat_file_index_col = run.get(
+                "qlat_file_index_col", "feature_id"
+            )
+
+            # Parallel reading of qlateral data from CHRTOUT
+            with Parallel(n_jobs=cpu_pool) as parallel:
+                jobs = []
+                for f in qlat_files:
+                    jobs.append(
+                        delayed(nhd_io.get_ql_from_chrtout)
+                        #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
+                        #delayed(nhd_io.get_ql_from_csv)
+                        (f)                    
+                    )
+                ql_list = parallel(jobs)
+
+            # get feature_id from a single CHRTOUT file
+            with netCDF4.Dataset(qlat_files[0]) as ds:
+                idx = ds.variables[qlat_file_index_col][:].filled()
+
+            # package data into a DataFrame
+            qlats_df = pd.DataFrame(
+                np.stack(ql_list).T,
+                index = idx,
+                columns = range(len(qlat_files))
+            )
+
+            qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
+
+        elif qlat_input_file:
+            qlats_df = nhd_io.get_ql_from_csv(qlat_input_file)
+        else:
+            qlat_const = run.get("qlat_const", 0)
+            qlats_df = pd.DataFrame(
+                qlat_const,
+                index=self.segment_index,
+                columns=range(nts // qts_subdivisions),
+                dtype="float32",
+            )
+
+        # TODO: Make a more sophisticated date-based filter
+        max_col = 1 + nts // qts_subdivisions
+        if len(qlats_df.columns) > max_col:
+            qlats_df.drop(qlats_df.columns[max_col:], axis=1, inplace=True)
+
+        if not self.segment_index.empty:
+            qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
+
+        self._qlateral = qlats_df
+
+def read_file(file_name):
+    extension = file_name.suffix
+    if extension=='.csv':
+        df = pd.read_csv(file_name)
+    elif extension=='.parquet':
+        df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    
+    return df

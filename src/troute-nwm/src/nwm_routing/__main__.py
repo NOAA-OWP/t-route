@@ -85,6 +85,8 @@ def main_v04(argv):
                                     data_assimilation_parameters,
                                     restart_parameters,
                                     compute_parameters,
+                                    forcing_parameters,
+                                    hybrid_parameters,
                                     verbose=True, showtiming=showtiming) 
         
     elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
@@ -127,7 +129,7 @@ def main_v04(argv):
         parity_sets = []
 
     # Create forcing data within network object for first loop iteration
-    network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, supernetwork_parameters, cpu_pool)
+    network.assemble_forcings(run_sets[0],)
     
     # Create data assimilation object from da_sets for first loop iteration
     # TODO: Add data_assimilation for hyfeature network
@@ -240,11 +242,7 @@ def main_v04(argv):
             network.new_t0(dt,nts)
             
             # update forcing data
-            network.assemble_forcings(run_sets[run_set_iterator + 1],
-                                      forcing_parameters,
-                                      hybrid_parameters,
-                                      supernetwork_parameters,
-                                      cpu_pool)
+            network.assemble_forcings(run_sets[run_set_iterator + 1],)
             
             # get reservoir DA initial parameters for next loop iteration
             data_assimilation.update_for_next_loop(

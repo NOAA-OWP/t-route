@@ -943,7 +943,7 @@ class AllDA(DataAssimilation):
                     )
 
             # USACE Reservoirs   
-            if 3 in network._waterbody_types_dataframe['reservoir_type'].unique():
+            if 3 in network.waterbody_types_dataframe['reservoir_type'].unique():
                 if self.reservoir_usace_df.empty and len(self.reservoir_usace_param_df.index) > 0:
                     self._reservoir_usace_df = pd.DataFrame(
                         data    = np.nan, 

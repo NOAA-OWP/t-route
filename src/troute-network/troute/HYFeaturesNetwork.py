@@ -6,9 +6,9 @@ import time
 import os
 import json
 from pathlib import Path
+import pyarrow.parquet as pq
 
 import troute.nhd_io as nhd_io #FIXME
-import troute.hyfeature_preprocess as hyfeature_prep
 from troute.nhd_network import reverse_dict, extract_connections
 
 __verbose__ = False
@@ -94,13 +94,16 @@ class HYFeaturesNetwork(RoutingScheme):
     """
     
     """
-    __slots__ = []
+    __slots__ = ["_upstream_terminal"]
+
     def __init__(self, 
                  supernetwork_parameters, 
                  waterbody_parameters,
                  data_assimilation_parameters,
-                 restart_parameters=None, 
-                 compute_parameters=None, 
+                 restart_parameters, 
+                 compute_parameters,
+                 forcing_parameters,
+                 hybrid_parameters, 
                  verbose=False, 
                  showtiming=False):
         """
@@ -111,6 +114,8 @@ class HYFeaturesNetwork(RoutingScheme):
         self.data_assimilation_parameters = data_assimilation_parameters
         self.restart_parameters = restart_parameters
         self.compute_parameters = compute_parameters
+        self.forcing_parameters = forcing_parameters
+        self.hybrid_parameters = hybrid_parameters
         self.verbose = verbose
         self.showtiming = showtiming
 
@@ -269,6 +274,15 @@ class HYFeaturesNetwork(RoutingScheme):
             self.dataframe[~self.dataframe["downstream"].isin(self.dataframe.index)]["downstream"].values
         )
 
+        #This is NEARLY redundant to the self.terminal_codes property, but in this case
+        #we actually need the mapping of what is upstream of that terminal node as well.
+        #we also only want terminals that actually exist based on definition, not user input
+        terminal_mask = ~self._dataframe["downstream"].isin(self._dataframe.index)
+        terminal = self._dataframe.loc[ terminal_mask ]["downstream"]
+        self._upstream_terminal = dict()
+        for key, value in terminal.items():
+            self._upstream_terminal.setdefault(value, set()).add(key)
+
         # build connections dictionary
         self._connections = extract_connections(
             self.dataframe, "downstream", terminal_codes=self.terminal_codes
@@ -312,4 +326,105 @@ class HYFeaturesNetwork(RoutingScheme):
                 #So make this default to 1 (levelpool)
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
+    
+    def build_qlateral_array(self, run,):
+        
+        # TODO: set default/optional arguments
+        qts_subdivisions = run.get("qts_subdivisions", 1)
+        nts = run.get("nts", 1)
+        qlat_input_folder = run.get("qlat_input_folder", None)
+        qlat_input_file = run.get("qlat_input_file", None)
 
+        if qlat_input_folder:
+            qlat_input_folder = Path(qlat_input_folder)
+            if "qlat_files" in run:
+                qlat_files = run.get("qlat_files")
+                qlat_files = [qlat_input_folder.joinpath(f) for f in qlat_files]
+            elif "qlat_file_pattern_filter" in run:
+                qlat_file_pattern_filter = run.get(
+                    "qlat_file_pattern_filter", "*CHRT_OUT*"
+                )
+                qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
+
+            dfs=[]
+            for f in qlat_files:
+                df = read_file(f).set_index(['feature_id']) 
+                dfs.append(df)
+            
+            # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
+            nexuses_lateralflows_df = pd.concat(dfs, axis=1)  
+            
+            # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids
+            qlats_df = pd.concat( (nexuses_lateralflows_df.loc[int(k)].rename(v)
+                                for k,v in self.downstream_flowpath_dict.items() ), axis=1
+                                ).T 
+            qlats_df.columns=range(len(qlat_files))
+            qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
+
+            '''
+            #For a terminal nexus, we want to include the lateral flow from the catchment contributing to that nexus
+            #one way to do that is to cheat and put that lateral flow at the upstream...this is probably the simplest way
+            #right now.  The other is to create a virtual channel segment downstream to "route" i.e accumulate into
+            #but it isn't clear right now how to do that with flow/velocity/depth requirements
+            #find the terminal nodes
+            for tnx, test_up in self._upstream_terminal.items():
+                #first need to ensure there is an upstream location to dump to
+                pdb.set_trace()
+                for nex in test_up:
+                    try:
+                        #FIXME if multiple upstreams exist in this case then a choice is to be made as to which it goes into
+                        #some cases the choice is easy cause the upstream doesn't exist, but in others, it may not be so simple
+                        #in such cases where multiple valid upstream nexuses exist, perhaps the mainstem should be used?
+                        pdb.set_trace()
+                        qlats_df.loc[up] += nexuses_lateralflows_df.loc[tnx]
+                        break #flow added, don't add it again!
+                    except KeyError:
+                        #this upstream doesn't actually exist on the network (maybe it is a headwater?)
+                        #or perhaps the output file doesnt exist?  If this is the case, this isn't a good trap
+                        #but for now, add the flow to a known good nexus upstream of the terminal
+                        continue
+                    #TODO what happens if can't put the qlat anywhere?  Right now this silently ignores the issue...
+                qlats_df.drop(tnx, inplace=True)
+            '''
+
+            # The segment_index has the full network set of segments/flowpaths. 
+            # Whereas the set of flowpaths that are downstream of nexuses is a 
+            # subset of the segment_index. Therefore, all of the segments/flowpaths
+            # that are not accounted for in the set of flowpaths downstream of
+            # nexuses need to be added to the qlateral dataframe and padded with
+            # zeros.
+            all_df = pd.DataFrame( np.zeros( (len(self.segment_index), len(qlats_df.columns)) ), index=self.segment_index,
+                columns=qlats_df.columns )
+            all_df.loc[ qlats_df.index ] = qlats_df
+            qlats_df = all_df.sort_index()
+
+        elif qlat_input_file:
+            qlats_df = nhd_io.get_ql_from_csv(qlat_input_file)
+        else:
+            qlat_const = run.get("qlat_const", 0)
+            qlats_df = pd.DataFrame(
+                qlat_const,
+                index=self.segment_index,
+                columns=range(nts // qts_subdivisions),
+                dtype="float32",
+            )
+
+        # TODO: Make a more sophisticated date-based filter
+        max_col = 1 + nts // qts_subdivisions
+        if len(qlats_df.columns) > max_col:
+            qlats_df.drop(qlats_df.columns[max_col:], axis=1, inplace=True)
+
+        if not self.segment_index.empty:
+            qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
+
+        self._qlateral = qlats_df
+
+def read_file(file_name):
+    extension = file_name.suffix
+    if extension=='.csv':
+        df = pd.read_csv(file_name)
+    elif extension=='.parquet':
+        df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    
+    return df
