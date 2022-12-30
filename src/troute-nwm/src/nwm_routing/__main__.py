@@ -96,7 +96,7 @@ def main_v04(argv):
                              forcing_parameters,
                              compute_parameters,
                              data_assimilation_parameters,
-                             preprocessing_parameters,
+                             hybrid_parameters,
                              verbose=True,
                              showtiming=showtiming,          
                             )
