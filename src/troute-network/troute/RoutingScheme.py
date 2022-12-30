@@ -67,8 +67,6 @@ class RoutingScheme(AbstractNetwork):
         """
         
         """
-        self.hybrid_params = self.compute_parameters.get("hybrid_parameters", False)
-
         self._diffusive_domain                  = None
         self._diffusive_network_data            = None
         self._topobathy_df                      = pd.DataFrame()
@@ -78,8 +76,8 @@ class RoutingScheme(AbstractNetwork):
         self._refactored_reaches                = {}
 
         # Determine whether to run hybrid routing from user input
-        run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
-        domain_file = self.hybrid_params.get("diffusive_domain", None)
+        run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+        domain_file = self.hybrid_parameters.get("diffusive_domain", None)
 
         if run_hybrid and domain_file:
             #==========================================================================
@@ -155,17 +153,17 @@ class RoutingScheme(AbstractNetwork):
     @property
     def topobathy_df(self,):
         if self._topobathy_df.empty:
-            run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
-            use_topobathy = self.hybrid_params.get('use_natl_xsections', False)
+            run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+            use_topobathy = self.hybrid_parameters.get('use_natl_xsections', False)
 
             if run_hybrid and use_topobathy:
-                run_refactored = self.hybrid_params.get('run_refactored_network', False)
+                run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
 
                 if run_refactored:
-                    refactored_topobathy_file = self.hybrid_params.get("refactored_topobathy_domain", None)
+                    refactored_topobathy_file = self.hybrid_parameters.get("refactored_topobathy_domain", None)
                     self._topobathy_df = read_netcdf(refactored_topobathy_file).set_index('link')
                 else:
-                    topobathy_file = self.hybrid_params.get("topobathy_domain", None)
+                    topobathy_file = self.hybrid_parameters.get("topobathy_domain", None)
                     self._topobathy_df = read_netcdf(topobathy_file).set_index('link')
                     self._topobathy_df.index = self._topobathy_df.index.astype(int)
 
@@ -174,11 +172,11 @@ class RoutingScheme(AbstractNetwork):
     @property
     def refactored_diffusive_domain(self,):
         if not self._refactored_diffusive_domain:
-            run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
-            run_refactored = self.hybrid_params.get('run_refactored_network', False)
+            run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+            run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
 
             if run_hybrid and run_refactored:
-                refactored_domain_file = self.hybrid_params.get("refactored_domain", None)
+                refactored_domain_file = self.hybrid_parameters.get("refactored_domain", None)
                 
                 self._refactored_diffusive_domain = read_diffusive_domain(refactored_domain_file)
         
@@ -187,11 +185,11 @@ class RoutingScheme(AbstractNetwork):
     @property
     def refactored_reaches(self,):
         if not self._refactored_reaches:
-            run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
-            run_refactored = self.hybrid_params.get('run_refactored_network', False)
+            run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+            run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
 
             if run_hybrid and run_refactored:
-                refactored_topobathy_file = self.hybrid_params.get("refactored_topobathy_domain", None)
+                refactored_topobathy_file = self.hybrid_parameters.get("refactored_topobathy_domain", None)
                 diffusive_parameters = {'geo_file_path': refactored_topobathy_file}
                 refactored_connections = build_refac_connections(diffusive_parameters)
 
@@ -234,12 +232,12 @@ class RoutingScheme(AbstractNetwork):
     @property
     def unrefactored_topobathy_df(self,):
         if self._unrefactored_topobathy_df.empty:
-            run_hybrid = self.hybrid_params.get("run_hybrid_routing", False)
-            use_topobathy = self.hybrid_params.get('use_natl_xsections', False)
-            run_refactored = self.hybrid_params.get('run_refactored_network', False)
+            run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+            use_topobathy = self.hybrid_parameters.get('use_natl_xsections', False)
+            run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
             
             if run_hybrid and use_topobathy and run_refactored:
-                topobathy_file = self.hybrid_params.get("topobathy_domain",   None)
+                topobathy_file = self.hybrid_parameters.get("topobathy_domain",   None)
                 self._unrefactored_topobathy_df = read_netcdf(topobathy_file).set_index('link')
                 self._unrefactored_topobathy_df.index = self._unrefactored_topobathy_df.index.astype(int)
         
