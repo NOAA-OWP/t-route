@@ -1,10 +1,14 @@
-from .AbstractNetwork import AbstractNetwork
+from .RoutingScheme import RoutingScheme
 import troute.nhd_io as nhd_io
 import troute.nhd_preprocess as nhd_prep
 import pandas as pd
+import numpy as np
 import time
 import pathlib
 from collections import defaultdict
+import netCDF4
+from joblib import delayed, Parallel
+import pyarrow.parquet as pq
 
 from troute.nhd_network import reverse_dict, extract_waterbody_connections, gage_mapping, extract_connections, replace_waterbodies_connections
 
@@ -12,7 +16,7 @@ __showtiming__ = True #FIXME pass flag
 __verbose__ = True #FIXME pass verbosity
 
 
-class NHDNetwork(AbstractNetwork):
+class NHDNetwork(RoutingScheme):
     """
     
     """
@@ -24,77 +28,55 @@ class NHDNetwork(AbstractNetwork):
     def __init__(
                 self, 
                 supernetwork_parameters, 
-                waterbody_parameters=None, 
-                restart_parameters=None, 
-                forcing_parameters=None, 
-                compute_parameters=None, 
-                data_assimilation_parameters=None, 
-                preprocessing_parameters=None, 
+                waterbody_parameters, 
+                restart_parameters, 
+                forcing_parameters, 
+                compute_parameters, 
+                data_assimilation_parameters, 
+                hybrid_parameters, 
                 verbose=False, 
                 showtiming=False,
                 ):
         """
         
         """
-        global __verbose__, __showtiming__
-        __verbose__ = verbose
-        __showtiming__ = showtiming
-        if __verbose__:
+        self.supernetwork_parameters = supernetwork_parameters
+        self.waterbody_parameters = waterbody_parameters
+        self.data_assimilation_parameters = data_assimilation_parameters
+        self.restart_parameters = restart_parameters
+        self.compute_parameters = compute_parameters
+        self.forcing_parameters = forcing_parameters
+        self.hybrid_parameters = hybrid_parameters
+        self.verbose = verbose
+        self.showtiming = showtiming
+
+        if self.verbose:
             print("creating supernetwork connections set")
-        if __showtiming__:
+        if self.showtiming:
             start_time = time.time()
         
         #------------------------------------------------
         # Load Geo Data
         #------------------------------------------------
 
-        self.read_geo_file(
-            supernetwork_parameters,
-            waterbody_parameters,
-            data_assimilation_parameters,
-        )
-        '''
-        (
-            self._dataframe,
-            self._connections,
-            self._terminal_codes,
-            self._waterbody_df, 
-            self._waterbody_types_df,
-            self._waterbody_type_specified,
-            self._waterbody_connections, 
-            self._link_lake_crosswalk,
-            self._gages,
-            self._usgs_lake_gage_crosswalk, 
-            self._usace_lake_gage_crosswalk,
-        ) = nhd_prep.read_geo_file(
-            supernetwork_parameters,
-            waterbody_parameters,
-            data_assimilation_parameters,
-        )
-        '''
-        if __verbose__:
+        self.read_geo_file()
+
+        if self.verbose:
             print("supernetwork connections set complete")
-        if __showtiming__:
+        if self.showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-        break_network_at_waterbodies = waterbody_parameters.get("break_network_at_waterbodies", False)        
-        streamflow_da = data_assimilation_parameters.get('streamflow_da', False)
+        break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)        
+        streamflow_da = self.data_assimilation_parameters.get('streamflow_da', False)
         break_network_at_gages       = False       
         if streamflow_da:
             break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
-        break_points                 = {"break_network_at_waterbodies": break_network_at_waterbodies,
+        self.break_points            = {"break_network_at_waterbodies": break_network_at_waterbodies,
                                         "break_network_at_gages": break_network_at_gages}
         
         self._flowpath_dict = {}
 
-        super().__init__(
-            compute_parameters, 
-            waterbody_parameters,
-            restart_parameters,
-            break_points,
-            verbose=__verbose__,
-            showtiming=__showtiming__,
-            )
+        super().__init__()
 
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
@@ -141,12 +123,7 @@ class NHDNetwork(AbstractNetwork):
     #def wbody_conn(self):
     #    return self._waterbody_connections    
 
-    def read_geo_file(
-        self,
-        supernetwork_parameters, 
-        waterbody_parameters, 
-        data_assimilation_parameters
-        ):
+    def read_geo_file(self,):
         '''
         Construct network connections network, parameter dataframe, waterbody mapping, 
         and gage mapping. This is an intermediate-level function that calls several 
@@ -167,7 +144,7 @@ class NHDNetwork(AbstractNetwork):
         
         # crosswalking dictionary between variables names in input dataset and 
         # variable names recognized by troute.routing module.
-        cols = supernetwork_parameters.get(
+        cols = self.supernetwork_parameters.get(
             'columns', 
             {
             'key'       : 'link',
@@ -189,10 +166,10 @@ class NHDNetwork(AbstractNetwork):
         )
         
         # numeric code used to indicate network terminal segments
-        terminal_code = supernetwork_parameters.get("terminal_code", 0)
+        terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
 
         # read parameter dataframe 
-        self._dataframe = nhd_io.read(pathlib.Path(supernetwork_parameters["geo_file_path"]))
+        self._dataframe = nhd_io.read(pathlib.Path(self.supernetwork_parameters["geo_file_path"]))
 
         # select the column names specified in the values in the cols dict variable
         self._dataframe = self.dataframe[list(cols.values())]
@@ -201,8 +178,8 @@ class NHDNetwork(AbstractNetwork):
         self._dataframe = self.dataframe.rename(columns=reverse_dict(cols))
         
         # handle synthetic waterbody segments
-        synthetic_wb_segments = supernetwork_parameters.get("synthetic_wb_segments", None)
-        synthetic_wb_id_offset = supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
+        synthetic_wb_segments = self.supernetwork_parameters.get("synthetic_wb_segments", None)
+        synthetic_wb_id_offset = self.supernetwork_parameters.get("synthetic_wb_id_offset", 9.99e11)
         if synthetic_wb_segments:
             # rename the current key column to key32
             key32_d = {"key":"key32"}
@@ -218,10 +195,10 @@ class NHDNetwork(AbstractNetwork):
         self._dataframe = self.dataframe.set_index("key").sort_index()
 
         # get and apply domain mask
-        if "mask_file_path" in supernetwork_parameters:
+        if "mask_file_path" in self.supernetwork_parameters:
             data_mask = nhd_io.read_mask(
-                pathlib.Path(supernetwork_parameters["mask_file_path"]),
-                layer_string=supernetwork_parameters.get("mask_layer_string", None),
+                pathlib.Path(self.supernetwork_parameters["mask_file_path"]),
+                layer_string=self.supernetwork_parameters.get("mask_layer_string", None),
             )
             data_mask = data_mask.set_index(data_mask.columns[0])
             self._dataframe = self.dataframe.filter(data_mask.index, axis=0)
@@ -260,7 +237,7 @@ class NHDNetwork(AbstractNetwork):
 
         self._dataframe = self.dataframe.astype("float32")
 
-        break_network_at_waterbodies = waterbody_parameters.get(
+        break_network_at_waterbodies = self.waterbody_parameters.get(
             "break_network_at_waterbodies", False
         )
 
@@ -281,7 +258,7 @@ class NHDNetwork(AbstractNetwork):
         if break_network_at_waterbodies:
             
             # Read waterbody parameters from LAKEPARM file
-            level_pool_params = waterbody_parameters.get('level_pool', defaultdict(list))
+            level_pool_params = self.waterbody_parameters.get('level_pool', defaultdict(list))
             self._waterbody_df = nhd_io.read_lakeparm(
                 level_pool_params['level_pool_waterbody_parameter_file_path'],
                 level_pool_params.get("level_pool_waterbody_id", 'lake_id'),
@@ -299,7 +276,7 @@ class NHDNetwork(AbstractNetwork):
             self._waterbody_types_df = pd.DataFrame()
 
             # Check if hybrid-usgs or hybrid-usace reservoir DA is set to True
-            reservoir_da = data_assimilation_parameters.get(
+            reservoir_da = self.data_assimilation_parameters.get(
                 'reservoir_da', 
                 {}
             )
@@ -323,7 +300,7 @@ class NHDNetwork(AbstractNetwork):
                 usgs_hybrid = False
                 
             # check if RFC-type reservoirs are set to true
-            rfc_params = waterbody_parameters.get('rfc')
+            rfc_params = self.waterbody_parameters.get('rfc')
             if rfc_params:
                 rfc_forecast = rfc_params.get(
                     'reservoir_rfc_forecasts',
@@ -364,13 +341,14 @@ class NHDNetwork(AbstractNetwork):
             self._usgs_lake_gage_crosswalk = None
             self._usace_lake_gage_crosswalk = None
     
-    def build_qlateral_array(self, run, cpu_pool):
+    def build_qlateral_array(self, run,):
         
         # TODO: set default/optional arguments
         qts_subdivisions = run.get("qts_subdivisions", 1)
         nts = run.get("nts", 1)
         qlat_input_folder = run.get("qlat_input_folder", None)
         qlat_input_file = run.get("qlat_input_file", None)
+        cpu_pool = self.compute_parameters.get('cpu_pool', 1)
 
         if qlat_input_folder:
             qlat_input_folder = pathlib.Path(qlat_input_folder)
