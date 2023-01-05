@@ -23,7 +23,7 @@ LOG = logging.getLogger('')
 def build_hyfeature_network(supernetwork_parameters,
                             waterbody_parameters,
 ):
-    
+
     geo_file_path = supernetwork_parameters["geo_file_path"]
     cols          = supernetwork_parameters["columns"]
     terminal_code = supernetwork_parameters.get("terminal_code", 0)
@@ -707,17 +707,17 @@ def hyfeature_forcing(
     -----
     
     """
-   
-    # Unpack user-specified forcing parameters
-    dt                           = forcing_parameters.get("dt", None)
-    qts_subdivisions             = forcing_parameters.get("qts_subdivisions", None)
-    nexus_input_folder           = forcing_parameters.get("nexus_input_folder", None)
-    qlat_file_index_col          = forcing_parameters.get("qlat_file_index_col", "feature_id")
-    qlat_file_value_col          = forcing_parameters.get("qlat_file_value_col", "q_lateral")
-    qlat_file_gw_bucket_flux_col = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
-    qlat_file_terrain_runoff_col = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
 
-  
+    # Unpack user-specified forcing parameters
+    dt                               = forcing_parameters.get("dt", None)
+    qts_subdivisions                 = forcing_parameters.get("qts_subdivisions", None)
+    nexus_input_folder               = forcing_parameters.get("nexus_input_folder", None)
+    qlat_file_index_col              = forcing_parameters.get("qlat_file_index_col", "feature_id")
+    qlat_file_value_col              = forcing_parameters.get("qlat_file_value_col", "q_lateral")
+    qlat_file_gw_bucket_flux_col     = forcing_parameters.get("qlat_file_gw_bucket_flux_col", "qBucket")
+    qlat_file_terrain_runoff_col     = forcing_parameters.get("qlat_file_terrain_runoff_col", "qSfcLatRunoff")
+    downstream_boundary_input_folder = forcing_parameters.get("downstream_boundary_input_folder", None)
+
     # TODO: find a better way to deal with these defaults and overrides.
     run["t0"]                           = run.get("t0", t0)
     run["nts"]                          = run.get("nts")
@@ -727,7 +727,8 @@ def hyfeature_forcing(
     run["qlat_file_index_col"]          = run.get("qlat_file_index_col", qlat_file_index_col)
     run["qlat_file_value_col"]          = run.get("qlat_file_value_col", qlat_file_value_col)
     run["qlat_file_gw_bucket_flux_col"] = run.get("qlat_file_gw_bucket_flux_col", qlat_file_gw_bucket_flux_col)
-    run["qlat_file_terrain_runoff_col"] = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
+    run["qlat_file_terrain_runoff_col"]    = run.get("qlat_file_terrain_runoff_col", qlat_file_terrain_runoff_col)
+    run["downstream_boundary_input_folder"] = run.get("downstream_boundary_input_folder", downstream_boundary_input_folder)
     
     #---------------------------------------------------------------------------
     # Assemble lateral inflow data
@@ -764,12 +765,19 @@ def hyfeature_forcing(
             start_time = time.time()    
             LOG.info("creating coastal dataframe ...")
             
-            coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
+            coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)         
+            # create dataframe for hourly schism data
+            coastal_boundary_depth_df = nhd_io.build_coastal_dataframe(
+                                                run, 
+                                                coastal_boundary_domain,
+            )           
+            # create dataframe for multi hourly schism data         
+            '''
             coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
                 coastal_boundary_elev_files,
                 coastal_boundary_domain,
             )
-                
+            '''    
             LOG.debug(
                 "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
                 % (time.time() - start_time)
