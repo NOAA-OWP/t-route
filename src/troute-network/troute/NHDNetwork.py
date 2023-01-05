@@ -1,4 +1,4 @@
-from .RoutingScheme import RoutingScheme
+from .AbstractNetwork import AbstractNetwork
 import troute.nhd_io as nhd_io
 import troute.nhd_preprocess as nhd_prep
 import pandas as pd
@@ -16,7 +16,7 @@ __showtiming__ = True #FIXME pass flag
 __verbose__ = True #FIXME pass verbosity
 
 
-class NHDNetwork(RoutingScheme):
+class NHDNetwork(AbstractNetwork):
     """
     
     """
