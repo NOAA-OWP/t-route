@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from functools import partial
 import pandas as pd
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 import time
 import logging
@@ -9,6 +10,7 @@ import logging
 from troute.nhd_network import extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_channel_initial_state, build_refac_connections
 import troute.nhd_io as nhd_io 
+from .AbstractRouting import *
 
 LOG = logging.getLogger('')
 
@@ -21,10 +23,10 @@ class AbstractNetwork(ABC):
                 "_waterbody_types_df", "_waterbody_type_specified",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
-                "_qlateral", "_break_segments", "_segment_index",
+                "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
-                "hybrid_parameters", "verbose", "showtiming", "break_points"]
+                "hybrid_parameters", "verbose", "showtiming", "break_points", "_routing"]
     
     def __init__(self,):
 
@@ -52,6 +54,8 @@ class AbstractNetwork(ABC):
                 self._break_segments = self._break_segments | set(self.waterbody_connections.values())
             if self.break_points["break_network_at_gages"]:
                 self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
+        
+        self.initialize_routing_scheme()
 
         self.create_independent_networks()
 
@@ -304,10 +308,10 @@ class AbstractNetwork(ABC):
         """
         # list of all segments in the domain (MC + diffusive)
         self._segment_index = self.dataframe.index
-        if self._diffusive_network_data:
-            for tw in self.diffusive_network_data:
+        if self._routing.diffusive_network_data:
+            for tw in self._routing.diffusive_network_data:
                 self._segment_index = self._segment_index.append(
-                    pd.Index(self.diffusive_network_data[tw]['mainstem_segs'])
+                    pd.Index(self._routing.diffusive_network_data[tw]['mainstem_segs'])
                 )
         return self._segment_index
     
@@ -347,6 +351,27 @@ class AbstractNetwork(ABC):
         """
         return self._coastal_boundary_depth_df
 
+    @property
+    def diffusive_network_data(self):
+        return self._routing.diffusive_network_data
+    
+    @property
+    def topobathy_df(self):
+        return self._routing.topobathy_df
+    
+    @property
+    def refactored_diffusive_domain(self):
+        return self._routing.refactored_diffusive_domain
+    
+    @property
+    def refactored_reaches(self):
+        return self._routing.refactored_reaches
+    
+    @property
+    def unrefactored_topobathy_df(self):
+        return self._routing.unrefactored_topobathy_df
+
+        
     def set_synthetic_wb_segments(self, synthetic_wb_segments, synthetic_wb_id_offset):
         """
         
@@ -406,7 +431,41 @@ class AbstractNetwork(ABC):
         else:
             self._dataframe = self._dataframe.astype(type)
             
+    def initialize_routing_scheme(self,):
+        '''
+        
+        '''
+        # Get user inputs from configuration file
+        run_hybrid = self.hybrid_parameters.get("run_hybrid_routing", False)
+        use_topobathy = self.hybrid_parameters.get('use_natl_xsections', False)
+        run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
 
+        routing_type = [run_hybrid, use_topobathy, run_refactored]
+
+        _routing_scheme_map = {
+            MCOnly: [False, False, False],
+            SimpleHybridDiffusive: [True, False, False],
+            HybridNatlXSectionNonRefactored: [True, True, False],
+            HybridNatlXSectionRefactored: [True, True, True],
+            }
+        
+        # Default to MCOnly routing
+        routing_scheme = MCOnly
+
+        # Check user input to determine the routing scheme
+        for key, value in _routing_scheme_map.items():
+            if value==routing_type:
+                routing_scheme = key
+        
+        routing = routing_scheme(self.hybrid_parameters)
+
+        (
+            self._dataframe,
+            self._connections
+        ) = routing.update_routing_domain(self.dataframe, self.connections)
+
+        self._routing = routing
+    
     def create_independent_networks(self,):
 
         LOG.info("organizing connections into reaches ...")

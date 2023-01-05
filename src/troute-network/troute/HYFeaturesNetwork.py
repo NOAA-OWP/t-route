@@ -1,4 +1,4 @@
-from .RoutingScheme import RoutingScheme
+from .AbstractNetwork import AbstractNetwork
 import pandas as pd
 import numpy as np
 import geopandas as gpd
@@ -90,7 +90,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
     return df
 
 
-class HYFeaturesNetwork(RoutingScheme):
+class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
