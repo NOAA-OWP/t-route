@@ -113,35 +113,30 @@ class MCOnly(AbstractRouting):
         super().__init__()
 
     def update_routing_domain(self, dataframe, connections):
-        return dataframe, connections, self._diffusive_domain
+        return dataframe, connections
 
     @property
     def diffusive_network_data(self):
-        self._diffusive_network_data = None
         return self._diffusive_network_data
 
     @property
     def topobathy_df(self):
-        self._topobathy_df = pd.DataFrame()
         return self._topobathy_df
     
     @property
     def refactored_diffusive_domain(self):
-        self._refactored_diffusive_domain = None
         return self._refactored_diffusive_domain
     
     @property
     def refactored_reaches(self):
-        self._refactored_reaches = {}
         return self._refactored_reaches
     
     @property
     def unrefactored_topobathy_df(self):
-        self._unrefactored_topobathy_df = pd.DataFrame()
         return self._unrefactored_topobathy_df
 
 
-class SimpleHybridDiffusive(AbstractRouting):
+class MCwithDiffusive(AbstractRouting):
 
     def __init__(self, hybrid_params):
         self.hybrid_params = hybrid_params
@@ -241,15 +236,11 @@ class SimpleHybridDiffusive(AbstractRouting):
         return self._unrefactored_topobathy_df
 
 
-class HybridNatlXSectionNonRefactored(SimpleHybridDiffusive):
+class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
 
     def __init__(self, hybrid_params):
 
         super().__init__(hybrid_params = hybrid_params)
-
-    @property
-    def diffusive_network_data(self):
-        return self._diffusive_network_data
 
     @property
     def topobathy_df(self):
@@ -258,32 +249,13 @@ class HybridNatlXSectionNonRefactored(SimpleHybridDiffusive):
             self._topobathy_df = read_netcdf(topobathy_file).set_index('link')
             self._topobathy_df.index = self._topobathy_df.index.astype(int)
         return self._topobathy_df
-    
-    @property
-    def refactored_diffusive_domain(self):
-        self._refactored_diffusive_domain = None
-        return self._refactored_diffusive_domain
-    
-    @property
-    def refactored_reaches(self):
-        self._refactored_reaches = {}
-        return self._refactored_reaches
-    
-    @property
-    def unrefactored_topobathy_df(self):
-        self._unrefactored_topobathy_df = pd.DataFrame()
-        return self._unrefactored_topobathy_df
 
 
-class HybridNatlXSectionRefactored(SimpleHybridDiffusive):
+class MCwithDiffusiveNatlXSectionRefactored(MCwithDiffusive):
 
     def __init__(self, hybrid_params):
         
         super().__init__(hybrid_params = hybrid_params)
-
-    @property
-    def diffusive_network_data(self):
-        return self._diffusive_network_data
 
     @property
     def topobathy_df(self):

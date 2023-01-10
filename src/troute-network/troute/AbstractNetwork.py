@@ -444,9 +444,9 @@ class AbstractNetwork(ABC):
 
         _routing_scheme_map = {
             MCOnly: [False, False, False],
-            SimpleHybridDiffusive: [True, False, False],
-            HybridNatlXSectionNonRefactored: [True, True, False],
-            HybridNatlXSectionRefactored: [True, True, True],
+            MCwithDiffusive: [True, False, False],
+            MCwithDiffusiveNatlXSectionNonRefactored: [True, True, False],
+            MCwithDiffusiveNatlXSectionRefactored: [True, True, True],
             }
         
         # Default to MCOnly routing
