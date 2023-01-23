@@ -151,7 +151,9 @@ class AbstractNetwork(ABC):
                 #LOG.debug(
                 #    "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
                 #    % (time.time() - start_time)
-                #)            
+                #)
+            else:
+                self._coastal_boundary_depth_df = pd.DataFrame()            
 
     def new_q0(self, run_results):
         """
