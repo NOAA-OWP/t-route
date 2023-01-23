@@ -179,6 +179,9 @@ class MCwithDiffusive(AbstractRouting):
             # diffusive domain connections object
             self._diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
 
+            # make sure that no downstream link below tw
+            self._diffusive_network_data[tw]['connections'][tw] = []
+            
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = organize_independent_networks(

@@ -993,15 +993,15 @@ def fp_coastal_boundary_input_map(
     dsbd_option     -- (int) 1 or 2 for coastal boundary depth data or normal depth data, respectively
     nts_db_g        -- (int) number of coastal boundary input data timesteps
     dbcd_g          -- (float) coastal boundary input data time series [m]
-    """
-    
-    date_time_obj1 = datetime.strptime(coastal_boundary_depth_df.columns[1], '%Y-%m-%d %H:%M:%S')
-    date_time_obj0 = datetime.strptime(coastal_boundary_depth_df.columns[0], '%Y-%m-%d %H:%M:%S')
-    dt_db_g        = (date_time_obj1 - date_time_obj0).total_seconds()    
-    nts_db_g       = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
-    dbcd_g         = np.ones(nts_db_g)    
+    """    
   
-    if not coastal_boundary_depth_df.empty:    
+    if not coastal_boundary_depth_df.empty:   
+        date_time_obj1 = datetime.strptime(coastal_boundary_depth_df.columns[1], '%Y-%m-%d %H:%M:%S')
+        date_time_obj0 = datetime.strptime(coastal_boundary_depth_df.columns[0], '%Y-%m-%d %H:%M:%S')
+        dt_db_g        = (date_time_obj1 - date_time_obj0).total_seconds()    
+        nts_db_g       = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
+        dbcd_g         = np.ones(nts_db_g)
+
         dt_timeslice = timedelta(minutes=dt_db_g/60.0)
         tfin         = t0 + dt_timeslice*(nts_db_g-1)
         timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
@@ -1043,8 +1043,11 @@ def fp_coastal_boundary_input_map(
             dbcd_g[:] = dbcd_df_interpolated.loc[tw].values
             
     else:
+        dt_db_g     = 3600.0 # by default in sec
+        nts_db_g    = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1 # include initial time 0 to the final time
+        dbcd_g      = np.ones(nts_db_g)
         dsbd_option = 2 # instead, use normal depth as the downstream boundary condition
-        dbcd_g[:] = 0.0               
+        dbcd_g[:]   = 0.0               
 
     return dt_db_g, dsbd_option, nts_db_g, dbcd_g
 
