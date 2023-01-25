@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 import time
-import os
 import json
 from pathlib import Path
 import pyarrow.parquet as pq
@@ -54,10 +53,10 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
     for level-pool reservoir computation.
     """
     def node_key_func(x):
-        return int(x[3:])
-    if os.path.splitext(parm_file)[1]=='.gpkg':
+        return int( x.split('-')[-1] )
+    if Path(parm_file).suffix=='.gpkg':
         df = gpd.read_file(parm_file, layer="lake_attributes").set_index('id')
-    elif os.path.splitext(parm_file)[1]=='.json':
+    elif Path(parm_file).suffix=='.json':
         df = pd.read_json(parm_file, orient="index")
 
     df.index = df.index.map(node_key_func)
@@ -75,11 +74,11 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
     # layer, but as of now (Nov 22, 2022) there doesn't seem to be a differentiation
     # between USGS reservoirs, USACE reservoirs, or RFC reservoirs...
     def node_key_func(x):
-        return int(x[3:])
+        return int( x.split('-')[-1] )
     
-    if os.path.splitext(parm_file)[1]=='.gpkg':
+    if Path(parm_file).suffix=='.gpkg':
         df = gpd.read_file(parm_file, layer="crosswalk").set_index('id')
-    elif os.path.splitext(parm_file)[1]=='.json':
+    elif Path(parm_file).suffix=='.json':
         df = pd.read_json(parm_file, orient="index")
 
     df.index = df.index.map(node_key_func)
@@ -413,6 +412,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                             self.waterbody_dataframe.reset_index()
                             .drop_duplicates(subset=lake_id)
                             .set_index(lake_id)
+                            .sort_index()
                             )
 
             try:
@@ -426,6 +426,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                                     self.waterbody_types_dataframe.reset_index()
                                     .drop_duplicates(subset=lake_id)
                                     .set_index(lake_id)
+                                    .sort_index()
                                     )
 
             except ValueError:
