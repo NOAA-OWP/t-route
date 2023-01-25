@@ -356,6 +356,7 @@ def read_reservoir_parameter_file(
     df1 = (df1.reset_index()
            .drop_duplicates(subset="lake_id")
            .set_index("lake_id")
+           .sort_index()
           )
     
     # recode to levelpool (1) for reservoir DA types set to false

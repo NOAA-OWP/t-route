@@ -270,6 +270,7 @@ class NHDNetwork(AbstractNetwork):
                 self.waterbody_dataframe.reset_index()
                 .drop_duplicates(subset="lake_id")
                 .set_index("lake_id")
+                .sort_index()
             )
 
             # Declare empty dataframe

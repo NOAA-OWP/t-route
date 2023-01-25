@@ -10,7 +10,7 @@ import logging
 from troute.nhd_network import extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_channel_initial_state, build_refac_connections
 import troute.nhd_io as nhd_io 
-from .AbstractRouting import *
+from .AbstractRouting import MCOnly, MCwithDiffusive, MCwithDiffusiveNatlXSectionNonRefactored, MCwithDiffusiveNatlXSectionRefactored
 
 LOG = logging.getLogger('')
 
@@ -20,7 +20,7 @@ class AbstractNetwork(ABC):
     """
     __slots__ = ["_dataframe", "_waterbody_connections", "_gages",  
                 "_terminal_codes", "_connections", "_waterbody_df", 
-                "_waterbody_types_df", "_waterbody_type_specified",
+                "_waterbody_types_df", "_waterbody_type_specified", "_link_gage_df",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
                 "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
@@ -36,6 +36,7 @@ class AbstractNetwork(ABC):
         self._q0 = None
         self._t0 = None
         self._qlateral = None
+        self._link_gage_df = None
         #qlat_const = forcing_parameters.get("qlat_const", 0)
         #FIXME qlat_const
         """ Figure out a good way to default initialize to qlat_const/c
@@ -239,11 +240,11 @@ class AbstractNetwork(ABC):
 
     @property
     def waterbody_dataframe(self):
-        return self._waterbody_df.sort_index()
+        return self._waterbody_df
     
     @property
     def waterbody_types_dataframe(self):
-        return self._waterbody_types_df.sort_index()
+        return self._waterbody_types_df
     
     @property
     def waterbody_type_specified(self):
@@ -319,9 +320,10 @@ class AbstractNetwork(ABC):
     
     @property
     def link_gage_df(self):
-        link_gage_df = pd.DataFrame.from_dict(self._gages)
-        link_gage_df.index.name = 'link'
-        return link_gage_df
+        if self._link_gage_df is None:
+            self._link_gage_df = pd.DataFrame.from_dict(self._gages)
+            self._link_gage_df.index.name = 'link'
+        return self._link_gage_df
 
     @property
     @abstractmethod
