@@ -48,13 +48,20 @@ class AbstractNetwork(ABC):
             dtype="float32",
         )
         """
+        break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)        
+        streamflow_da = self.data_assimilation_parameters.get('streamflow_da', False)
+        break_network_at_gages       = False       
+        if streamflow_da:
+            break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
+        self.break_points            = {"break_network_at_waterbodies": break_network_at_waterbodies,
+                                        "break_network_at_gages": break_network_at_gages}
+
         self._break_segments = set()
-        
-        if self.break_points:
-            if self.break_points["break_network_at_waterbodies"]:
-                self._break_segments = self._break_segments | set(self.waterbody_connections.values())
-            if self.break_points["break_network_at_gages"]:
-                self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
+
+        if self.break_points["break_network_at_waterbodies"]:
+            self._break_segments = self._break_segments | set(self.waterbody_connections.values())
+        if self.break_points["break_network_at_gages"]:
+            self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
         
         self.initialize_routing_scheme()
 
@@ -70,20 +77,11 @@ class AbstractNetwork(ABC):
         
         Aguments
         --------
-        - run                      (dict): List of forcing files pertaining to a 
-                                    single run-set
-        - forcing_parameters       (dict): User-input simulation forcing parameters
-        - hybrid_parameters        (dict): User-input simulation hybrid parameters
-        - supernetwork_parameters  (dict): User-input simulation supernetwork parameters
-        - segment_index           (Int64): Reach segment ids
-        - cpu_pool                  (int): Number of CPUs in the process-parallel pool
+        - run                          (dict): List of forcing files pertaining to a 
+                                               single run-set
 
         Returns
         -------
-        - qlats_df                 (Pandas DataFrame): Lateral inflow data, indexed by 
-                                                    segment ID
-        - coastal_bounary_depth_df (Pandas DataFrame): Coastal boundary water depths,
-                                                    indexed by segment ID
         
         Notes
         -----
@@ -102,7 +100,6 @@ class AbstractNetwork(ABC):
     
         # TODO: find a better way to deal with these defaults and overrides.
         run["t0"]                           = run.get("t0", self.t0)
-        run["nts"]                          = run.get("nts")
         run["dt"]                           = run.get("dt", dt)
         run["qts_subdivisions"]             = run.get("qts_subdivisions", qts_subdivisions)
         run["qlat_input_folder"]            = run.get("qlat_input_folder", qlat_input_folder)
@@ -513,24 +510,9 @@ class AbstractNetwork(ABC):
         
         Arguments
         ---------
-        - break_network_at_waterbodies (bool): If True, waterbody initial states will
-                                            be appended to the waterbody parameter
-                                            dataframe. If False, waterbodies will
-                                            not be simulated and the waterbody
-                                            parameter datataframe wil not be changed
-        - restart_parameters           (dict): User-input simulation restart 
-                                            parameters
-        - segment_index        (Pandas Index): All segment IDs in the simulation 
-                                            doamin
-        - waterbodies_df   (Pandas DataFrame): Waterbody parameters
         
         Returns
         -------
-        - waterbodies_df (Pandas DataFrame): Waterbody parameters with initial
-                                            states (outflow and pool elevation)
-        - q0             (Pandas DataFrame): Initial flow and depth states for each
-                                            segment in the model domain
-        - t0                     (datetime): Datetime of the model initialization
         
         Notes
         -----
@@ -603,72 +585,70 @@ class AbstractNetwork(ABC):
         #----------------------------------------------------------------------------
         # Assemble channel initial states (flow and depth)
         # also establish simulation initialization timestamp
+        # 3 Restart Options:
+        #   1. From t-route generated lite restart file (network agnostic)
+        #   2. From wrf_hydro_restart file (valid for NHDNetwork only)
+        #   3. Cold start, requires user specified start datetime
         #----------------------------------------------------------------------------    
         start_time = time.time()
         LOG.info("setting channel initial states ...")
 
         # if lite restart file is provided, the read channel initial states from it
         if restart_parameters.get("lite_channel_restart_file", None):
-            # FIXME: Change it for hyfeature!
             self._q0, self._t0 = nhd_io.read_lite_restart(
                 restart_parameters['lite_channel_restart_file']
             )
-            t0_str = None
+        
+        elif restart_parameters.get("wrf_hydro_channel_restart_file", None):
+            self._q0 = nhd_io.get_channel_restart_from_wrf_hydro(
+                restart_parameters["wrf_hydro_channel_restart_file"],
+                restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+                restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", 'link'),
+                restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", 'qlink1'),
+                restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
+                restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
+                )
 
-        # when a restart file for hyfeature is provied, then read initial states from it.
-        elif restart_parameters.get("hyfeature_channel_restart_file", None):        
-            self._q0 = build_channel_initial_state(restart_parameters, self.segment_index)        
-            channel_initial_states_file = restart_parameters["hyfeature_channel_restart_file"]
-            df     = pd.read_csv(channel_initial_states_file)
-            t0_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
-            self._t0     = datetime.strptime(t0_str,"%Y-%m-%d_%H:%M:%S")
-
-        # build initial states from user-provided restart parameters
-        else:
-            # FIXME: Change it for hyfeature!
-            self._q0 = build_channel_initial_state(restart_parameters, self.segment_index)       
-
-            # get initialization time from restart file
-            if restart_parameters.get("wrf_hydro_channel_restart_file", None):
-                channel_initial_states_file = restart_parameters[
-                    "wrf_hydro_channel_restart_file"
-                ]
-                t0_str = nhd_io.get_param_str(
-                    channel_initial_states_file, 
+            t0_str = nhd_io.get_param_str(
+                    restart_parameters["wrf_hydro_channel_restart_file"], 
                     "Restart_Time"
                 )
-            else:
-                t0_str = "2015-08-16_00:00:00"
-
+            
             # convert timestamp from string to datetime
             self._t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
-
-        # get initial time from user inputs
-        if restart_parameters.get("start_datetime", None):
-            t0_str = restart_parameters.get("start_datetime")
-            
-            def _try_parsing_date(text):
-                for fmt in (
-                    "%Y-%m-%d_%H:%M", 
-                    "%Y-%m-%d_%H:%M:%S", 
-                    "%Y-%m-%d %H:%M", 
-                    "%Y-%m-%d %H:%M:%S", 
-                    "%Y/%m/%d %H:%M", 
-                    "%Y/%m/%d %H:%M:%S"
-                ):
-                    try:
-                        return datetime.strptime(text, fmt)
-                    except ValueError:
-                        pass
-                LOG.error('No valid date format found for start_datetime input. Please use format YYYY-MM-DD_HH:MM')
-                quit()
-                
-            self._t0 = _try_parsing_date(t0_str)
+        
         else:
-            if t0_str == "2015-08-16_00:00:00":
-                LOG.info('No user-input start_datetime and no restart file, start time arbitrarily 2015-08-16_00:00:00')
+            # Set cold initial state
+            # assume to be zero
+            # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+            self._q0 = pd.DataFrame(
+                0, index=self.segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+                )
+            
+            # get initial time from user inputs
+            if restart_parameters.get("start_datetime", None):
+                t0_str = restart_parameters.get("start_datetime")
+                
+                def _try_parsing_date(text):
+                    for fmt in (
+                        "%Y-%m-%d_%H:%M", 
+                        "%Y-%m-%d_%H:%M:%S", 
+                        "%Y-%m-%d %H:%M", 
+                        "%Y-%m-%d %H:%M:%S", 
+                        "%Y/%m/%d %H:%M", 
+                        "%Y/%m/%d %H:%M:%S"
+                    ):
+                        try:
+                            return datetime.strptime(text, fmt)
+                        except ValueError:
+                            pass
+                    LOG.error('No valid date format found for start_datetime input. Please use format YYYY-MM-DD_HH:MM')
+                    quit()
+                    
+                self._t0 = _try_parsing_date(t0_str)
+            
             else:
-                LOG.info('No user-specified start_datetime, continuing with start time from restart file: %s', t0_str)
+                raise(RuntimeError("No start_datetime provided in config file for cold start."))
 
         LOG.debug(
             "channel initial states complete in %s seconds."\
