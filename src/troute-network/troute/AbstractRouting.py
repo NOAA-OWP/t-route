@@ -107,7 +107,7 @@ class AbstractRouting(ABC):
 
 class MCOnly(AbstractRouting):
 
-    def __init__(self, hybrid_params):
+    def __init__(self, _):
         self.hybrid_params = None
         
         super().__init__()
@@ -220,22 +220,18 @@ class MCwithDiffusive(AbstractRouting):
 
     @property
     def topobathy_df(self):
-        self._topobathy_df = pd.DataFrame()
         return self._topobathy_df
     
     @property
     def refactored_diffusive_domain(self):
-        self._refactored_diffusive_domain = None
         return self._refactored_diffusive_domain
     
     @property
     def refactored_reaches(self):
-        self._refactored_reaches = {}
         return self._refactored_reaches
     
     @property
     def unrefactored_topobathy_df(self):
-        self._unrefactored_topobathy_df = pd.DataFrame()
         return self._unrefactored_topobathy_df
 
 

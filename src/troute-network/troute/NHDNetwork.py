@@ -66,14 +66,6 @@ class NHDNetwork(AbstractNetwork):
         if self.showtiming:
             print("... in %s seconds." % (time.time() - start_time))
 
-        break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)        
-        streamflow_da = self.data_assimilation_parameters.get('streamflow_da', False)
-        break_network_at_gages       = False       
-        if streamflow_da:
-            break_network_at_gages   = streamflow_da.get('streamflow_nudging', False)
-        self.break_points            = {"break_network_at_waterbodies": break_network_at_waterbodies,
-                                        "break_network_at_gages": break_network_at_gages}
-        
         self._flowpath_dict = {}
 
         super().__init__()
