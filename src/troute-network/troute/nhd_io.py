@@ -1563,11 +1563,12 @@ def build_coastal_dataframe(coastal_boundary_elev):
     )
     return coastal_df
 
-
+'''
 def build_coastal_ncdf_dataframe(coastal_ncdf):
     with xr.open_dataset(coastal_ncdf) as ds:
         coastal_ncdf_df = ds[["elev", "depth"]]
         return coastal_ncdf_df.to_dataframe()
+'''
 
 def build_coastal_ncdf_dataframe(
                                 coastal_files, 
@@ -1594,7 +1595,7 @@ def build_coastal_ncdf_dataframe(
     tfin         =  start_date + dt_timeslice*len(timesteps)
     timestamps   = pd.date_range(start_date, tfin, freq=dt_timeslice)
     timestamps   = timestamps.strftime('%Y-%m-%d %H:%M:%S')
-    
+    import pdb; pdb.set_trace()
     # create a dataframe of water depth at coastal domain nodes
     timeslice_schism_list=[]
     for t in range(0, len(timesteps)+1):
@@ -1619,6 +1620,45 @@ def build_coastal_ncdf_dataframe(
     # linearly extrapolate depth value at start date
     coastal_boundary_depth_df.iloc[:,0] = 2.0*coastal_boundary_depth_df.iloc[:,1] - coastal_boundary_depth_df.iloc[:,2]   
 
+    return coastal_boundary_depth_df   
+
+def build_coastal_dataframe(
+                            run, 
+                            coastal_boundary_domain,
+                            ):
+
+    downstream_boundary_input_folder = run.get("downstream_boundary_input_folder",None)
+
+    if downstream_boundary_input_folder:
+        downstream_boundary_input_folder = pathlib.Path(downstream_boundary_input_folder)
+        if "downstream_boundary_files" in run:
+            downstream_boundary_files = run.get("downstream_boundary_files")
+            downstream_boundary_files = [downstream_boundary_input_folder.joinpath(f) for f in downstream_boundary_files]
+    
+    timeslice_schism_list=[]        
+    for f in downstream_boundary_files:
+        ds = xr.open_dataset(f)
+        df = ds.to_dataframe()
+        tws   = []
+        timestamps = []
+        depths= []
+        for tw, boundary_node in coastal_boundary_domain.items():
+            tws.append(tw)
+            df2 = df[df['schism_id']==boundary_node]
+            date = df2.time.iloc[0]
+            timestamps.append(pd.to_datetime(date).strftime('%Y-%m-%d %H:%M:%S'))
+            depths.append(df2.elev.iat[0] + df2.depth.iat[0])             
+        timeslice_schism  = (pd.DataFrame({
+                                            'stationId' : tws,
+                                            'datetime'  : timestamps,
+                                            'depth'     : depths
+                                            }).
+                                             set_index(['stationId', 'datetime']).
+                                             unstack(1, fill_value = np.nan)['depth'])
+        timeslice_schism_list.append(timeslice_schism)               
+    import pdb; pdb.set_trace()
+    coastal_boundary_depth_df = pd.concat(timeslice_schism_list, axis=1, ignore_index=False)          
+    
     return coastal_boundary_depth_df    
  
 def lastobs_df_output(

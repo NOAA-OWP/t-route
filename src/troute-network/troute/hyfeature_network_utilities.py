@@ -11,6 +11,7 @@ import netCDF4
 from joblib import delayed, Parallel
 import pyarrow as pa
 import pyarrow.parquet as pq
+import xarray as xr
 
 import troute.nhd_io as nhd_io
 
@@ -23,11 +24,12 @@ def build_forcing_sets(
     t0
 ):
 
-    run_sets           = forcing_parameters.get("qlat_forcing_sets", None)
-    nexus_input_folder = forcing_parameters.get("nexus_input_folder", None)
-    nts                = forcing_parameters.get("nts", None)
-    max_loop_size      = forcing_parameters.get("max_loop_size", 12)
-    dt                 = forcing_parameters.get("dt", None)
+    run_sets                         = forcing_parameters.get("qlat_forcing_sets", None)
+    nexus_input_folder               = forcing_parameters.get("nexus_input_folder", None)
+    downstream_boundary_input_folder = forcing_parameters.get("downstream_boundary_input_folder", None)
+    nts                              = forcing_parameters.get("nts", None)
+    max_loop_size                    = forcing_parameters.get("max_loop_size", 12)
+    dt                               = forcing_parameters.get("dt", None)
 
     try:
         nexus_input_folder = pathlib.Path(nexus_input_folder)
@@ -38,7 +40,8 @@ def build_forcing_sets(
         raise AssertionError("Aborting simulation because the nexus_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
 
     forcing_glob_filter = forcing_parameters.get("nexus_file_pattern_filter", "*.NEXOUT")
-
+    downstream_boundary_glob_filter = forcing_parameters.get("downstream_boundary_file_pattern_filter", "*SCHISM.nc")
+    
     if forcing_glob_filter=="nex-*":
         print("Reformating qlat nexus files as hourly binary files...")
         binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
@@ -161,6 +164,64 @@ def build_forcing_sets(
             k += max_loop_size
             j += 1
 
+    # creates downstream boundary forcing file list
+    if downstream_boundary_input_folder:
+        # get the first and seconded files from an ordered list of all forcing files
+        downstream_boundary_input_folder = pathlib.Path(downstream_boundary_input_folder)
+        all_files = sorted(downstream_boundary_input_folder.glob(downstream_boundary_glob_filter))
+        first_file = all_files[0]
+        second_file = all_files[1]
+
+        # Deduce the timeinterval of the forcing data from the output timestamps of the first
+        df     = read_file(first_file)
+        t1_str = pd.to_datetime(df.time.iloc[0]).strftime("%Y-%m-%d_%H:%M:%S")
+        t1     = datetime.strptime(t1_str,"%Y-%m-%d_%H:%M:%S")
+        df     = read_file(second_file)
+        t2_str = pd.to_datetime(df.time.iloc[0]).strftime("%Y-%m-%d_%H:%M:%S")
+        t2     = datetime.strptime(t2_str,"%Y-%m-%d_%H:%M:%S")
+        dt_downstream_boundary_timedelta = t2 - t1
+        dt_downstream_boundary           = dt_downstream_boundary_timedelta.seconds   
+
+        bts_subdivisions = dt_downstream_boundary / dt
+
+        # the number of files required for the simulation
+        # For example, for 4 hrs total simulation and 2 hr max_loop, two sets of boundary data one at (t0, t0+1hr, t0+2hr) and 
+        # the other at (t0+2hr, t0+3hr, t0+4hr) are needed.
+        nfiles = int(np.ceil(nts / bts_subdivisions)) + 1
+        
+        # list of downstream boundary file datetimes
+        datetime_list = [t0 + dt_downstream_boundary_timedelta * (n) for n in
+                         range(nfiles)]        
+        datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                             datetime_list]
+        # list of downstream boundary files
+        downstream_boundary_filename_list = [d_str + downstream_boundary_glob_filter[1:] for d_str in
+                                 datetime_list_str]  
+        
+        # check that all forcing files exist
+        for f in downstream_boundary_filename_list:
+            try:
+                J = pathlib.Path(downstream_boundary_input_folder.joinpath(f))     
+                assert J.is_file() == True
+            except AssertionError:
+                raise AssertionError("Aborting simulation because downstream boundary file", J, "cannot be not found.") from None
+    
+        # build run sets list
+        #run_sets = []
+        k = 0
+        j = 0
+        nts_accum = 0
+        nts_last = 0
+
+        while k < len(downstream_boundary_filename_list)-1:
+            if k + max_loop_size < len(downstream_boundary_filename_list):
+                run_sets[j]['downstream_boundary_files'] = downstream_boundary_filename_list[k:k
+                    + max_loop_size+1]                
+            else:
+                run_sets[j]['downstream_boundary_files'] = downstream_boundary_filename_list[k:]
+            k += max_loop_size
+            j += 1
+       
     return run_sets
 
 def build_qlateral_array(
@@ -307,5 +368,8 @@ def read_file(file_name):
     elif extension=='.parquet':
         df = pq.read_table(file_name).to_pandas().reset_index()
         df.index.name = None
+    elif extension=='.nc':
+        df = xr.open_dataset(file_name)
+        df = df.to_dataframe()    
     
     return df

@@ -1000,7 +1000,7 @@ def fp_coastal_boundary_input_map(
     dt_db_g        = (date_time_obj1 - date_time_obj0).total_seconds()    
     nts_db_g       = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
     dbcd_g         = np.ones(nts_db_g)    
-  
+
     if not coastal_boundary_depth_df.empty:    
         dt_timeslice = timedelta(minutes=dt_db_g/60.0)
         tfin         = t0 + dt_timeslice*(nts_db_g-1)
