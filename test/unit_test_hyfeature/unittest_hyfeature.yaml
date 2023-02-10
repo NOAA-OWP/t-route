@@ -45,7 +45,7 @@ compute_parameters:
         #wrf_hydro_waterbody_restart_file: restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
         #wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM_NWMv2.1.nc 
         #wrf_hydro_waterbody_crosswalk_filter_file: domain/LAKEPARM_NWMv2.1.nc
-        hyfeature_channel_restart_file: restart/201512010000NEXOUT.csv
+        start_datetime: "2015-12-01_00:00:00"
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/coastal_domain.yaml  
