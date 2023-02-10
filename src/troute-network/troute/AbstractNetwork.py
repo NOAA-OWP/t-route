@@ -1,14 +1,18 @@
 from abc import ABC, abstractmethod
 from functools import partial
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
-from collections import defaultdict
 
+import os
+import pathlib
 import time
 import logging
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from troute.nhd_network import extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
-from troute.nhd_network_utilities_v02 import organize_independent_networks, build_channel_initial_state, build_refac_connections
+from troute.nhd_network_utilities_v02 import organize_independent_networks
 import troute.nhd_io as nhd_io 
 from .AbstractRouting import MCOnly, MCwithDiffusive, MCwithDiffusiveNatlXSectionNonRefactored, MCwithDiffusiveNatlXSectionRefactored
 
@@ -654,3 +658,201 @@ class AbstractNetwork(ABC):
             "channel initial states complete in %s seconds."\
             % (time.time() - start_time)
         )
+
+    def build_forcing_sets(self,):
+
+        forcing_parameters = self.forcing_parameters
+        supernetwork_parameters = self.supernetwork_parameters
+
+        run_sets           = forcing_parameters.get("qlat_forcing_sets", None)
+        qlat_input_folder  = forcing_parameters.get("qlat_input_folder", None)
+        nts                = forcing_parameters.get("nts", None)
+        max_loop_size      = forcing_parameters.get("max_loop_size", 12)
+        dt                 = forcing_parameters.get("dt", None)
+
+        geo_file_type      = supernetwork_parameters.get('geo_file_type')
+
+        try:
+            qlat_input_folder = pathlib.Path(qlat_input_folder)
+            assert qlat_input_folder.is_dir() == True
+        except TypeError:
+            raise TypeError("Aborting simulation because no qlat_input_folder is specified in the forcing_parameters section of the .yaml control file.") from None
+        except AssertionError:
+            raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
+
+        forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.NEXOUT")
+
+        if forcing_glob_filter=="nex-*":
+            print("Reformating qlat nexus files as hourly binary files...")
+            binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
+            qlat_files = qlat_input_folder.glob(forcing_glob_filter)
+
+            #Check that directory/files specified will work
+            if not binary_folder:
+                raise(RuntimeError("No output binary qlat folder supplied in config"))
+            elif not os.path.exists(binary_folder):
+                raise(RuntimeError("Output binary qlat folder supplied in config does not exist"))
+            elif len(list(pathlib.Path(binary_folder).glob('*.parquet'))) != 0:
+                raise(RuntimeError("Output binary qlat folder supplied in config is not empty (already contains '.parquet' files)"))
+
+            #Add tnx for backwards compatability
+            qlat_files_list = list(qlat_files) + list(qlat_input_folder.glob('tnx*.csv'))
+            #Convert files to binary hourly files, reset nexus input information
+            qlat_input_folder, forcing_glob_filter = nex_files_to_binary(qlat_files_list, binary_folder)
+            forcing_parameters["qlat_input_folder"] = qlat_input_folder
+            forcing_parameters["qlat_file_pattern_filter"] = forcing_glob_filter
+            
+        # TODO: Throw errors if insufficient input data are available
+        if run_sets:        
+            #FIXME: Change it for hyfeature
+            '''
+            # append final_timestamp variable to each set_list
+            qlat_input_folder = pathlib.Path(qlat_input_folder)
+            for (s, _) in enumerate(run_sets):
+                final_chrtout = qlat_input_folder.joinpath(run_sets[s]['qlat_files'
+                        ][-1])
+                final_timestamp_str = nhd_io.get_param_str(final_chrtout,
+                        'model_output_valid_time')
+                run_sets[s]['final_timestamp'] = \
+                    datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+            '''  
+        elif qlat_input_folder:        
+            # Construct run_set dictionary from user-specified parameters
+
+            # get the first and seconded files from an ordered list of all forcing files
+            qlat_input_folder = pathlib.Path(qlat_input_folder)
+            all_files          = sorted(qlat_input_folder.glob(forcing_glob_filter))
+            first_file         = all_files[0]
+            second_file        = all_files[1]
+
+            # Deduce the timeinterval of the forcing data from the output timestamps of the first
+            # two ordered CHRTOUT files
+            if forcing_glob_filter=="*.CHRTOUT_DOMAIN1":
+                t1 = nhd_io.get_param_str(first_file, "model_output_valid_time")
+                t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
+                t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
+                t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
+            else:
+                df     = read_file(first_file)
+                t1_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
+                t1     = datetime.strptime(t1_str,"%Y-%m-%d_%H:%M:%S")
+                df     = read_file(second_file)
+                t2_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
+                t2     = datetime.strptime(t2_str,"%Y-%m-%d_%H:%M:%S")
+            
+            
+            dt_qlat_timedelta = t2 - t1
+            dt_qlat = dt_qlat_timedelta.seconds
+
+            # determine qts_subdivisions
+            qts_subdivisions = dt_qlat / dt
+            if dt_qlat % dt == 0:
+                qts_subdivisions = int(dt_qlat / dt)
+            # make sure that qts_subdivisions = dt_qlat / dt
+            forcing_parameters['qts_subdivisions']= qts_subdivisions
+
+            # the number of files required for the simulation
+            nfiles = int(np.ceil(nts / qts_subdivisions))
+            
+            # list of forcing file datetimes
+            #datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
+            #                 range(nfiles)]
+            # ** Correction ** Because qlat file at time t is constantly applied throughout [t, t+1],
+            #               ** n + 1 should be replaced by n
+            datetime_list = [self.t0 + dt_qlat_timedelta * (n) for n in
+                            range(nfiles)]        
+            datetime_list_str = [datetime.strftime(d, '%Y%m%d%H%M') for d in
+                                datetime_list]
+
+            # list of forcing files
+            forcing_filename_list = [d_str + forcing_glob_filter[1:] for d_str in
+                                    datetime_list_str]
+            
+            # check that all forcing files exist
+            for f in forcing_filename_list:
+                try:
+                    J = pathlib.Path(qlat_input_folder.joinpath(f))     
+                    assert J.is_file() == True
+                except AssertionError:
+                    raise AssertionError("Aborting simulation because forcing file", J, "cannot be not found.") from None
+                    
+            # build run sets list
+            run_sets = []
+            k = 0
+            j = 0
+            nts_accum = 0
+            nts_last = 0
+            while k < len(forcing_filename_list):
+                run_sets.append({})
+
+                if k + max_loop_size < len(forcing_filename_list):
+                    run_sets[j]['qlat_files'] = forcing_filename_list[k:k
+                        + max_loop_size]
+                else:
+                    run_sets[j]['qlat_files'] = forcing_filename_list[k:]
+
+                nts_accum += len(run_sets[j]['qlat_files']) * qts_subdivisions
+                if nts_accum <= nts:
+                    run_sets[j]['nts'] = int(len(run_sets[j]['qlat_files'])
+                                            * qts_subdivisions)
+                else:
+                    run_sets[j]['nts'] = int(nts - nts_last)
+
+                final_qlat = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1]) 
+                if forcing_glob_filter=="*.CHRTOUT_DOMAIN1":           
+                    final_timestamp_str = nhd_io.get_param_str(final_qlat,'model_output_valid_time')
+                else:
+                    df = read_file(final_qlat)
+                    final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
+                
+                run_sets[j]['final_timestamp'] = \
+                    datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
+
+                nts_last = nts_accum
+                k += max_loop_size
+                j += 1
+
+        return run_sets
+
+def nex_files_to_binary(nexus_files, binary_folder):
+    for f in nexus_files:
+        # read the csv file
+        df = pd.read_csv(f, usecols=[1,2], names=['Datetime','qlat'])
+        
+        # convert and reformat datetime column
+        df['Datetime']= pd.to_datetime(df['Datetime']).dt.strftime("%Y%m%d%H%M")
+
+        # reformat the dataframe
+        df['feature_id'] = get_id_from_filename(f)
+        df = df.pivot(index="feature_id", columns="Datetime", values="qlat")
+        df.columns.name = None
+
+        for col in df.columns:
+            table_new = pa.Table.from_pandas(df.loc[:, [col]])
+            
+            if not os.path.exists(f'{binary_folder}/{col}NEXOUT.parquet'):
+                pq.write_table(table_new, f'{binary_folder}/{col}NEXOUT.parquet')
+            
+            else:
+                table_old = pq.read_table(f'{binary_folder}/{col}NEXOUT.parquet')
+                table = pa.concat_tables([table_old,table_new])
+                pq.write_table(table, f'{binary_folder}/{col}NEXOUT.parquet')
+    
+    nexus_input_folder = binary_folder
+    forcing_glob_filter = '*NEXOUT.parquet'
+
+    return nexus_input_folder, forcing_glob_filter
+
+def get_id_from_filename(file_name):
+    id = os.path.splitext(file_name)[0].split('-')[1].split('_')[0]
+    return int(id)
+
+def read_file(file_name):
+    extension = file_name.suffix
+    if extension=='.csv':
+        df = pd.read_csv(file_name)
+    elif extension=='.parquet':
+        df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    
+    return df

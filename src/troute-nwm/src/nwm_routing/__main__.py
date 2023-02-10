@@ -4,7 +4,6 @@ import math
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from collections import defaultdict
 from pathlib import Path
 import concurrent.futures
 
@@ -25,12 +24,9 @@ from .preprocess import (
 from .output import nwm_output_generator
 from .log_level_set import log_level_set
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
-import troute.nhd_network as nhd_network
+
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
-import troute.routing.diffusive_utils as diff_utils
-import troute.hyfeature_network_utilities as hnu
-import troute.abstractnetwork_preprocess as abs_prep
 
 LOG = logging.getLogger('')
 
@@ -106,17 +102,7 @@ def main_v04(argv):
         task_times['network_creation_time'] = network_end_time - network_start_time
 
     # Create run_sets: sets of forcing files for each loop
-    run_sets = abs_prep.build_forcing_sets(
-        supernetwork_parameters, 
-        forcing_parameters, 
-        network.t0
-        )
-    '''
-    if supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
-        run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
-    elif supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
-        run_sets = hnu.build_forcing_sets(forcing_parameters, network.t0)
-    '''
+    run_sets = network.build_forcing_sets()
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
