@@ -1,6 +1,5 @@
 from .AbstractNetwork import AbstractNetwork
 import troute.nhd_io as nhd_io
-import troute.nhd_preprocess as nhd_prep
 import pandas as pd
 import numpy as np
 import time
