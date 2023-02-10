@@ -170,18 +170,42 @@ def main_v04(argv):
             route_start_time = time.time()
 
         run_results = nwm_route(
-            network,
-            data_assimilation,
+            network.connections, 
+            network.reverse_network, 
+            network.waterbody_connections, 
+            network.reaches_by_tailwater,
             parallel_compute_method,
             compute_kernel,
             subnetwork_target_size,
             cpu_pool,
+            network.t0,
             dt,
             nts,
             qts_subdivisions,
+            network.independent_networks, 
+            network.dataframe,
+            network.q0,
+            network._qlateral,
+            data_assimilation.usgs_df,
+            data_assimilation.lastobs_df,
+            data_assimilation.reservoir_usgs_df,
+            data_assimilation.reservoir_usgs_param_df,
+            data_assimilation.reservoir_usace_df,
+            data_assimilation.reservoir_usace_param_df,
+            data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
+            network.waterbody_dataframe,
+            waterbody_parameters,
+            network.waterbody_types_dataframe,
+            network.waterbody_type_specified,
+            network.diffusive_network_data,
+            network.topobathy_df,
+            network.refactored_diffusive_domain,
+            network.refactored_reaches,
             subnetwork_list,
+            network.coastal_boundary_depth_df,
+            network.unrefactored_topobathy_df,
         )
       
         # returns list, first item is run result, second item is subnetwork items
@@ -1007,18 +1031,42 @@ def _handle_args_v03(argv):
     return parser.parse_args(argv)
 
 def nwm_route(
-    network,
-    data_assimilation,
+    downstream_connections,
+    upstream_connections,
+    waterbodies_in_connections,
+    reaches_bytw,
     parallel_compute_method,
     compute_kernel,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
+    independent_networks,
+    param_df,
+    q0,
+    qlats,
+    usgs_df,
+    lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usgs_param_df,
+    reservoir_usace_df,
+    reservoir_usace_param_df,
+    da_parameter_dict,
     assume_short_ts,
     return_courant,
+    waterbodies_df,
+    waterbody_parameters,
+    waterbody_types_df,
+    waterbody_type_specified,
+    diffusive_network_data,
+    topobathy_df,
+    refactored_diffusive_domain,
+    refactored_reaches,
     subnetwork_list,
+    coastal_boundary_depth_df,
+    unrefactored_topobathy_df,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -1035,17 +1083,35 @@ def nwm_route(
 
     start_time_mc = time.time()
     results = compute_nhd_routing_v02(
-        network,
-        data_assimilation,
+        downstream_connections,
+        upstream_connections,
+        waterbodies_in_connections,
+        reaches_bytw,
         compute_kernel,
         parallel_compute_method,
         subnetwork_target_size,  # The default here might be the whole network or some percentage...
         cpu_pool,
+        t0,
         dt,
         nts,
         qts_subdivisions,
+        independent_networks,
+        param_df,
+        q0,
+        qlats,
+        usgs_df,
+        lastobs_df,
+        reservoir_usgs_df,
+        reservoir_usgs_param_df,
+        reservoir_usace_df,
+        reservoir_usace_param_df,
+        da_parameter_dict,
         assume_short_ts,
         return_courant,
+        waterbodies_df,
+        waterbody_parameters,
+        waterbody_types_df,
+        waterbody_type_specified,
         subnetwork_list,
     )
     LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
@@ -1054,7 +1120,7 @@ def nwm_route(
     results = results[0]
     
     # run diffusive side of a hybrid simulation
-    if network.diffusive_network_data:
+    if diffusive_network_data:
         start_time_diff = time.time()
         '''
         # retrieve MC-computed streamflow value at upstream boundary of diffusive mainstem
@@ -1078,12 +1144,23 @@ def nwm_route(
         results.extend(
             compute_diffusive_routing(
                 results,
-                network,
-                data_assimilation,
+                diffusive_network_data,
                 cpu_pool,
+                t0,
                 dt,
                 nts,
+                q0,
+                qlats,
                 qts_subdivisions,
+                usgs_df,
+                lastobs_df,
+                da_parameter_dict,
+                waterbodies_df,
+                topobathy_df,
+                refactored_diffusive_domain,
+                refactored_reaches,
+                coastal_boundary_depth_df,
+                unrefactored_topobathy_df,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
