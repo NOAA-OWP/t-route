@@ -218,40 +218,37 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
     return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usgs_update_time, reservoir_usgs_prev_persisted_flow, reservoir_usgs_persistence_update_time, reservoir_usgs_persistence_index,  reservoir_usace_df_sub, reservoir_usace_df_time, reservoir_usace_update_time, reservoir_usace_prev_persisted_flow, reservoir_usace_persistence_update_time, reservoir_usace_persistence_index, waterbody_types_df_sub
 
 def compute_nhd_routing_v02(
-    network,
-    data_assimilation,
+    connections,
+    rconn,
+    wbody_conn,
+    reaches_bytw,
     compute_func_name,
     parallel_compute_method,
     subnetwork_target_size,
     cpu_pool,
+    t0,
     dt,
     nts,
     qts_subdivisions,
+    independent_networks,
+    param_df,
+    q0,
+    qlats,
+    usgs_df,
+    lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usgs_param_df,
+    reservoir_usace_df,
+    reservoir_usace_param_df,
+    da_parameter_dict,
     assume_short_ts,
     return_courant,
+    waterbodies_df,
+    waterbody_parameters,
+    waterbody_types_df,
+    waterbody_type_specified,
     subnetwork_list,
 ):
-
-    connections = network.connections
-    rconn = network.reverse_network
-    wbody_conn = network.waterbody_connections
-    reaches_bytw = network.reaches_by_tailwater
-    t0 = network.t0
-    independent_networks = network.independent_networks
-    param_df = network.dataframe
-    q0 = network.q0
-    qlats = network.qlateral
-    usgs_df = data_assimilation.usgs_df
-    lastobs_df = data_assimilation.lastobs_df
-    reservoir_usgs_df = data_assimilation.reservoir_usgs_df
-    reservoir_usgs_param_df = data_assimilation.reservoir_usgs_param_df
-    reservoir_usace_df = data_assimilation.reservoir_usace_df
-    reservoir_usace_param_df = data_assimilation.reservoir_usace_param_df
-    da_parameter_dict = data_assimilation.assimilation_parameters
-    waterbodies_df = network.waterbody_dataframe
-    waterbody_parameters = network.waterbody_parameters
-    waterbody_types_df = network.waterbody_types_dataframe
-    waterbody_type_specified = network.waterbody_type_specified
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
@@ -1127,27 +1124,24 @@ def compute_nhd_routing_v02(
 
 def compute_diffusive_routing(
     results,
-    network,
-    data_assimilation,
+    diffusive_network_data,
     cpu_pool,
+    t0,
     dt,
     nts,
+    q0,
+    qlats,
     qts_subdivisions,
+    usgs_df,
+    lastobs_df,
+    da_parameter_dict,
+    waterbodies_df,
+    topobathy,
+    refactored_diffusive_domain,
+    refactored_reaches,
+    coastal_boundary_depth_df, 
+    unrefactored_topobathy,
     ):
-
-    diffusive_network_data = network.diffusive_network_data
-    t0 = network.t0
-    q0 = network.q0
-    qlats = network.qlateral
-    usgs_df = data_assimilation.usgs_df
-    lastobs_df = data_assimilation.lastobs_df
-    da_parameter_dict = data_assimilation.assimilation_parameters
-    waterbodies_df = network.waterbody_dataframe
-    topobathy = network.topobathy_df
-    refactored_diffusive_domain = network.refactored_diffusive_domain
-    refactored_reaches = network.refactored_reaches
-    coastal_boundary_depth_df = network.coastal_boundary_depth_df
-    unrefactored_topobathy = network.unrefactored_topobathy_df
 
     results_diffusive = []
     for tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
