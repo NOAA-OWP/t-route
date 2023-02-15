@@ -146,44 +146,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
-        
-    
-    def assemble_forcings(self, run, forcing_parameters, hybrid_parameters, cpu_pool):
-        """
-        Assembles model forcings for hydrological lateral inflows and coastal boundary 
-        depths (hybrid simulations). Run this function after network initialization
-        and after any iteration loop in main.
-        """
-        (self._qlateral, 
-         self._coastal_boundary_depth_df
-        ) = hyfeature_prep.hyfeature_forcing(
-            run, 
-            forcing_parameters, 
-            hybrid_parameters,
-            self._flowpath_dict,
-            self.segment_index,
-            cpu_pool,
-            self._t0,             
-            self._coastal_boundary_depth_df,
-        )
-
-        #Mask out all non-simulated waterbodies
-        #self._dataframe['waterbody'] = self.waterbody_null
-        
-        #This also remaps the initial NHDComID identity to the HY_Features Waterbody ID for the reservoir...
-        #self._dataframe.loc[self._waterbody_df.index, 'waterbody'] = self._waterbody_df.index.name
-        
-        #FIXME should waterbody_df and param_df overlap IDS?  Doesn't seem like it should...
-        #self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
-        #For now, doing it in property waterbody_connections...
-        # Remove duplicate rows...but its not really duplicate...
-        #self._dataframe = (
-        #    self._dataframe.reset_index()
-        #    .drop_duplicates(subset="key")
-        #    .set_index("key")
-        #)
-        self._dataframe.sort_index(inplace=True)
-        self._waterbody_df.sort_index(inplace=True)
 
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
         """Extract waterbody mapping from dataframe.
@@ -191,75 +153,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         return (
             rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
         )
- 
-    
-    def create_routing_network(self, 
-                               conn, 
-                               param_df, 
-                               wbody_conn, gages, 
-                               preprocessing_parameters, 
-                               compute_parameters,
-                               waterbody_parameters
-    ): 
-
-        #--------------------------------------------------------------------------
-        # Creation of routing network data objects. Logical ordering of lower-level
-        # function calls that build individual network data objects.
-        #--------------------------------------------------------------------------        
-        (self._independent_networks,
-         self._reaches_by_tw,
-         self._reverse_network,
-         self.diffusive_network_data,
-         self.topobathy_df,
-         self.refactored_diffusive_domain,
-         self.refactored_reaches,
-         self.unrefactored_topobathy_df
-        ) = hyfeature_prep.hyfeature_hybrid_routing_preprocess(
-            conn,
-            param_df,
-            wbody_conn,
-            gages,
-            preprocessing_parameters,
-            compute_parameters,
-            waterbody_parameters, 
-        )
-        return (self._independent_networks,
-                self._reaches_by_tw,
-                self._reverse_network,
-                self.diffusive_network_data,
-                self.topobathy_df,
-                self.refactored_diffusive_domain,
-                self.refactored_reaches,
-                self.unrefactored_topobathy_df)
-
-    def new_q0(self, run_results):
-        """
-        Prepare a new q0 dataframe with initial flow and depth to act as
-        a warmstate for the next simulation chunk.
-        """
-        self._q0 = pd.concat(
-            [
-                pd.DataFrame(
-                    r[1][:, [-3, -3, -1]], index=r[0], columns=["qu0", "qd0", "h0"]
-                )
-                for r in run_results
-            ],
-            copy=False,
-        )
-        return self._q0
-    
-    def update_waterbody_water_elevation(self):           
-        """
-        Update the starting water_elevation of each lake/reservoir
-        with flow and depth values from q0
-        """
-        self._waterbody_df.update(self._q0)
-        
-    def new_t0(self, dt, nts):
-        """
-        Update t0 value for next loop iteration
-        """
-        self._t0 += timedelta(seconds = dt * nts)
 
     @property
     def downstream_flowpath_dict(self):
