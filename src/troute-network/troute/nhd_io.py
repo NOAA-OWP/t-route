@@ -356,6 +356,7 @@ def read_reservoir_parameter_file(
     df1 = (df1.reset_index()
            .drop_duplicates(subset="lake_id")
            .set_index("lake_id")
+           .sort_index()
           )
     
     # recode to levelpool (1) for reservoir DA types set to false
@@ -746,7 +747,7 @@ def write_chrtout(
         LOG.debug("%d CHRTOUT files will be written." % (nfiles_to_write))
         LOG.debug("Extracting flow DataFrame on qts_subdivisions from FVD DataFrame")
         start = time.time()
-        
+
         flow = flowveldepth.loc[:, ::3].iloc[:, qts_subdivisions-1::qts_subdivisions]
         
         LOG.debug("Extracting flow DataFrame took %s seconds." % (time.time() - start))
@@ -773,19 +774,28 @@ def write_chrtout(
         
         LOG.debug("Writing t-route data to %d CHRTOUT files" % (nfiles_to_write))
         start = time.time()
-        with Parallel(n_jobs=cpu_pool) as parallel:
-        
-            jobs = []
-            for i, f in enumerate(chrtout_files[:nfiles_to_write]):
+        try:
+            with Parallel(n_jobs=cpu_pool) as parallel:
+            
+                jobs = []
+                for i, f in enumerate(chrtout_files[:nfiles_to_write]):
 
+                    s = time.time()
+                    variables = {
+                        varname: (qtrt[:,i], dim, attrs)
+                    }
+                    jobs.append(delayed(write_to_netcdf)(f, variables))
+                    #LOG.debug("Writing %s." % (f))
+                    
+                parallel(jobs)
+        except:
+            for i, f in enumerate(chrtout_files[:nfiles_to_write]):
                 s = time.time()
                 variables = {
-                    varname: (qtrt[:,i], dim, attrs)
+                    varname: (qtrt[:i], dim, attrs)
                 }
-                jobs.append(delayed(write_to_netcdf)(f, variables))
+                write_to_netcdf(f, variables)
                 LOG.debug("Writing %s." % (f))
-                
-            parallel(jobs)
                
         LOG.debug("Writing t-route data to %d CHRTOUT files took %s seconds." % (nfiles_to_write, (time.time() - start)))
         

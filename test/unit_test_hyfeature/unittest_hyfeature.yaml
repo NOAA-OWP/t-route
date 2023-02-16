@@ -45,7 +45,7 @@ compute_parameters:
         #wrf_hydro_waterbody_restart_file: restart/HYDRO_RST.2020-08-26_00:00_DOMAIN1
         #wrf_hydro_waterbody_ID_crosswalk_file    : domain/LAKEPARM_NWMv2.1.nc 
         #wrf_hydro_waterbody_crosswalk_filter_file: domain/LAKEPARM_NWMv2.1.nc
-        hyfeature_channel_restart_file: restart/201512010000NEXOUT.csv
+        start_datetime: "2015-12-01_00:00:00"
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/coastal_domain.yaml  
@@ -60,7 +60,7 @@ compute_parameters:
         qts_subdivisions            : 12
         dt                          : 300 # [sec]
         qlat_input_folder           : channel_forcing/ 
-        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1"
+        qlat_file_pattern_filter    : "*NEXOUT.csv"
         nexus_input_folder          : channel_forcing/ 
         nexus_file_pattern_filter   : "*NEXOUT.csv" #OR "*NEXOUT.parquet" OR "nex-*"
         binary_nexus_file_folder    : binary_files # this is required if nexus_file_pattern_filter="nex-*"

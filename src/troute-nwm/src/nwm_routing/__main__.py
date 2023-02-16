@@ -4,7 +4,6 @@ import math
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from collections import defaultdict
 from pathlib import Path
 import concurrent.futures
 
@@ -25,11 +24,9 @@ from .preprocess import (
 from .output import nwm_output_generator
 from .log_level_set import log_level_set
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
-import troute.nhd_network as nhd_network
+
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
-import troute.routing.diffusive_utils as diff_utils
-import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
 
@@ -76,22 +73,17 @@ def main_v04(argv):
     # perform initial warmstate preprocess.
     if showtiming:
         network_start_time = time.time()
-        
+    
     #if "ngen_nexus_file" in supernetwork_parameters:
     if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters,
+                                    data_assimilation_parameters,
                                     restart_parameters,
+                                    compute_parameters,
                                     forcing_parameters,
+                                    hybrid_parameters,
                                     verbose=True, showtiming=showtiming) 
-
-        network.create_routing_network(network.connections,
-                                       network.dataframe, 
-                                       network.waterbody_connections,
-                                       network.gages,
-                                       preprocessing_parameters, 
-                                       compute_parameters,
-                                       waterbody_parameters,)
         
     elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
@@ -100,7 +92,7 @@ def main_v04(argv):
                              forcing_parameters,
                              compute_parameters,
                              data_assimilation_parameters,
-                             preprocessing_parameters,
+                             hybrid_parameters,
                              verbose=True,
                              showtiming=showtiming,          
                             )
@@ -110,10 +102,7 @@ def main_v04(argv):
         task_times['network_creation_time'] = network_end_time - network_start_time
 
     # Create run_sets: sets of forcing files for each loop
-    if supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
-        run_sets = nnu.build_forcing_sets(forcing_parameters, network.t0)
-    elif supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
-        run_sets = hnu.build_forcing_sets(forcing_parameters, network.t0)
+    run_sets = network.build_forcing_sets()
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
@@ -126,22 +115,22 @@ def main_v04(argv):
         parity_sets = []
 
     # Create forcing data within network object for first loop iteration
-    network.assemble_forcings(run_sets[0], forcing_parameters, hybrid_parameters, cpu_pool)
+    network.assemble_forcings(run_sets[0],)
     
     # Create data assimilation object from da_sets for first loop iteration
     # TODO: Add data_assimilation for hyfeature network
-    if 1==2:
-        data_assimilation = AllDA(data_assimilation_parameters,
-                                  run_parameters,
-                                  waterbody_parameters,
-                                  network,
-                                  da_sets[0])
+    data_assimilation = AllDA(
+        data_assimilation_parameters,
+        run_parameters,
+        waterbody_parameters,
+        network,
+        da_sets[0]
+        )
 
     if showtiming:
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - network_end_time
 
-   
     parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
     subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
     qts_subdivisions = forcing_parameters.get("qts_subdivisions", 1)
@@ -170,12 +159,12 @@ def main_v04(argv):
             network.connections, 
             network.reverse_network, 
             network.waterbody_connections, 
-            network._reaches_by_tw, ## check: def name is different from return self._ ..
+            network.reaches_by_tailwater,
             parallel_compute_method,
             compute_kernel,
             subnetwork_target_size,
             cpu_pool,
-            network.t0,  ## check if t0 is being updated
+            network.t0,
             dt,
             nts,
             qts_subdivisions,
@@ -183,18 +172,18 @@ def main_v04(argv):
             network.dataframe,
             network.q0,
             network._qlateral,
-            pd.DataFrame(), #data_assimilation.usgs_df,
-            pd.DataFrame(), #data_assimilation.lastobs_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usgs_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usgs_param_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usace_df,
-            pd.DataFrame(), #data_assimilation.reservoir_usace_param_df,
-            {}, #data_assimilation.assimilation_parameters,
+            data_assimilation.usgs_df,
+            data_assimilation.lastobs_df,
+            data_assimilation.reservoir_usgs_df,
+            data_assimilation.reservoir_usgs_param_df,
+            data_assimilation.reservoir_usace_df,
+            data_assimilation.reservoir_usace_param_df,
+            data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
-            network._waterbody_df, ## check:  network._waterbody_df ?? def name is different from return self._ ..
+            network.waterbody_dataframe,
             waterbody_parameters,
-            network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
+            network.waterbody_types_dataframe,
             network.waterbody_type_specified,
             network.diffusive_network_data,
             network.topobathy_df,
@@ -217,6 +206,13 @@ def main_v04(argv):
         network.new_q0(run_results)
         network.update_waterbody_water_elevation()    
         
+        # update reservoir parameters and lastobs_df
+        data_assimilation.update_after_compute(
+            run_results,
+            data_assimilation_parameters, 
+            run_parameters,
+            )
+
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
             nhd_io.write_lite_restart(
@@ -232,19 +228,14 @@ def main_v04(argv):
             network.new_t0(dt,nts)
             
             # update forcing data
-            network.assemble_forcings(run_sets[run_set_iterator + 1],
-                                      forcing_parameters,
-                                      hybrid_parameters,
-                                      cpu_pool)
+            network.assemble_forcings(run_sets[run_set_iterator + 1],)
             
             # get reservoir DA initial parameters for next loop iteration
-            # TODO: Add data_assimilation for hyfeature network
-            if 1==2: 
-                data_assimilation.update(run_results,
-                                     data_assimilation_parameters,
-                                     run_parameters,
-                                     network,
-                                     da_sets[run_set_iterator + 1])
+            data_assimilation.update_for_next_loop(
+                data_assimilation_parameters,
+                run_parameters,
+                network,
+                da_sets[run_set_iterator + 1])
             
             if showtiming:
                 forcing_end_time = time.time()
@@ -252,7 +243,8 @@ def main_v04(argv):
 
         if showtiming:
             output_start_time = time.time()
-
+        
+        #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
             run_results,
@@ -264,13 +256,14 @@ def main_v04(argv):
             qts_subdivisions,
             compute_parameters.get("return_courant", False),
             cpu_pool,
-            network._waterbody_df,  ## check:  network._waterbody_df ?? def name is different from return self._ ..
-            network._waterbody_types_df, ## check:  network._waterbody_types_df ?? def name is different from return self._ ..
+            network.waterbody_dataframe,
+            network.waterbody_types_dataframe,
             data_assimilation_parameters,
-            pd.DataFrame(), #data_assimilation.lastobs_df,
-            pd.DataFrame(), #network.link_gage_df,
-            None, #network.link_lake_crosswalk, 
+            data_assimilation.lastobs_df,
+            network.link_gage_df,
+            network.link_lake_crosswalk, 
         )
+        
 
         if showtiming:
             output_end_time = time.time()
@@ -1153,7 +1146,7 @@ def nwm_route(
                 refactored_diffusive_domain,
                 refactored_reaches,
                 coastal_boundary_depth_df,
-                unrefactored_topobathy_df, 
+                unrefactored_topobathy_df,
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))

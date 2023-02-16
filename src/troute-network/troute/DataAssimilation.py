@@ -6,6 +6,7 @@ import pathlib
 import time
 import xarray as xr
 from collections import defaultdict
+from datetime import datetime
 
 #FIXME parameterize into construciton
 showtiming = True
@@ -798,9 +799,27 @@ class AllDA(DataAssimilation):
         # an error. Need to think through this more. 
         if not self._usgs_df.empty:
             self._usgs_df = self._usgs_df.loc[:,network.t0:]
+        
+    def update_after_compute(self, run_results, data_assimilation_parameters, run_parameters,):
+        '''
+        
+        '''
+        # get reservoir DA initial parameters for next loop itteration
+        self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_reservoir_da_params(run_results)
 
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
 
-    def update(self, run_results, data_assimilation_parameters, run_parameters, network, da_run):
+        if streamflow_da_parameters:
+            if streamflow_da_parameters.get('streamflow_nudging', False):
+                self._last_obs_df = new_lastobs(run_results, run_parameters.get("dt") * run_parameters.get("nts"))
+
+    def update_for_next_loop(
+        self,
+        data_assimilation_parameters, 
+        run_parameters, 
+        network, 
+        da_run
+        ):
         '''
         Function to update data assimilation object for the next loop iteration.
         
@@ -834,9 +853,6 @@ class AllDA(DataAssimilation):
             - reservoir_usace_df       (DataFrame): USACE reservoir observations
             - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
         '''
-        # get reservoir DA initial parameters for next loop itteration
-        self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_reservoir_da_params(run_results)
-        
         # update usgs_df if it is not empty
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
         reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
@@ -917,21 +933,21 @@ class AllDA(DataAssimilation):
         # but there are DA parameters from the previous loop, then create a
         # dummy observations df. This allows the reservoir persistence to continue across loops.
         # USGS Reservoirs
-        if not network._waterbody_types_df.empty:
-            if 2 in network._waterbody_types_df['reservoir_type'].unique():
-                if self._reservoir_usgs_df.empty and len(self._reservoir_usgs_param_df.index) > 0:
+        if not network.waterbody_types_dataframe.empty:
+            if 2 in network.waterbody_types_dataframe['reservoir_type'].unique():
+                if self.reservoir_usgs_df.empty and len(self.reservoir_usgs_param_df.index) > 0:
                     self._reservoir_usgs_df = pd.DataFrame(
                         data    = np.nan, 
-                        index   = self._reservoir_usgs_param_df.index, 
+                        index   = self.reservoir_usgs_param_df.index, 
                         columns = [network.t0]
                     )
 
             # USACE Reservoirs   
-            if 3 in network._waterbody_types_df['reservoir_type'].unique():
-                if self._reservoir_usace_df.empty and len(self._reservoir_usace_param_df.index) > 0:
+            if 3 in network.waterbody_types_dataframe['reservoir_type'].unique():
+                if self.reservoir_usace_df.empty and len(self.reservoir_usace_param_df.index) > 0:
                     self._reservoir_usace_df = pd.DataFrame(
                         data    = np.nan, 
-                        index   = self._reservoir_usace_param_df.index, 
+                        index   = self.reservoir_usace_param_df.index, 
                         columns = [network.t0]
                     )
 
@@ -940,17 +956,13 @@ class AllDA(DataAssimilation):
             if 4 in network._waterbody_types_df['reservoir_type'].unique():
                 waterbody_parameters = update_lookback_hours(run_parameters.get("dt"), run_parameters.get("nts"), waterbody_parameters)
             '''
-        
-        if streamflow_da_parameters:
-            if streamflow_da_parameters.get('streamflow_nudging', False):
-                self._last_obs_df = new_lastobs(run_results, run_parameters.get("dt") * run_parameters.get("nts"))
-        
+
         # Trim the time-extent of the streamflow_da usgs_df
         # what happens if there are timeslice files missing on the front-end? 
         # if the first column is some timestamp greater than t0, then this will throw
         # an error. Need to think through this more. 
-        if not self._usgs_df.empty:
-            self._usgs_df = self._usgs_df.loc[:,network.t0:]
+        if not self.usgs_df.empty:
+            self._usgs_df = self.usgs_df.loc[:,network.t0:]
     
     @property
     def assimilation_parameters(self):
