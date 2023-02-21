@@ -46,8 +46,10 @@ class bmi_troute(Bmi):
     _input_var_names = ['land_surface_water_source__volume_flow_rate',
                         'coastal_boundary__depth', #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
                         'usgs_gage_observation__volume_flow_rate', #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
-                        'usace_gage_observation__volume_flow_rate', #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
+                        'reservoir_usgs_gage_observation__volume_flow_rate', #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
+                        'reservoir_usace_gage_observation__volume_flow_rate', #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
                         'rfc_gage_observation__volume_flow_rate' #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
+                        'lastobs__volume_flow_rate' #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
                        ]
 
     #---------------------------------------------
@@ -76,8 +78,10 @@ class bmi_troute(Bmi):
         'land_surface_water_source__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'coastal_boundary__depth':['depth_m', 'm'],
         'usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'rfc_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1']
+        'reservoir_usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        'reservoir_usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        'rfc_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        'lastobs__volume_flow_rate':['streamflow_cms','m3 s-1']
     }
 
     #------------------------------------------------------
@@ -137,35 +141,53 @@ class bmi_troute(Bmi):
             'cpu_pool': self._compute_parameters.get('cpu_pool')
             }
 
+        self._network = tr.HYFeaturesNetwork(
+            self._supernetwork_parameters,
+            waterbody_parameters=self._waterbody_parameters,
+            restart_parameters=self._restart_parameters,
+            forcing_parameters=self._forcing_parameters,
+            data_assimilation_parameters=self._data_assimilation_parameters,
+            compute_parameters=self._compute_parameters,
+            hybrid_parameters=self._hybrid_parameters,
+            verbose=False, showtiming=False) 
+        
+        # create empty data assimilation object that will get values during 'update' function. 
+        #TODO: Edit this to be done in DataAssimilation module, EmptyDA?
+        temp_DA_params = {
+            'streamflow_da': {'streamflow_nudging': False},
+            'reservoir_da': False,
+        }
+        self._data_assimilation = tr.AllDA(
+            temp_DA_params,
+            self._run_parameters,
+            self._waterbody_parameters,
+            self._network,
+            [])
+
         # Set number of time steps (1 hour)
         self._nts = 12
         
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
-        for var_name in list(self._var_name_units_map.keys()):
-            # ---------- All the variables are single values ------------------#
-            # ---------- so just set to zero for now.        ------------------#
-            self._values[var_name] = np.zeros(self._network.dataframe.shape[0])
-            setattr( self, var_name, 0 )
-            
-        '''
-        # -------------- Update dimensions of DA variables --------------------# 
-        ####################################
-        # Maximum lookback hours from reservoir configurations
-        usgs_shape = self._network._waterbody_types_df[self._network._waterbody_types_df['reservoir_type']==2].shape[0]
-        usace_shape = self._network._waterbody_types_df[self._network._waterbody_types_df['reservoir_type']==3].shape[0]
-        rfc_shape = self._network._waterbody_types_df[self._network._waterbody_types_df['reservoir_type']==4].shape[0]
+        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(self._network.dataframe.shape[0])
+        self._values['channel_water_flow__speed'] = np.zeros(self._network.dataframe.shape[0])
+        self._values['channel_water__mean_depth'] = np.zeros(self._network.dataframe.shape[0])
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(self._network.waterbody_dataframe.shape[0])
+        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(self._network.waterbody_dataframe.shape[0])
+        self._values['lake_surface__elevation'] = np.zeros(self._network.waterbody_dataframe.shape[0])
+
+        #TODO Nexus or segemnt IDs?
+        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(self._network.dataframe.shape[0]) 
+
+        self._values['coastal_boundary__depth'] = np.zeros(self._network.coastal_boundary_depth_df.shape[0])
+        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.usgs_df.shape[0])
+        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usgs_df.shape[0])
+        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usace_df.shape[0])
+        self._values['lastobs__volume_flow_rate'] = np.zeros(self._data_assimilation.lastobs_df.shape[0])
         
-        max_lookback_hrs = max(self._data_assimilation_parameters.get('timeslice_lookback_hours'),
-                               self._waterbody_parameters.get('rfc').get('reservoir_rfc_forecasts_lookback_hours'))
-        
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros((usgs_shape,max_lookback_hrs*4))
-        setattr( self, 'usgs_gage_observation__volume_flow_rate', 0 )
-        self._values['usace_gage_observation__volume_flow_rate'] = np.zeros((usace_shape,max_lookback_hrs*4))
-        setattr( self, 'usace_gage_observation__volume_flow_rate', 0 )
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros((rfc_shape,max_lookback_hrs*4))
-        setattr( self, 'rfc_gage_observation__volume_flow_rate', 0 )
-        '''
+        #TODO Figure out how to load RFC data in if not through Fortran reservoir module...
+        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
+
         
         self._start_time = 0.0
         self._end_time = self._forcing_parameters.get('dt') * self._forcing_parameters.get('nts')
@@ -173,6 +195,7 @@ class bmi_troute(Bmi):
         self._time_step = self._forcing_parameters.get('dt')
         self._time_units = 's'
     
+
     def update(self):
         """Advance model by one time step."""
                 
@@ -188,19 +211,7 @@ class bmi_troute(Bmi):
         self._data_assimilation._usgs_df = pd.DataFrame(self._values['usgs_gage_observation__volume_flow_rate'])
         self._data_assimilation._last_obs_df = pd.DataFrame(self._values['lastobs__volume_flow_rate'])
         self._data_assimilation._reservoir_usgs_df = pd.DataFrame(self._values['reservoir_usgs_gage_observation__volume_flow_rate'])
-        self._data_assimilation._reservoir_usgs_param_df = pd.DataFrame(self._values['reservoir_usgs__parameters'])
         self._data_assimilation._reservoir_usace_df = pd.DataFrame(self._values['reservoir_usace_gage_observation__volume_flow_rate'])
-        self._data_assimilation._reservoir_usace_param_df = pd.DataFrame(self._values['reservoir_usace__parameters'])
-        self._data_assimilation._da_parameter_dict = pd.DataFrame(self._values['DA_parameters'])
-
-        ###NOTE: this is just a place holder, setting DA variables will be done with set_values...
-        self._data_assimilation = tr.build_data_assimilation(
-            self._network,
-            self._data_assimilation_parameters,
-            self._waterbody_parameters,
-            [], #self._da_sets[0],
-            self._forcing_parameters,
-            self._compute_parameters)
 
 
         # Run routing
@@ -245,19 +256,18 @@ class bmi_troute(Bmi):
                          self._network.unrefactored_topobathy_df,)
         
         # update initial conditions with results output
-        self._network.new_nhd_q0(self._run_results)
+        self._network.new_q0(self._run_results)
         self._network.update_waterbody_water_elevation()               
         
         # update t0
         self._network.new_t0(self._time_step,self._nts)
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update(self._run_results,
-                                       self._data_assimilation_parameters,
-                                       self._run_parameters,
-                                       self._network,
-                                       [], #self._da_sets[run_set_iterator + 1]
-                                      )
+        self._data_assimilation.update_after_compute(
+            self._run_results,
+            self._data_assimilation_parameters,
+            self._run_parameters,
+            )
         
         (self._values['channel_exit_water_x-section__volume_flow_rate'], 
          self._values['channel_water_flow__speed'], 
@@ -265,7 +275,7 @@ class bmi_troute(Bmi):
          self._values['lake_water~incoming__volume_flow_rate'], 
          self._values['lake_water~outgoing__volume_flow_rate'], 
          self._values['lake_surface__elevation'],
-        ) = tr.create_output_dataframes(
+        ) = create_output_dataframes(
             self._run_results, 
             self._nts, 
             self._network._waterbody_df,
@@ -602,3 +612,44 @@ class bmi_troute(Bmi):
     def _parse_config(self, cfg):
         cfg_list = [cfg.get('flag'),cfg.get('file')]
         return cfg_list
+
+
+def create_output_dataframes(results, nts, waterbodies_df, link_lake_crosswalk):
+    
+    qvd_columns = pd.MultiIndex.from_product(
+        [range(int(nts)), ["q", "v", "d"]]
+    ).to_flat_index()
+    
+    flowveldepth = pd.concat(
+        [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results], copy=False,
+    )
+    
+    # create waterbody dataframe for output to netcdf file
+    i_columns = pd.MultiIndex.from_product(
+        [range(int(nts)), ["i"]]
+    ).to_flat_index()
+    
+    wbdy = pd.concat(
+        [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
+        copy=False,
+    )
+    
+    wbdy_id_list = waterbodies_df.index.values.tolist()
+
+    i_lakeout_df = wbdy.loc[wbdy_id_list].iloc[:,-1]
+    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-3]
+    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-1]
+    # lakeout = pd.concat([i_df, q_df, d_df], axis=1)
+    
+    # replace waterbody lake_ids with outlet link ids
+    #TODO Update the following line to fit with HyFeatures. Do we need to replace IDs? Or replace
+    # waterbody_ids with the downstream segment?
+    #flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
+    
+    q_channel_df = flowveldepth.iloc[:,-3]
+    v_channel_df = flowveldepth.iloc[:,-2]
+    d_channel_df = flowveldepth.iloc[:,-1]
+    
+    segment_ids = flowveldepth.index.values.tolist()
+
+    return q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
