@@ -153,12 +153,8 @@ class bmi_troute(Bmi):
         
         # create empty data assimilation object that will get values during 'update' function. 
         #TODO: Edit this to be done in DataAssimilation module, EmptyDA?
-        temp_DA_params = {
-            'streamflow_da': {'streamflow_nudging': False},
-            'reservoir_da': False,
-        }
         self._data_assimilation = tr.AllDA(
-            temp_DA_params,
+            self._data_assimilation_parameters,
             self._run_parameters,
             self._waterbody_parameters,
             self._network,
@@ -177,7 +173,7 @@ class bmi_troute(Bmi):
         self._values['lake_surface__elevation'] = np.zeros(self._network.waterbody_dataframe.shape[0])
 
         #TODO Nexus or segemnt IDs?
-        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(self._network.dataframe.shape[0]) 
+        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(self._network.segment_index.shape[0]) 
 
         self._values['coastal_boundary__depth'] = np.zeros(self._network.coastal_boundary_depth_df.shape[0])
         self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.usgs_df.shape[0])
@@ -201,7 +197,7 @@ class bmi_troute(Bmi):
                 
         # Set input data into t-route objects
         self._network._qlateral = pd.DataFrame(self._values['land_surface_water_source__volume_flow_rate'],
-                                                            index=self._network.dataframe.index.to_numpy())
+                                                            index=self._network.segment_index.to_numpy())
         self._network._coastal_boundary_depth_df = pd.DataFrame(self._values['coastal_boundary__depth'])
 
 
