@@ -4,6 +4,7 @@ import troute.nhd_network as nhd_network
 from datetime import datetime, timedelta
 import pandas as pd
 from collections import Counter
+import math
 
 
 def adj_alt1(
@@ -1455,7 +1456,7 @@ def diffusive_input_data_v02(
     #                  Prepare lateral inflow data
     # ---------------------------------------------------------------------------------
     nts_ql_g = (
-        int((tfin_g - t0_g) * 3600.0 / dt_ql_g)
+        math.ceil((tfin_g - t0_g) * 3600.0 / dt_ql_g)
     )  # the number of the entire time steps of lateral flow data
 
     qlat_g = np.zeros((nts_ql_g, mxncomp_g, nrch_g))
