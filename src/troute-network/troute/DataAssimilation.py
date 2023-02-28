@@ -8,6 +8,291 @@ import xarray as xr
 from collections import defaultdict
 from datetime import datetime
 
+
+### Base DA class:
+class AbstractDA(ABC):
+    """
+    
+    """
+    __slots__ = ["_usgs_df", "_last_obs_df", "_reservoir_usgs_df", "_reservoir_usgs_param_df", 
+                "_reservoir_usace_df", "_reservoir_usace_param_df", "_da_parameter_dict"]
+    def __init__(self, network):
+        # Trim the time-extent of the streamflow_da usgs_df
+        # what happens if there are timeslice files missing on the front-end? 
+        # if the first column is some timestamp greater than t0, then this will throw
+        # an error. Need to think through this more. 
+        if not self._usgs_df.empty:
+            self._usgs_df = self._usgs_df.loc[:,network.t0:]
+
+    @property
+    def usgs_df(self):
+        return self._usgs_df
+
+
+### Fundamental DA class definitions:
+class NudgingDA(AbstractDA):
+    """
+    
+    """
+    def __init__(self, data_assimilation_parameters, network, wb_gage_ids=None, run_parameters=None, da_run=[]):
+
+        # isolate user-input parameters for streamflow data assimilation
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+
+        da_parameter_dict = {"da_decay_coefficient": data_assimilation_parameters.get("da_decay_coefficient", 120),
+                             "diffusive_streamflow_nudging": False}
+        
+        # determine if user explictly requests streamflow DA
+        nudging = False
+        if streamflow_da_parameters:
+            nudging = streamflow_da_parameters.get('streamflow_nudging', False)
+            
+            da_parameter_dict["diffusive_streamflow_nudging"] = streamflow_da_parameters.get("diffusive_streamflow_nudging", False)
+        
+        self._da_parameter_dict = da_parameter_dict
+
+        self._last_obs_df = pd.DataFrame()
+        self._usgs_df = pd.DataFrame()
+
+        # If streamflow nudging is turned on, create lastobs_df and usgs_df:
+        if nudging:
+            if wb_gage_ids:
+                self._usgs_df = pd.DataFrame(data=None,
+                                             index=wb_gage_ids)
+                self._last_obs_df = pd.DataFrame(data=None,
+                                                 index=wb_gage_ids)
+            
+            else:
+                lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+                lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
+                
+                if lastobs_file:
+                    self._last_obs_df = build_lastobs_df(
+                        lastobs_file,
+                        lastobs_crosswalk_file,
+                        lastobs_start,
+                    )
+                
+                # replace link ids with lake ids, for gages at waterbody outlets, 
+                # otherwise, gage data will not be assimilated at waterbody outlet
+                # segments.
+                if network.link_lake_crosswalk:
+                    self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
+                
+                self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+        
+
+
+class PersistenceDA(AbstractDA):
+    """
+    
+    """
+    def __init__(self, data_assimilation_parameters, network, wb_gage_ids=None, run_parameters=None, da_run=[]):
+        
+        # isolate user-input parameters for reservoir data assimilation
+        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+
+        # check if user explictly requests USGS and/or USACE reservoir DA
+        usgs_persistence  = False
+        usace_persistence = False
+        if reservoir_da_parameters:
+            usgs_persistence  = reservoir_da_parameters.get('reservoir_persistence_usgs', False)
+            usace_persistence = reservoir_da_parameters.get('reservoir_persistence_usace', False)
+
+        #--------------------------------------------------------------------------------
+        # Assemble Reservoir dataframes
+        #--------------------------------------------------------------------------------
+        reservoir_usgs_df = pd.DataFrame()
+        reservoir_usgs_param_df = pd.DataFrame()
+        reservoir_usace_df = pd.DataFrame()
+        reservoir_usace_param_df = pd.DataFrame()
+
+        if wb_gage_ids:
+            if usgs_persistence:
+                reservoir_usgs_df = pd.DataFrame(data=None,
+                                                index=wb_gage_ids)
+                # create reservoir hybrid DA initial parameters dataframe    
+                if not reservoir_usgs_df.empty:
+                    reservoir_usgs_param_df = pd.DataFrame(
+                        data = 0, 
+                        index = reservoir_usgs_df.index,
+                        columns = ['update_time']
+                    )
+                    reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
+                    reservoir_usgs_param_df['persistence_update_time'] = 0
+                    reservoir_usgs_param_df['persistence_index'] = 0
+                else:
+                    reservoir_usgs_param_df = pd.DataFrame()
+                
+        else:
+            if usgs_persistence:
+                # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
+                if not self._usgs_df.empty: 
+                    
+                    gage_lake_df = (
+                        network.usgs_lake_gage_crosswalk.
+                        reset_index().
+                        set_index(['usgs_gage_id']) # <- TODO use input parameter for this
+                    )
+                    
+                    # build dataframe that crosswalks gageIDs to segmentIDs
+                    gage_link_df = (
+                        network.link_gage_df['gages'].
+                        reset_index().
+                        set_index(['gages'])
+                    )
+                    
+                    # build dataframe that crosswalks segmentIDs to lakeIDs
+                    link_lake_df = (
+                        gage_lake_df.
+                        join(gage_link_df, how = 'inner').
+                        reset_index().set_index('link').
+                        drop(['index'], axis = 1)
+                    )
+
+                    # resample `usgs_df` to 15 minute intervals
+                    usgs_df_15min = (
+                        self._usgs_df.
+                        transpose().
+                        resample('15min').asfreq().
+                        transpose()
+                    )
+
+                    # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
+                    reservoir_usgs_df = (
+                        usgs_df_15min.join(link_lake_df, how = 'inner').
+                        reset_index().
+                        set_index('usgs_lake_id').
+                        drop(['index'], axis = 1)
+                    )
+                    
+                    # create reservoir hybrid DA initial parameters dataframe    
+                    if not reservoir_usgs_df.empty:
+                        reservoir_usgs_param_df = pd.DataFrame(
+                            data = 0, 
+                            index = reservoir_usgs_df.index ,
+                            columns = ['update_time']
+                        )
+                        reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
+                        reservoir_usgs_param_df['persistence_update_time'] = 0
+                        reservoir_usgs_param_df['persistence_index'] = 0
+                    else:
+                        reservoir_usgs_param_df = pd.DataFrame()
+                    
+                else:
+                    (
+                        reservoir_usgs_df,
+                        reservoir_usgs_param_df
+                    ) = _create_reservoir_df(
+                        data_assimilation_parameters,
+                        reservoir_da_parameters,
+                        streamflow_da_parameters,
+                        run_parameters,
+                        network,
+                        da_run,
+                        lake_gage_crosswalk = network.usgs_lake_gage_crosswalk,
+                        res_source = 'usgs')
+            else:
+                reservoir_usgs_df = pd.DataFrame()
+                reservoir_usgs_param_df = pd.DataFrame()
+                
+            if usace_persistence:
+                (
+                    reservoir_usace_df,
+                    reservoir_usace_param_df
+                ) = _create_reservoir_df(
+                    data_assimilation_parameters,
+                    reservoir_da_parameters,
+                    streamflow_da_parameters,
+                    run_parameters,
+                    network,
+                    da_run,
+                    lake_gage_crosswalk = network.usace_lake_gage_crosswalk,
+                    res_source = 'usace')
+            else:
+                reservoir_usace_df = pd.DataFrame()
+                reservoir_usace_param_df = pd.DataFrame()
+        
+        self._reservoir_usgs_df = reservoir_usgs_df
+        self._reservoir_usgs_param_df = reservoir_usgs_param_df
+        self._reservoir_usace_df = reservoir_usace_df
+        self._reservoir_usace_param_df = reservoir_usace_param_df
+    
+
+class RFCDA(AbstractDA):
+    """
+    
+    """
+    def __init__(self,):
+
+        pass
+
+
+### Combinations of fundamental DA classes:
+class Data_Assimilation(NudgingDA, PersistenceDA, RFCDA):
+    """
+    
+    """
+    def __init__(self, data_assimilation_parameters, network, wb_gage_ids=None, run_parameters=None, da_run=[]):
+
+        NudgingDA.__init__(self, data_assimilation_parameters, network, wb_gage_ids, run_parameters, da_run)
+        PersistenceDA.__init__(self, data_assimilation_parameters, network, wb_gage_ids, run_parameters, da_run)
+        RFCDA.__init__(self,)
+    
+    def update_after_compute(self,):
+        '''
+        
+        '''
+        pass
+
+    def update_for_next_loop(self,):
+        '''
+       
+        '''
+        pass
+    
+
+    @property
+    def assimilation_parameters(self):
+        return self._da_parameter_dict
+    
+    @property
+    def lastobs_df(self):
+        return self._last_obs_df
+
+    @property
+    def usgs_df(self):
+        return self._usgs_df
+    
+    @property
+    def reservoir_usgs_df(self):
+        return self._reservoir_usgs_df
+    
+    @property
+    def reservoir_usgs_param_df(self):
+        return self._reservoir_usgs_param_df
+    
+    @property
+    def reservoir_usace_df(self):
+        return self._reservoir_usace_df
+    
+    @property
+    def reservoir_usace_param_df(self):
+        return self._reservoir_usace_param_df
+
+    
+
+
+
+
+
+
+
+
+
+
 #FIXME parameterize into construciton
 showtiming = True
 verbose = True
@@ -506,6 +791,7 @@ def read_reservoir_parameter_file(
     
     return df1, usgs_crosswalk, usace_crosswalk
 
+
 class DataAssimilation(ABC):
     """
     
@@ -515,7 +801,7 @@ class DataAssimilation(ABC):
     @abstractmethod
     def usgs_df(self):
         pass
-
+'''
 class NudgingDA(DataAssimilation):
     """
     
@@ -582,7 +868,7 @@ class NudgingDA(DataAssimilation):
     @property
     def usgs_df(self):
         return self._usgs_df
-
+'''
     
 class AllDA(DataAssimilation):
     """
