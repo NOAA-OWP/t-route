@@ -8,6 +8,8 @@ import yaml
 
 import nwm_routing.__main__ as tr
 
+# Here is the model we want to run
+from model import troute_model
 
 class bmi_troute(Bmi):
 
@@ -79,7 +81,7 @@ class bmi_troute(Bmi):
         'usgs_gage_observation__volume_flow_rate',
         'reservoir_usgs_gage_observation__volume_flow_rate',
         'reservoir_usace_gage_observation__volume_flow_rate', 
-        'rfc_gage_observation__volume_flow_rate' 
+        'rfc_gage_observation__volume_flow_rate', 
         'lastobs__volume_flow_rate' 
         ]
 
@@ -134,14 +136,7 @@ class bmi_troute(Bmi):
         bmi_cfg_file = Path(bmi_cfg_file)
         
         # ------------- Initialize t-route model ------------------------------#
-        self._model(bmi_cfg_file)
-
-        
-
-        
-
-        # Set number of time steps (1 hour)
-        self._nts = 12
+        self._model = troute_model(bmi_cfg_file)
 
         # ----- Create some lookup tabels from the long variable names --------#
         self._var_name_map_long_first = {long_name:self._var_name_units_map[long_name][0] for \
@@ -151,12 +146,9 @@ class bmi_troute(Bmi):
         self._var_units_map = {long_name:self._var_name_units_map[long_name][1] for \
                                           long_name in self._var_name_units_map.keys()}
         
-
-        
-        
-        
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
+        """
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(self._network.dataframe.shape[0])
         self._values['channel_water_flow__speed'] = np.zeros(self._network.dataframe.shape[0])
         self._values['channel_water__mean_depth'] = np.zeros(self._network.dataframe.shape[0])
@@ -172,16 +164,20 @@ class bmi_troute(Bmi):
         self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usgs_df.shape[0])
         self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usace_df.shape[0])
         self._values['lastobs__volume_flow_rate'] = np.zeros(self._data_assimilation.lastobs_df.shape[0])
+        """
+
+        # -------------- Initalize all the variables --------------------------# 
+        # -------------- so that they'll be picked up with the get functions --#
+        for var_name in self._input_var_names + self._output_var_names:
+            # ---------- Temporarily set to 3 values ------------------#
+            # ---------- so just set to zero for now ------------------#
+            self._values[var_name] = np.zeros(3)
         
+        """
         #TODO Figure out how to load RFC data in if not through Fortran reservoir module...
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
+        """
 
-        
-        self._start_time = 0.0
-        self._end_time = self._forcing_parameters.get('dt') * self._forcing_parameters.get('nts')
-        self._time = 0.0
-        self._time_step = self._forcing_parameters.get('dt')
-        self._time_units = 's'
     
     def update(self):
         """Advance model by one time step."""
