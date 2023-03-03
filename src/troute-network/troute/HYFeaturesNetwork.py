@@ -342,29 +342,10 @@ class HYFeaturesNetwork(AbstractNetwork):
         # **********  need to be included in flowpath_attributes  *************
         self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
 
-        cols = self.supernetwork_parameters.get('columns',None)
-        
-        if cols:
-            self._dataframe = self.dataframe[list(cols.values())]
-            # Rename parameter columns to standard names: from route-link names
-            #        key: "link"
-            #        downstream: "to"
-            #        dx: "Length"
-            #        n: "n"  # TODO: rename to `manningn`
-            #        ncc: "nCC"  # TODO: rename to `mannningncc`
-            #        s0: "So"  # TODO: rename to `bedslope`
-            #        bw: "BtmWdth"  # TODO: rename to `bottomwidth`
-            #        waterbody: "NHDWaterbodyComID"
-            #        gages: "gages"
-            #        tw: "TopWdth"  # TODO: rename to `topwidth`
-            #        twcc: "TopWdthCC"  # TODO: rename to `topwidthcc`
-            #        alt: "alt"
-            #        musk: "MusK"
-            #        musx: "MusX"
-            #        cs: "ChSlp"  # TODO: rename to `sideslope`
-            self._dataframe = self.dataframe.rename(columns=reverse_dict(cols))
-            self._dataframe.set_index("key", inplace=True)
-            self._dataframe = self.dataframe.sort_index()
+        self._dataframe = self.dataframe.rename(columns={'segment_id': 'key',
+                                                         'segment_toid': 'downstream'})
+        self._dataframe.set_index("key", inplace=True)
+        self._dataframe = self.dataframe.sort_index()
 
         # numeric code used to indicate network terminal segments
         terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
