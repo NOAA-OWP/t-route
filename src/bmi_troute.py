@@ -168,11 +168,53 @@ class bmi_troute(Bmi):
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
+        #FIXME Do this better..., load size of variables from config file??
+        self._values['segment_id'] = np.zeros(3)
+        self._values['segment_toid'] = np.zeros(3)
+        self._values['dx'] = np.zeros(3)
+        self._values['n'] = np.zeros(3)
+        self._values['ncc'] = np.zeros(3)
+        self._values['s0'] = np.zeros(3)
+        self._values['bw'] = np.zeros(3)
+        self._values['tw'] = np.zeros(3)
+        self._values['twcc'] = np.zeros(3)
+        self._values['alt'] = np.zeros(3)
+        self._values['musk'] = np.zeros(3)
+        self._values['musx'] = np.zeros(3)
+        self._values['cs'] = np.zeros(3)
+        self._values['waterbody_id'] = np.zeros(0)
+        self._values['waterbody_toid'] = np.zeros(0)
+        self._values['LkArea'] = np.zeros(0)
+        self._values['LkMxE'] = np.zeros(0)
+        self._values['OrificeA'] = np.zeros(0)
+        self._values['OrificeC'] = np.zeros(0)
+        self._values['OrificeE'] = np.zeros(0)
+        self._values['WeirC'] = np.zeros(0)
+        self._values['WeirE'] = np.zeros(0)
+        self._values['WeirL'] = np.zeros(0)
+        self._values['ifd'] = np.zeros(0)
+        self._values['qd0'] = np.zeros(0)
+        self._values['h0'] = np.zeros(0)
+        self._values['reservoir_type'] = np.zeros(0)
+        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(3)
+        self._values['coastal_boundary__depth'] = np.zeros(0)
+        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
+        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
+        self._values['lastobs__volume_flow_rate'] = np.zeros(0)
+        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(3)
+        self._values['channel_water_flow__speed'] = np.zeros(3)
+        self._values['channel_water__mean_depth'] = np.zeros(3)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(0)
+        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(0)
+        self._values['lake_surface__elevation'] = np.zeros(0)
+        '''
         for var_name in self._input_var_names + self._output_var_names:
             # ---------- Temporarily set to 3 values ------------------#
             # ---------- so just set to zero for now ------------------#
             self._values[var_name] = np.zeros(3)
-        
+        '''
         """
         #TODO Figure out how to load RFC data in if not through Fortran reservoir module...
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
@@ -182,10 +224,7 @@ class bmi_troute(Bmi):
     def update(self):
         """Advance model by one time step."""
         
-        if self._model._time==0.0:
-            self._model.preprocess_static_vars(self._values) 
-            
-        self._model.run(self._values)
+        self.update_until(self._model._time_step)
 
     def update_frac(self, time_frac):
         """Update model by a fraction of a time step.
@@ -199,61 +238,22 @@ class bmi_troute(Bmi):
         self.update()
         self._model.time_step = time_step
 
-    def update_until(self, then):
+    def update_until(self, until):
         """Update model until a particular time.
         Parameters
         ----------
-        then : float
+        until : int
             Time to run model until in seconds.
         """
-        n_steps = (then - self.get_current_time()) / self.get_time_step()
-        
-        full_nts = self._nts
-        self._nts = n_steps
-        
-        self.update()
-
-        self._nts = full_nts - n_steps
-        
-        '''
-        for _ in range(int(n_steps)):
-            self.update()
-        self.update_frac(n_steps - int(n_steps))
-        '''
+        if self._model._time==0.0:
+            self._model.preprocess_static_vars(self._values) 
+            
+        self._model.run(self._values, until)
 
     def finalize(self):
         """Finalize model."""
 
-        self._values = None
-        self._var_loc = None
-        self._var_grid_id = None
-        self._var_name_map_long_first = None
-        self._var_name_map_short_first = None
-        self._var_units_map = None
-        self._cfg_bmi = None
-        self._network = None
-        self._log_parameters = None
-        self._preprocessing_parameters = None
-        self._supernetwork_parameters = None
-        self._waterbody_parameters = None
-        self._compute_parameters = None
-        self._forcing_parameters = None
-        self._restart_parameters = None
-        self._hybrid_parameters = None
-        self._output_parameters = None
-        self._parity_parameters = None
-        self._data_assimilation_parameters = None
-        self._run_parameters = None
-        self._nts = None
-        self._values = None
-        self._start_time = None
-        self._end_time = None
-        self._time = None
-        self._time_step = None
-        self._time_units = None
-        self._data_assimilation = None
-        self._run_results = None
-        self._subnetwork_list = None
+        self._model = None
 
     def get_var_type(self, var_name):
         """Data type of variable.
@@ -465,10 +465,10 @@ class bmi_troute(Bmi):
         return self._end_time
 
     def get_current_time(self):
-        return self._time
+        return self._model._time
 
     def get_time_step(self):
-        return self._time_step
+        return self._model._time_step
 
     def get_time_units(self):
         return self._time_units
