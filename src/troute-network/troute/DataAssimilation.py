@@ -18,7 +18,7 @@ class NudgingDA:
     """
     __slots__ = ["_usgs_df", "_last_obs_df", "_da_parameter_dict"]
 
-    def __init__(self, network, wb_gage_ids=None, da_run=[]):
+    def __init__(self, network, from_files, value_dict, da_run=[]):
 
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
@@ -43,11 +43,11 @@ class NudgingDA:
 
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
-            if wb_gage_ids:
-                self._usgs_df = pd.DataFrame(data=None,
-                                             index=wb_gage_ids)
-                self._last_obs_df = pd.DataFrame(data=None,
-                                                 index=wb_gage_ids)
+            if not from_files:
+                self._usgs_df = pd.DataFrame(data=value_dict['usgs_gage_observation__volume_flow_rate'],
+                                             index=value_dict['usgs_gage_ids'])
+                self._last_obs_df = pd.DataFrame(data=value_dict['lastobs__volume_flow_rate'],
+                                                 index=value_dict['lastobs_ids'])
             
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
@@ -101,7 +101,8 @@ class NudgingDA:
 
     def update_for_next_loop(self, network, da_run,):
         '''
-        Function to update data assimilation object for the next loop iteration.
+        Function to update data assimilation object for the next loop iteration. This is assumed
+        to not be needed when t-route is run through the BMI.
         
         Arguments:
         ----------
@@ -131,7 +132,7 @@ class PersistenceDA:
     __slots__ = ["_reservoir_usgs_df", "_reservoir_usgs_param_df", 
                  "_reservoir_usace_df", "_reservoir_usace_param_df"]
     
-    def __init__(self, network, wb_gage_ids=None, da_run=[]):
+    def __init__(self, network, from_files, value_dict, da_run=[]):
         
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
@@ -155,10 +156,10 @@ class PersistenceDA:
         reservoir_usace_df = pd.DataFrame()
         reservoir_usace_param_df = pd.DataFrame()
 
-        if wb_gage_ids:
+        if not from_files:
             if usgs_persistence:
-                reservoir_usgs_df = pd.DataFrame(data=None,
-                                                index=wb_gage_ids)
+                reservoir_usgs_df = pd.DataFrame(data=value_dict['reservoir_usgs_gage_observation__volume_flow_rate'],
+                                                 index=value_dict['reservoir_usgs_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
@@ -171,6 +172,22 @@ class PersistenceDA:
                     reservoir_usgs_param_df['persistence_index'] = 0
                 else:
                     reservoir_usgs_param_df = pd.DataFrame()
+            
+            if usace_persistence:
+                reservoir_usace_df = pd.DataFrame(data=value_dict['reservoir_usace_gage_observation__volume_flow_rate'],
+                                                  index=value_dict['reservoir_usace_ids'])
+                # create reservoir hybrid DA initial parameters dataframe    
+                if not reservoir_usace_df.empty:
+                    reservoir_usace_param_df = pd.DataFrame(
+                        data = 0, 
+                        index = reservoir_usace_df.index,
+                        columns = ['update_time']
+                    )
+                    reservoir_usace_param_df['prev_persisted_outflow'] = np.nan
+                    reservoir_usace_param_df['persistence_update_time'] = 0
+                    reservoir_usace_param_df['persistence_index'] = 0
+                else:
+                    reservoir_usace_param_df = pd.DataFrame()
                 
         else:
             if usgs_persistence:
@@ -454,13 +471,13 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     """
     __slots__ = ["_data_assimilation_parameters", "_run_parameters"]
 
-    def __init__(self, network, data_assimilation_parameters, run_parameters, wb_gage_ids=None, da_run=[]):
+    def __init__(self, network, data_assimilation_parameters, run_parameters, from_files=True, value_dict=None, da_run=[]):
 
         self._data_assimilation_parameters = data_assimilation_parameters
         self._run_parameters = run_parameters
 
-        NudgingDA.__init__(self, network, wb_gage_ids, da_run)
-        PersistenceDA.__init__(self, network, wb_gage_ids, da_run)
+        NudgingDA.__init__(self, network, from_files, value_dict, da_run)
+        PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self,)
     
     def update_after_compute(self, run_results,):
