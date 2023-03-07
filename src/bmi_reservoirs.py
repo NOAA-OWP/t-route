@@ -145,6 +145,9 @@ class bmi_reservoir(Bmi):
 
 
         #TODO: ADD DA VARIABLES
+        self._values['gage_observations'] = np.zeros(1)
+        self._values['gage_time'] = np.zeros(1)
+
 
 
         '''
