@@ -4,12 +4,9 @@ import numpy as np
 import pandas as pd
 from bmipy import Bmi
 from pathlib import Path
-import yaml
-
-import nwm_routing.__main__ as tr
 
 # Here is the model we want to run
-from model_reservoir import troute_model
+from model_reservoir import reservoir_model
 
 class bmi_reservoir(Bmi):
 
@@ -110,10 +107,11 @@ class bmi_reservoir(Bmi):
     def initialize(self, bmi_cfg_file=None):
         
         # -------------- Read in the BMI configuration -------------------------#
-        bmi_cfg_file = Path(bmi_cfg_file)
+        if bmi_cfg_file:
+            bmi_cfg_file = Path(bmi_cfg_file)
         
         # ------------- Initialize t-route model ------------------------------#
-        self._model = troute_model(bmi_cfg_file)
+        self._model = reservoir_model(bmi_cfg_file)
 
         # ----- Create some lookup tabels from the long variable names --------#
         self._var_name_map_long_first = {long_name:self._var_name_units_map[long_name][0] for \
@@ -127,46 +125,28 @@ class bmi_reservoir(Bmi):
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
         #FIXME Do this better..., load size of variables from config file??
-        self._values['segment_id'] = np.zeros(3)
-        self._values['segment_toid'] = np.zeros(3)
-        self._values['dx'] = np.zeros(3)
-        self._values['n'] = np.zeros(3)
-        self._values['ncc'] = np.zeros(3)
-        self._values['s0'] = np.zeros(3)
-        self._values['bw'] = np.zeros(3)
-        self._values['tw'] = np.zeros(3)
-        self._values['twcc'] = np.zeros(3)
-        self._values['alt'] = np.zeros(3)
-        self._values['musk'] = np.zeros(3)
-        self._values['musx'] = np.zeros(3)
-        self._values['cs'] = np.zeros(3)
-        self._values['waterbody_id'] = np.zeros(0)
-        self._values['waterbody_toid'] = np.zeros(0)
-        self._values['LkArea'] = np.zeros(0)
-        self._values['LkMxE'] = np.zeros(0)
-        self._values['OrificeA'] = np.zeros(0)
-        self._values['OrificeC'] = np.zeros(0)
-        self._values['OrificeE'] = np.zeros(0)
-        self._values['WeirC'] = np.zeros(0)
-        self._values['WeirE'] = np.zeros(0)
-        self._values['WeirL'] = np.zeros(0)
-        self._values['ifd'] = np.zeros(0)
-        self._values['qd0'] = np.zeros(0)
-        self._values['h0'] = np.zeros(0)
-        self._values['reservoir_type'] = np.zeros(0)
-        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(3)
-        self._values['coastal_boundary__depth'] = np.zeros(0)
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['lastobs__volume_flow_rate'] = np.zeros(0)
-        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(3)
-        self._values['channel_water_flow__speed'] = np.zeros(3)
-        self._values['channel_water__mean_depth'] = np.zeros(3)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(0)
-        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(0)
-        self._values['lake_surface__elevation'] = np.zeros(0)
+        self._values['water_elevation'] = np.zeros(1)
+        self._values['lake_area'] = np.zeros(1)
+        self._values['weir_elevation'] = np.zeros(1)
+        self._values['weir_coefficient'] = np.zeros(1)
+        self._values['weir_length'] = np.zeros(1)
+        self._values['dam_length'] = np.zeros(1)
+        self._values['orifice_elevation'] = np.zeros(1)
+        self._values['orifice_coefficient'] = np.zeros(1)
+        self._values['orifice_area'] = np.zeros(1)
+        self._values['max_depth'] = np.zeros(1)
+        self._values['lake_number'] = np.zeros(1)
+        self._values['initial_fractional_depth'] = np.zeros(1)
+        self._values['upstream_ids'] = np.zeros(1,dtype=int)
+        self._values['res_type'] = np.zeros(1)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(1)
+        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
+        self._values['lake_surface__elevation'] = np.zeros(1)
+
+
+        #TODO: ADD DA VARIABLES
+
+
         '''
         for var_name in self._input_var_names + self._output_var_names:
             # ---------- Temporarily set to 3 values ------------------#
@@ -181,9 +161,29 @@ class bmi_reservoir(Bmi):
     
     def update(self):
         """Advance model by one time step."""
-        
-        self.update_until(self._model._time_step)
+        if self._model._time==0.0:
+            self._model.preprocess_static_vars(self._values) 
 
+        self._model.run(self._values)
+
+    def update_until(self, until):
+        """Update model until a particular time.
+        Parameters
+        ----------
+        until : int
+            Time to run model until in seconds.
+        """
+        time_diff = until - self.get_current_time()
+        n_steps = int(time_diff/self._model._time_step)
+
+        for _ in range(int(n_steps)):
+            self.update()
+
+    def finalize(self):
+        """Finalize model."""
+
+        self._model = None
+    
     def update_frac(self, time_frac):
         """Update model by a fraction of a time step.
         Parameters
@@ -195,23 +195,6 @@ class bmi_reservoir(Bmi):
         self._model.time_step = time_frac * time_step
         self.update()
         self._model.time_step = time_step
-
-    def update_until(self, until):
-        """Update model until a particular time.
-        Parameters
-        ----------
-        until : int
-            Time to run model until in seconds.
-        """
-        if self._model._time==0.0:
-            self._model.preprocess_static_vars(self._values) 
-            
-        self._model.run(self._values, until)
-
-    def finalize(self):
-        """Finalize model."""
-
-        self._model = None
 
     def get_var_type(self, var_name):
         """Data type of variable.
