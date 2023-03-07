@@ -1,14 +1,14 @@
-import numpy as np
+
 import pandas as pd
-from pathlib import Path
-import yaml
+import numpy as np
+from datetime import datetime, timedelta
 
 from array import array
-#from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
-from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool #, run_lp_c #, update_lp_c
-#from troute.network.reservoirs.hybrid.hybrid import MC_Hybrid
-#from troute.network.reservoirs.rfc.rfc import MC_RFC
+from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
+from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 
+#TODO: Once PR#605 is merged, uncomment and use the updated DA objects
+#from troute.DataAssimilation import PersistenceDA, RFCDA
 
 class reservoir_model():
 
@@ -16,7 +16,9 @@ class reservoir_model():
         """
         
         """
-        __slots__ = ['_levelpool','_inflow','_outflow','_water_elevation','_time', '_time_step',]
+        __slots__ = ['_levelpool','_inflow','_outflow','_water_elevation', '_res_type',
+                     '_update_time', '_prev_persisted_flow', '_persistence_update_time',
+                     '_persistence_index', '_time', '_time_step',]
         
         if bmi_cfg_file: #TODO: Do we need a config file for this??
             pass
@@ -25,7 +27,7 @@ class reservoir_model():
 
         self._time = 0.0
         self._time_step = 300.0
-        self._nts = 1
+        self._t0 = datetime(2018, 6, 1, 0, 0, 0) #placeholder...read from config file?
     
     def preprocess_static_vars(self, values: dict):
 
@@ -47,12 +49,19 @@ class reservoir_model():
                 initial_fractional_depth, 0.0, water_elevation]
         
         upstream_ids = array('l', values['upstream_ids'])
-        res_type = values['res_type']
+        self._res_type = values['res_type']
 
-        self._levelpool = MC_Levelpool(0, lake_number, upstream_ids, args, res_type)
+        self._levelpool = MC_Levelpool(0, lake_number, upstream_ids, args, self._res_type)
 
         # Set inflow
         self._inflow = values['lake_water~incoming__volume_flow_rate']
+
+        # Set data assimilation parameters
+        if self._res_type==2 or self._res_type==3:
+            self._update_time = 0
+            self._prev_persisted_outflow = np.nan
+            self._persistence_index = 0
+            self._persistence_update_time = 0
 
 
     def run(self, values: dict,):
@@ -70,103 +79,59 @@ class reservoir_model():
         Returns
         -------
         """
+        # Get water elevation before levelpool calculation
+        initial_water_elevation = self._levelpool.water_elevation
+
         # Run routing
         self._outflow, self._water_elevation = self._levelpool.run(self._inflow, 0.0, self._time_step)
         
+        # Data Assimilation
+        if self._res_type==2 or self._res_type==3:
+            gage_time = (values['gage_time']-self._t0).total_seconds() #TODO: will gage time be an array of times?
+
+            (
+                new_outflow,
+                new_persisted_outflow,
+                new_water_elevation, 
+                new_update_time, 
+                new_persistence_index, 
+                new_persistence_update_time
+            ) = reservoir_hybrid_da(
+                values['lake_number'],        # lake identification number
+                values['gage_observations'],  # gage observation values (cms)
+                gage_time,                    # gage observation times (sec)
+                self._time,                   # model time (sec)
+                self._prev_persisted_outflow, # previously persisted outflow (cms)
+                self._persistence_update_time,
+                self._persistence_index,      # number of sequentially persisted update cycles
+                self._outflow,                # levelpool simulated outflow (cms)
+                self._inflow,                 # waterbody inflow (cms)
+                self._time_step,              # model timestep (sec)
+                values['lake_area'],          # waterbody surface area (km2)
+                values['max_depth'],          # max waterbody depth (m)
+                values['orifice_elevation'],  # orifice elevation (m)
+                initial_water_elevation,      # water surface el., previous timestep (m)
+                48.0,                         # gage lookback hours (hrs)
+                self._update_time,            # waterbody update time (sec)
+            )
+            
+            # update levelpool water elevation state
+            #TODO: make this a function for MC_levelpool class in levelpool.pyx
+            #self._levelpool.update_elevation(new_water_elevation)
+            
+            # change reservoir_outflow
+            self._outflow = new_outflow
+            
+            # update USGS DA reservoir state arrays
+            self._update_time = new_update_time
+            self._prev_persisted_outflow = new_persisted_outflow
+            self._persistence_index = new_persistence_index
+            self._persistence_update_time = new_persistence_update_time
+
+        # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow
         values['lake_surface__elevation'] = self._water_elevation
-        
+
         # update model time
         self._time += self._time_step
 
-
-# Utility functions -------
-"""
-def _read_config_file(custom_input_file):
-    '''
-    Read-in data from user-created configuration file.
-    
-    Arguments
-    ---------
-    custom_input_file (str): configuration filepath, .yaml
-    
-    Returns
-    -------
-    preprocessing_parameters     (dict): Input parameters re preprocessing
-    supernetwork_parameters      (dict): Input parameters re network extent
-    waterbody_parameters         (dict): Input parameters re waterbodies
-    compute_parameters           (dict): Input parameters re computation settings
-    forcing_parameters           (dict): Input parameters re model forcings
-    restart_parameters           (dict): Input parameters re model restart
-    hybrid_parameters            (dict): Input parameters re diffusive wave model
-    output_parameters            (dict): Input parameters re output writing
-    parity_parameters            (dict): Input parameters re parity assessment
-    data_assimilation_parameters (dict): Input parameters re data assimilation
-    '''
-    with open(custom_input_file) as custom_file:
-        data = yaml.load(custom_file, Loader=yaml.SafeLoader)
-
-    network_topology_parameters = data.get("network_topology_parameters", None)
-    supernetwork_parameters = network_topology_parameters.get(
-        "supernetwork_parameters", None
-    )
-    # add attributes when HYfeature network is selected
-    if supernetwork_parameters['geo_file_path'][-4:] == "gpkg":
-        supernetwork_parameters["title_string"]       = "HY_Features Test"
-        supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
-        supernetwork_parameters["flowpath_edge_list"] = None    
-        routelink_attr = {
-                        #link????
-                        "key": "id",
-                        "downstream": "toid",
-                        "dx": "length_m",
-                        "n": "n",  # TODO: rename to `manningn`
-                        "ncc": "nCC",  # TODO: rename to `mannningncc`
-                        "s0": "So",
-                        "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
-                        #waterbody: "NHDWaterbodyComID",
-                        "tw": "TopWdth",  # TODO: rename to `topwidth`
-                        "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
-                        "alt": "alt",
-                        "musk": "MusK",
-                        "musx": "MusX",
-                        "cs": "ChSlp"  # TODO: rename to `sideslope`
-                        }
-        supernetwork_parameters["columns"]             = routelink_attr 
-        supernetwork_parameters["waterbody_null_code"] = -9999
-        supernetwork_parameters["terminal_code"]       =  0
-        supernetwork_parameters["driver_string"]       = "NetCDF"
-        supernetwork_parameters["layer_string"]        = 0
-        
-    preprocessing_parameters = network_topology_parameters.get(
-        "preprocessing_parameters", {}
-    )        
-    #waterbody_parameters = network_topology_parameters.get(
-    #    "waterbody_parameters", None
-    #)
-    waterbody_parameters = network_topology_parameters.get(
-        "waterbody_parameters", {}
-    )
-    compute_parameters = data.get("compute_parameters", {})
-    forcing_parameters = compute_parameters.get("forcing_parameters", {})
-    restart_parameters = compute_parameters.get("restart_parameters", {})
-    hybrid_parameters = compute_parameters.get("hybrid_parameters", {})
-    data_assimilation_parameters = compute_parameters.get(
-        "data_assimilation_parameters", {}
-    )
-    output_parameters = data.get("output_parameters", {})
-    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
-
-    return (
-        preprocessing_parameters,
-        supernetwork_parameters,
-        waterbody_parameters,
-        compute_parameters,
-        forcing_parameters,
-        restart_parameters,
-        hybrid_parameters,
-        output_parameters,
-        parity_parameters,
-        data_assimilation_parameters,
-    )
-"""
