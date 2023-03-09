@@ -66,16 +66,13 @@ class reservoir_model():
 
     def run(self, values: dict,):
         """
-        Run this model into the future.
         Run this model into the future, updating the state stored in the provided model dict appropriately.
-        Note that the model assumes the current values set for input variables are appropriately for the time
-        duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
+    
         Parameters
         ----------
-        model: dict
+        values: dict
             The model state data structure.
-        dt: int
-            The number of seconds into the future to advance the model.
+            
         Returns
         -------
         """
@@ -83,11 +80,12 @@ class reservoir_model():
         initial_water_elevation = self._levelpool.water_elevation
 
         # Run routing
-        self._outflow, self._water_elevation = self._levelpool.run(self._inflow, 0.0, self._time_step)
+        self._outflow, water_elevation = self._levelpool.run(self._inflow, 0.0, self._time_step)
         
         # Data Assimilation
         if self._res_type==2 or self._res_type==3:
-            gage_time = (values['gage_time']-self._t0).total_seconds() #TODO: will gage time be an array of times?
+            #TODO: figure out what format 'gage_time' will be when passed from model engine...
+            #gage_time = np.array((values['gage_time']-self._t0).total_seconds())
 
             (
                 new_outflow,
@@ -99,7 +97,7 @@ class reservoir_model():
             ) = reservoir_hybrid_da(
                 values['lake_number'],        # lake identification number
                 values['gage_observations'],  # gage observation values (cms)
-                gage_time,                    # gage observation times (sec)
+                values['gage_time'], #gage_time,                    # gage observation times (sec)
                 self._time,                   # model time (sec)
                 self._prev_persisted_outflow, # previously persisted outflow (cms)
                 self._persistence_update_time,
@@ -116,8 +114,7 @@ class reservoir_model():
             )
             
             # update levelpool water elevation state
-            #TODO: make this a function for MC_levelpool class in levelpool.pyx
-            #self._levelpool.update_elevation(new_water_elevation)
+            water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
             
             # change reservoir_outflow
             self._outflow = new_outflow
@@ -130,7 +127,7 @@ class reservoir_model():
 
         # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow
-        values['lake_surface__elevation'] = self._water_elevation
+        values['lake_surface__elevation'] = water_elevation
 
         # update model time
         self._time += self._time_step

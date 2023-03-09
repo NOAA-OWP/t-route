@@ -111,6 +111,23 @@ cdef class MC_Levelpool(Reach):
       route(&self._reach, inflow, lateral_inflow, routing_period, &outflow, &water_elevation)
       #printf("outflow: %f\n", outflow)
       return outflow, water_elevation
+  
+  cpdef (float) assimilate_elevation(self, float updated_elevation):
+    """
+      Update the water elevation state variable
+
+      Params:
+        updated_elevation: float
+          water elevation after data assimilation has been performed
+      
+      Return:
+        water_elevation: float
+          water elevation after data assimilation has been performed
+    """
+    cdef float water_elevation = 0.0
+    with nogil:
+      update_elevation(&self._reach, updated_elevation, &water_elevation)
+      return water_elevation
 
   @property
   def water_elevation(self):
