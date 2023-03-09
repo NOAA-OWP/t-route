@@ -1,7 +1,7 @@
 
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from array import array
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
