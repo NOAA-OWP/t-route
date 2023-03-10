@@ -6,6 +6,7 @@ from datetime import datetime
 from array import array
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
+from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da
 
 #TODO: Once PR#605 is merged, uncomment and use the updated DA objects
 #from troute.DataAssimilation import PersistenceDA, RFCDA
@@ -18,7 +19,8 @@ class reservoir_model():
         """
         __slots__ = ['_levelpool','_inflow','_outflow','_water_elevation', '_res_type',
                      '_update_time', '_prev_persisted_flow', '_persistence_update_time',
-                     '_persistence_index', '_time', '_time_step',]
+                     '_persistence_index', '_time', '_time_step','_dynamic_res_type',
+                     '_assimilated_value', '_assimilated_source_file']
         
         if bmi_cfg_file: #TODO: Do we need a config file for this??
             pass
@@ -62,6 +64,10 @@ class reservoir_model():
             self._prev_persisted_outflow = np.nan
             self._persistence_index = 0
             self._persistence_update_time = 0
+        
+        if self._res_type==4 or self._res_type==5:
+            self._timeseries_idx = values['da_idx'] - 1
+            self._da_time_step = values['time_step']
 
 
     def run(self, values: dict,):
@@ -124,6 +130,47 @@ class reservoir_model():
             self._prev_persisted_outflow = new_persisted_outflow
             self._persistence_index = new_persistence_index
             self._persistence_update_time = new_persistence_update_time
+        
+        elif self._res_type==4 or self._res_type==5:
+            (
+                new_outflow, 
+                new_water_elevation, 
+                new_update_time,
+                new_timeseries_idx,
+                dynamic_reservoir_type, 
+                assimilated_value, 
+                assimilated_source_file,
+            ) = reservoir_RFC_da(
+                values['lake_number'],        # lake identification number
+                values['gage_observations'],  # gage observation values (cms)
+                self._timeseries_idx,         # index of for current time series observation
+                values['synthetic_flag'],     # boolean flags indicating synthetic values
+                self._time_step,              # routing period (sec)
+                self._time,                   # model time (sec)
+                update_time,                  # time to advance to next time series index
+                DA_time_step,                 # frequency of DA observations (sec)
+                rfc_forecast_persist_seconds, # max seconds RFC forecasts will be used/persisted
+                self._res_type,               # reservoir type
+                self._inflow,                 # waterbody inflow (cms)
+                initial_water_elevation,      # water surface el., previous timestep (m)
+                self._outflow,                # levelpool simulated outflow (cms)
+                water_elevation,              # levelpool simulated water elevation (m)
+                values['lake_area'],          # waterbody surface area (km2)
+                values['max_depth'],          # max waterbody depth (m)
+            )
+            
+            # update levelpool water elevation state
+            water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
+            
+            # change reservoir_outflow
+            self._outflow = new_outflow
+
+            # update DA reservoir state parameters
+            update_time = new_update_time
+            self._timeseries_idx = new_timeseries_idx
+            self._dynamic_res_type = dynamic_reservoir_type
+            self._assimilated_value = assimilated_value
+            self._assimilated_source_file = assimilated_source_file
 
         # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow
