@@ -34,7 +34,7 @@ class reservoir_model():
     def preprocess_static_vars(self, values: dict):
 
         lake_number = values['lake_number']
-        lake_area = values['lake_area']
+        lake_area = values['lake_area'] * 1e6
         max_depth = values['max_depth']
         orifice_area = values['orifice_area']
         orifice_coefficient = values['orifice_coefficient']
@@ -43,7 +43,7 @@ class reservoir_model():
         weir_elevation = values['weir_elevation']
         weir_length = values['weir_length']
         initial_fractional_depth = values['initial_fractional_depth']
-        water_elevation = values['water_elevation']
+        water_elevation = values['lake_surface__elevation']
         
         args = [lake_area, max_depth, orifice_area,
                 orifice_coefficient, orifice_elevation,
@@ -66,8 +66,10 @@ class reservoir_model():
             self._persistence_update_time = 0
         
         if self._res_type==4 or self._res_type==5:
+            self._update_time = 0
             self._timeseries_idx = values['da_idx'] - 1
             self._da_time_step = values['time_step']
+            self._persist_seconds = values['rfc_forecast_persist_seconds']
 
 
     def run(self, values: dict,):
@@ -101,22 +103,22 @@ class reservoir_model():
                 new_persistence_index, 
                 new_persistence_update_time
             ) = reservoir_hybrid_da(
-                values['lake_number'],        # lake identification number
-                values['gage_observations'],  # gage observation values (cms)
-                values['gage_time'], #gage_time,                    # gage observation times (sec)
-                self._time,                   # model time (sec)
-                self._prev_persisted_outflow, # previously persisted outflow (cms)
+                self._levelpool.lake_number,        # lake identification number
+                values['gage_observations'],        # gage observation values (cms)
+                values['gage_time'], #gage_time,    # gage observation times (sec)
+                self._time,                         # model time (sec)
+                self._prev_persisted_outflow,       # previously persisted outflow (cms)
                 self._persistence_update_time,
-                self._persistence_index,      # number of sequentially persisted update cycles
-                self._outflow,                # levelpool simulated outflow (cms)
-                self._inflow,                 # waterbody inflow (cms)
-                self._time_step,              # model timestep (sec)
-                values['lake_area'],          # waterbody surface area (km2)
-                values['max_depth'],          # max waterbody depth (m)
-                values['orifice_elevation'],  # orifice elevation (m)
-                initial_water_elevation,      # water surface el., previous timestep (m)
-                48.0,                         # gage lookback hours (hrs)
-                self._update_time,            # waterbody update time (sec)
+                self._persistence_index,            # number of sequentially persisted update cycles
+                self._outflow,                      # levelpool simulated outflow (cms)
+                self._inflow,                       # waterbody inflow (cms)
+                self._time_step,                    # model timestep (sec)
+                self._levelpool.lake_area,          # waterbody surface area (km2)
+                self._levelpool.max_depth,          # max waterbody depth (m)
+                self._levelpool.orifice_elevation,  # orifice elevation (m)
+                initial_water_elevation,            # water surface el., previous timestep (m)
+                48.0,                               # gage lookback hours (hrs)
+                self._update_time,                  # waterbody update time (sec)
             )
             
             # update levelpool water elevation state
@@ -139,24 +141,24 @@ class reservoir_model():
                 new_timeseries_idx,
                 dynamic_reservoir_type, 
                 assimilated_value, 
-                assimilated_source_file,
+                #assimilated_source_file,
             ) = reservoir_RFC_da(
-                values['lake_number'],        # lake identification number
+                self._levelpool.lake_number,        # lake identification number
                 values['gage_observations'],  # gage observation values (cms)
                 self._timeseries_idx,         # index of for current time series observation
                 values['synthetic_flag'],     # boolean flags indicating synthetic values
                 self._time_step,              # routing period (sec)
                 self._time,                   # model time (sec)
-                update_time,                  # time to advance to next time series index
-                DA_time_step,                 # frequency of DA observations (sec)
-                rfc_forecast_persist_seconds, # max seconds RFC forecasts will be used/persisted
+                self._update_time,                  # time to advance to next time series index
+                self._da_time_step,           # frequency of DA observations (sec)
+                self._persist_seconds,        # max seconds RFC forecasts will be used/persisted
                 self._res_type,               # reservoir type
                 self._inflow,                 # waterbody inflow (cms)
                 initial_water_elevation,      # water surface el., previous timestep (m)
                 self._outflow,                # levelpool simulated outflow (cms)
                 water_elevation,              # levelpool simulated water elevation (m)
-                values['lake_area'],          # waterbody surface area (km2)
-                values['max_depth'],          # max waterbody depth (m)
+                self._levelpool.lake_area,          # waterbody surface area (km2)
+                self._levelpool.max_depth,          # max waterbody depth (m)
             )
             
             # update levelpool water elevation state
@@ -166,11 +168,11 @@ class reservoir_model():
             self._outflow = new_outflow
 
             # update DA reservoir state parameters
-            update_time = new_update_time
+            self._update_time = new_update_time
             self._timeseries_idx = new_timeseries_idx
             self._dynamic_res_type = dynamic_reservoir_type
             self._assimilated_value = assimilated_value
-            self._assimilated_source_file = assimilated_source_file
+            #self._assimilated_source_file = assimilated_source_file
 
         # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow

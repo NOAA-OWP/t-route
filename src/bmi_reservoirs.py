@@ -44,7 +44,7 @@ class bmi_reservoir(Bmi):
     #---------------------------------------------
     _input_var_names = [
         # waterbody static variables
-        'water_elevation',
+        'lake_surface__elevation',
         'lake_area',
         'weir_elevation',
         'weir_coefficient',
@@ -58,6 +58,10 @@ class bmi_reservoir(Bmi):
         'initial_fractional_depth',
         'upstream_ids',
         'res_type',
+        'da_idx',
+        'time_step',
+        'rfc_forecast_persist_seconds',
+        'synthetic_flag',
         # dynamic forcing/DA variables
         'lake_water~incoming__volume_flow_rate',
         ]
@@ -125,7 +129,7 @@ class bmi_reservoir(Bmi):
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
         #FIXME Do this better..., load size of variables from config file??
-        self._values['water_elevation'] = np.zeros(1)
+        self._values['lake_surface__elevation'] = np.zeros(1)
         self._values['lake_area'] = np.zeros(1)
         self._values['weir_elevation'] = np.zeros(1)
         self._values['weir_coefficient'] = np.zeros(1)
@@ -137,16 +141,20 @@ class bmi_reservoir(Bmi):
         self._values['max_depth'] = np.zeros(1)
         self._values['lake_number'] = np.zeros(1)
         self._values['initial_fractional_depth'] = np.zeros(1)
-        self._values['upstream_ids'] = np.zeros(1,dtype=int)
+        self._values['upstream_ids'] = np.zeros(1, dtype=int)
         self._values['res_type'] = np.zeros(1)
         self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(1)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
-        self._values['lake_surface__elevation'] = np.zeros(1)
 
 
         #TODO: ADD DA VARIABLES
-        self._values['gage_observations'] = np.zeros(1)
+        self._values['gage_observations'] = np.zeros(289)
         self._values['gage_time'] = np.zeros(1)
+
+        self._values['da_idx'] = np.zeros(1, dtype=int)
+        self._values['time_step'] = np.zeros(1)
+        self._values['rfc_forecast_persist_seconds'] = np.zeros(1)
+        self._values['synthetic_flag'] = np.zeros(289)
 
 
 
