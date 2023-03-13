@@ -90,7 +90,7 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
                 assimilated_value = -9999.0
 
                 # Set the assimilated_source_file to empty string
-                assimilated_source_file = ""
+                #assimilated_source_file = ""
 
     else:
         # If reservoir_type is 4 for CONUS RFC reservoirs
@@ -111,9 +111,9 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
         assimilated_value = -9999.0
 
         # Set the assimilated_source_file to empty string
-        assimilated_source_file = ""
+        #assimilated_source_file = ""
     
-    return outflow, new_water_elevation, update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value, assimilated_source_file
+    return outflow, new_water_elevation, update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value#, assimilated_source_file
             
 
 
