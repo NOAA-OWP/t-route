@@ -2,6 +2,9 @@ from setuptools import setup, find_namespace_packages
 from distutils.extension import Extension
 import sys
 import numpy as np
+from distutils.command.build_ext import build_ext
+import numpy.distutils.fcompiler
+import subprocess
 
 """
 If source ships with the cython generated .c code, then cython isn't a hard requirement
@@ -17,6 +20,48 @@ else:
 
 ext = "pyx" if USE_CYTHON else "c"
 
+# adapted from https://stackoverflow.com/a/5192738/489116 and https://stackoverflow.com/a/32192172/489116
+# also of interest: https://stackoverflow.com/a/60954137/489116
+fcompopt = {
+    'intel': [],
+    'gnu95' : ['-g']
+}
+flinkopt = {
+    'intel': [],
+    'gnu95' : []
+}
+flibs = {
+    'intel': ['mpifort','mpi','ifcoremt','ifport','imf','svml','intlc'],
+    'gnu95' : ['gfortran']
+}
+
+#new_fcompiler = fcompiler.new_compiler()
+#fcompiler_type = fcompiler.compiler_type
+# Open to better suggestions...
+fc = numpy.distutils.fcompiler.FCompiler()
+fc.customize()
+fc = fc.executables["compiler_f90"][0]
+result = subprocess.run([fc, '--version'], stdout=subprocess.PIPE)
+result = result.stdout.decode('utf-8')
+if "GNU" in result:
+    fcompiler_type = 'gnu95'
+elif "Intel" in result:
+    fcompiler_type = 'intel'
+else:
+    raise Exception("Could not identify fortran compiler!")
+print(f"Fortran compiler type is: {fcompiler_type}")
+
+class build_ext_subclass( build_ext ):
+    def build_extensions(self):
+        for e in self.extensions:
+            if fcompiler_type in fcompopt:
+                e.extra_compile_args.extend(fcompopt[fcompiler_type])
+            if fcompiler_type in flinkopt:
+                e.extra_link_args.extend(flinkopt[fcompiler_type])
+            if fcompiler_type in flibs:
+                e.libraries.extend(flibs[fcompiler_type])
+        build_ext.build_extensions(self)
+
 reach = Extension(
     "troute.routing.fast_reach.reach",
     sources=["troute/routing/fast_reach/reach.{}".format(ext)],
@@ -25,7 +70,7 @@ reach = Extension(
         "troute/routing/fast_reach/pymc_single_seg.o",
     ],
     extra_compile_args=["-O2", "-g"],
-    # libraries=["gfortran"],
+    libraries=[],
 )
 
 mc_reach = Extension(
@@ -59,7 +104,7 @@ diffusive = Extension(
     ],
     include_dirs=[np.get_include()],
     extra_compile_args=["-O2", "-g"],
-    libraries=["gfortran"],
+    libraries=[],
 )
 
 
@@ -81,4 +126,6 @@ setup(
     ext_packages="",
     package_data=package_data,
     py_modules=["build_tests"],
+    cmdclass = {'build_ext': build_ext_subclass 
+}
 )

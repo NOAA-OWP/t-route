@@ -1,8 +1,12 @@
 # compiler
-FC := gfortran
+FC := ${F90}
 
 # compile flags
+ifeq (${FC},gfortran)
 FCFLAGS = -g -c -O2 -fPIC -fbounds-check
+else
+FCFLAGS = -free -g -c -O2 -fPIC -I${NETCDF}/include
+endif
 
 diffusive.o: diffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
