@@ -3,7 +3,7 @@ from distutils.extension import Extension
 import sys
 import numpy as np
 from distutils.command.build_ext import build_ext
-import numpy.distutils.fcompiler
+import os
 import subprocess
 
 """
@@ -38,9 +38,10 @@ flibs = {
 #new_fcompiler = fcompiler.new_compiler()
 #fcompiler_type = fcompiler.compiler_type
 # Open to better suggestions...
-fc = numpy.distutils.fcompiler.FCompiler()
-fc.customize()
-fc = fc.executables["compiler_f90"][0]
+#fc = numpy.distutils.fcompiler.FCompiler()
+#fc.customize()
+#fc = fc.executables["compiler_f90"][0]
+fc = os.environ['FC'] if 'FC' in os.environ else os.environ['F90'] if 'F90' in os.environ else subprocess.run(['which', 'fc'], capture_output=True).stdout.decode('UTF-8')[:-1]
 result = subprocess.run([fc, '--version'], stdout=subprocess.PIPE)
 result = result.stdout.decode('utf-8')
 if "GNU" in result:

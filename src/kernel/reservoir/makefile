@@ -1,11 +1,17 @@
 NETCDFINC := -I$(NETCDFINC) $(shell nc-config --fflags)
 NETCDFLIB := $(shell nc-config --flibs)
 COMPILER90 = $(F90)
-ifeq (${FC},gfortran)
-F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 -static-libgfortran -lgfortran -lgcc 
+
+F90FLAGSGFORTRAN = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 -static-libgfortran -lgfortran -lgcc
+F90FLAGSINTEL = -free -w -c -O2 -fconvert=big-endian -frecord-marker=4
+ifeq ($(notdir ${FC}), ifort)
+F90FLAGS = $(F90FLAGSINTEL)
+else ifeq ($(notdir ${FC}), mpiifort)
+F90FLAGS = $(F90FLAGSINTEL)
 else
-F90FLAGS = -free -w -c -O2 -fconvert=big-endian -frecord-marker=4
+F90FLAGS = $(F90FLAGSGFORTRAN)
 endif
+
 F90FLAGS := -g $(F90FLAGS) $(NETCDFINC) $(NETCDFLIB)  -static-libgcc -nodefaultlibs -fPIC
 ARFLAGS = rc
 
