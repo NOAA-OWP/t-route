@@ -14,8 +14,14 @@ build_nwm=true
 if [ -z "$F90" ]
 then
     export F90="gfortran"
-    echo "using F90='gfortran'"
+    echo "using F90=${F90}"
 fi
+if [ -z "$CC" ]
+then
+    export CC="gcc"
+    echo "using CC=${CC}"
+fi
+
 
 #if you have custom static library paths, uncomment below and export them
 #export LIBRARY_PATH=<paths>:$LIBRARY_PATH
