@@ -44,10 +44,8 @@ class NudgingDA:
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
-                self._usgs_df = pd.DataFrame(data=value_dict['usgs_gage_observation__volume_flow_rate'],
-                                             index=value_dict['usgs_gage_ids'])
-                self._last_obs_df = pd.DataFrame(data=value_dict['lastobs__volume_flow_rate'],
-                                                 index=value_dict['lastobs_ids'])
+                self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
+                self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
             
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
@@ -158,8 +156,7 @@ class PersistenceDA:
 
         if not from_files:
             if usgs_persistence:
-                reservoir_usgs_df = pd.DataFrame(data=value_dict['reservoir_usgs_gage_observation__volume_flow_rate'],
-                                                 index=value_dict['reservoir_usgs_ids'])
+                reservoir_usgs_df = pd.DataFrame(index=value_dict['reservoir_usgs_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
@@ -174,8 +171,7 @@ class PersistenceDA:
                     reservoir_usgs_param_df = pd.DataFrame()
             
             if usace_persistence:
-                reservoir_usace_df = pd.DataFrame(data=value_dict['reservoir_usace_gage_observation__volume_flow_rate'],
-                                                  index=value_dict['reservoir_usace_ids'])
+                reservoir_usace_df = pd.DataFrame(index=value_dict['reservoir_usace_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usace_df.empty:
                     reservoir_usace_param_df = pd.DataFrame(
@@ -451,8 +447,33 @@ class RFCDA:
     """
     
     """
-    def __init__(self,):
-        pass
+    def __init__(self, from_files, value_dict):
+        if from_files:
+            pass
+        else:
+            rfc = self._waterbody_parameters.get('rfc', {})
+            reservoir_rfc_forecasts = rfc.get('reservoir_rfc_forecasts', None)
+
+            #--------------------------------------------------------------------------------
+            # Assemble Reservoir dataframes
+            #--------------------------------------------------------------------------------
+            if reservoir_rfc_forecasts:
+                reservoir_rfc_df  = pd.DataFrame(index=value_dict['reservoir_rfc_ids'])
+                reservoir_rfc_synthetic = pd.DataFrame(index=value_dict['reservoir_rfc_ids'])
+                # create reservoir RFC DA initial parameters dataframe    
+                if not reservoir_rfc_df.empty:
+                    reservoir_rfc_param_df = pd.DataFrame(
+                        data = value_dict['da_idx'], 
+                        index = reservoir_rfc_df.index,
+                        columns = ['timeseries_index']
+                    )
+                    reservoir_rfc_param_df['update_time'] = 0
+            else:
+                reservoir_rfc_df  = pd.DataFrame()
+        
+        self._reservoir_rfc_df = reservoir_rfc_df
+        self._reservoir_rfc_synthetic = reservoir_rfc_synthetic
+        self._reservoir_rfc_param_df = reservoir_rfc_param_df
 
     def update_after_compute(self,):
         pass
@@ -469,16 +490,18 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     """
     
     """
-    __slots__ = ["_data_assimilation_parameters", "_run_parameters"]
+    __slots__ = ["_data_assimilation_parameters", "_run_parameters", "_waterbody_parameters"]
 
-    def __init__(self, network, data_assimilation_parameters, run_parameters, from_files=True, value_dict=None, da_run=[]):
+    def __init__(self, network, data_assimilation_parameters, run_parameters, waterbody_parameters,
+                 from_files=True, value_dict=None, da_run=[]):
 
         self._data_assimilation_parameters = data_assimilation_parameters
         self._run_parameters = run_parameters
+        self._waterbody_parameters = waterbody_parameters
 
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
-        RFCDA.__init__(self,)
+        RFCDA.__init__(self, from_files, value_dict)
     
     def update_after_compute(self, run_results,):
         '''

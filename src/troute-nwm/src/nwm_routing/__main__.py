@@ -9,7 +9,7 @@ import concurrent.futures
 
 from troute.NHDNetwork import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
-from troute.DataAssimilation import AllDA
+from troute.DataAssimilation import DataAssimilation
 
 import numpy as np
 import pandas as pd
@@ -118,13 +118,14 @@ def main_v04(argv):
     network.assemble_forcings(run_sets[0],)
     
     # Create data assimilation object from da_sets for first loop iteration
-    # TODO: Add data_assimilation for hyfeature network
-    data_assimilation = AllDA(
+    data_assimilation = DataAssimilation(
+        network,
         data_assimilation_parameters,
         run_parameters,
         waterbody_parameters,
-        network,
-        da_sets[0]
+        from_files=True,
+        value_dict=None,
+        da_run=da_sets[0],
         )
 
     if showtiming:
