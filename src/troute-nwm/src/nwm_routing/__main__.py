@@ -208,11 +208,7 @@ def main_v04(argv):
         network.update_waterbody_water_elevation()    
         
         # update reservoir parameters and lastobs_df
-        data_assimilation.update_after_compute(
-            run_results,
-            data_assimilation_parameters, 
-            run_parameters,
-            )
+        data_assimilation.update_after_compute(run_results)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:
@@ -233,8 +229,6 @@ def main_v04(argv):
             
             # get reservoir DA initial parameters for next loop iteration
             data_assimilation.update_for_next_loop(
-                data_assimilation_parameters,
-                run_parameters,
                 network,
                 da_sets[run_set_iterator + 1])
             

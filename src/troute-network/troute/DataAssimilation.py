@@ -4,6 +4,25 @@ import numpy as np
 import pathlib
 import xarray as xr
 from datetime import datetime
+from abc import ABC, abstractmethod
+
+
+# -----------------------------------------------------------------------------
+# Abstract DA Class:
+#   Define all slots and pass function definitions to child classes
+# -----------------------------------------------------------------------------
+class AbstractDA(ABC):
+    """
+    This just defines all of the slots that might be used by child classes.
+    These need to be defined in a parent class so each child class can be
+    combined into a single DataAssimilation object without getting a 
+    'multiple-inheritance' error.
+    """
+    __slots__ = ["_usgs_df", "_last_obs_df", "_da_parameter_dict",
+                 "_reservoir_usgs_df", "_reservoir_usgs_param_df", 
+                 "_reservoir_usace_df", "_reservoir_usace_param_df",
+                 "_reservoir_rfc_df", "_reservoir_rfc_synthetic",
+                 "_reservoir_rfc_param_df"]
 
 
 # -----------------------------------------------------------------------------
@@ -12,12 +31,10 @@ from datetime import datetime
 #   2. PersistenceDA: USGS and USACE reservoir persistence
 #   3. RFCDA: RFC forecasts for reservoirs
 # -----------------------------------------------------------------------------
-class NudgingDA:
+class NudgingDA(AbstractDA):
     """
     
     """
-    __slots__ = ["_usgs_df", "_last_obs_df", "_da_parameter_dict"]
-
     def __init__(self, network, from_files, value_dict, da_run=[]):
 
         data_assimilation_parameters = self._data_assimilation_parameters
@@ -123,13 +140,10 @@ class NudgingDA:
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             
 
-class PersistenceDA:
+class PersistenceDA(AbstractDA):
     """
     
     """
-    __slots__ = ["_reservoir_usgs_df", "_reservoir_usgs_param_df", 
-                 "_reservoir_usace_df", "_reservoir_usace_param_df"]
-    
     def __init__(self, network, from_files, value_dict, da_run=[]):
         
         data_assimilation_parameters = self._data_assimilation_parameters
@@ -443,7 +457,7 @@ class PersistenceDA:
         if not self.usgs_df.empty:
             self._usgs_df = self.usgs_df.loc[:,network.t0:]
 
-class RFCDA:
+class RFCDA(AbstractDA):
     """
     
     """
@@ -471,9 +485,9 @@ class RFCDA:
             else:
                 reservoir_rfc_df  = pd.DataFrame()
         
-        self._reservoir_rfc_df = reservoir_rfc_df
-        self._reservoir_rfc_synthetic = reservoir_rfc_synthetic
-        self._reservoir_rfc_param_df = reservoir_rfc_param_df
+            self._reservoir_rfc_df = reservoir_rfc_df
+            self._reservoir_rfc_synthetic = reservoir_rfc_synthetic
+            self._reservoir_rfc_param_df = reservoir_rfc_param_df
 
     def update_after_compute(self,):
         pass
