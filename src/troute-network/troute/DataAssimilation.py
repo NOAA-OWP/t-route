@@ -4,7 +4,7 @@ import numpy as np
 import pathlib
 import xarray as xr
 from datetime import datetime
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
 # -----------------------------------------------------------------------------
@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 # -----------------------------------------------------------------------------
 class AbstractDA(ABC):
     """
-    This just defines all of the slots that might be used by child classes.
+    This just defines all of the slots that are be used by child classes.
     These need to be defined in a parent class so each child class can be
     combined into a single DataAssimilation object without getting a 
     'multiple-inheritance' error.
@@ -444,12 +444,6 @@ class PersistenceDA(AbstractDA):
                         columns = [network.t0]
                     )
 
-            '''
-            # update RFC lookback hours if there are RFC-type reservoirs in the simulation domain
-            if 4 in network._waterbody_types_df['reservoir_type'].unique():
-                waterbody_parameters = update_lookback_hours(run_parameters.get("dt"), run_parameters.get("nts"), waterbody_parameters)
-            '''
-
         # Trim the time-extent of the streamflow_da usgs_df
         # what happens if there are timeslice files missing on the front-end? 
         # if the first column is some timestamp greater than t0, then this will throw
@@ -465,29 +459,7 @@ class RFCDA(AbstractDA):
         if from_files:
             pass
         else:
-            rfc = self._waterbody_parameters.get('rfc', {})
-            reservoir_rfc_forecasts = rfc.get('reservoir_rfc_forecasts', None)
-
-            #--------------------------------------------------------------------------------
-            # Assemble Reservoir dataframes
-            #--------------------------------------------------------------------------------
-            if reservoir_rfc_forecasts:
-                reservoir_rfc_df  = pd.DataFrame(index=value_dict['reservoir_rfc_ids'])
-                reservoir_rfc_synthetic = pd.DataFrame(index=value_dict['reservoir_rfc_ids'])
-                # create reservoir RFC DA initial parameters dataframe    
-                if not reservoir_rfc_df.empty:
-                    reservoir_rfc_param_df = pd.DataFrame(
-                        data = value_dict['da_idx'], 
-                        index = reservoir_rfc_df.index,
-                        columns = ['timeseries_index']
-                    )
-                    reservoir_rfc_param_df['update_time'] = 0
-            else:
-                reservoir_rfc_df  = pd.DataFrame()
-        
-            self._reservoir_rfc_df = reservoir_rfc_df
-            self._reservoir_rfc_synthetic = reservoir_rfc_synthetic
-            self._reservoir_rfc_param_df = reservoir_rfc_param_df
+            pass
 
     def update_after_compute(self,):
         pass
