@@ -1,6 +1,6 @@
-import numpy as np
+import numpy as np #TODO: remove?
 import pandas as pd
-from pathlib import Path
+from pathlib import Path #TODO: remove?
 import yaml
 
 import nwm_routing.__main__ as tr
@@ -10,7 +10,15 @@ class troute_model():
 
     def __init__(self, bmi_cfg_file):
         """
-        
+        Read t-route configuration file and store parameters within model.
+        Initialize model start time, time step, and default number of time
+        steps (1). Create list of static attributes for segments and waterbodies.
+        Parameters
+        ----------
+        bmi_cfg_file: str
+            Configuration file (.yaml) that provides all configuration specific parameters.
+        Returns
+        -------
         """
         __slots__ = ['_log_parameters', '_preprocessing_parameters', '_supernetwork_parameters', 
                      '_waterbody_parameters', '_compute_parameters', '_forcing_parameters', 
@@ -48,6 +56,16 @@ class troute_model():
                                       'reservoir_type']
     
     def preprocess_static_vars(self, values: dict):
+        """
+        Create the static data structures for the network and data assimilation
+        objects. Empty dataframes contining only IDs will be created, as well
+        as objects such as connections dictionary.
+        ----------
+        values: dict
+            The static and dynamic values for the model.
+        Returns
+        -------
+        """
         self._network = tr.HYFeaturesNetwork(
             self._supernetwork_parameters,
             waterbody_parameters=self._waterbody_parameters,
@@ -60,8 +78,9 @@ class troute_model():
             segment_attributes=self._segment_attributes, 
             waterbody_attributes=self._waterbody_attributes)
 
-        # create empty data assimilation object that will get values during 'update' function. 
-        #TODO: Edit this to be done in DataAssimilation module, EmptyDA?
+        # Create data assimilation object with IDs but no dynamic variables yet.
+        # Dynamic variables will be assigned during 'run' function. 
+        #TODO: Update this with new DA scheme from PR 605.
         self._data_assimilation = tr.AllDA(
             self._data_assimilation_parameters,
             self._run_parameters,
@@ -71,27 +90,25 @@ class troute_model():
 
     def run(self, values: dict, until=300):
         """
-        Run this model into the future.
         Run this model into the future, updating the state stored in the provided model dict appropriately.
         Note that the model assumes the current values set for input variables are appropriately for the time
         duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
         Parameters
         ----------
-        model: dict
-            The model state data structure.
+        values: dict
+            The static and dynamic values for the model.
         dt: int
             The number of seconds into the future to advance the model.
         Returns
         -------
         """
         # Set input data into t-route objects
+        # Forcing values:
         self._network._qlateral = pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
                                                index=self._network.segment_index.to_numpy())
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
 
-        # Create data assimilation object from da_sets for first loop iteration
-        #TODO I'm not sure if this is the best way to do this. How will all of these variables be 
-        # fed to t-route BMI?
+        # Data Assimilation values:
         self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
         self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
         self._data_assimilation._reservoir_usgs_df = pd.DataFrame(values['reservoir_usgs_gage_observation__volume_flow_rate'])
@@ -161,6 +178,7 @@ class troute_model():
          values['lake_water~incoming__volume_flow_rate'], 
          values['lake_water~outgoing__volume_flow_rate'], 
          values['lake_surface__elevation'],
+         #TODO: add 'assimilated_value' as an output?
         ) = _create_output_dataframes(
             self._run_results, 
             nts, 
@@ -170,8 +188,10 @@ class troute_model():
         # update model time
         self._time += self._time_step * nts
 
+
 # Utility functions -------
-def _read_config_file(custom_input_file):
+def _read_config_file(custom_input_file): #TODO: Update this function, I dont' think
+    # we need all of this for BMI. This was taken directly from t-route model...
     '''
     Read-in data from user-created configuration file.
     
@@ -231,9 +251,6 @@ def _read_config_file(custom_input_file):
     preprocessing_parameters = network_topology_parameters.get(
         "preprocessing_parameters", {}
     )        
-    #waterbody_parameters = network_topology_parameters.get(
-    #    "waterbody_parameters", None
-    #)
     waterbody_parameters = network_topology_parameters.get(
         "waterbody_parameters", {}
     )
@@ -261,7 +278,35 @@ def _read_config_file(custom_input_file):
     )
 
 def _create_output_dataframes(results, nts, waterbodies_df, link_lake_crosswalk):
-    
+    """
+    Run this model into the future, updating the state stored in the provided model dict appropriately.
+    Note that the model assumes the current values set for input variables are appropriately for the time
+    duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
+    Parameters
+    ----------
+    results: list
+        The results from nwm_routing.
+    nts: int
+        The number of time steps the model was run.
+    waterbodies_df: pd.DataFrame
+        Dataframe containing waterbody parameters (specifically, IDs stored in index)
+    link_lake_crosswalk: dict #TODO: Can we remove this?
+        Relates lake ids to outlet link ids.
+    Returns
+    -------
+    q_channel_df: pandas.core.series.Series
+        Streamflow rate for each segment
+    v_channel_df: pandas.core.series.Series
+        Streamflow velocity for each segment
+    d_channel_df: pandas.core.series.Series
+        Streamflow depth for each segment
+    i_lakeout_df: pandas.core.series.Series
+        Inflow for each waterbody
+    q_lakeout_df: pandas.core.series.Series
+        Outflow for each waterbody
+    d_lakeout_df: pandas.core.series.Series
+        Water elevation for each waterbody
+    """
     qvd_columns = pd.MultiIndex.from_product(
         [range(int(nts)), ["q", "v", "d"]]
     ).to_flat_index()

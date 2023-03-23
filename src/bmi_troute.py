@@ -93,7 +93,8 @@ class bmi_troute(Bmi):
                          'channel_water__mean_depth',
                          'lake_water~incoming__volume_flow_rate',
                          'lake_water~outgoing__volume_flow_rate',
-                         'lake_surface__elevation' #FIXME: this variable isn't a standard CSDMS name...couldn't find one more appropriate
+                         'lake_surface__elevation',
+                         #TODO: add 'assimilated_value' as an output?
                         ]
 
     #------------------------------------------------------
@@ -216,27 +217,15 @@ class bmi_troute(Bmi):
             self._values[var_name] = np.zeros(3)
         '''
         """
-        #TODO Figure out how to load RFC data in if not through Fortran reservoir module...
+        #TODO Update loading RFC data not through Fortran reservoir module.
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
         """
 
-    
+    # Currently utilized BMI functions:
     def update(self):
         """Advance model by one time step."""
         
         self.update_until(self._model._time_step)
-
-    def update_frac(self, time_frac):
-        """Update model by a fraction of a time step.
-        Parameters
-        ----------
-        time_frac : float
-            Fraction fo a time step.
-        """
-        time_step = self.get_time_step()
-        self._model.time_step = time_frac * time_step
-        self.update()
-        self._model.time_step = time_step
 
     def update_until(self, until):
         """Update model until a particular time.
@@ -250,10 +239,83 @@ class bmi_troute(Bmi):
             
         self._model.run(self._values, until)
 
+    def set_value(self, var_name, src):
+        """
+        Set model values
+        
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        src : array_like
+            Array of new values.
+        """
+        val = self.get_value_ptr(var_name)
+        val[:] = src.reshape(val.shape)
+        
+        #self._values[var_name] = src
+
+    def get_value(self, var_name):
+        """Copy of values.
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        Returns
+        -------
+        output_df : pd.DataFrame
+            Copy of values.
+        """
+        output_df = self.get_value_ptr(var_name)
+        return output_df
+
+    def get_value_ptr(self, var_name):
+        """Reference to values.
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        Returns
+        -------
+        array_like
+            Value array.
+        """
+        return self._values[var_name]
+
+    def get_start_time(self):
+        """Start time of model."""
+        return self._start_time
+
+    def get_end_time(self):
+        """End time of model."""
+        return self._end_time
+
+    def get_current_time(self):
+        return self._model._time
+
+    def get_time_step(self):
+        return self._model._time_step
+
+    def get_time_units(self):
+        return self._time_units
+
     def finalize(self):
         """Finalize model."""
 
         self._model = None
+
+    # BMI functions that are not being used yet...
+    def update_frac(self, time_frac):
+        """Update model by a fraction of a time step.
+        Parameters
+        ----------
+        time_frac : float
+            Fraction fo a time step.
+        """
+        time_step = self.get_time_step()
+        self._model.time_step = time_frac * time_step
+        self.update()
+        self._model.time_step = time_step
 
     def get_var_type(self, var_name):
         """Data type of variable.
@@ -341,33 +403,6 @@ class bmi_troute(Bmi):
         """
         return int(np.prod(self._model.shape))
 
-    def get_value_ptr(self, var_name):
-        """Reference to values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        Returns
-        -------
-        array_like
-            Value array.
-        """
-        return self._values[var_name]
-
-    def get_value(self, var_name):
-        """Copy of values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        Returns
-        -------
-        output_df : pd.DataFrame
-            Copy of values.
-        """
-        output_df = self.get_value_ptr(var_name)
-        return output_df
-
     def get_value_at_indices(self, var_name, dest, indices):
         """Get values at particular indices.
         Parameters
@@ -385,22 +420,6 @@ class bmi_troute(Bmi):
         """
         dest[:] = self.get_value_ptr(var_name).take(indices)
         return dest
-
-    def set_value(self, var_name, src):
-        """
-        Set model values
-        
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        src : array_like
-            Array of new values.
-        """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
-        
-        #self._values[var_name] = src
 
     def set_value_at_indices(self, name, inds, src):
         """Set model values at particular indices.
@@ -455,23 +474,6 @@ class bmi_troute(Bmi):
     def get_grid_type(self, grid_id):
         """Type of grid."""
         return self._grid_type[grid_id]
-
-    def get_start_time(self):
-        """Start time of model."""
-        return self._start_time
-
-    def get_end_time(self):
-        """End time of model."""
-        return self._end_time
-
-    def get_current_time(self):
-        return self._model._time
-
-    def get_time_step(self):
-        return self._model._time_step
-
-    def get_time_units(self):
-        return self._time_units
 
     def get_grid_edge_count(self, grid):
         raise NotImplementedError("get_grid_edge_count")
