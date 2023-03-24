@@ -127,6 +127,5 @@ setup(
     ext_packages="",
     package_data=package_data,
     py_modules=["build_tests"],
-    cmdclass = {'build_ext': build_ext_subclass 
-}
+    cmdclass = {'build_ext': build_ext_subclass }
 )
