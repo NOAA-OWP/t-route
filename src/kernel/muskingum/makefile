@@ -3,7 +3,7 @@ FC := $(F90)
 
 # compile flags
 #FCFLAGS = -c -fdefault-real-8 -fno-align-commons -fbounds-check --free-form
-F90FLAGSGFORTRAN = -g -c -O2 -fPIC -lgfortran -lgcc -static-gfortran -static-libgcc -no-defaultlibs
+F90FLAGSGFORTRAN = -g -c -O2 -fPIC -lgfortran -lgcc -static-libgfortran -static-libgcc -nodefaultlibs
 F90FLAGSINTEL = -free -w -c -O2 -fPIC -fconvert=big-endian -frecord-marker=4
 ifeq ($(notdir ${FC}), ifort)
 F90FLAGS = $(F90FLAGSINTEL)
