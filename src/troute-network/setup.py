@@ -50,7 +50,7 @@ elif "Intel" in result:
     fcompiler_type = 'intel'
 else:
     raise Exception("Could not identify fortran compiler!")
-print(f"Fortran compiler type is: {fcompiler_type}")
+print("Fortran compiler type is: {0}".format(fcompiler_type))
 
 class build_ext_subclass( build_ext ):
     def build_extensions(self):
