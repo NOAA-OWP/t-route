@@ -9,7 +9,7 @@ import yaml
 import nwm_routing.__main__ as tr
 
 # Here is the model we want to run
-from model import troute_model
+from troute_model import troute_model
 
 class bmi_troute(Bmi):
 

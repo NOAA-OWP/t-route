@@ -80,13 +80,15 @@ class troute_model():
 
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
-        #TODO: Update this with new DA scheme from PR 605.
-        self._data_assimilation = tr.AllDA(
-            self._data_assimilation_parameters,
-            self._run_parameters,
-            self._waterbody_parameters,
-            self._network,
-            [])
+        self._data_assimilation = tr.DataAssimilation(
+        self._network,
+        self._data_assimilation_parameters,
+        self._run_parameters,
+        self._waterbody_parameters,
+        from_files=False,
+        value_dict=values,
+        )
+
 
     def run(self, values: dict, until=300):
         """
@@ -166,11 +168,7 @@ class troute_model():
         self._network.new_t0(self._time_step, self._nts)
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update_after_compute(
-            self._run_results,
-            self._data_assimilation_parameters,
-            self._run_parameters,
-            )
+        self._data_assimilation.update_after_compute(self._run_results)
         
         (values['channel_exit_water_x-section__volume_flow_rate'], 
          values['channel_water_flow__speed'], 
