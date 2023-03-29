@@ -104,7 +104,11 @@ class HYFeaturesNetwork(AbstractNetwork):
                  forcing_parameters,
                  hybrid_parameters, 
                  verbose=False, 
-                 showtiming=False):
+                 showtiming=False,
+                 from_files=True,
+                 value_dict={},
+                 segment_attributes=[],
+                 waterbody_attributes=[]):
         """
         
         """
@@ -126,7 +130,10 @@ class HYFeaturesNetwork(AbstractNetwork):
         #------------------------------------------------
         # Load Geo File
         #------------------------------------------------
-        self.read_geo_file()
+        if from_files:
+            self.read_geo_file()
+        else:
+            self.load_bmi_data(value_dict, segment_attributes, waterbody_attributes)
         
         #TODO Update for waterbodies and DA specific to HYFeatures...
         self._waterbody_connections = {}
@@ -320,6 +327,65 @@ class HYFeaturesNetwork(AbstractNetwork):
                 #So make this default to 1 (levelpool)
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
+    
+    def load_bmi_data(self, value_dict, segment_attributes, waterbody_attributes):
+        
+        self._dataframe = pd.DataFrame(data=None, columns=segment_attributes)
+        self._waterbody_df = pd.DataFrame(data=None, columns=waterbody_attributes)
+
+        for var in segment_attributes:
+            self._dataframe[var] = value_dict[var]
+        
+        # make the flowpath linkage, ignore the terminal nexus
+        self._flowpath_dict = dict(zip(self.dataframe.segment_toid, self.dataframe.segment_id))
+        
+        # **********  need to be included in flowpath_attributes  *************
+        self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
+
+        self._dataframe = self.dataframe.rename(columns={'segment_id': 'key',
+                                                         'segment_toid': 'downstream'})
+        self._dataframe.set_index("key", inplace=True)
+        self._dataframe = self.dataframe.sort_index()
+
+        # numeric code used to indicate network terminal segments
+        terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
+
+        # There can be an externally determined terminal code -- that's this first value
+        self._terminal_codes = set()
+        self._terminal_codes.add(terminal_code)
+        # ... but there may also be off-domain nodes that are not explicitly identified
+        # but which are terminal (i.e., off-domain) as a result of a mask or some other
+        # an interior domain truncation that results in a
+        # otherwise valid node value being pointed to, but which is masked out or
+        # being intentionally separated into another domain.
+        self._terminal_codes = self.terminal_codes | set(
+            self.dataframe[~self.dataframe["downstream"].isin(self.dataframe.index)]["downstream"].values
+        )
+
+        #This is NEARLY redundant to the self.terminal_codes property, but in this case
+        #we actually need the mapping of what is upstream of that terminal node as well.
+        #we also only want terminals that actually exist based on definition, not user input
+        terminal_mask = ~self._dataframe["downstream"].isin(self._dataframe.index)
+        terminal = self._dataframe.loc[ terminal_mask ]["downstream"]
+        self._upstream_terminal = dict()
+        for key, value in terminal.items():
+            self._upstream_terminal.setdefault(value, set()).add(key)
+
+        # build connections dictionary
+        self._connections = extract_connections(
+            self.dataframe, "downstream", terminal_codes=self.terminal_codes
+        )
+
+        #Load waterbody/reservoir info
+        if self.waterbody_parameters:
+            for var in waterbody_attributes:
+                self._waterbody_df[var] = value_dict[var]
+
+            self._waterbody_df = self.waterbody_dataframe.sort_index()
+
+            self._waterbody_types_df = self.waterbody_dataframe['reservoir_type']
+            self._waterbody_df.drop('reservoir_type', axis=1, inplace=True)
+
     
     def build_qlateral_array(self, run,):
         
