@@ -1,12 +1,8 @@
 """Basic Model Interface implementation for t-route."""
 
 import numpy as np
-import pandas as pd
 from bmipy import Bmi
 from pathlib import Path
-import yaml
-
-import nwm_routing.__main__ as tr
 
 # Here is the model we want to run
 from troute_model import troute_model
@@ -146,26 +142,7 @@ class bmi_troute(Bmi):
                                           long_name in self._var_name_units_map.keys()}
         self._var_units_map = {long_name:self._var_name_units_map[long_name][1] for \
                                           long_name in self._var_name_units_map.keys()}
-        
-        # -------------- Initalize all the variables --------------------------# 
-        # -------------- so that they'll be picked up with the get functions --#
-        """
-        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(self._network.dataframe.shape[0])
-        self._values['channel_water_flow__speed'] = np.zeros(self._network.dataframe.shape[0])
-        self._values['channel_water__mean_depth'] = np.zeros(self._network.dataframe.shape[0])
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(self._network.waterbody_dataframe.shape[0])
-        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(self._network.waterbody_dataframe.shape[0])
-        self._values['lake_surface__elevation'] = np.zeros(self._network.waterbody_dataframe.shape[0])
-
-        #TODO Nexus or segemnt IDs?
-        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(self._network.segment_index.shape[0]) 
-
-        self._values['coastal_boundary__depth'] = np.zeros(self._network.coastal_boundary_depth_df.shape[0])
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.usgs_df.shape[0])
-        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usgs_df.shape[0])
-        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(self._data_assimilation.reservoir_usace_df.shape[0])
-        self._values['lastobs__volume_flow_rate'] = np.zeros(self._data_assimilation.lastobs_df.shape[0])
-        """
+    
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
@@ -210,12 +187,6 @@ class bmi_troute(Bmi):
         self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(0)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(0)
         self._values['lake_surface__elevation'] = np.zeros(0)
-        '''
-        for var_name in self._input_var_names + self._output_var_names:
-            # ---------- Temporarily set to 3 values ------------------#
-            # ---------- so just set to zero for now ------------------#
-            self._values[var_name] = np.zeros(3)
-        '''
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
