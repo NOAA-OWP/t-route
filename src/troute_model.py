@@ -165,7 +165,7 @@ class troute_model():
         self._network.update_waterbody_water_elevation()               
         
         # update t0
-        self._network.new_t0(self._time_step, self._nts)
+        self._network.new_t0(self._time_step, nts)
 
         # get reservoir DA initial parameters for next loop iteration
         self._data_assimilation.update_after_compute(self._run_results)
