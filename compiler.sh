@@ -14,14 +14,26 @@ build_nwm=true
 if [ -z "$F90" ]
 then
     export F90="gfortran"
-    echo "using F90='gfortran'"
+    echo "using F90=${F90}"
 fi
+if [ -z "$CC" ]
+then
+    export CC="gcc"
+    echo "using CC=${CC}"
+fi
+
 
 #if you have custom static library paths, uncomment below and export them
 #export LIBRARY_PATH=<paths>:$LIBRARY_PATH
 #if you have custom dynamic library paths, uncomment below and export them
 #export LD_LIBRARY_PATHS=<paths>:$LD_LIBRARY_PATHS
-export NETCDFINC=/usr/include/openmpi-x86_64/
+if [ -z "$NETCDF" ]
+then
+    export NETCDFINC=/usr/include/openmpi-x86_64/
+else
+    export NETCDFINC="${NETCDF}"
+fi
+echo "using NETCDFINC=${NETCDFINC}"
 
 if  [[ "$build_mc_kernel" == true ]]; then
   #building reach and resevoir kernel files .o
@@ -58,7 +70,7 @@ if [[ "$build_framework" == true ]]; then
   rm -rf build
   ##python setup.py --use-cython install
   ##python setup.py --use-cython develop
-  python setup.py build_ext --inplace --use-cython || exit
+  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
   pip install -e . || exit
 fi
 
@@ -68,7 +80,7 @@ if [[ "$build_routing" == true ]]; then
   rm -rf build
   #python setup.py --use-cython install
   #python setup.py --use-cython develop
-  python setup.py build_ext --inplace --use-cython || exit
+  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
   pip install -e . || exit
 fi
 

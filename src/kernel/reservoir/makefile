@@ -1,8 +1,18 @@
 NETCDFINC := -I$(NETCDFINC) $(shell nc-config --fflags)
 NETCDFLIB := $(shell nc-config --flibs)
 COMPILER90 = $(F90)
-F90FLAGS = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4
-F90FLAGS := -g $(F90FLAGS) $(NETCDFINC) $(NETCDFLIB) -static-libgfortran -static-libgcc -nodefaultlibs -lgfortran -lgcc -fPIC
+
+F90FLAGSGFORTRAN = -w -c -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 -static-libgfortran -lgfortran -lgcc -static-libgcc 
+F90FLAGSINTEL = -free -w -c -O2 -fconvert=big-endian -frecord-marker=4
+ifeq ($(notdir ${FC}), ifort)
+F90FLAGS = $(F90FLAGSINTEL)
+else ifeq ($(notdir ${FC}), mpiifort)
+F90FLAGS = $(F90FLAGSINTEL)
+else
+F90FLAGS = $(F90FLAGSGFORTRAN)
+endif
+
+F90FLAGS := -g $(F90FLAGS) $(NETCDFINC) $(NETCDFLIB)  -nodefaultlibs -fPIC
 ARFLAGS = rc
 
 VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
@@ -12,10 +22,10 @@ VPATH = ./Level_Pool ./Persistence_Level_Pool_Hybrid ./RFC_Forecasts
 all: binding_lp.a bind_hybrid.a bind_rfc.a
 
 test_main: test_main.o binding_lp.a bind_hybrid.a bind_rfc.a
-	gfortran -g -o $@ $^
+	$(COMPILER90) -g -o $@ $^
 
 test_main.o: test_binding.c
-	gcc -g -c -o $@ $<
+	$(COMPILER90) -g -c -o $@ $<
 
 module_levelpool.o: module_reservoir.o module_levelpool_properties.o module_levelpool_state.o
 
