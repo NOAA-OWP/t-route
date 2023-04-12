@@ -52,7 +52,7 @@ class troute_model():
         self._segment_attributes = ['segment_id','segment_toid','dx','n','ncc','s0','bw','tw',
                                     'twcc','alt','musk','musx','cs']
         self._waterbody_attributes = ['waterbody_id','waterbody_toid','LkArea','LkMxE','OrificeA',
-                                      'OrificeC','OrificeE','WeirC','WeirE','WeirL','ifd','qd0','h0',
+                                      'OrificeC','OrificeE','WeirC','WeirE','WeirL','ifd',
                                       'reservoir_type']
     
     def preprocess_static_vars(self, values: dict):
@@ -110,6 +110,8 @@ class troute_model():
                                                index=self._network.segment_index.to_numpy())
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
 
+        flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
+
         # Data Assimilation values:
         self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
         self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
@@ -156,9 +158,11 @@ class troute_model():
                          self._network.topobathy_df,
                          self._network.refactored_diffusive_domain,
                          self._network.refactored_reaches,
-                         [], #subnetwork_list,
+                         [None, None, None], #subnetwork_list,
                          self._network.coastal_boundary_depth_df,
-                         self._network.unrefactored_topobathy_df,)
+                         self._network.unrefactored_topobathy_df,
+                         flowveldepth_interorder,
+                         )
         
         # update initial conditions with results output
         self._network.new_q0(self._run_results)

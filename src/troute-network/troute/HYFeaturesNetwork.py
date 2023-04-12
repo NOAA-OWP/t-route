@@ -375,15 +375,18 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._connections = extract_connections(
             self.dataframe, "downstream", terminal_codes=self.terminal_codes
         )
-
+        
         #Load waterbody/reservoir info
         if self.waterbody_parameters:
             for var in waterbody_attributes:
                 self._waterbody_df[var] = value_dict[var]
 
+            self._waterbody_df = self._waterbody_df.rename(columns={'waterbody_id': 'wb-id',
+                                                                    'waterbody_toid': 'toid'})
+            self._waterbody_df.set_index("wb-id", inplace=True)
             self._waterbody_df = self.waterbody_dataframe.sort_index()
 
-            self._waterbody_types_df = self.waterbody_dataframe['reservoir_type']
+            self._waterbody_types_df = pd.DataFrame(self.waterbody_dataframe['reservoir_type'])
             self._waterbody_df.drop('reservoir_type', axis=1, inplace=True)
 
     

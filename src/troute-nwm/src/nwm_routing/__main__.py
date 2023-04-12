@@ -1048,6 +1048,7 @@ def nwm_route(
     subnetwork_list,
     coastal_boundary_depth_df,
     unrefactored_topobathy_df,
+    flowveldepth_interorder={},
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -1094,6 +1095,7 @@ def nwm_route(
         waterbody_types_df,
         waterbody_type_specified,
         subnetwork_list,
+        flowveldepth_interorder,
     )
     LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
     # returns list, first item is run result, second item is subnetwork items

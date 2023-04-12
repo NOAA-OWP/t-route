@@ -1,5 +1,5 @@
 """Basic Model Interface implementation for t-route."""
-
+import yaml
 import numpy as np
 from bmipy import Bmi
 from pathlib import Path
@@ -73,6 +73,8 @@ class bmi_troute(Bmi):
         'reservoir_type',
         # dynamic forcing/DA variables
         'land_surface_water_source__volume_flow_rate',
+        'upstream_id',
+        'upstream_fvd',
         'coastal_boundary__depth', 
         'usgs_gage_observation__volume_flow_rate',
         'reservoir_usgs_gage_observation__volume_flow_rate',
@@ -131,7 +133,12 @@ class bmi_troute(Bmi):
         
         # -------------- Read in the BMI configuration -------------------------#
         bmi_cfg_file = Path(bmi_cfg_file)
-        
+        bmi_parameters = _read_config_file(bmi_cfg_file)
+        n_segment = int(bmi_parameters.get('segment_number'))
+        n_waterbody = int(bmi_parameters.get('waterbody_number'))
+        n_io = int(bmi_parameters.get('io_number'))
+        n_upstream = int(bmi_parameters.get('upstream_number'))
+
         # ------------- Initialize t-route model ------------------------------#
         self._model = troute_model(bmi_cfg_file)
 
@@ -147,46 +154,51 @@ class bmi_troute(Bmi):
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
         #FIXME Do this better..., load size of variables from config file??
-        self._values['segment_id'] = np.zeros(3)
-        self._values['segment_toid'] = np.zeros(3)
-        self._values['dx'] = np.zeros(3)
-        self._values['n'] = np.zeros(3)
-        self._values['ncc'] = np.zeros(3)
-        self._values['s0'] = np.zeros(3)
-        self._values['bw'] = np.zeros(3)
-        self._values['tw'] = np.zeros(3)
-        self._values['twcc'] = np.zeros(3)
-        self._values['alt'] = np.zeros(3)
-        self._values['musk'] = np.zeros(3)
-        self._values['musx'] = np.zeros(3)
-        self._values['cs'] = np.zeros(3)
-        self._values['waterbody_id'] = np.zeros(0)
-        self._values['waterbody_toid'] = np.zeros(0)
-        self._values['LkArea'] = np.zeros(0)
-        self._values['LkMxE'] = np.zeros(0)
-        self._values['OrificeA'] = np.zeros(0)
-        self._values['OrificeC'] = np.zeros(0)
-        self._values['OrificeE'] = np.zeros(0)
-        self._values['WeirC'] = np.zeros(0)
-        self._values['WeirE'] = np.zeros(0)
-        self._values['WeirL'] = np.zeros(0)
-        self._values['ifd'] = np.zeros(0)
-        self._values['qd0'] = np.zeros(0)
-        self._values['h0'] = np.zeros(0)
-        self._values['reservoir_type'] = np.zeros(0)
-        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(3)
+        self._values['segment_id'] = np.zeros(n_segment, dtype=int)
+        self._values['segment_toid'] = np.zeros(n_segment, dtype=int)
+        self._values['dx'] = np.zeros(n_segment)
+        self._values['n'] = np.zeros(n_segment)
+        self._values['ncc'] = np.zeros(n_segment)
+        self._values['s0'] = np.zeros(n_segment)
+        self._values['bw'] = np.zeros(n_segment)
+        self._values['tw'] = np.zeros(n_segment)
+        self._values['twcc'] = np.zeros(n_segment)
+        self._values['alt'] = np.zeros(n_segment)
+        self._values['musk'] = np.zeros(n_segment)
+        self._values['musx'] = np.zeros(n_segment)
+        self._values['cs'] = np.zeros(n_segment)
+        self._values['waterbody_id'] = np.zeros(n_waterbody, dtype=int)
+        self._values['waterbody_toid'] = np.zeros(n_waterbody, dtype=int)
+        self._values['LkArea'] = np.zeros(n_waterbody)
+        self._values['LkMxE'] = np.zeros(n_waterbody)
+        self._values['OrificeA'] = np.zeros(n_waterbody)
+        self._values['OrificeC'] = np.zeros(n_waterbody)
+        self._values['OrificeE'] = np.zeros(n_waterbody)
+        self._values['WeirC'] = np.zeros(n_waterbody)
+        self._values['WeirE'] = np.zeros(n_waterbody)
+        self._values['WeirL'] = np.zeros(n_waterbody)
+        self._values['ifd'] = np.zeros(n_waterbody)
+        #self._values['qd0'] = np.zeros(1) #TODO will this come from a file or model engine?
+        #self._values['h0'] = np.zeros(1) #TODO will this come from a file or model engine?
+        self._values['reservoir_type'] = np.zeros(n_waterbody)
+        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
         self._values['coastal_boundary__depth'] = np.zeros(0)
         self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['lastobs__volume_flow_rate'] = np.zeros(0)
-        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(3)
-        self._values['channel_water_flow__speed'] = np.zeros(3)
-        self._values['channel_water__mean_depth'] = np.zeros(3)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(0)
-        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(0)
-        self._values['lake_surface__elevation'] = np.zeros(0)
+        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
+        self._values['channel_water_flow__speed'] = np.zeros(n_io)
+        self._values['channel_water__mean_depth'] = np.zeros(n_io)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(n_waterbody)
+        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(n_waterbody)
+        self._values['lake_surface__elevation'] = np.zeros(n_waterbody)
+
+        # upstream values from other bmi run...
+        self._values['upstream_id'] = np.zeros(n_upstream, dtype=int)
+        self._values['upstream_fvd'] = np.zeros(3*1)
+
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
@@ -490,4 +502,13 @@ class bmi_troute(Bmi):
         cfg_list = [cfg.get('flag'),cfg.get('file')]
         return cfg_list
 
+# Helper functions
+def _read_config_file(custom_input_file):
+    '''
 
+    '''
+    with open(custom_input_file) as custom_file:
+        data = yaml.load(custom_file, Loader=yaml.SafeLoader)
+
+    bmi_parameters = data.get("bmi_parameters", None)
+    return bmi_parameters
