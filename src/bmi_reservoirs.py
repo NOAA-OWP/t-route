@@ -45,17 +45,17 @@ class bmi_reservoir(Bmi):
     _input_var_names = [
         # waterbody static variables
         'lake_surface__elevation',
-        'lake_area',
-        'weir_elevation',
-        'weir_coefficient',
-        'weir_length',
+        'LkArea',
+        'WeirE',
+        'WeirC',
+        'WeirL',
         'dam_length',
-        'orifice_elevation',
-        'orifice_coefficient',
-        'orifice_area',
-        'max_depth',
-        'lake_number',
-        'initial_fractional_depth',
+        'OrificeE',
+        'OrificeC',
+        'OrificeA',
+        'LkMxE',
+        'waterbody_id',
+        'ifd',
         'upstream_ids',
         'res_type',
         'da_idx',
@@ -130,20 +130,20 @@ class bmi_reservoir(Bmi):
         # -------------- so that they'll be picked up with the get functions --#
         #FIXME Do this better..., load size of variables from config file??
         self._values['lake_surface__elevation'] = np.zeros(1)
-        self._values['lake_area'] = np.zeros(1)
-        self._values['weir_elevation'] = np.zeros(1)
-        self._values['weir_coefficient'] = np.zeros(1)
-        self._values['weir_length'] = np.zeros(1)
+        self._values['LkArea'] = np.zeros(1)
+        self._values['WeirE'] = np.zeros(1)
+        self._values['WeirC'] = np.zeros(1)
+        self._values['WeirL'] = np.zeros(1)
         self._values['dam_length'] = np.zeros(1)
-        self._values['orifice_elevation'] = np.zeros(1)
-        self._values['orifice_coefficient'] = np.zeros(1)
-        self._values['orifice_area'] = np.zeros(1)
-        self._values['max_depth'] = np.zeros(1)
-        self._values['lake_number'] = np.zeros(1)
-        self._values['initial_fractional_depth'] = np.zeros(1)
+        self._values['OrificeE'] = np.zeros(1)
+        self._values['OrificeC'] = np.zeros(1)
+        self._values['OrificeA'] = np.zeros(1)
+        self._values['LkMxE'] = np.zeros(1)
+        self._values['waterbody_id'] = np.zeros(1)
+        self._values['ifd'] = np.zeros(1)
         self._values['upstream_ids'] = np.zeros(1, dtype=int)
-        self._values['res_type'] = np.zeros(1)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(1)
+        self._values['reservoir_type'] = np.zeros(1)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(12)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
 
@@ -184,8 +184,7 @@ class bmi_reservoir(Bmi):
         until : int
             Time to run model until in seconds.
         """
-        time_diff = until - self.get_current_time()
-        n_steps = int(time_diff/self._model._time_step)
+        n_steps = int(until/self._model._time_step)
 
         for _ in range(int(n_steps)):
             self.update()

@@ -33,16 +33,16 @@ class reservoir_model():
     
     def preprocess_static_vars(self, values: dict):
 
-        lake_number = values['lake_number']
-        lake_area = values['lake_area'] * 1e6
-        max_depth = values['max_depth']
-        orifice_area = values['orifice_area']
-        orifice_coefficient = values['orifice_coefficient']
-        orifice_elevation = values['orifice_elevation']
-        weir_coefficient = values['weir_coefficient']
-        weir_elevation = values['weir_elevation']
-        weir_length = values['weir_length']
-        initial_fractional_depth = values['initial_fractional_depth']
+        lake_number = values['waterbody_id']
+        lake_area = values['LkArea']# * 1e6
+        max_depth = values['LkMxE']
+        orifice_area = values['OrificeA']
+        orifice_coefficient = values['OrificeC']
+        orifice_elevation = values['OrificeE']
+        weir_coefficient = values['WeirC']
+        weir_elevation = values['WeirE']
+        weir_length = values['WeirL']
+        initial_fractional_depth = values['ifd']
         water_elevation = values['lake_surface__elevation']
         
         args = [lake_area, max_depth, orifice_area,
@@ -51,12 +51,14 @@ class reservoir_model():
                 initial_fractional_depth, 0.0, water_elevation]
         
         upstream_ids = array('l', values['upstream_ids'])
-        self._res_type = values['res_type']
+        self._res_type = values['reservoir_type']
 
         self._levelpool = MC_Levelpool(0, lake_number, upstream_ids, args, self._res_type)
-
+        
         # Set inflow
         self._inflow = values['lake_water~incoming__volume_flow_rate']
+        self._inflow_list = self._inflow.tolist()
+        self._outflow_list = []
 
         # Set data assimilation parameters
         if self._res_type==2 or self._res_type==3:
@@ -84,12 +86,18 @@ class reservoir_model():
         Returns
         -------
         """
+        # Check if new inflow values have been provided
+        #TODO Come up with more clever way to do this, this seems easily breakable...
+        if len(self._inflow_list)==0:
+            self._inflow_list = self._inflow.tolist()
+
         # Get water elevation before levelpool calculation
         initial_water_elevation = self._levelpool.water_elevation
 
         # Run routing
-        self._outflow, water_elevation = self._levelpool.run(self._inflow, 0.0, self._time_step)
-        
+        inflow = self._inflow_list.pop(0)
+        self._outflow, water_elevation = self._levelpool.run(inflow, 0.0, self._time_step)
+
         # Data Assimilation
         if self._res_type==2 or self._res_type==3:
             #TODO: figure out what format 'gage_time' will be when passed from model engine...
@@ -177,6 +185,9 @@ class reservoir_model():
         # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow
         values['lake_surface__elevation'] = water_elevation
+
+        # Append outflow list
+        self._outflow_list.append(self._outflow)
 
         # update model time
         self._time += self._time_step
