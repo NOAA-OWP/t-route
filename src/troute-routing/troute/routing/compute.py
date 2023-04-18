@@ -826,7 +826,7 @@ def compute_nhd_routing_v02(
                         # what will it take to get just the tw FVD values into an array to pass to the next loop?
                         # There will be an empty array initialized at the top of the loop, then re-populated here.
                         # we don't have to bother with populating it after the last group
-        import pdb; pdb.set_trace()
+
         results = []
         for order in subnetworks_only_ordered_jit:
             results.extend(results_subn[order])
@@ -1182,11 +1182,12 @@ def compute_nhd_routing_v02(
 
             # qlat_sub = qlats.loc[common_segs].sort_index()
             # q0_sub = q0.loc[common_segs].sort_index()
-            qlat_sub = qlats.loc[param_df_sub.index]
+
+            qlat_sub = qlats.loc[param_df_sub.drop(offnetwork_upstreams).index]
             q0_sub = q0.loc[param_df_sub.index]
 
             param_df_sub = param_df_sub.reindex(
-                param_df_sub.index.tolist() + lake_segs + list(offnetwork_upstreams)
+                param_df_sub.index.tolist() + lake_segs
             ).sort_index()
             
             for us_subn_tw in offnetwork_upstreams:
@@ -1200,7 +1201,7 @@ def compute_nhd_routing_v02(
             usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
             da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
 
-            qlat_sub = qlat_sub.reindex(param_df_sub.index)
+            qlat_sub = qlat_sub.reindex(np.setdiff1d(param_df_sub.index, offnetwork_upstreams))
             q0_sub = q0_sub.reindex(param_df_sub.index)
             
             # prepare reservoir DA data
@@ -1225,7 +1226,7 @@ def compute_nhd_routing_v02(
                 waterbody_types_df_sub, 
                 t0
             )
-            import pdb; pdb.set_trace()
+            
             results.append(
                 compute_func(
                     nts,

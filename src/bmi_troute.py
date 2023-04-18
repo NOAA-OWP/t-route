@@ -197,7 +197,7 @@ class bmi_troute(Bmi):
 
         # upstream values from other bmi run...
         self._values['upstream_id'] = np.zeros(n_upstream, dtype=int)
-        self._values['upstream_fvd'] = np.zeros(3*1)
+        self._values['upstream_fvd'] = np.zeros(3*12)
 
         """
         #TODO Update loading RFC data not through Fortran reservoir module.

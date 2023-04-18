@@ -89,6 +89,16 @@ class troute_model():
         value_dict=values,
         )
 
+        if len(values['upstream_id'])>0:
+            for key in values['upstream_id']:
+                del self._network._connections[key]
+                del self._network._reverse_network[key]
+                for tw in self._network._independent_networks.keys():
+                    del self._network._independent_networks[tw][key]
+                    for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
+                        self._network._reaches_by_tw[tw][rli].remove(key)
+
+
 
     def run(self, values: dict, until=300):
         """
@@ -107,7 +117,7 @@ class troute_model():
         # Set input data into t-route objects
         # Forcing values:
         self._network._qlateral = pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
-                                               index=self._network.segment_index.to_numpy())
+                                               index=np.setdiff1d(self._network.segment_index.to_numpy(), values['upstream_id']))
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
 
         flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
@@ -166,6 +176,22 @@ class troute_model():
         
         # update initial conditions with results output
         self._network.new_q0(self._run_results)
+        # update offnetwork_upstream initial conditions
+        self._network._q0 = pd.concat(
+            [
+                self._network.q0,
+                pd.concat(
+                    [
+                        pd.DataFrame(
+                            vals['results'][[-3, -3, -1]].reshape(1,3), index=[seg_id], columns=["qu0", "qd0", "h0"]
+                        ) 
+                        for seg_id, vals in flowveldepth_interorder.items()
+                    ],
+                    copy=False,
+                )
+            ]
+        ).sort_index()
+        
         self._network.update_waterbody_water_elevation()               
         
         # update t0
