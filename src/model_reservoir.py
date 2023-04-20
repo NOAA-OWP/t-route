@@ -59,6 +59,7 @@ class reservoir_model():
         self._inflow = values['lake_water~incoming__volume_flow_rate']
         self._inflow_list = self._inflow.tolist()
         self._outflow_list = []
+        self._water_elevation_list = []
 
         # Set data assimilation parameters
         if self._res_type==2 or self._res_type==3:
@@ -188,6 +189,7 @@ class reservoir_model():
 
         # Append outflow list
         self._outflow_list.append(self._outflow)
+        self._water_elevation_list.append(water_elevation)
 
         # update model time
         self._time += self._time_step
