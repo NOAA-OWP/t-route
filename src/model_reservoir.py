@@ -8,9 +8,6 @@ from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da
 
-#TODO: Once PR#605 is merged, uncomment and use the updated DA objects
-#from troute.DataAssimilation import PersistenceDA, RFCDA
-
 class reservoir_model():
 
     def __init__(self, bmi_cfg_file=None):
@@ -53,7 +50,7 @@ class reservoir_model():
         upstream_ids = array('l', values['upstream_ids'])
         self._res_type = values['reservoir_type']
 
-        self._levelpool = MC_Levelpool(0, lake_number, upstream_ids, args, self._res_type)
+        self._levelpool = MC_Levelpool(0, lake_number, upstream_ids, args, 1)
         
         # Set inflow
         self._inflow = values['lake_water~incoming__volume_flow_rate']
@@ -88,7 +85,7 @@ class reservoir_model():
         -------
         """
         # Check if new inflow values have been provided
-        #TODO Come up with more clever way to do this, this seems easily breakable...
+        #TODO Come up with more clever way to do this, this seems breakable...
         if len(self._inflow_list)==0:
             self._inflow_list = self._inflow.tolist()
 
@@ -103,7 +100,6 @@ class reservoir_model():
         if self._res_type==2 or self._res_type==3:
             #TODO: figure out what format 'gage_time' will be when passed from model engine...
             #gage_time = np.array((values['gage_time']-self._t0).total_seconds())
-
             (
                 new_outflow,
                 new_persisted_outflow,
@@ -120,13 +116,13 @@ class reservoir_model():
                 self._persistence_update_time,
                 self._persistence_index,            # number of sequentially persisted update cycles
                 self._outflow,                      # levelpool simulated outflow (cms)
-                self._inflow,                       # waterbody inflow (cms)
+                inflow,                             # waterbody inflow (cms)
                 self._time_step,                    # model timestep (sec)
                 self._levelpool.lake_area,          # waterbody surface area (km2)
                 self._levelpool.max_depth,          # max waterbody depth (m)
                 self._levelpool.orifice_elevation,  # orifice elevation (m)
                 initial_water_elevation,            # water surface el., previous timestep (m)
-                48.0,                               # gage lookback hours (hrs)
+                24.0,                               # gage lookback hours (hrs)
                 self._update_time,                  # waterbody update time (sec)
             )
             

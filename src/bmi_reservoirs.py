@@ -147,9 +147,9 @@ class bmi_reservoir(Bmi):
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
 
-        #TODO: ADD DA VARIABLES
-        self._values['gage_observations'] = np.zeros(289)
-        self._values['gage_time'] = np.zeros(1)
+        #TODO: how will we know the size of these arrays?
+        self._values['gage_observations'] = np.zeros(120)
+        self._values['gage_time'] = np.zeros(120)
 
         self._values['da_idx'] = np.zeros(1, dtype=int)
         self._values['time_step'] = np.zeros(1)
