@@ -295,18 +295,22 @@ class HYFeaturesNetwork(AbstractNetwork):
                 raise(RuntimeError("No supplied levelpool parameters in routing config"))
                 
             lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
-            self._waterbody_df = read_ngen_waterbody_df(
-                        levelpool_params["level_pool_waterbody_parameter_file_path"],
-                        lake_id,
-                        )
-                
-            # Remove duplicate lake_ids and rows
-            self._waterbody_df = (
-                            self.waterbody_dataframe.reset_index()
-                            .drop_duplicates(subset=lake_id)
-                            .set_index(lake_id)
-                            .sort_index()
+            
+            try:
+                self._waterbody_df = read_ngen_waterbody_df(
+                            levelpool_params["level_pool_waterbody_parameter_file_path"],
+                            lake_id,
                             )
+                    
+                # Remove duplicate lake_ids and rows
+                self._waterbody_df = (
+                                self.waterbody_dataframe.reset_index()
+                                .drop_duplicates(subset=lake_id)
+                                .set_index(lake_id)
+                                .sort_index()
+                                )
+            except ValueError:
+                self._waterbody_df = pd.DataFrame(index=self.waterbody_dataframe.index)
 
             try:
                 self._waterbody_types_df = read_ngen_waterbody_type_df(
@@ -327,6 +331,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                 #So make this default to 1 (levelpool)
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
+        else:
+            self._waterbody_df = pd.DataFrame()
+            self._waterbody_types_df = pd.DataFrame()
     
     def load_bmi_data(self, value_dict, segment_attributes, waterbody_attributes):
         
