@@ -7,12 +7,12 @@ from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, reservo
 import xarray as xr
 import numpy as np
 
-reservoir_index_file = "/glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/Domain/v21/reservoir_index_Extended_AnA_NWMv2.1.nc"
-rfc_timeseries_folder = "/glade/p/cisl/nwc/nwmv30_coastal_inland/CONUS/DA_Inputs/BayFlood/rfc_timeseries/"
+reservoir_index_file = "/home/dongha.kim/github/t-route/temp_input/reservoir_index/reservoir_index_Extended_AnA_NWMv2.1.nc"
+rfc_timeseries_folder = "/home/dongha.kim/github/t-route/temp_input/rfc_timeseries/"
 
 
 def create_rfc_values():
-    rfc_da_df = xr.open_dataset(rfc_timeseries_folder + '2021-10-20_00.60min.KNFC1.RFCTimeSeries.ncdf').to_dataframe()
+    rfc_da_df = xr.open_dataset(rfc_timeseries_folder + '2021-10-20_00.60min.KNFC1.RFCTimeSeries.ncdf', engine="netcdf4").to_dataframe()
     return {
         'lake_surface__elevation': np.array([189.255814]),
         'lake_area': np.array([3.80643]),
@@ -38,7 +38,9 @@ def create_rfc_values():
     }
 
 values = create_rfc_values()
-args = [values['lake_area']*1e6, values['max_depth'], values['orifice_area'],
+# ** lake_area is passed to Fortran levelpool or RFC as the input argument with unit of km^2 (then, internally)
+#    converted to m^2) 
+args = [values['lake_area'], values['max_depth'], values['orifice_area'], #values['lake_area']*1e6
         values['orifice_coefficient'], values['orifice_elevation'],
         values['weir_coefficient'], values['weir_elevation'], 
         values['weir_length'], values['initial_fractional_depth'], 
@@ -46,7 +48,7 @@ args = [values['lake_area']*1e6, values['max_depth'], values['orifice_area'],
 
 
 #--------------------------------------------------------
-# Create fortran object and run 1 timestep (300 sec). 
+# Create fortran object and run 1 timestep (300 sec). q
 # Calls def __ini__() of cdef class MC_RFC(Reach)
 #--------------------------------------------------------
 rfc_module = MC_RFC(
@@ -56,15 +58,47 @@ rfc_module = MC_RFC(
     args,
     4,
     reservoir_index_file,
-    "2021-10-20_01:00:00",
+    "2021-10-20_13:00:00",
     rfc_timeseries_folder,
     28.0,
 )
 
-fortran_outflow, fortran_water_elevation = rfc_module.run(
-    values['lake_water~incoming__volume_flow_rate'], 0.0, 300
-    )
+# fortran_outflow, fortran_water_elevation = rfc_module.run(
+#    values['lake_water~incoming__volume_flow_rate'], 0.0, 300
+#    )
 
+inflow_list =  [187,
+                185,
+                183,
+                181,
+                179,
+                177,
+                175,
+                173,
+                171,
+                169,
+                167,
+                165,
+                163,
+                161,
+                159,
+                157,
+                155,
+                153,
+                151,
+                149,
+                147,
+                145,
+                143,
+                141,
+                139,
+                 ]
+
+for inflow in inflow_list:
+    fortran_outflow, fortran_water_elevation = rfc_module.run(
+        inflow, 0.0, 300
+        )
+    print(f"inflow:{inflow} outflow:{fortran_outflow} welevation:{fortran_water_elevation}")
 
 #--------------------------------------------------------
 # Create python object and run 1 timestep (300 sec)
@@ -83,6 +117,7 @@ initial_water_elevation = levelpool.water_elevation
 levelpool_outflow, levelpool_water_elevation = levelpool.run(
     values['lake_water~incoming__volume_flow_rate'], 0.0, 300
     )
+
 
 '''
 # Data Assimilation

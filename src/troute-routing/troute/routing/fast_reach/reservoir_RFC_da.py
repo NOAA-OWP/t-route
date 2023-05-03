@@ -65,7 +65,7 @@ def search_RFCTimeSeries_files_backward_from_offset_hours(offset_date,
 def timeseries_idx_updatetime_totalcounts(lookback_hours, 
                                           rfc_da_df, 
                                           rfc_timeseries_offset_hours):
-   '''
+    '''
     Arguments
     ---------
     lookback_hours (str)             : Difference in hours between the initial offset_date and 
@@ -240,6 +240,8 @@ def reservoir_RFC_da_v2(lake_number,
                         model_start_date,
                         routing_period, 
                         current_time,
+                        timeseries_update_time,
+                        timeseries_idx,
                         rfc_timeseries_offset_hours,
                         rfc_forecast_persist_days, 
                         rfc_timeseries_folder,
@@ -249,7 +251,12 @@ def reservoir_RFC_da_v2(lake_number,
                         levelpool_outflow, 
                         levelpool_water_elevation, 
                         lake_area, 
-                        max_water_elevation):    
+                        max_water_elevation,
+                        time_step_seconds,
+                        total_counts,
+                        timeseries_discharges,
+                        use_RFC,
+                        ):    
     '''
     Run RFC DA reservoir module via BMI
     
@@ -284,41 +291,46 @@ def reservoir_RFC_da_v2(lake_number,
     Notes
     -----
     '''        
-    lake_area= lake_area*1.0e6 # Temporary I think km^2 -> m^2
-    
-    # compute a new date after adding hours to a current date
-    rfc_timeseries_offset_date = add_hours(model_start_date, rfc_timeseries_offset_hours)
-    
-    # search for RFCTimeSeries.ncdf file used for DA and lookback hours from offset date
-    rfc_timeseries_file, lookback_hours = search_RFCTimeSeries_files_backward_from_offset_hours(
-                                                                                rfc_timeseries_offset_date, 
-                                                                                28,
-                                                                                rfc_gage_id,
-                                                                                rfc_timeseries_folder)
-    
-    rfc_da_df = xr.open_dataset(rfc_timeseries_folder + rfc_timeseries_file).to_dataframe()
-    
-    timeseries_discharges = rfc_da_df.discharges.to_numpy()
-    synthetic              = rfc_da_df.synthetic_values.to_numpy()
-    
-    # check if conditions are met for using RFC DA.
-    use_RFC = _validate_RFC_data(lake_number, 
-                                 timeseries_discharges, 
-                                 synthetic, 
-                                 rfc_timeseries_folder, 
-                                 rfc_timeseries_file, 
-                                 routing_period)
-    
-    rfc_forecast_persist_seconds = rfc_forecast_persist_days*24*60*60
- 
-    current_time += int(routing_period)
-
-    if use_RFC and current_time<=rfc_forecast_persist_seconds:
-        # compute initial values of time_series_index, time_series_update_time, and total counts of observed+forecated
-        timeseries_idx, timeseries_update_time, time_step_seconds, total_counts = timeseries_idx_updatetime_totalcounts(
+    if current_time == 0:
+        # compute a new date after adding hours to a current date
+        rfc_timeseries_offset_date = add_hours(model_start_date, rfc_timeseries_offset_hours[0])
+        
+        # search for RFCTimeSeries.ncdf file used for DA and lookback hours from offset date
+        rfc_timeseries_file, lookback_hours = search_RFCTimeSeries_files_backward_from_offset_hours(
+                                                                                    rfc_timeseries_offset_date, 
+                                                                                    28,
+                                                                                    rfc_gage_id,
+                                                                                    rfc_timeseries_folder)
+        
+        file_path= os.path.join(rfc_timeseries_folder, rfc_timeseries_file)
+        if os.path.isfile(file_path):
+            rfc_da_df = xr.open_dataset(rfc_timeseries_folder + rfc_timeseries_file).to_dataframe()
+            timeseries_discharges = rfc_da_df.discharges.to_numpy()
+            synthetic             = rfc_da_df.synthetic_values.to_numpy()
+            # compute initial values of time_series_index, time_series_update_time, and total counts of observed+forecated
+            timeseries_idx, timeseries_update_time, time_step_seconds, total_counts = timeseries_idx_updatetime_totalcounts(
                                                                                      lookback_hours, 
                                                                                      rfc_da_df, 
                                                                                      rfc_timeseries_offset_hours)
+            
+        else:
+            timeseries_discharges = 99999
+            synthetic = 1
+        
+        # check if conditions are met for using RFC DA.
+        use_RFC = _validate_RFC_data(lake_number, 
+                                    timeseries_discharges, 
+                                    synthetic, 
+                                    rfc_timeseries_folder, 
+                                    rfc_timeseries_file, 
+                                    routing_period)
+    
+    rfc_forecast_persist_seconds = rfc_forecast_persist_days*24*60*60
+         
+    current_time += int(routing_period)
+
+    if use_RFC and current_time<=rfc_forecast_persist_seconds:
+
          
         if current_time >= timeseries_update_time and timeseries_idx < total_counts:  
             # TODO: update_time -> timeseries_update_time
@@ -329,15 +341,16 @@ def reservoir_RFC_da_v2(lake_number,
         # If reservoir_type is 4 for CONUS RFC reservoirs
         if reservoir_type==4:
             # Set outflow to corresponding discharge from array
-            outflow = timeseries_discharges[timeseries_idx]
+            # NOTE: Python index i-1 = Fortran index i for locating a position in an array 
+            outflow = timeseries_discharges[timeseries_idx-1]
 
         # Else reservoir_type 5 for for Alaska RFC glacier outflows
         else:
             # Set outflow to sum inflow and corresponding discharge from array
-            outflow = inflow + timeseries_discharges[timeseries_idx]
+            outflow = inflow + timeseries_discharges[timeseries_idx-1]
         
-        # Update water elevation
-        new_water_elevation = water_elevation + ((inflow - outflow)/lake_area) * routing_period
+        # Update water elevation: 1.0e6 converts km^2 to m^2
+        new_water_elevation = water_elevation + ((inflow - outflow)/(lake_area*1.0e6)) * routing_period
 
         # Ensure that the water elevation is within the minimum and maximum elevation
         if new_water_elevation < 0.0:
@@ -350,7 +363,7 @@ def reservoir_RFC_da_v2(lake_number,
         dynamic_reservoir_type = reservoir_type
 
         # Set the assimilated_value to corresponding discharge from array
-        assimilated_value = timeseries_discharges[timeseries_idx]
+        assimilated_value = timeseries_discharges[timeseries_idx-1]
 
         # Check for outflows less than 0 and cycle backwards in the array until a
         # non-negative value is found. If all previous values are negative, then
@@ -360,7 +373,7 @@ def reservoir_RFC_da_v2(lake_number,
 
             while outflow < 0 and missing_outflow_index > 1:
                 missing_outflow_index = missing_outflow_index - 1
-                outflow = timeseries_discharges[missing_outflow_index]
+                outflow = timeseries_discharges[missing_outflow_index-1]
             
             if outflow < 0:
                 # If reservoir_type is 4 for CONUS RFC reservoirs
@@ -403,7 +416,18 @@ def reservoir_RFC_da_v2(lake_number,
 
         # Set the assimilated_source_file to empty string
         #assimilated_source_file = ""
-    
-    return outflow, new_water_elevation, timeseries_update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value#, assimilated_source_file
 
+    return (outflow, 
+            new_water_elevation,
+            current_time, 
+            timeseries_update_time, 
+            timeseries_idx, 
+            dynamic_reservoir_type, 
+            assimilated_value,
+            #, assimilated_source_file,
+            time_step_seconds,
+            total_counts,
+            timeseries_discharges,
+            use_RFC,
+            )
 
