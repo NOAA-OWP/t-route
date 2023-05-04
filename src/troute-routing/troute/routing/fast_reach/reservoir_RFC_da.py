@@ -290,7 +290,8 @@ def reservoir_RFC_da_v2(lake_number,
     
     Notes
     -----
-    '''        
+    '''      
+
     if current_time == 0:
         # compute a new date after adding hours to a current date
         rfc_timeseries_offset_date = add_hours(model_start_date, rfc_timeseries_offset_hours[0])

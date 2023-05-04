@@ -105,8 +105,8 @@ class reservoir_model():
         initial_water_elevation = self._levelpool.water_elevation
 
         # TODO: For RFC DA, shouldn't water elevation at t0 be computed value from the previous time step? 
-        if self._time == 0:
-            self._water_elevation = initial_water_elevation
+        #if self._time == 0:
+        #    self._water_elevation = initial_water_elevation
 
         # Run routing
         inflow = self._inflow_list.pop(0)
@@ -211,21 +211,21 @@ class reservoir_model():
                 self._rfc_timeseries_folder,                     # path to folder containing RFC timeseires files
                 self._res_type,                                  # reservoir type
                 inflow,                                          # waterbody inflow (a single value) (cms)
-                self._water_elevation, # initial_water_elevation # water surface el., previous timestep (m)
+                initial_water_elevation, # self._water_elevation, # water surface el., previous timestep (m)
                 self._levelpool_outflow,                         # levelpool simulated outflow (cms)
                 levelpool_water_elevation,                       # levelpool simulated water elevation (m)
                 self._levelpool.lake_area,                       # waterbody surface area (km2)
                 self._levelpool.max_depth,                       # ** actually max elevation, not depth, of waterbody (m)
-                self._time_step_seconds,                          # seconds of 'timeSteps' of selected RFCTimeSeries file
-                self._total_counts,                               # total number of discharge data of selected RFCTimeSeries file
-                self._timeseries_discharges,                      # discharge timeseries from a select RFCTimeSeries file
-                self._use_RFC,                                    # True: use RFC DA
+                self._time_step_seconds,                         # seconds of 'timeSteps' of selected RFCTimeSeries file
+                self._total_counts,                              # total number of discharge data of selected RFCTimeSeries file
+                self._timeseries_discharges,                     # discharge timeseries from a select RFCTimeSeries file
+                self._use_RFC,                                   # True: use RFC DA
             )    
 
             # update levelpool water elevation state
             #TODO: Isn't using the second line below more explicit? 
-            #water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
-            water_elevation = new_water_elevation
+            water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
+            #water_elevation = new_water_elevation
             
             # change reservoir_outflow
             self._outflow = new_outflow
