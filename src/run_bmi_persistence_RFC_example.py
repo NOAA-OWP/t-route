@@ -220,7 +220,6 @@ for hr in range(120):
     upper_fvd = pd.concat([upper_fvd, flowveldepth], axis=1)
 
     reservoir_inflow = flowveldepth.loc[[1056,385,156]].sum()[0::3].to_numpy()
-    import pdb; pdb.set_trace()
     '''
     # test
     reservoir_inflow = np.array([187,
@@ -251,7 +250,6 @@ for hr in range(120):
     reservoir_model.set_value('lake_water~incoming__volume_flow_rate', reservoir_inflow)
     import pdb; pdb.set_trace()'''
     reservoir_model.update_until(3600)
-    import pdb; pdb.set_trace()
 
     upstream_fvd = np.asarray(
         [
@@ -276,11 +274,11 @@ for hr in range(120):
     res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
 
 import pdb; pdb.set_trace()   
-'''
-full_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/full_fvd.csv')
-upper_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/upper_fvd.csv')
-lower_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/lower_fvd.csv')
-res_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/res_fvd.csv')
-pd.DataFrame({'Gage_Time': gage_times,
-              'Gage_Values': gage_vals}).to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/gage.csv')
-'''
+
+full_fvd.to_csv('/home/sean.horvath/projects/data/test_reservoir_module/rfc/full_fvd.csv')
+upper_fvd.to_csv('/home/sean.horvath/projects/data/test_reservoir_module/rfc/upper_fvd.csv')
+lower_fvd.to_csv('/home/sean.horvath/projects/data/test_reservoir_module/rfc/lower_fvd.csv')
+res_fvd.to_csv('/home/sean.horvath/projects/data/test_reservoir_module/rfc/res_from_file_fvd.csv')
+pd.DataFrame({'Gage_Values': reservoir_model._model._timeseries_discharges,
+              'Filename': reservoir_model._model._assimilated_source_file}).to_csv('/home/sean.horvath/projects/data/test_reservoir_module/rfc/gage.csv')
+

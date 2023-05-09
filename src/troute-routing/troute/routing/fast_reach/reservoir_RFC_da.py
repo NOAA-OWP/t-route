@@ -141,15 +141,12 @@ def _validate_RFC_data(lake_number,
     
     return use_RFC
 
-def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routing_period, current_time,
+def reservoir_RFC_da(use_RFC, time_series, timeseries_idx, routing_period, current_time,
                      update_time, DA_time_step, rfc_forecast_persist_seconds, reservoir_type, inflow, 
                      water_elevation, levelpool_outflow, levelpool_water_elevation, lake_area, 
-                     max_water_elevation):
-    use_RFC = _validate_RFC_data(lake_number, time_series, synthetic)
-    
-    lake_area= lake_area*1.0e6 # I think km^2 -> m^2
+                     max_water_elevation, rfc_file):
 
-    if use_RFC and (routing_period<=3600) and current_time<=rfc_forecast_persist_seconds:
+    if use_RFC and current_time<=rfc_forecast_persist_seconds:
         if current_time >= update_time:
             # Advance update_time to the next timestep and time_series_idx to next index
             update_time += DA_time_step
@@ -181,6 +178,9 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
         # Set the assimilated_value to corresponding discharge from array
         assimilated_value = time_series[timeseries_idx]
 
+        # Set the assimilated_source_file to empty string
+        assimilated_source_file = rfc_file
+
         # Check for outflows less than 0 and cycle backwards in the array until a
         # non-negative value is found. If all previous values are negative, then
         # use level pool outflow.
@@ -210,7 +210,7 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
                 assimilated_value = -9999.0
 
                 # Set the assimilated_source_file to empty string
-                #assimilated_source_file = ""
+                assimilated_source_file = ""
 
     else:
         # If reservoir_type is 4 for CONUS RFC reservoirs
@@ -231,9 +231,9 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
         assimilated_value = -9999.0
 
         # Set the assimilated_source_file to empty string
-        #assimilated_source_file = ""
+        assimilated_source_file = ""
     
-    return outflow, new_water_elevation, update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value#, assimilated_source_file
+    return outflow, new_water_elevation, update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value, assimilated_source_file
 
 def preprocess_RFC_data(model_start_date,
                         rfc_timeseries_offset_hours,

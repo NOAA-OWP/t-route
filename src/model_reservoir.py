@@ -89,8 +89,8 @@ class reservoir_model():
             (self._use_RFC, 
              self._timeseries_discharges, 
              self._timeseries_idx, 
-             self._timeseries_update_time, 
-             self._time_step_seconds, 
+             self._update_time, 
+             self._da_time_step, 
              self._total_counts,
              self._rfc_timeseries_file) = preprocess_RFC_data(self._t0,
                                      self._rfc_timeseries_offset_hours,
@@ -164,7 +164,7 @@ class reservoir_model():
             self._persistence_update_time = new_persistence_update_time
         
         elif self._res_type==4 or self._res_type==5:
-            '''
+            
             (
                 new_outflow, 
                 new_water_elevation, 
@@ -172,25 +172,26 @@ class reservoir_model():
                 new_timeseries_idx,
                 dynamic_reservoir_type, 
                 assimilated_value, 
-                #assimilated_source_file,
+                assimilated_source_file,
             ) = reservoir_RFC_da(
-                self._levelpool.lake_number,        # lake identification number
-                values['gage_observations'],  # gage observation values (cms)
+                self._use_RFC,        # boolean whether to use RFC values or not
+                self._timeseries_discharges,  # gage observation values (cms)
                 self._timeseries_idx,         # index of for current time series observation
-                values['synthetic_flag'],     # boolean flags indicating synthetic values
                 self._time_step,              # routing period (sec)
                 self._time,                   # model time (sec)
                 self._update_time,                  # time to advance to next time series index
                 self._da_time_step,           # frequency of DA observations (sec)
-                self._persist_seconds,        # max seconds RFC forecasts will be used/persisted
+                self._rfc_forecast_persist_days*24*60*60, # max seconds RFC forecasts will be used/persisted (days -> seconds)
                 self._res_type,               # reservoir type
-                self._inflow,                 # waterbody inflow (cms)
+                inflow,                 # waterbody inflow (cms)
                 initial_water_elevation,      # water surface el., previous timestep (m)
-                self._outflow,                # levelpool simulated outflow (cms)
-                water_elevation,              # levelpool simulated water elevation (m)
-                self._levelpool.lake_area,          # waterbody surface area (km2)
+                self._levelpool_outflow,                # levelpool simulated outflow (cms)
+                levelpool_water_elevation,              # levelpool simulated water elevation (m)
+                self._levelpool.lake_area*1.0e6, # waterbody surface area (km2 -> m2)
                 self._levelpool.max_depth,          # max waterbody depth (m)
+                self._rfc_timeseries_file, 
             )
+
             '''
             #model_start_date = self._t0.strftime("%Y-%m-%d_%H:%M:%S")
             
@@ -223,7 +224,7 @@ class reservoir_model():
                 #self._timeseries_discharges,                     # discharge timeseries from a select RFCTimeSeries file
                 #self._use_RFC,                                   # True: use RFC DA
             )    
-
+            '''
             # update levelpool water elevation state
             #TODO: Isn't using the second line below more explicit? 
             water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
@@ -233,19 +234,11 @@ class reservoir_model():
             self._outflow = new_outflow
 
             # update DA reservoir state parameters
-            #self._update_time = new_update_time
-            self._current_time           = new_current_time
-            self._timeseries_update_time = new_timeseries_update_time
-            self._timeseries_idx         = new_timeseries_idx
-            self._water_elevation        = new_water_elevation 
-            self._dynamic_res_type       = dynamic_reservoir_type
-            self._assimilated_value      = assimilated_value
+            self._update_time = new_update_time
+            self._timeseries_idx = new_timeseries_idx
+            self._dynamic_res_type = dynamic_reservoir_type
+            self._assimilated_value = assimilated_value
             self._assimilated_source_file = assimilated_source_file
-            
-            self._time_step_seconds        = time_step_seconds
-            self._total_counts             = total_counts
-            self._timeseries_discharges    = timeseries_discharges
-            self._use_RFC                  = use_RFC
 
         # Set output variables
         values['lake_water~outgoing__volume_flow_rate'] = self._outflow
