@@ -11,8 +11,12 @@ log_parameters:
     showtiming: False
     log_level : CRITICAL
 #--------------------------------------------------------------------------------
-reservoir_data_assimilation_parameters:
+compute_parameters:
+    #--------------
     model_start_time: "2021-10-20_13:00:00"
+    model_time_step: 300 # model timestep in seconds (300 = 5min)
+#--------------------------------------------------------------------------------
+reservoir_data_assimilation_parameters:
     level_pool:
         #----------
         level_pool_waterbody_parameter_file_path: /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/domain/gauge_01069700.gpkg 
@@ -20,6 +24,7 @@ reservoir_data_assimilation_parameters:
     rfc:
         #----------
         reservoir_rfc_timeseries_folder          : "./../test/BMI/rfc_timeseries/"
+        reservoir_rfc_gage_id                    : "KNFC1"
         reservoir_rfc_timeseries_offset_hours    : 28
         reservoir_rfc_forecast_persist_days      : 11
     persistence:
@@ -32,18 +37,3 @@ reservoir_data_assimilation_parameters:
         timeslice_lookback_hours : #48 
         qc_threshold             : #1
 
-#--------------------------------------------------------------------------------
-output_parameters:
-    #----------
-    test_output: /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/output/unit_test_hyfeature.pkl
-#    lite_restart:
-        #----------
-#        lite_restart_output_directory: /glade/u/home/shorvath/projects/t-route/test/LowerColorado_TX/restart/
-#    chrtout_output:
-        #----------
-#        wrf_hydro_channel_output_source_folder: /glade/u/home/shorvath/projects/t-route/test/LowerColorado_TX/channel_forcing/
-#    chanobs_output:
-        #----------
-#        chanobs_output_directory: /glade/u/home/shorvath/projects/t-route/test/LowerColorado_TX/output/
-#        chanobs_filepath        : lcr_chanobs.nc
-#    lakeout_output: /glade/u/home/shorvath/projects/t-route/test/LowerColorado_TX/lakeout/

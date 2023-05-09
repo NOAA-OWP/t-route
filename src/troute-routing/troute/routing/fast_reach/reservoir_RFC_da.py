@@ -91,7 +91,7 @@ def timeseries_idx_updatetime_totalcounts(lookback_hours,
     dt = datetime.datetime.strptime(time_step,"%H:%M:%S") 
     time_step_seconds = dt.hour*3600
     observed_counts = rfc_da_df.observedCounts[0][0]
-    timeseries_idx = int(lookback_seconds / time_step_seconds + 1 + observed_counts - rfc_timeseries_offset_hours)
+    timeseries_idx = int(lookback_seconds / time_step_seconds + observed_counts - rfc_timeseries_offset_hours)
         
     # compute initial value of timeseries_update_time
     update_offset_seconds = lookback_seconds % time_step_seconds
@@ -235,16 +235,58 @@ def reservoir_RFC_da(lake_number, time_series, timeseries_idx, synthetic, routin
     
     return outflow, new_water_elevation, update_time, timeseries_idx, dynamic_reservoir_type, assimilated_value#, assimilated_source_file
 
-def reservoir_RFC_da_v2(lake_number, 
+def preprocess_RFC_data(model_start_date,
+                        rfc_timeseries_offset_hours,
                         rfc_gage_id,
-                        model_start_date,
-                        routing_period, 
+                        rfc_timeseries_folder,
+                        lake_number,
+                        routing_period):
+    # compute a new date after adding hours to a current date
+    rfc_timeseries_offset_date = add_hours(model_start_date, rfc_timeseries_offset_hours)
+    
+    # search for RFCTimeSeries.ncdf file used for DA and lookback hours from offset date
+    rfc_timeseries_file, lookback_hours = search_RFCTimeSeries_files_backward_from_offset_hours(
+                                                                                rfc_timeseries_offset_date, 
+                                                                                28,
+                                                                                rfc_gage_id,
+                                                                                rfc_timeseries_folder)
+    
+    file_path= os.path.join(rfc_timeseries_folder, rfc_timeseries_file)
+    if os.path.isfile(file_path):
+        rfc_da_df = xr.open_dataset(rfc_timeseries_folder + rfc_timeseries_file).to_dataframe()
+        timeseries_discharges = rfc_da_df.discharges.to_numpy()
+        synthetic             = rfc_da_df.synthetic_values.to_numpy()
+        # compute initial values of time_series_index, time_series_update_time, and total counts of observed+forecated
+        timeseries_idx, timeseries_update_time, time_step_seconds, total_counts = timeseries_idx_updatetime_totalcounts(
+                                                                                    lookback_hours, 
+                                                                                    rfc_da_df, 
+                                                                                    rfc_timeseries_offset_hours)
+        
+    else:
+        timeseries_discharges = 99999
+        synthetic = 1
+    
+    # check if conditions are met for using RFC DA.
+    use_RFC = _validate_RFC_data(lake_number, 
+                                 timeseries_discharges, 
+                                 synthetic, 
+                                 rfc_timeseries_folder, 
+                                 rfc_timeseries_file, 
+                                 routing_period)
+    
+    return (use_RFC, 
+            timeseries_discharges, 
+            timeseries_idx, 
+            timeseries_update_time, 
+            time_step_seconds, 
+            total_counts,
+            rfc_timeseries_file)
+
+def reservoir_RFC_da_v2(routing_period, 
                         current_time,
                         timeseries_update_time,
                         timeseries_idx,
-                        rfc_timeseries_offset_hours,
-                        rfc_forecast_persist_days, 
-                        rfc_timeseries_folder,
+                        rfc_forecast_persist_days,
                         reservoir_type, 
                         inflow, 
                         water_elevation, 
@@ -291,40 +333,6 @@ def reservoir_RFC_da_v2(lake_number,
     Notes
     -----
     '''      
-
-    if current_time == 0:
-        # compute a new date after adding hours to a current date
-        rfc_timeseries_offset_date = add_hours(model_start_date, rfc_timeseries_offset_hours[0])
-        
-        # search for RFCTimeSeries.ncdf file used for DA and lookback hours from offset date
-        rfc_timeseries_file, lookback_hours = search_RFCTimeSeries_files_backward_from_offset_hours(
-                                                                                    rfc_timeseries_offset_date, 
-                                                                                    28,
-                                                                                    rfc_gage_id,
-                                                                                    rfc_timeseries_folder)
-        
-        file_path= os.path.join(rfc_timeseries_folder, rfc_timeseries_file)
-        if os.path.isfile(file_path):
-            rfc_da_df = xr.open_dataset(rfc_timeseries_folder + rfc_timeseries_file).to_dataframe()
-            timeseries_discharges = rfc_da_df.discharges.to_numpy()
-            synthetic             = rfc_da_df.synthetic_values.to_numpy()
-            # compute initial values of time_series_index, time_series_update_time, and total counts of observed+forecated
-            timeseries_idx, timeseries_update_time, time_step_seconds, total_counts = timeseries_idx_updatetime_totalcounts(
-                                                                                     lookback_hours, 
-                                                                                     rfc_da_df, 
-                                                                                     rfc_timeseries_offset_hours)
-            
-        else:
-            timeseries_discharges = 99999
-            synthetic = 1
-        
-        # check if conditions are met for using RFC DA.
-        use_RFC = _validate_RFC_data(lake_number, 
-                                    timeseries_discharges, 
-                                    synthetic, 
-                                    rfc_timeseries_folder, 
-                                    rfc_timeseries_file, 
-                                    routing_period)
     
     rfc_forecast_persist_seconds = rfc_forecast_persist_days*24*60*60
          

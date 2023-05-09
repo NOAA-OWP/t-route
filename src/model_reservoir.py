@@ -1,12 +1,13 @@
 
-import pandas as pd
+import pandas as pd #TODO: remove?
 import numpy as np
 from datetime import datetime
-
+import yaml
 from array import array
+
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
-from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, reservoir_RFC_da_v2
+from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, reservoir_RFC_da_v2, preprocess_RFC_data
 
 class reservoir_model():
 
@@ -18,24 +19,39 @@ class reservoir_model():
                      '_update_time', '_prev_persisted_flow', '_persistence_update_time',
                      '_persistence_index', '_time', '_time_step','_dynamic_res_type',
                      '_assimilated_value', '_assimilated_source_file',
-                     '_levelpool_outflow,', 
-                     '_current_time', '_timeseries_update_time',                     # RFC variables
-                     '_timeseries_idx', '_rfc_gage_id', '_rfc_timeseries_folder',    # RFC variables
-                     '_time_step_seconds', '_total_counts','_timeseries_discharges', '_use_RFC'] # RFC variables
+                     '_levelpool_outflow,', '_timeseries_update_time',
+                     '_timeseries_idx', '_rfc_gage_id', '_rfc_timeseries_folder',
+                     '_rfc_timeseries_file', '_rfc_timeseries_offset_hours', '_rfc_forecast_persist_days',
+                     '_time_step_seconds', '_total_counts', '_timeseries_discharges', 
+                     '_use_RFC']
         
-        if bmi_cfg_file: #TODO: Do we need a config file for this??
-            pass
+        if bmi_cfg_file:
+            (bmi_parameters, #TODO We might not need any bmi specific parameters
+             log_parameters, #TODO Update all logging/warnings throughout standalone reservoirs...
+             compute_parameters,
+             rfc_parameters) = _read_config_file(bmi_cfg_file)
+            
+            if compute_parameters:
+                self._time_step = compute_parameters.get("model_time_step", 300)
+                self._t0 = compute_parameters.get("model_start_time", None)
+                if not self._t0:
+                    raise(RuntimeError("No start_datetime provided in config file."))
+            if rfc_parameters:
+                self._rfc_gage_id = rfc_parameters.get("reservoir_rfc_gage_id", None)
+                self._rfc_timeseries_folder = rfc_parameters.get("reservoir_rfc_timeseries_folder", None)
+                self._rfc_timeseries_offset_hours = rfc_parameters.get("reservoir_rfc_timeseries_offset_hours", None)
+                self._rfc_forecast_persist_days = rfc_parameters.get("reservoir_rfc_forecast_persist_days", 11)
+            
         else:
-            pass
-
+            raise(RuntimeError("No config file provided."))
+            
         self._time = 0.0
-        self._time_step = 300.0
-        self._t0 = datetime(2021, 10, 20, 13, 0, 0) #placeholder...read from config file?
     
+
     def preprocess_static_vars(self, values: dict):
 
         lake_number = values['waterbody_id']
-        lake_area = values['LkArea']# * 1e6
+        lake_area = values['LkArea']
         max_depth = values['LkMxE']
         orifice_area = values['OrificeA']
         orifice_coefficient = values['OrificeC']
@@ -70,19 +86,19 @@ class reservoir_model():
             self._persistence_update_time = 0
         
         if self._res_type==4 or self._res_type==5:
-            #self._update_time = 0
-            #self._timeseries_idx = values['da_idx'] - 1
-            #self._da_time_step = values['time_step']
-            #self._persist_seconds = values['rfc_forecast_persist_seconds']
-            self._current_time=0
-            self._timeseries_update_time=0 
-            self._timeseries_idx = 0
-            self._rfc_gage_id = "KNFC1"
-            self._rfc_timeseries_folder = "./../test/BMI/rfc_timeseries/"
-            self._time_step_seconds = 0
-            self._total_counts = 0
-            self._timeseries_discharges =np.zeros(432) # maximum numbers of hourly data (3d obs + 15d forecasts)
-            self._use_RFC = True
+            (self._use_RFC, 
+             self._timeseries_discharges, 
+             self._timeseries_idx, 
+             self._timeseries_update_time, 
+             self._time_step_seconds, 
+             self._total_counts,
+             self._rfc_timeseries_file) = preprocess_RFC_data(self._t0,
+                                     self._rfc_timeseries_offset_hours,
+                                     self._rfc_gage_id,
+                                     self._rfc_timeseries_folder,
+                                     lake_number,
+                                     self._time_step)
+
     def run(self, values: dict,):
         """
         Run this model into the future, updating the state stored in the provided model dict appropriately.
@@ -96,27 +112,19 @@ class reservoir_model():
         -------
         """
         # Check if new inflow values have been provided
-        #TODO Come up with more clever way to do this, this seems breakable...
+        #TODO Should we come up with more clever way to do cycle through inflows for multiple time steps?
         if len(self._inflow_list)==0:
             self._inflow_list = self._inflow.tolist()
 
         # Get water elevation before levelpool calculation
-        # ISSUE: isn't it used only for water elevation at model start time at t0?
         initial_water_elevation = self._levelpool.water_elevation
-
-        # TODO: For RFC DA, shouldn't water elevation at t0 be computed value from the previous time step? 
-        #if self._time == 0:
-        #    self._water_elevation = initial_water_elevation
 
         # Run routing
         inflow = self._inflow_list.pop(0)
-        #TOCONSIDER: not to cofused between levelpool and res DA outputs
         self._levelpool_outflow, levelpool_water_elevation = self._levelpool.run(inflow, 0.0, self._time_step)
 
         # Data Assimilation
         if self._res_type==2 or self._res_type==3:
-            #TODO: figure out what format 'gage_time' will be when passed from model engine...
-            #gage_time = np.array((values['gage_time']-self._t0).total_seconds())
             (
                 new_outflow,
                 new_persisted_outflow,
@@ -132,7 +140,7 @@ class reservoir_model():
                 self._prev_persisted_outflow,       # previously persisted outflow (cms)
                 self._persistence_update_time,
                 self._persistence_index,            # number of sequentially persisted update cycles
-                self._levelpool_outflow, #self._outflow   # levelpool simulated outflow (cms)
+                self._levelpool_outflow,            # levelpool simulated outflow (cms)
                 inflow,                             # waterbody inflow (cms)
                 self._time_step,                    # model timestep = time step of inflow to reservoir (sec)
                 self._levelpool.lake_area,          # waterbody surface area (km2)
@@ -184,7 +192,7 @@ class reservoir_model():
                 self._levelpool.max_depth,          # max waterbody depth (m)
             )
             '''
-            model_start_date = self._t0.strftime("%Y-%m-%d_%H:%M:%S")
+            #model_start_date = self._t0.strftime("%Y-%m-%d_%H:%M:%S")
             
             (
                 new_outflow, 
@@ -194,21 +202,15 @@ class reservoir_model():
                 new_timeseries_idx,
                 dynamic_reservoir_type, 
                 assimilated_value, 
-                time_step_seconds,
-                total_counts,
-                timeseries_discharges,
-                use_RFC,
+                assimilated_source_file,
             ) = reservoir_RFC_da_v2(
-                self._levelpool.lake_number,                     # lake identification number
-                self._rfc_gage_id,                               # RFC gage ID
-                model_start_date,                                # simulation start date
                 self._time_step,                                 # model time step = time step of inflow to reservoir = routing period (sec)
-                self._current_time,                              # rfc DA simulation time starting from 0 with increments by ch.routing time step
+                self._time,                              # rfc DA simulation time starting from 0 with increments by ch.routing time step
                 self._timeseries_update_time,                    # defines location of time interval of timeseries corresponding to _current_time
                 self._timeseries_idx,                            # locates discharge in timeseries corresponding to _current_time
-                values['rfc_timeseries_offset_hours'],           # offset hours ahead of model start date for searching RFC files backward in time
-                values['rfc_forecast_persist_days'],             # max number of days that RFC-supplied forecast will be used/persisted in simulation
-                self._rfc_timeseries_folder,                     # path to folder containing RFC timeseires files
+                #values['rfc_timeseries_offset_hours'][0],           # offset hours ahead of model start date for searching RFC files backward in time
+                self._rfc_forecast_persist_days,             # max number of days that RFC-supplied forecast will be used/persisted in simulation
+                #self._rfc_timeseries_folder,                     # path to folder containing RFC timeseires files
                 self._res_type,                                  # reservoir type
                 inflow,                                          # waterbody inflow (a single value) (cms)
                 initial_water_elevation, # self._water_elevation, # water surface el., previous timestep (m)
@@ -216,10 +218,10 @@ class reservoir_model():
                 levelpool_water_elevation,                       # levelpool simulated water elevation (m)
                 self._levelpool.lake_area,                       # waterbody surface area (km2)
                 self._levelpool.max_depth,                       # ** actually max elevation, not depth, of waterbody (m)
-                self._time_step_seconds,                         # seconds of 'timeSteps' of selected RFCTimeSeries file
-                self._total_counts,                              # total number of discharge data of selected RFCTimeSeries file
-                self._timeseries_discharges,                     # discharge timeseries from a select RFCTimeSeries file
-                self._use_RFC,                                   # True: use RFC DA
+                #self._time_step_seconds,                         # seconds of 'timeSteps' of selected RFCTimeSeries file
+                #self._total_counts,                              # total number of discharge data of selected RFCTimeSeries file
+                #self._timeseries_discharges,                     # discharge timeseries from a select RFCTimeSeries file
+                #self._use_RFC,                                   # True: use RFC DA
             )    
 
             # update levelpool water elevation state
@@ -238,7 +240,8 @@ class reservoir_model():
             self._water_elevation        = new_water_elevation 
             self._dynamic_res_type       = dynamic_reservoir_type
             self._assimilated_value      = assimilated_value
-            #self._assimilated_source_file = assimilated_source_file
+            self._assimilated_source_file = assimilated_source_file
+            
             self._time_step_seconds        = time_step_seconds
             self._total_counts             = total_counts
             self._timeseries_discharges    = timeseries_discharges
@@ -255,3 +258,36 @@ class reservoir_model():
         # update model time
         self._time += self._time_step
 
+
+# Utility functions -------
+def _read_config_file(custom_input_file):
+    '''
+    Read-in data from user-created configuration file.
+    
+    Arguments
+    ---------
+    custom_input_file (str): configuration filepath, .yaml
+    
+    Returns
+    -------
+    bmi_parameters               (dict): Input parameters re bmi configuration
+    log_parameters               (dict): Input parameters re logging
+    compute_parameters           (dict): Input parameters re computation settings
+    data_assimilation_parameters (dict): Input parameters re data assimilation
+
+    '''
+    with open(custom_input_file) as custom_file:
+        data = yaml.load(custom_file, Loader=yaml.SafeLoader)
+
+    bmi_parameters = data.get("bmi_parameters", None)
+    log_parameters = data.get("log_parameters", None)
+    compute_parameters = data.get("compute_parameters", None)
+    data_assimilation_parameters = data.get("reservoir_data_assimilation_parameters", None)
+    rfc_parameters = data_assimilation_parameters.get("rfc", None)
+
+    return (
+        bmi_parameters,
+        log_parameters,
+        compute_parameters,
+        rfc_parameters,
+    )

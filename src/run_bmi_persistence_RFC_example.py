@@ -75,7 +75,7 @@ def create_output_dataframes(results, nts, waterbodies_df):
     segment_ids = flowveldepth.index.values.tolist()
 
     return flowveldepth, wbdy #q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
-
+'''
 #----------------------------------------------------------------
 # Full model
 #----------------------------------------------------------------
@@ -112,7 +112,7 @@ full_model.set_value('WeirE', np.array([199.586993]))
 full_model.set_value('WeirL', np.array([10.0]))
 full_model.set_value('ifd', np.array([0.9]))
 full_model.set_value('reservoir_type', np.array([2]))
-
+'''
 #-----------------------
 # Split model
 #-----------------------
@@ -125,7 +125,7 @@ lower_routing_model.initialize(bmi_cfg_file='./../test/BMI/bmi_lower_example.yam
 
 # Initialize reservoir model
 reservoir_model = bmi_reservoirs.bmi_reservoir()
-reservoir_model.initialize()
+reservoir_model.initialize(bmi_cfg_file='./../test/BMI/bmi_reservoir_example.yaml')
 
 # Set static values
 #Segment parameters, upper
@@ -220,6 +220,8 @@ for hr in range(120):
     upper_fvd = pd.concat([upper_fvd, flowveldepth], axis=1)
 
     reservoir_inflow = flowveldepth.loc[[1056,385,156]].sum()[0::3].to_numpy()
+    import pdb; pdb.set_trace()
+    '''
     # test
     reservoir_inflow = np.array([187,
                                 185,
@@ -247,8 +249,8 @@ for hr in range(120):
                                 141,
                                 139])
     reservoir_model.set_value('lake_water~incoming__volume_flow_rate', reservoir_inflow)
-    import pdb; pdb.set_trace()
-    reservoir_model.update_until(7200)
+    import pdb; pdb.set_trace()'''
+    reservoir_model.update_until(3600)
     import pdb; pdb.set_trace()
 
     upstream_fvd = np.asarray(
@@ -272,11 +274,13 @@ for hr in range(120):
     
     lower_fvd = pd.concat([lower_fvd, flowveldepth], axis=1)
     res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
-    
+
+import pdb; pdb.set_trace()   
+'''
 full_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/full_fvd.csv')
 upper_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/upper_fvd.csv')
 lower_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/lower_fvd.csv')
 res_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/res_fvd.csv')
 pd.DataFrame({'Gage_Time': gage_times,
               'Gage_Values': gage_vals}).to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/gage.csv')
-
+'''
