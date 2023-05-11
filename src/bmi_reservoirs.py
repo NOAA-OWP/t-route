@@ -1,7 +1,6 @@
 """Basic Model Interface implementation for reservoirs."""
 
 import numpy as np
-import pandas as pd
 from bmipy import Bmi
 from pathlib import Path
 
@@ -166,12 +165,7 @@ class bmi_reservoir(Bmi):
             # ---------- so just set to zero for now ------------------#
             self._values[var_name] = np.zeros(3)
         '''
-        """
-        #TODO Figure out how to load RFC data in if not through Fortran reservoir module...
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        """
 
-    
     def update(self):
         """Advance model by one time step."""
         if self._model._time==0.0:

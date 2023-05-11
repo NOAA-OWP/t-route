@@ -1,13 +1,12 @@
 
-import pandas as pd #TODO: remove?
 import numpy as np
-from datetime import datetime
+
 import yaml
 from array import array
 
 from troute.network.reservoirs.levelpool.levelpool import MC_Levelpool
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
-from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, reservoir_RFC_da_v2, preprocess_RFC_data
+from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, preprocess_RFC_data
 
 class reservoir_model():
 
@@ -135,10 +134,10 @@ class reservoir_model():
             ) = reservoir_hybrid_da(
                 self._levelpool.lake_number,        # lake identification number
                 values['gage_observations'],        # gage observation values (cms)
-                values['gage_time'], #gage_time,    # gage observation times (sec)
+                values['gage_time'],                # gage observation times (sec)
                 self._time,                         # model time (sec)
                 self._prev_persisted_outflow,       # previously persisted outflow (cms)
-                self._persistence_update_time,
+                self._persistence_update_time,      
                 self._persistence_index,            # number of sequentially persisted update cycles
                 self._levelpool_outflow,            # levelpool simulated outflow (cms)
                 inflow,                             # waterbody inflow (cms)
@@ -174,61 +173,26 @@ class reservoir_model():
                 assimilated_value, 
                 assimilated_source_file,
             ) = reservoir_RFC_da(
-                self._use_RFC,        # boolean whether to use RFC values or not
-                self._timeseries_discharges,  # gage observation values (cms)
-                self._timeseries_idx,         # index of for current time series observation
-                self._time_step,              # routing period (sec)
-                self._time,                   # model time (sec)
-                self._update_time,                  # time to advance to next time series index
-                self._da_time_step,           # frequency of DA observations (sec)
+                self._use_RFC,                            # boolean whether to use RFC values or not
+                self._timeseries_discharges,              # gage observation values (cms)
+                self._timeseries_idx,                     # index of for current time series observation
+                self._time_step,                          # routing period (sec)
+                self._time,                               # model time (sec)
+                self._update_time,                        # time to advance to next time series index
+                self._da_time_step,                       # frequency of DA observations (sec)
                 self._rfc_forecast_persist_days*24*60*60, # max seconds RFC forecasts will be used/persisted (days -> seconds)
-                self._res_type,               # reservoir type
-                inflow,                 # waterbody inflow (cms)
-                initial_water_elevation,      # water surface el., previous timestep (m)
-                self._levelpool_outflow,                # levelpool simulated outflow (cms)
-                levelpool_water_elevation,              # levelpool simulated water elevation (m)
-                self._levelpool.lake_area*1.0e6, # waterbody surface area (km2 -> m2)
-                self._levelpool.max_depth,          # max waterbody depth (m)
-                self._rfc_timeseries_file, 
+                self._res_type,                           # reservoir type
+                inflow,                                   # waterbody inflow (cms)
+                initial_water_elevation,                  # water surface el., previous timestep (m)
+                self._levelpool_outflow,                  # levelpool simulated outflow (cms)
+                levelpool_water_elevation,                # levelpool simulated water elevation (m)
+                self._levelpool.lake_area*1.0e6,          # waterbody surface area (km2 -> m2)
+                self._levelpool.max_depth,                # max waterbody depth (m)
+                self._rfc_timeseries_file,                # RFC file name
             )
 
-            '''
-            #model_start_date = self._t0.strftime("%Y-%m-%d_%H:%M:%S")
-            
-            (
-                new_outflow, 
-                new_water_elevation,
-                new_current_time, 
-                new_timeseries_update_time,
-                new_timeseries_idx,
-                dynamic_reservoir_type, 
-                assimilated_value, 
-                assimilated_source_file,
-            ) = reservoir_RFC_da_v2(
-                self._time_step,                                 # model time step = time step of inflow to reservoir = routing period (sec)
-                self._time,                              # rfc DA simulation time starting from 0 with increments by ch.routing time step
-                self._timeseries_update_time,                    # defines location of time interval of timeseries corresponding to _current_time
-                self._timeseries_idx,                            # locates discharge in timeseries corresponding to _current_time
-                #values['rfc_timeseries_offset_hours'][0],           # offset hours ahead of model start date for searching RFC files backward in time
-                self._rfc_forecast_persist_days,             # max number of days that RFC-supplied forecast will be used/persisted in simulation
-                #self._rfc_timeseries_folder,                     # path to folder containing RFC timeseires files
-                self._res_type,                                  # reservoir type
-                inflow,                                          # waterbody inflow (a single value) (cms)
-                initial_water_elevation, # self._water_elevation, # water surface el., previous timestep (m)
-                self._levelpool_outflow,                         # levelpool simulated outflow (cms)
-                levelpool_water_elevation,                       # levelpool simulated water elevation (m)
-                self._levelpool.lake_area,                       # waterbody surface area (km2)
-                self._levelpool.max_depth,                       # ** actually max elevation, not depth, of waterbody (m)
-                #self._time_step_seconds,                         # seconds of 'timeSteps' of selected RFCTimeSeries file
-                #self._total_counts,                              # total number of discharge data of selected RFCTimeSeries file
-                #self._timeseries_discharges,                     # discharge timeseries from a select RFCTimeSeries file
-                #self._use_RFC,                                   # True: use RFC DA
-            )    
-            '''
             # update levelpool water elevation state
-            #TODO: Isn't using the second line below more explicit? 
             water_elevation = self._levelpool.assimilate_elevation(new_water_elevation)
-            #water_elevation = new_water_elevation
             
             # change reservoir_outflow
             self._outflow = new_outflow
