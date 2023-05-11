@@ -10,9 +10,11 @@ import bmi_reservoirs
 
 def create_output_dataframes(results, nts, waterbodies_df):
     """
-    Run this model into the future, updating the state stored in the provided model dict appropriately.
-    Note that the model assumes the current values set for input variables are appropriately for the time
-    duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
+    Create dataframes of computed flowveldepth array.
+    NOTE: This is a temporary function used for this test case.
+    TODO: Create something similar within model_reservoir.py so these 
+    stored values can be accessed via BMI's model.get_value() function.
+
     Parameters
     ----------
     results: list
@@ -21,22 +23,11 @@ def create_output_dataframes(results, nts, waterbodies_df):
         The number of time steps the model was run.
     waterbodies_df: pd.DataFrame
         Dataframe containing waterbody parameters (specifically, IDs stored in index)
-    link_lake_crosswalk: dict #TODO: Can we remove this?
-        Relates lake ids to outlet link ids.
+
     Returns
     -------
-    q_channel_df: pandas.core.series.Series
-        Streamflow rate for each segment
-    v_channel_df: pandas.core.series.Series
-        Streamflow velocity for each segment
-    d_channel_df: pandas.core.series.Series
-        Streamflow depth for each segment
-    i_lakeout_df: pandas.core.series.Series
-        Inflow for each waterbody
-    q_lakeout_df: pandas.core.series.Series
-        Outflow for each waterbody
-    d_lakeout_df: pandas.core.series.Series
-        Water elevation for each waterbody
+    flowveldepth (pd.DataFrame): Dataframe containing all computed flow/velocity/depth values
+    wbdy (pd.DataFrame): Dataframe containing the waterbody inflows
     """
     qvd_columns = pd.MultiIndex.from_product(
         [range(int(nts)), ["q", "v", "d"]]
@@ -55,26 +46,8 @@ def create_output_dataframes(results, nts, waterbodies_df):
         [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
         copy=False,
     )
-    
-    wbdy_id_list = waterbodies_df.index.values.tolist()
 
-    i_lakeout_df = wbdy.loc[wbdy_id_list].iloc[:,-1]
-    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-3]
-    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,-1]
-    #lakeout = pd.concat([i_df, q_df, d_df], axis=1)
-    
-    # replace waterbody lake_ids with outlet link ids
-    #TODO Update the following line to fit with HyFeatures. Do we need to replace IDs? Or replace
-    # waterbody_ids with the downstream segment?
-    #flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
-    
-    q_channel_df = flowveldepth.iloc[:,-3]
-    v_channel_df = flowveldepth.iloc[:,-2]
-    d_channel_df = flowveldepth.iloc[:,-1]
-    
-    segment_ids = flowveldepth.index.values.tolist()
-
-    return flowveldepth, wbdy #q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
+    return flowveldepth, wbdy
 
 #----------------------------------------------------------------
 # Full model
@@ -113,7 +86,6 @@ full_model.set_value('WeirL', np.array([10.0]))
 full_model.set_value('ifd', np.array([0.9]))
 full_model.set_value('reservoir_type', np.array([2]))
 
-import pdb; pdb.set_trace()
 #-----------------------
 # Split model
 #-----------------------
@@ -174,7 +146,6 @@ reservoir_model.set_value('ifd', np.array([0.9]))
 reservoir_model.set_value('reservoir_type', np.array([2]))
 reservoir_model.set_value('lake_surface__elevation', np.array([-1.000000e+09]))
 
-
 # Create random forcing values
 forcing_vals = np.random.gamma(1,1,6*120).reshape(120,6)
 gage_vals = np.random.gamma(1,1,1*120)
@@ -190,47 +161,33 @@ upper_fvd = pd.DataFrame()
 lower_fvd = pd.DataFrame()
 res_fvd = pd.DataFrame()
 for hr in range(120):
-    '''
     # Full network
     # Set dynamic values
     full_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,:])
     full_model.set_value('gage_observations', gage_vals)
     full_model.set_value('gage_time', gage_times)
-    import pdb; pdb.set_trace()
+
     full_model.update_until(3600)
     
     flowveldepth, wbdy = create_output_dataframes(full_model._model._run_results, 
                                                   3600/full_model._model._time_step, 
                                                   full_model._model._network.waterbody_dataframe)
-    pdb.set_trace()
+
     full_fvd = pd.concat([full_fvd, flowveldepth], axis=1)
     full_wbdy = pd.concat([full_wbdy, wbdy], axis=1)
-    '''
-     # Split network
+    
+    # Split network
     # Set dynamic values
     upper_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,0:3])
-    import pdb; pdb.set_trace()
+    
     upper_routing_model.update_until(3600)
 
     flowveldepth, wbdy = create_output_dataframes(upper_routing_model._model._run_results, 
                                                   3600/upper_routing_model._model._time_step, 
                                                   upper_routing_model._model._network.waterbody_dataframe)
     upper_fvd = pd.concat([upper_fvd, flowveldepth], axis=1)
-    import pdb; pdb.set_trace()
+
     reservoir_inflow = flowveldepth.loc[[1056,385,156]].sum()[0::3].to_numpy()
-    # test
-    reservoir_inflow = np.array([0.038284,
-                                 0.105146,
-                                 0.219112,
-                                 0.381832,
-                                 0.544385,
-                                 0.701310,
-                                 0.849002,
-                                 0.985553,
-                                 1.111356,
-                                 1.224970,l
-                                 1.326913,
-                                 1.419024])
     reservoir_model.set_value('lake_water~incoming__volume_flow_rate', reservoir_inflow)
 
     reservoir_model.update_until(3600)
@@ -256,12 +213,3 @@ for hr in range(120):
     
     lower_fvd = pd.concat([lower_fvd, flowveldepth], axis=1)
     res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
-    
-import pdb; pdb.set_trace()
-full_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/full_fvd.csv')
-upper_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/upper_fvd.csv')
-lower_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/lower_fvd.csv')
-res_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/res_fvd.csv')
-pd.DataFrame({'Gage_Time': gage_times,
-              'Gage_Values': gage_vals}).to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/gage.csv')
-

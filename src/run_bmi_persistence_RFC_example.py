@@ -26,18 +26,8 @@ def create_output_dataframes(results, nts, waterbodies_df):
 
     Returns
     -------
-    q_channel_df: pandas.core.series.Series
-        Streamflow rate for each segment
-    v_channel_df: pandas.core.series.Series
-        Streamflow velocity for each segment
-    d_channel_df: pandas.core.series.Series
-        Streamflow depth for each segment
-    i_lakeout_df: pandas.core.series.Series
-        Inflow for each waterbody
-    q_lakeout_df: pandas.core.series.Series
-        Outflow for each waterbody
-    d_lakeout_df: pandas.core.series.Series
-        Water elevation for each waterbody
+    flowveldepth (pd.DataFrame): Dataframe containing all computed flow/velocity/depth values
+    wbdy (pd.DataFrame): Dataframe containing the waterbody inflows
     """
     qvd_columns = pd.MultiIndex.from_product(
         [range(int(nts)), ["q", "v", "d"]]
@@ -57,7 +47,7 @@ def create_output_dataframes(results, nts, waterbodies_df):
         copy=False,
     )
 
-    return flowveldepth, wbdy #q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
+    return flowveldepth, wbdy
 
 #-----------------------
 # Split model
