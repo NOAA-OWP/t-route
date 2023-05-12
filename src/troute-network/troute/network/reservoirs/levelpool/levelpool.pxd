@@ -26,4 +26,4 @@ cdef class MC_Levelpool(Reach):
   """
   cpdef (float,float) run(self, float inflow, float lateral_inflow, float routing_period)
     
-#  cpdef (float) assimilate_elevation(self, float updated_elevation)
+  cpdef (float) assimilate_elevation(self, float updated_elevation)

@@ -1,17 +1,17 @@
-"""Basic Model Interface implementation for t-route."""
-import yaml
+"""Basic Model Interface implementation for reservoirs."""
+
 import numpy as np
 from bmipy import Bmi
 from pathlib import Path
 
 # Here is the model we want to run
-from troute_model import troute_model
+from model_reservoir import reservoir_model
 
-class bmi_troute(Bmi):
+class bmi_reservoir(Bmi):
 
     def __init__(self):
-        """Create a Bmi troute model that is ready for initialization."""
-        super(bmi_troute, self).__init__()
+        """Create a Bmi reservoir model that is ready for initialization."""
+        super(bmi_reservoir, self).__init__()
         self._model = None
         self._values = {}
         #self._var_units = {}
@@ -28,7 +28,7 @@ class bmi_troute(Bmi):
     # Required, static attributes of the model
     #----------------------------------------------
     _att_map = {
-        'model_name':         'T-Route for Next Generation NWM',
+        'model_name':         'Reservoir for Next Generation NWM',
         'version':            '',
         'author_name':        '',
         'grid_type':          'scalar', 
@@ -42,63 +42,41 @@ class bmi_troute(Bmi):
     # Input variable names (CSDMS standard names)
     #---------------------------------------------
     _input_var_names = [
-        # segment static variables
-        'segment_id', 
-        'segment_toid',
-        'dx',
-        'n',
-        'ncc',
-        's0',
-        'bw',
-        'tw',
-        'twcc',
-        'alt',
-        'musk',
-        'musx',
-        'cs',
         # waterbody static variables
-        'waterbody_id',
-        'waterbody_toid',
+        'lake_surface__elevation',
         'LkArea',
-        'LkMxE',
-        'OrificeA',
-        'OrificeC',
-        'OrificeE',
-        'WeirC',
         'WeirE',
+        'WeirC',
         'WeirL',
+        'dam_length',
+        'OrificeE',
+        'OrificeC',
+        'OrificeA',
+        'LkMxE',
+        'waterbody_id',
         'ifd',
-        'qd0',
-        'h0',
-        'reservoir_type',
+        'upstream_ids',
+        'res_type',
+        'da_idx',
+        'time_step',
+        'rfc_forecast_persist_seconds',
+        'synthetic_flag',
         # dynamic forcing/DA variables
-        'land_surface_water_source__volume_flow_rate',
-        'upstream_id',
-        'upstream_fvd',
-        'coastal_boundary__depth', 
-        'usgs_gage_observation__volume_flow_rate',
-        'reservoir_usgs_gage_observation__volume_flow_rate',
-        'reservoir_usace_gage_observation__volume_flow_rate', 
-        'rfc_gage_observation__volume_flow_rate', 
-        'lastobs__volume_flow_rate' 
+        'lake_water~incoming__volume_flow_rate',
         ]
 
     #---------------------------------------------
     # Output variable names (CSDMS standard names)
     #---------------------------------------------
-    _output_var_names = ['channel_exit_water_x-section__volume_flow_rate',
-                         'channel_water_flow__speed',
-                         'channel_water__mean_depth',
-                         'lake_water~incoming__volume_flow_rate',
-                         'lake_water~outgoing__volume_flow_rate',
-                         'lake_surface__elevation',
-                         #TODO: add 'assimilated_value' as an output?
+    _output_var_names = ['lake_water~outgoing__volume_flow_rate',
+                         'lake_surface__elevation'
                         ]
 
     #------------------------------------------------------
     # Create a Python dictionary that maps CSDMS Standard
     # Names to the model's internal variable names.
     #------------------------------------------------------
+    #TODO update all these...
     _var_name_units_map = {
         'channel_exit_water_x-section__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'channel_water_flow__speed':['streamflow_ms','m s-1'],
@@ -132,15 +110,11 @@ class bmi_troute(Bmi):
     def initialize(self, bmi_cfg_file=None):
         
         # -------------- Read in the BMI configuration -------------------------#
-        bmi_cfg_file = Path(bmi_cfg_file)
-        bmi_parameters = _read_config_file(bmi_cfg_file)
-        n_segment = int(bmi_parameters.get('segment_number'))
-        n_waterbody = int(bmi_parameters.get('waterbody_number'))
-        n_io = int(bmi_parameters.get('io_number'))
-        n_upstream = int(bmi_parameters.get('upstream_number'))
-
+        if bmi_cfg_file:
+            bmi_cfg_file = Path(bmi_cfg_file)
+        
         # ------------- Initialize t-route model ------------------------------#
-        self._model = troute_model(bmi_cfg_file)
+        self._model = reservoir_model(bmi_cfg_file)
 
         # ----- Create some lookup tabels from the long variable names --------#
         self._var_name_map_long_first = {long_name:self._var_name_units_map[long_name][0] for \
@@ -149,66 +123,55 @@ class bmi_troute(Bmi):
                                           long_name in self._var_name_units_map.keys()}
         self._var_units_map = {long_name:self._var_name_units_map[long_name][1] for \
                                           long_name in self._var_name_units_map.keys()}
-    
+        
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
         #FIXME Do this better..., load size of variables from config file??
-        self._values['segment_id'] = np.zeros(n_segment, dtype=int)
-        self._values['segment_toid'] = np.zeros(n_segment, dtype=int)
-        self._values['dx'] = np.zeros(n_segment)
-        self._values['n'] = np.zeros(n_segment)
-        self._values['ncc'] = np.zeros(n_segment)
-        self._values['s0'] = np.zeros(n_segment)
-        self._values['bw'] = np.zeros(n_segment)
-        self._values['tw'] = np.zeros(n_segment)
-        self._values['twcc'] = np.zeros(n_segment)
-        self._values['alt'] = np.zeros(n_segment)
-        self._values['musk'] = np.zeros(n_segment)
-        self._values['musx'] = np.zeros(n_segment)
-        self._values['cs'] = np.zeros(n_segment)
-        self._values['waterbody_id'] = np.zeros(n_waterbody, dtype=int)
-        self._values['waterbody_toid'] = np.zeros(n_waterbody, dtype=int)
-        self._values['LkArea'] = np.zeros(n_waterbody)
-        self._values['LkMxE'] = np.zeros(n_waterbody)
-        self._values['OrificeA'] = np.zeros(n_waterbody)
-        self._values['OrificeC'] = np.zeros(n_waterbody)
-        self._values['OrificeE'] = np.zeros(n_waterbody)
-        self._values['WeirC'] = np.zeros(n_waterbody)
-        self._values['WeirE'] = np.zeros(n_waterbody)
-        self._values['WeirL'] = np.zeros(n_waterbody)
-        self._values['ifd'] = np.zeros(n_waterbody)
-        #self._values['qd0'] = np.zeros(1) #TODO will this come from a file or model engine?
-        #self._values['h0'] = np.zeros(1) #TODO will this come from a file or model engine?
-        self._values['reservoir_type'] = np.zeros(n_waterbody)
-        self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
-        self._values['coastal_boundary__depth'] = np.zeros(0)
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['lastobs__volume_flow_rate'] = np.zeros(0)
-        self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
-        self._values['channel_water_flow__speed'] = np.zeros(n_io)
-        self._values['channel_water__mean_depth'] = np.zeros(n_io)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(n_waterbody)
-        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(n_waterbody)
-        self._values['lake_surface__elevation'] = np.zeros(n_waterbody)
+        self._values['lake_surface__elevation'] = np.zeros(1)
+        self._values['LkArea'] = np.zeros(1)
+        self._values['WeirE'] = np.zeros(1)
+        self._values['WeirC'] = np.zeros(1)
+        self._values['WeirL'] = np.zeros(1)
+        self._values['dam_length'] = np.zeros(1)
+        self._values['OrificeE'] = np.zeros(1)
+        self._values['OrificeC'] = np.zeros(1)
+        self._values['OrificeA'] = np.zeros(1)
+        self._values['LkMxE'] = np.zeros(1)
+        self._values['waterbody_id'] = np.zeros(1)
+        self._values['ifd'] = np.zeros(1)
+        self._values['upstream_ids'] = np.zeros(1, dtype=int)
+        self._values['reservoir_type'] = np.zeros(1)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(25)
+        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
-        # upstream values from other bmi run...
-        self._values['upstream_id'] = np.zeros(n_upstream, dtype=int)
-        self._values['upstream_fvd'] = np.zeros(3*12)
 
-        """
-        #TODO Update loading RFC data not through Fortran reservoir module.
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        """
+        #TODO: how will we know the size of these arrays?
+        self._values['gage_observations'] = np.zeros(120)
+        self._values['gage_time'] = np.zeros(120)
 
-    # Currently utilized BMI functions:
+        self._values['da_idx'] = np.zeros(1, dtype=int)
+        self._values['time_step'] = np.zeros(1)
+        self._values['rfc_forecast_persist_seconds'] = np.zeros(1)
+        self._values['synthetic_flag'] = np.zeros(289)
+        
+        #RFC DA        
+        self._values['rfc_timeseries_offset_hours'] = np.zeros(1)
+        self._values['rfc_forecast_persist_days'] = np.zeros(1)
+ 
+        '''
+        for var_name in self._input_var_names + self._output_var_names:
+            # ---------- Temporarily set to 3 values ------------------#
+            # ---------- so just set to zero for now ------------------#
+            self._values[var_name] = np.zeros(3)
+        '''
+
     def update(self):
         """Advance model by one time step."""
-        
-        self.update_until(self._model._time_step)
+        if self._model._time==0.0:
+            self._model.preprocess_static_vars(self._values) 
+
+        self._model.run(self._values)
 
     def update_until(self, until):
         """Update model until a particular time.
@@ -217,77 +180,16 @@ class bmi_troute(Bmi):
         until : int
             Time to run model until in seconds.
         """
-        if self._model._time==0.0:
-            self._model.preprocess_static_vars(self._values) 
-            
-        self._model.run(self._values, until)
+        n_steps = int(until/self._model._time_step)
 
-    def set_value(self, var_name, src):
-        """
-        Set model values
-        
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        src : array_like
-            Array of new values.
-        """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
-        
-        #self._values[var_name] = src
-
-    def get_value(self, var_name):
-        """Copy of values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        Returns
-        -------
-        output_df : pd.DataFrame
-            Copy of values.
-        """
-        output_df = self.get_value_ptr(var_name)
-        return output_df
-
-    def get_value_ptr(self, var_name):
-        """Reference to values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        Returns
-        -------
-        array_like
-            Value array.
-        """
-        return self._values[var_name]
-
-    def get_start_time(self):
-        """Start time of model."""
-        return self._start_time
-
-    def get_end_time(self):
-        """End time of model."""
-        return self._end_time
-
-    def get_current_time(self):
-        return self._model._time
-
-    def get_time_step(self):
-        return self._model._time_step
-
-    def get_time_units(self):
-        return self._time_units
+        for _ in range(int(n_steps)):
+            self.update()
 
     def finalize(self):
         """Finalize model."""
 
         self._model = None
-
-    # BMI functions that are not being used yet...
+    
     def update_frac(self, time_frac):
         """Update model by a fraction of a time step.
         Parameters
@@ -386,6 +288,33 @@ class bmi_troute(Bmi):
         """
         return int(np.prod(self._model.shape))
 
+    def get_value_ptr(self, var_name):
+        """Reference to values.
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        Returns
+        -------
+        array_like
+            Value array.
+        """
+        return self._values[var_name]
+
+    def get_value(self, var_name):
+        """Copy of values.
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        Returns
+        -------
+        output_df : pd.DataFrame
+            Copy of values.
+        """
+        output_df = self.get_value_ptr(var_name)
+        return output_df
+
     def get_value_at_indices(self, var_name, dest, indices):
         """Get values at particular indices.
         Parameters
@@ -403,6 +332,22 @@ class bmi_troute(Bmi):
         """
         dest[:] = self.get_value_ptr(var_name).take(indices)
         return dest
+
+    def set_value(self, var_name, src):
+        """
+        Set model values
+        
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        src : array_like
+            Array of new values.
+        """
+        val = self.get_value_ptr(var_name)
+        val[:] = src.reshape(val.shape)
+        
+        #self._values[var_name] = src
 
     def set_value_at_indices(self, name, inds, src):
         """Set model values at particular indices.
@@ -458,6 +403,23 @@ class bmi_troute(Bmi):
         """Type of grid."""
         return self._grid_type[grid_id]
 
+    def get_start_time(self):
+        """Start time of model."""
+        return self._start_time
+
+    def get_end_time(self):
+        """End time of model."""
+        return self._end_time
+
+    def get_current_time(self):
+        return self._model._time
+
+    def get_time_step(self):
+        return self._model._time_step
+
+    def get_time_units(self):
+        return self._time_units
+
     def get_grid_edge_count(self, grid):
         raise NotImplementedError("get_grid_edge_count")
 
@@ -501,14 +463,3 @@ class bmi_troute(Bmi):
     def _parse_config(self, cfg):
         cfg_list = [cfg.get('flag'),cfg.get('file')]
         return cfg_list
-
-# Helper functions
-def _read_config_file(custom_input_file):
-    '''
-
-    '''
-    with open(custom_input_file) as custom_file:
-        data = yaml.load(custom_file, Loader=yaml.SafeLoader)
-
-    bmi_parameters = data.get("bmi_parameters", None)
-    return bmi_parameters

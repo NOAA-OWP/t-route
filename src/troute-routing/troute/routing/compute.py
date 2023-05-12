@@ -248,6 +248,7 @@ def compute_nhd_routing_v02(
     waterbody_types_df,
     waterbody_type_specified,
     subnetwork_list,
+    flowveldepth_interorder = {},
 ):
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
@@ -978,7 +979,7 @@ def compute_nhd_routing_v02(
 
             results = parallel(jobs)
 
-    else:  # Execute in serial
+    elif parallel_compute_method == "serial":
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
@@ -1115,6 +1116,163 @@ def compute_nhd_routing_v02(
                     reservoir_usace_persistence_update_time.astype("float32"),
                     reservoir_usace_persistence_index.astype("float32"),
                     {},
+                    assume_short_ts,
+                    return_courant,
+                )
+            )
+
+    elif parallel_compute_method == "bmi":
+        results = []
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            # The X_sub lines use SEGS...
+            # which becomes invalid with the wbodies included.
+            # So we define "common_segs" to identify regular routing segments
+            # and wbodies_segs for the waterbody reaches/segments
+            segs = list(chain.from_iterable(reach_list))
+            offnetwork_upstreams = set(flowveldepth_interorder.keys())
+            segs.extend(offnetwork_upstreams)
+            common_segs = param_df.index.intersection(segs)
+            # Assumes everything else is a waterbody...
+            wbodies_segs = set(segs).symmetric_difference(common_segs)
+
+            #Declare empty dataframe
+            waterbody_types_df_sub = pd.DataFrame()
+
+            # If waterbody parameters exist
+            if not waterbodies_df.empty:
+
+                lake_segs = list(waterbodies_df.index.intersection(segs))
+
+                waterbodies_df_sub = waterbodies_df.loc[
+                    lake_segs,
+                    [
+                        "LkArea",
+                        "LkMxE",
+                        "OrificeA",
+                        "OrificeC",
+                        "OrificeE",
+                        "WeirC",
+                        "WeirE",
+                        "WeirL",
+                        "ifd",
+                        "qd0",
+                        "h0",
+                    ],
+                ]
+
+                #If reservoir types other than Level Pool are active
+                if not waterbody_types_df.empty:
+                    waterbody_types_df_sub = waterbody_types_df.loc[
+                        lake_segs,
+                        [
+                            "reservoir_type",
+                        ],
+                    ]
+
+            else:
+                lake_segs = []
+                waterbodies_df_sub = pd.DataFrame()
+
+            param_df_sub = param_df.loc[
+                common_segs,
+                ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+            ].sort_index()
+
+            reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
+
+            # qlat_sub = qlats.loc[common_segs].sort_index()
+            # q0_sub = q0.loc[common_segs].sort_index()
+
+            qlat_sub = qlats.loc[param_df_sub.drop(offnetwork_upstreams).index]
+            q0_sub = q0.loc[param_df_sub.index]
+
+            param_df_sub = param_df_sub.reindex(
+                param_df_sub.index.tolist() + lake_segs
+            ).sort_index()
+            
+            for us_subn_tw in offnetwork_upstreams:
+                subn_tw_sortposition = param_df_sub.index.get_loc(
+                    us_subn_tw
+                )
+                flowveldepth_interorder[us_subn_tw][
+                    "position_index"
+                ] = subn_tw_sortposition
+
+            usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
+
+            qlat_sub = qlat_sub.reindex(np.setdiff1d(param_df_sub.index, offnetwork_upstreams))
+            q0_sub = q0_sub.reindex(param_df_sub.index)
+            
+            # prepare reservoir DA data
+            (reservoir_usgs_df_sub, 
+             reservoir_usgs_df_time,
+             reservoir_usgs_update_time,
+             reservoir_usgs_prev_persisted_flow,
+             reservoir_usgs_persistence_update_time,
+             reservoir_usgs_persistence_index,
+             reservoir_usace_df_sub, 
+             reservoir_usace_df_time,
+             reservoir_usace_update_time,
+             reservoir_usace_prev_persisted_flow,
+             reservoir_usace_persistence_update_time,
+             reservoir_usace_persistence_index,
+             waterbody_types_df_sub,
+             ) = _prep_reservoir_da_dataframes(
+                reservoir_usgs_df,
+                reservoir_usgs_param_df,
+                reservoir_usace_df, 
+                reservoir_usace_param_df,
+                waterbody_types_df_sub, 
+                t0
+            )
+            
+            results.append(
+                compute_func(
+                    nts,
+                    dt,
+                    qts_subdivisions,
+                    reaches_list_with_type,
+                    independent_networks[tw],
+                    param_df_sub.index.values.astype("int64"),
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
+                    q0_sub.values.astype("float32"),
+                    qlat_sub.values.astype("float32"),
+                    lake_segs,
+                    waterbodies_df_sub.values,
+                    waterbody_parameters,
+                    waterbody_types_df_sub.values.astype("int32"),
+                    waterbody_type_specified,
+                    t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                    usgs_df_sub.values.astype("float32"),
+                    np.array(da_positions_list_byseg, dtype="int32"),
+                    np.array(da_positions_list_byreach, dtype="int32"),
+                    np.array(da_positions_list_bygage, dtype="int32"),
+                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float64")).values.astype("float32"),
+                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float64")).values.astype("float32"),
+                    da_decay_coefficient,
+                    # USGS Hybrid Reservoir DA data
+                    reservoir_usgs_df_sub.values.astype("float32"),
+                    reservoir_usgs_df_sub.index.values.astype("int32"),
+                    reservoir_usgs_df_time.astype('float32'),
+                    reservoir_usgs_update_time.astype('float32'),
+                    reservoir_usgs_prev_persisted_flow.astype('float32'),
+                    reservoir_usgs_persistence_update_time.astype('float32'),
+                    reservoir_usgs_persistence_index.astype('float32'),
+                    # USACE Hybrid Reservoir DA data
+                    reservoir_usace_df_sub.values.astype("float32"),
+                    reservoir_usace_df_sub.index.values.astype("int32"),
+                    reservoir_usace_df_time.astype('float32'),
+                    reservoir_usace_update_time.astype("float32"),
+                    reservoir_usace_prev_persisted_flow.astype("float32"),
+                    reservoir_usace_persistence_update_time.astype("float32"),
+                    reservoir_usace_persistence_index.astype("float32"),
+                    {
+                        us: fvd
+                        for us, fvd in flowveldepth_interorder.items()
+                        if us in offnetwork_upstreams
+                    },
                     assume_short_ts,
                     return_courant,
                 )

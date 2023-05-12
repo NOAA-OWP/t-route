@@ -1,0 +1,39 @@
+#--------------------------------------------------------------------------------
+bmi_parameters:
+    #----------
+    segment_number: 3
+    waterbody_number: 0
+    io_number: 3
+    upstream_number: 1
+#--------------------------------------------------------------------------------
+log_parameters:
+    #----------
+    showtiming: False
+    log_level : CRITICAL
+#--------------------------------------------------------------------------------
+compute_parameters:
+    #--------------
+    model_start_time: "2021-10-20_13:00:00"
+    model_time_step: 300 # model timestep in seconds (300 = 5min)
+#--------------------------------------------------------------------------------
+reservoir_data_assimilation_parameters:
+    level_pool:
+        #----------
+        level_pool_waterbody_parameter_file_path: /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/domain/gauge_01069700.gpkg 
+        reservoir_parameter_file                : /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/domain/gauge_01069700.gpkg
+    rfc:
+        #----------
+        reservoir_rfc_timeseries_folder          : "./../test/BMI/rfc_timeseries/"
+        reservoir_rfc_gage_id                    : "KNFC1"
+        reservoir_rfc_timeseries_offset_hours    : 28
+        reservoir_rfc_forecast_persist_days      : 11
+    persistence:
+        #----------
+        reservoir_persistence_usgs  : False
+        reservoir_persistence_usace : False
+        gage_lakeID_crosswalk_file  : # domain/reservoir_index_AnA.nc
+        usgs_timeslices_folder   : #usgs_TimeSlice/
+        usace_timeslices_folder  : #usace_TimeSlice/
+        timeslice_lookback_hours : #48 
+        qc_threshold             : #1
+
