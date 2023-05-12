@@ -176,6 +176,7 @@ class reservoir_model():
                 self._use_RFC,                            # boolean whether to use RFC values or not
                 self._timeseries_discharges,              # gage observation values (cms)
                 self._timeseries_idx,                     # index of for current time series observation
+                self._total_counts,                       # total number of observations in RFC timeseries
                 self._time_step,                          # routing period (sec)
                 self._time,                               # model time (sec)
                 self._update_time,                        # time to advance to next time series index
