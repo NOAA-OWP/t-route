@@ -142,7 +142,7 @@ class bmi_reservoir(Bmi):
         self._values['ifd'] = np.zeros(1)
         self._values['upstream_ids'] = np.zeros(1, dtype=int)
         self._values['reservoir_type'] = np.zeros(1)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(25)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(12)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
 

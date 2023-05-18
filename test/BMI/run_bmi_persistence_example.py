@@ -1,10 +1,10 @@
 
 
-#import sys
+import sys
 import numpy as np
 import pandas as pd
 
-#sys.path.append("src/")
+sys.path.append("src/")
 import bmi_troute
 import bmi_reservoirs
 
@@ -54,7 +54,7 @@ def create_output_dataframes(results, nts, waterbodies_df):
 #----------------------------------------------------------------
 # Initialize model with configuration file
 full_model = bmi_troute.bmi_troute()
-full_model.initialize(bmi_cfg_file='./../test/BMI/bmi_example.yaml')
+full_model.initialize(bmi_cfg_file='test/BMI/bmi_example.yaml')
 
 # Set static values
 #Segment parameters
@@ -91,14 +91,14 @@ full_model.set_value('reservoir_type', np.array([2]))
 #-----------------------
 # Initialize routing models with configuration file
 upper_routing_model = bmi_troute.bmi_troute()
-upper_routing_model.initialize(bmi_cfg_file='./../test/BMI/bmi_upper_example.yaml')
+upper_routing_model.initialize(bmi_cfg_file='test/BMI/bmi_upper_example.yaml')
 
 lower_routing_model = bmi_troute.bmi_troute()
-lower_routing_model.initialize(bmi_cfg_file='./../test/BMI/bmi_lower_example.yaml')
+lower_routing_model.initialize(bmi_cfg_file='test/BMI/bmi_lower_example.yaml')
 
 # Initialize reservoir model
 reservoir_model = bmi_reservoirs.bmi_reservoir()
-reservoir_model.initialize()
+reservoir_model.initialize(bmi_cfg_file='test/BMI/bmi_reservoir_example.yaml')
 
 # Set static values
 #Segment parameters, upper
@@ -164,8 +164,8 @@ for hr in range(120):
     # Full network
     # Set dynamic values
     full_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,:])
-    full_model.set_value('gage_observations', gage_vals)
-    full_model.set_value('gage_time', gage_times)
+    #full_model.set_value('gage_observations', gage_vals)
+    #full_model.set_value('gage_time', gage_times)
 
     full_model.update_until(3600)
     
