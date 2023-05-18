@@ -199,6 +199,12 @@ class bmi_troute(Bmi):
         self._values['upstream_id'] = np.zeros(n_upstream, dtype=int)
         self._values['upstream_fvd'] = np.zeros(3*12)
 
+        # flattened fvd values to be used as offnetwork upstream flows
+        # number of segments*3(flow, velocity, depth)*12(number of timesteps in 1 hour)
+        #TODO: coordinate with model engine team on order of values here. this is a 1d array
+        # that cycles through variables first, then time steps, then segment ids.
+        self._values['fvd_results'] = np.zeros(n_segment*3*12)
+
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)

@@ -22,9 +22,10 @@ class troute_model():
         """
         __slots__ = ['_log_parameters', '_preprocessing_parameters', '_supernetwork_parameters', 
                      '_waterbody_parameters', '_compute_parameters', '_forcing_parameters', 
-                     '_restart_parameters', '_hybrid_parameters', '_output_parameters', '_parity_parameters', 
-                     '_data_assimilation_parameters', '_time', '_segment_attributes', '_waterbody_attributes',
-                     '_network','_data_assimilation']
+                     '_restart_parameters', '_hybrid_parameters', '_output_parameters', 
+                     '_parity_parameters', '_data_assimilation_parameters', '_time', 
+                     '_segment_attributes', '_waterbody_attributes', '_network',
+                     '_data_assimilation', '_fvd', '_lakeout']
         
         (
             self._preprocessing_parameters, 
@@ -205,6 +206,15 @@ class troute_model():
         # get reservoir DA initial parameters for next loop iteration
         self._data_assimilation.update_after_compute(self._run_results)
         
+        # Create output flowveldepth and lakeout arrays
+        self._fvd, self._lakeout = _create_output_dataframes(
+            self._run_results,
+            nts,
+            self._network._waterbody_df,
+        )
+        values['fvd_results'] = self._fvd.values.flatten()
+        
+        # Get output from final timestep
         (values['channel_exit_water_x-section__volume_flow_rate'], 
          values['channel_water_flow__speed'], 
          values['channel_water__mean_depth'], 
@@ -212,11 +222,10 @@ class troute_model():
          values['lake_water~outgoing__volume_flow_rate'], 
          values['lake_surface__elevation'],
          #TODO: add 'assimilated_value' as an output?
-        ) = _create_output_dataframes(
+        ) = _retrieve_last_output(
             self._run_results, 
             nts, 
-            self._network._waterbody_df,
-            self._network.link_lake_crosswalk)
+            self._network._waterbody_df,)
         
         # update model time
         self._time += self._time_step * nts
@@ -310,7 +319,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         data_assimilation_parameters,
     )
 
-def _create_output_dataframes(results, nts, waterbodies_df, link_lake_crosswalk):
+def _retrieve_last_output(results, nts, waterbodies_df,):
     """
     Run this model into the future, updating the state stored in the provided model dict appropriately.
     Note that the model assumes the current values set for input variables are appropriately for the time
@@ -377,3 +386,63 @@ def _create_output_dataframes(results, nts, waterbodies_df, link_lake_crosswalk)
     segment_ids = flowveldepth.index.values.tolist()
 
     return q_channel_df, v_channel_df, d_channel_df, i_lakeout_df, q_lakeout_df, d_lakeout_df#, wbdy_id_list, 
+
+def _create_output_dataframes(results, nts, waterbodies_df,):
+    """
+    Run this model into the future, updating the state stored in the provided model dict appropriately.
+    Note that the model assumes the current values set for input variables are appropriately for the time
+    duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
+    Parameters
+    ----------
+    results: list
+        The results from nwm_routing.
+    nts: int
+        The number of time steps the model was run.
+    waterbodies_df: pd.DataFrame
+        Dataframe containing waterbody parameters (specifically, IDs stored in index)
+    link_lake_crosswalk: dict #TODO: Can we remove this?
+        Relates lake ids to outlet link ids.
+    Returns
+    -------
+    q_channel_df: pandas.core.series.Series
+        Streamflow rate for each segment
+    v_channel_df: pandas.core.series.Series
+        Streamflow velocity for each segment
+    d_channel_df: pandas.core.series.Series
+        Streamflow depth for each segment
+    i_lakeout_df: pandas.core.series.Series
+        Inflow for each waterbody
+    q_lakeout_df: pandas.core.series.Series
+        Outflow for each waterbody
+    d_lakeout_df: pandas.core.series.Series
+        Water elevation for each waterbody
+    """
+    qvd_columns = pd.MultiIndex.from_product(
+        [range(int(nts)), ["q", "v", "d"]]
+    ).to_flat_index()
+    
+    flowveldepth = pd.concat(
+        [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results], copy=False,
+    )
+    
+    # create waterbody dataframe for output to netcdf file
+    i_columns = pd.MultiIndex.from_product(
+        [range(int(nts)), ["i"]]
+    ).to_flat_index()
+    
+    wbdy = pd.concat(
+        [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
+        copy=False,
+    )
+    
+    wbdy_id_list = waterbodies_df.index.values.tolist()
+    
+    i_lakeout_df = wbdy.loc[wbdy_id_list]
+    q_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,0::3]
+    d_lakeout_df = flowveldepth.loc[wbdy_id_list].iloc[:,2::3]
+    lakeout = pd.concat([i_lakeout_df, q_lakeout_df, d_lakeout_df], axis=1)
+    
+    # segment_ids = flowveldepth.index.values.tolist() #TODO: do we need to return segment ids
+    # to keep track of order?
+
+    return flowveldepth, lakeout 
