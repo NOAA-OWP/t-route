@@ -321,10 +321,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
 
 def _retrieve_last_output(results, nts, waterbodies_df,):
     """
-    Run this model into the future, updating the state stored in the provided model dict appropriately.
-    Note that the model assumes the current values set for input variables are appropriately for the time
-    duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
-    Parameters
+    Retrieve calculated values for the last timestep.
     ----------
     results: list
         The results from nwm_routing.
@@ -389,9 +386,7 @@ def _retrieve_last_output(results, nts, waterbodies_df,):
 
 def _create_output_dataframes(results, nts, waterbodies_df,):
     """
-    Run this model into the future, updating the state stored in the provided model dict appropriately.
-    Note that the model assumes the current values set for input variables are appropriately for the time
-    duration of this update (i.e., ``dt``) and do not need to be interpolated any here.
+    Retrieve calculated flowveldepth values and waterbody inflow, outflow, and elevation.
     Parameters
     ----------
     results: list
@@ -400,22 +395,12 @@ def _create_output_dataframes(results, nts, waterbodies_df,):
         The number of time steps the model was run.
     waterbodies_df: pd.DataFrame
         Dataframe containing waterbody parameters (specifically, IDs stored in index)
-    link_lake_crosswalk: dict #TODO: Can we remove this?
-        Relates lake ids to outlet link ids.
     Returns
     -------
-    q_channel_df: pandas.core.series.Series
-        Streamflow rate for each segment
-    v_channel_df: pandas.core.series.Series
-        Streamflow velocity for each segment
-    d_channel_df: pandas.core.series.Series
-        Streamflow depth for each segment
-    i_lakeout_df: pandas.core.series.Series
-        Inflow for each waterbody
-    q_lakeout_df: pandas.core.series.Series
-        Outflow for each waterbody
-    d_lakeout_df: pandas.core.series.Series
-        Water elevation for each waterbody
+    flowveldepth: pandas.DataFrame
+        Flow, velocity, and depth results
+    lakeout: pandas.Dataframe
+        Waterbody inflow, outflow, and elevation
     """
     qvd_columns = pd.MultiIndex.from_product(
         [range(int(nts)), ["q", "v", "d"]]
