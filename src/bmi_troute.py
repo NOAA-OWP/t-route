@@ -204,6 +204,7 @@ class bmi_troute(Bmi):
         #TODO: coordinate with model engine team on order of values here. this is a 1d array
         # that cycles through variables first, then time steps, then segment ids.
         self._values['fvd_results'] = np.zeros(n_segment*3*12)
+        self._values['fvd_index'] = np.zeros(1)
 
         """
         #TODO Update loading RFC data not through Fortran reservoir module.

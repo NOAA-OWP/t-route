@@ -213,6 +213,7 @@ class troute_model():
             self._network._waterbody_df,
         )
         values['fvd_results'] = self._fvd.values.flatten()
+        values['fvd_index'] = self._fvd.index
         
         # Get output from final timestep
         (values['channel_exit_water_x-section__volume_flow_rate'], 
