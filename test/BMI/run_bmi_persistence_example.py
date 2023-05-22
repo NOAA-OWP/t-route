@@ -8,47 +8,6 @@ sys.path.append("src/")
 import bmi_troute
 import bmi_reservoirs
 
-def create_output_dataframes(results, nts, waterbodies_df):
-    """
-    Create dataframes of computed flowveldepth array.
-    NOTE: This is a temporary function used for this test case.
-    TODO: Create something similar within model_reservoir.py so these 
-    stored values can be accessed via BMI's model.get_value() function.
-
-    Parameters
-    ----------
-    results: list
-        The results from nwm_routing.
-    nts: int
-        The number of time steps the model was run.
-    waterbodies_df: pd.DataFrame
-        Dataframe containing waterbody parameters (specifically, IDs stored in index)
-
-    Returns
-    -------
-    flowveldepth (pd.DataFrame): Dataframe containing all computed flow/velocity/depth values
-    wbdy (pd.DataFrame): Dataframe containing the waterbody inflows
-    """
-    qvd_columns = pd.MultiIndex.from_product(
-        [range(int(nts)), ["q", "v", "d"]]
-    ).to_flat_index()
-    
-    flowveldepth = pd.concat(
-        [pd.DataFrame(r[1], index=r[0], columns=qvd_columns) for r in results], copy=False,
-    )
-    
-    # create waterbody dataframe for output to netcdf file
-    i_columns = pd.MultiIndex.from_product(
-        [range(int(nts)), ["i"]]
-    ).to_flat_index()
-    
-    wbdy = pd.concat(
-        [pd.DataFrame(r[6], index=r[0], columns=i_columns) for r in results],
-        copy=False,
-    )
-
-    return flowveldepth, wbdy
-
 #----------------------------------------------------------------
 # Full model
 #----------------------------------------------------------------
@@ -168,13 +127,9 @@ for hr in range(120):
     #full_model.set_value('gage_time', gage_times)
 
     full_model.update_until(3600)
-    
-    flowveldepth, wbdy = create_output_dataframes(full_model._model._run_results, 
-                                                  3600/full_model._model._time_step, 
-                                                  full_model._model._network.waterbody_dataframe)
 
+    flowveldepth = pd.DataFrame(full_model.get_value('fvd_results').reshape(6,36),index=full_model.get_value('fvd_index'))
     full_fvd = pd.concat([full_fvd, flowveldepth], axis=1)
-    full_wbdy = pd.concat([full_wbdy, wbdy], axis=1)
     
     # Split network
     # Set dynamic values
@@ -182,9 +137,7 @@ for hr in range(120):
     
     upper_routing_model.update_until(3600)
 
-    flowveldepth, wbdy = create_output_dataframes(upper_routing_model._model._run_results, 
-                                                  3600/upper_routing_model._model._time_step, 
-                                                  upper_routing_model._model._network.waterbody_dataframe)
+    flowveldepth = pd.DataFrame(upper_routing_model.get_value('fvd_results').reshape(3,36),index=upper_routing_model.get_value('fvd_index'))
     upper_fvd = pd.concat([upper_fvd, flowveldepth], axis=1)
 
     reservoir_inflow = flowveldepth.loc[[1056,385,156]].sum()[0::3].to_numpy()
@@ -207,9 +160,6 @@ for hr in range(120):
     lower_routing_model.set_value('upstream_fvd', upstream_fvd)
     lower_routing_model.update_until(3600)
 
-    flowveldepth, wbdy = create_output_dataframes(lower_routing_model._model._run_results, 
-                                                  3600/lower_routing_model._model._time_step, 
-                                                  lower_routing_model._model._network.waterbody_dataframe)
-    
+    flowveldepth = pd.DataFrame(lower_routing_model.get_value('fvd_results').reshape(2,36),index=lower_routing_model.get_value('fvd_index'))    
     lower_fvd = pd.concat([lower_fvd, flowveldepth], axis=1)
     res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
