@@ -119,6 +119,8 @@ full_wbdy = pd.DataFrame()
 upper_fvd = pd.DataFrame()
 lower_fvd = pd.DataFrame()
 res_fvd = pd.DataFrame()
+
+update_until_duration = 3600 # run for 1 hour
 for hr in range(120):
     # Full network
     # Set dynamic values
@@ -126,7 +128,7 @@ for hr in range(120):
     #full_model.set_value('gage_observations', gage_vals)
     #full_model.set_value('gage_time', gage_times)
 
-    full_model.update_until(3600)
+    full_model.update_until(update_until_duration)
 
     flowveldepth = pd.DataFrame(full_model.get_value('fvd_results').reshape(6,36),index=full_model.get_value('fvd_index'))
     full_fvd = pd.concat([full_fvd, flowveldepth], axis=1)
@@ -135,17 +137,20 @@ for hr in range(120):
     # Set dynamic values
     upper_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,0:3])
     
-    upper_routing_model.update_until(3600)
+    upper_routing_model.update_until(update_until_duration)
 
-    flowveldepth = pd.DataFrame(upper_routing_model.get_value('fvd_results').reshape(3,36),index=upper_routing_model.get_value('fvd_index'))
+    fvd_index = upper_routing_model.get_value('fvd_index')
+    fvd_num_columns = int(update_until_duration/upper_routing_model.get_time_step()*3) # duration of update divided by model time steps times 3 variables (fvd)
+    
+    flowveldepth = pd.DataFrame(upper_routing_model.get_value('fvd_results').reshape(len(fvd_index),fvd_num_columns),index=fvd_index)
     upper_fvd = pd.concat([upper_fvd, flowveldepth], axis=1)
-
+    
     reservoir_inflow = flowveldepth.loc[[1056,385,156]].sum()[0::3].to_numpy()
     reservoir_model.set_value('lake_water~incoming__volume_flow_rate', reservoir_inflow)
 
-    reservoir_model.update_until(3600)
+    reservoir_model.update_until(update_until_duration)
     
-    upstream_fvd = np.asarray(
+    offnetwork_upstream_fvd = np.asarray(
         [
         item for sublist in zip(reservoir_model._model._outflow_list,
                                 np.zeros(len(reservoir_model._model._outflow_list)).tolist(),
@@ -157,9 +162,12 @@ for hr in range(120):
     
     lower_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,3:6])
     lower_routing_model.set_value('upstream_id', np.array([int(157)]))
-    lower_routing_model.set_value('upstream_fvd', upstream_fvd)
+    lower_routing_model.set_value('upstream_fvd', offnetwork_upstream_fvd)
     lower_routing_model.update_until(3600)
 
-    flowveldepth = pd.DataFrame(lower_routing_model.get_value('fvd_results').reshape(2,36),index=lower_routing_model.get_value('fvd_index'))    
+    fvd_index = lower_routing_model.get_value('fvd_index')
+    fvd_num_columns = int(update_until_duration/lower_routing_model.get_time_step()*3) # duration of update divided by model time steps times 3 variables (fvd)
+    
+    flowveldepth = pd.DataFrame(lower_routing_model.get_value('fvd_results').reshape(len(fvd_index),fvd_num_columns),index=fvd_index)    
     lower_fvd = pd.concat([lower_fvd, flowveldepth], axis=1)
-    res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
+    res_fvd = pd.concat([res_fvd, pd.DataFrame(offnetwork_upstream_fvd.reshape(12,3))], axis=0)
