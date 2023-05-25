@@ -183,9 +183,9 @@ class bmi_troute(Bmi):
         self._values['reservoir_type'] = np.zeros(n_waterbody)
         self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
         self._values['coastal_boundary__depth'] = np.zeros(0)
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
         self._values['lastobs__volume_flow_rate'] = np.zeros(0)
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
@@ -205,6 +205,12 @@ class bmi_troute(Bmi):
         # that cycles through variables first, then time steps, then segment ids.
         self._values['fvd_results'] = np.zeros(n_segment*3*12)
         self._values['fvd_index'] = np.zeros(1)
+
+        # Data assimilation values
+        self._values['timeslice_discharge'] = np.zeros(1)
+        self._values['timeslice_stationId'] = np.zeros(1)
+        self._values['timeslice_time'] = np.zeros(1)
+        self._values['timeslice_discharge_quality'] = np.zeros(1)
 
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
