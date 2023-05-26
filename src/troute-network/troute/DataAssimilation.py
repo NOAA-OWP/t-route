@@ -61,6 +61,14 @@ class NudgingDA(AbstractDA):
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
+                # Handle QC/QA and interpolation:
+                qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
+                observation_df_new = _timeslice_qcqa(value_dict['timeslice_discharge'],
+                                            value_dict['timeslice_stationId'],
+                                            value_dict['timeslice_time'],
+                                            value_dict['timeslice_discharge_quality'], 
+                                            qc_threshold,
+                                            network.dt)
                 self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
                 self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
             
@@ -169,6 +177,8 @@ class PersistenceDA(AbstractDA):
         reservoir_usace_param_df = pd.DataFrame()
 
         if not from_files:
+            # Handle QC/QA and interpolation:
+
             if usgs_persistence:
                 reservoir_usgs_df = pd.DataFrame(index=value_dict['reservoir_usgs_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
@@ -1000,3 +1010,91 @@ def read_reservoir_parameter_file(
     
     return df1, usgs_crosswalk, usace_crosswalk
 
+def _timeslice_qcqa(discharge, stns, t, qual, qc_threshold, frequency_secs):
+    stationId = np.apply_along_axis(''.join, 1, stns.astype(np.str))
+    time_str = np.apply_along_axis(''.join, 1, t.astype(np.str))
+    stationId = np.char.strip(stationId)
+    
+    observation_df = (pd.DataFrame({
+                                'stationId' : stationId,
+                                'datetime'  : time_str,
+                                'discharge' : discharge
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['discharge'])
+    
+    observation_qual_df = (pd.DataFrame({
+                                'stationId' : stationId,
+                                'datetime'  : time_str,
+                                'quality'   : qual/100
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['quality'])
+    
+    # Link <> gage crosswalk data
+    df = crosswalk_df.reset_index()
+    df[crosswalk_gage_field] = np.asarray(df[crosswalk_gage_field]).astype('<U15')
+    df = df.set_index(crosswalk_gage_field)
+    
+    # join crosswalk data with timeslice data, indexed on crosswalk destination field
+    observation_df = (df.join(timeslice_obs_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               drop([crosswalk_gage_field], axis=1))
+
+    observation_qual_df = (df.join(timeslice_qual_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               drop([crosswalk_gage_field], axis=1))
+    
+    # ---- Laugh testing ------
+    # screen-out erroneous qc flags
+    observation_qual_df = (observation_qual_df.
+                           mask(observation_qual_df < 0, np.nan).
+                           mask(observation_qual_df > 1, np.nan)
+                          )
+
+    # screen-out poor quality flow observations
+    observation_df = (observation_df.
+                      mask(observation_qual_df < qc_threshold, np.nan).
+                      mask(observation_df <= 0, np.nan)
+                     )
+
+    # ---- Interpolate USGS observations to the input frequency (frequency_secs)
+    observation_df_T = observation_df.transpose()             # transpose, making time the index
+    observation_df_T.index = pd.to_datetime(
+        observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
+    )
+    
+    # specify resampling frequency 
+    frequency = str(int(frequency_secs/60))+"min"    
+    
+    # interpolate and resample frequency
+    buffer_df = observation_df_T.resample(frequency).asfreq()
+    with Parallel(n_jobs=cpu_pool) as parallel:
+        
+        jobs = []
+        interp_chunks = ()
+        step = 200
+        for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
+            
+            start = i
+            if (i+step-1) < buffer_df.shape[1]:
+                stop = i+(step)
+            else:
+                stop = buffer_df.shape[1]
+                
+            jobs.append(
+                delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
+            )
+            
+        interp_chunks = parallel(jobs)
+
+    observation_df_T = pd.DataFrame(
+        data = np.concatenate(interp_chunks, axis = 1), 
+        columns = buffer_df.columns, 
+        index = buffer_df.index
+    )
+    
+    # re-transpose, making link the index
+    observation_df_new = observation_df_T.transpose()
