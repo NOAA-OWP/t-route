@@ -14,12 +14,20 @@ __verbose__ = False
 __showtiming__ = False
 
 def read_geopkg(file_path):
+    # Retrieve dataframe information:
     flowpaths = gpd.read_file(file_path, layer="flowpaths")
     attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
-    #merge all relevant data into a single dataframe
-    flowpaths = pd.merge(flowpaths, attributes, on='id')
 
-    return flowpaths
+    # Merge all relevant data into a single dataframe
+    flowpaths = pd.merge(flowpaths, attributes, on='id')
+    
+    # Retrieve gage information:
+    lookup_table = gpd.read_file(file_path, layer='lookup_table')[['id','POI_TYPE','POI_VALUE']]
+    lookup_table = lookup_table[lookup_table['POI_TYPE']=='Gages'].drop('POI_TYPE', axis=1).rename(columns={'POI_VALUE': 'gages'})
+    lookup_table['id'] = lookup_table['id'].str.split('-',expand=True).loc[:,1]
+    gages = lookup_table.set_index('id').to_dict()
+
+    return flowpaths, gages
 
 def read_json(file_path, edge_list):
     dfs = []
@@ -138,7 +146,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         #TODO Update for waterbodies and DA specific to HYFeatures...
         self._waterbody_connections = {}
         self._waterbody_type_specified = None
-        self._gages = None
         self._link_lake_crosswalk = None
 
 
@@ -217,7 +224,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         
         file_type = Path(geo_file_path).suffix
         if(  file_type == '.gpkg' ):        
-            self._dataframe = read_geopkg(geo_file_path)
+            self._dataframe, self._gages = read_geopkg(geo_file_path)
         elif( file_type == '.json') :
             edge_list = self.supernetwork_parameters['flowpath_edge_list']
             self._dataframe = read_json(geo_file_path, edge_list) 
