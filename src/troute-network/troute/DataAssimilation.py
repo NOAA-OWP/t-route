@@ -5,6 +5,7 @@ import pathlib
 import xarray as xr
 from datetime import datetime
 from abc import ABC
+from joblib import delayed, Parallel
 
 
 # -----------------------------------------------------------------------------
@@ -63,13 +64,13 @@ class NudgingDA(AbstractDA):
             if not from_files:
                 # Handle QC/QA and interpolation:
                 qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                observation_df_new = _timeslice_qcqa(value_dict['timeslice_discharge'],
+                self._usgs_df = _timeslice_qcqa(value_dict['timeslice_discharge'],
                                             value_dict['timeslice_stationId'],
                                             value_dict['timeslice_time'],
                                             value_dict['timeslice_discharge_quality'], 
                                             qc_threshold,
-                                            network.dt)
-                self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
+                                            run_parameters.get('dt', 300),
+                                            network.link_gage_df)
                 self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
             
             else:
@@ -925,7 +926,7 @@ def read_reservoir_parameter_file(
     usgs_hybrid,
     usace_hybrid,
     rfc_forecast,
-    lake_index_field="lake_id", 
+    lake_index_field = "lake_id", 
     usgs_gage_id_field = "usgs_gage_id",
     usgs_lake_id_field = "usgs_lake_id",
     usace_gage_id_field = "usace_gage_id",
@@ -1010,11 +1011,26 @@ def read_reservoir_parameter_file(
     
     return df1, usgs_crosswalk, usace_crosswalk
 
-def _timeslice_qcqa(discharge, stns, t, qual, qc_threshold, frequency_secs):
+def _timeslice_qcqa(discharge, 
+                    stns, 
+                    t, 
+                    qual, 
+                    qc_threshold, 
+                    frequency_secs, 
+                    crosswalk_df, 
+                    crosswalk_gage_field='gages',
+                    crosswalk_dest_field='link',
+                    interpolation_limit=59,
+                    cpu_pool=1):
+    #FIXME Do we need the following commands? Or something similar? Depends on 
+    # what format model engine provides these variables...
+    '''
     stationId = np.apply_along_axis(''.join, 1, stns.astype(np.str))
     time_str = np.apply_along_axis(''.join, 1, t.astype(np.str))
     stationId = np.char.strip(stationId)
-    
+    '''
+    stationId = stns
+    time_str = t
     observation_df = (pd.DataFrame({
                                 'stationId' : stationId,
                                 'datetime'  : time_str,
@@ -1037,12 +1053,12 @@ def _timeslice_qcqa(discharge, stns, t, qual, qc_threshold, frequency_secs):
     df = df.set_index(crosswalk_gage_field)
     
     # join crosswalk data with timeslice data, indexed on crosswalk destination field
-    observation_df = (df.join(timeslice_obs_df).
+    observation_df = (df.join(observation_df).
                reset_index().
                set_index(crosswalk_dest_field).
                drop([crosswalk_gage_field], axis=1))
 
-    observation_qual_df = (df.join(timeslice_qual_df).
+    observation_qual_df = (df.join(observation_qual_df).
                reset_index().
                set_index(crosswalk_dest_field).
                drop([crosswalk_gage_field], axis=1))
@@ -1097,4 +1113,19 @@ def _timeslice_qcqa(discharge, stns, t, qual, qc_threshold, frequency_secs):
     )
     
     # re-transpose, making link the index
-    observation_df_new = observation_df_T.transpose()
+    observation_df_new = observation_df_T.transpose().loc[crosswalk_df.index]
+
+    return observation_df_new
+
+def _interpolate_one(df, interpolation_limit, frequency):
+    
+    interp_out = (df.resample('min').
+                        interpolate(
+                            limit = interpolation_limit, 
+                            limit_direction = 'both'
+                        ).
+                        resample(frequency).
+                        asfreq().
+                        to_numpy()
+                       )
+    return interp_out
