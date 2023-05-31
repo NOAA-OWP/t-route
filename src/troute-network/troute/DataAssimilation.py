@@ -64,14 +64,24 @@ class NudgingDA(AbstractDA):
             if not from_files:
                 # Handle QC/QA and interpolation:
                 qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                self._usgs_df = _timeslice_qcqa(value_dict['timeslice_discharge'],
-                                            value_dict['timeslice_stationId'],
-                                            value_dict['timeslice_time'],
-                                            value_dict['timeslice_discharge_quality'], 
-                                            qc_threshold,
-                                            run_parameters.get('dt', 300),
-                                            network.link_gage_df)
-                self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
+                
+                self._usgs_df = _timeslice_qcqa(
+                    value_dict['timeslice_discharge'],
+                    value_dict['timeslice_stationId'],
+                    value_dict['timeslice_time'],
+                    value_dict['timeslice_discharge_quality'],
+                    qc_threshold,
+                    run_parameters.get('dt', 300),
+                    network.link_gage_df)
+                
+                self._last_obs_df = _assemble_lastobs_df(
+                    value_dict['discharge'], 
+                    value_dict['stationIdInd'], 
+                    value_dict['timeInd'], 
+                    value_dict['stationId'], 
+                    value_dict['time'], 
+                    value_dict['modelTimeAtOutput'], 
+                    network.link_gage_df)
             
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
@@ -1129,3 +1139,78 @@ def _interpolate_one(df, interpolation_limit, frequency):
                         to_numpy()
                        )
     return interp_out
+
+def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, modelTimeAtOutput, gage_link_df, time_shift=0):
+    gages    = np.char.strip(stationId)
+        
+    ref_time = datetime.strptime(modelTimeAtOutput, "%Y-%m-%d_%H:%M:%S")
+    
+    last_ts = timeInd.max()
+    
+    df_discharge = (
+        pd.DataFrame(
+        data = {
+            'discharge': discharge,
+            'stationIdInd': stationIdInd,
+            'timeInd': timeInd
+            }).
+            set_index(['stationIdInd','timeInd']).
+            unstack(level=0)
+    )
+
+    df_time = (
+        pd.DataFrame(
+        data = {
+            'discharge': time,
+            'stationIdInd': stationIdInd,
+            'timeInd': timeInd
+            }).
+            set_index(['stationIdInd','timeInd']).
+            unstack(level=0)
+    ).to_numpy()
+    
+    last_obs_index = (
+        df_discharge.
+        apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+        to_numpy()                                           # to numpy array
+    )
+    last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                    
+    last_observations = []
+    lastobs_times     = []
+    for i, idx in enumerate(last_obs_index):
+        last_observations.append(df_discharge.iloc[idx,i])
+        lastobs_times.append(df_time[i, idx].decode('utf-8'))
+        
+    last_observations = np.array(last_observations)
+    lastobs_times     = pd.to_datetime(
+        np.array(lastobs_times), 
+        format="%Y-%m-%d_%H:%M:%S", 
+        errors = 'coerce'
+    )
+
+    lastobs_times = (lastobs_times - ref_time).total_seconds()
+    lastobs_times = lastobs_times - time_shift
+
+    data_var_dict = {
+        'gages'               : gages,
+        'time_since_lastobs'  : lastobs_times,
+        'lastobs_discharge'   : last_observations
+    }
+
+    lastobs_df = (
+        pd.DataFrame(data = data_var_dict).
+        set_index('gages').
+        join(gage_link_df, how = 'inner').
+        reset_index().
+        set_index('link')
+    )
+    lastobs_df = lastobs_df[
+        [
+            'gages',
+            'time_since_lastobs',
+            'lastobs_discharge',
+        ]
+    ]
+    
+    return lastobs_df
