@@ -212,6 +212,13 @@ class bmi_troute(Bmi):
         self._values['timeslice_time'] = np.zeros(1)
         self._values['timeslice_discharge_quality'] = np.zeros(1)
 
+        self._values['discharge'] = np.zeros(1)
+        self._values['stationIdInd'] = np.zeros(1)
+        self._values['timeInd'] = np.zeros(1)
+        self._values['stationId'] = np.zeros(1)
+        self._values['time'] = np.zeros(1)
+        self._values['modelTimeAtOutput'] = np.zeros(1)
+
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
         self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
