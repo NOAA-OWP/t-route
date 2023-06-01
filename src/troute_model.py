@@ -127,12 +127,6 @@ class troute_model():
         else:
             flowveldepth_interorder = {}
 
-        # Data Assimilation values:
-        self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
-        self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
-        self._data_assimilation._reservoir_usgs_df = pd.DataFrame(values['reservoir_usgs_gage_observation__volume_flow_rate'])
-        self._data_assimilation._reservoir_usace_df = pd.DataFrame(values['reservoir_usace_gage_observation__volume_flow_rate'])
-
         # Adjust number of steps based on user input
         nts = int(until/self._time_step)
 
