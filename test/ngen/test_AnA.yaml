@@ -43,6 +43,7 @@ compute_parameters:
     assume_short_ts        : True
     restart_parameters:
         #----------
+        start_datetime: 2015-08-16_00:00
         wrf_hydro_channel_restart_file        : 
         #lite_channel_restart_file            : restart/RESTART.2020082600_DOMAIN1
         wrf_hydro_channel_ID_crosswalk_file   : /home/sean.horvath/projects/data/large_network/gauge_01013500.gpkg
