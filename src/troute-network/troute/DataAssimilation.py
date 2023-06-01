@@ -75,12 +75,12 @@ class NudgingDA(AbstractDA):
                     network.link_gage_df)
                 
                 self._last_obs_df = _assemble_lastobs_df(
-                    value_dict['discharge'], 
-                    value_dict['stationIdInd'], 
-                    value_dict['timeInd'], 
-                    value_dict['stationId'], 
-                    value_dict['time'], 
-                    value_dict['modelTimeAtOutput'], 
+                    value_dict['lastobs_discharge'], 
+                    value_dict['lastobs_stationIdInd'], 
+                    value_dict['lastobs_timeInd'], 
+                    value_dict['lastobs_stationId'], 
+                    value_dict['lastobs_time'], 
+                    value_dict['lastobs_modelTimeAtOutput'][0], 
                     network.link_gage_df)
             
             else:
@@ -1124,6 +1124,7 @@ def _timeslice_qcqa(discharge,
     
     # re-transpose, making link the index
     observation_df_new = observation_df_T.transpose().loc[crosswalk_df.index]
+    observation_df_new.index = observation_df_new.index.astype('int64')
 
     return observation_df_new
 
@@ -1140,7 +1141,16 @@ def _interpolate_one(df, interpolation_limit, frequency):
                        )
     return interp_out
 
-def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, modelTimeAtOutput, gage_link_df, time_shift=0):
+def _assemble_lastobs_df(
+        discharge, 
+        stationIdInd, 
+        timeInd, 
+        stationId, 
+        time, 
+        modelTimeAtOutput, 
+        gage_link_df, 
+        time_shift=0):
+    
     gages    = np.char.strip(stationId)
         
     ref_time = datetime.strptime(modelTimeAtOutput, "%Y-%m-%d_%H:%M:%S")
@@ -1166,7 +1176,7 @@ def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, mode
             'timeInd': timeInd
             }).
             set_index(['stationIdInd','timeInd']).
-            unstack(level=0)
+            unstack(level=1)
     ).to_numpy()
     
     last_obs_index = (
@@ -1180,7 +1190,7 @@ def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, mode
     lastobs_times     = []
     for i, idx in enumerate(last_obs_index):
         last_observations.append(df_discharge.iloc[idx,i])
-        lastobs_times.append(df_time[i, idx].decode('utf-8'))
+        lastobs_times.append(df_time[i, idx]) #.decode('utf-8')  <- TODO:decoding was needed in old version, may need again depending on dtype that is provided by model engine
         
     last_observations = np.array(last_observations)
     lastobs_times     = pd.to_datetime(
@@ -1201,10 +1211,11 @@ def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, mode
     lastobs_df = (
         pd.DataFrame(data = data_var_dict).
         set_index('gages').
-        join(gage_link_df, how = 'inner').
+        join(gage_link_df.reset_index().set_index('gages'), how = 'inner').
         reset_index().
         set_index('link')
     )
+    
     lastobs_df = lastobs_df[
         [
             'gages',
@@ -1212,5 +1223,5 @@ def _assemble_lastobs_df(discharge, stationIdInd, timeInd, stationId, time, mode
             'lastobs_discharge',
         ]
     ]
-    
+    lastobs_df.index = lastobs_df.index.astype('int64')
     return lastobs_df
