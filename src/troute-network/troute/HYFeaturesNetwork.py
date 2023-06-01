@@ -24,7 +24,7 @@ def read_geopkg(file_path):
     # Retrieve gage information:
     lookup_table = gpd.read_file(file_path, layer='lookup_table')[['id','POI_TYPE','POI_VALUE']]
     lookup_table = lookup_table[lookup_table['POI_TYPE']=='Gages'].drop('POI_TYPE', axis=1).rename(columns={'POI_VALUE': 'gages'})
-    lookup_table['id'] = lookup_table['id'].str.split('-',expand=True).loc[:,1]
+    lookup_table['id'] = lookup_table['id'].str.split('-',expand=True).loc[:,1].astype(int)
     gages = lookup_table.set_index('id').to_dict()
 
     return flowpaths, gages
@@ -208,10 +208,14 @@ class HYFeaturesNetwork(AbstractNetwork):
         """
         FIXME
         """
+        ''' FIXEME: edited out on 6/1/23. Not sure the utility of this, but shouldn't be
+        necessary if self._gages is created properly (which it should be now)
+
         if self._gages is None and "gages" in self._dataframe.columns:
             self._gages = nhd_io.build_filtered_gage_df(self._dataframe[["gages"]])
         else:
             self._gages = {}
+        '''
         return self._gages
     
     @property
@@ -401,6 +405,9 @@ class HYFeaturesNetwork(AbstractNetwork):
 
             self._waterbody_types_df = pd.DataFrame(self.waterbody_dataframe['reservoir_type'])
             self._waterbody_df.drop('reservoir_type', axis=1, inplace=True)
+        
+        # Setup gage dictionary
+        self._gages = {'gages': dict(zip(value_dict['gages'][::2],value_dict['gages'][1::2]))}
 
     
     def build_qlateral_array(self, run,):
