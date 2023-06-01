@@ -138,6 +138,7 @@ class bmi_troute(Bmi):
         n_waterbody = int(bmi_parameters.get('waterbody_number'))
         n_io = int(bmi_parameters.get('io_number'))
         n_upstream = int(bmi_parameters.get('upstream_number'))
+        n_gages = int(bmi_parameters.get('gage_number'))
 
         # ------------- Initialize t-route model ------------------------------#
         self._model = troute_model(bmi_cfg_file)
@@ -207,17 +208,18 @@ class bmi_troute(Bmi):
         self._values['fvd_index'] = np.zeros(1)
 
         # Data assimilation values
-        self._values['timeslice_discharge'] = np.zeros(1)
-        self._values['timeslice_stationId'] = np.zeros(1)
-        self._values['timeslice_time'] = np.zeros(1)
-        self._values['timeslice_discharge_quality'] = np.zeros(1)
+        self._values['gages'] = np.zeros(n_gages*2, dtype='<U19')
+        self._values['timeslice_discharge'] = np.zeros(6)
+        self._values['timeslice_stationId'] = np.zeros(6, dtype='<U19')
+        self._values['timeslice_time'] = np.zeros(6, dtype='<U19')
+        self._values['timeslice_discharge_quality'] = np.zeros(6)
 
-        self._values['lastobs_discharge'] = np.zeros(1)
-        self._values['lastobs_stationIdInd'] = np.zeros(1)
-        self._values['lastobs_timeInd'] = np.zeros(1)
-        self._values['lastobs_stationId'] = np.zeros(1)
-        self._values['lastobs_time'] = np.zeros(1)
-        self._values['lastobs_modelTimeAtOutput'] = np.zeros(1)
+        self._values['lastobs_discharge'] = np.zeros(9)
+        self._values['lastobs_stationIdInd'] = np.zeros(9, dtype=int)
+        self._values['lastobs_timeInd'] = np.zeros(9, dtype=int)
+        self._values['lastobs_stationId'] = np.zeros(3, dtype='<U19')
+        self._values['lastobs_time'] = np.zeros(9, dtype='<U19')
+        self._values['lastobs_modelTimeAtOutput'] = np.zeros(1, dtype='<U19')
 
         """
         #TODO Update loading RFC data not through Fortran reservoir module.
