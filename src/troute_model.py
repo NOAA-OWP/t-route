@@ -127,6 +127,13 @@ class troute_model():
         else:
             flowveldepth_interorder = {}
 
+        # Trim the time-extent of the streamflow_da usgs_df
+        # what happens if there are timeslice files missing on the front-end? 
+        # if the first column is some timestamp greater than t0, then this will throw
+        # an error. Need to think through this more. 
+        if not self._data_assimilation.usgs_df.empty:
+            self._data_assimilation._usgs_df = self._data_assimilation.usgs_df.loc[:,self._network.t0:]
+
         # Adjust number of steps based on user input
         nts = int(until/self._time_step)
 
@@ -198,7 +205,7 @@ class troute_model():
         self._network.new_t0(self._time_step, nts)
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update_after_compute(self._run_results)
+        self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
         
         # Create output flowveldepth and lakeout arrays
         self._fvd, self._lakeout = _create_output_dataframes(
