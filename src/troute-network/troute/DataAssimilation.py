@@ -103,7 +103,7 @@ class NudgingDA(AbstractDA):
                 
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
     
-    def update_after_compute(self, run_results,):
+    def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
         
@@ -131,7 +131,7 @@ class NudgingDA(AbstractDA):
 
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
-                self._last_obs_df = new_lastobs(run_results, self._run_parameters.get("dt") * self._run_parameters.get("nts"))
+                self._last_obs_df = new_lastobs(run_results, time_increment)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -510,11 +510,11 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, from_files, value_dict)
     
-    def update_after_compute(self, run_results,):
+    def update_after_compute(self, run_results, time_increment):
         '''
         
         '''
-        NudgingDA.update_after_compute(self, run_results)
+        NudgingDA.update_after_compute(self, run_results, time_increment)
         PersistenceDA.update_after_compute(self, run_results)
         RFCDA.update_after_compute(self)
 
