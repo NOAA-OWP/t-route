@@ -188,15 +188,43 @@ class PersistenceDA(AbstractDA):
         reservoir_usace_param_df = pd.DataFrame()
 
         if not from_files:
-            # Handle QC/QA and interpolation:
-
             if usgs_persistence:
-                reservoir_usgs_df = pd.DataFrame(index=value_dict['reservoir_usgs_ids'])
-                # create reservoir hybrid DA initial parameters dataframe    
+                # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
+                if self._usgs_df.empty:
+
+                    qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
+                    
+                    self._usgs_df = _timeslice_qcqa(
+                        value_dict['timeslice_discharge'],
+                        value_dict['timeslice_stationId'],
+                        value_dict['timeslice_time'],
+                        value_dict['timeslice_discharge_quality'],
+                        qc_threshold,
+                        run_parameters.get('dt', 300),
+                        network.link_gage_df) 
+                    
+                # resample `usgs_df` to 15 minute intervals
+                usgs_df_15min = (
+                    self._usgs_df.
+                    transpose().
+                    resample('15min').asfreq().
+                    transpose()
+                )
+
+                # subset and usgs_df to reservoir only locations
+                #FIXME: This is assuming all waterbodies are USGS (no USACE). Is this the 
+                #case for HYFeatures?
+                reservoir_usgs_df = (
+                    usgs_df_15min.
+                    join(network.waterbody_dataframe['index'], how='inner').
+                    drop(['index'],axis=1)
+                )
+                
+                # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
                         data = 0, 
-                        index = reservoir_usgs_df.index,
+                        index = reservoir_usgs_df.index ,
                         columns = ['update_time']
                     )
                     reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
@@ -205,7 +233,9 @@ class PersistenceDA(AbstractDA):
                 else:
                     reservoir_usgs_param_df = pd.DataFrame()
             
-            if usace_persistence:
+            if usace_persistence: #TODO: Will HYFeatures treat all persistence reservoirs
+                # as USGS? Do we still need to separate usgs and usace?
+
                 reservoir_usace_df = pd.DataFrame(index=value_dict['reservoir_usace_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usace_df.empty:
