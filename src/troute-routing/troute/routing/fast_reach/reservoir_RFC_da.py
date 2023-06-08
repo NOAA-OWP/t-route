@@ -105,7 +105,8 @@ def _validate_RFC_data(lake_number,
                        synthetic, 
                        rfc_timeseries_folder, 
                        rfc_timeseries_file,
-                       routing_period):
+                       routing_period,
+                       from_files=True):
     
     use_RFC = True
     file_path= os.path.join(rfc_timeseries_folder, rfc_timeseries_file)
@@ -126,7 +127,7 @@ def _validate_RFC_data(lake_number,
               contain one or more values greater than or equal to 90,000 Cubic Meters per \
               Second (twice the Mississippi River historical peak flow). \
               This reservoir will use level pool calculations instead.")
-    elif os.path.isfile(file_path)==False:
+    elif from_files and (os.path.isfile(file_path)==False):
         use_RFC = False
         print(f"WARNING: RFC Forecast Time Series file for reservoir {lake_number} \
               does not exist. \
