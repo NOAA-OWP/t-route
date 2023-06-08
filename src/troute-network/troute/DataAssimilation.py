@@ -7,6 +7,8 @@ from datetime import datetime
 from abc import ABC
 from joblib import delayed, Parallel
 
+from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
+
 
 # -----------------------------------------------------------------------------
 # Abstract DA Class:
@@ -506,9 +508,19 @@ class RFCDA(AbstractDA):
     """
     
     """
-    def __init__(self, from_files, value_dict):
-        if from_files:
-            pass
+    def __init__(self, network, from_files, value_dict):
+        if not from_files:
+            (self._reservoir_rfc_df,
+             self._reservoir_rfc_param_df
+             ) = _rfc_timeseries_qcqa(
+                value_dict['rfc_discharges'],
+                value_dict['rfc_stationId'],
+                value_dict['rfc_synthetic_values'],
+                value_dict['rfc_totalCounts'],
+                value_dict['rfc_datetime'],
+                value_dict['rfc_timestep'],
+                1, #lake_number
+                network.t0) 
         else:
             pass
 
@@ -1255,3 +1267,57 @@ def _assemble_lastobs_df(
     ]
     lastobs_df.index = lastobs_df.index.astype('int64')
     return lastobs_df
+
+def _rfc_timeseries_qcqa(discharge,stationId,synthetic,totalCounts,timestamp,timestep,lake_number,t0):
+    rfc_df = pd.DataFrame(
+        {'stationId': stationId,
+         'datetime': timestamp,
+         'discharge': discharge,
+         'synthetic': synthetic
+         }
+    )
+    rfc_df['stationId'] = rfc_df['stationId'].map(bytes.strip)
+
+    validation_df = rfc_df.groupby('stationId').agg(list)
+    validation_index = validation_df.index
+    use_rfc_df = pd.DataFrame()
+    for i in validation_index:
+        val_lake_number = lake_number #TODO: placeholder, figure out how to get lake number here...
+        val_discharge = validation_df.loc[i].discharge
+        val_synthetic = validation_df.loc[i].synthetic
+        
+        use_rfc = _validate_RFC_data(
+            val_lake_number, 
+            val_discharge, 
+            val_synthetic, 
+            '', 
+            '', 
+            300,
+            from_files=False
+            )
+        
+        use_rfc_df = pd.concat([
+            use_rfc_df,
+            pd.DataFrame({
+                'stationId': [i],
+                'use_rfc': use_rfc
+            })
+        ], ignore_index=True)
+        
+    rfc_df = (rfc_df.
+              set_index(['stationId', 'datetime']).
+              unstack(1, fill_value = np.nan)['discharge'])
+    
+    rfc_param_df = (pd.merge(
+        pd.DataFrame(
+        {'stationId': stationId,
+         'idx': rfc_df.columns.get_loc(t0),
+         'da_timestep': timestep,
+         'totalCounts': totalCounts,
+         'update_time': 0,
+         }
+    ).drop_duplicates(),
+    use_rfc_df, on='stationId').
+    set_index('stationId'))
+
+    return rfc_df, rfc_param_df
