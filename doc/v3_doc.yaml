@@ -517,7 +517,7 @@ compute_parameters:
         # USACE TimeSlice files are only used for reservoir DA
         # at USACE reservoirs
         # (!!) mandatory for USACE reservoir DA 
-        usgs_timeslices_folder: 
+        usace_timeslices_folder: 
         # ---------------
         # int, the number of hours prior to the simulation start that TimeSlice files are searched for
         # For example, if the start time of the simulation is 2022-10-10 12:00 and the timeslice_lookback_hours
