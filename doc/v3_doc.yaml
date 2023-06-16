@@ -671,7 +671,7 @@ output_parameters:
         wrf_hydro_restart_dir:
         # ---------------
         # string. Unique file pattern of restart files (e.g. HYDRO_RST.*)
-        # optional, defaults to 'HYDRO_RST*'
+        # optional, defaults to 'HYDRO_RST.*'
         wrf_hydro_channel_restart_pattern_filter:
     # ---------------
     # paramters controlling a single-segment parity assessment between t-route and WRF-hydro
