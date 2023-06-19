@@ -22,11 +22,13 @@ def read_geopkg(file_path):
     flowpaths = pd.merge(flowpaths, attributes, on='id')
     
     # Retrieve gage information:
-    lookup_table = gpd.read_file(file_path, layer='lookup_table')[['id','POI_TYPE','POI_VALUE']]
-    lookup_table = lookup_table[lookup_table['POI_TYPE']=='Gages'].drop('POI_TYPE', axis=1).rename(columns={'POI_VALUE': 'gages'})
-    lookup_table['id'] = lookup_table['id'].str.split('-',expand=True).loc[:,1].astype(int)
-    gages = lookup_table.set_index('id').to_dict()
-
+    gages_df = gpd.read_file(file_path, layer='network')[['id','hl_uri']].drop_duplicates()
+    gages_df = gages_df[~gages_df['hl_uri'].isnull()]
+    gages_df['id'] = gages_df['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+    gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
+    gages_df = gages_df[gages_df['type']=='Gages']
+    gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
+    
     return flowpaths, gages
 
 def read_json(file_path, edge_list):
@@ -50,9 +52,12 @@ def read_json(file_path, edge_list):
 def numeric_id(flowpath):
     id = flowpath['id'].split('-')[-1]
     toid = flowpath['toid'].split('-')[-1]
-    flowpath['id'] = int(id)
-    flowpath['toid'] = int(toid)
+    flowpath['id'] = int(float(id))
+    flowpath['toid'] = int(float(toid))
     return flowpath
+
+def _find_unique_gages(x):
+        return(list(set(x.split(','))))
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -147,6 +152,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._waterbody_connections = {}
         self._waterbody_type_specified = None
         self._link_lake_crosswalk = None
+        self._gages = None
 
 
         if self.verbose:
@@ -202,20 +208,12 @@ class HYFeaturesNetwork(AbstractNetwork):
             #the param df..., but then it breaks down the connection property...so for now, leave it here and fix later
             self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
         return self._waterbody_connections
-
+    
     @property
     def gages(self):
         """
         FIXME
         """
-        ''' FIXEME: edited out on 6/1/23. Not sure the utility of this, but shouldn't be
-        necessary if self._gages is created properly (which it should be now)
-
-        if self._gages is None and "gages" in self._dataframe.columns:
-            self._gages = nhd_io.build_filtered_gage_df(self._dataframe[["gages"]])
-        else:
-            self._gages = {}
-        '''
         return self._gages
     
     @property
