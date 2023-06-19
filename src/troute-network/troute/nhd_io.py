@@ -120,7 +120,8 @@ def read_config_file(custom_input_file):
                         "musx": "MusX",
                         "cs": "ChSlp"  # TODO: rename to `sideslope`
                         }
-        supernetwork_parameters["columns"]             = routelink_attr 
+        if not supernetwork_parameters.get('columns',None):
+            supernetwork_parameters["columns"]         = routelink_attr 
         supernetwork_parameters["waterbody_null_code"] = -9999
         supernetwork_parameters["terminal_code"]       =  0
         supernetwork_parameters["driver_string"]       = "NetCDF"
