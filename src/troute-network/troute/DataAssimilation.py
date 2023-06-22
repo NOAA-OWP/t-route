@@ -509,18 +509,30 @@ class RFCDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict):
+        waterbody_parameters = self._waterbody_parameters
+        rfc_parameters = waterbody_parameters.get('rfc', None)
+
+        # check if user explictly requests RFC reservoir DA
+        rfc  = False
+        if rfc_parameters:
+            rfc = rfc_parameters.get('reservoir_rfc_forecasts', False)
+
         if not from_files:
-            (self._reservoir_rfc_df,
-             self._reservoir_rfc_param_df
-             ) = _rfc_timeseries_qcqa(
-                value_dict['rfc_discharges'],
-                value_dict['rfc_stationId'],
-                value_dict['rfc_synthetic_values'],
-                value_dict['rfc_totalCounts'],
-                value_dict['rfc_datetime'],
-                value_dict['rfc_timestep'],
-                1, #lake_number
-                network.t0) 
+            if rfc:
+                (self._reservoir_rfc_df,
+                self._reservoir_rfc_param_df
+                ) = _rfc_timeseries_qcqa(
+                    value_dict['rfc_discharges'],
+                    value_dict['rfc_stationId'],
+                    value_dict['rfc_synthetic_values'],
+                    value_dict['rfc_totalCounts'],
+                    value_dict['rfc_datetime'],
+                    value_dict['rfc_timestep'],
+                    1, #lake_number
+                    network.t0) 
+            else: 
+                self._reservoir_rfc_df = pd.DataFrame()
+                self._reservoir_rfc_param_df = pd.DataFrame()
         else:
             pass
 
@@ -550,7 +562,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
 
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
-        RFCDA.__init__(self, from_files, value_dict)
+        RFCDA.__init__(self, network, from_files, value_dict)
     
     def update_after_compute(self, run_results, time_increment):
         '''

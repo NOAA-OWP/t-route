@@ -6,9 +6,10 @@ import time
 import json
 from pathlib import Path
 import pyarrow.parquet as pq
+from itertools import chain
 
 import troute.nhd_io as nhd_io #FIXME
-from troute.nhd_network import reverse_dict, extract_connections
+from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
 
 __verbose__ = False
 __showtiming__ = False
@@ -22,11 +23,19 @@ def read_geopkg(file_path):
     flowpaths = pd.merge(flowpaths, attributes, on='id')
     
     # Retrieve gage information:
-    gages_df = gpd.read_file(file_path, layer='network')[['id','hl_uri']].drop_duplicates()
+    gages_df = gpd.read_file(file_path, layer='network')[['id','hl_uri','hydroseq']].drop_duplicates()
+    # clear out missing values
     gages_df = gages_df[~gages_df['hl_uri'].isnull()]
+    gages_df = gages_df[~gages_df['hydroseq'].isnull()]
+    # make 'id' an integer
     gages_df['id'] = gages_df['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+    # split the hl_uri column into type and value
     gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
+    # filter for 'Gages' only
     gages_df = gages_df[gages_df['type']=='Gages']
+    # assign only the furthest downstream segment ID to any given gage
+    gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
+    # transform dataframe into a dictionary
     gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
     
     return flowpaths, gages
@@ -68,16 +77,25 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
     def node_key_func(x):
         return int( x.split('-')[-1] )
     if Path(parm_file).suffix=='.gpkg':
-        df = gpd.read_file(parm_file, layer="lake_attributes").set_index('id')
+        df = gpd.read_file(parm_file, layer='lakes')
+        wbody_conn_df = df[['toid','hl_reference','hl_link']]
+        wbody_conn_df['toid'] = wbody_conn_df['toid'].map(node_key_func)
+        wbody_conn_df['hl_link'] = wbody_conn_df.hl_link.astype(int)
+
+        df = (
+            df.drop(['id','toid','hl_id','hl_reference','hl_uri','geometry'], axis=1)
+            .rename(columns={'hl_link': 'lake_id'})
+            )
+        df['lake_id'] = df.lake_id.astype(float).astype(int)
+        df = df.set_index('lake_id').drop_duplicates().sort_index()
     elif Path(parm_file).suffix=='.json':
         df = pd.read_json(parm_file, orient="index")
-
-    df.index = df.index.map(node_key_func)
-    df.index.name = lake_index_field
+        df.index = df.index.map(node_key_func)
+        df.index.name = lake_index_field
 
     if lake_id_mask:
         df = df.loc[lake_id_mask]
-    return df
+    return df, wbody_conn_df
 
 def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -100,6 +118,25 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         df = df.loc[lake_id_mask]
         
     return df
+
+def _create_wbody_conn(rconn, wbody_conn_df):
+    wbody_df = pd.DataFrame()
+    for i in range(wbody_conn_df.shape[0]):
+        wbin = wbody_conn_df.iloc[i,0]
+        if wbin!=wbin:
+            wbin=None
+        wbout = wbody_conn_df.iloc[i,1]
+        wbody_dict = reachable(rconn, wbout, wbin)
+        wbody_list = list(set(chain.from_iterable(wbody_dict.values())))
+        wbody_list.remove(wbout[0])
+        lake_id = wbody_conn_df.iloc[i,:].name
+        wbody_df = pd.concat([
+            wbody_df,
+            pd.DataFrame({'link': wbody_list,
+                        'lake_id': lake_id})])
+    wbody_conn = wbody_df.set_index('link')['lake_id'].to_dict()
+    return wbody_conn
+
 
 
 class HYFeaturesNetwork(AbstractNetwork):
@@ -147,12 +184,15 @@ class HYFeaturesNetwork(AbstractNetwork):
             self.read_geo_file()
         else:
             self.load_bmi_data(value_dict, segment_attributes, waterbody_attributes)
-        
+
+        self._reverse_network = reverse_network(self.connections)
+        self._waterbody_connections = _create_wbody_conn(self.reverse_network, self._waterbody_connections)
+
         #TODO Update for waterbodies and DA specific to HYFeatures...
-        self._waterbody_connections = {}
+        #self._waterbody_connections = {}
         self._waterbody_type_specified = None
         self._link_lake_crosswalk = None
-        self._gages = None
+        #self._gages = {}
 
 
         if self.verbose:
@@ -305,18 +345,25 @@ class HYFeaturesNetwork(AbstractNetwork):
                 
             lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
             try:
-                self._waterbody_df = read_ngen_waterbody_df(
+                self._waterbody_df, wbody_conn_df = read_ngen_waterbody_df(
                             levelpool_params["level_pool_waterbody_parameter_file_path"],
                             lake_id,
                             )
-                    
                 # Remove duplicate lake_ids and rows
+                '''
                 self._waterbody_df = (
                                 self.waterbody_dataframe.reset_index()
                                 .drop_duplicates(subset=lake_id)
                                 .set_index(lake_id)
                                 .sort_index()
                                 )
+                '''
+                # Create wbody_conn dictionary:
+                self._waterbody_connections = (
+                    wbody_conn_df.groupby(['hl_link','hl_reference'])['toid']
+                    .agg(list)
+                    .unstack()
+                    )
             except ValueError:
                 self._waterbody_df = pd.DataFrame()
 

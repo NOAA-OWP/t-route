@@ -65,7 +65,7 @@ class AbstractNetwork(ABC):
         if self.break_points["break_network_at_waterbodies"]:
             self._break_segments = self._break_segments | set(self.waterbody_connections.values())
         if self.break_points["break_network_at_gages"]:
-            self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
+            self._break_segments = self._break_segments | set(self.gages.get('gages',{}).keys())
         
         self.initialize_routing_scheme()
 
