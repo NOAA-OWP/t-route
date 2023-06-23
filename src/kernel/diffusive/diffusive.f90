@@ -5,7 +5,7 @@ module diffusive
   
 !-----------------------------------------------------------------------------
 ! Description:
-!   Numerically solve diffusive wave PDEs using Crank-Nicholson and Hermite 
+!   Numerically solve diffusive wave PDEs using Crank-Nicolson and Hermite
 !   Interpolation. 
 !
 ! Current Code Owner: NOAA-OWP, Inland Hydraulics Team
@@ -87,7 +87,7 @@ contains
   !   Compute diffusive routing on National Water Model channel network domain.
   !
   ! Method:
-  !   A Crank Nicholson solution of the diffusive wave equations is solved with
+  !   A Crank-Nicolson solution of the diffusive wave equations is solved with
   !   adaptive timestepping to maintain numerical stability. Major operations are
   !   as follows:
   !
