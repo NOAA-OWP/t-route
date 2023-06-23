@@ -95,7 +95,7 @@ contains
   !     2. For each timestep....
   !       2.1. Compute domain flow, upstream-to-downstream
   !       2.2. Compute domain depth, downstream-to-upstream
-  !       2.3. Determinie time step duration needed for stability
+  !       2.3. Determine time step duration needed for stability
   !       2.4. repeat until until final time is reached
   !     3. Record results in output arrays at user-specified time intervals
   !
@@ -341,7 +341,7 @@ contains
   !--------------------------------------------------------------------------------------------
     frnw_g        = frnw_ar_g ! network mapping matrix
     z             = z_ar_g    ! node elevation array
-    usgs_da_reach = usgs_da_reach_g ! contains indices of reaches where usgs data are avaliable
+    usgs_da_reach = usgs_da_reach_g ! contains indices of reaches where usgs data are available
     usgs_da       = usgs_da_g       ! contains usgs data at a related reach 
         
   !-----------------------------------------------------------------------------
@@ -403,7 +403,7 @@ contains
     end do
     
   !-----------------------------------------------------------------------------
-  ! Build natural / systhetic cross sections and related hydraulic lookup table 
+  ! Build natural / synthetic cross sections and related hydraulic lookup table
   if (mxnbathy == 0) then
     applyNaturalSection = 0
   else
@@ -475,7 +475,7 @@ contains
   end do
 
   !-----------------------------------------------------------------------------
-  ! Build time arrays for lateral flow, upstream boundary, donwstream boundary,
+  ! Build time arrays for lateral flow, upstream boundary, downstream boundary,
   ! and tributary flow
 
     ! time step series for lateral flow. 
@@ -510,7 +510,7 @@ contains
                       real(n-1,KIND(dt_db)) / 60.0 ! [min]                 
     end do
     
-    ! time step seris for data assimilation for discharge at bottom node of a related reach
+    ! time step series for data assimilation for discharge at bottom node of a related reach
     do n=1, nts_da
         tarr_da(n) = t0 * 60.0 + dt_da * &
                       real(n-1,KIND(dt_da)) / 60.0 ! [min]
@@ -545,13 +545,13 @@ contains
           newY(ncomp, j) = oldY(ncomp, j)  
         endif
       else
-        ! Initial depth at botton node of interror reach is equal to the depth at top node of the downstream reach     
+        ! Initial depth at bottom node of interior reach is equal to the depth at top node of the downstream reach
         linknb         = frnw_g(j, 2)
         newY(ncomp, j) = newY(1, linknb)        
       end if              
      
       ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
-      ! ** At intial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
+      ! ** At initial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
       ! ** So, let's assume the depth values are all nodes equal to depth at the bottom node.
       wdepth = newY(ncomp, j) - z(ncomp, j)
       do i = 1, ncomp -1
@@ -574,7 +574,7 @@ contains
   !-----------------------------------------------------------------------------
   ! Write tributary results to output arrays
   ! TODO: consider if this is necessary - output arrays are immediately trimmed
-  ! to exclude triburay results (from MC) and pass-out only diffusive-calculated
+  ! to exclude tributary results (from MC) and pass-out only diffusive-calculated
   ! flow and depth on mainstem segments.
           
     ts_ev = 1
@@ -652,7 +652,7 @@ contains
         !+++----------------------------------------------------------------
         if (frnw_g(j, 3) > 0) then        ! number of upstream reaches, so reach j is not a headwater
           newQ(1, j) = 0.0
-          do k = 1, frnw_g(j, 3)          ! loop over ustream connected reaches
+          do k = 1, frnw_g(j, 3)          ! loop over upstream connected reaches
             usrchj = frnw_g(j, 3 + k) 
             if (any(mstem_frj == usrchj)) then
 
@@ -730,7 +730,7 @@ contains
           endif
         end if
 
-        ! Calculate WSEL at interrior reach nodes
+        ! Calculate WSEL at interior reach nodes
         call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
         
         ! Identify the maximum calculated celerity/dx ratio at this timestep
@@ -750,7 +750,7 @@ contains
       !+
       !+-------------------------------------------------------------------------
       
-      ! Calculate Froud and maximum Courant number
+      ! Calculate Froude and maximum Courant number
       do jm = 1, nmstem_rch
         j     = mstem_frj(jm)
         ncomp = frnw_g(j,1)
@@ -775,7 +775,7 @@ contains
       !end do
       
       ! diffusive wave simulation time print
-      print*, "diffusive simulatoin time in minute=", t
+      print*, "diffusive simulation time in minute=", t
    
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
@@ -1043,7 +1043,7 @@ contains
       depth_us = newArea(i, j) / bo(i, j)            ! depth (rectangular?)
       q_us     = newQ(i, j)                          ! flow
       v_us     = abs(newQ(i, j) / newArea(i, j) )    ! velocity
-      pere_us  = pere(i, j)                          ! wetted perimiter
+      pere_us  = pere(i, j)                          ! wetted perimeter
       r_us     = newArea(i, j) / pere(i, j)          ! hydraulic radius
       sk_us    = sk(i, j)                            ! 1/Mannings' N 
       ch_us    = sk(i, j) * r_us ** (1. / 6.)        ! parameter for Chezy's constant
@@ -1053,7 +1053,7 @@ contains
       depth_ds = newArea(i+1, j) / bo(i+1, j)        ! depth (rectangular?)
       q_ds     = newQ(i+1, j)                        ! flow
       v_ds     = abs(newQ(i+1, j) / newArea(i+1, j)) ! velocity
-      pere_ds  = pere(i+1, j)                        ! wetted perimiter
+      pere_ds  = pere(i+1, j)                        ! wetted perimeter
       r_ds     = newArea(i+1, j) / pere(i+1, j)      ! hydraulic radius
       sk_ds    = sk(i+1, j)                          ! 1/Mannings' N 
       ch_ds    = sk(i+1, j) * r_ds ** (1./6.)        ! parameter for Chezy's constant
@@ -1088,7 +1088,7 @@ contains
                                 dimensionless_Fo(i, j)) ** 2.
       if (dimensionless_Di(i,j) > maxValue) dimensionless_Di(i,j) = maxValue
 
-      ! dinmesionless diffusion coefficient (ratio of wave diffusion to wave advection)
+      ! dimensionless diffusion coefficient (ratio of wave diffusion to wave advection)
       dimensionless_D(i,j)  = dimensionless_Di(i,j) / dimensionless_Fc(i,j)
       if (dimensionless_D(i,j) .gt. maxValue) dimensionless_D(i,j) = maxValue
         
@@ -1432,7 +1432,7 @@ contains
         ! test                
         print*, t, i, j, newY(i,j), newY(i, j)-z(i, j), co(i)  
         print*, 'At j = ',j,', i = ',i, 'time =',t, &
-                'interpolation of conveyence was not possible, wl', &
+                'interpolation of conveyance was not possible, wl', &
                 newY(i,j), 'z',z(i,j),'previous wl',newY(i+1,j) !, &
                 !'previous z',z(i+1,j), 'dimensionless_D(i,j)', &
                 !dimensionless_D(i,j)
@@ -1450,7 +1450,7 @@ contains
 !        stop
       end if
       
-      ! Estimate wetted perimiter by interpolation
+      ! Estimate wetted perimeter by interpolation
       call r_interpol(elevTable, pereTable, nel, &
                       xt, pere(i, j))
       
@@ -1489,7 +1489,7 @@ contains
       
       if (i .gt. 1) then       
         ! ====================================================
-        ! Combination of Newton-Rapson and Bisection
+        ! Combination of Newton-Raphson and Bisection
         ! ====================================================                    
         Q_cur        = qp(i-1, j)
         Q_ds         = qp(i, j)
@@ -1537,7 +1537,7 @@ contains
         
   !----------------------------------------------------------------------------------------------------------
   ! Description:
-  !   Compute water depth using diffusive momentum equation using a combination of Newton-Rapson and Bisection 
+  !   Compute water depth using diffusive momentum equation using a combination of Newton-Raphson and Bisection
   !
   ! Method:     
   !  p.1189, Numerical Recipes in F90  
@@ -1698,7 +1698,7 @@ contains
     !   Interpolate given columns of hydraulic lookup table
     !
     ! Method:     
-    !   linear interpolaton between selected adjacent data points
+    !   linear interpolation between selected adjacent data points
     !-------------------------------------------------------------------
 
     ! subroutine arguments
@@ -1739,8 +1739,8 @@ contains
     !-------------------------------------------------------------------------------------------------
     ! Description:
     !   Build hydraulic lookup table containing cross sections' area, wetted perimeter, hydraulic
-    !   radius, top water surface width, conveyance,  derivative of coveyance w.r.t. area, 
-    !   1 / composite Mannings' N all with repect to incrementally increasing water elevation values.
+    !   radius, top water surface width, conveyance,  derivative of conveyance w.r.t. area,
+    !   1 / composite Mannings' N all with respect to incrementally increasing water elevation values.
     !
     ! Method:     
     !   All hydraulic properties of each cross section are computed for a possible range of 
@@ -2580,7 +2580,7 @@ contains
       !   Estimate normal and critical depth and related areas
       !
       ! Method:
-      !   normal depth by linearly interpolating elevation & coveyance columns w.r.t. given conveyance
+      !   normal depth by linearly interpolating elevation & conveyance columns w.r.t. given conveyance
       !   normal depth area by linearly interpolation elevation & area w.r.t. given normal depth
       !   critical depth by iterative method and the computed depth leads to the estimating of the area	
       !--------------------------------------------------------------------------------------------------
