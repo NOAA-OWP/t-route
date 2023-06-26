@@ -187,8 +187,8 @@ class bmi_troute(Bmi):
         #self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
         #self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
         #self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['lastobs__volume_flow_rate'] = np.zeros(0)
+        #self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['lastobs__volume_flow_rate'] = np.zeros(0)
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
         self._values['channel_water_flow__speed'] = np.zeros(n_io)
         self._values['channel_water__mean_depth'] = np.zeros(n_io)
@@ -227,10 +227,13 @@ class bmi_troute(Bmi):
         self._values['lastobs_time'] = np.zeros(9, dtype='<U19')
         self._values['lastobs_modelTimeAtOutput'] = np.zeros(1, dtype='<U19')
 
-        """
-        #TODO Update loading RFC data not through Fortran reservoir module.
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        """
+        self._values['rfc_discharges'] = np.zeros(0)
+        self._values['rfc_stationId'] = np.zeros(3, dtype='<U19')
+        self._values['rfc_synthetic_values'] = np.zeros(0)
+        self._values['rfc_totalCounts'] = np.zeros(0)
+        self._values['rfc_datetime'] = np.zeros(3, dtype='<U19')
+        self._values['rfc_timestep'] = np.zeros(0)
+
 
     # Currently utilized BMI functions:
     def update(self):
