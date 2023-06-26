@@ -209,10 +209,16 @@ class bmi_troute(Bmi):
 
         # Data assimilation values
         self._values['gages'] = np.zeros(n_gages*2, dtype='<U19')
-        self._values['timeslice_discharge'] = np.zeros(6)
-        self._values['timeslice_stationId'] = np.zeros(6, dtype='<U19')
-        self._values['timeslice_time'] = np.zeros(6, dtype='<U19')
-        self._values['timeslice_discharge_quality'] = np.zeros(6)
+        self._values['usgs_timeslice_discharge'] = np.zeros(6)
+        self._values['usgs_timeslice_stationId'] = np.zeros(6, dtype='<U19')
+        self._values['usgs_timeslice_time'] = np.zeros(6, dtype='<U19')
+        self._values['usgs_timeslice_discharge_quality'] = np.zeros(6)
+
+        self._values['gages'] = np.zeros(n_gages*2, dtype='<U19')
+        self._values['usace_timeslice_discharge'] = np.zeros(6)
+        self._values['usace_timeslice_stationId'] = np.zeros(6, dtype='<U19')
+        self._values['usace_timeslice_time'] = np.zeros(6, dtype='<U19')
+        self._values['usace_timeslice_discharge_quality'] = np.zeros(6)
 
         self._values['lastobs_discharge'] = np.zeros(9)
         self._values['lastobs_stationIdInd'] = np.zeros(9, dtype=int)
