@@ -176,7 +176,10 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
         if exclude_segments:
             usgs_wbodies_sub = set(usgs_wbodies_sub).difference(set(exclude_segments))
         reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
-        reservoir_usgs_df_time = (reservoir_usgs_df.columns - t0).total_seconds().to_numpy()
+        reservoir_usgs_df_time = []
+        for timestamp in reservoir_usgs_df.columns:
+            reservoir_usgs_df_time.append((timestamp - t0).total_seconds())
+        reservoir_usgs_df_time = np.array(reservoir_usgs_df_time)
         reservoir_usgs_update_time = reservoir_usgs_param_df['update_time'].loc[usgs_wbodies_sub].to_numpy()
         reservoir_usgs_prev_persisted_flow = reservoir_usgs_param_df['prev_persisted_outflow'].loc[usgs_wbodies_sub].to_numpy()
         reservoir_usgs_persistence_update_time = reservoir_usgs_param_df['persistence_update_time'].loc[usgs_wbodies_sub].to_numpy()
@@ -199,8 +202,10 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
         if exclude_segments:
             usace_wbodies_sub = set(usace_wbodies_sub).difference(set(exclude_segments))
         reservoir_usace_df_sub = reservoir_usace_df.loc[usace_wbodies_sub]
-        reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
-        reservoir_usace_df_time = (reservoir_usace_df.columns - t0).total_seconds().to_numpy()
+        reservoir_usace_df_time = []
+        for timestamp in reservoir_usace_df.columns:
+            reservoir_usace_df_time.append((timestamp - t0).total_seconds())
+        reservoir_usace_df_time = np.array(reservoir_usace_df_time)
         reservoir_usace_update_time = reservoir_usace_param_df['update_time'].loc[usace_wbodies_sub].to_numpy()
         reservoir_usace_prev_persisted_flow = reservoir_usace_param_df['prev_persisted_outflow'].loc[usace_wbodies_sub].to_numpy()
         reservoir_usace_persistence_update_time = reservoir_usace_param_df['persistence_update_time'].loc[usace_wbodies_sub].to_numpy()
