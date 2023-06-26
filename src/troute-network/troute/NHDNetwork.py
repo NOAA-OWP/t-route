@@ -19,11 +19,6 @@ class NHDNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = [  
-        "_usgs_lake_gage_crosswalk", 
-        "_usace_lake_gage_crosswalk",
-        ]
-    
     def __init__(
                 self, 
                 supernetwork_parameters, 
