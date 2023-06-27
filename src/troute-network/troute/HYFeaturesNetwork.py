@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 from itertools import chain
 
 import troute.nhd_io as nhd_io #FIXME
-from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
+from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable, replace_waterbodies_connections
 
 __verbose__ = False
 __showtiming__ = False
@@ -32,12 +32,11 @@ def read_geopkg(file_path):
     # split the hl_uri column into type and value
     gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
     # filter for 'Gages' only
-    gages_df = gages_df[gages_df['type']=='Gages']
+    gages_df = gages_df[gages_df['type'].isin(['Gages','NID'])]
     # assign only the furthest downstream segment ID to any given gage
     gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
     # transform dataframe into a dictionary
     gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
-    
     return flowpaths, gages
 
 def read_json(file_path, edge_list):
@@ -64,9 +63,6 @@ def numeric_id(flowpath):
     flowpath['id'] = int(float(id))
     flowpath['toid'] = int(float(toid))
     return flowpath
-
-def _find_unique_gages(x):
-        return(list(set(x.split(','))))
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -134,9 +130,8 @@ def _create_wbody_conn(rconn, wbody_conn_df):
             wbody_df,
             pd.DataFrame({'link': wbody_list,
                         'lake_id': lake_id})])
-    wbody_conn = wbody_df.set_index('link')['lake_id'].to_dict()
+    wbody_conn = wbody_df.set_index('link')#['lake_id']
     return wbody_conn
-
 
 
 class HYFeaturesNetwork(AbstractNetwork):
@@ -185,22 +180,13 @@ class HYFeaturesNetwork(AbstractNetwork):
         else:
             self.load_bmi_data(value_dict, segment_attributes, waterbody_attributes)
 
-        self._reverse_network = reverse_network(self.connections)
-        self._waterbody_connections = _create_wbody_conn(self.reverse_network, self._waterbody_connections)
-
-        #TODO Update for waterbodies and DA specific to HYFeatures...
-        #self._waterbody_connections = {}
-        self._waterbody_type_specified = None
-        self._link_lake_crosswalk = None
-        #self._gages = {}
-
 
         if self.verbose:
             print("supernetwork connections set complete")
         if self.showtiming:
             print("... in %s seconds." % (time.time() - start_time))
             
-
+        
         super().__init__()   
             
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
@@ -364,6 +350,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                     .agg(list)
                     .unstack()
                     )
+                self._reverse_network = reverse_network(self.connections)
+                self._waterbody_connections = _create_wbody_conn(self.reverse_network, self._waterbody_connections)
+
             except ValueError:
                 self._waterbody_df = pd.DataFrame()
 
@@ -386,6 +375,52 @@ class HYFeaturesNetwork(AbstractNetwork):
                 #So make this default to 1 (levelpool)
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
+            
+            # Create lake_gage crosswalk dataframes:
+            link_gage_df = (
+                pd.DataFrame.from_dict(self._gages)
+                .reset_index()
+                .rename(columns={'index': 'link'})
+                .set_index('link')
+                )
+            lake_gage_df = (
+                self._waterbody_connections
+                .join(link_gage_df)
+                .reset_index()[['lake_id','gages']]
+                )
+            lake_gage_df = lake_gage_df[~lake_gage_df['gages'].isnull()]
+            #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
+            # RFC reservoirs...
+            usgs_ind = lake_gage_df.gages.str.isnumeric()
+            self._usgs_lake_gage_crosswalk = (
+                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'})
+                .set_index('usgs_lake_id')
+                )
+            self._usace_lake_gage_crosswalk =  (
+                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
+                .set_index('usace_lake_id')
+                )
+            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+            
+            self._waterbody_type_specified = False
+            if any(self.waterbody_types_dataframe.reservoir_type!=1):
+                self._waterbody_type_specified = True
+
+            # Create wbody_conn dictionary from dataframe:
+            self._waterbody_connections = self._waterbody_connections['lake_id'].to_dict()
+
+            # if waterbodies are being simulated, adjust the connections graph so that 
+            # waterbodies are collapsed to single nodes. Also, build a mapping between 
+            # waterbody outlet segments and lake ids
+            break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)
+            if break_network_at_waterbodies:
+                self._connections, self._link_lake_crosswalk = replace_waterbodies_connections(
+                    self.connections, self._waterbody_connections
+                )
+            else:
+                self._link_lake_crosswalk = None
+            
         else:
             self._waterbody_df = pd.DataFrame()
             self._waterbody_types_df = pd.DataFrame()
@@ -453,6 +488,12 @@ class HYFeaturesNetwork(AbstractNetwork):
         
         # Setup gage dictionary
         self._gages = {'gages': dict(zip(value_dict['gages'][::2],value_dict['gages'][1::2]))}
+
+        #FIXME: Placeholder, set these features to None, but we need to figure out how to 
+        # construct these from BMI input...
+        self._waterbody_connections = None
+        self._link_lake_crosswalk = None
+        self._waterbody_type_specified = None
 
     
     def build_qlateral_array(self, run,):
