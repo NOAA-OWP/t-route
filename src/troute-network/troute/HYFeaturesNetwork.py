@@ -613,3 +613,117 @@ def read_file(file_name):
         df.index.name = None
     
     return df
+
+def tailwaters(N):
+    '''
+    Find network tailwaters
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): tailwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network headwaters.
+      
+    '''
+    tw = chain.from_iterable(N.values()) - N.keys()
+    for m, n in N.items():
+        if not n:
+            tw.add(m)
+    return tw
+
+def reservoir_shore(connections, waterbody_nodes):
+    wbody_set = set(waterbody_nodes)
+    not_in = lambda x: x not in wbody_set
+
+    shore = set()
+    for node in wbody_set:
+        shore.update(filter(not_in, connections[node]))
+    return list(shore)
+
+def reservoir_boundary(connections, waterbodies, n):
+    if n not in waterbodies and n in connections:
+        return any(x in waterbodies for x in connections[n])
+    return False
+
+def reverse_surjective_mapping(d):
+    rd = defaultdict(list)
+    for src, dst in d.items():
+        rd[dst].append(src)
+    rd.default_factory = None
+    return rd
+
+def separate_waterbodies(connections, waterbodies):
+    waterbody_nodes = {}
+    for wb, nodes in reverse_surjective_mapping(waterbodies).items():
+        waterbody_nodes[wb] = net = {}
+        for n in nodes:
+            if n in connections:
+                net[n] = list(filter(waterbodies.__contains__, connections[n]))
+    return waterbody_nodes
+
+def replace_waterbodies_connections(connections, waterbodies):
+    """
+    Use a single node to represent waterbodies. The node id is the
+    waterbody id. Create a cross walk dictionary that relates lake_ids
+    to the terminal segments within the waterbody footprint.
+    
+    Arguments
+    ---------
+    - connections (dict):
+    - waterbodies (dict): dictionary relating segment linkIDs to the
+                          waterbody lake_id that they lie in
+
+    Returns
+    -------
+    - new_conn  (dict): connections dictionary with waterbodies represented by single nodes. 
+                        Waterbody node ids are lake_ids
+    - link_lake (dict): cross walk dictionary where keys area lake_ids and values are lists
+                        of waterbody tailwater nodes (i.e. the nodes connected to the 
+                        waterbody outlet). 
+    """
+    new_conn = {}
+    link_lake = {}
+    waterbody_nets = separate_waterbodies(connections, waterbodies)
+    rconn = reverse_network(connections)
+
+    for n in connections:
+        if n in waterbodies:
+            wbody_code = waterbodies[n]
+            if wbody_code in new_conn:
+                continue
+
+            # get all nodes from waterbody
+            wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
+            outgoing = reservoir_shore(connections, wbody_nodes)
+            new_conn[wbody_code] = outgoing
+            
+            if len(outgoing)>=1:
+                if outgoing[0] in waterbodies:
+                    new_conn[wbody_code] = [waterbodies.get(outgoing[0])]
+                link_lake[wbody_code] = list(set(rconn[outgoing[0]]).intersection(set(wbody_nodes)))[0]
+            else:
+                subset_dict = {key: value for key, value in connections.items() if key in wbody_nodes}
+                link_lake[wbody_code] = tailwaters(subset_dict)
+
+        elif reservoir_boundary(connections, waterbodies, n):
+            # one of the children of n is a member of a waterbody
+            # replace that child with waterbody code.
+            new_conn[n] = []
+
+            for child in connections[n]:
+                if child in waterbodies:
+                    new_conn[n].append(waterbodies[child])
+                else:
+                    new_conn[n].append(child)
+        else:
+            # copy to new network unchanged
+            new_conn[n] = connections[n]
+    
+    return new_conn, link_lake
