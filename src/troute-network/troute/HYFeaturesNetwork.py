@@ -588,6 +588,22 @@ class HYFeaturesNetwork(AbstractNetwork):
 
         self._qlateral = qlats_df
 
+    ######################################################################
+    #FIXME Temporary solution to hydrofabric issues. Fix specific instances here for now...
+    def bandaid(self,):
+        #This chunk assigns lake_ids to segments that reside within the waterbody:
+        self._dataframe.loc[[5548,5551,],'waterbody'] = '5194634'
+        self._dataframe.loc[[5539,5541,5542],'waterbody'] = '5194604'
+        self._dataframe.loc[[2710744,2710746],'waterbody'] = '120051895'
+        self._dataframe.loc[[1536065,1536067],'waterbody'] = '7100709'
+        self._dataframe.loc[[1536104,1536099,1536084,1536094],'waterbody'] = '120052233'
+        self._dataframe.loc[[2711040,2711044,2711047],'waterbody'] = '120052275'
+
+        #This chunk 
+        self._waterbody_df.rename(index={1711354: 1710676}, inplace=True)
+    #######################################################################
+
+
 def read_file(file_name):
     extension = file_name.suffix
     if extension=='.csv':
