@@ -76,14 +76,17 @@ class NudgingDA(AbstractDA):
                     run_parameters.get('dt', 300),
                     network.link_gage_df)
                 
-                self._last_obs_df = _assemble_lastobs_df(
-                    value_dict['lastobs_discharge'], 
-                    value_dict['lastobs_stationIdInd'], 
-                    value_dict['lastobs_timeInd'], 
-                    value_dict['lastobs_stationId'], 
-                    value_dict['lastobs_time'], 
-                    value_dict['lastobs_modelTimeAtOutput'][0], 
-                    network.link_gage_df)
+                lastobs = streamflow_da_parameters.get("bmi_lastobs", False)
+                self._last_obs_df = pd.DataFrame()
+                if lastobs:
+                    self._last_obs_df = _assemble_lastobs_df(
+                        value_dict['lastobs_discharge'], 
+                        value_dict['lastobs_stationIdInd'], 
+                        value_dict['lastobs_timeInd'], 
+                        value_dict['lastobs_stationId'], 
+                        value_dict['lastobs_time'], 
+                        value_dict['lastobs_modelTimeAtOutput'][0], 
+                        network.link_gage_df)
             
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
