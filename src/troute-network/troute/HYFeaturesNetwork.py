@@ -76,9 +76,6 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
         return int( x.split('-')[-1] )
     if Path(parm_file).suffix=='.gpkg':
         df = gpd.read_file(parm_file, layer='lakes')
-        wbody_conn_df = df[['toid','hl_reference','hl_link']]
-        wbody_conn_df['toid'] = wbody_conn_df['toid'].map(node_key_func)
-        wbody_conn_df['hl_link'] = wbody_conn_df.hl_link.astype(int)
 
         df = (
             df.drop(['id','toid','hl_id','hl_reference','hl_uri','geometry'], axis=1)
