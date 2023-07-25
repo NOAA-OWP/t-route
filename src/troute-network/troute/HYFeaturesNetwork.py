@@ -302,7 +302,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         )
 
         #Load waterbody/reservoir info
-        if self.waterbody_parameters.get('level_pool',False): #TODO should this be 'break_network_at_waterbodies'?
+        if self.waterbody_parameters:
             levelpool_params = self.waterbody_parameters.get('level_pool', None)
             if not levelpool_params:
                 # FIXME should not be a hard requirement
@@ -310,7 +310,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 
             lake_id = levelpool_params.get("level_pool_waterbody_id", "wb-id")
             try:
-                self._waterbody_df, wbody_conn_df = read_ngen_waterbody_df(
+                self._waterbody_df = read_ngen_waterbody_df(
                             levelpool_params["level_pool_waterbody_parameter_file_path"],
                             lake_id,
                             )
