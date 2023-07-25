@@ -117,6 +117,24 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
+def _create_wbody_conn(rconn, wbody_conn_df):
+    wbody_df = pd.DataFrame()
+    for i in range(wbody_conn_df.shape[0]):
+        wbin = wbody_conn_df.iloc[i,0]
+        if wbin!=wbin:
+            wbin=None
+        wbout = wbody_conn_df.iloc[i,1]
+        wbody_dict = reachable(rconn, wbout, wbin)
+        wbody_list = list(set(chain.from_iterable(wbody_dict.values())))
+        wbody_list.remove(wbout[0])
+        lake_id = wbody_conn_df.iloc[i,:].name
+        wbody_df = pd.concat([
+            wbody_df,
+            pd.DataFrame({'link': wbody_list,
+                        'lake_id': lake_id})])
+    wbody_conn = wbody_df.set_index('link')#['lake_id']
+    return wbody_conn
+
 
 class HYFeaturesNetwork(AbstractNetwork):
     """
@@ -176,29 +194,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
-
-    def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
-        """Extract waterbody mapping from dataframe.
-        TODO deprecate in favor of waterbody_connections property"""
-        return (
-            rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
-        )
-
-    @property
-    def downstream_flowpath_dict(self):
-        return self._flowpath_dict
-
-    @property
-    def waterbody_connections(self):
-        """
-            A dictionary where the keys are the reach/segment id, and the
-            value is the id to look up waterbody parameters
-        """
-        if( not self._waterbody_connections ):
-            #Funny story, NaN != NaN is true!!!!
-            #Drop the nan, then check for waterbody_null just in case
-            #waterbody_null happens to be NaN
-            #FIXME this drops ALL nan, not just `waterbody`
             #waterbody_segments = self._dataframe.dropna().loc[
             #    self._dataframe["waterbody"] != self.waterbody_null, "waterbody"
             #]
