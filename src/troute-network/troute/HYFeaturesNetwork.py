@@ -242,6 +242,16 @@ class HYFeaturesNetwork(AbstractNetwork):
         mask = ~ self.dataframe['toid'].str.startswith("tnex") 
         self._dataframe = self.dataframe.apply(numeric_id, axis=1)
         
+        # handle segment IDs that are also waterbody IDs. The fix here adds a large value
+        # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
+        # will get confused because there will be repeat IDs...
+        duplicate_wb_segments = self.supernetwork_parameters.get("duplicate_wb_segments", None)
+        duplicate_wb_id_offset = self.supernetwork_parameters.get("duplicate_wb_id_offset", 9.99e11)
+        if duplicate_wb_segments:
+            # update the values of the duplicate segment IDs
+            fix_idx = self.dataframe.id.isin(set(duplicate_wb_segments))
+            self._dataframe.loc[fix_idx,"id"] = (self.dataframe[fix_idx].id + duplicate_wb_id_offset).astype("int64")
+
         # make the flowpath linkage, ignore the terminal nexus
         self._flowpath_dict = dict(zip(self.dataframe.loc[mask].toid, self.dataframe.loc[mask].id))
         
