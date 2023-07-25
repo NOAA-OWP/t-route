@@ -117,24 +117,6 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
-def _create_wbody_conn(rconn, wbody_conn_df):
-    wbody_df = pd.DataFrame()
-    for i in range(wbody_conn_df.shape[0]):
-        wbin = wbody_conn_df.iloc[i,0]
-        if wbin!=wbin:
-            wbin=None
-        wbout = wbody_conn_df.iloc[i,1]
-        wbody_dict = reachable(rconn, wbout, wbin)
-        wbody_list = list(set(chain.from_iterable(wbody_dict.values())))
-        wbody_list.remove(wbout[0])
-        lake_id = wbody_conn_df.iloc[i,:].name
-        wbody_df = pd.concat([
-            wbody_df,
-            pd.DataFrame({'link': wbody_list,
-                        'lake_id': lake_id})])
-    wbody_conn = wbody_df.set_index('link')#['lake_id']
-    return wbody_conn
-
 
 class HYFeaturesNetwork(AbstractNetwork):
     """
