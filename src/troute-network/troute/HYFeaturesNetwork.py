@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 import pyarrow.parquet as pq
 from itertools import chain
+from joblib import delayed, Parallel
+from collections import defaultdict
 
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
