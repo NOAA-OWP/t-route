@@ -16,30 +16,50 @@ from troute.nhd_network import reverse_dict, extract_connections, reverse_networ
 __verbose__ = False
 __showtiming__ = False
 
-def read_geopkg(file_path):
+def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
     # Retrieve dataframe information:
-    flowpaths = gpd.read_file(file_path, layer="flowpaths")
-    attributes = gpd.read_file(file_path, layer="flowpath_attributes").drop('geometry', axis=1)
+    layers = ['flowpaths','flowpath_attributes']
+    with Parallel(n_jobs=2) as parallel:
+        jobs = []
+        for layer in layers:
+            jobs.append(
+                delayed(gpd.read_file)
+                #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
+                #delayed(nhd_io.get_ql_from_csv)
+                (filename=file_path, layer=layer)                    
+            )
+        gpkg_list = parallel(jobs)
+    flowpaths = pd.merge(gpkg_list[0], gpkg_list[1], on='id')
+    '''
+    flowpaths = gpd.read_file(file_path, layer='flowpaths')
+    flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
+    flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
+    '''
+    # Retrieve gage information if any DA is activated:
+    streamflow_nudging = data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
+    usgs_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
+    usace_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
+    rfc_da = waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+    if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
+        gages_df = gpd.read_file(file_path, layer='network')[['id','hl_uri','hydroseq']].drop_duplicates()
+        # clear out missing values
+        gages_df = gages_df[~gages_df['hl_uri'].isnull()]
+        gages_df = gages_df[~gages_df['hydroseq'].isnull()]
+        # make 'id' an integer
+        gages_df['id'] = gages_df['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+        # split the hl_uri column into type and value
+        gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
+        # filter for 'Gages' only
+        gages_df = gages_df[gages_df['type'].isin(['Gages','NID'])]
+        # assign only the furthest downstream segment ID to any given gage
+        gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
+        # transform dataframe into a dictionary
+        gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
+    else:
+        gages = {}
+        gages_df = pd.DataFrame()
 
-    # Merge all relevant data into a single dataframe
-    flowpaths = pd.merge(flowpaths, attributes, on='id')
-    
-    # Retrieve gage information:
-    gages_df = gpd.read_file(file_path, layer='network')[['id','hl_uri','hydroseq']].drop_duplicates()
-    # clear out missing values
-    gages_df = gages_df[~gages_df['hl_uri'].isnull()]
-    gages_df = gages_df[~gages_df['hydroseq'].isnull()]
-    # make 'id' an integer
-    gages_df['id'] = gages_df['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
-    # split the hl_uri column into type and value
-    gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
-    # filter for 'Gages' only
-    gages_df = gages_df[gages_df['type'].isin(['Gages','NID'])]
-    # assign only the furthest downstream segment ID to any given gage
-    gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
-    # transform dataframe into a dictionary
-    gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
-    return flowpaths, gages
+    return flowpaths, gages, gages_df
 
 def read_json(file_path, edge_list):
     dfs = []
@@ -76,9 +96,6 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
         return int( x.split('-')[-1] )
     if Path(parm_file).suffix=='.gpkg':
         df = gpd.read_file(parm_file, layer='lakes')
-        wbody_conn_df = df[['toid','hl_reference','hl_link']]
-        wbody_conn_df['toid'] = wbody_conn_df['toid'].map(node_key_func)
-        wbody_conn_df['hl_link'] = wbody_conn_df.hl_link.astype(int)
 
         df = (
             df.drop(['id','toid','hl_id','hl_reference','hl_uri','geometry'], axis=1)
@@ -90,10 +107,10 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
         df = pd.read_json(parm_file, orient="index")
         df.index = df.index.map(node_key_func)
         df.index.name = lake_index_field
-    return df
+
     if lake_id_mask:
         df = df.loc[lake_id_mask]
-    return df, wbody_conn_df
+    return df
 
 def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
@@ -116,24 +133,6 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         df = df.loc[lake_id_mask]
         
     return df
-
-def _create_wbody_conn(rconn, wbody_conn_df):
-    wbody_df = pd.DataFrame()
-    for i in range(wbody_conn_df.shape[0]):
-        wbin = wbody_conn_df.iloc[i,0]
-        if wbin!=wbin:
-            wbin=None
-        wbout = wbody_conn_df.iloc[i,1]
-        wbody_dict = reachable(rconn, wbout, wbin)
-        wbody_list = list(set(chain.from_iterable(wbody_dict.values())))
-        wbody_list.remove(wbout[0])
-        lake_id = wbody_conn_df.iloc[i,:].name
-        wbody_df = pd.concat([
-            wbody_df,
-            pd.DataFrame({'link': wbody_list,
-                        'lake_id': lake_id})])
-    wbody_conn = wbody_df.set_index('link')#['lake_id']
-    return wbody_conn
 
 
 class HYFeaturesNetwork(AbstractNetwork):
@@ -194,24 +193,24 @@ class HYFeaturesNetwork(AbstractNetwork):
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
-            #waterbody_segments = self._dataframe.dropna().loc[
-            #    self._dataframe["waterbody"] != self.waterbody_null, "waterbody"
-            #]
-            #waterbody_segments = waterbody_segments.loc[self.waterbody_dataframe.index]
-            #self._waterbody_connections = waterbody_segments.index\
-            #    .to_series(name = waterbody_segments.name)\
-            #    .astype("int")\
-            #    .to_dict()
-            #If we identify as a waterbody, drop from the main dataframe
-            #Ugh, but this drops everything that that MIGHT be a "lake"
-            #without knowing if it was defined as a lake in the lake params
-            #so this should just drop the waterbody_df index, not these segments...
-            #In fact, these waterbody connections should probably be entirely reworked
-            #with that in mind...
-            self._waterbody_connections = self._waterbody_df.index.to_series(name = self._waterbody_df.index.name).astype("int").to_dict()
-            #FIXME seems way more appropriate to do this in the constructor so the property doesn't side effect
-            #the param df..., but then it breaks down the connection property...so for now, leave it here and fix later
-            self._dataframe.drop(self._waterbody_df.index, axis=0, inplace=True)
+
+    def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
+        """Extract waterbody mapping from dataframe.
+        TODO deprecate in favor of waterbody_connections property"""
+        return (
+            rows.loc[rows[target_col] != waterbody_null, target_col].astype("int").to_dict()
+        )
+
+    @property
+    def downstream_flowpath_dict(self):
+        return self._flowpath_dict
+
+    @property
+    def waterbody_connections(self):
+        """
+            A dictionary where the keys are the reach/segment id, and the
+            value is the id to look up waterbody parameters
+        """
         return self._waterbody_connections
     
     @property
@@ -231,7 +230,13 @@ class HYFeaturesNetwork(AbstractNetwork):
         
         file_type = Path(geo_file_path).suffix
         if(  file_type == '.gpkg' ):        
-            self._dataframe, self._gages = read_geopkg(geo_file_path)
+            (
+                self._dataframe, 
+                self._gages, 
+                gages_hydroseq
+                ) = read_geopkg(geo_file_path, 
+                                self.data_assimilation_parameters,
+                                self.waterbody_parameters)
         elif( file_type == '.json') :
             edge_list = self.supernetwork_parameters['flowpath_edge_list']
             self._dataframe = read_json(geo_file_path, edge_list) 
@@ -242,6 +247,16 @@ class HYFeaturesNetwork(AbstractNetwork):
         mask = ~ self.dataframe['toid'].str.startswith("tnex") 
         self._dataframe = self.dataframe.apply(numeric_id, axis=1)
         
+        # handle segment IDs that are also waterbody IDs. The fix here adds a large value
+        # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
+        # will get confused because there will be repeat IDs...
+        duplicate_wb_segments = self.supernetwork_parameters.get("duplicate_wb_segments", None)
+        duplicate_wb_id_offset = self.supernetwork_parameters.get("duplicate_wb_id_offset", 9.99e11)
+        if duplicate_wb_segments:
+            # update the values of the duplicate segment IDs
+            fix_idx = self.dataframe.id.isin(set(duplicate_wb_segments))
+            self._dataframe.loc[fix_idx,"id"] = (self.dataframe[fix_idx].id + duplicate_wb_id_offset).astype("int64")
+
         # make the flowpath linkage, ignore the terminal nexus
         self._flowpath_dict = dict(zip(self.dataframe.loc[mask].toid, self.dataframe.loc[mask].id))
         
@@ -302,7 +317,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         )
 
         #Load waterbody/reservoir info
-        if self.waterbody_parameters:
+        if self.waterbody_parameters.get('level_pool',False): #TODO should this be 'break_network_at_waterbodies'?
             levelpool_params = self.waterbody_parameters.get('level_pool', None)
             if not levelpool_params:
                 # FIXME should not be a hard requirement
@@ -314,26 +329,43 @@ class HYFeaturesNetwork(AbstractNetwork):
                             levelpool_params["level_pool_waterbody_parameter_file_path"],
                             lake_id,
                             )
-                # Remove duplicate lake_ids and rows
-                '''
-                self._waterbody_df = (
-                                self.waterbody_dataframe.reset_index()
-                                .drop_duplicates(subset=lake_id)
-                                .set_index(lake_id)
-                                .sort_index()
-                                )
-                '''
+               
                 # Create wbody_conn dictionary:
-                self._waterbody_connections = (
-                    wbody_conn_df.groupby(['hl_link','hl_reference'])['toid']
-                    .agg(list)
-                    .unstack()
+                #FIXME temp solution for missing waterbody info in hydrofabric
+                self.bandaid()
+                
+                wbody_conn = self.dataframe[['waterbody']].dropna()
+                wbody_conn = (
+                    wbody_conn['waterbody']
+                    .str.split(',',expand=True)
+                    .reset_index()
+                    .melt(id_vars='key')
+                    .drop('variable', axis=1)
+                    .dropna()
+                    .astype(int)
                     )
-                self._reverse_network = reverse_network(self.connections)
-                self._waterbody_connections = _create_wbody_conn(self.reverse_network, self._waterbody_connections)
+                self._waterbody_connections = (
+                    wbody_conn[wbody_conn['value'].isin(self.waterbody_dataframe.index)]
+                    .set_index('key')['value']
+                    .to_dict()
+                    )
+
+                self._dataframe = self.dataframe.drop('waterbody', axis=1)
+
+                # if waterbodies are being simulated, adjust the connections graph so that 
+                # waterbodies are collapsed to single nodes. Also, build a mapping between 
+                # waterbody outlet segments and lake ids
+                break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)
+                if break_network_at_waterbodies:
+                    self._connections, self._link_lake_crosswalk = replace_waterbodies_connections(
+                        self.connections, self._waterbody_connections
+                    )
+                else:
+                    self._link_lake_crosswalk = None
 
             except ValueError:
                 self._waterbody_df = pd.DataFrame()
+                self._waterbody_connections = {}
 
             try:
                 self._waterbody_types_df = read_ngen_waterbody_type_df(
@@ -355,54 +387,78 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
             
-            # Create lake_gage crosswalk dataframes:
-            link_gage_df = (
-                pd.DataFrame.from_dict(self._gages)
-                .reset_index()
-                .rename(columns={'index': 'link'})
-                .set_index('link')
-                )
-            lake_gage_df = (
-                self._waterbody_connections
-                .join(link_gage_df)
-                .reset_index()[['lake_id','gages']]
-                )
-            lake_gage_df = lake_gage_df[~lake_gage_df['gages'].isnull()]
-            #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
-            # RFC reservoirs...
-            usgs_ind = lake_gage_df.gages.str.isnumeric()
-            self._usgs_lake_gage_crosswalk = (
-                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'})
-                .set_index('usgs_lake_id')
-                )
-            self._usace_lake_gage_crosswalk =  (
-                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
-                .set_index('usace_lake_id')
-                )
-            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
-            self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
-            
-            self._waterbody_type_specified = False
-            if any(self.waterbody_types_dataframe.reservoir_type!=1):
-                self._waterbody_type_specified = True
+            self._waterbody_type_specified = True
 
-            # Create wbody_conn dictionary from dataframe:
-            self._waterbody_connections = self._waterbody_connections['lake_id'].to_dict()
+            # Retrieve gage information if any DA is activated:
+            streamflow_nudging = self.data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
+            usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
+            usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
+            rfc_da = self.waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+            if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
+                # Create lake_gage crosswalk dataframes:
+                link_gage_df = (
+                    pd.DataFrame.from_dict(self._gages)
+                    .reset_index()
+                    .rename(columns={'index': 'link'})
+                    .set_index('link')
+                    )
+                lake_gage_df = (
+                    pd.DataFrame(self.waterbody_connections.items(),
+                                columns = ['link', 'lake_id'])
+                                .set_index('link')
+                                .join(link_gage_df)
+                                .reset_index()[['lake_id','gages']]
+                    )
+                lake_gage_df = lake_gage_df[~lake_gage_df['gages'].isnull()]
+                #################################
+                #FIXME: temporary solution, this makes sure each lake only has one gage, and that
+                # it is the gage furthest downstream
+                lake_ids = lake_gage_df.lake_id.unique()
+                lake_outflow_gage_ids = []
 
-            # if waterbodies are being simulated, adjust the connections graph so that 
-            # waterbodies are collapsed to single nodes. Also, build a mapping between 
-            # waterbody outlet segments and lake ids
-            break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)
-            if break_network_at_waterbodies:
-                self._connections, self._link_lake_crosswalk = replace_waterbodies_connections(
-                    self.connections, self._waterbody_connections
-                )
+                for i in lake_ids:
+                    temp_df = lake_gage_df[lake_gage_df['lake_id']==i]
+                    lake_outflow_gage_ids.append(
+                        gages_hydroseq[gages_hydroseq['value']
+                                    .isin(temp_df.gages)]
+                                    .sort_values('hydroseq')
+                                    .iloc[-1,:]
+                                    .value
+                    )
+
+                lake_gage_df = lake_gage_df[lake_gage_df['gages'].isin(lake_outflow_gage_ids)]
+                #####################################
+
+
+
+                #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
+                # RFC reservoirs...
+                usgs_ind = lake_gage_df.gages.str.isnumeric()
+                self._usgs_lake_gage_crosswalk = (
+                    lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'})
+                    .set_index('usgs_lake_id')
+                    )
+                self._usace_lake_gage_crosswalk =  (
+                    lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
+                    .set_index('usace_lake_id')
+                    )
+                
+                self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+                self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+
             else:
+                self._usgs_lake_gage_crosswalk = pd.DataFrame()
+                self._usgs_lake_gage_crosswalk = pd.DataFrame()
                 self._link_lake_crosswalk = None
             
         else:
             self._waterbody_df = pd.DataFrame()
             self._waterbody_types_df = pd.DataFrame()
+            self._waterbody_connections = {}
+            self._waterbody_type_specified = False
+            self._usgs_lake_gage_crosswalk = pd.DataFrame()
+            self._usgs_lake_gage_crosswalk = pd.DataFrame()
+            self._link_lake_crosswalk = None
     
     def load_bmi_data(self, value_dict, segment_attributes, waterbody_attributes):
         
@@ -462,17 +518,82 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_df.set_index("wb-id", inplace=True)
             self._waterbody_df = self.waterbody_dataframe.sort_index()
 
-            self._waterbody_types_df = pd.DataFrame(self.waterbody_dataframe['reservoir_type'])
-            self._waterbody_df.drop('reservoir_type', axis=1, inplace=True)
+            self._waterbody_types_df = pd.DataFrame(index = self.waterbody_dataframe.index)
+            self._waterbody_types_df['reservoir_type'] = 1
         
-        # Setup gage dictionary
-        self._gages = {'gages': dict(zip(value_dict['gages'][::2],value_dict['gages'][1::2]))}
+            # Setup waterbody_connections dataframe
+            #TODO: add option to create waterbody_connections not from BMI direct input...
 
-        #FIXME: Placeholder, set these features to None, but we need to figure out how to 
-        # construct these from BMI input...
-        self._waterbody_connections = None
-        self._link_lake_crosswalk = None
-        self._waterbody_type_specified = None
+            self._waterbody_connections = pd.DataFrame({
+                'link': value_dict['waterbody_connections__link'],
+                'lake_id': value_dict['waterbody_connections__lake']
+                }).set_index('link')
+
+        else:
+            self._waterbody_df = pd.DataFrame()
+            self._waterbody_types_df = pd.DataFrame()
+            self._waterbody_connections = pd.DataFrame()
+            self._waterbody_connections['lake_id'] = []
+
+        streamflow_nudging = self.data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
+        usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
+        usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
+        rfc_da = self.waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+        if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
+            # Setup gage dictionary
+            self._gages = {'gages': dict(zip(value_dict['gage_crosswalk__segID'],
+                                            value_dict['gage_crosswalk__gageID']))}
+            
+            # Create lake_gage crosswalk dataframes:
+            link_gage_df = (
+                pd.DataFrame.from_dict(self._gages)
+                .reset_index()
+                .rename(columns={'index': 'link'})
+                .set_index('link')
+                )
+            
+            lake_gage_df = (
+                self._waterbody_connections
+                .join(link_gage_df)
+                .reset_index()[['lake_id','gages']]
+                )
+            lake_gage_df = lake_gage_df[~lake_gage_df['gages'].isnull()]
+
+            #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
+            # RFC reservoirs...
+            usgs_ind = lake_gage_df.gages.str.isnumeric()
+            self._usgs_lake_gage_crosswalk = (
+                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'})
+                .set_index('usgs_lake_id')
+                )
+            self._usace_lake_gage_crosswalk =  (
+                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
+                .set_index('usace_lake_id')
+                )
+            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+        else:
+            self._gages = {}
+            self._usgs_lake_gage_crosswalk = pd.DataFrame()
+            self._usgs_lake_gage_crosswalk = pd.DataFrame()
+
+        self._waterbody_type_specified = False
+        if any(self.waterbody_types_dataframe.reservoir_type!=1):
+            self._waterbody_type_specified = True
+
+        # Create wbody_conn dictionary from dataframe:
+        self._waterbody_connections = self._waterbody_connections['lake_id'].to_dict()
+
+        # if waterbodies are being simulated, adjust the connections graph so that 
+        # waterbodies are collapsed to single nodes. Also, build a mapping between 
+        # waterbody outlet segments and lake ids
+        break_network_at_waterbodies = self.waterbody_parameters.get("break_network_at_waterbodies", False)
+        if break_network_at_waterbodies:
+            self._connections, self._link_lake_crosswalk = replace_waterbodies_connections(
+                self.connections, self._waterbody_connections
+            )
+        else:
+            self._link_lake_crosswalk = None
 
     
     def build_qlateral_array(self, run,):
@@ -592,3 +713,117 @@ def read_file(file_name):
         df.index.name = None
     
     return df
+
+def tailwaters(N):
+    '''
+    Find network tailwaters
+    
+    Arguments
+    ---------
+    N (dict, int: [int]): Network connections graph
+    
+    Returns
+    -------
+    (iterable): tailwater segments
+    
+    Notes
+    -----
+    - If reverse connections graph is handed as input, then function
+      will return network headwaters.
+      
+    '''
+    tw = chain.from_iterable(N.values()) - N.keys()
+    for m, n in N.items():
+        if not n:
+            tw.add(m)
+    return tw
+
+def reservoir_shore(connections, waterbody_nodes):
+    wbody_set = set(waterbody_nodes)
+    not_in = lambda x: x not in wbody_set
+
+    shore = set()
+    for node in wbody_set:
+        shore.update(filter(not_in, connections[node]))
+    return list(shore)
+
+def reservoir_boundary(connections, waterbodies, n):
+    if n not in waterbodies and n in connections:
+        return any(x in waterbodies for x in connections[n])
+    return False
+
+def reverse_surjective_mapping(d):
+    rd = defaultdict(list)
+    for src, dst in d.items():
+        rd[dst].append(src)
+    rd.default_factory = None
+    return rd
+
+def separate_waterbodies(connections, waterbodies):
+    waterbody_nodes = {}
+    for wb, nodes in reverse_surjective_mapping(waterbodies).items():
+        waterbody_nodes[wb] = net = {}
+        for n in nodes:
+            if n in connections:
+                net[n] = list(filter(waterbodies.__contains__, connections[n]))
+    return waterbody_nodes
+
+def replace_waterbodies_connections(connections, waterbodies):
+    """
+    Use a single node to represent waterbodies. The node id is the
+    waterbody id. Create a cross walk dictionary that relates lake_ids
+    to the terminal segments within the waterbody footprint.
+    
+    Arguments
+    ---------
+    - connections (dict):
+    - waterbodies (dict): dictionary relating segment linkIDs to the
+                          waterbody lake_id that they lie in
+
+    Returns
+    -------
+    - new_conn  (dict): connections dictionary with waterbodies represented by single nodes. 
+                        Waterbody node ids are lake_ids
+    - link_lake (dict): cross walk dictionary where keys area lake_ids and values are lists
+                        of waterbody tailwater nodes (i.e. the nodes connected to the 
+                        waterbody outlet). 
+    """
+    new_conn = {}
+    link_lake = {}
+    waterbody_nets = separate_waterbodies(connections, waterbodies)
+    rconn = reverse_network(connections)
+
+    for n in connections:
+        if n in waterbodies:
+            wbody_code = waterbodies[n]
+            if wbody_code in new_conn:
+                continue
+
+            # get all nodes from waterbody
+            wbody_nodes = [k for k, v in waterbodies.items() if v == wbody_code]
+            outgoing = reservoir_shore(connections, wbody_nodes)
+            new_conn[wbody_code] = outgoing
+            
+            if len(outgoing)>=1:
+                if outgoing[0] in waterbodies:
+                    new_conn[wbody_code] = [waterbodies.get(outgoing[0])]
+                link_lake[wbody_code] = list(set(rconn[outgoing[0]]).intersection(set(wbody_nodes)))[0]
+            else:
+                subset_dict = {key: value for key, value in connections.items() if key in wbody_nodes}
+                link_lake[wbody_code] = tailwaters(subset_dict)
+
+        elif reservoir_boundary(connections, waterbodies, n):
+            # one of the children of n is a member of a waterbody
+            # replace that child with waterbody code.
+            new_conn[n] = []
+
+            for child in connections[n]:
+                if child in waterbodies:
+                    new_conn[n].append(waterbodies[child])
+                else:
+                    new_conn[n].append(child)
+        else:
+            # copy to new network unchanged
+            new_conn[n] = connections[n]
+    
+    return new_conn, link_lake
