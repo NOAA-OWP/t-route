@@ -182,6 +182,9 @@ class bmi_troute(Bmi):
         #self._values['qd0'] = np.zeros(1) #TODO will this come from a file or model engine?
         #self._values['h0'] = np.zeros(1) #TODO will this come from a file or model engine?
         self._values['reservoir_type'] = np.zeros(n_waterbody)
+        self._values['waterbody_connections__link'] = np.zeros(0)
+        self._values['waterbody_connections__lake'] = np.zeros(0)
+
         self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
         self._values['coastal_boundary__depth'] = np.zeros(0)
         #self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
@@ -207,8 +210,9 @@ class bmi_troute(Bmi):
         self._values['fvd_results'] = np.zeros(n_segment*3*12)
         self._values['fvd_index'] = np.zeros(1)
 
-        # Data assimilation values
-        self._values['gages'] = np.zeros(n_gages*2, dtype='<U19')
+        # Data assimilation valus
+        self._values['gage_crosswalk__segID'] = np.zeros(n_gages, dtype=int)
+        self._values['gage_crosswalk__gageID'] = np.zeros(n_gages, dtype='<U19')
         self._values['usgs_timeslice_discharge'] = np.zeros(6)
         self._values['usgs_timeslice_stationId'] = np.zeros(6, dtype='<U19')
         self._values['usgs_timeslice_time'] = np.zeros(6, dtype='<U19')
@@ -264,10 +268,10 @@ class bmi_troute(Bmi):
         src : array_like
             Array of new values.
         """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
+        #val = self.get_value_ptr(var_name)
+        #val[:] = src.reshape(val.shape)
         
-        #self._values[var_name] = src
+        self._values[var_name] = src
 
     def get_value(self, var_name):
         """Copy of values.
