@@ -290,11 +290,21 @@ class PersistenceDA(AbstractDA):
                     )
 
                     # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
-                    reservoir_usgs_df = (
-                        usgs_df_15min.join(link_lake_df, how = 'inner').
-                        reset_index().
-                        set_index('usgs_lake_id').
-                        drop(['index'], axis = 1)
+                    #FIXME _reindex_link_to_lake_id is replacing some usgs_df indices with
+                    # the waterbody IDs, but not all. This results in reservoir_usgs_df not
+                    # containing all of the rows it needs. By using pd.concat here we add in
+                    # the missing rows. But this should be fixed earlier, likely in the 
+                    # creation of the gages dictionary...
+                    reservoir_usgs_df = pd.concat(
+                        [
+                            usgs_df_15min.join(link_lake_df, how = 'inner').
+                            reset_index().
+                            set_index('usgs_lake_id').
+                            drop(['index'], axis = 1),
+                            usgs_df_15min.join(network.usgs_lake_gage_crosswalk, how='inner').
+                            drop(['usgs_gage_id'], axis = 1).
+                            rename_axis('usgs_lake_id')
+                        ]
                     )
                     
                     # create reservoir hybrid DA initial parameters dataframe    
