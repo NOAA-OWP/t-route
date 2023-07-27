@@ -38,6 +38,7 @@ class troute_model():
             self._output_parameters, 
             self._parity_parameters, 
             self._data_assimilation_parameters,
+            self._bmi_parameters,
         ) = _read_config_file(bmi_cfg_file)
 
         self._run_parameters = {
@@ -76,8 +77,7 @@ class troute_model():
             compute_parameters=self._compute_parameters,
             hybrid_parameters=self._hybrid_parameters,
             from_files=False, value_dict=values,
-            segment_attributes=self._segment_attributes, 
-            waterbody_attributes=self._waterbody_attributes)
+            bmi_parameters=self._bmi_parameters,)
 
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
@@ -119,7 +119,7 @@ class troute_model():
         # Forcing values:
         self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
             pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
-                         index=values['segment_id'])
+                         index=values['land_surface_water_source__id'])
         )
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
         if len(values['upstream_id'])>0:
@@ -269,24 +269,6 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         supernetwork_parameters["title_string"]       = "HY_Features Test"
         supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
         supernetwork_parameters["flowpath_edge_list"] = None    
-        routelink_attr = {
-                        #link????
-                        "key": "id",
-                        "downstream": "toid",
-                        "dx": "length_m",
-                        "n": "n",  # TODO: rename to `manningn`
-                        "ncc": "nCC",  # TODO: rename to `mannningncc`
-                        "s0": "So",
-                        "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
-                        #waterbody: "NHDWaterbodyComID",
-                        "tw": "TopWdth",  # TODO: rename to `topwidth`
-                        "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
-                        "alt": "alt",
-                        "musk": "MusK",
-                        "musx": "MusX",
-                        "cs": "ChSlp"  # TODO: rename to `sideslope`
-                        }
-        supernetwork_parameters["columns"]             = routelink_attr 
         supernetwork_parameters["waterbody_null_code"] = -9999
         supernetwork_parameters["terminal_code"]       =  0
         supernetwork_parameters["driver_string"]       = "NetCDF"
@@ -307,6 +289,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     )
     output_parameters = data.get("output_parameters", {})
     parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
+    bmi_parameters = data.get("bmi_parameters", {})
 
     return (
         preprocessing_parameters,
@@ -319,6 +302,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        bmi_parameters,
     )
 
 def _retrieve_last_output(results, nts, waterbodies_df,):
