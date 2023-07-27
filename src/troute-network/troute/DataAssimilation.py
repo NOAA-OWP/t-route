@@ -68,10 +68,10 @@ class NudgingDA(AbstractDA):
                 qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
                 
                 self._usgs_df = _timeslice_qcqa(
-                    value_dict['timeslice_discharge'],
-                    value_dict['timeslice_stationId'],
-                    value_dict['timeslice_time'],
-                    value_dict['timeslice_discharge_quality'],
+                    value_dict['usgs_timeslice_discharge'],
+                    value_dict['usgs_timeslice_stationId'],
+                    value_dict['usgs_timeslice_time'],
+                    value_dict['usgs_timeslice_discharge_quality'],
                     qc_threshold,
                     run_parameters.get('dt', 300),
                     network.link_gage_df)
@@ -200,10 +200,10 @@ class PersistenceDA(AbstractDA):
                     qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
                     
                     self._usgs_df = _timeslice_qcqa(
-                        value_dict['timeslice_discharge'],
-                        value_dict['timeslice_stationId'],
-                        value_dict['timeslice_time'],
-                        value_dict['timeslice_discharge_quality'],
+                        value_dict['usgs_timeslice_discharge'],
+                        value_dict['usgs_timeslice_stationId'],
+                        value_dict['usgs_timeslice_time'],
+                        value_dict['usgs_timeslice_discharge_quality'],
                         qc_threshold,
                         run_parameters.get('dt', 300),
                         network.link_gage_df) 
