@@ -591,9 +591,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._dataframe.loc[[1536065,1536067],'waterbody'] = '7100709'
         self._dataframe.loc[[1536104,1536099,1536084,1536094],'waterbody'] = '120052233'
         self._dataframe.loc[[2711040,2711044,2711047],'waterbody'] = '120052275'
-
-        #This chunk 
-        self._waterbody_df.rename(index={1711354: 1710676}, inplace=True)
     #######################################################################
 
 
