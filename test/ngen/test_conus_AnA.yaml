@@ -46,8 +46,7 @@ network_topology_parameters:
     supernetwork_parameters:
         #----------
         geo_file_type: HYFeaturesNetwork
-        ngen_nexus_file: conus.gpkg
-        geo_file_path: conus.gpkg
+        geo_file_path: /home/sean.horvath/projects/data/large_network/conus.gpkg
         columns: 
             key: 'id'
             downstream: 'toid'
@@ -111,9 +110,7 @@ network_topology_parameters:
         break_network_at_waterbodies: True 
         level_pool:
             #----------
-            level_pool_waterbody_parameter_file_path: conus.gpkg 
-            reservoir_parameter_file: conus.gpkg
-
+            level_pool_waterbody_parameter_file_path: /home/sean.horvath/projects/data/large_network/conus.gpkg 
 
 #--------------------------------------------------------------------------------
 compute_parameters:
@@ -126,67 +123,40 @@ compute_parameters:
     restart_parameters:
         #----------
         start_datetime: 2021-10-20_00:00
-        wrf_hydro_channel_restart_file        : 
-        #lite_channel_restart_file            : restart/RESTART.2020082600_DOMAIN1
-        wrf_hydro_channel_ID_crosswalk_file   : conus.gpkg
-        wrf_hydro_waterbody_restart_file      : #restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
-        #lite_waterbody_restart_file          : restart/waterbody_restart_202006011200
-        wrf_hydro_waterbody_ID_crosswalk_file : conus.gpkg 
-        wrf_hydro_waterbody_crosswalk_filter_file: conus.gpkg 
     hybrid_parameters:
         run_hybrid_routing: False
-        diffusive_domain  : domain/coastal_domain_subset.yaml  
-        use_natl_xsections: False
-        topobathy_domain  : domain/final_diffusive_natural_xs.nc 
-        run_refactored_network: False
-        refactored_domain: domain/refactored_coastal_domain_subset.yaml 
-        refactored_topobathy_domain: domain/refac_final_diffusive_natural_xs.nc 
-        coastal_boundary_domain: domain/coastal_boundary_domain.yaml
     forcing_parameters:
         #----------
         qts_subdivisions            : 12
         dt                          : 300 # [sec]
-        qlat_input_folder           : sample_qlat_files 
-        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1.csv"
-#        coastal_boundary_input_file : boundary_forcing  
-        nts                         : 288 # 288 for 1day; 2592 for 9 days
-        max_loop_size               : 24   # [hr]  
+        qlat_input_folder           : /home/sean.horvath/projects/data/large_network/sample_qlat_files 
+        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1.csv" 
+        nts                         : 288 # 288 for 1day
+        max_loop_size               : 24  # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_timeslices/
-        usace_timeslices_folder  : usace_timeslices/
+        usgs_timeslices_folder   : /home/sean.horvath/projects/data/extended_AnA/usgs_timeslices/
+        usace_timeslices_folder  : /home/sean.horvath/projects/data/extended_AnA/usace_timeslices/
         timeslice_lookback_hours : 48 
         qc_threshold             : 1
         streamflow_da:
             #----------
             streamflow_nudging            : True
             diffusive_streamflow_nudging  : False
-            gage_segID_crosswalk_file     : conus.gpkg  
-            crosswalk_gage_field          : 'gages'
-            crosswalk_segID_field         : 'link'
-            wrf_hydro_lastobs_file        : #lastobs/nudgingLastObs.2021-08-23_12:00:00.nc                    
-            lastobs_output_folder         : #lastobs/
+            gage_segID_crosswalk_file     : /home/sean.horvath/projects/data/large_network/conus.gpkg  
         reservoir_da:
             #----------
             reservoir_persistence_usgs  : True
             reservoir_persistence_usace : True
-            gage_lakeID_crosswalk_file  : conus.gpkg
+            gage_lakeID_crosswalk_file  : /home/sean.horvath/projects/data/large_network/conus.gpkg
 #--------------------------------------------------------------------------------
 output_parameters:
     #----------
-    #test_output: output/lcr_flowveldepth.pkl
     lite_restart:
         #----------
         lite_restart_output_directory:
     chrtout_output:
         #----------
-#        wrf_hydro_channel_output_source_folder: channel_forcing/
     chanobs_output:
         #----------
-        #chanobs_output_directory: output/
-        #chanobs_filepath        : lcr_chanobs.nc
-#    lakeout_output: lakeout/
-    #csv_output:
-        #----------
-        #csv_output_folder: data/CONUS_MCOnly_Output/
     
