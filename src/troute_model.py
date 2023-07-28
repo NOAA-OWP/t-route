@@ -78,7 +78,7 @@ class troute_model():
             from_files=False, value_dict=values,
             segment_attributes=self._segment_attributes, 
             waterbody_attributes=self._waterbody_attributes)
-
+        import pdb; pdb.set_trace()
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
         self._data_assimilation = tr.DataAssimilation(
@@ -86,7 +86,7 @@ class troute_model():
         self._data_assimilation_parameters,
         self._run_parameters,
         self._waterbody_parameters,
-        from_files=False,
+        from_files=True,
         value_dict=values,
         )
 

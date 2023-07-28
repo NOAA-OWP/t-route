@@ -812,8 +812,9 @@ class AbstractNetwork(ABC):
                     final_timestamp_str = nhd_io.get_param_str(final_qlat,'model_output_valid_time')
                 else:
                     df = read_file(final_qlat)
-                    final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
-                
+                    final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S") 
+                    import pdb; pdb.set_trace()          
+                import pdb; pdb.set_trace()
                 run_sets[j]['final_timestamp'] = \
                     datetime.strptime(final_timestamp_str, '%Y-%m-%d_%H:%M:%S')
 

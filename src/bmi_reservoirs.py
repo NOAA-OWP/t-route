@@ -142,7 +142,7 @@ class bmi_reservoir(Bmi):
         self._values['ifd'] = np.zeros(1)
         self._values['upstream_ids'] = np.zeros(1, dtype=int)
         self._values['reservoir_type'] = np.zeros(1)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(12)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(25)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
 
@@ -158,6 +158,16 @@ class bmi_reservoir(Bmi):
         #RFC DA        
         self._values['rfc_timeseries_offset_hours'] = np.zeros(1)
         self._values['rfc_forecast_persist_days'] = np.zeros(1)
+        
+        self._values['lake_number'] = np.zeros(1, dtype='<U19')
+        self._values['reservoir_type'] = np.zeros(1, dtype=int)
+        self._values['use_RFC'] = np.zeros(1, dtype=bool) 
+        self._values['rfc_timeseries_discharges'] = np.zeros(289) 
+        self._values['rfc_timeseries_idx'] = np.zeros(1) 
+        self._values['rfc_timeseries_update_time'] = np.zeros(1) 
+        self._values['rfc_da_time_step'] = np.zeros(1) 
+        self._values['rfc_total_counts'] = np.zeros(1)
+        self._values['rfc_timeseries_file'] = np.zeros(1,  dtype='<U19')
  
         '''
         for var_name in self._input_var_names + self._output_var_names:

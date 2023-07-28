@@ -51,13 +51,13 @@ def _search_RFCTimeSeries_files_backward_from_offset_hours(offset_date,
         
         rfc_timeseries_offset_file = new_rfc_timeseries_offset_date+"."+"60min"+"."+rfc_gage_id+"."+"RFCTimeSeries.ncdf"
         file_path= os.path.join(rfc_timeseries_folder, rfc_timeseries_offset_file)
-        
         if os.path.isfile(file_path):
             lookback_hours = hour
             break
         else:
             old_date = new_rfc_timeseries_offset_date+":00:00"        
             new_rfc_timeseries_offset_date = _add_hours(old_date, -1)
+
     return rfc_timeseries_offset_file, lookback_hours
 
 def _timeseries_idx_updatetime_totalcounts(lookback_hours,
@@ -148,7 +148,7 @@ def preprocess_RFC_data(model_start_date,
                         routing_period):
     # compute a new date after adding hours to a current date
     rfc_timeseries_offset_date = _add_hours(model_start_date, rfc_timeseries_offset_hours)
-    
+
     # search for RFCTimeSeries.ncdf file used for DA and lookback hours from offset date
     rfc_timeseries_file, lookback_hours = _search_RFCTimeSeries_files_backward_from_offset_hours(
                                                                                 rfc_timeseries_offset_date, 

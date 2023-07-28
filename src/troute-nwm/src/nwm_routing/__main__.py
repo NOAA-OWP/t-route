@@ -100,14 +100,14 @@ def main_v04(argv):
     if showtiming:
         network_end_time = time.time()
         task_times['network_creation_time'] = network_end_time - network_start_time
-
+    import pdb; pdb.set_trace()
     # Create run_sets: sets of forcing files for each loop
     run_sets = network.build_forcing_sets()
-
+    import pdb; pdb.set_trace()
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
         da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
-        
+    import pdb; pdb.set_trace()    
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
     if "wrf_hydro_parity_check" in output_parameters:
         parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)

@@ -5,6 +5,7 @@ bmi_parameters:
     waterbody_number: 0
     io_number: 3
     upstream_number: 1
+    gage_number: 0
 
 #--------------------------------------------------------------------------------
 log_parameters:

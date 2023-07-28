@@ -171,7 +171,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if self.showtiming:
             start_time = time.time()
-        
+
         #------------------------------------------------
         # Load Geo File
         #------------------------------------------------
@@ -375,7 +375,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 #So make this default to 1 (levelpool)
                 self._waterbody_types_df = pd.DataFrame(index=self.waterbody_dataframe.index)
                 self._waterbody_types_df['reservoir_type'] = 1
-            
+            import pdb; pdb.set_trace()
             # Create lake_gage crosswalk dataframes:
             link_gage_df = (
                 pd.DataFrame.from_dict(self._gages)

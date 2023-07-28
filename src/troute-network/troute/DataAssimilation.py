@@ -60,7 +60,8 @@ class NudgingDA(AbstractDA):
 
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
-
+        import pdb; pdb.set_trace()
+        from_files= False
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
@@ -68,14 +69,14 @@ class NudgingDA(AbstractDA):
                 qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
                 
                 self._usgs_df = _timeslice_qcqa(
-                    value_dict['timeslice_discharge'],
-                    value_dict['timeslice_stationId'],
-                    value_dict['timeslice_time'],
-                    value_dict['timeslice_discharge_quality'],
+                    value_dict['usgs_timeslice_discharge'],
+                    value_dict['usgs_timeslice_stationId'],
+                    value_dict['usgs_timeslice_time'],
+                    value_dict['usgs_timeslice_discharge_quality'],
                     qc_threshold,
                     run_parameters.get('dt', 300),
                     network.link_gage_df)
-                
+                import pdb; pdb.set_trace()
                 self._last_obs_df = _assemble_lastobs_df(
                     value_dict['lastobs_discharge'], 
                     value_dict['lastobs_stationIdInd'], 
@@ -83,6 +84,7 @@ class NudgingDA(AbstractDA):
                     value_dict['lastobs_stationId'], 
                     value_dict['lastobs_time'], 
                     value_dict['lastobs_modelTimeAtOutput'][0], 
+                    value_dict['time_since_lastobs'],
                     network.link_gage_df)
             
             else:
@@ -102,7 +104,7 @@ class NudgingDA(AbstractDA):
                 # segments.
                 if network.link_lake_crosswalk:
                     self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
-                
+                import pdb; pdb.set_trace()
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
     
     def update_after_compute(self, run_results, time_increment):
@@ -188,7 +190,7 @@ class PersistenceDA(AbstractDA):
         reservoir_usgs_param_df = pd.DataFrame()
         reservoir_usace_df = pd.DataFrame()
         reservoir_usace_param_df = pd.DataFrame()
-
+        import pdb; pdb.set_trace()
         if not from_files:
             if usgs_persistence:
                 # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
@@ -1110,7 +1112,7 @@ def _timeslice_qcqa(discharge,
                             }).
                              set_index(['stationId', 'datetime']).
                              unstack(1, fill_value = np.nan)['quality'])
-    
+    import pdb; pdb.set_trace()
     # Link <> gage crosswalk data
     df = crosswalk_df.reset_index()
     df[crosswalk_gage_field] = np.asarray(df[crosswalk_gage_field]).astype('<U15')
@@ -1127,58 +1129,68 @@ def _timeslice_qcqa(discharge,
                set_index(crosswalk_dest_field).
                drop([crosswalk_gage_field], axis=1))
     
-    # ---- Laugh testing ------
-    # screen-out erroneous qc flags
-    observation_qual_df = (observation_qual_df.
-                           mask(observation_qual_df < 0, np.nan).
-                           mask(observation_qual_df > 1, np.nan)
-                          )
+    #Check if QC is already performed from model_DAforcing.py
+    t1 = observation_df.iloc[:,0].name
+    t1 = datetime.strptime(t1, "%Y-%m-%d %H:%M:%S")
+    t2 = observation_df.iloc[:,1].name
+    t2 = datetime.strptime(t2, "%Y-%m-%d %H:%M:%S")
+    dt= (t2 - t1).seconds
 
-    # screen-out poor quality flow observations
-    observation_df = (observation_df.
-                      mask(observation_qual_df < qc_threshold, np.nan).
-                      mask(observation_df <= 0, np.nan)
-                     )
+    if not dt==frequency_secs or not np.all(qual==100):
+        # ---- Laugh testing ------
+        # screen-out erroneous qc flags
+        observation_qual_df = (observation_qual_df.
+                            mask(observation_qual_df < 0, np.nan).
+                            mask(observation_qual_df > 1, np.nan)
+                            )
 
-    # ---- Interpolate USGS observations to the input frequency (frequency_secs)
-    observation_df_T = observation_df.transpose()             # transpose, making time the index
-    observation_df_T.index = pd.to_datetime(
-        observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
-    )
-    
-    # specify resampling frequency 
-    frequency = str(int(frequency_secs/60))+"min"    
-    
-    # interpolate and resample frequency
-    buffer_df = observation_df_T.resample(frequency).asfreq()
-    with Parallel(n_jobs=cpu_pool) as parallel:
+        # screen-out poor quality flow observations
+        observation_df = (observation_df.
+                        mask(observation_qual_df < qc_threshold, np.nan).
+                        mask(observation_df <= 0, np.nan)
+                        )
+
+        # ---- Interpolate USGS observations to the input frequency (frequency_secs)
+        observation_df_T = observation_df.transpose()             # transpose, making time the index
+        observation_df_T.index = pd.to_datetime(
+            observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
+        )
         
-        jobs = []
-        interp_chunks = ()
-        step = 200
-        for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
+        # specify resampling frequency 
+        frequency = str(int(frequency_secs/60))+"min"    
+        
+        # interpolate and resample frequency
+        buffer_df = observation_df_T.resample(frequency).asfreq()
+        with Parallel(n_jobs=cpu_pool) as parallel:
             
-            start = i
-            if (i+step-1) < buffer_df.shape[1]:
-                stop = i+(step)
-            else:
-                stop = buffer_df.shape[1]
+            jobs = []
+            interp_chunks = ()
+            step = 200
+            for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
                 
-            jobs.append(
-                delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
-            )
-            
-        interp_chunks = parallel(jobs)
+                start = i
+                if (i+step-1) < buffer_df.shape[1]:
+                    stop = i+(step)
+                else:
+                    stop = buffer_df.shape[1]
+                    
+                jobs.append(
+                    delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
+                )
+                
+            interp_chunks = parallel(jobs)
 
-    observation_df_T = pd.DataFrame(
-        data = np.concatenate(interp_chunks, axis = 1), 
-        columns = buffer_df.columns, 
-        index = buffer_df.index
-    )
-    
-    # re-transpose, making link the index
-    observation_df_new = observation_df_T.transpose().loc[crosswalk_df.index]
-    observation_df_new.index = observation_df_new.index.astype('int64')
+        observation_df_T = pd.DataFrame(
+            data = np.concatenate(interp_chunks, axis = 1), 
+            columns = buffer_df.columns, 
+            index = buffer_df.index
+        )
+        
+        # re-transpose, making link the index
+        observation_df_new = observation_df_T.transpose().loc[crosswalk_df.index]
+        observation_df_new.index = observation_df_new.index.astype('int64')
+    else:
+        observation_df_new = observation_df
 
     return observation_df_new
 
@@ -1202,65 +1214,76 @@ def _assemble_lastobs_df(
         stationId, 
         time, 
         modelTimeAtOutput, 
+        time_since_lastobs,
         gage_link_df, 
         time_shift=0):
-    
-    gages    = np.char.strip(stationId)
+    import pdb; pdb.set_trace()
+    if not np.all(timeInd==0) or not np.all(time==''):    
+        #Use arrays not directly from DAfocing module
+        gages    = np.char.strip(stationId)
+            
+        ref_time = datetime.strptime(modelTimeAtOutput, "%Y-%m-%d_%H:%M:%S")
         
-    ref_time = datetime.strptime(modelTimeAtOutput, "%Y-%m-%d_%H:%M:%S")
-    
-    last_ts = timeInd.max()
-    
-    df_discharge = (
-        pd.DataFrame(
-        data = {
-            'discharge': discharge,
-            'stationIdInd': stationIdInd,
-            'timeInd': timeInd
-            }).
-            set_index(['stationIdInd','timeInd']).
-            unstack(level=0)
-    )
-
-    df_time = (
-        pd.DataFrame(
-        data = {
-            'discharge': time,
-            'stationIdInd': stationIdInd,
-            'timeInd': timeInd
-            }).
-            set_index(['stationIdInd','timeInd']).
-            unstack(level=1)
-    ).to_numpy()
-    
-    last_obs_index = (
-        df_discharge.
-        apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
-        to_numpy()                                           # to numpy array
-    )
-    last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
-                    
-    last_observations = []
-    lastobs_times     = []
-    for i, idx in enumerate(last_obs_index):
-        last_observations.append(df_discharge.iloc[idx,i])
-        lastobs_times.append(df_time[i, idx]) #.decode('utf-8')  <- TODO:decoding was needed in old version, may need again depending on dtype that is provided by model engine
+        last_ts = timeInd.max()
         
-    last_observations = np.array(last_observations)
-    lastobs_times     = pd.to_datetime(
-        np.array(lastobs_times), 
-        format="%Y-%m-%d_%H:%M:%S", 
-        errors = 'coerce'
-    )
+        df_discharge = (
+            pd.DataFrame(
+            data = {
+                'discharge': discharge,
+                'stationIdInd': stationIdInd,
+                'timeInd': timeInd
+                }).
+                set_index(['stationIdInd','timeInd']).
+                unstack(level=0)
+        )
 
-    lastobs_times = (lastobs_times - ref_time).total_seconds()
-    lastobs_times = lastobs_times - time_shift
+        df_time = (
+            pd.DataFrame(
+            data = {
+                'discharge': time,
+                'stationIdInd': stationIdInd,
+                'timeInd': timeInd
+                }).
+                set_index(['stationIdInd','timeInd']).
+                unstack(level=1)
+        ).to_numpy()
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(df_time[i, idx]) #.decode('utf-8')  <- TODO:decoding was needed in old version, may need again depending on dtype that is provided by model engine
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
 
-    data_var_dict = {
-        'gages'               : gages,
-        'time_since_lastobs'  : lastobs_times,
-        'lastobs_discharge'   : last_observations
-    }
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+        data_var_dict = {
+            'gages'               : gages,
+            'time_since_lastobs'  : lastobs_times,
+            'lastobs_discharge'   : last_observations
+        }
+    else:
+        #Use arrays from DAforcing module
+        data_var_dict = {
+            'gages'               : stationId,
+            'time_since_lastobs'  : time_since_lastobs,
+            'lastobs_discharge'   : discharge
+
+        }
 
     lastobs_df = (
         pd.DataFrame(data = data_var_dict).
@@ -1277,6 +1300,8 @@ def _assemble_lastobs_df(
             'lastobs_discharge',
         ]
     ]
+    
+    
     lastobs_df.index = lastobs_df.index.astype('int64')
     return lastobs_df
 

@@ -65,7 +65,7 @@ class reservoir_model():
                 orifice_coefficient, orifice_elevation,
                 weir_coefficient, weir_elevation, weir_length,
                 initial_fractional_depth, 0.0, water_elevation]
-        
+        import pdb; pdb.set_trace()
         upstream_ids = array('l', values['upstream_ids'])
         self._res_type = values['reservoir_type']
 
@@ -85,18 +85,29 @@ class reservoir_model():
             self._persistence_update_time = 0
         
         if self._res_type==4 or self._res_type==5:
-            (self._use_RFC, 
-             self._timeseries_discharges, 
-             self._timeseries_idx, 
-             self._update_time, 
-             self._da_time_step, 
-             self._total_counts,
-             self._rfc_timeseries_file) = preprocess_RFC_data(self._t0,
-                                     self._rfc_timeseries_offset_hours,
-                                     self._rfc_gage_id,
-                                     self._rfc_timeseries_folder,
-                                     lake_number,
-                                     self._time_step)
+            import pdb; pdb.set_trace()
+            if np.all(values['rfc_timeseries_discharges']==0):
+                (self._use_RFC, 
+                self._timeseries_discharges, 
+                self._timeseries_idx, 
+                self._update_time, 
+                self._da_time_step, 
+                self._total_counts,
+                self._rfc_timeseries_file) = preprocess_RFC_data(self._t0,
+                                        self._rfc_timeseries_offset_hours,
+                                        self._rfc_gage_id,
+                                        self._rfc_timeseries_folder,
+                                        lake_number,
+                                        self._time_step)
+            else:
+                #RFC values 
+                self._use_RFC = values['use_RFC'][0]
+                self._timeseries_discharges = values['rfc_timeseries_discharges'] 
+                self._timeseries_idx = int(values['rfc_timeseries_idx'][0])
+                self._update_time = int(values['rfc_timeseries_update_time'][0])
+                self._da_time_step = int(values['rfc_da_time_step'][0]) 
+                self._total_counts = int(values['rfc_total_counts'][0])
+                self._rfc_timeseries_file= values['rfc_timeseries_file'][0]
 
     def run(self, values: dict,):
         """
@@ -124,6 +135,7 @@ class reservoir_model():
 
         # Data Assimilation
         if self._res_type==2 or self._res_type==3:
+            import pdb; pdb.set_trace()
             (
                 new_outflow,
                 new_persisted_outflow,
@@ -163,7 +175,6 @@ class reservoir_model():
             self._persistence_update_time = new_persistence_update_time
         
         elif self._res_type==4 or self._res_type==5:
-            
             (
                 new_outflow, 
                 new_water_elevation, 

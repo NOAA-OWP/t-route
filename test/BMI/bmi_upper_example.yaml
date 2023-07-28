@@ -5,6 +5,7 @@ bmi_parameters:
     waterbody_number: 0
     io_number: 3
     upstream_number: 0
+    gage_number: 0
 
 #--------------------------------------------------------------------------------
 log_parameters:
@@ -66,7 +67,7 @@ compute_parameters:
         #----------
         qts_subdivisions            : 12
         dt                          : 300 # [sec]
-        qlat_input_folder           : /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/channel_forcing
+        qlat_input_folder           : #/home/sean.horvath/projects/t-route/test/unit_test_hyfeature/channel_forcing
         qlat_file_pattern_filter    : "*NEXOUT.csv"
         nexus_input_folder          : /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/channel_forcing 
         nexus_file_pattern_filter   : "*NEXOUT.csv" #OR "*NEXOUT.parquet" OR "nex-*"
@@ -76,23 +77,26 @@ compute_parameters:
         max_loop_size               : 1 # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : #usgs_TimeSlice/
-        usace_timeslices_folder  : #usace_TimeSlice/
+        usgs_timeslices_folder   : usgs_TimeSlice/
+        usace_timeslices_folder  : usace_TimeSlice/
         timeslice_lookback_hours : #48 
         qc_threshold             : #1
         streamflow_da:
             #----------
-            streamflow_nudging            : False
+            streamflow_nudging            : True
             diffusive_streamflow_nudging  : False
             gage_segID_crosswalk_file     : # domain/RouteLink_NWMv2.1.nc  
             crosswalk_gage_field          : # 'gages'
             crosswalk_segID_field         : # 'link'
             wrf_hydro_lastobs_file        :                
-            lastobs_output_folder         : /home/sean.horvath/projects/t-route/test/unit_test_hyfeature/lastobs
+            lastobs_output_folder         : lastobs/
+            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc 
         reservoir_da:
             #----------
-            reservoir_persistence_usgs  : False
+            reservoir_persistence_usgs  : True
             reservoir_persistence_usace : False
+            usgs_timeslices_folder      : usgs_TimeSlice/
+            usace_timeslices_folder     : usace_TimeSlice/
             gage_lakeID_crosswalk_file  : # domain/reservoir_index_AnA.nc
 #--------------------------------------------------------------------------------
 output_parameters:

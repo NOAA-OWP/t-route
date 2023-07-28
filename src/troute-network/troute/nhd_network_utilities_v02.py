@@ -248,6 +248,7 @@ def build_channel_initial_state(
 
 def build_forcing_sets(
     forcing_parameters,
+    supernetwork_parameters,
     t0
 ):
     
@@ -256,6 +257,8 @@ def build_forcing_sets(
     nts = forcing_parameters.get("nts", None)
     max_loop_size = forcing_parameters.get("max_loop_size", 12)
     dt = forcing_parameters.get("dt", None)
+
+    geo_file_type = supernetwork_parameters.get('geo_file_type')
     
     try:
         qlat_input_folder = pathlib.Path(qlat_input_folder)
@@ -266,6 +269,27 @@ def build_forcing_sets(
         raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the qlat_input_folder variable is correctly entered in the .yaml control file") from None
 
     forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.CHRTOUT_DOMAIN1")
+    #forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.NEXOUT")
+       
+    if forcing_glob_filter=="nex-*":
+        print("Reformating qlat nexus files as hourly binary files...")
+        binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
+        qlat_files = qlat_input_folder.glob(forcing_glob_filter)
+
+        #Check that directory/files specified will work
+        if not binary_folder:
+            raise(RuntimeError("No output binary qlat folder supplied in config"))
+        elif not os.path.exists(binary_folder):
+            raise(RuntimeError("Output binary qlat folder supplied in config does not exist"))
+        elif len(list(pathlib.Path(binary_folder).glob('*.parquet'))) != 0:
+            raise(RuntimeError("Output binary qlat folder supplied in config is not empty (already contains '.parquet' files)"))
+
+        #Add tnx for backwards compatability
+        qlat_files_list = list(qlat_files) + list(qlat_input_folder.glob('tnx*.csv'))
+        #Convert files to binary hourly files, reset nexus input information
+        qlat_input_folder, forcing_glob_filter = nex_files_to_binary(qlat_files_list, binary_folder)
+        forcing_parameters["qlat_input_folder"] = qlat_input_folder
+        forcing_parameters["qlat_file_pattern_filter"] = forcing_glob_filter
         
     # TODO: Throw errors if insufficient input data are available
     if run_sets:
@@ -872,3 +896,32 @@ def build_refac_connections(diff_network_parameters):
     )
 
     return connections
+
+def nex_files_to_binary(nexus_files, binary_folder):
+    for f in nexus_files:
+        # read the csv file
+        df = pd.read_csv(f, usecols=[1,2], names=['Datetime','qlat'])
+        
+        # convert and reformat datetime column
+        df['Datetime']= pd.to_datetime(df['Datetime']).dt.strftime("%Y%m%d%H%M")
+
+        # reformat the dataframe
+        df['feature_id'] = get_id_from_filename(f)
+        df = df.pivot(index="feature_id", columns="Datetime", values="qlat")
+        df.columns.name = None
+
+        for col in df.columns:
+            table_new = pa.Table.from_pandas(df.loc[:, [col]])
+            
+            if not os.path.exists(f'{binary_folder}/{col}NEXOUT.parquet'):
+                pq.write_table(table_new, f'{binary_folder}/{col}NEXOUT.parquet')
+            
+            else:
+                table_old = pq.read_table(f'{binary_folder}/{col}NEXOUT.parquet')
+                table = pa.concat_tables([table_old,table_new])
+                pq.write_table(table, f'{binary_folder}/{col}NEXOUT.parquet')
+    
+    nexus_input_folder = binary_folder
+    forcing_glob_filter = '*NEXOUT.parquet'
+
+    return nexus_input_folder, forcing_glob_filter
