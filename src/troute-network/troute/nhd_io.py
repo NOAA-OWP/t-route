@@ -1053,8 +1053,8 @@ def _read_timeslice_file(f):
         t         = ds.variables['time'][:].filled(fill_value = np.nan)
         qual      = ds.variables['discharge_quality'][:].filled(fill_value = np.nan)
         
-    stationId = np.apply_along_axis(''.join, 1, stns.astype(np.str))
-    time_str = np.apply_along_axis(''.join, 1, t.astype(np.str))
+    stationId = np.apply_along_axis(''.join, 1, stns.astype(np.dtype.str))
+    time_str = np.apply_along_axis(''.join, 1, t.astype(np.dtype.str))
     stationId = np.char.strip(stationId)
     
     timeslice_observations = (pd.DataFrame({
