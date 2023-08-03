@@ -1,0 +1,40 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "setuptools-scm"]
+
+[project]
+authors = [
+  {name = "Austin Raney", email = "austin.raney@noaa.gov"},
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Unix",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "pydantic~=1.10",
+  "typing_extensions",
+]
+description = "Modules for validating and programatically accessing troute configuration files."
+dynamic = ["version"]
+keywords = ["pydantic", "configuration"]
+license = {text = "DOC"}
+name = "troute.config"
+readme = "README.md"
+requires-python = ">=3.7"
+
+[project.optional-dependencies]
+test = ["pytest>=7.0.0", "pyyaml"]
+
+[tool.setuptools]
+packages = ["troute.config"]
+
+[tool.setuptools.dynamic]
+version = {attr = "troute.config.__version__"}
