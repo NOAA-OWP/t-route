@@ -2,7 +2,7 @@ import numpy as np #TODO: remove?
 import pandas as pd
 from pathlib import Path #TODO: remove?
 import yaml
-
+import time
 import nwm_routing.__main__ as tr
 
 
@@ -56,6 +56,20 @@ class troute_model():
         self._waterbody_attributes = ['waterbody_id','waterbody_toid','LkArea','LkMxE','OrificeA',
                                       'OrificeC','OrificeE','WeirC','WeirE','WeirL','ifd',
                                       'reservoir_type']
+        
+        self.internal_times = {}
+
+    def log_internal_time(self, operation_name):
+        start_time = time.time()
+        def record_time():
+            end_time = time.time()
+            execution_time = end_time - start_time
+
+            if operation_name not in self.internal_times:
+                self.internal_times[operation_name] = 0
+
+            self.internal_times[operation_name] += execution_time
+        return record_time
     
     def preprocess_static_vars(self, values: dict):
         """
@@ -68,6 +82,8 @@ class troute_model():
         Returns
         -------
         """
+        internal_timer = self.log_internal_time("network")
+
         self._network = tr.HYFeaturesNetwork(
             self._supernetwork_parameters,
             waterbody_parameters=self._waterbody_parameters,
@@ -77,6 +93,21 @@ class troute_model():
             compute_parameters=self._compute_parameters,
             hybrid_parameters=self._hybrid_parameters,
             from_files=False, value_dict=values,
+            segment_attributes=self._segment_attributes, 
+            waterbody_attributes=self._waterbody_attributes)
+        
+        if len(values['upstream_id'])>0:
+                    for key in values['upstream_id']:
+                        del self._network._connections[key]
+                        del self._network._reverse_network[key]
+                        for tw in self._network._independent_networks.keys():
+                            del self._network._independent_networks[tw][key]
+                            for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
+                                self._network._reaches_by_tw[tw][rli].remove(key)
+
+        internal_timer()
+
+        internal_timer = self.log_internal_time("Assimilation")
             bmi_parameters=self._bmi_parameters,)
 
         # Create data assimilation object with IDs but no dynamic variables yet.
@@ -89,18 +120,11 @@ class troute_model():
         from_files=False,
         value_dict=values,
         )
-
-        if len(values['upstream_id'])>0:
-            for key in values['upstream_id']:
-                del self._network._connections[key]
-                del self._network._reverse_network[key]
-                for tw in self._network._independent_networks.keys():
-                    del self._network._independent_networks[tw][key]
-                    for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
-                        self._network._reaches_by_tw[tw][rli].remove(key)
+        internal_timer()
+        
 
 
-
+    
     def run(self, values: dict, until=300):
         """
         Run this model into the future, updating the state stored in the provided model dict appropriately.
@@ -116,6 +140,7 @@ class troute_model():
         -------
         """
         # Set input data into t-route objects
+        internal_timer = self.log_internal_time("Forcing parameter")
         # Forcing values:
         self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
             pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
@@ -126,6 +151,14 @@ class troute_model():
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
         else:
             flowveldepth_interorder = {}
+        
+        internal_timer()
+
+        # Data Assimilation values:
+        self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
+        self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
+        self._data_assimilation._reservoir_usgs_df = pd.DataFrame(values['reservoir_usgs_gage_observation__volume_flow_rate'])
+        self._data_assimilation._reservoir_usace_df = pd.DataFrame(values['reservoir_usace_gage_observation__volume_flow_rate'])
 
         # Trim the time-extent of the streamflow_da usgs_df
         # what happens if there are timeslice files missing on the front-end? 
@@ -138,6 +171,7 @@ class troute_model():
         nts = int(until/self._time_step)
 
         # Run routing
+        internal_timer = self.log_internal_time("Run_routing")
         (
             self._run_results, 
             self._subnetwork_list
@@ -200,13 +234,17 @@ class troute_model():
             ).sort_index()
         
         self._network.update_waterbody_water_elevation()               
-        
+        internal_timer()
+
+        internal_timer = self.log_internal_time("update t0")
         # update t0
         self._network.new_t0(self._time_step, nts)
+        internal_timer()
 
         # get reservoir DA initial parameters for next loop iteration
         self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
         
+        internal_timer = self.log_internal_time("Output")
         # Create output flowveldepth and lakeout arrays
         self._fvd, self._lakeout = _create_output_dataframes(
             self._run_results,
@@ -228,9 +266,12 @@ class troute_model():
             self._run_results, 
             nts, 
             self._network._waterbody_df,)
+        internal_timer()
         
         # update model time
         self._time += self._time_step * nts
+
+
 
 
 # Utility functions -------
