@@ -45,8 +45,8 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
         gpkg_list = parallel(jobs)
     table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
     flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
-    lakes = table_dict.get('lakes', None)
-    network = table_dict.get('network', None)
+    lakes = table_dict.get('lakes', pd.DataFrame())
+    network = table_dict.get('network', pd.DataFrame())
 
     '''
     flowpaths = gpd.read_file(file_path, layer='flowpaths')
