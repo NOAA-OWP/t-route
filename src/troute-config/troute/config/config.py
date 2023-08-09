@@ -1,4 +1,5 @@
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, root_validator
+from pathlib import Path
 
 from typing import Any, Dict, Optional
 from typing_extensions import Self
@@ -37,3 +38,23 @@ class Config(BaseModel):
         """
         with use_strict():
             return cls(**data)
+    
+
+    ##########################################################################################
+    # Validate that, given certain configuration inputs, other inputs are provided.
+    ##########################################################################################
+
+    @root_validator
+    def check_levelpool_filepath(cls, values):
+        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+        waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
+        simulate_waterbodies = waterbody_parameters.break_network_at_waterbodies
+        levelpool = waterbody_parameters.level_pool
+
+        if simulate_waterbodies and network_type=='NHDNetwork':
+            assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but levelpool parameters are missing'
+            levelpool_file = levelpool.level_pool_waterbody_parameter_file_path
+            assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no levelpool file is provided'
+            
+        return values
+
