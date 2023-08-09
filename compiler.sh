@@ -29,7 +29,18 @@ fi
 #export LD_LIBRARY_PATHS=<paths>:$LD_LIBRARY_PATHS
 if [ -z "$NETCDF" ]
 then
-    export NETCDFINC=/usr/include/openmpi-x86_64/
+    # added a WSL flag to be set when running on Windows Subsystems for Linux
+    # NETCDFINC in thatcase corresponds to the one set up in the 09-Aug-2023 addition
+    # to the README file that contains compile instructions for Ubuntu 20.04 (on WSL)
+    # With the README instructions, t-route should compile by, e.g., setting WSL=1, the run
+    # ./compilers.sh
+    if [-z "$WSL" ]
+    then
+	export NETCDFINC=/usr/include/openmpi-x86_64/
+    else
+	export NETCDFINC=/home/jz/.conda/envs/py39/include/
+    fi
+	
 else
     export NETCDFINC="${NETCDF}"
 fi

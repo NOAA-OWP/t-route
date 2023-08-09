@@ -13,6 +13,145 @@ The project and program contain the following elements.
   - **Status**:  The project is currently focussed on preparing t-route for application NWM 3.0.
   - **Demos**: The `/test` directory contains a canned t-route demonstration of routing on the Lower Colorado River, TX for a standard NWM Analsis and Assimilation simulation. A suite of operationally useful capabilities are demonstrated, including streamflow data assimilation, diffusive wave routing along the Lower Colorado mainstem, waterbody simulation, and RFC reservoir forecasting. 
 
+##
+##
+## INSTRUCTIONS TO USE ON WSL (Windows Subsystem for Linux), SPECIFICALLY ON UBUNTU 20.04 (Long Term Stable distribution)
+## ADDED 09-Aug-2023 (legacy instructions see below)
+##
+##
+
+## Install Ubuntu on WSL2 (any Windows 10/11 PC; tested on Windows 11)
+
+Open Windows PowerShell, command:
+
+>> wsl --install Ubuntu-20.04
+
+The Linux distribution will be installed and tracked by a progress bar in the Power Shell window. Once done, you will be prompted to enter a Linux username and password - please do so. The distribution is automatically, and you will be logged into a Linux terminal. 
+
+
+For verification, you can open a new PowerShell, and verify creation of the distribution using the following command:
+
+>> wsl -l -v
+
+, which should result in something like the following (where the line with Ubuntu-20.04 should have been added; other lines are optional):
+
+  NAME             STATE           VERSION
+* rhel79           Stopped         2
+  Ubuntu-20.04     Running         2
+  Ubuntu_v2        Stopped         2
+  Ubuntu           Stopped         2
+  Debian           Running         2
+  Ubuntu_Server    Stopped         2
+
+
+##
+## In Ubuntu: perform updates
+##
+
+>> sudo apt update
+
+[OPTIONAL: If there are strange error messages about updates not being valid yet, that's due to the system clock, and can be fixed by synchronizing the hardware clock:
+>> sudo hwclock --hctosys ]
+
+>> sudo apt -y upgrade
+
+
+##
+## Install Anaconda (in Ubuntu)
+##
+
+Check the archive in  https://repo.continuum.io/archive for available releases. Comment: a stable older version is given as an example here.
+
+Download the distribution:
+
+>> wget https://repo.continuum.io/archive/Anaconda3-2022.05-Linux-x86_64.sh
+
+
+Install Anaconda - Review and confirm license agreement. As installation directory, installed in home directory /home/jz/anaconda3 instead of accepting default installation directory (/root/anaconda3). When done,  agree to running conda init.
+
+>> sudo bash ./Anaconda3-2023.07-1-Linux-x86_64.sh
+
+
+Verify that the python installation is the Anaconda one, not the system one. Issuing the following command:
+>> which python
+should give something like /home/[YOUR LINUX USER NAME]/anaconda3/bin/python, NOT /use/bin/python or similar
+
+The following commands' purpose is to be able to use the anaconda-navigator GUI:
+>> sudo apt-get install libxss1
+>> sudo apt install libegl1-mesa libegl1
+>> sudo apt install x11-apps
+
+
+##
+## Create conda environment: use Python 3.9 (in line with existing installations)
+##
+
+Create a local conda  environment:
+>> conda create -n py39 python=3.9
+
+Activate it:
+>> conda activate py39
+
+Install t-route python packages using conda to make sure there are no conflicts (pip would be much faster, but the installation may not run):
+>> conda install -c conda-forge numpy
+>> conda install -c conda-forge pandas
+>> conda install -c conda-forge xarray
+>> conda install -c conda-forge netcdf4
+>> conda install -c conda-forge joblib
+>> conda install -c conda-forge toolz
+>> conda install -c conda-forge Cython
+>> conda install -c conda-forge pyyaml
+>> conda install -c conda-forge geopandas
+>> conda install -c conda-forge pyarrow
+>> conda install -c conda-forge deprecated
+
+Install local gcc and gfortran in conda environment:
+>> conda install -c conda-forge gcc
+>> conda install -c conda-forge gfortran
+
+Prepare compilation:
+>> conda install -c conda-forge make
+>> conda install -c conda-forge netcdf-fortran
+
+
+##
+## It is good practice to deactivate and activate the environment again and run any .bashrc additions in the meantime:
+##
+
+>> conda deactivate
+>> cd
+>> source .bashrc
+>> conda activate py39
+
+
+##
+## Clone the t-route Github repository
+##
+
+Recommended: create unique directory, cd into it:
+>> mkdir tRoute_39_2
+>> cd tRoute_39_2
+
+Clone t-route:
+>> git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
+>> cd t-route
+
+Set some system variables (recommended to do that in, e.g., .bashrc if used more than a couple of times:
+>> export NETCDFINC=/home/jz/.conda/envs/py39/include/
+>> export WSL=1
+
+The code should then compile when running:
+>> ./compiler.sh
+
+
+
+
+##
+##
+## LEGACY INSTRUCTIONS FOLLOW
+##
+##
+
 ## Configuration and Dependencies
 
 This program uses the following system packages:
