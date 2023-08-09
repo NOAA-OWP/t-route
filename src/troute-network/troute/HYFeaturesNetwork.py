@@ -431,9 +431,10 @@ class HYFeaturesNetwork(AbstractNetwork):
             gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
             # filter for 'Gages' only
             gages_df = gages_df[gages_df['type'].isin(['Gages','NID'])]
-            # assign only the furthest downstream segment ID to any given gage
+            # In the event that a segment contains multiple gages, assign only the furthest 
+            # downstream segment ID to any given gage
             gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
-            # transform dataframe into a dictionary
+            # transform dataframe into a dictionary where key is segment ID and value is gage ID
             self._gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
 
             # Create lake_gage crosswalk dataframes:
