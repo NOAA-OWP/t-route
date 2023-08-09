@@ -113,7 +113,7 @@ class WaterbodyParameters(BaseModel):
 # TODO: not sure if it is okay to use these defaults
 class LevelPool(BaseModel):
     # string, filepath to waterbody parameter file (LAKEPARM.nc)
-    level_pool_waterbody_parameter_file_path: FilePath
+    level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"
     # NOTE: not sure if the below fields are still used by t-route
     level_pool_waterbody_area: str = "LkArea"
