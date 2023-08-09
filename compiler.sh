@@ -38,7 +38,7 @@ then
     then
 	export NETCDFINC=/usr/include/openmpi-x86_64/
     else
-	export NETCDFINC=/home/jz/.conda/envs/py39/include/
+	export NETCDFINC=$HOME/.conda/envs/py39/include/
     fi
 	
 else
