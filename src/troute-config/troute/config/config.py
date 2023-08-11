@@ -44,7 +44,7 @@ class Config(BaseModel):
     # Validate that, given certain configuration inputs, other inputs are provided.
     ##########################################################################################
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def check_levelpool_filepath(cls, values):
         network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
         waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
