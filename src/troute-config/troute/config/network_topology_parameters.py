@@ -115,35 +115,35 @@ class SupernetworkParameters(BaseModel):
 # TODO: is it okay to set defaults for these?
 class Columns(BaseModel):
     # string, unique segment identifier
-    key: str = "id"
+    key: str 
     # string, unique identifier of downstream segment
-    downstream: str = "toid"
+    downstream: str 
     # string, segment length
-    dx: str = "lengthkm"
+    dx: str 
     # string, manning's roughness of main channel
-    n: str = "n"
+    n: str 
     # string, mannings roughness of compound channel
-    ncc: str = "nCC"
+    ncc: str 
     # string, channel slope
-    s0: str = "So"
+    s0: str 
     # string, channel bottom width
-    bw: str = "BtmWdth"
+    bw: str 
     # string, waterbody identifier
-    waterbody: str = "rl_NHDWaterbodyComID"
+    waterbody: str 
     # string, channel top width
-    tw: str = "TopWdth"
+    tw: str 
     # string, compound channel top width
-    twcc: str = "TopWdthCC"
+    twcc: str 
     # string, channel bottom altitude
-    alt: str = "alt"
+    alt: str 
     # string, muskingum K parameter
-    musk: str = "MusK"
+    musk: str 
     # string, muskingum X parameter
-    musx: str = "MusX"
+    musx: str 
     # string, channel sideslope
-    cs: str = "ChSlp"
+    cs: str 
     # string, gage ID
-    gages: str = "rl_gages"
+    gages: str 
 
 
 class WaterbodyParameters(BaseModel):
@@ -160,20 +160,6 @@ class LevelPool(BaseModel):
     # string, filepath to waterbody parameter file (LAKEPARM.nc)
     level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"
-    # NOTE: not sure if the below fields are still used by t-route
-    level_pool_waterbody_area: str = "LkArea"
-    level_pool_weir_elevation: str = "WeirE"
-    level_pool_waterbody_max_elevation: str = "LkMxE"
-    level_pool_outfall_weir_coefficient: str = "WeirC"
-    level_pool_outfall_weir_length: str = "WeirL"
-    level_pool_overall_dam_length: str = "DamL"
-    level_pool_orifice_elevation: str = "OrificeE"
-    level_pool_orifice_coefficient: str = "OrificeC"
-    level_pool_orifice_area: str = "OrificeA"
-
-    # TODO: missing from `v3_doc.yaml`
-    # NOTE: not sure if this is required
-    reservoir_parameter_file: Optional[FilePath] = None
 
 
 class RfcParameters(BaseModel):
