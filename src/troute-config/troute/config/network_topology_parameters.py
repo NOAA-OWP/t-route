@@ -17,7 +17,8 @@ class NetworkTopologyParameters(BaseModel):
     # TODO: error in v3_doc.yaml; `rfc` is listed as network_topology_parameters parameter.
     # should instead be waterbody_parameters
 
-
+# TODO: This is an old parameter but probably worth keeping moving forward. However, it is
+# not implemented in V4 at the moment (Aug 11, 2023). Need to add this functionality to t-route.
 class PreprocessingParameters(BaseModel):
     preprocess_only: bool = False
     # NOTE: required if preprocess_only = True
@@ -34,7 +35,6 @@ class SupernetworkParameters(BaseModel):
     title_string: Optional[str] = None
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
     geo_file_path: str
-    # TODO: not sure if this is correct
     geo_file_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
     mask_file_path: Optional[FilePath] = None
     mask_layer_string: str = ""
@@ -43,7 +43,6 @@ class SupernetworkParameters(BaseModel):
     mask_driver_string: Optional[str] = None
     mask_key: int = 0
 
-    # TODO: Not sure if this should default to None
     columns: Optional["Columns"] = None
     # NOTE: required for CONUS-scale simulations with NWM 2.1 or 3.0 Route_Link.nc data
     synthetic_wb_segments: Optional[List[int]] = Field(
@@ -104,15 +103,8 @@ class SupernetworkParameters(BaseModel):
     # TODO: It would be nice if this were a literal / str
     driver_string: Union[str, Literal["NetCDF"]] = "NetCDF"
     layer_string: int = 0
-    # TODO: this parameter is in `read_config_file` fn, but ive not seen it in used in a config
-    # file
-    # flowpath_edge_list
-
-    # TODO: missing from `v3_doc.yaml`
-    ngen_nexus_file: Optional[FilePath] = None
 
 
-# TODO: is it okay to set defaults for these?
 class Columns(BaseModel):
     # string, unique segment identifier
     key: str 
@@ -154,8 +146,6 @@ class WaterbodyParameters(BaseModel):
     rfc: Optional["RfcParameters"] = None
 
 
-# TODO: not sure if this is still used
-# TODO: not sure if it is okay to use these defaults
 class LevelPool(BaseModel):
     # string, filepath to waterbody parameter file (LAKEPARM.nc)
     level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
@@ -163,10 +153,8 @@ class LevelPool(BaseModel):
 
 
 class RfcParameters(BaseModel):
-    # NOTE: required for RFC forecasting
     reservoir_parameter_file: Optional[FilePath] = None
     reservoir_rfc_forecasts: bool = False
-    # NOTE: required if reservoir_rfc_forecasts = True
     reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
     reservoir_rfc_forecasts_lookback_hours: int = 48
 
