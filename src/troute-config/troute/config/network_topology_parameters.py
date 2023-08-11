@@ -45,7 +45,6 @@ class SupernetworkParameters(BaseModel):
 
     # TODO: Not sure if this should default to None
     columns: Optional["Columns"] = None
-    waterbody_null_code: int = -9999
     # NOTE: required for CONUS-scale simulations with NWM 2.1 or 3.0 Route_Link.nc data
     synthetic_wb_segments: Optional[List[int]] = Field(
         default_factory=lambda: [
@@ -56,6 +55,51 @@ class SupernetworkParameters(BaseModel):
         ]
     )
     synthetic_wb_id_offset: float = 9.99e11
+    duplicate_wb_segments: Optional[List[int]] = Field(
+        default_factory=lambda: [
+            717696,
+            1311881,
+            3133581,
+            1010832,
+            1023120,
+            1813525,
+            1531545,
+            1304859,
+            1320604,
+            1233435,
+            11816,
+            1312051,
+            2723765,
+            2613174,
+            846266,
+            1304891,
+            1233595,
+            1996602,
+            2822462,
+            2384576,
+            1021504,
+            2360642,
+            1326659,
+            1826754,
+            572364,
+            1336910,
+            1332558,
+            1023054,
+            3133527,
+            3053788,
+            3101661,
+            2043487,
+            3056866,
+            1296744,
+            1233515,
+            2045165,
+            1230577,
+            1010164,
+            1031669,
+            1291638,
+            1637751,
+        ]
+    )
     terminal_code: int = 0
     # TODO: It would be nice if this were a literal / str
     driver_string: Union[str, Literal["NetCDF"]] = "NetCDF"
@@ -106,6 +150,7 @@ class WaterbodyParameters(BaseModel):
     # NOTE: required, True for simulations with waterbodies.
     break_network_at_waterbodies: bool = False
     level_pool: Optional["LevelPool"] = None
+    waterbody_null_code: int = -9999
     rfc: Optional["RfcParameters"] = None
 
 
