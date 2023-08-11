@@ -48,29 +48,32 @@ class Config(BaseModel):
     def check_levelpool_filepath(cls, values):
         network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
         waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
-        simulate_waterbodies = waterbody_parameters.break_network_at_waterbodies
-        levelpool = waterbody_parameters.level_pool
+        if waterbody_parameters:
+            simulate_waterbodies = waterbody_parameters.break_network_at_waterbodies
+            levelpool = waterbody_parameters.level_pool
 
-        if simulate_waterbodies and network_type=='NHDNetwork':
-            assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but levelpool parameters are missing.'
-            levelpool_file = levelpool.level_pool_waterbody_parameter_file_path
-            assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no levelpool parameter file is provided.'
+            if simulate_waterbodies and network_type=='NHDNetwork':
+                assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but levelpool parameters are missing.'
+                levelpool_file = levelpool.level_pool_waterbody_parameter_file_path
+                assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no levelpool parameter file is provided.'
             
         return values
     
     @root_validator(skip_on_failure=True)
     def check_rfc_filepath(cls, values):
         network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
-        rfc_parameters = values['network_topology_parameters'].waterbody_parameters.rfc
-        if rfc_parameters:
-            rfc_forecasts = rfc_parameters.reservoir_rfc_forecasts
-            rfc_parameter_file = rfc_parameters.reservoir_parameter_file
-            rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
+        waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
+        if waterbody_parameters:
+            rfc_parameters = waterbody_parameters.rfc
+            if rfc_parameters:
+                rfc_forecasts = rfc_parameters.reservoir_rfc_forecasts
+                rfc_parameter_file = rfc_parameters.reservoir_parameter_file
+                rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
 
-            if rfc_forecasts:
-                assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
-                if network_type=='NHDNetwork':
-                    assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
+                if rfc_forecasts:
+                    assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
+                    if network_type=='NHDNetwork':
+                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
 
         return values
 
