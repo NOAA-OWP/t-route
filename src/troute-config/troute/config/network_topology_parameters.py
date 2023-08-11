@@ -164,11 +164,11 @@ class LevelPool(BaseModel):
 
 class RfcParameters(BaseModel):
     # NOTE: required for RFC forecasting
-    reservoir_parameter_file: FilePath
+    reservoir_parameter_file: Optional[FilePath] = None
     reservoir_rfc_forecasts: bool = False
     # NOTE: required if reservoir_rfc_forecasts = True
     reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
-    reservoir_rfc_forecasts_lookback_hours: int
+    reservoir_rfc_forecasts_lookback_hours: int = 48
 
 
 NetworkTopologyParameters.update_forward_refs()
