@@ -6,6 +6,7 @@ import time
 import nwm_routing.__main__ as tr
 
 
+
 class troute_model():
 
     def __init__(self, bmi_cfg_file):
@@ -27,7 +28,9 @@ class troute_model():
                      '_segment_attributes', '_waterbody_attributes', '_network',
                      '_data_assimilation', '_fvd', '_lakeout']
         
+        
         (
+            self._log_parameters,
             self._preprocessing_parameters, 
             self._supernetwork_parameters, 
             self._waterbody_parameters, 
@@ -38,7 +41,6 @@ class troute_model():
             self._output_parameters, 
             self._parity_parameters, 
             self._data_assimilation_parameters,
-            self._bmi_parameters,
         ) = _read_config_file(bmi_cfg_file)
 
         self._run_parameters = {
@@ -56,20 +58,18 @@ class troute_model():
         self._waterbody_attributes = ['waterbody_id','waterbody_toid','LkArea','LkMxE','OrificeA',
                                       'OrificeC','OrificeE','WeirC','WeirE','WeirL','ifd',
                                       'reservoir_type']
-        
-        self.internal_times = {}
 
-    def log_internal_time(self, operation_name):
-        start_time = time.time()
-        def record_time():
-            end_time = time.time()
-            execution_time = end_time - start_time
+        self.showtiming = self._log_parameters.get("showtiming", None)
+        if self.showtiming:
+            self.task_times = {                                     # Creating a dictionary to record time for each section #
+                'network_time': 0,
+                'forcing_time' : 0,
+                'output_time' : 0,
+                'run_time' :0,
+                'data_assimilation_time' : 0,
 
-            if operation_name not in self.internal_times:
-                self.internal_times[operation_name] = 0
-
-            self.internal_times[operation_name] += execution_time
-        return record_time
+            }
+        # self.main_start_time = time.time()    
     
     def preprocess_static_vars(self, values: dict):
         """
@@ -82,7 +82,8 @@ class troute_model():
         Returns
         -------
         """
-        internal_timer = self.log_internal_time("network")
+        if self.showtiming:
+            network_start_time = time.time()                        # start of recording time for network creation #
 
         self._network = tr.HYFeaturesNetwork(
             self._supernetwork_parameters,
@@ -97,19 +98,19 @@ class troute_model():
             waterbody_attributes=self._waterbody_attributes)
         
         if len(values['upstream_id'])>0:
-                    for key in values['upstream_id']:
-                        del self._network._connections[key]
-                        del self._network._reverse_network[key]
-                        for tw in self._network._independent_networks.keys():
-                            del self._network._independent_networks[tw][key]
-                            for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
-                                self._network._reaches_by_tw[tw][rli].remove(key)
+            for key in values['upstream_id']:
+                del self._network._connections[key]
+                del self._network._reverse_network[key]
+                for tw in self._network._independent_networks.keys():
+                    del self._network._independent_networks[tw][key]
+                    for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
+                        self._network._reaches_by_tw[tw][rli].remove(key)
 
-        internal_timer()
+        if self.showtiming:
+            network_end_time = time.time()                          # end of recording time for network creation start for data assimilation creation #
+            self.task_times['network_time'] += network_end_time - network_start_time
 
-        internal_timer = self.log_internal_time("Assimilation")
-            bmi_parameters=self._bmi_parameters,)
-
+        
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
         self._data_assimilation = tr.DataAssimilation(
@@ -120,10 +121,10 @@ class troute_model():
         from_files=False,
         value_dict=values,
         )
-        internal_timer()
-        
 
 
+        DA_end_time = time.time()                               # end of recording time for data assimilation creation #
+        self.task_times['data_assimilation_time'] += DA_end_time - network_end_time
     
     def run(self, values: dict, until=300):
         """
@@ -140,38 +141,40 @@ class troute_model():
         -------
         """
         # Set input data into t-route objects
-        internal_timer = self.log_internal_time("Forcing parameter")
         # Forcing values:
+        if self.showtiming:
+            forcing_start_time = time.time()                        # start of recording time for forcing values #
+
         self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
             pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
-                         index=values['land_surface_water_source__id'])
+                         index=values['segment_id'])
         )
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
         if len(values['upstream_id'])>0:
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
         else:
             flowveldepth_interorder = {}
-        
-        internal_timer()
 
-        # Data Assimilation values:
+        if self.showtiming:
+            forcing_end_time = time.time()                          # end of recording time for forcing values start of recording for data assimilation #
+            self.task_times['forcing_time'] += forcing_end_time - forcing_start_time
+        
+        # Data Assimilation values:  
+
         self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
         self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
         self._data_assimilation._reservoir_usgs_df = pd.DataFrame(values['reservoir_usgs_gage_observation__volume_flow_rate'])
         self._data_assimilation._reservoir_usace_df = pd.DataFrame(values['reservoir_usace_gage_observation__volume_flow_rate'])
-
-        # Trim the time-extent of the streamflow_da usgs_df
-        # what happens if there are timeslice files missing on the front-end? 
-        # if the first column is some timestamp greater than t0, then this will throw
-        # an error. Need to think through this more. 
-        if not self._data_assimilation.usgs_df.empty:
-            self._data_assimilation._usgs_df = self._data_assimilation.usgs_df.loc[:,self._network.t0:]
+        
+        if self.showtiming:
+            DA_end_time = time.time()                               # end of recording time for data assimilation creation & start of recording time for routing #
+            self.task_times['data_assimilation_time'] += DA_end_time - forcing_end_time
 
         # Adjust number of steps based on user input
         nts = int(until/self._time_step)
 
+
         # Run routing
-        internal_timer = self.log_internal_time("Run_routing")
         (
             self._run_results, 
             self._subnetwork_list
@@ -234,17 +237,18 @@ class troute_model():
             ).sort_index()
         
         self._network.update_waterbody_water_elevation()               
-        internal_timer()
+        
 
-        internal_timer = self.log_internal_time("update t0")
         # update t0
         self._network.new_t0(self._time_step, nts)
-        internal_timer()
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
+        self._data_assimilation.update_after_compute(self._run_results)
+
+        if self.showtiming:
+            run_end_time = time.time()                              # end of recording time for routing  start of recording for output#
+            self.task_times['run_time'] += run_end_time - DA_end_time
         
-        internal_timer = self.log_internal_time("Output")
         # Create output flowveldepth and lakeout arrays
         self._fvd, self._lakeout = _create_output_dataframes(
             self._run_results,
@@ -266,12 +270,31 @@ class troute_model():
             self._run_results, 
             nts, 
             self._network._waterbody_df,)
-        internal_timer()
         
         # update model time
         self._time += self._time_step * nts
-
-
+        if self.showtiming:
+            output_end_time = time.time()                           # end of recording time for creating output #
+            self.task_times['output_time'] += output_end_time - run_end_time
+            # self.task_times['total_time'] = time.time() - self.main_start_time
+    
+    def finalize(self,):
+            if self.showtiming:
+                print('***************** TIMING SUMMARY *****************')
+                print('----------------------------------------')
+                total_time = (round(self.task_times['network_time'], 2) + 
+                              round(self.task_times['data_assimilation_time'], 2) + 
+                              round(self.task_times['forcing_time'], 2) + 
+                              round(self.task_times['run_time'], 2) + 
+                              round(self.task_times['output_time'], 2)
+                              )
+                for key in self.task_times:
+                    time_value = self.task_times[key]
+                    percentage = (time_value / total_time) * 100
+                    print(
+                    f'{key} construction: {time_value:.2f} secs, {percentage:.2f} %'
+                )
+                 
 
 
 # Utility functions -------
@@ -301,6 +324,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
+    log_parameters = data.get("log_parameters", {})
     network_topology_parameters = data.get("network_topology_parameters", None)
     supernetwork_parameters = network_topology_parameters.get(
         "supernetwork_parameters", None
@@ -310,6 +334,24 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         supernetwork_parameters["title_string"]       = "HY_Features Test"
         supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
         supernetwork_parameters["flowpath_edge_list"] = None    
+        routelink_attr = {
+                        #link????
+                        "key": "id",
+                        "downstream": "toid",
+                        "dx": "length_m",
+                        "n": "n",  # TODO: rename to `manningn`
+                        "ncc": "nCC",  # TODO: rename to `mannningncc`
+                        "s0": "So",
+                        "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
+                        #waterbody: "NHDWaterbodyComID",
+                        "tw": "TopWdth",  # TODO: rename to `topwidth`
+                        "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
+                        "alt": "alt",
+                        "musk": "MusK",
+                        "musx": "MusX",
+                        "cs": "ChSlp"  # TODO: rename to `sideslope`
+                        }
+        supernetwork_parameters["columns"]             = routelink_attr 
         supernetwork_parameters["waterbody_null_code"] = -9999
         supernetwork_parameters["terminal_code"]       =  0
         supernetwork_parameters["driver_string"]       = "NetCDF"
@@ -330,9 +372,9 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     )
     output_parameters = data.get("output_parameters", {})
     parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
-    bmi_parameters = data.get("bmi_parameters", {})
 
     return (
+        log_parameters,
         preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
@@ -343,7 +385,6 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
-        bmi_parameters,
     )
 
 def _retrieve_last_output(results, nts, waterbodies_df,):
