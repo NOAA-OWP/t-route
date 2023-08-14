@@ -96,4 +96,15 @@ class Config(BaseModel):
                 assert hybrid_parameters.topobathy_domain, 'Use natural cross-sections is enabled, but topobathy domain file is missing.'
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_refactored(cls, values):
+        hybrid_parameters = values['compute_parameters'].hybrid_parameters
+        if hybrid_parameters:
+            run_refactored_network = hybrid_parameters.run_refactored_network
+            if run_refactored_network:
+                assert hybrid_parameters.refactored_domain, 'Run refactored network is enabled, but refactored domain file is missing.'
+                assert hybrid_parameters.refactored_topobathy_domain, 'Run refactored network is enabled, but refactored topobathy domain file is missing.'
+
+        return values
 
