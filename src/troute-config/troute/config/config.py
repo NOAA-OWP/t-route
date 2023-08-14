@@ -107,4 +107,15 @@ class Config(BaseModel):
                 assert hybrid_parameters.refactored_topobathy_domain, 'Run refactored network is enabled, but refactored topobathy domain file is missing.'
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_coastal_domain(cls, values):
+        hybrid_parameters = values['compute_parameters'].hybrid_parameters
+        forcing_parameters = values['compute_parameters'].forcing_parameters
+        if hybrid_parameters:
+            coastal_boundary_input_file = forcing_parameters.coastal_boundary_input_file
+            if coastal_boundary_input_file:
+                assert hybrid_parameters.coastal_boundary_domain, 'Coastal boundary forcing files provided, but coastal boundary domain file is missing.'
+
+        return values
 
