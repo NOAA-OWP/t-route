@@ -118,15 +118,17 @@ class QLateralFiles(BaseModel):
 class StreamflowDA(BaseModel):
     # NOTE: mandatory for streamflow DA, defaults to False
     streamflow_nudging: bool = False
-    # NOTE: mandatory for streamflow DA.
+    # NOTE: mandatory for streamflow DA on NHDNetwork.
     gage_segID_crosswalk_file: Optional[FilePath] = None
 
     # TODO: not sure if these are dependent on anything
-    crosswalk_gage_field: Optional[str] = None
-    crosswalk_segID_field: Optional[str] = None
+    crosswalk_gage_field: str = 'gages'
+    crosswalk_segID_field: str = 'link'
 
     # NOTE: required for analysis and
-    wrf_hydro_lastobs_file: Optional[FilePath] = None
+    # TODO: changed the name of this parameter from "wrf_hydro_lastobs_file" to "lastobs_file"
+    # Need to update this in t-route as well.
+    lastobs_file: Optional[FilePath] = None
 
     # NOTE: required if lastobs are to be written out during and after simulations
     lastobs_output_folder: Optional[DirectoryPath] = None
