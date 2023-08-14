@@ -94,7 +94,7 @@ class HybridParameters(BaseModel):
     # TODO: aaraney not sure if this _is_ allowed to be None in _all_ contexts
     diffusive_domain: Optional[FilePath] = None
     # NOTE: required for hybrid simulations
-    use_natl_xsections: bool
+    use_natl_xsections: bool = False
 
     # NOTE: required for diffusive routing for natural cross sections
     # NOTE: not sure _how_ to determine if using diffusive routing for natural cross sections
