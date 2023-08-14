@@ -53,11 +53,9 @@ class Config(BaseModel):
             levelpool = waterbody_parameters.level_pool
 
             if simulate_waterbodies and network_type=='NHDNetwork':
-                assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, \
-                    but levelpool parameters are missing.'
+                assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but levelpool parameters are missing.'
                 levelpool_file = levelpool.level_pool_waterbody_parameter_file_path
-                assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, \
-                    but no levelpool parameter file is provided.'
+                assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no levelpool parameter file is provided.'
             
         return values
     
@@ -73,11 +71,9 @@ class Config(BaseModel):
                 rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
 
                 if rfc_forecasts:
-                    assert rfc_timeseries_path, 'RFC forecasts are enabled, \
-                        but RFC timeseries path is missing.'
+                    assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
                     if network_type=='NHDNetwork':
-                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, \
-                            but no RFC parameter file is provided.'
+                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
 
         return values
     
@@ -87,10 +83,17 @@ class Config(BaseModel):
         if hybrid_parameters:
             run_hybrid = hybrid_parameters.run_hybrid_routing
             if run_hybrid:
-                assert hybrid_parameters.diffusive_domain, 'Diffusive routing is enabled, \
-                    but diffusive domain file is missing.'
+                assert hybrid_parameters.diffusive_domain, 'Diffusive routing is enabled, but diffusive domain file is missing.'
 
         return values
     
+    @root_validator(skip_on_failure=True)
+    def check_topobathy_domain(cls, values):
+        hybrid_parameters = values['compute_parameters'].hybrid_parameters
+        if hybrid_parameters:
+            use_natl_xsections = hybrid_parameters.use_natl_xsections
+            if use_natl_xsections:
+                assert hybrid_parameters.topobathy_domain, 'Use natural cross-sections is enabled, but topobathy domain file is missing.'
 
+        return values
 
