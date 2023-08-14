@@ -91,26 +91,14 @@ class HybridParameters(BaseModel):
     # NOTE: required for hybrid simulations
     run_hybrid_routing: bool
     # NOTE: required for hybrid simulations
-    # TODO: aaraney not sure if this _is_ allowed to be None in _all_ contexts
     diffusive_domain: Optional[FilePath] = None
-    # NOTE: required for hybrid simulations
-    use_natl_xsections: bool = False
 
+    use_natl_xsections: bool = False
     # NOTE: required for diffusive routing for natural cross sections
-    # NOTE: not sure _how_ to determine if using diffusive routing for natural cross sections
-    # `run_hybrid_routing`, `use_natl_xsections`, `run_refactored_network`,
     topobathy_domain: Optional[FilePath] = None
 
-    # TODO: is the required? or default to `False`?
     # TODO: missing from `v3_doc.yaml`
-    # src/troute-nwm/src/nwm_routing/preprocess.py
-    # 112:        run_refactored         = hybrid_params.get('run_refactored_network', False)
-    # src/troute-network/troute/AbstractNetwork.py
-    # 446:        run_refactored = self.hybrid_parameters.get('run_refactored_network', False)
-    # src/troute-nwm/build/lib/nwm_routing/preprocess.py
-    # 112:        run_refactored         = hybrid_params.get('run_refactored_network', False)
     run_refactored_network: bool = False
-
     # TODO: missing from `v3_doc.yaml`
     refactored_domain: Optional[FilePath] = None
     # TODO: missing from `v3_doc.yaml`
