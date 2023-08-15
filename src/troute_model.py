@@ -28,6 +28,7 @@ class troute_model():
                      '_data_assimilation', '_fvd', '_lakeout']
         
         (
+            self._log_parameters,
             self._preprocessing_parameters, 
             self._supernetwork_parameters, 
             self._waterbody_parameters, 
