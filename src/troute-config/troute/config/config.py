@@ -118,4 +118,14 @@ class Config(BaseModel):
                 assert hybrid_parameters.coastal_boundary_domain, 'Coastal boundary forcing files provided, but coastal boundary domain file is missing.'
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_gage_segID_crosswalk_file(cls, values):
+        streamflow_DA = values['compute_parameters'].data_assimilation_parameters.streamflow_da
+        streamflow_nudging = streamflow_DA.streamflow_nudging
+        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+        if streamflow_nudging and network_type=='NHDNetwork':
+            assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
+
+        return values
 
