@@ -184,4 +184,22 @@ class Config(BaseModel):
                 assert qlat_input_folder, 'No qlat_input_folder is specified in the forcing_parameters'
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_wrf_hydro_restart_files(cls, values):
+        restart_parameters = values['compute_parameters'].restart_parameters
+        if restart_parameters:
+            wrf_hydro_channel_restart_file = restart_parameters.wrf_hydro_channel_restart_file
+            wrf_hydro_waterbody_restart_file = restart_parameters.wrf_hydro_waterbody_restart_file
+            if wrf_hydro_channel_restart_file:
+                assert restart_parameters.wrf_hydro_channel_ID_crosswalk_file, 'WRF-Hydro channel restart file provided, but wrf_hydro_channel_ID_crosswalk_file file is missing.'
+            if wrf_hydro_waterbody_restart_file:
+                error_message = ''
+                if not restart_parameters.wrf_hydro_waterbody_ID_crosswalk_file:
+                    error_message += ' wrf_hydro_channel_ID_crosswalk_file is missing.'
+                if not restart_parameters.wrf_hydro_waterbody_crosswalk_filter_file:
+                    error_message += ' wrf_hydro_waterbody_crosswalk_filter_file is missing.'
+                assert not error_message, 'WRF-Hydro waterbody_restart file is provided, but:' + error_message
+
+        return values
 
