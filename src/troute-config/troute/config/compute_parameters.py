@@ -122,8 +122,8 @@ class StreamflowDA(BaseModel):
     gage_segID_crosswalk_file: Optional[FilePath] = None
 
     # TODO: not sure if these are dependent on anything
-    crosswalk_gage_field: str = 'gages'
-    crosswalk_segID_field: str = 'link'
+    crosswalk_gage_field: Optional[str] = 'gages'
+    crosswalk_segID_field: Optional[str] = 'link'
 
     # NOTE: required for analysis and
     # TODO: changed the name of this parameter from "wrf_hydro_lastobs_file" to "lastobs_file"
