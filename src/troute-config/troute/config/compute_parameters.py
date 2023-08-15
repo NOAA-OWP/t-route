@@ -41,10 +41,6 @@ class ComputeParameters(BaseModel):
         default_factory=dict
     )
 
-    _coerce_datetime = validator("model_start_time", pre=True, allow_reuse=True)(
-        coerce_datetime
-    )
-
 
 # TODO: determine how to handle context specific required fields
 # TODO: consider other ways to handle wrf hydro fields (i.e. subclass)
