@@ -173,4 +173,15 @@ class Config(BaseModel):
                 assert not error_message, 'USACE reservoir DA is enabled, but:' + error_message
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_qlat_inputs(cls, values):
+        forcing_parameters = values['compute_parameters'].forcing_parameters
+        if forcing_parameters:
+            qlat_forcing_sets = forcing_parameters.qlat_forcing_sets
+            qlat_input_folder = forcing_parameters.qlat_input_folder
+            if not qlat_forcing_sets:
+                assert qlat_input_folder, 'No qlat_input_folder is specified in the forcing_parameters'
+
+        return values
 
