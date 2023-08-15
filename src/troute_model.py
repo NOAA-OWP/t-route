@@ -285,7 +285,7 @@ class troute_model():
                     print(
                     f'{key} construction: {time_value:.2f} secs, {percentage:.2f} %'
                 )
-                return self._log_parameters
+                
 # Utility functions -------
 def _read_config_file(custom_input_file): #TODO: Update this function, I dont' think
     # we need all of this for BMI. This was taken directly from t-route model...
@@ -313,6 +313,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
+    log_parameters = data.get("log_parameters", {})
     network_topology_parameters = data.get("network_topology_parameters", None)
     supernetwork_parameters = network_topology_parameters.get(
         "supernetwork_parameters", None
@@ -345,6 +346,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     bmi_parameters = data.get("bmi_parameters", {})
 
     return (
+        log_parameters,
         preprocessing_parameters,
         supernetwork_parameters,
         waterbody_parameters,
