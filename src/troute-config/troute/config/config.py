@@ -60,24 +60,6 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_rfc_filepath(cls, values):
-        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
-        waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
-        if waterbody_parameters:
-            rfc_parameters = waterbody_parameters.rfc
-            if rfc_parameters:
-                rfc_forecasts = rfc_parameters.reservoir_rfc_forecasts
-                rfc_parameter_file = rfc_parameters.reservoir_parameter_file
-                rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
-
-                if rfc_forecasts:
-                    assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
-                    if network_type=='NHDNetwork':
-                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
-
-        return values
-    
-    @root_validator(skip_on_failure=True)
     def check_diffusive_domain(cls, values):
         hybrid_parameters = values['compute_parameters'].hybrid_parameters
         if hybrid_parameters:
@@ -128,4 +110,42 @@ class Config(BaseModel):
             assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_reservoir_parameter_file(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_persistence_da = reservoir_da.reservoir_persistence_da
+            reservoir_persistence_usgs = False
+            reservoir_persistence_usace = False
+            if reservoir_persistence_da:
+                reservoir_persistence_usgs = reservoir_persistence_da.reservoir_persistence_usgs
+                reservoir_persistence_usace = reservoir_persistence_da.reservoir_persistence_usace
+            reservoir_rfc_da = reservoir_da.reservoir_rfc_da
+            reservoir_rfc_forecasts = False
+            if reservoir_rfc_da:
+                reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
+            network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+            if (reservoir_persistence_usgs or reservoir_persistence_usace or reservoir_rfc_forecasts) and network_type=='NHDNetwork':
+                assert reservoir_da.reservoir_parameter_file, 'Reservoir DA is enabled on NHDNetwork, but reservoir_parameter_file is missing.'
+
+        return values
+    
+'''    @root_validator(skip_on_failure=True)
+    def check_rfc_filepath(cls, values):
+        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+        waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
+        if waterbody_parameters:
+            rfc_parameters = waterbody_parameters.rfc
+            if rfc_parameters:
+                rfc_forecasts = rfc_parameters.reservoir_rfc_forecasts
+                rfc_parameter_file = rfc_parameters.reservoir_parameter_file
+                rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
+
+                if rfc_forecasts:
+                    assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
+                    if network_type=='NHDNetwork':
+                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
+
+        return values'''
 
