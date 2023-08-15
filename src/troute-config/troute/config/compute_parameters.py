@@ -195,7 +195,7 @@ class ForcingParameters(BaseModel):
     # aaraney: this is optional if `qlat_forcing_sets` is provided
     qlat_input_folder: Optional[DirectoryPath] = None
     # TODO: mandatory if loop sets will be automatically created
-    nts: Optional[int]
+    nts: Optional[int] = 288
     max_loop_size: int = 24
     # NOTE: determine if okay to use this default
     qlat_file_index_col: str = "feature_id"
