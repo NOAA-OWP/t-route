@@ -202,4 +202,15 @@ class Config(BaseModel):
                 assert not error_message, 'WRF-Hydro waterbody_restart file is provided, but:' + error_message
 
         return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_start_datetime(cls, values):
+        restart_parameters = values['compute_parameters'].restart_parameters
+        if restart_parameters:
+            wrf_hydro_channel_restart_file = restart_parameters.wrf_hydro_channel_restart_file
+            lite_channel_restart_file = restart_parameters.lite_channel_restart_file
+            if not (wrf_hydro_channel_restart_file or lite_channel_restart_file):
+                assert restart_parameters.start_datetime, 'No start_datetime provided in config file for cold start (no restart files).'
+
+        return values
 
