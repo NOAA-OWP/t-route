@@ -110,7 +110,7 @@ class Config(BaseModel):
             assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
 
         return values
-    
+    '''
     @root_validator(skip_on_failure=True)
     def check_reservoir_parameter_file(cls, values):
         reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
@@ -131,21 +131,80 @@ class Config(BaseModel):
 
         return values
     
-'''    @root_validator(skip_on_failure=True)
-    def check_rfc_filepath(cls, values):
-        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
-        waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
-        if waterbody_parameters:
-            rfc_parameters = waterbody_parameters.rfc
-            if rfc_parameters:
-                rfc_forecasts = rfc_parameters.reservoir_rfc_forecasts
-                rfc_parameter_file = rfc_parameters.reservoir_parameter_file
-                rfc_timeseries_path = rfc_parameters.reservoir_rfc_forecasts_time_series_path
+    @root_validator(skip_on_failure=True)
+    def check_rfc_timeseries_filepath(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_rfc_da = reservoir_da.reservoir_rfc_da
+            reservoir_rfc_forecasts = False
+            if reservoir_rfc_da:
+                reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
+                reservoir_rfc_forecasts_time_series_path = reservoir_rfc_da.reservoir_rfc_forecasts_time_series_path
+            if reservoir_rfc_forecasts:
+                assert reservoir_rfc_forecasts_time_series_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
 
-                if rfc_forecasts:
-                    assert rfc_timeseries_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
-                    if network_type=='NHDNetwork':
-                        assert rfc_parameter_file, 'RFC forecasts are enabled for NHDNetwork, but no RFC parameter file is provided.'
+        return values
+    '''
+    @root_validator(skip_on_failure=True)
+    def check_rfc_parameters(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_rfc_da = reservoir_da.reservoir_rfc_da
+            reservoir_rfc_forecasts = False
+            if reservoir_rfc_da:
+                reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
+                reservoir_rfc_forecasts_time_series_path = reservoir_rfc_da.reservoir_rfc_forecasts_time_series_path
+            if reservoir_rfc_forecasts:
+                error_message = ''
+                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                reservoir_parameter_file = reservoir_da.reservoir_parameter_file
+                if not reservoir_parameter_file and network_type=='NHDNetwork':
+                    error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
+                if not reservoir_rfc_forecasts_time_series_path:
+                    error_message  += ' RFC timeseries path is missing.'
+                assert not error_message, 'RFC forecast is enabled, but:' + error_message
 
-        return values'''
+        return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_usgs_reservoir_da_parameters(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_persistence_da = reservoir_da.reservoir_persistence_da
+            reservoir_persistence_usgs = False
+            if reservoir_persistence_da:
+                reservoir_persistence_usgs = reservoir_persistence_da.reservoir_persistence_usgs
+                usgs_timeslices_folder = values['compute_parameters'].data_assimilation_parameters.usgs_timeslices_folder
+            if reservoir_persistence_usgs:
+                error_message = ''
+                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                reservoir_parameter_file = reservoir_da.reservoir_parameter_file
+                if not reservoir_parameter_file and network_type=='NHDNetwork':
+                    error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
+                if not usgs_timeslices_folder:
+                    error_message  += ' USGS_timeslices_folder is missing.'
+                assert not error_message, 'USGS reservoir DA is enabled, but:' + error_message
+
+        return values
+    
+    @root_validator(skip_on_failure=True)
+    def check_usace_reservoir_da_parameters(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_persistence_da = reservoir_da.reservoir_persistence_da
+            reservoir_persistence_usace = False
+            if reservoir_persistence_da:
+                reservoir_persistence_usace = reservoir_persistence_da.reservoir_persistence_usace
+                usace_timeslices_folder = values['compute_parameters'].data_assimilation_parameters.usace_timeslices_folder
+            if reservoir_persistence_usace:
+                error_message = ''
+                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                reservoir_parameter_file = reservoir_da.reservoir_parameter_file
+                if not reservoir_parameter_file and network_type=='NHDNetwork':
+                    error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
+                if not usace_timeslices_folder:
+                    error_message  += ' USACE_timeslices_folder is missing.'
+                assert not error_message, 'USACE reservoir DA is enabled, but:' + error_message
+
+        return values
 
