@@ -138,6 +138,7 @@ class bmi_troute(Bmi):
         n_waterbody = int(bmi_parameters.get('waterbody_number'))
         n_io = int(bmi_parameters.get('io_number'))
         n_upstream = int(bmi_parameters.get('upstream_number'))
+        n_gages = int(bmi_parameters.get('gage_number'))
 
         # ------------- Initialize t-route model ------------------------------#
         self._model = troute_model(bmi_cfg_file)
@@ -183,11 +184,11 @@ class bmi_troute(Bmi):
         self._values['reservoir_type'] = np.zeros(n_waterbody)
         self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
         self._values['coastal_boundary__depth'] = np.zeros(0)
-        self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        self._values['lastobs__volume_flow_rate'] = np.zeros(0)
+        #self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
+        #self._values['lastobs__volume_flow_rate'] = np.zeros(0)
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
         self._values['channel_water_flow__speed'] = np.zeros(n_io)
         self._values['channel_water__mean_depth'] = np.zeros(n_io)
@@ -205,6 +206,35 @@ class bmi_troute(Bmi):
         # that cycles through variables first, then time steps, then segment ids.
         self._values['fvd_results'] = np.zeros(n_segment*3*12)
         self._values['fvd_index'] = np.zeros(1)
+
+        # Data assimilation values
+        self._values['gages'] = np.zeros(6, dtype='<U19')
+        self._values['usgs_timeslice_discharge'] = np.zeros(10010)
+        self._values['usgs_timeslice_stationId'] = np.zeros(10010, dtype='<U19')
+        self._values['usgs_timeslice_time'] = np.zeros(10010, dtype='<U19')
+        self._values['usgs_timeslice_discharge_quality'] = np.zeros(10010)
+
+        self._values['gages'] = np.zeros(6, dtype='<U19')
+        self._values['usace_timeslice_discharge'] = np.zeros(5192)
+        self._values['usace_timeslice_stationId'] = np.zeros(5192, dtype='<U19')
+        self._values['usace_timeslice_time'] = np.zeros(5192, dtype='<U19')
+        self._values['usace_timeslice_discharge_quality'] = np.zeros(5192)
+
+        self._values['lastobs_discharge'] = np.zeros(76)
+        self._values['lastobs_stationIdInd'] = np.zeros(9, dtype=int)
+        self._values['lastobs_timeInd'] = np.zeros(9, dtype=int)
+        #self._values['lastobs_stationId'] = np.zeros(76, dtype='<S19') #S19 keep 'b'prefix
+        self._values['lastobs_stationId'] = np.zeros(76, dtype='<U19')
+        self._values['lastobs_time'] = np.zeros(9, dtype='<U19')
+        self._values['lastobs_modelTimeAtOutput'] = np.zeros(1, dtype='<U19')
+        self._values['time_since_lastobs'] = np.zeros(76)
+
+        self._values['rfc_discharges'] = np.zeros(289)
+        self._values['rfc_stationId'] = np.zeros(3, dtype='<U19')
+        self._values['rfc_synthetic_values'] = np.zeros(0)
+        self._values['rfc_totalCounts'] = np.zeros(0)
+        self._values['rfc_datetime'] = np.zeros(3, dtype='<U19')
+        self._values['rfc_timestep'] = np.zeros(0)
 
         """
         #TODO Update loading RFC data not through Fortran reservoir module.

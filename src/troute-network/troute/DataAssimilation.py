@@ -5,6 +5,9 @@ import pathlib
 import xarray as xr
 from datetime import datetime
 from abc import ABC
+from joblib import delayed, Parallel
+
+from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 
 # -----------------------------------------------------------------------------
@@ -58,12 +61,36 @@ class NudgingDA(AbstractDA):
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
 
+        from_files = False
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
-                self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
-                self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
-            
+                #self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
+                #self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
+                
+                # Handle QC/QA and interpolation:
+                qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
+                
+                self._usgs_df = _timeslice_qcqa(
+                                                value_dict['usgs_timeslice_discharge'],
+                                                value_dict['usgs_timeslice_stationId'],
+                                                value_dict['usgs_timeslice_time'],
+                                                value_dict['usgs_timeslice_discharge_quality'],
+                                                qc_threshold,
+                                                run_parameters.get('dt', 300),
+                                                network.link_gage_df
+                                                )
+
+                self._last_obs_df = _assemble_lastobs_df(
+                                                        value_dict['lastobs_discharge'], 
+                                                        value_dict['lastobs_stationIdInd'], 
+                                                        value_dict['lastobs_timeInd'], 
+                                                        value_dict['lastobs_stationId'], 
+                                                        value_dict['lastobs_time'], 
+                                                        value_dict['lastobs_modelTimeAtOutput'][0], 
+                                                        value_dict['time_since_lastobs'],
+                                                        network.link_gage_df
+                                                        )            
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
@@ -71,10 +98,10 @@ class NudgingDA(AbstractDA):
                 
                 if lastobs_file:
                     self._last_obs_df = build_lastobs_df(
-                        lastobs_file,
-                        lastobs_crosswalk_file,
-                        lastobs_start,
-                    )
+                                                        lastobs_file,
+                                                        lastobs_crosswalk_file,
+                                                        lastobs_start,
+                                                        )
                 
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
@@ -84,7 +111,8 @@ class NudgingDA(AbstractDA):
                 
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
     
-    def update_after_compute(self, run_results,):
+    def update_after_compute(self, run_results, time_increment):
+    #def update_after_compute(self, run_results, ):
         '''
         Function to update data assimilation object after running routing module.
         
@@ -112,7 +140,8 @@ class NudgingDA(AbstractDA):
 
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
-                self._last_obs_df = new_lastobs(run_results, self._run_parameters.get("dt") * self._run_parameters.get("nts"))
+                #self._last_obs_df = new_lastobs(run_results, self._run_parameters.get("dt") * self._run_parameters.get("nts"))
+                self._last_obs_df = new_lastobs(run_results, time_increment)               
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -170,12 +199,42 @@ class PersistenceDA(AbstractDA):
 
         if not from_files:
             if usgs_persistence:
-                reservoir_usgs_df = pd.DataFrame(index=value_dict['reservoir_usgs_ids'])
-                # create reservoir hybrid DA initial parameters dataframe    
+                # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
+                if self._usgs_df.empty:
+
+                    qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
+                    
+                    self._usgs_df = _timeslice_qcqa(
+                        value_dict['timeslice_discharge'],
+                        value_dict['timeslice_stationId'],
+                        value_dict['timeslice_time'],
+                        value_dict['timeslice_discharge_quality'],
+                        qc_threshold,
+                        run_parameters.get('dt', 300),
+                        network.link_gage_df) 
+                    
+                # resample `usgs_df` to 15 minute intervals
+                usgs_df_15min = (
+                    self._usgs_df.
+                    transpose().
+                    resample('15min').asfreq().
+                    transpose()
+                )
+
+                # subset and usgs_df to reservoir only locations
+                #FIXME: This is assuming all waterbodies are USGS (no USACE). Is this the 
+                #case for HYFeatures?
+                reservoir_usgs_df = (
+                    usgs_df_15min.
+                    join(network.waterbody_dataframe['index'], how='inner').
+                    drop(['index'],axis=1)
+                )
+                
+                # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
                         data = 0, 
-                        index = reservoir_usgs_df.index,
+                        index = reservoir_usgs_df.index ,
                         columns = ['update_time']
                     )
                     reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
@@ -183,7 +242,7 @@ class PersistenceDA(AbstractDA):
                     reservoir_usgs_param_df['persistence_index'] = 0
                 else:
                     reservoir_usgs_param_df = pd.DataFrame()
-            
+
             if usace_persistence:
                 reservoir_usace_df = pd.DataFrame(index=value_dict['reservoir_usace_ids'])
                 # create reservoir hybrid DA initial parameters dataframe    
@@ -455,9 +514,33 @@ class RFCDA(AbstractDA):
     """
     
     """
-    def __init__(self, from_files, value_dict):
-        if from_files:
-            pass
+    def __init__(self, network, from_files, value_dict):
+        waterbody_parameters = self._waterbody_parameters
+        rfc_parameters = waterbody_parameters.get('rfc', None)
+
+        # check if user explictly requests RFC reservoir DA
+        rfc  = False
+        if rfc_parameters:
+            rfc = rfc_parameters.get('reservoir_rfc_forecasts', False)
+
+        if not from_files:
+            if rfc:
+                (
+                self._reservoir_rfc_df,
+                self._reservoir_rfc_param_df
+                ) = _rfc_timeseries_qcqa(
+                                        value_dict['rfc_discharges'],
+                                        value_dict['rfc_stationId'],
+                                        value_dict['rfc_synthetic_values'],
+                                        value_dict['rfc_totalCounts'],
+                                        value_dict['rfc_datetime'],
+                                        value_dict['rfc_timestep'],
+                                        1, #lake_number
+                                        network.t0
+                                        ) 
+            else: 
+                self._reservoir_rfc_df = pd.DataFrame()
+                self._reservoir_rfc_param_df = pd.DataFrame()
         else:
             pass
 
@@ -487,13 +570,13 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
 
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
-        RFCDA.__init__(self, from_files, value_dict)
+        RFCDA.__init__(self, network, from_files, value_dict)
     
-    def update_after_compute(self, run_results,):
+    def update_after_compute(self, run_results,time_increment):
         '''
         
         '''
-        NudgingDA.update_after_compute(self, run_results)
+        NudgingDA.update_after_compute(self, run_results, time_increment)
         PersistenceDA.update_after_compute(self, run_results)
         RFCDA.update_after_compute(self)
 
@@ -1000,3 +1083,283 @@ def read_reservoir_parameter_file(
     
     return df1, usgs_crosswalk, usace_crosswalk
 
+def _timeslice_qcqa(discharge, 
+                    stns, 
+                    t, 
+                    qual, 
+                    qc_threshold, 
+                    frequency_secs, 
+                    crosswalk_df, 
+                    crosswalk_gage_field='gages',
+                    crosswalk_dest_field='link',
+                    interpolation_limit=59,
+                    cpu_pool=1):
+    #FIXME Do we need the following commands? Or something similar? Depends on 
+    # what format model engine provides these variables...
+    '''
+    stationId = np.apply_along_axis(''.join, 1, stns.astype(np.str))
+    time_str = np.apply_along_axis(''.join, 1, t.astype(np.str))
+    stationId = np.char.strip(stationId)
+    '''
+    stationId = stns
+    time_str = t
+    observation_df = (pd.DataFrame({
+                                'stationId' : stationId,
+                                'datetime'  : time_str,
+                                'discharge' : discharge
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['discharge'])
+    
+    observation_qual_df = (pd.DataFrame({
+                                'stationId' : stationId,
+                                'datetime'  : time_str,
+                                'quality'   : qual/100
+                            }).
+                             set_index(['stationId', 'datetime']).
+                             unstack(1, fill_value = np.nan)['quality'])
+    import pdb; pdb.set_trace()
+    # Link <> gage crosswalk data
+    df = crosswalk_df.reset_index()
+    df[crosswalk_gage_field] = np.asarray(df[crosswalk_gage_field]).astype('<U15')
+    df = df.set_index(crosswalk_gage_field)
+    
+    # join crosswalk data with timeslice data, indexed on crosswalk destination field
+    observation_df = (df.join(observation_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               drop([crosswalk_gage_field], axis=1))
+
+    observation_qual_df = (df.join(observation_qual_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               drop([crosswalk_gage_field], axis=1))
+    
+    #Check if QC is already performed from model_DAforcing.py
+    t1 = observation_df.iloc[:,0].name
+    t1 = datetime.strptime(t1, "%Y-%m-%d %H:%M:%S")
+    t2 = observation_df.iloc[:,1].name
+    t2 = datetime.strptime(t2, "%Y-%m-%d %H:%M:%S")
+    dt= (t2 - t1).seconds
+
+    if not dt==frequency_secs or not np.all(qual==100):
+        # ---- Laugh testing ------
+        # screen-out erroneous qc flags
+        observation_qual_df = (observation_qual_df.
+                            mask(observation_qual_df < 0, np.nan).
+                            mask(observation_qual_df > 1, np.nan)
+                            )
+
+        # screen-out poor quality flow observations
+        observation_df = (observation_df.
+                        mask(observation_qual_df < qc_threshold, np.nan).
+                        mask(observation_df <= 0, np.nan)
+                        )
+
+        # ---- Interpolate USGS observations to the input frequency (frequency_secs)
+        observation_df_T = observation_df.transpose()             # transpose, making time the index
+        observation_df_T.index = pd.to_datetime(
+            observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
+        )
+        
+        # specify resampling frequency 
+        frequency = str(int(frequency_secs/60))+"min"    
+        
+        # interpolate and resample frequency
+        buffer_df = observation_df_T.resample(frequency).asfreq()
+        with Parallel(n_jobs=cpu_pool) as parallel:
+            
+            jobs = []
+            interp_chunks = ()
+            step = 200
+            for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
+                
+                start = i
+                if (i+step-1) < buffer_df.shape[1]:
+                    stop = i+(step)
+                else:
+                    stop = buffer_df.shape[1]
+                    
+                jobs.append(
+                    delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
+                )
+                
+            interp_chunks = parallel(jobs)
+
+        observation_df_T = pd.DataFrame(
+            data = np.concatenate(interp_chunks, axis = 1), 
+            columns = buffer_df.columns, 
+            index = buffer_df.index
+        )
+        
+        # re-transpose, making link the index
+        observation_df_new = observation_df_T.transpose().loc[crosswalk_df.index]
+        observation_df_new.index = observation_df_new.index.astype('int64')
+    else:
+        observation_df_new = observation_df
+
+    return observation_df_new
+
+def _interpolate_one(df, interpolation_limit, frequency):
+    
+    interp_out = (df.resample('min').
+                    interpolate(
+                                limit = interpolation_limit, 
+                                limit_direction = 'both'
+                                ).
+                                resample(frequency).
+                                asfreq().
+                                to_numpy()
+                )
+    return interp_out
+
+def _assemble_lastobs_df(
+                        discharge, 
+                        stationIdInd, 
+                        timeInd, 
+                        stationId, 
+                        time, 
+                        modelTimeAtOutput, 
+                        time_since_lastobs,
+                        gage_link_df, 
+                        time_shift=0):
+
+    if not np.all(timeInd==0) or not np.all(time==''):    
+        #Use arrays not directly from DAfocing module
+        gages    = np.char.strip(stationId)
+            
+        ref_time = datetime.strptime(modelTimeAtOutput, "%Y-%m-%d_%H:%M:%S")
+        
+        last_ts = timeInd.max()
+        
+        df_discharge = (
+            pd.DataFrame(
+            data = {
+                'discharge': discharge,
+                'stationIdInd': stationIdInd,
+                'timeInd': timeInd
+                }).
+                set_index(['stationIdInd','timeInd']).
+                unstack(level=0)
+        )
+
+        df_time = (
+            pd.DataFrame(
+            data = {
+                'discharge': time,
+                'stationIdInd': stationIdInd,
+                'timeInd': timeInd
+                }).
+                set_index(['stationIdInd','timeInd']).
+                unstack(level=1)
+        ).to_numpy()
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(df_time[i, idx]) #.decode('utf-8')  <- TODO:decoding was needed in old version, may need again depending on dtype that is provided by model engine
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
+
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+        data_var_dict = {
+            'gages'               : gages,
+            'time_since_lastobs'  : lastobs_times,
+            'lastobs_discharge'   : last_observations
+        }
+    else:
+        #Use arrays from DAforcing module
+        data_var_dict = {
+            'gages'               : stationId,
+            'time_since_lastobs'  : time_since_lastobs,
+            'lastobs_discharge'   : discharge
+
+        }
+
+    lastobs_df = (
+        pd.DataFrame(data = data_var_dict).
+        set_index('gages').
+        join(gage_link_df.reset_index().set_index('gages'), how = 'inner').
+        reset_index().
+        set_index('link')
+    )
+    
+    lastobs_df = lastobs_df[
+        [
+            'gages',
+            'time_since_lastobs',
+            'lastobs_discharge',
+        ]
+    ]
+        
+    lastobs_df.index = lastobs_df.index.astype('int64')
+    return lastobs_df
+
+def _rfc_timeseries_qcqa(discharge,stationId,synthetic,totalCounts,timestamp,timestep,lake_number,t0):
+    rfc_df = pd.DataFrame(
+        {'stationId': stationId,
+         'datetime': timestamp,
+         'discharge': discharge,
+         'synthetic': synthetic
+         }
+    )
+    rfc_df['stationId'] = rfc_df['stationId'].map(bytes.strip)
+
+    validation_df = rfc_df.groupby('stationId').agg(list)
+    validation_index = validation_df.index
+    use_rfc_df = pd.DataFrame()
+    for i in validation_index:
+        val_lake_number = lake_number #TODO: placeholder, figure out how to get lake number here...
+        val_discharge = validation_df.loc[i].discharge
+        val_synthetic = validation_df.loc[i].synthetic
+        
+        use_rfc = _validate_RFC_data(
+            val_lake_number, 
+            val_discharge, 
+            val_synthetic, 
+            '', 
+            '', 
+            300,
+            from_files=False
+            )
+        
+        use_rfc_df = pd.concat([
+            use_rfc_df,
+            pd.DataFrame({
+                'stationId': [i],
+                'use_rfc': use_rfc
+            })
+        ], ignore_index=True)
+        
+    rfc_df = (rfc_df.
+              set_index(['stationId', 'datetime']).
+              unstack(1, fill_value = np.nan)['discharge'])
+    
+    rfc_param_df = (pd.merge(
+        pd.DataFrame(
+        {'stationId': stationId,
+         'idx': rfc_df.columns.get_loc(t0),
+         'da_timestep': timestep,
+         'totalCounts': totalCounts,
+         'update_time': 0,
+         }
+    ).drop_duplicates(),
+    use_rfc_df, on='stationId').
+    set_index('stationId'))
+
+    return rfc_df, rfc_param_df

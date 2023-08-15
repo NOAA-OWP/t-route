@@ -5,13 +5,13 @@ from bmipy import Bmi
 from pathlib import Path
 
 # Here is the model we want to run
-from model_reservoir import reservoir_model
+from model_DAforcing import DAforcing_model
 
-class bmi_reservoir(Bmi):
+class bmi_DAforcing(Bmi):
 
     def __init__(self):
-        """Create a Bmi reservoir model that is ready for initialization."""
-        super(bmi_reservoir, self).__init__()
+        """Create a Bmi DA forcing model that is ready for initialization."""
+        super(bmi_DAforcing, self).__init__()
         self._model = None
         self._values = {}
         #self._var_units = {}
@@ -28,7 +28,7 @@ class bmi_reservoir(Bmi):
     # Required, static attributes of the model
     #----------------------------------------------
     _att_map = {
-        'model_name':         'Reservoir for Next Generation NWM',
+        'model_name':         'DA forcing for Next Generation NWM',
         'version':            '',
         'author_name':        '',
         'grid_type':          'scalar', 
@@ -43,33 +43,47 @@ class bmi_reservoir(Bmi):
     #---------------------------------------------
     _input_var_names = [
         # waterbody static variables
-        'lake_surface__elevation',
-        'LkArea',
-        'WeirE',
-        'WeirC',
-        'WeirL',
-        'dam_length',
-        'OrificeE',
-        'OrificeC',
-        'OrificeA',
-        'LkMxE',
-        'waterbody_id',
-        'ifd',
-        'upstream_ids',
-        'res_type',
-        'da_idx',
-        'time_step',
-        'rfc_forecast_persist_seconds',
-        'synthetic_flag',
-        # dynamic forcing/DA variables
-        'lake_water~incoming__volume_flow_rate',
+        #'lake_surface__elevation',
+        #'LkArea',
+        #'WeirE',
+        #'WeirC',
+        #'WeirL',
+        #'dam_length',
+        #'OrificeE',
+        #'OrificeC',
+        #'OrificeA',
+        #'LkMxE',
+        #'waterbody_id',
+        #'ifd',
+        #'upstream_ids',
+        #'res_type',
+        #'da_idx',
+        #'time_step',
+        #'rfc_forecast_persist_seconds',
+        #'synthetic_flag',
+        # dynamic forcing/DA variables        
+        #'lake_water~incoming__volume_flow_rate',
+        # RFC DA inputs
+        #rfc_timeseries_offset_hours,
+        #rfc_gage_id,
+        #rfc_timeseries_folder,
+        'lake_number',   
         ]
 
     #---------------------------------------------
     # Output variable names (CSDMS standard names)
     #---------------------------------------------
-    _output_var_names = ['lake_water~outgoing__volume_flow_rate',
-                         'lake_surface__elevation'
+    _output_var_names = [
+                         #'lake_water~outgoing__volume_flow_rate',
+                         #'lake_surface__elevation',
+                        # RFC DA ouputs
+                        'waterbody_rfc__use_flag', #'use_RFC', 
+                        'waterbody_rfc__observed_volume_flow_rate', #'rfc_timeseries_discharges', 
+                        'waterbody_rfc__timeseries_index', #'rfc_timeseries_idx', 
+                        'waterbody_rfc__timeseries_update_time', #'rfc_timeseries_update_time', 
+                        'waterbody_rfc__da_time_step', #'rfc_da_time_step', 
+                        'waterbody_rfc__total_count', #'rfc_total_counts',
+                        'waterbody_rfc__file_of_observed_volume_flow_rate', #'rfc_timeseries_file',
                         ]
 
     #------------------------------------------------------
@@ -78,20 +92,33 @@ class bmi_reservoir(Bmi):
     #------------------------------------------------------
     #TODO update all these...
     _var_name_units_map = {
-        'channel_exit_water_x-section__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'channel_water_flow__speed':['streamflow_ms','m s-1'],
-        'channel_water__mean_depth':['streamflow_m','m'],
-        'lake_water~incoming__volume_flow_rate':['waterbody_cms','m3 s-1'],
-        'lake_water~outgoing__volume_flow_rate':['waterbody_cms','m3 s-1'],
-        'lake_surface__elevation':['waterbody_m','m'],
+        #'channel_exit_water_x-section__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'channel_water_flow__speed':['streamflow_ms','m s-1'],
+        #'channel_water__mean_depth':['streamflow_m','m'],
+        #'lake_water~incoming__volume_flow_rate':['waterbody_cms','m3 s-1'],
+        #'lake_water~outgoing__volume_flow_rate':['waterbody_cms','m3 s-1'],
+        #'lake_surface__elevation':['waterbody_m','m'],
         #--------------   Dynamic inputs --------------------------------
-        'land_surface_water_source__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'coastal_boundary__depth':['depth_m', 'm'],
-        'usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'reservoir_usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'reservoir_usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'rfc_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'lastobs__volume_flow_rate':['streamflow_cms','m3 s-1']
+        #'land_surface_water_source__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'coastal_boundary__depth':['depth_m', 'm'],
+        #'usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'reservoir_usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'reservoir_usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'rfc_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
+        #'lastobs__volume_flow_rate':['streamflow_cms','m3 s-1']
+        # TODO: RFC unit map
+        'waterbody__type_number': ['',''],
+        'waterbody__lake_number': ['','string'],  #'lake_number':['',''],
+        'waterbody_rfc__use_flag': ['use_RFC','boolean'],     #'use_RFC':['',''], 
+        'waterbody_rfc__observed_volume_flow_rate': ['streamflow_cms in timeseries', 'm3 s-1'], # 'rfc_timeseries_discharges':['streamflow_cms','m3 s-1'], 
+        'waterbody_rfc__timeseries_index': [' ',' '], #'rfc_timeseries_idx':['time_step_count',''], 
+        'waterbody_rfc__timeseries_update_time': ['time', 'sec'],      #'rfc_timeseries_update_time':['time','s'], 
+        'waterbody_rfc__da_time_step': ['', 'sec'],  #'rfc_da_time_step':['time_step','s'], 
+        'waterbody_rfc__total_count': ['','int'],   #'rfc_total_counts':['count',''],
+        'waterbody_rfc__file_of_observed_volume_flow_rate': ['',''],  #'rfc_timeseries_file':['',''],
+        'usace_timeslice_discharge':['streamflow_cms','m3 s-1'],
+        'usace_timeslice_stationId':['',''],
+        'usace_timeslice_time':['time',''],
     }
 
     #------------------------------------------------------
@@ -112,9 +139,9 @@ class bmi_reservoir(Bmi):
         # -------------- Read in the BMI configuration -------------------------#
         if bmi_cfg_file:
             bmi_cfg_file = Path(bmi_cfg_file)
-        
+
         # ------------- Initialize t-route model ------------------------------#
-        self._model = reservoir_model(bmi_cfg_file)
+        self._model = DAforcing_model(bmi_cfg_file) 
 
         # ----- Create some lookup tabels from the long variable names --------#
         self._var_name_map_long_first = {long_name:self._var_name_units_map[long_name][0] for \
@@ -127,6 +154,21 @@ class bmi_reservoir(Bmi):
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
+        self._values['waterbody__lake_number'] = np.zeros(1, dtype='<U19')
+        self._values['waterbody__type_number'] = np.zeros(1, dtype=int)
+        '''
+        self._values['use_RFC'] = np.zeros(1, dtype=bool) 
+        self._values['rfc_timeseries_discharges'] = np.zeros(289) 
+        self._values['rfc_timeseries_idx'] = np.zeros(1) 
+        self._values['rfc_timeseries_update_time'] = np.zeros(1) 
+        self._values['rfc_da_time_step'] = np.zeros(1) 
+        self._values['rfc_total_counts'] = np.zeros(1)
+        self._values['rfc_timeseries_file'] = np.zeros(1,  dtype='<U19')
+        self._values['usace_timeslice_discharge'] = np.zeros(5192)
+        self._values['usace_timeslice_stationId'] = np.zeros(5192)
+        self._values['usace_timeslice_time'] = np.zeros(5192)
+        '''
+        '''
         #FIXME Do this better..., load size of variables from config file??
         self._values['lake_surface__elevation'] = np.zeros(1)
         self._values['LkArea'] = np.zeros(1)
@@ -142,7 +184,7 @@ class bmi_reservoir(Bmi):
         self._values['ifd'] = np.zeros(1)
         self._values['upstream_ids'] = np.zeros(1, dtype=int)
         self._values['reservoir_type'] = np.zeros(1)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(25)
+        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(12)
         self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
 
 
@@ -158,22 +200,14 @@ class bmi_reservoir(Bmi):
         #RFC DA        
         self._values['rfc_timeseries_offset_hours'] = np.zeros(1)
         self._values['rfc_forecast_persist_days'] = np.zeros(1)
-        self._values['lake_number'] = np.zeros(1, dtype='<U19')
-        self._values['reservoir_type'] = np.zeros(1, dtype=int)
-        self._values['use_RFC'] = np.zeros(1, dtype=bool) 
-        self._values['rfc_timeseries_discharges'] = np.zeros(289) 
-        self._values['rfc_timeseries_idx'] = np.zeros(1) 
-        self._values['rfc_timeseries_update_time'] = np.zeros(1) 
-        self._values['rfc_da_time_step'] = np.zeros(1) 
-        self._values['rfc_total_counts'] = np.zeros(1)
-        self._values['rfc_timeseries_file'] = np.zeros(1,  dtype='<U19')
-
+        '''
         '''
         for var_name in self._input_var_names + self._output_var_names:
             # ---------- Temporarily set to 3 values ------------------#
             # ---------- so just set to zero for now ------------------#
             self._values[var_name] = np.zeros(3)
         '''
+
 
     def update(self):
         """Advance model by one time step."""

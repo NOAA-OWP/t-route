@@ -208,7 +208,7 @@ def main_v04(argv):
         network.update_waterbody_water_elevation()    
         
         # update reservoir parameters and lastobs_df
-        data_assimilation.update_after_compute(run_results)
+        data_assimilation.update_after_compute(run_results, dt*nts)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if "lite_restart" in output_parameters:

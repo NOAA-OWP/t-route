@@ -68,27 +68,27 @@ class troute_model():
         -------
         """
         self._network = tr.HYFeaturesNetwork(
-            self._supernetwork_parameters,
-            waterbody_parameters=self._waterbody_parameters,
-            restart_parameters=self._restart_parameters,
-            forcing_parameters=self._forcing_parameters,
-            data_assimilation_parameters=self._data_assimilation_parameters,
-            compute_parameters=self._compute_parameters,
-            hybrid_parameters=self._hybrid_parameters,
-            from_files=False, value_dict=values,
-            segment_attributes=self._segment_attributes, 
-            waterbody_attributes=self._waterbody_attributes)
+                                self._supernetwork_parameters,
+                                waterbody_parameters=self._waterbody_parameters,
+                                restart_parameters=self._restart_parameters,
+                                forcing_parameters=self._forcing_parameters,
+                                data_assimilation_parameters=self._data_assimilation_parameters,
+                                compute_parameters=self._compute_parameters,
+                                hybrid_parameters=self._hybrid_parameters,
+                                from_files=False, value_dict=values,
+                                segment_attributes=self._segment_attributes, 
+                                waterbody_attributes=self._waterbody_attributes)
 
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
         self._data_assimilation = tr.DataAssimilation(
-        self._network,
-        self._data_assimilation_parameters,
-        self._run_parameters,
-        self._waterbody_parameters,
-        from_files=False,
-        value_dict=values,
-        )
+                                                    self._network,
+                                                    self._data_assimilation_parameters,
+                                                    self._run_parameters,
+                                                    self._waterbody_parameters,
+                                                    from_files=False,
+                                                    value_dict=values,
+                                                    )
 
         if len(values['upstream_id'])>0:
             for key in values['upstream_id']:
@@ -204,14 +204,14 @@ class troute_model():
         self._network.new_t0(self._time_step, nts)
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update_after_compute(self._run_results)
+        self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
         
         # Create output flowveldepth and lakeout arrays
         self._fvd, self._lakeout = _create_output_dataframes(
-            self._run_results,
-            nts,
-            self._network._waterbody_df,
-        )
+                                                            self._run_results,
+                                                            nts,
+                                                            self._network._waterbody_df,
+                                                             )
         values['fvd_results'] = self._fvd.values.flatten()
         values['fvd_index'] = self._fvd.index
         

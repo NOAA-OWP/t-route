@@ -27,6 +27,7 @@ class AbstractNetwork(ABC):
                 "_waterbody_types_df", "_waterbody_type_specified", "_link_gage_df",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
+                "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
                 "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
@@ -65,7 +66,7 @@ class AbstractNetwork(ABC):
         if self.break_points["break_network_at_waterbodies"]:
             self._break_segments = self._break_segments | set(self.waterbody_connections.values())
         if self.break_points["break_network_at_gages"]:
-            self._break_segments = self._break_segments | set(self.gages.get('gages').keys())
+            self._break_segments = self._break_segments | set(self.gages.get('gages',{}).keys())
         
         self.initialize_routing_scheme()
 
@@ -325,6 +326,14 @@ class AbstractNetwork(ABC):
             self._link_gage_df = pd.DataFrame.from_dict(self._gages)
             self._link_gage_df.index.name = 'link'
         return self._link_gage_df
+
+    @property
+    def usgs_lake_gage_crosswalk(self):
+        return self._usgs_lake_gage_crosswalk
+
+    @property
+    def usace_lake_gage_crosswalk(self):
+        return self._usace_lake_gage_crosswalk
 
     @property
     @abstractmethod

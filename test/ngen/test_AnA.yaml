@@ -1,4 +1,4 @@
-# $ python -m nwm_routing -f -V3 test_AnA.yaml
+c# $ python -m nwm_routing -f -V3 test_AnA.yaml
 #--------------------------------------------------------------------------------
 log_parameters:
     #----------
