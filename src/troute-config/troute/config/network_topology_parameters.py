@@ -143,7 +143,6 @@ class WaterbodyParameters(BaseModel):
     break_network_at_waterbodies: bool = False
     level_pool: Optional["LevelPool"] = None
     waterbody_null_code: int = -9999
-    rfc: Optional["RfcParameters"] = None
 
 
 class LevelPool(BaseModel):
@@ -152,16 +151,9 @@ class LevelPool(BaseModel):
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"
 
 
-class RfcParameters(BaseModel):
-    reservoir_parameter_file: Optional[FilePath] = None
-    reservoir_rfc_forecasts: bool = False
-    reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
-    reservoir_rfc_forecasts_lookback_hours: int = 48
-
-
 NetworkTopologyParameters.update_forward_refs()
 PreprocessingParameters.update_forward_refs()
 SupernetworkParameters.update_forward_refs()
 WaterbodyParameters.update_forward_refs()
 LevelPool.update_forward_refs()
-RfcParameters.update_forward_refs()
+

@@ -139,7 +139,7 @@ class StreamflowDA(BaseModel):
     diffusive_streamflow_nudging: bool = False
 
 
-class ReservoirDA(BaseModel):
+class ReservoirPersistenceDA(BaseModel):
     # NOTE: mandatory for USGS reservoir DA, defaults to False
     reservoir_persistence_usgs: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
@@ -151,6 +151,18 @@ class ReservoirDA(BaseModel):
     crosswalk_usace_gage_field: str = "usace_gage_id"
     crosswalk_usgs_lakeID_field: str = "usgs_lake_id"
     crosswalk_usace_lakeID_field: str = "usace_lake_id"
+
+
+class ReservoirRfcParameters(BaseModel):
+    reservoir_rfc_forecasts: bool = False
+    reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
+    reservoir_rfc_forecasts_lookback_hours: int = 48
+
+
+class ReservoirDA(BaseModel):
+    reservoir_persistence_da: Optional[ReservoirPersistenceDA] = None
+    reservoir_rfc_da: Optional[ReservoirRfcParameters] = None
+    reservoir_parameter_file: Optional[FilePath] = None
 
 
 class DataAssimilationParameters(BaseModel):
@@ -209,3 +221,4 @@ class ForcingParameters(BaseModel):
 
 ComputeParameters.update_forward_refs()
 QLateralForcingSet.update_forward_refs()
+ReservoirRfcParameters.update_forward_refs()
