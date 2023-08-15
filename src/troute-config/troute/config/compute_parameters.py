@@ -189,14 +189,14 @@ class DataAssimilationParameters(BaseModel):
 
 
 class ForcingParameters(BaseModel):
-    qts_subdivisions: int = 1
-    dt: int
+    qts_subdivisions: int = 12
+    dt: int = 300
     # TODO: see note about potentially throwing in v3_doc.yaml
     # aaraney: this is optional if `qlat_forcing_sets` is provided
     qlat_input_folder: Optional[DirectoryPath] = None
     # TODO: mandatory if loop sets will be automatically created
     nts: Optional[int]
-    max_loop_size: int = 12
+    max_loop_size: int = 24
     # NOTE: determine if okay to use this default
     qlat_file_index_col: str = "feature_id"
     qlat_file_value_col: str = "q_lateral"
@@ -208,13 +208,17 @@ class ForcingParameters(BaseModel):
     # max_loop_size variables are listed above.
     qlat_forcing_sets: Optional[List[QLateralForcingSet]] = None
 
+    # TODO: shorvath: We might be able to remove binary_nexus_file_folder. 
+    # This converts ngen output .csv files into parquet files for t-route.
     binary_nexus_file_folder: Optional[DirectoryPath] = None
     coastal_boundary_input_file: Optional[FilePath] = None
     # NOTE: aaraney: seen as:
     # in code  : "*.NEXOUT", "*NEXOUT*",
     # in config: "*NEXOUT.parquet" "*NEXUS.csv", "nex-*"
-    nexus_file_pattern_filter: Optional[str] = None
-    nexus_input_folder: Optional[DirectoryPath] = None
+    # TODO: shorvath: I belive we no longer use these two arguments...
+    # need to double check.
+    #nexus_file_pattern_filter: Optional[str] = None
+    #nexus_input_folder: Optional[DirectoryPath] = None
 
 
 ComputeParameters.update_forward_refs()
