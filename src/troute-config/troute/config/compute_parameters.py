@@ -79,6 +79,7 @@ class RestartParameters(BaseModel):
     wrf_hydro_waterbody_crosswalk_filter_file_field_name: Optional[str] = None
 
     # TODO: missing from `v3_doc.yaml`
+    # TODO: shorvath: I think we can remove this...
     hyfeature_channel_restart_file: Optional[FilePath] = None
 
     _coerce_datetime = validator("start_datetime", pre=True, allow_reuse=True)(
