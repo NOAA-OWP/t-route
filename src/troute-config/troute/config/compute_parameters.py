@@ -30,13 +30,6 @@ class ComputeParameters(BaseModel):
     cpu_pool: Optional[int] = None
     return_courant: bool = False
 
-    # TODO: missing from `v3_doc.yaml`
-    model_time_step: int = 300
-    # TODO: missing from `v3_doc.yaml`
-    # TODO: aaraney model_reservoir.py would suggest that this is now required
-    # TODO: guessing this is the right type
-    model_start_time: Optional[datetime] = None
-
     # TODO: default appears to be {}. see nhd_io.read_config_file ~:138
     restart_parameters: "RestartParameters" = Field(default_factory=dict)
     # TODO: default appears to be {}. see nhd_io.read_config_file ~:138
