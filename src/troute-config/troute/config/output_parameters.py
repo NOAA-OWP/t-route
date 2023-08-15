@@ -15,7 +15,10 @@ class OutputParameters(BaseModel):
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
     hydro_rst_output: Optional["HydroRstOutput"] = None
     # TODO: default appears to be {}. see nhd_io.read_config_file ~:141
-    wrf_hydro_parity_check: "WrfHydroParityCheck" = Field(default_factory=dict)
+    # shorvath: parity_parameters defaults to {}, but omitting 'wrf_hydro_parity_check'
+    # from output_parameters will successfully skip lines~112-115 in __main__.py if this
+    # parameter is left blank.
+    wrf_hydro_parity_check: Optional["WrfHydroParityCheck"] = None
     # NOTE: mandatory if writing results to lakeout.
     lakeout_output: Optional[DirectoryPath] = None
 
@@ -60,6 +63,7 @@ class HydroRstOutput(BaseModel):
 class WrfHydroParityCheck(BaseModel):
     # NOTE: required for parity check to occur
     # TODO: not sure if this should be optional?
+    # shorvath: I'm ok with removing parity_checks for t-routeV4...
     parity_check_input_folder: Optional[DirectoryPath] = None
     parity_check_file_index_col: str
     parity_check_file_value_col: str
