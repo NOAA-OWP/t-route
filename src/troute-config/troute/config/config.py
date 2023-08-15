@@ -110,41 +110,7 @@ class Config(BaseModel):
             assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
 
         return values
-    '''
-    @root_validator(skip_on_failure=True)
-    def check_reservoir_parameter_file(cls, values):
-        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
-        if reservoir_da:
-            reservoir_persistence_da = reservoir_da.reservoir_persistence_da
-            reservoir_persistence_usgs = False
-            reservoir_persistence_usace = False
-            if reservoir_persistence_da:
-                reservoir_persistence_usgs = reservoir_persistence_da.reservoir_persistence_usgs
-                reservoir_persistence_usace = reservoir_persistence_da.reservoir_persistence_usace
-            reservoir_rfc_da = reservoir_da.reservoir_rfc_da
-            reservoir_rfc_forecasts = False
-            if reservoir_rfc_da:
-                reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
-            network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
-            if (reservoir_persistence_usgs or reservoir_persistence_usace or reservoir_rfc_forecasts) and network_type=='NHDNetwork':
-                assert reservoir_da.reservoir_parameter_file, 'Reservoir DA is enabled on NHDNetwork, but reservoir_parameter_file is missing.'
 
-        return values
-    
-    @root_validator(skip_on_failure=True)
-    def check_rfc_timeseries_filepath(cls, values):
-        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
-        if reservoir_da:
-            reservoir_rfc_da = reservoir_da.reservoir_rfc_da
-            reservoir_rfc_forecasts = False
-            if reservoir_rfc_da:
-                reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
-                reservoir_rfc_forecasts_time_series_path = reservoir_rfc_da.reservoir_rfc_forecasts_time_series_path
-            if reservoir_rfc_forecasts:
-                assert reservoir_rfc_forecasts_time_series_path, 'RFC forecasts are enabled, but RFC timeseries path is missing.'
-
-        return values
-    '''
     @root_validator(skip_on_failure=True)
     def check_rfc_parameters(cls, values):
         reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
