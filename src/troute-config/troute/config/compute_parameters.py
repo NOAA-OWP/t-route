@@ -144,8 +144,6 @@ class ReservoirPersistenceDA(BaseModel):
     reservoir_persistence_usgs: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
     reservoir_persistence_usace: bool = False
-    # NOTE: mandatory for RFC forecasting
-    gage_lakeID_crosswalk_file: Optional[FilePath] = None
 
     crosswalk_usgs_gage_field: str = "usgs_gage_id"
     crosswalk_usace_gage_field: str = "usace_gage_id"
@@ -171,7 +169,7 @@ class DataAssimilationParameters(BaseModel):
     # NOTE: required for USACE reservoir DA
     usace_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for reservoir DA - suggested value 48 (2 days)
-    timeslice_lookback_hours: int = 0
+    timeslice_lookback_hours: int = 48
 
     interpolation_limit_min: int = 59
 
