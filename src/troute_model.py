@@ -285,6 +285,7 @@ class troute_model():
                     print(
                     f'{key} construction: {time_value:.2f} secs, {percentage:.2f} %'
                 )
+                return self._log_parameters
 # Utility functions -------
 def _read_config_file(custom_input_file): #TODO: Update this function, I dont' think
     # we need all of this for BMI. This was taken directly from t-route model...
