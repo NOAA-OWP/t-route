@@ -10,6 +10,7 @@ import time
 import logging
 import pyarrow as pa
 import pyarrow.parquet as pq
+import xarray as xr
 
 from troute.nhd_network import extract_connections, replace_waterbodies_connections, reverse_network, reachable_network, split_at_waterbodies_and_junctions, split_at_junction, dfs_decomposition
 from troute.nhd_network_utilities_v02 import organize_independent_networks
@@ -741,6 +742,11 @@ class AbstractNetwork(ABC):
                 t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
                 t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
                 t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
+            elif forcing_glob_filter=='*.nc':
+                t1_str = first_file.name.removeprefix('qlat_').removesuffix('.nc')
+                t1 = datetime.strptime(t1_str, '%Y-%m-%d %H:%M:%S')
+                t2_str = second_file.name.removeprefix('qlat_').removesuffix('.nc')
+                t2 = datetime.strptime(t2_str, '%Y-%m-%d %H:%M:%S')
             else:
                 df     = read_file(first_file)
                 t1_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
@@ -810,6 +816,8 @@ class AbstractNetwork(ABC):
                 final_qlat = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1]) 
                 if forcing_glob_filter=="*.CHRTOUT_DOMAIN1":           
                     final_timestamp_str = nhd_io.get_param_str(final_qlat,'model_output_valid_time')
+                elif forcing_glob_filter=='*.nc':
+                    final_timestamp_str = final_qlat.name.removeprefix('qlat_').removesuffix('.nc').replace(' ', '_')
                 else:
                     df = read_file(final_qlat)
                     final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
@@ -862,6 +870,9 @@ def read_file(file_name):
         df = pd.read_csv(file_name)
     elif extension=='.parquet':
         df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    elif extension=='.nc':
+        df = xr.open_dataset(file_name).to_pandas().reset_index()
         df.index.name = None
     
     return df
