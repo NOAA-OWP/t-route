@@ -269,7 +269,7 @@ class troute_model():
             output_end_time = time.time()                           # end of recording time for creating output #
             self.task_times['output_time'] += output_end_time - run_end_time
 
-    def finalize(self,):
+    def print_timing_summary(self,):
             if self.showtiming:
                 print('***************** TIMING SUMMARY *****************')
                 print('----------------------------------------')
@@ -279,12 +279,45 @@ class troute_model():
                               round(self.task_times['run_time'], 2) + 
                               round(self.task_times['output_time'], 2)
                               )
-                for key in self.task_times:
-                    time_value = self.task_times[key]
-                    percentage = (time_value / total_time) * 100
-                    print(
-                    f'{key} construction: {time_value:.2f} secs, {percentage:.2f} %'
+                
+                print(
+                    'Network graph construction:: {} secs, {} %'\
+                    .format(
+                        round(self.task_times['network_time'],2),
+                        round(self.task_times['network_time']/total_time * 100,2)
+                    )
                 )
+                print(
+                    'Data assimilation construction:: {} secs, {} %'\
+                    .format(
+                        round(self.task_times['data_assimilation_time'],2),
+                        round(self.task_times['data_assimilation_time']/total_time * 100,2)
+                    )
+                )
+                print(
+                    'Forcing array construction: {} secs, {} %'\
+                    .format(
+                        round(self.task_times['forcing_time'],2),
+                        round(self.task_times['forcing_time']/total_time * 100,2)
+                    )
+                )
+                print(
+                    'Routing computations: {} secs, {} %'\
+                    .format(
+                        round(self.task_times['run_time'],2),
+                        round(self.task_times['run_time']/total_time * 100,2)
+                    )
+                )
+                print(
+                    'Output writing: {} secs, {} %'\
+                    .format(
+                        round(self.task_times['output_time'],2),
+                        round(self.task_times['output_time']/total_time * 100,2)
+                    )
+                )
+                print('----------------------------------------')
+                print(f'Total execution time: {total_time} secs')
+                    
                 
 # Utility functions -------
 def _read_config_file(custom_input_file): #TODO: Update this function, I dont' think
