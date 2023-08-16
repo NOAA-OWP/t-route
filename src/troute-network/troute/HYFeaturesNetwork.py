@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 from itertools import chain
 from joblib import delayed, Parallel
 from collections import defaultdict
+import xarray as xr
 
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
@@ -601,6 +602,9 @@ def read_file(file_name):
         df = pd.read_csv(file_name)
     elif extension=='.parquet':
         df = pq.read_table(file_name).to_pandas().reset_index()
+        df.index.name = None
+    elif extension=='.nc':
+        df = xr.open_dataset(file_name).to_pandas().reset_index()
         df.index.name = None
     
     return df
