@@ -218,7 +218,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("creating supernetwork connections set")
         if self.showtiming:
             start_time = time.time()
-        
+
         #------------------------------------------------
         # Load hydrofabric information
         #------------------------------------------------
@@ -242,7 +242,7 @@ class HYFeaturesNetwork(AbstractNetwork):
 
         # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
         self.preprocess_data_assimilation(network)
-
+ 
         if self.verbose:
             print("supernetwork connections set complete")
         if self.showtiming:
@@ -250,7 +250,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             
 
         super().__init__()   
-            
+
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
@@ -421,7 +421,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._link_lake_crosswalk = None
 
     def preprocess_data_assimilation(self, network):
-        if not network.empty:
+        if not network.empty and not network.hl_uri.isna().all():
             gages_df = network[['id','hl_uri','hydroseq']].drop_duplicates()
             # clear out missing values
             gages_df = gages_df[~gages_df['hl_uri'].isnull()]
@@ -437,7 +437,6 @@ class HYFeaturesNetwork(AbstractNetwork):
             gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
             # transform dataframe into a dictionary where key is segment ID and value is gage ID
             self._gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
-
             # Create lake_gage crosswalk dataframes:
             link_gage_df = (
                 pd.DataFrame.from_dict(self._gages)
@@ -483,14 +482,16 @@ class HYFeaturesNetwork(AbstractNetwork):
                 lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
                 .set_index('usace_lake_id')
                 )
-            
-            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
-            self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+
+            if not self._waterbody_types_df.empty:
+                self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+                self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+
         else:
             self._gages = {}
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
-    
+        
     def build_qlateral_array(self, run,):
         
         # TODO: set default/optional arguments

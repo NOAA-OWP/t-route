@@ -51,8 +51,8 @@ class DAforcing_model():
             self._time_step = forcing_parameters.get("dt", 300) #time step in sec
             self._nts = forcing_parameters.get("nts", 288) #the number of time steps
             #NOTE: For any each operation either of AnA or Forecast, t0 (model start date) is
-            #provided from config file.
-            self._t0 = restart_parameters.get("model_start_time", None)   
+            #provided from config file.            
+            self._t0 = restart_parameters.get("start_datetime", None)   
             rfc_parameters = data_assimilation_parameters.get("rfc_reservoir_da", None) 
             
             if not self._t0:
@@ -122,81 +122,6 @@ class DAforcing_model():
                                             (lake_gage_df['reservoir_type']==self._res_type[0]), 
                                             'gage_id'].values[0]
 
-    '''
-    def gage_lake_crosswalk(self, values:dict,):
-
-        Compute gage to lake crosswalk DataFrame using reservoir_index_AnA.nc
-
-        Parameters
-        ----------
-        values: dict
-            The model state data structure.
-            
-        Returns
-        -------
-
-      
-        dataset = nc.Dataset(file)
-        lake_id = pd.Series(dataset.variables['lake_id'][:])
-        reservoir_type = pd.Series(dataset.variables['reservoir_type'][:])
-        usgs_lake_id = pd.Series(dataset.variables['usgs_lake_id'][:])
-        usace_lake_id = pd.Series(dataset.variables['usace_lake_id'][:])
-        rfc_lake_id = pd.Series(dataset.variables['rfc_lake_id'][:])
-
-        # Get rfc_gage_id correponding to rfc_lake_id
-        rfc_gage_id_len = dataset.variables['rfc_gage_id'].shape[0]
-        masked_array  = dataset.variables['rfc_gage_id'][:,:]
-        rfc_gage_id =[]
-        for idx in range(rfc_gage_id_len):
-            arr = masked_array[idx]
-            #import pdb; pdb.set_trace()
-            strings = arr.data.astype(str)
-            gage_id=""
-            for string in strings:
-                gage_id=gage_id + string
-            rfc_gage_id.append(gage_id)
-        rfc_gage_id = pd.Series(rfc_gage_id)        
-        
-        # Get usgs_gage_id corresponding to usgs_lake_id
-        usgs_gage_id_len = dataset.variables['usgs_gage_id'].shape[0]
-        masked_array     = dataset.variables['usgs_gage_id'][:,:]
-        usgs_gage_id     = []
-        for idx in range(usgs_gage_id_len):
-            arr     = masked_array[idx]
-            strings = arr.data.astype(str)
-            gage_id = ""
-            for string in strings:
-                gage_id = gage_id + string
-            usgs_gage_id.append(gage_id)
-        usgs_gage_id = pd.Series(usgs_gage_id)  
-
-        # Get usace_gage_id corresponding to usace_lake_id
-        usace_gage_id_len = dataset.variables['usace_gage_id'].shape[0]
-        masked_array      = dataset.variables['usace_gage_id'][:,:]
-        usace_gage_id      = []
-        for idx in range(usace_gage_id_len):
-            arr     = masked_array[idx]
-            strings = arr.data.astype(str)
-            gage_id = ""
-            for string in strings:
-                gage_id = gage_id + string
-            usace_gage_id.append(gage_id)
-        usace_gage_id = pd.Series(usace_gage_id) 
-
-        series_dict={
-                    'lake_id': lake_id,
-                    'reservoir_type': reservoir_type,
-                    'usgs_lake_id': usgs_lake_id,
-                    'usgs_gage_id': usgs_gage_id,
-                    'usace_lake_id': usace_lake_id,
-                    'usace_gage_id': usace_gage_id,
-                    'rfc_lake_id': rfc_lake_id,
-                    'rfc_gage_id': rfc_gage_id,
-                    }        
-
-        # 
-    '''
-
     def run(self, values: dict,):
         """
         Run this model into the future, updating the state stored in the provided model dict appropriately.
@@ -230,9 +155,9 @@ class DAforcing_model():
                 #1D array with each element starting with stationID, followed by time_since_lastobs and lastobs_discharge 
                 lastobs_arr =  np.array(lastobs_df.to_records(index=True))
                 self._lastobs_stationId  = lastobs_arr['gages'].tolist()
-                self._time_since_lastobs =  lastobs_arr['time_since_lastobs'].tolist()                
-                self._lastobs_discharge  =  lastobs_arr['lastobs_discharge'].tolist()
-                import pdb; pdb.set_trace()
+                self._time_since_lastobs = lastobs_arr['time_since_lastobs'].tolist()                
+                self._lastobs_discharge  = lastobs_arr['lastobs_discharge'].tolist()
+
             # replace link ids with lake ids, for gages at waterbody outlets, 
             # otherwise, gage data will not be assimilated at waterbody outlet
             # segments.
@@ -264,7 +189,7 @@ class DAforcing_model():
             #value_dict=None, 
             persistence_reservoir_da = self._data_assimilation_parameters.get("persistence_reservoir_da", None)
             streamflow_da_parameters = self._data_assimilation_parameters.get('streamflow_da', None)
-            
+
             # Compared to _create_usgs_df used in DataAssimilation.py, this _create_timeslice_df doesn't
             # do crosswalk b/t gageID and linkID and QC, all of which will be performed within t-route.
             timeslice_obs_df = _create_timeslice_df(
@@ -295,7 +220,7 @@ class DAforcing_model():
             self._timeslice_datetime          = datetime_repeat_list
             self._timeslice_stationId         = stationId_repeat_list
             self._timeslice_discharge_quality = np.full(len(obs_list),100)
-            import pdb; pdb.set_trace()
+
         if self._res_type==4 or self._res_type==5:
             (self._use_RFC, 
              self._rfc_timeseries_discharges, 
@@ -311,7 +236,6 @@ class DAforcing_model():
                                                         int(self._lake_number[0]),
                                                         self._time_step
                                                         )
-        import pdb; pdb.set_trace()
 
 # Utility functions -------
 def _read_config_file(custom_input_file):
@@ -555,6 +479,7 @@ def _create_timeslice_df(
     usgs_timeslices_folder = persistence_reservoir_da.get('usgs_timeslices_folder', None)
     usace_timeslices_folder = persistence_reservoir_da.get('usace_timeslices_folder', None)    
 
+    timeslice_files= False
     if usgs_timeslices_folder and usgs_da:
         usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
         timeslice_files = [usgs_timeslices_folder.joinpath(f) for f in 

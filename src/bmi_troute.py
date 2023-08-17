@@ -134,6 +134,11 @@ class bmi_troute(Bmi):
         # -------------- Read in the BMI configuration -------------------------#
         bmi_cfg_file = Path(bmi_cfg_file)
         bmi_parameters = _read_config_file(bmi_cfg_file)
+        flowpath_columns = bmi_parameters.get('flowpath_columns')
+        attributes_columns = bmi_parameters.get('attributes_columns')
+        lakes_columns = bmi_parameters.get('waterbody_columns', [])
+        network_columns = bmi_parameters.get('network_columns', [])
+
         n_segment = int(bmi_parameters.get('segment_number'))
         n_waterbody = int(bmi_parameters.get('waterbody_number'))
         n_io = int(bmi_parameters.get('io_number'))
@@ -150,25 +155,26 @@ class bmi_troute(Bmi):
                                           long_name in self._var_name_units_map.keys()}
         self._var_units_map = {long_name:self._var_name_units_map[long_name][1] for \
                                           long_name in self._var_name_units_map.keys()}
-    
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
-        #FIXME Do this better..., load size of variables from config file??
-        self._values['segment_id'] = np.zeros(n_segment, dtype=int)
-        self._values['segment_toid'] = np.zeros(n_segment, dtype=int)
-        self._values['dx'] = np.zeros(n_segment)
+        for col in flowpath_columns + attributes_columns + lakes_columns + network_columns:
+            self._values[col] = np.zeros(0)
+        
+        self._values['id'] = np.zeros(n_segment, dtype=int)
+        self._values['toid'] = np.zeros(n_segment, dtype=int)
+        self._values['lengthkm'] = np.zeros(n_segment)
         self._values['n'] = np.zeros(n_segment)
-        self._values['ncc'] = np.zeros(n_segment)
-        self._values['s0'] = np.zeros(n_segment)
-        self._values['bw'] = np.zeros(n_segment)
-        self._values['tw'] = np.zeros(n_segment)
-        self._values['twcc'] = np.zeros(n_segment)
+        self._values['nCC'] = np.zeros(n_segment)
+        self._values['So'] = np.zeros(n_segment)
+        self._values['BtmWdth'] = np.zeros(n_segment)
+        self._values['TopWdth'] = np.zeros(n_segment)
+        self._values['TopWdthCC'] = np.zeros(n_segment)
         self._values['alt'] = np.zeros(n_segment)
-        self._values['musk'] = np.zeros(n_segment)
-        self._values['musx'] = np.zeros(n_segment)
-        self._values['cs'] = np.zeros(n_segment)
-        self._values['waterbody_id'] = np.zeros(n_waterbody, dtype=int)
+        self._values['MusK'] = np.zeros(n_segment)
+        self._values['MusX'] = np.zeros(n_segment)
+        self._values['ChSlp'] = np.zeros(n_segment)        
+        self._values['hl_link'] = np.zeros(n_waterbody, dtype=int)
         self._values['waterbody_toid'] = np.zeros(n_waterbody, dtype=int)
         self._values['LkArea'] = np.zeros(n_waterbody)
         self._values['LkMxE'] = np.zeros(n_waterbody)
@@ -179,16 +185,19 @@ class bmi_troute(Bmi):
         self._values['WeirE'] = np.zeros(n_waterbody)
         self._values['WeirL'] = np.zeros(n_waterbody)
         self._values['ifd'] = np.zeros(n_waterbody)
+        self._values['network_id'] = np.zeros(n_segment)
+        self._values['hydroseq'] = np.zeros(n_segment)
+        self._values['hl_uri'] = np.zeros(n_segment)
         #self._values['qd0'] = np.zeros(1) #TODO will this come from a file or model engine?
         #self._values['h0'] = np.zeros(1) #TODO will this come from a file or model engine?
         self._values['reservoir_type'] = np.zeros(n_waterbody)
+        self._values['waterbody_connections__link'] = np.zeros(0)
+        self._values['waterbody_connections__lake'] = np.zeros(0)        
+        
         self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(n_io)
+        self._values['land_surface_water_source__id'] = np.zeros(n_io)
         self._values['coastal_boundary__depth'] = np.zeros(0)
-        #self._values['usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        #self._values['reservoir_usgs_gage_observation__volume_flow_rate'] = np.zeros(0)
-        #self._values['reservoir_usace_gage_observation__volume_flow_rate'] = np.zeros(0)
-        #self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        #self._values['lastobs__volume_flow_rate'] = np.zeros(0)
+
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(n_io)
         self._values['channel_water_flow__speed'] = np.zeros(n_io)
         self._values['channel_water__mean_depth'] = np.zeros(n_io)
@@ -208,6 +217,8 @@ class bmi_troute(Bmi):
         self._values['fvd_index'] = np.zeros(1)
 
         # Data assimilation values
+        self._values['gage_crosswalk__segID'] = np.zeros(0, dtype=int)
+        self._values['gage_crosswalk__gageID'] = np.zeros(0, dtype='<U19')
         self._values['gages'] = np.zeros(6, dtype='<U19')
         self._values['usgs_timeslice_discharge'] = np.zeros(10010)
         self._values['usgs_timeslice_stationId'] = np.zeros(10010, dtype='<U19')
@@ -235,11 +246,6 @@ class bmi_troute(Bmi):
         self._values['rfc_totalCounts'] = np.zeros(0)
         self._values['rfc_datetime'] = np.zeros(3, dtype='<U19')
         self._values['rfc_timestep'] = np.zeros(0)
-
-        """
-        #TODO Update loading RFC data not through Fortran reservoir module.
-        self._values['rfc_gage_observation__volume_flow_rate'] = np.zeros(0)
-        """
 
     # Currently utilized BMI functions:
     def update(self):
@@ -270,10 +276,10 @@ class bmi_troute(Bmi):
         src : array_like
             Array of new values.
         """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
+        #val = self.get_value_ptr(var_name)
+        #val[:] = src.reshape(val.shape)
         
-        #self._values[var_name] = src
+        self._values[var_name] = src
 
     def get_value(self, var_name):
         """Copy of values.

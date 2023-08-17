@@ -23,8 +23,8 @@ class troute_model():
         __slots__ = ['_log_parameters', '_preprocessing_parameters', '_supernetwork_parameters', 
                      '_waterbody_parameters', '_compute_parameters', '_forcing_parameters', 
                      '_restart_parameters', '_hybrid_parameters', '_output_parameters', 
-                     '_parity_parameters', '_data_assimilation_parameters', '_time', 
-                     '_segment_attributes', '_waterbody_attributes', '_network',
+                     '_parity_parameters', '_data_assimilation_parameters', '_bmi_parameters',
+                     '_time', '_segment_attributes', '_waterbody_attributes', '_network',
                      '_data_assimilation', '_fvd', '_lakeout']
         
         (
@@ -38,6 +38,7 @@ class troute_model():
             self._output_parameters, 
             self._parity_parameters, 
             self._data_assimilation_parameters,
+            self._bmi_parameters,
         ) = _read_config_file(bmi_cfg_file)
 
         self._run_parameters = {
@@ -68,16 +69,15 @@ class troute_model():
         -------
         """
         self._network = tr.HYFeaturesNetwork(
-                                self._supernetwork_parameters,
-                                waterbody_parameters=self._waterbody_parameters,
-                                restart_parameters=self._restart_parameters,
-                                forcing_parameters=self._forcing_parameters,
-                                data_assimilation_parameters=self._data_assimilation_parameters,
-                                compute_parameters=self._compute_parameters,
-                                hybrid_parameters=self._hybrid_parameters,
-                                from_files=False, value_dict=values,
-                                segment_attributes=self._segment_attributes, 
-                                waterbody_attributes=self._waterbody_attributes)
+            self._supernetwork_parameters,
+            waterbody_parameters=self._waterbody_parameters,
+            restart_parameters=self._restart_parameters,
+            forcing_parameters=self._forcing_parameters,
+            data_assimilation_parameters=self._data_assimilation_parameters,
+            compute_parameters=self._compute_parameters,
+            hybrid_parameters=self._hybrid_parameters,
+            from_files=False, value_dict=values,
+            bmi_parameters=self._bmi_parameters,)
 
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
@@ -99,8 +99,6 @@ class troute_model():
                     for rli, _ in enumerate(self._network._reaches_by_tw[tw]):
                         self._network._reaches_by_tw[tw][rli].remove(key)
 
-
-
     def run(self, values: dict, until=300):
         """
         Run this model into the future, updating the state stored in the provided model dict appropriately.
@@ -115,23 +113,26 @@ class troute_model():
         Returns
         -------
         """
+
         # Set input data into t-route objects
         # Forcing values:
+        #FIX: index=self._network.segment_index is temporary fix, which needs to be updated
         self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
             pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
-                         index=values['segment_id'])
+                         index=self._network.segment_index)
         )
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
         if len(values['upstream_id'])>0:
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
         else:
             flowveldepth_interorder = {}
-
-        # Data Assimilation values:
-        self._data_assimilation._usgs_df = pd.DataFrame(values['usgs_gage_observation__volume_flow_rate'])
-        self._data_assimilation._last_obs_df = pd.DataFrame(values['lastobs__volume_flow_rate'])
-        self._data_assimilation._reservoir_usgs_df = pd.DataFrame(values['reservoir_usgs_gage_observation__volume_flow_rate'])
-        self._data_assimilation._reservoir_usace_df = pd.DataFrame(values['reservoir_usace_gage_observation__volume_flow_rate'])
+      
+        # Trim the time-extent of the streamflow_da usgs_df
+        # what happens if there are timeslice files missing on the front-end? 
+        # if the first column is some timestamp greater than t0, then this will throw
+        # an error. Need to think through this more. 
+        if not self._data_assimilation.usgs_df.empty:
+            self._data_assimilation._usgs_df = self._data_assimilation.usgs_df.loc[:,self._network.t0.strftime('%Y-%m-%d %H:%M:%S'):]
 
         # Adjust number of steps based on user input
         nts = int(until/self._time_step)
@@ -178,7 +179,7 @@ class troute_model():
                          self._network.unrefactored_topobathy_df,
                          flowveldepth_interorder,
                          )
-        
+
         # update initial conditions with results output
         self._network.new_q0(self._run_results)
         # update offnetwork_upstream initial conditions
@@ -204,7 +205,8 @@ class troute_model():
         self._network.new_t0(self._time_step, nts)
 
         # get reservoir DA initial parameters for next loop iteration
-        self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
+        if not self._network._link_gage_df.empty:
+            self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
         
         # Create output flowveldepth and lakeout arrays
         self._fvd, self._lakeout = _create_output_dataframes(
@@ -227,10 +229,10 @@ class troute_model():
             self._run_results, 
             nts, 
             self._network._waterbody_df,)
-        
+
         # update model time
         self._time += self._time_step * nts
-
+        
 
 # Utility functions -------
 def _read_config_file(custom_input_file): #TODO: Update this function, I dont' think
@@ -268,24 +270,6 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         supernetwork_parameters["title_string"]       = "HY_Features Test"
         supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
         supernetwork_parameters["flowpath_edge_list"] = None    
-        routelink_attr = {
-                        #link????
-                        "key": "id",
-                        "downstream": "toid",
-                        "dx": "length_m",
-                        "n": "n",  # TODO: rename to `manningn`
-                        "ncc": "nCC",  # TODO: rename to `mannningncc`
-                        "s0": "So",
-                        "bw": "BtmWdth",  # TODO: rename to `bottomwidth`
-                        #waterbody: "NHDWaterbodyComID",
-                        "tw": "TopWdth",  # TODO: rename to `topwidth`
-                        "twcc": "TopWdthCC",  # TODO: rename to `topwidthcc`
-                        "alt": "alt",
-                        "musk": "MusK",
-                        "musx": "MusX",
-                        "cs": "ChSlp"  # TODO: rename to `sideslope`
-                        }
-        supernetwork_parameters["columns"]             = routelink_attr 
         supernetwork_parameters["waterbody_null_code"] = -9999
         supernetwork_parameters["terminal_code"]       =  0
         supernetwork_parameters["driver_string"]       = "NetCDF"
@@ -306,6 +290,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     )
     output_parameters = data.get("output_parameters", {})
     parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
+    bmi_parameters = data.get("bmi_parameters", {})
 
     return (
         preprocessing_parameters,
@@ -318,6 +303,7 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        bmi_parameters,
     )
 
 def _retrieve_last_output(results, nts, waterbodies_df,):

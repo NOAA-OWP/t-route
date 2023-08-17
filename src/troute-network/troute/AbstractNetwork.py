@@ -586,9 +586,12 @@ class AbstractNetwork(ABC):
                     len(waterbodies_initial_states_df)
                 )
 
-            self._waterbody_df = pd.merge(
-                self.waterbody_dataframe, waterbodies_initial_states_df, on=index_id
-            )
+            if index_id in self.waterbody_dataframe and index_id in waterbodies_initial_states_df:
+                self._waterbody_df = pd.merge(
+                    self.waterbody_dataframe, waterbodies_initial_states_df, on=index_id
+                )
+            else:
+                self._waterbody_df=pd.DataFrame()
 
             LOG.debug(
                 "waterbody initial states complete in %s seconds."\

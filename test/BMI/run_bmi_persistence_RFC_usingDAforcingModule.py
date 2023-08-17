@@ -83,21 +83,24 @@ full_model = bmi_troute.bmi_troute()
 full_model.initialize(bmi_cfg_file='/home/dongha.kim/github/t-route/test/BMI/bmi_large_example.yaml')
 
 # Set static values
-#Segment parameters
-full_model.set_value('segment_id', np.array([1056,385,156,158,159,157]))
-full_model.set_value('segment_toid', np.array([157,157,157,159,160,158]))
-full_model.set_value('dx', np.array([3383.185374,7247.358765,2090.045820,2059.280869,3909.862245,1568.900922]))
+#flowpaths layer parameters
+full_model.set_value('id', np.array([1056,385,156,158,159,157]))
+full_model.set_value('toid', np.array([157,157,157,159,160,158]))
+full_model.set_value('lengthkm', np.array([3.383,7.247,2.090,2.059,3.909,1.568]))
+#flowpath_attributes layer parameters
+full_model.set_value('attributes_id', np.array([1056,385,156,158,159,157]))
+full_model.set_value('rl_gages', np.array(['08117995', '08124000', '08130700', 'NULL', 'NULL', 'NULL']))
+full_model.set_value('rl_NHDWaterbodyComID', np.array(['NULL', 'NULL', 'NULL','NULL', 'NULL', 157 ]))
 full_model.set_value('n', np.array([0.060000,0.059635,0.050000,0.057287,0.050000,0.055400]))
-full_model.set_value('ncc', np.array([0.120000,0.119270,0.100000,0.114575,0.100000,0.110800]))
-full_model.set_value('s0', np.array([0.011690,0.018579,0.000211,0.030771,0.002016,0.017703]))
-full_model.set_value('bw', np.array([2.860991,2.809054,19.379018,6.677849,20.134363,9.857479]))
-full_model.set_value('tw', np.array([4.768318,4.681756,32.298364,11.129749,33.557271,16.429131]))
-full_model.set_value('twcc', np.array([14.304953,14.045269,96.895086,33.389247,100.671812,49.287396]))
+full_model.set_value('nCC', np.array([0.120000,0.119270,0.100000,0.114575,0.100000,0.110800]))
+full_model.set_value('So', np.array([0.011690,0.018579,0.000211,0.030771,0.002016,0.017703]))
+full_model.set_value('BtmWdth', np.array([2.860991,2.809054,19.379018,6.677849,20.134363,9.857479]))
+full_model.set_value('TopWdth', np.array([4.768318,4.681756,32.298364,11.129749,33.557271,16.429131]))
+full_model.set_value('TopWdthCC', np.array([14.304953,14.045269,96.895086,33.389247,100.671812,49.287396]))
 full_model.set_value('alt', np.array([1.0,1.0,1.0,1.0,1.0,1.0]))
-full_model.set_value('musk', np.array([3600.0,3600.0,3600.0,3600.0,3600.0,3600.0]))
-full_model.set_value('musx', np.array([0.2,0.2,0.2,0.2,0.2,0.2]))
-full_model.set_value('cs', np.array([0.585855,0.610357,0.251915,0.581235,0.247701,0.519852]))
-
+full_model.set_value('MusK', np.array([3600.0,3600.0,3600.0,3600.0,3600.0,3600.0]))
+full_model.set_value('MusX', np.array([0.2,0.2,0.2,0.2,0.2,0.2]))
+full_model.set_value('ChSlp', np.array([0.585855,0.610357,0.251915,0.581235,0.247701,0.519852]))
 #Waterbody parameters
 full_model.set_value('waterbody_id', np.array([157]))
 full_model.set_value('waterbody_toid', np.array([158]))
@@ -128,37 +131,49 @@ reservoir_model = bmi_reservoirs.bmi_reservoir()
 reservoir_model.initialize(bmi_cfg_file='/home/dongha.kim/github/t-route/test/BMI/bmi_reservoir_example.yaml')
 
 # Set static values
-#Segment parameters, upper
-upper_routing_model.set_value('segment_id', np.array([1056,385,156]))
-upper_routing_model.set_value('segment_toid', np.array([157,157,157]))
-upper_routing_model.set_value('dx', np.array([3383.185374,7247.358765,2090.045820]))
+#flowpaths layer parameters
+upper_routing_model.set_value('id', np.array(['wb-1056','wb-385','wb-156']))
+upper_routing_model.set_value('toid', np.array(['nex-157','nex-157','nex-157']))
+upper_routing_model.set_value('lengthkm', np.array([3.383,7.247,2.090]))
+#flowpath_attributes layer parameters
+upper_routing_model.set_value('attributes_id', np.array(['wb-1056','wb-385','wb-156']))
+upper_routing_model.set_value('rl_gages', np.array(['08117995', '08124000', '08130700']))
+upper_routing_model.set_value('rl_NHDWaterbodyComID', np.array([None, None, None]))
 upper_routing_model.set_value('n', np.array([0.060000,0.059635,0.050000]))
-upper_routing_model.set_value('ncc', np.array([0.120000,0.119270,0.100000]))
-upper_routing_model.set_value('s0', np.array([0.011690,0.018579,0.000211]))
-upper_routing_model.set_value('bw', np.array([2.860991,2.809054,19.379018]))
-upper_routing_model.set_value('tw', np.array([4.768318,4.681756,32.298364]))
-upper_routing_model.set_value('twcc', np.array([14.304953,14.045269,96.895086]))
+upper_routing_model.set_value('nCC', np.array([0.120000,0.119270,0.100000]))
+upper_routing_model.set_value('So', np.array([0.011690,0.018579,0.000211]))
+upper_routing_model.set_value('BtmWdth', np.array([2.860991,2.809054,19.379018]))
+upper_routing_model.set_value('TopWdth', np.array([4.768318,4.681756,32.298364]))
+upper_routing_model.set_value('TopWdthCC', np.array([14.304953,14.045269,96.895086]))
 upper_routing_model.set_value('alt', np.array([1.0,1.0,1.0]))
-upper_routing_model.set_value('musk', np.array([3600.0,3600.0,3600.0]))
-upper_routing_model.set_value('musx', np.array([0.2,0.2,0.2]))
-upper_routing_model.set_value('cs', np.array([0.585855,0.610357,0.251915]))
+upper_routing_model.set_value('MusK', np.array([3600.0,3600.0,3600.0]))
+upper_routing_model.set_value('MusX', np.array([0.2,0.2,0.2]))
+upper_routing_model.set_value('ChSlp', np.array([0.585855,0.610357,0.251915]))
+upper_routing_model.set_value('network_id', np.array(['wb-1056','wb-385','wb-156']))
+upper_routing_model.set_value('hydroseq', np.array([1,2,3]) )
+upper_routing_model.set_value('hl_uri', np.array(['Gages-08117995', 'Gages-08124000', 'Gages-08130700']))
 
-#Segment parameters, lower
-lower_routing_model.set_value('segment_id', np.array([158,159,157]))
-lower_routing_model.set_value('segment_toid', np.array([159,160,158]))
-lower_routing_model.set_value('dx', np.array([2059.280869,3909.862245,1568.900922]))
+#flowpaths layer parameters, lower
+lower_routing_model.set_value('id', np.array(['wb-158','wb-159','wb-157']))
+lower_routing_model.set_value('toid', np.array(['nex-159','nex-160','nex-158']))
+lower_routing_model.set_value('lengthkm', np.array([2.059,3.909,1.568]))
+#flowpath_attributes parameters
+lower_routing_model.set_value('attributes_id', np.array(['wb-158','wb-159','wb-157']))
+lower_routing_model.set_value('rl_gages', np.array([None, None, None]))
+lower_routing_model.set_value('rl_NHDWaterbodyComID', np.array([None, None, None]))
 lower_routing_model.set_value('n', np.array([0.057287,0.050000,0.055400]))
-lower_routing_model.set_value('ncc', np.array([0.114575,0.100000,0.110800]))
-lower_routing_model.set_value('s0', np.array([0.030771,0.002016,0.017703]))
-lower_routing_model.set_value('bw', np.array([6.677849,20.134363,9.857479]))
-lower_routing_model.set_value('tw', np.array([11.129749,33.557271,16.429131]))
-lower_routing_model.set_value('twcc', np.array([33.389247,100.671812,49.287396]))
+lower_routing_model.set_value('nCC', np.array([0.114575,0.100000,0.110800]))
+lower_routing_model.set_value('So', np.array([0.030771,0.002016,0.017703]))
+lower_routing_model.set_value('BtmWdth', np.array([6.677849,20.134363,9.857479]))
+lower_routing_model.set_value('TopWdth', np.array([11.129749,33.557271,16.429131]))
+lower_routing_model.set_value('TopWdthCC', np.array([33.389247,100.671812,49.287396]))
 lower_routing_model.set_value('alt', np.array([1.0,1.0,1.0]))
-lower_routing_model.set_value('musk', np.array([3600.0,3600.0,3600.0]))
-lower_routing_model.set_value('musx', np.array([0.2,0.2,0.2]))
-lower_routing_model.set_value('cs', np.array([0.581235,0.247701,0.519852]))
-
-
+lower_routing_model.set_value('MusK', np.array([3600.0,3600.0,3600.0]))
+lower_routing_model.set_value('MusX', np.array([0.2,0.2,0.2]))
+lower_routing_model.set_value('ChSlp', np.array([0.581235,0.247701,0.519852]))
+lower_routing_model.set_value('network_id', np.array(['wb-158','wb-159','wb-157']))
+lower_routing_model.set_value('hydroseq', np.array([5, 6, 4]) )
+lower_routing_model.set_value('hl_uri', np.array([None, None, None]))
 
 
 # build RFC DA forcing and related inputs
@@ -176,9 +191,8 @@ reservoir_model = bmi_reservoirs.bmi_reservoir()
 reservoir_model.initialize(bmi_cfg_file='/home/dongha.kim/github/t-route/test/BMI/bmi_reservoir_example.yaml')
 
 # move DA forcing data obtained from DAforcing_model to reservoir_model
-
 #Waterbody parameters
-reservoir_model.set_value('waterbody_id', np.array([157]))
+reservoir_model.set_value('hl_link', np.array([347987]))
 #reservoir_model.set_value('waterbody_toid', np.array([158]))
 reservoir_model.set_value('LkArea', np.array([61.150299]))
 reservoir_model.set_value('LkMxE', np.array([201.179993]))
@@ -189,6 +203,7 @@ reservoir_model.set_value('WeirC', np.array([0.4]))
 reservoir_model.set_value('WeirE', np.array([199.586993]))
 reservoir_model.set_value('WeirL', np.array([10.0]))
 reservoir_model.set_value('ifd', np.array([0.9]))
+reservoir_model.set_value('reservoir_type', np.array(DAforcing_model._model._res_type))
 
 if DAforcing_model._model._res_type==4 or DAforcing_model._model._res_type==5:
     reservoir_model.set_value('lake_number', DAforcing_model._values['lake_number'] )
@@ -202,7 +217,6 @@ if DAforcing_model._model._res_type==4 or DAforcing_model._model._res_type==5:
     reservoir_model.set_value('rfc_timeseries_file',  np.array(DAforcing_model._model._rfc_timeseries_file))
     reservoir_model.set_value('lake_surface__elevation', np.array([-1.000000e+09]))
 
-import pdb; pdb.set_trace()
 if DAforcing_model._model._res_type==2 or DAforcing_model._model._res_type==3:
     #DA forcing for usgs_df
     upper_routing_model.set_value('gages', np.array(['1056','08117995','385','08124000','156','08130700']))
@@ -220,11 +234,6 @@ if DAforcing_model._model._res_type==2 or DAforcing_model._model._res_type==3:
     upper_routing_model.set_value('lastobs_discharge', np.array(DAforcing_model._model._lastobs_discharge))
     upper_routing_model.set_value('time_since_lastobs', np.array(DAforcing_model._model._time_since_lastobs))
     upper_routing_model.set_value('lastobs_stationId', np.array(DAforcing_model._model._lastobs_stationId))    
-
-
-
-
-
 
 # Create random forcing values
 forcing_vals = np.random.gamma(1,1,6*120).reshape(120,6)
@@ -252,7 +261,6 @@ for hr in range(120):
     full_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,:])
     full_model.set_value('gage_observations', gage_vals)
     full_model.set_value('gage_time', gage_times)
-    import pdb; pdb.set_trace()
     full_model.update_until(3600)
     
     flowveldepth, wbdy = create_output_dataframes(full_model._model._run_results, 
@@ -264,10 +272,8 @@ for hr in range(120):
     '''
      # Split network
     # Set dynamic values
-    upper_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,0:3])
-    import pdb; pdb.set_trace()
+    /home/dongha.kim/github/t-route/test/inputupper_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,0:3])
     upper_routing_model.update_until(3600)
-
     flowveldepth, wbdy = create_output_dataframes(upper_routing_model._model._run_results, 
                                                   3600/upper_routing_model._model._time_step, 
                                                   upper_routing_model._model._network.waterbody_dataframe)
@@ -316,9 +322,7 @@ for hr in range(120):
                                 139])
 
     reservoir_model.set_value('lake_water~incoming__volume_flow_rate', reservoir_inflow)
-    import pdb; pdb.set_trace()
     reservoir_model.update_until(3600)
-    import pdb; pdb.set_trace()
     ## here here lover
     upstream_fvd = np.asarray(
         [
@@ -330,6 +334,7 @@ for hr in range(120):
     reservoir_model._model._outflow_list = []
     reservoir_model._model._water_elevation_list = []
     
+
     lower_routing_model.set_value('land_surface_water_source__volume_flow_rate', forcing_vals[hr,3:6])
     lower_routing_model.set_value('upstream_id', np.array([int(157)]))
     lower_routing_model.set_value('upstream_fvd', upstream_fvd)
@@ -341,8 +346,7 @@ for hr in range(120):
     
     lower_fvd = pd.concat([lower_fvd, flowveldepth], axis=1)
     res_fvd = pd.concat([res_fvd, pd.DataFrame(upstream_fvd.reshape(12,3))], axis=0)
-    
-import pdb; pdb.set_trace()
+
 full_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/full_fvd.csv')
 upper_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/upper_fvd.csv')
 lower_fvd.to_csv('/home/dongha.kim/github/t-route/temp_output/persistence/lower_fvd.csv')

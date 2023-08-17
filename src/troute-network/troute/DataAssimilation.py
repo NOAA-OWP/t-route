@@ -64,13 +64,13 @@ class NudgingDA(AbstractDA):
         from_files = False
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
-            if not from_files:
+            if not from_files and not network.link_gage_df.empty:
                 #self._usgs_df = pd.DataFrame(index=value_dict['usgs_gage_ids'])
                 #self._last_obs_df = pd.DataFrame(index=value_dict['lastobs_ids'])
                 
                 # Handle QC/QA and interpolation:
                 qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                
+
                 self._usgs_df = _timeslice_qcqa(
                                                 value_dict['usgs_timeslice_discharge'],
                                                 value_dict['usgs_timeslice_stationId'],
@@ -108,8 +108,8 @@ class NudgingDA(AbstractDA):
                 # segments.
                 if network.link_lake_crosswalk:
                     self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
-                
-                self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                if not network.link_gage_df.empty:
+                    self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
     
     def update_after_compute(self, run_results, time_increment):
     #def update_after_compute(self, run_results, ):
@@ -166,8 +166,10 @@ class NudgingDA(AbstractDA):
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
         
         if streamflow_da_parameters.get('streamflow_nudging', False):
-            self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-            
+            if not network.link_gage_df.empty:
+                self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            else:
+                self._usgs_df = pd.DataFrame()
 
 class PersistenceDA(AbstractDA):
     """
@@ -203,7 +205,7 @@ class PersistenceDA(AbstractDA):
                 if self._usgs_df.empty:
 
                     qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                    
+
                     self._usgs_df = _timeslice_qcqa(
                         value_dict['timeslice_discharge'],
                         value_dict['timeslice_stationId'],
@@ -357,7 +359,7 @@ class PersistenceDA(AbstractDA):
         # if the first column is some timestamp greater than t0, then this will throw
         # an error. Need to think through this more. 
         if not self._usgs_df.empty:
-            self._usgs_df = self._usgs_df.loc[:,network.t0:]
+            self._usgs_df = self._usgs_df.loc[:,network.t0.strftime('%Y-%m-%d %H:%M:%S'):]
     
     def update_after_compute(self, run_results,):
         '''
@@ -571,7 +573,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, network, from_files, value_dict)
-    
+
     def update_after_compute(self, run_results,time_increment):
         '''
         
@@ -687,12 +689,12 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-    
+
     # TODO: join timeslice folder and files into complete path upstream
     usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
     usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
                   da_run['usgs_timeslice_files']]
-	
+
     if usgs_files:
         usgs_df = (
             nhd_io.get_obs_from_timeslices(
@@ -1118,7 +1120,7 @@ def _timeslice_qcqa(discharge,
                             }).
                              set_index(['stationId', 'datetime']).
                              unstack(1, fill_value = np.nan)['quality'])
-    import pdb; pdb.set_trace()
+
     # Link <> gage crosswalk data
     df = crosswalk_df.reset_index()
     df[crosswalk_gage_field] = np.asarray(df[crosswalk_gage_field]).astype('<U15')
@@ -1142,6 +1144,8 @@ def _timeslice_qcqa(discharge,
     t2 = datetime.strptime(t2, "%Y-%m-%d %H:%M:%S")
     dt= (t2 - t1).seconds
 
+    #when DAforcing module is used, it already completed QC and resampling. 
+    #So, no need to do them again.
     if not dt==frequency_secs or not np.all(qual==100):
         # ---- Laugh testing ------
         # screen-out erroneous qc flags
@@ -1284,6 +1288,8 @@ def _assemble_lastobs_df(
         }
     else:
         #Use arrays from DAforcing module
+        #converts bytes format to regular strings
+        stationId = [item.decode('utf-8') for item in stationId]
         data_var_dict = {
             'gages'               : stationId,
             'time_since_lastobs'  : time_since_lastobs,
@@ -1298,7 +1304,7 @@ def _assemble_lastobs_df(
         reset_index().
         set_index('link')
     )
-    
+
     lastobs_df = lastobs_df[
         [
             'gages',
@@ -1306,7 +1312,7 @@ def _assemble_lastobs_df(
             'lastobs_discharge',
         ]
     ]
-        
+
     lastobs_df.index = lastobs_df.index.astype('int64')
     return lastobs_df
 

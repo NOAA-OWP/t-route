@@ -106,8 +106,8 @@ def _validate_RFC_data(
                         synthetic, 
                         rfc_timeseries_folder, 
                         rfc_timeseries_file,
-                        routing_period
-                        from_files=True
+                        routing_period,
+                        from_files=True,
                        ):
     
     use_RFC = True

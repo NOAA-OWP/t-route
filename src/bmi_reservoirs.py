@@ -53,7 +53,7 @@ class bmi_reservoir(Bmi):
         'OrificeC',
         'OrificeA',
         'LkMxE',
-        'waterbody_id',
+        'hl_link', #  'waterbody_id',
         'ifd',
         'upstream_ids',
         'res_type',
@@ -138,7 +138,7 @@ class bmi_reservoir(Bmi):
         self._values['OrificeC'] = np.zeros(1)
         self._values['OrificeA'] = np.zeros(1)
         self._values['LkMxE'] = np.zeros(1)
-        self._values['waterbody_id'] = np.zeros(1)
+        self._values['hl_link'] = np.zeros(1)
         self._values['ifd'] = np.zeros(1)
         self._values['upstream_ids'] = np.zeros(1, dtype=int)
         self._values['reservoir_type'] = np.zeros(1)
@@ -174,12 +174,10 @@ class bmi_reservoir(Bmi):
             # ---------- so just set to zero for now ------------------#
             self._values[var_name] = np.zeros(3)
         '''
-
     def update(self):
         """Advance model by one time step."""
         if self._model._time==0.0:
             self._model.preprocess_static_vars(self._values) 
-
         self._model.run(self._values)
 
     def update_until(self, until):
@@ -190,7 +188,6 @@ class bmi_reservoir(Bmi):
             Time to run model until in seconds.
         """
         n_steps = int(until/self._model._time_step)
-
         for _ in range(int(n_steps)):
             self.update()
 

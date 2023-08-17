@@ -49,7 +49,7 @@ class reservoir_model():
 
     def preprocess_static_vars(self, values: dict):
 
-        lake_number = values['waterbody_id']
+        lake_number = values['hl_link']
         lake_area = values['LkArea']
         max_depth = values['LkMxE']
         orifice_area = values['OrificeA']
