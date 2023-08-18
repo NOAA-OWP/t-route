@@ -154,8 +154,16 @@ class bmi_DAforcing(Bmi):
 
         # -------------- Initalize all the variables --------------------------# 
         # -------------- so that they'll be picked up with the get functions --#
+        self._values['usgs_df'] = self._model._usgs_df
+        self._values['reservoir_usgs_df'] = self._model._reservoir_usgs_df
+        self._values['reservoir_usace_df'] = self._model._reservoir_usace_df
+        self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
+
+
+        '''
         self._values['waterbody__lake_number'] = np.zeros(1, dtype='<U19')
         self._values['waterbody__type_number'] = np.zeros(1, dtype=int)
+        '''
         '''
         self._values['use_RFC'] = np.zeros(1, dtype=bool) 
         self._values['rfc_timeseries_discharges'] = np.zeros(289) 
@@ -208,13 +216,32 @@ class bmi_DAforcing(Bmi):
             self._values[var_name] = np.zeros(3)
         '''
 
+    def get_value(self, var_name):
+        """Copy of values.
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        Returns
+        -------
+        output_df : pd.DataFrame
+            Copy of values.
+        """
+        '''
+        output_df = self.get_value_ptr(var_name)
+        return output_df
+        '''
+        return self._values[var_name]
 
     def update(self):
         """Advance model by one time step."""
+        '''
         if self._model._time==0.0:
             self._model.preprocess_static_vars(self._values) 
 
         self._model.run(self._values)
+        '''
+        pass
 
     def update_until(self, until):
         """Update model until a particular time.
@@ -223,10 +250,13 @@ class bmi_DAforcing(Bmi):
         until : int
             Time to run model until in seconds.
         """
+        '''
         n_steps = int(until/self._model._time_step)
 
         for _ in range(int(n_steps)):
             self.update()
+        '''
+        pass
 
     def finalize(self):
         """Finalize model."""
@@ -343,20 +373,6 @@ class bmi_DAforcing(Bmi):
             Value array.
         """
         return self._values[var_name]
-
-    def get_value(self, var_name):
-        """Copy of values.
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        Returns
-        -------
-        output_df : pd.DataFrame
-            Copy of values.
-        """
-        output_df = self.get_value_ptr(var_name)
-        return output_df
 
     def get_value_at_indices(self, var_name, dest, indices):
         """Get values at particular indices.
