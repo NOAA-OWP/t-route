@@ -34,7 +34,7 @@ class DAforcing_model():
                      '_timeslice_obs', '_timeslice_datetime', '_timeslice_stationId',
                      '_timeslice_discharge_quality', 
                      '_nudging', '_lastobs_stationId', '_time_since_lastobs', '_lastobs_discharge',
-                      '_usgs_timeslice_df','_usace_timeslice_df', '_rfc_timeseries_df' ]
+                      '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df' ]
 
         if bmi_cfg_file:
             (#bmi_parameters, #TODO We might not need any bmi specific parameters
@@ -52,7 +52,7 @@ class DAforcing_model():
             #############################
             # Read DA files:
             #############################
-            nudging = data_assimilation_parameters.get('streamflow_da', {}).get('streamflow_nuding', False)
+            nudging = data_assimilation_parameters.get('streamflow_da', {}).get('streamflow_nudging', False)
             usgs_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usgs', False)
             usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
             rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
@@ -76,19 +76,33 @@ class DAforcing_model():
             
             if nudging or usgs_persistence:
                 usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
-                self._usgs_timelice_df = _read_timeslice_files(usgs_timeslice_path, 
-                                                               timeslice_dates, 
-                                                               qc_threshold, 
-                                                               dt,
-                                                               cpu_pool,)
+                if nudging:
+                    self._usgs_df = _read_timeslice_files(usgs_timeslice_path,
+                                                          timeslice_dates,
+                                                          qc_threshold,
+                                                          dt,
+                                                          cpu_pool,)
+                    self._reservoir_usgs_df = (
+                        self._usgs_df.
+                        transpose().
+                        resample('15min').asfreq().
+                        transpose()
+                        )
+                else:
+                    self._usgs_df = pd.DataFrame()
+                    self._reservoir_usgs_df = _read_timeslice_files(usgs_timeslice_path,
+                                                                    timeslice_dates,
+                                                                    qc_threshold,
+                                                                    900, #15 minutes
+                                                                    cpu_pool,)
 
             if usace_persistence:
                 usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
-                self._usace_timelice_df = _read_timeslice_files(usace_timeslice_path, 
-                                                                timeslice_dates, 
-                                                                qc_threshold, 
-                                                                dt,
-                                                                cpu_pool,)
+                self._reservoir_usace_df = _read_timeslice_files(usace_timeslice_path, 
+                                                                 timeslice_dates,
+                                                                 qc_threshold,
+                                                                 900, #15 minutes
+                                                                 cpu_pool,)
             
             # Produce list of datetimes to search for timeseries files
             rfc_parameters = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
@@ -400,7 +414,6 @@ def _read_timeslice_files(filepath,
     
     # re-transpose, making link the index
     observation_df_new = observation_df_T.transpose()
-    #observation_df_new.index = observation_df_new.index.astype('int64')
 
     return observation_df_new
 
