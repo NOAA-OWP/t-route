@@ -66,9 +66,7 @@ class DAforcing_model():
             delta = timedelta(minutes=15)
             timeslice_dates = []
             while timeslice_start <= timeslice_end:
-                # add current date to list by converting  it to iso format
                 timeslice_dates.append(timeslice_start.strftime('%Y-%m-%d_%H:%M:%S'))
-                # increment start date by timedelta
                 timeslice_start += delta
 
             if nudging or usgs_persistence:
@@ -79,8 +77,22 @@ class DAforcing_model():
                 usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
                 usace_timelice_df = _read_timeslice_files(usace_timeslice_path, timeslice_dates)
             
+            # Produce list of datetimes to search for timeseries files
+            rfc_parameters = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
+            lookback_hrs = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
+            start_datetime = compute_parameters.get('restart_parameters').get('start_datetime')
+            offset_hrs = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
+            timeseries_end = start_datetime + timedelta(hours=offset_hrs)
+            timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
+            delta = timedelta(hours=1)
+            timeseries_dates = []
+            while timeseries_start <= timeseries_end:
+                timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
+                timeseries_start += delta
+
             if rfc:
-                rfc_timeseries_df = _read_timeseries_files()
+                rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
+                rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates)
 
             '''
             #if compute_parameters:
@@ -323,6 +335,30 @@ def _read_timeslice_files(filepath, dates):
     df['time'] = df['time'].str.decode('utf-8')
 
     return df
+
+def _read_timeseries_files(filepath, timeseries_dates):
+    files = glob.glob(filepath + '/*')
+    df = pd.DataFrame([f.split('/')[-1].split('.') for f in files], columns=['Datetime','dt','ID','rfc','ext'])
+    df = df[df['Datetime'].isin(timeseries_dates)][['ID','Datetime']]
+    df['Datetime'] = df['Datetime'].apply(lambda _: datetime.strptime(_, '%Y-%m-%d_%H'))
+    df = df.groupby('ID').max().reset_index()
+    df['Datetime'] = df['Datetime'].dt.strftime('%Y-%m-%d_%H')
+
+    file_list = (df['Datetime'] + '.60min.' + df['ID'] + '.RFCTimeSeries.ncdf').tolist()
+    rfc_df = pd.DataFrame()
+    for f in file_list:
+        ds = xr.open_dataset(filepath + '/' + f)
+        sliceStartTime = datetime.strptime(ds.attrs.get('sliceStartTimeUTC'), '%Y-%m-%d_%H:%M:%S')
+        sliceTimeResolutionMinutes = ds.attrs.get('sliceTimeResolutionMinutes')
+        df = ds.to_dataframe().reset_index().sort_values('forecastInd')[['stationId','discharges','synthetic_values','totalCounts','timeSteps']]
+        df['Datetime'] = pd.date_range(sliceStartTime, periods=df.shape[0], freq=sliceTimeResolutionMinutes+'T')
+        rfc_df = pd.concat([rfc_df, df])
+    rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8')
+    return rfc_df
+
+
+
+
 
 def build_da_sets(da_params, final_timestamp, t0):
     """
