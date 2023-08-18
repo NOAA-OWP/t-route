@@ -33,7 +33,8 @@ class DAforcing_model():
                      '_use_RFC',
                      '_timeslice_obs', '_timeslice_datetime', '_timeslice_stationId',
                      '_timeslice_discharge_quality', 
-                     '_nudging', '_lastobs_stationId', '_time_since_lastobs', '_lastobs_discharge' ]
+                     '_nudging', '_lastobs_stationId', '_time_since_lastobs', '_lastobs_discharge',
+                      '_usgs_timeslice_df','_usace_timeslice_df', '_rfc_timeseries_df' ]
 
         if bmi_cfg_file:
             (#bmi_parameters, #TODO We might not need any bmi specific parameters
@@ -43,7 +44,7 @@ class DAforcing_model():
              forcing_parameters,
              data_assimilation_parameters,
             ) = _read_config_file(bmi_cfg_file)
-
+            
             self._compute_parameters = compute_parameters
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
@@ -59,6 +60,7 @@ class DAforcing_model():
             # Produce list of datetimes to search for timeslice files
             lookback_hrs = data_assimilation_parameters.get('timeslice_lookback_hours')
             start_datetime = compute_parameters.get('restart_parameters').get('start_datetime')
+            start_datetime = datetime.strptime(start_datetime, '%Y-%m-%d_%H:%M')
             dt = compute_parameters.get('forcing_parameters').get('dt')
             nts = compute_parameters.get('forcing_parameters').get('nts')
             timeslice_start = start_datetime - timedelta(hours=lookback_hrs)
@@ -68,19 +70,18 @@ class DAforcing_model():
             while timeslice_start <= timeslice_end:
                 timeslice_dates.append(timeslice_start.strftime('%Y-%m-%d_%H:%M:%S'))
                 timeslice_start += delta
-
+            
             if nudging or usgs_persistence:
                 usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
-                usgs_timelice_df = _read_timeslice_files(usgs_timeslice_path, timeslice_dates)
+                self._usgs_timelice_df = _read_timeslice_files(usgs_timeslice_path, timeslice_dates)
 
             if usace_persistence:
                 usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
-                usace_timelice_df = _read_timeslice_files(usace_timeslice_path, timeslice_dates)
+                self._usace_timelice_df = _read_timeslice_files(usace_timeslice_path, timeslice_dates)
             
             # Produce list of datetimes to search for timeseries files
             rfc_parameters = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
             lookback_hrs = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
-            start_datetime = compute_parameters.get('restart_parameters').get('start_datetime')
             offset_hrs = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
             timeseries_end = start_datetime + timedelta(hours=offset_hrs)
             timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
@@ -92,7 +93,7 @@ class DAforcing_model():
 
             if rfc:
                 rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
-                rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates)
+                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates)
 
             '''
             #if compute_parameters:
@@ -324,9 +325,9 @@ def _read_config_file(custom_input_file):
         )
 
 def _read_timeslice_files(filepath, dates):
+    df = pd.DataFrame()
     for d in dates:
         f = glob.glob(filepath + '/' + d + '*')
-        df = pd.DataFrame()
         if f:
             temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
             df = pd.concat([df, temp_df])
