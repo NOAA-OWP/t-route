@@ -3,12 +3,13 @@ import netCDF4 as nc
 import pandas as pd
 import yaml
 from array import array
-import datetime
+from datetime import datetime, timedelta
 import pathlib
 import logging
 from joblib import delayed, Parallel
 import netCDF4
 import xarray as xr
+import glob
 
 
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
@@ -47,17 +48,36 @@ class DAforcing_model():
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
 
+            #############################
             # Read DA files:
+            #############################
             nudging = data_assimilation_parameters.get('streamflow_da', {}).get('streamflow_nuding', False)
             usgs_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usgs', False)
             usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
             rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
 
+            # Produce list of datetimes to search for timeslice files
+            lookback_hrs = data_assimilation_parameters.get('timeslice_lookback_hours')
+            start_datetime = compute_parameters.get('restart_parameters').get('start_datetime')
+            dt = compute_parameters.get('forcing_parameters').get('dt')
+            nts = compute_parameters.get('forcing_parameters').get('nts')
+            timeslice_start = start_datetime - timedelta(hours=lookback_hrs)
+            timeslice_end = start_datetime + timedelta(seconds=dt*nts)
+            delta = timedelta(minutes=15)
+            timeslice_dates = []
+            while timeslice_start <= timeslice_end:
+                # add current date to list by converting  it to iso format
+                timeslice_dates.append(timeslice_start.strftime('%Y-%m-%d_%H:%M:%S'))
+                # increment start date by timedelta
+                timeslice_start += delta
+
             if nudging or usgs_persistence:
-                usgs_timelice_df = _read_timeslice_file()
+                usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
+                usgs_timelice_df = _read_timeslice_files(usgs_timeslice_path, timeslice_dates)
 
             if usace_persistence:
-                usace_timelice_df = _read_timeslice_file()
+                usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
+                usace_timelice_df = _read_timeslice_files(usace_timeslice_path, timeslice_dates)
             
             if rfc:
                 rfc_timeseries_df = _read_timeseries_files()
@@ -290,6 +310,19 @@ def _read_config_file(custom_input_file):
         forcing_parameters,
         data_assimilation_parameters,
         )
+
+def _read_timeslice_files(filepath, dates):
+    for d in dates:
+        f = glob.glob(filepath + '/' + d + '*')
+        df = pd.DataFrame()
+        if f:
+            temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
+            df = pd.concat([df, temp_df])
+    
+    df['stationId'] = df['stationId'].str.decode('utf-8')
+    df['time'] = df['time'].str.decode('utf-8')
+
+    return df
 
 def build_da_sets(da_params, final_timestamp, t0):
     """
