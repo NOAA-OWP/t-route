@@ -47,6 +47,22 @@ class DAforcing_model():
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
 
+            # Read DA files:
+            nudging = data_assimilation_parameters.get('streamflow_da', {}).get('streamflow_nuding', False)
+            usgs_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usgs', False)
+            usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
+            rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
+
+            if nudging or usgs_persistence:
+                usgs_timelice_df = _read_timeslice_file()
+
+            if usace_persistence:
+                usace_timelice_df = _read_timeslice_file()
+            
+            if rfc:
+                rfc_timeseries_df = _read_timeseries_files()
+
+            '''
             #if compute_parameters:
             self._time_step = forcing_parameters.get("dt", 300) #time step in sec
             self._nts = forcing_parameters.get("nts", 288) #the number of time steps
@@ -66,6 +82,7 @@ class DAforcing_model():
                 self._gage_lakeID_crosswalk_file = rfc_parameters.get("gage_lakeID_crosswalk_file", None)
                 self._rfc_forecast_peyrsist_days = rfc_parameters.get("reservoir_rfc_forecast_persist_days", 11)
                 self._rfc_timeseries_offset_hours = rfc_parameters.get("reservoir_rfc_timeseries_offset_hours", 28)
+            '''
         else:
             raise(RuntimeError("No config file provided."))
             
