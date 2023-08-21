@@ -158,6 +158,7 @@ class bmi_DAforcing(Bmi):
         self._values['reservoir_usgs_df'] = self._model._reservoir_usgs_df
         self._values['reservoir_usace_df'] = self._model._reservoir_usace_df
         self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
+        self._values['lastobs_df'] = self._model._lastobs_df
 
 
         '''
