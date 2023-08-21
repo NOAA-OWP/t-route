@@ -34,13 +34,10 @@ class DAforcing_model():
                      '_timeslice_obs', '_timeslice_datetime', '_timeslice_stationId',
                      '_timeslice_discharge_quality', 
                      '_nudging', '_lastobs_stationId', '_time_since_lastobs', '_lastobs_discharge',
-                      '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df' ]
+                      '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df', '_lastobs_df' ]
 
         if bmi_cfg_file:
-            (#bmi_parameters, #TODO We might not need any bmi specific parameters
-             log_parameters, #TODO Update all logging/warnings throughout standalone reservoirs...
-             compute_parameters,
-             restart_parameters,
+            (compute_parameters,
              forcing_parameters,
              data_assimilation_parameters,
             ) = _read_config_file(bmi_cfg_file)
@@ -74,6 +71,7 @@ class DAforcing_model():
                 timeslice_dates.append(timeslice_start.strftime('%Y-%m-%d_%H:%M:%S'))
                 timeslice_start += delta
             
+            # USGS Observations
             if nudging or usgs_persistence:
                 usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
                 if nudging:
@@ -96,6 +94,7 @@ class DAforcing_model():
                                                                     900, #15 minutes
                                                                     cpu_pool,)
 
+            # USACE Observations
             if usace_persistence:
                 usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
                 self._reservoir_usace_df = _read_timeslice_files(usace_timeslice_path, 
@@ -116,35 +115,19 @@ class DAforcing_model():
                 timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
                 timeseries_start += delta
 
+            # RFC Observations
             if rfc:
                 rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
                 self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime)
 
-            '''
-            #if compute_parameters:
-            self._time_step = forcing_parameters.get("dt", 300) #time step in sec
-            self._nts = forcing_parameters.get("nts", 288) #the number of time steps
-            #NOTE: For any each operation either of AnA or Forecast, t0 (model start date) is
-            #provided from config file.            
-            self._t0 = restart_parameters.get("start_datetime", None)   
-            rfc_parameters = data_assimilation_parameters.get("rfc_reservoir_da", None) 
-            
-            if not self._t0:
-                raise(RuntimeError("No start_datetime provided in config file."))
+            # Lastobs
+            lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)
+            if lastobs_file:
+                self._lastobs_df = _read_lastobs_file(lastobs_file)
 
-            if rfc_parameters:
-                #self._rfc_gage_id = rfc_parameters.get("reservoir_rfc_gage_id", None)
-                
-                #self._reservoir_rfc_forecast_lookback_hours= rfc_parameters.get("reservoir_rfc_forecast_lookback_hours",None)
-                self._rfc_timeseries_folder = rfc_parameters.get("rfc_forecast_time_series_folder", None)
-                self._gage_lakeID_crosswalk_file = rfc_parameters.get("gage_lakeID_crosswalk_file", None)
-                self._rfc_forecast_peyrsist_days = rfc_parameters.get("reservoir_rfc_forecast_persist_days", 11)
-                self._rfc_timeseries_offset_hours = rfc_parameters.get("reservoir_rfc_timeseries_offset_hours", 28)
-            '''
         else:
             raise(RuntimeError("No config file provided."))
             
-        self._time = 0.0  # initiall set zero but will be in sync with troute_model's self._time (sec)
     
     def preprocess_static_vars(self, values: dict):
         '''
@@ -332,19 +315,12 @@ def _read_config_file(custom_input_file):
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
-    #bmi_parameters = data.get("bmi_parameters", None)
-    log_parameters = data.get("log_parameters", None)
     compute_parameters = data.get("compute_parameters", None)
-    restart_parameters = compute_parameters.get("restart_parameters", None)
     forcing_parameters = compute_parameters.get("forcing_parameters", None)
     data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters", None)
-    rfc_parameters = data_assimilation_parameters.get("rfc_reservoir_da", None)
 
     return (
-        #bmi_parameters,
-        log_parameters,
         compute_parameters,
-        restart_parameters,
         forcing_parameters,
         data_assimilation_parameters,
         )
@@ -464,6 +440,61 @@ def _read_timeseries_files(filepath, timeseries_dates, t0):
     rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8')
     return rfc_df
 
+def _read_lastobs_file(
+        lastobsfile,
+        station_id = "stationId",
+        ref_t_attr_id = "modelTimeAtOutput",
+        time_idx_id = "timeInd",
+        obs_discharge_id = "discharge",
+        discharge_nan = -9999.0,
+        time_shift = 0,
+        ):
+    with xr.open_dataset(lastobsfile) as ds:
+        gages = ds[station_id].values
+        
+        ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
+        
+        last_ts = ds[time_idx_id].values[-1]
+        
+        df_discharge = (
+            ds[obs_discharge_id].to_dataframe().                 # discharge to MultiIndex DF
+            replace(to_replace = discharge_nan, value = np.nan). # replace null values with nan
+            unstack(level = 0)                                   # unstack to single Index (timeInd)    
+        )
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(ds.time.values[i, idx].decode('utf-8'))
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
+
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+    data_var_dict = {
+        'gages'               : gages,
+        'time_since_lastobs'  : lastobs_times,
+        'lastobs_discharge'   : last_observations
+    }
+
+    lastobs_df = pd.DataFrame(data = data_var_dict)
+    lastobs_df['gages'] = lastobs_df['gages'].str.decode('utf-8')
+
+    return lastobs_df
 
 
 
