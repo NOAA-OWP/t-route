@@ -1,4 +1,4 @@
-"""Basic Model Interface implementation for reservoirs."""
+"""Basic Model Interface implementation for t-route's data assimilation forcing."""
 
 import numpy as np
 from bmipy import Bmi
