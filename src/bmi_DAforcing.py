@@ -41,50 +41,18 @@ class bmi_DAforcing(Bmi):
     #---------------------------------------------
     # Input variable names (CSDMS standard names)
     #---------------------------------------------
-    _input_var_names = [
-        # waterbody static variables
-        #'lake_surface__elevation',
-        #'LkArea',
-        #'WeirE',
-        #'WeirC',
-        #'WeirL',
-        #'dam_length',
-        #'OrificeE',
-        #'OrificeC',
-        #'OrificeA',
-        #'LkMxE',
-        #'waterbody_id',
-        #'ifd',
-        #'upstream_ids',
-        #'res_type',
-        #'da_idx',
-        #'time_step',
-        #'rfc_forecast_persist_seconds',
-        #'synthetic_flag',
-        # dynamic forcing/DA variables        
-        #'lake_water~incoming__volume_flow_rate',
-        # RFC DA inputs
-        #rfc_timeseries_offset_hours,
-        #rfc_gage_id,
-        #rfc_timeseries_folder,
-        'lake_number',   
-        ]
+    _input_var_names = []
 
     #---------------------------------------------
     # Output variable names (CSDMS standard names)
     #---------------------------------------------
     _output_var_names = [
-                         #'lake_water~outgoing__volume_flow_rate',
-                         #'lake_surface__elevation',
-                        # RFC DA ouputs
-                        'waterbody_rfc__use_flag', #'use_RFC', 
-                        'waterbody_rfc__observed_volume_flow_rate', #'rfc_timeseries_discharges', 
-                        'waterbody_rfc__timeseries_index', #'rfc_timeseries_idx', 
-                        'waterbody_rfc__timeseries_update_time', #'rfc_timeseries_update_time', 
-                        'waterbody_rfc__da_time_step', #'rfc_da_time_step', 
-                        'waterbody_rfc__total_count', #'rfc_total_counts',
-                        'waterbody_rfc__file_of_observed_volume_flow_rate', #'rfc_timeseries_file',
-                        ]
+        'usgs_df',
+        'reservoir_usgs_df',
+        'reservoir_usace_df',
+        'rfc_timeseries_df',
+        'lastobs_df'
+    ]
 
     #------------------------------------------------------
     # Create a Python dictionary that maps CSDMS Standard
@@ -160,63 +128,6 @@ class bmi_DAforcing(Bmi):
         self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
         self._values['lastobs_df'] = self._model._lastobs_df
 
-
-        '''
-        self._values['waterbody__lake_number'] = np.zeros(1, dtype='<U19')
-        self._values['waterbody__type_number'] = np.zeros(1, dtype=int)
-        '''
-        '''
-        self._values['use_RFC'] = np.zeros(1, dtype=bool) 
-        self._values['rfc_timeseries_discharges'] = np.zeros(289) 
-        self._values['rfc_timeseries_idx'] = np.zeros(1) 
-        self._values['rfc_timeseries_update_time'] = np.zeros(1) 
-        self._values['rfc_da_time_step'] = np.zeros(1) 
-        self._values['rfc_total_counts'] = np.zeros(1)
-        self._values['rfc_timeseries_file'] = np.zeros(1,  dtype='<U19')
-        self._values['usace_timeslice_discharge'] = np.zeros(5192)
-        self._values['usace_timeslice_stationId'] = np.zeros(5192)
-        self._values['usace_timeslice_time'] = np.zeros(5192)
-        '''
-        '''
-        #FIXME Do this better..., load size of variables from config file??
-        self._values['lake_surface__elevation'] = np.zeros(1)
-        self._values['LkArea'] = np.zeros(1)
-        self._values['WeirE'] = np.zeros(1)
-        self._values['WeirC'] = np.zeros(1)
-        self._values['WeirL'] = np.zeros(1)
-        self._values['dam_length'] = np.zeros(1)
-        self._values['OrificeE'] = np.zeros(1)
-        self._values['OrificeC'] = np.zeros(1)
-        self._values['OrificeA'] = np.zeros(1)
-        self._values['LkMxE'] = np.zeros(1)
-        self._values['waterbody_id'] = np.zeros(1)
-        self._values['ifd'] = np.zeros(1)
-        self._values['upstream_ids'] = np.zeros(1, dtype=int)
-        self._values['reservoir_type'] = np.zeros(1)
-        self._values['lake_water~incoming__volume_flow_rate'] = np.zeros(12)
-        self._values['lake_water~outgoing__volume_flow_rate'] = np.zeros(1)
-
-
-        #TODO: how will we know the size of these arrays?
-        self._values['gage_observations'] = np.zeros(120)
-        self._values['gage_time'] = np.zeros(120)
-
-        self._values['da_idx'] = np.zeros(1, dtype=int)
-        self._values['time_step'] = np.zeros(1)
-        self._values['rfc_forecast_persist_seconds'] = np.zeros(1)
-        self._values['synthetic_flag'] = np.zeros(289)
-        
-        #RFC DA        
-        self._values['rfc_timeseries_offset_hours'] = np.zeros(1)
-        self._values['rfc_forecast_persist_days'] = np.zeros(1)
-        '''
-        '''
-        for var_name in self._input_var_names + self._output_var_names:
-            # ---------- Temporarily set to 3 values ------------------#
-            # ---------- so just set to zero for now ------------------#
-            self._values[var_name] = np.zeros(3)
-        '''
-
     def get_value(self, var_name):
         """Copy of values.
         Parameters
@@ -271,10 +182,13 @@ class bmi_DAforcing(Bmi):
         time_frac : float
             Fraction fo a time step.
         """
+        '''
         time_step = self.get_time_step()
         self._model.time_step = time_frac * time_step
         self.update()
         self._model.time_step = time_step
+        '''
+        pass
 
     def get_var_type(self, var_name):
         """Data type of variable.
