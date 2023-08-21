@@ -13,7 +13,7 @@ import glob
 
 
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
-from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, preprocess_RFC_data
+from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, preprocess_RFC_data, _validate_RFC_data
 from troute.DataAssimilation import build_lastobs_df, _create_usgs_df, _reindex_link_to_lake_id
 #import troute.nhd_network_utilities_v02 as nnu
 
@@ -118,7 +118,7 @@ class DAforcing_model():
 
             if rfc:
                 rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
-                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates)
+                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime)
 
             '''
             #if compute_parameters:
@@ -430,7 +430,7 @@ def _interpolate_one(df, interpolation_limit, frequency):
                        )
     return interp_out
 
-def _read_timeseries_files(filepath, timeseries_dates):
+def _read_timeseries_files(filepath, timeseries_dates, t0):
     files = glob.glob(filepath + '/*')
     df = pd.DataFrame([f.split('/')[-1].split('.') for f in files], columns=['Datetime','dt','ID','rfc','ext'])
     df = df[df['Datetime'].isin(timeseries_dates)][['ID','Datetime']]
@@ -446,6 +446,20 @@ def _read_timeseries_files(filepath, timeseries_dates):
         sliceTimeResolutionMinutes = ds.attrs.get('sliceTimeResolutionMinutes')
         df = ds.to_dataframe().reset_index().sort_values('forecastInd')[['stationId','discharges','synthetic_values','totalCounts','timeSteps']]
         df['Datetime'] = pd.date_range(sliceStartTime, periods=df.shape[0], freq=sliceTimeResolutionMinutes+'T')
+        df['timeseries_idx'] = df.index[df.Datetime == t0][0]
+        df['file'] = f
+
+        use_rfc = _validate_RFC_data(
+            df['stationId'][0],
+            df.discharges,
+            df.synthetic_values,
+            filepath,
+            f,
+            300, #NOTE: this is t-route's default timestep. This will need to be verifiied again within t-route...
+            False
+        )
+        df['use_rfc'] = use_rfc
+
         rfc_df = pd.concat([rfc_df, df])
     rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8')
     return rfc_df
