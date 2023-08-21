@@ -1,21 +1,12 @@
 import numpy as np
-import netCDF4 as nc
 import pandas as pd
 import yaml
-from array import array
 from datetime import datetime, timedelta
-import pathlib
-import logging
 from joblib import delayed, Parallel
-import netCDF4
 import xarray as xr
 import glob
 
-
-from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
-from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da, preprocess_RFC_data, _validate_RFC_data
-from troute.DataAssimilation import build_lastobs_df, _create_usgs_df, _reindex_link_to_lake_id
-#import troute.nhd_network_utilities_v02 as nnu
+from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 
 class DAforcing_model():
@@ -24,17 +15,8 @@ class DAforcing_model():
         """
         
         """
-        __slots__ = ['_data_assimilation_parameters', '_streamflow_da_parameters',
-                     '_lake_number', '_res_type', '_gage_lakeID_crosswalk_file', 
-                     '_time', '_time_step', 
-                     '_rfc_timeseries_idx', '_rfc_gage_id', '_rfc_timeseries_folder',
-                     '_rfc_timeseries_file', '_rfc_timeseries_offset_hours', '_rfc_forecast_persist_days',
-                     '_time_step_seconds', '_total_counts', '_rfc_timeseries_discharges', '_rfc_update_time', 
-                     '_use_RFC',
-                     '_timeslice_obs', '_timeslice_datetime', '_timeslice_stationId',
-                     '_timeslice_discharge_quality', 
-                     '_nudging', '_lastobs_stationId', '_time_since_lastobs', '_lastobs_discharge',
-                      '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df', '_lastobs_df' ]
+        __slots__ = ['_data_assimilation_parameters', '_forcing_parameters', '_compute_parameters',
+                     '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df', '_lastobs_df' ]
 
         if bmi_cfg_file:
             (compute_parameters,
