@@ -112,7 +112,7 @@ rfc_reservoirs = Extension(
     sources=[
              "troute/network/reservoirs/rfc/rfc.{}".format(ext),
              ],
-    include_dirs=[np.get_include()],
+    include_dirs=[np.get_include(),  "troute/network/"],
     extra_objects=["./libs/bind_rfc.a"],
     libraries=["netcdff", "netcdf"],
     extra_compile_args=["-g"],
