@@ -6,6 +6,7 @@ from distutils.command.build_ext import build_ext
 import os
 import subprocess
 
+import troute.network as tn
 """
 If source ships with the cython generated .c code, then cython isn't a hard requirement
 This setup can use if if passed the --use-cython flag, otherwise it looks for the c source
@@ -73,11 +74,14 @@ reach = Extension(
     extra_compile_args=["-O2", "-g"],
     libraries=[],
 )
-
+_top_path = tn.__path__[0]
+_subs = [_top_path+sub for sub in ['/musking', '/reservoirs'] ]
+_sub_subs = [_top_path+'/reservoirs/'+sub for sub in ['levelpool', 'rfc', 'hybrid'] ]
+_include_paths = [ np.get_include(), _top_path ] + _subs + _sub_subs
 mc_reach = Extension(
     "troute.routing.fast_reach.mc_reach",
     sources=["troute/routing/fast_reach/mc_reach.{}".format(ext)],
-    include_dirs=[np.get_include()],
+    include_dirs=_include_paths,
     libraries=[],
     library_dirs=[],
     extra_objects=[],
