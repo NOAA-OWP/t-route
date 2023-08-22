@@ -742,11 +742,11 @@ class AbstractNetwork(ABC):
                 t1 = datetime.strptime(t1, "%Y-%m-%d_%H:%M:%S")
                 t2 = nhd_io.get_param_str(second_file, "model_output_valid_time")
                 t2 = datetime.strptime(t2, "%Y-%m-%d_%H:%M:%S")
-            elif forcing_glob_filter=='*.nc':
-                t1_str = first_file.name.removeprefix('qlat_').removesuffix('.nc')
-                t1 = datetime.strptime(t1_str, '%Y-%m-%d %H:%M:%S')
-                t2_str = second_file.name.removeprefix('qlat_').removesuffix('.nc')
-                t2 = datetime.strptime(t2_str, '%Y-%m-%d %H:%M:%S')
+            elif forcing_glob_filter.startswith('*NEXOUT'):
+                t1_str = first_file.name.split('NEXOUT', 1)[0]
+                t1 = datetime.strptime(t1_str, '%Y%m%d%H%M')
+                t2_str = second_file.name.split('NEXOUT', 1)[0]
+                t2 = datetime.strptime(t2_str, '%Y%m%d%H%M')
             else:
                 df     = read_file(first_file)
                 t1_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
@@ -754,7 +754,6 @@ class AbstractNetwork(ABC):
                 df     = read_file(second_file)
                 t2_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")
                 t2     = datetime.strptime(t2_str,"%Y-%m-%d_%H:%M:%S")
-            
             
             dt_qlat_timedelta = t2 - t1
             dt_qlat = dt_qlat_timedelta.seconds
@@ -816,8 +815,12 @@ class AbstractNetwork(ABC):
                 final_qlat = qlat_input_folder.joinpath(run_sets[j]['qlat_files'][-1]) 
                 if forcing_glob_filter=="*.CHRTOUT_DOMAIN1":           
                     final_timestamp_str = nhd_io.get_param_str(final_qlat,'model_output_valid_time')
-                elif forcing_glob_filter=='*.nc':
-                    final_timestamp_str = final_qlat.name.removeprefix('qlat_').removesuffix('.nc').replace(' ', '_')
+                elif forcing_glob_filter.startswith('*NEXOUT'):
+                    
+                    final_timestamp_str = datetime.strptime(
+                        final_qlat.name.split('NEXOUT', 1)[0],
+                        "%Y%m%d%H%M"
+                    ).strftime("%Y-%m-%d_%H:%M:%S")
                 else:
                     df = read_file(final_qlat)
                     final_timestamp_str = pd.to_datetime(df.columns[1]).strftime("%Y-%m-%d_%H:%M:%S")           
