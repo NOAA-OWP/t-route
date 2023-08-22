@@ -23,6 +23,12 @@ then
     echo "using CC=${CC}"
 fi
 
+#preserve old/default behavior of installing packages with -e
+E="-e"
+if [ "$1" == 'no-e' ]
+then
+E=""
+fi
 
 #if you have custom static library paths, uncomment below and export them
 #export LIBRARY_PATH=<paths>:$LIBRARY_PATH
@@ -72,7 +78,7 @@ if [[ "$build_framework" == true ]]; then
   ##python setup.py --use-cython install
   ##python setup.py --use-cython develop
   CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install -e . || exit
+  pip install $E . || exit
 fi
 
 if [[ "$build_routing" == true ]]; then
@@ -82,7 +88,7 @@ if [[ "$build_routing" == true ]]; then
   #python setup.py --use-cython install
   #python setup.py --use-cython develop
   CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install -e . || exit
+  pip install $E . || exit
 fi
 
 if [[ "$build_config" == true ]]; then
@@ -94,5 +100,5 @@ fi
 if [[ "$build_nwm" == true ]]; then
   #updates troute package with the execution script
   cd $REPOROOT/src/troute-nwm
-  pip install -e . || exit
+  pip install $E . || exit
 fi
