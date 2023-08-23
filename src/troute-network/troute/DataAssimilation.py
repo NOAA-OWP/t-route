@@ -64,29 +64,21 @@ class NudgingDA(AbstractDA):
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
-                # Handle QC/QA and interpolation:
-                qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                
-                self._usgs_df = _timeslice_qcqa(
-                    value_dict['usgs_timeslice_discharge'],
-                    value_dict['usgs_timeslice_stationId'],
-                    value_dict['usgs_timeslice_time'],
-                    value_dict['usgs_timeslice_discharge_quality'],
-                    qc_threshold,
-                    run_parameters.get('dt', 300),
-                    network.link_gage_df)
+                usgs_df = value_dict['usgs_df']
+                usgs_df = usgs_df.join(
+                    network.link_gage_df.
+                    reset_index().
+                    set_index('gages'),
+                    how='inner'
+                ).set_index('link').sort_index()
+
+                self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
                 
                 lastobs = streamflow_da_parameters.get("bmi_lastobs", False)
                 self._last_obs_df = pd.DataFrame()
                 if lastobs:
-                    self._last_obs_df = _assemble_lastobs_df(
-                        value_dict['lastobs_discharge'], 
-                        value_dict['lastobs_stationIdInd'], 
-                        value_dict['lastobs_timeInd'], 
-                        value_dict['lastobs_stationId'], 
-                        value_dict['lastobs_time'], 
-                        value_dict['lastobs_modelTimeAtOutput'][0], 
-                        network.link_gage_df)
+                    lastobs_df = value_dict['lastobs_df']
+                    self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
             
             else:
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
@@ -194,37 +186,17 @@ class PersistenceDA(AbstractDA):
 
         if not from_files:
             if usgs_persistence:
-                # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
-                if self._usgs_df.empty:
-
-                    qc_threshold = data_assimilation_parameters.get("qc_threshold",1)
-                    
-                    self._usgs_df = _timeslice_qcqa(
-                        value_dict['usgs_timeslice_discharge'],
-                        value_dict['usgs_timeslice_stationId'],
-                        value_dict['usgs_timeslice_time'],
-                        value_dict['usgs_timeslice_discharge_quality'],
-                        qc_threshold,
-                        run_parameters.get('dt', 300),
-                        network.link_gage_df) 
-                    
-                # resample `usgs_df` to 15 minute intervals
-                usgs_df_15min = (
-                    self._usgs_df.
-                    transpose().
-                    resample('15min').asfreq().
-                    transpose()
-                )
-
-                # subset and usgs_df to reservoir only locations
-                #FIXME: This is assuming all waterbodies are USGS (no USACE). Is this the 
-                #case for HYFeatures?
-                reservoir_usgs_df = (
-                    usgs_df_15min.
-                    join(network.waterbody_dataframe['index'], how='inner').
-                    drop(['index'],axis=1)
-                )
+                reservoir_usgs_df = value_dict['reservoir_usgs_df']
                 
+                reservoir_usgs_df = reservoir_usgs_df.join(
+                    network.link_gage_df.
+                    reset_index().
+                    set_index('gages'),
+                    how='inner'
+                ).set_index('link').sort_index()
+
+                reservoir_usgs_df = _reindex_link_to_lake_id(reservoir_usgs_df, network.link_lake_crosswalk)
+
                 # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
@@ -238,10 +210,18 @@ class PersistenceDA(AbstractDA):
                 else:
                     reservoir_usgs_param_df = pd.DataFrame()
             
-            if usace_persistence: #TODO: Will HYFeatures treat all persistence reservoirs
-                # as USGS? Do we still need to separate usgs and usace?
+            if usace_persistence: 
+                reservoir_usace_df = value_dict['reservoir_usace_df']
 
-                reservoir_usace_df = pd.DataFrame(index=value_dict['reservoir_usace_ids'])
+                reservoir_usace_df = reservoir_usace_df.join(
+                    network.link_gage_df.
+                    reset_index().
+                    set_index('gages'),
+                    how='inner'
+                ).set_index('link').sort_index()
+
+                reservoir_usace_df = _reindex_link_to_lake_id(reservoir_usace_df, network.link_lake_crosswalk)
+
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usace_df.empty:
                     reservoir_usace_param_df = pd.DataFrame(
@@ -532,17 +512,8 @@ class RFCDA(AbstractDA):
 
         if not from_files:
             if rfc:
-                (self._reservoir_rfc_df,
-                self._reservoir_rfc_param_df
-                ) = _rfc_timeseries_qcqa(
-                    value_dict['rfc_discharges'],
-                    value_dict['rfc_stationId'],
-                    value_dict['rfc_synthetic_values'],
-                    value_dict['rfc_totalCounts'],
-                    value_dict['rfc_datetime'],
-                    value_dict['rfc_timestep'],
-                    1, #lake_number
-                    network.t0) 
+                self._reservoir_rfc_df = value_dict['rfc_timeseries_df']
+                
             else: 
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
