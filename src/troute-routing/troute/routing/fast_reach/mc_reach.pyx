@@ -441,8 +441,6 @@ cpdef object compute_network_structured(
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
     
-    usgs_values_list = []
-    data_assim_flow_value_list = []
 
     while timestep < nsteps+1:
         for i in range(num_reaches):
@@ -622,17 +620,7 @@ cpdef object compute_network_structured(
                     lastobs_times[gage_i],
                     lastobs_values[gage_i],
                     gage_i == da_check_gage,
-                )
-                 # Ensure we're within bounds before accessing the arrays
-                if timestep < gage_maxtimestep:
-                    usgs_value = usgs_values[gage_i, timestep]
-                    usgs_values_list.append(usgs_value)
-
-                
-                data_assim_flow_value = da_buf[0]
-
-                # Append data_assim_flow_value to the array
-                data_assim_flow_value_list.append(data_assim_flow_value)
+                )               
 
                 if gage_i == da_check_gage:
                     printf("ts: %d\t", timestep)
@@ -657,9 +645,7 @@ cpdef object compute_network_structured(
 
         timestep += 1
     
-    usgs_values_observed = np.array(usgs_values_list)
-    data_assim_flow_value_array = np.array(data_assim_flow_value_list)
-
+  
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
@@ -693,6 +679,5 @@ cpdef object compute_network_structured(
             usace_persistence_update_time-((timestep-1)*dt)
         ), 
         output_upstream.reshape(output.shape[0], -1)[fill_index_mask],
-        data_assim_flow_value_array,
-        usgs_values_observed,
+        np.asarray(nudge)
     )
