@@ -1,6 +1,4 @@
-import numpy as np #TODO: remove?
 import pandas as pd
-from pathlib import Path #TODO: remove?
 import yaml
 import time
 import nwm_routing.__main__ as tr
@@ -60,7 +58,7 @@ class troute_model():
         
         self.showtiming = self._log_parameters.get("showtiming", None)
         if self.showtiming:
-            self.task_times = {                                     # Creating a dictionary to record time for each section #
+            self.task_times = {
                 'network_time': 0,
                 'forcing_time' : 0,
                 'output_time' : 0,
@@ -81,7 +79,7 @@ class troute_model():
         -------
         """
         if self.showtiming:
-            network_start_time = time.time()                        # start of recording time for network creation #
+            network_start_time = time.time()
 
         self._network = tr.HYFeaturesNetwork(
             self._supernetwork_parameters,
@@ -97,12 +95,12 @@ class troute_model():
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
         self._data_assimilation = tr.DataAssimilation(
-        self._network,
-        self._data_assimilation_parameters,
-        self._run_parameters,
-        self._waterbody_parameters,
-        from_files=False,
-        value_dict=values,
+            self._network,
+            self._data_assimilation_parameters,
+            self._run_parameters,
+            self._waterbody_parameters,
+            from_files=False,
+            value_dict=values,
         )
 
         if len(values['upstream_id'])>0:
@@ -115,7 +113,7 @@ class troute_model():
                         self._network._reaches_by_tw[tw][rli].remove(key)
 
         if self.showtiming:
-            network_end_time = time.time()                          # end of recording time for network creation #
+            network_end_time = time.time()
             self.task_times['network_time'] += network_end_time - network_start_time
 
 
@@ -136,7 +134,7 @@ class troute_model():
         # Set input data into t-route objects
         # Forcing values:
         if self.showtiming:
-            forcing_start_time = time.time()                        # start of recording time for forcing values #
+            forcing_start_time = time.time()
 
         self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
             pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
@@ -149,7 +147,7 @@ class troute_model():
             flowveldepth_interorder = {}
 
         if self.showtiming:
-            forcing_end_time = time.time()                          # end of recording time for forcing values | start of recording for data assimilation #
+            forcing_end_time = time.time()
             self.task_times['forcing_time'] += forcing_end_time - forcing_start_time
 
         # Trim the time-extent of the streamflow_da usgs_df
@@ -160,7 +158,7 @@ class troute_model():
             self._data_assimilation._usgs_df = self._data_assimilation.usgs_df.loc[:,self._network.t0:]
         
         if self.showtiming:
-            DA_end_time = time.time()                               # end of recording time for data assimilation creation | start of recording time for routing #
+            DA_end_time = time.time()
             self.task_times['data_assimilation_time'] += DA_end_time - forcing_end_time
 
         # Adjust number of steps based on user input
@@ -237,7 +235,7 @@ class troute_model():
         self._data_assimilation.update_after_compute(self._run_results, self._time_step*nts)
 
         if self.showtiming:
-            run_end_time = time.time()                              # end of recording time for routing | start of recording for output#
+            run_end_time = time.time()
             self.task_times['run_time'] += run_end_time - DA_end_time
          
         # Create output flowveldepth and lakeout arrays
@@ -266,7 +264,7 @@ class troute_model():
         self._time += self._time_step * nts
         
         if self.showtiming:
-            output_end_time = time.time()                           # end of recording time for creating output #
+            output_end_time = time.time()
             self.task_times['output_time'] += output_end_time - run_end_time
 
     def print_timing_summary(self,):
