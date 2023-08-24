@@ -188,14 +188,13 @@ class PersistenceDA(AbstractDA):
             if usgs_persistence:
                 reservoir_usgs_df = value_dict['reservoir_usgs_df']
                 
-                reservoir_usgs_df = reservoir_usgs_df.join(
-                    network.link_gage_df.
+                reservoir_usgs_df = (
+                    network.usgs_lake_gage_crosswalk.
                     reset_index().
-                    set_index('gages'),
-                    how='inner'
-                ).set_index('link').sort_index()
-
-                reservoir_usgs_df = _reindex_link_to_lake_id(reservoir_usgs_df, network.link_lake_crosswalk)
+                    set_index('usgs_gage_id').
+                    join(reservoir_usgs_df).
+                    set_index('usgs_lake_id')
+                    )
 
                 # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
@@ -213,14 +212,13 @@ class PersistenceDA(AbstractDA):
             if usace_persistence: 
                 reservoir_usace_df = value_dict['reservoir_usace_df']
 
-                reservoir_usace_df = reservoir_usace_df.join(
-                    network.link_gage_df.
+                reservoir_usace_df = (
+                    network.usace_lake_gage_crosswalk.
                     reset_index().
-                    set_index('gages'),
-                    how='inner'
-                ).set_index('link').sort_index()
-
-                reservoir_usace_df = _reindex_link_to_lake_id(reservoir_usace_df, network.link_lake_crosswalk)
+                    set_index('usace_gage_id').
+                    join(reservoir_usace_df).
+                    set_index('usace_lake_id')
+                    )
 
                 # create reservoir hybrid DA initial parameters dataframe    
                 if not reservoir_usace_df.empty:
@@ -512,8 +510,12 @@ class RFCDA(AbstractDA):
 
         if not from_files:
             if rfc:
-                self._reservoir_rfc_df = value_dict['rfc_timeseries_df']
-                
+                rfc_df = value_dict['rfc_timeseries_df']
+                self._reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
+                self._reservoir_rfc_df.columns = self._reservoir_rfc_df.columns.droplevel()
+                self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','file','use_rfc']].drop_duplicates().set_index('stationId')
+                #self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_param_df.columns.get_loc(network.t0)
+
             else: 
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
