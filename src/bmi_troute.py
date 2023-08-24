@@ -209,7 +209,14 @@ class bmi_troute(Bmi):
         self._values['fvd_results'] = np.zeros(0)
         self._values['fvd_index'] = np.zeros(0)
 
-        # Data assimilation valus
+        # Data assimilation values
+        self._values['usgs_df'] = np.zeros(0)
+        self._values['reservoir_usgs_df'] = np.zeros(0)
+        self._values['reservoir_usace_df'] = np.zeros(0)
+        self._values['rfc_timeseries_df'] = np.zeros(0)
+        self._values['lastobs_df'] = np.zeros(0)
+
+        '''
         self._values['gage_crosswalk__segID'] = np.zeros(0, dtype=int)
         self._values['gage_crosswalk__gageID'] = np.zeros(0, dtype='<U19')
         self._values['usgs_timeslice_discharge'] = np.zeros(0)
@@ -236,7 +243,7 @@ class bmi_troute(Bmi):
         self._values['rfc_totalCounts'] = np.zeros(0)
         self._values['rfc_datetime'] = np.zeros(0, dtype='<U19')
         self._values['rfc_timestep'] = np.zeros(0)
-
+        '''
 
     # Currently utilized BMI functions:
     def update(self):
