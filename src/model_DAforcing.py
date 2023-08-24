@@ -53,6 +53,13 @@ class DAforcing_model():
                 timeslice_dates.append(timeslice_start.strftime('%Y-%m-%d_%H:%M:%S'))
                 timeslice_start += delta
             
+            # Create empty default dataframes:
+            self._usgs_df = pd.DataFrame()
+            self._reservoir_usgs_df = pd.DataFrame()
+            self._reservoir_usace_df = pd.DataFrame()
+            self._rfc_timeseries_df = pd.DataFrame()
+            self._lastobs_df = pd.DataFrame()
+
             # USGS Observations
             if nudging or usgs_persistence:
                 usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
@@ -156,7 +163,7 @@ def _read_timeslice_files(filepath,
             temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
             observation_df = pd.concat([observation_df, temp_df])
     
-    observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8')
+    observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8').str.strip()
     observation_df['time'] = observation_df['time'].str.decode('utf-8')
     observation_df['discharge_quality'] = observation_df['discharge_quality']/100
 
@@ -253,7 +260,7 @@ def _read_timeseries_files(filepath, timeseries_dates, t0):
         df['use_rfc'] = use_rfc
 
         rfc_df = pd.concat([rfc_df, df])
-    rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8')
+    rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8').str.strip()
     return rfc_df
 
 def _read_lastobs_file(
