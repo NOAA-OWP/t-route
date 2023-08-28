@@ -639,11 +639,11 @@ cpdef object compute_network_structured(
                 nudge[gage_i, timestep] = da_buf[1]
                 lastobs_times[gage_i] = da_buf[2]
                 lastobs_values[gage_i] = da_buf[3]
-
+                
         # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
 
         timestep += 1
-
+        
     #pr.disable()
     #pr.print_stats(sort='time')
     #IMPORTANT, free the dynamic array created
@@ -653,4 +653,29 @@ cpdef object compute_network_structured(
     #do the same for the upstream_array
     output_upstream = np.asarray(upstream_array[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt)), output_upstream.reshape(output.shape[0], -1)[fill_index_mask]
+    return (
+        np.asarray(data_idx, dtype=np.intp)[fill_index_mask], 
+        output.reshape(output.shape[0], -1)[fill_index_mask], 
+        0, 
+        (
+            np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), 
+            np.asarray(lastobs_times), 
+            np.asarray(lastobs_values)
+        ), 
+        (
+            usgs_idx, 
+            usgs_update_time-((timestep-1)*dt), 
+            usgs_prev_persisted_ouflow, 
+            usgs_prev_persistence_index, 
+            usgs_persistence_update_time-((timestep-1)*dt)
+        ), 
+        (
+            usace_idx, 
+            usace_update_time-((timestep-1)*dt), 
+            usace_prev_persisted_ouflow, 
+            usace_prev_persistence_index, 
+            usace_persistence_update_time-((timestep-1)*dt)
+        ), 
+        output_upstream.reshape(output.shape[0], -1)[fill_index_mask],
+        np.asarray(nudge)
+    )

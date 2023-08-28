@@ -114,7 +114,7 @@ def nwm_output_generator(
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
     wbdyo = output_parameters.get("lakeout_output", None)
-
+    
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
             "csv_output_folder", None
@@ -191,10 +191,14 @@ def nwm_output_generator(
                 courant.set_index(fvdidxs, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
-
+    
     if test:
         flowveldepth.to_pickle(Path(test))
-    
+        
+        # flowveldepth.to_csv('/home/amin/Amin_fork/t-route/test/LowerColorado_TX/output/flowveldepth.csv', sep='|')
+        nhd_io.write_flowveldepth_netcdf('/home/amin/Amin_fork/t-route/test/LowerColorado_TX/output/flowveldepth.nc', flowveldepth)
+        
+        
     if wbdyo and not waterbodies_df.empty:
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
