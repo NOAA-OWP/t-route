@@ -195,8 +195,8 @@ def nwm_output_generator(
     if test:
         flowveldepth.to_pickle(Path(test))
         
-        # flowveldepth.to_csv('/home/amin/Amin_fork/t-route/test/LowerColorado_TX/output/flowveldepth.csv', sep='|')
-        nhd_io.write_flowveldepth_netcdf('/home/amin/Amin_fork/t-route/test/LowerColorado_TX/output/flowveldepth.nc', flowveldepth)
+        nudge = results[0][7]
+        nhd_io.write_flowveldepth_netcdf('../LowerColorado_TX/output', flowveldepth, nudge)
         
         
     if wbdyo and not waterbodies_df.empty:
