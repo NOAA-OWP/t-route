@@ -478,13 +478,26 @@ class HYFeaturesNetwork(AbstractNetwork):
                 drop('hydroseq', axis=1)
             )
             
+            # Set waterbody types if DA is turned on:
+            streamflow_nudging = self.data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
+            usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
+            usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
+            rfc_da = self.waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
             #NOTE: The order here matters. Some waterbody IDs have both a USGS gage designation and
             # a NID ID used for USACE gages. It seems the USGS gages should take precedent (based on
             # gages in timeslice files), so setting type 2 reservoirs second should overwrite type 3 
             # designations
             #FIXME: Related to FIXME above, but we should re-think how to handle waterbody_types...
-            self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
-            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            if usace_da:
+                self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+            if usgs_da:
+                self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            if rfc_da:
+                #FIXME: Temporary fix, read in predefined rfc lake gage crosswalk file for rfc reservoirs.
+                # Replace relevant waterbody_types as type 4.
+                rfc_lake_gage_crosswalk = pd.read_csv('/home/sean.horvath/projects/t-route/test/ngen/rfc_lake_gage_crosswalk.csv')
+                self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
+                self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
             
         else:
             self._gages = {}
