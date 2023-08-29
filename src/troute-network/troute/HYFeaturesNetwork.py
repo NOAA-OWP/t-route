@@ -431,64 +431,64 @@ class HYFeaturesNetwork(AbstractNetwork):
             gages_df[['type','value']] = gages_df.hl_uri.str.split('-',expand=True,n=1)
             # filter for 'Gages' only
             gages_df = gages_df[gages_df['type'].isin(['Gages','NID'])]
-            # In the event that a segment contains multiple gages, assign only the furthest 
-            # downstream segment ID to any given gage
-            gages_df = gages_df.sort_values(['value','hydroseq']).groupby('value').last().reset_index()
+            # Some IDs have multiple gages associated with them. This will expand the dataframe so
+            # there is a unique row per gage ID. Also adds lake ids to the dataframe for creating 
+            # lake-gage crosswalk dataframes.
+            gages_df = gages_df[['id','value','hydroseq']]
+            gages_df['value'] = gages_df.value.str.split(' ')
+            gages_df = gages_df.explode(column='value').set_index('id').join(
+                pd.DataFrame().from_dict(self.waterbody_connections,orient='index',columns=['lake_id'])
+                )
             # transform dataframe into a dictionary where key is segment ID and value is gage ID
-            self._gages = gages_df[['id','value']].rename(columns={'value': 'gages'}).set_index('id').to_dict()
+            usgs_ind = gages_df.value.str.isnumeric() #usgs gages used for streamflow DA
+            self._gages = gages_df.loc[usgs_ind][['value']].rename(columns={'value': 'gages'}).to_dict()
 
-            # Create lake_gage crosswalk dataframes:
-            link_gage_df = (
-                pd.DataFrame.from_dict(self._gages)
-                .reset_index()
-                .rename(columns={'index': 'link'})
-                .set_index('link')
-                )
-            lake_gage_df = (
-                pd.DataFrame(self.waterbody_connections.items(),
-                             columns = ['link', 'lake_id'])
-                             .set_index('link')
-                             .join(link_gage_df)
-                             .reset_index()[['lake_id','gages']]
-                )
-            lake_gage_df = lake_gage_df[~lake_gage_df['gages'].isnull()]
-            #################################
-            #FIXME: temporary solution, this makes sure each lake only has one gage, and that
-            # it is the gage furthest downstream
-            lake_ids = lake_gage_df.lake_id.unique()
-            lake_outflow_gage_ids = []
+            # Use hydroseq information to determine furthest downstream gage when multiple are present.
+            # Also create our lake_gage_df to make crosswalk dataframes.
+            lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
+            lake_gage_hydroseq_df['lake_id'] = lake_gage_hydroseq_df['lake_id'].astype(int)
+            lake_gage_df = lake_gage_hydroseq_df[['lake_id','gages']].drop_duplicates()
+            lake_gage_hydroseq_df = lake_gage_hydroseq_df.groupby(['lake_id','gages']).max('hydroseq').reset_index().set_index('lake_id')
 
-            for i in lake_ids:
-                temp_df = lake_gage_df[lake_gage_df['lake_id']==i]
-                lake_outflow_gage_ids.append(
-                    gages_df[gages_df['value']
-                             .isin(temp_df.gages)]
-                             .sort_values('hydroseq')
-                             .iloc[-1,:]
-                             .value
-                )
-
-            lake_gage_df = lake_gage_df[lake_gage_df['gages'].isin(lake_outflow_gage_ids)]
-            #####################################
             #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
             # RFC reservoirs...
+            #NOTE: In the event a lake ID has multiple gages, this also finds the gage furthest 
+            # downstream (based on hydroseq) separately for USGS and USACE crosswalks. 
             usgs_ind = lake_gage_df.gages.str.isnumeric()
             self._usgs_lake_gage_crosswalk = (
-                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'})
-                .set_index('usgs_lake_id')
-                )
-            
+                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'}).
+                set_index('usgs_lake_id').
+                merge(lake_gage_hydroseq_df.
+                      rename_axis('usgs_lake_id').
+                      rename(columns={'gages': 'usgs_gage_id'}), on=['usgs_lake_id','usgs_gage_id']).
+                sort_values(['usgs_gage_id','hydroseq']).groupby('usgs_lake_id').
+                last().
+                drop('hydroseq', axis=1)
+            )
+
             self._usace_lake_gage_crosswalk =  (
-                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'})
-                .set_index('usace_lake_id')
-                )
+                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'}).
+                set_index('usace_lake_id').
+                merge(lake_gage_hydroseq_df.
+                      rename_axis('usace_lake_id').
+                      rename(columns={'gages': 'usace_gage_id'}), on=['usace_lake_id','usace_gage_id']).
+                sort_values(['usace_gage_id','hydroseq']).groupby('usace_lake_id').
+                last().
+                drop('hydroseq', axis=1)
+            )
             
-            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            #NOTE: The order here matters. Some waterbody IDs have both a USGS gage designation and
+            # a NID ID used for USACE gages. It seems the USGS gages should take precedent (based on
+            # gages in timeslice files), so setting type 2 reservoirs second should overwrite type 3 
+            # designations
+            #FIXME: Related to FIXME above, but we should re-think how to handle waterbody_types...
             self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+            self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+            
         else:
             self._gages = {}
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
-            self._usgs_lake_gage_crosswalk = pd.DataFrame()
+            self._usace_lake_gage_crosswalk = pd.DataFrame()
     
     def build_qlateral_array(self, run,):
         
@@ -592,7 +592,12 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._dataframe.loc[[1536065,1536067],'waterbody'] = '7100709'
         self._dataframe.loc[[1536104,1536099,1536084,1536094],'waterbody'] = '120052233'
         self._dataframe.loc[[2711040,2711044,2711047],'waterbody'] = '120052275'
-
+        
+        #This chunk replaces waterbody_id 1711354 with 1710676. I don't know where the 
+        #former came from, but the latter is listed in the flowpath_attributes table
+        #and exists in NWMv2.1 LAKEPARM file. See hydrofabric github issue 16:
+        #https://github.com/NOAA-OWP/hydrofabric/issues/16
+        self._dataframe['waterbody'] = self._dataframe['waterbody'].replace('1711354','1710676')
         self._waterbody_df.rename(index={1711354: 1710676}, inplace=True)
     #######################################################################
 
