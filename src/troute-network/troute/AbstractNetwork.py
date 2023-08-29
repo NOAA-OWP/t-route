@@ -28,7 +28,7 @@ class AbstractNetwork(ABC):
                 "_waterbody_types_df", "_waterbody_type_specified", "_link_gage_df",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
-                "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk",
+                "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk", "_rfc_lake_gage_crosswalk",
                 "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
@@ -335,6 +335,10 @@ class AbstractNetwork(ABC):
     @property
     def usace_lake_gage_crosswalk(self):
         return self._usace_lake_gage_crosswalk
+    
+    @property
+    def rfc_lake_gage_crosswalk(self):
+        return self._rfc_lake_gage_crosswalk
 
     @property
     @abstractmethod
