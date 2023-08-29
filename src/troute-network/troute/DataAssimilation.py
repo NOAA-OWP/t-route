@@ -521,7 +521,17 @@ class RFCDA(AbstractDA):
                     set_index('rfc_lake_id')
                 )
                 self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','file','use_rfc']].drop_duplicates().set_index('stationId')
-                #self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_param_df.columns.get_loc(network.t0)
+                self._reservoir_rfc_param_df = (
+                    network.rfc_lake_gage_crosswalk.
+                    reset_index().
+                    set_index('rfc_gage_id').
+                    join(self._reservoir_rfc_param_df).
+                    set_index('rfc_lake_id')
+                )
+                self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_df.columns.get_loc(network.t0)
+                self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
+                self._reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
+                self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'].astype(int)
 
             else: 
                 self._reservoir_rfc_df = pd.DataFrame()
