@@ -513,6 +513,13 @@ class RFCDA(AbstractDA):
                 rfc_df = value_dict['rfc_timeseries_df']
                 self._reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
                 self._reservoir_rfc_df.columns = self._reservoir_rfc_df.columns.droplevel()
+                self._reservoir_rfc_df = (
+                    network.rfc_lake_gage_crosswalk.
+                    reset_index().
+                    set_index('rfc_gage_id').
+                    join(self._reservoir_rfc_df).
+                    set_index('rfc_lake_id')
+                )
                 self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','file','use_rfc']].drop_duplicates().set_index('stationId')
                 #self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_param_df.columns.get_loc(network.t0)
 
