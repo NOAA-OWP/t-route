@@ -520,7 +520,7 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_df).
                     set_index('rfc_lake_id')
                 )
-                self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','file','use_rfc']].drop_duplicates().set_index('stationId')
+                self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','timeseries_idx','file','use_rfc','da_timestep']].drop_duplicates().set_index('stationId')
                 self._reservoir_rfc_param_df = (
                     network.rfc_lake_gage_crosswalk.
                     reset_index().
@@ -528,10 +528,15 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_param_df).
                     set_index('rfc_lake_id')
                 )
-                self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_df.columns.get_loc(network.t0)
+                #self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_df.columns.get_loc(network.t0)
+                new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0)
+                self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - self._reservoir_rfc_param_df['timeseries_idx'])
+                self._reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
                 self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
                 self._reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'].astype(int)
+                self._reservoir_rfc_param_df['update_time'] = 0
+                self._reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
 
             else: 
                 self._reservoir_rfc_df = pd.DataFrame()
