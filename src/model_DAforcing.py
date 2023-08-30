@@ -103,11 +103,13 @@ class DAforcing_model():
             while timeseries_start <= timeseries_end:
                 timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
                 timeseries_start += delta
+            rfc_forecast_persist_days = rfc_parameters.get('reservoir_rfc_forecast_persist_days')
+            final_persist_datetime = start_datetime + timedelta(days=rfc_forecast_persist_days)
 
             # RFC Observations
             if rfc:
                 rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
-                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime)
+                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)
 
             # Lastobs
             lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)
@@ -229,7 +231,7 @@ def _interpolate_one(df, interpolation_limit, frequency):
                        )
     return interp_out
 
-def _read_timeseries_files(filepath, timeseries_dates, t0):
+def _read_timeseries_files(filepath, timeseries_dates, t0, final_persist_datetime):
     files = glob.glob(filepath + '/*')
     df = pd.DataFrame([f.split('/')[-1].split('.') for f in files], columns=['Datetime','dt','ID','rfc','ext'])
     df = df[df['Datetime'].isin(timeseries_dates)][['ID','Datetime']]
@@ -245,6 +247,7 @@ def _read_timeseries_files(filepath, timeseries_dates, t0):
         sliceTimeResolutionMinutes = ds.attrs.get('sliceTimeResolutionMinutes')
         df = ds.to_dataframe().reset_index().sort_values('forecastInd')[['stationId','discharges','synthetic_values','totalCounts','timeSteps']]
         df['Datetime'] = pd.date_range(sliceStartTime, periods=df.shape[0], freq=sliceTimeResolutionMinutes+'T')
+        df = df[df['Datetime']<final_persist_datetime]
         df['timeseries_idx'] = df.index[df.Datetime == t0][0]
         df['file'] = f
 
@@ -258,6 +261,7 @@ def _read_timeseries_files(filepath, timeseries_dates, t0):
             False
         )
         df['use_rfc'] = use_rfc
+        df['da_timestep'] = int(sliceTimeResolutionMinutes)*60
 
         rfc_df = pd.concat([rfc_df, df])
     rfc_df['stationId'] = rfc_df['stationId'].str.decode('utf-8').str.strip()
