@@ -190,6 +190,8 @@ class troute_model():
                          self._data_assimilation.reservoir_usgs_param_df,
                          self._data_assimilation.reservoir_usace_df,
                          self._data_assimilation.reservoir_usace_param_df,
+                         self._data_assimilation.reservoir_rfc_df,
+                         self._data_assimilation.reservoir_rfc_param_df,
                          self._data_assimilation.assimilation_parameters,
                          self._compute_parameters.get('assume_short_ts', False),
                          self._compute_parameters.get('return_courant', False),
@@ -205,6 +207,7 @@ class troute_model():
                          self._network.coastal_boundary_depth_df,
                          self._network.unrefactored_topobathy_df,
                          flowveldepth_interorder,
+                         from_files=False,
                          )
         
         # update initial conditions with results output
