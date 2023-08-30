@@ -18,6 +18,7 @@ from troute.network.reach cimport Reach, _Reach, compute_type
 from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_c, update_lp_c
 from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
+from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da
 from cython.parallel import prange
 
 #import cProfile
@@ -197,10 +198,20 @@ cpdef object compute_network_structured(
     const float[:] reservoir_usace_prev_persisted_flow,
     const float[:] reservoir_usace_persistence_update_time,
     const float[:] reservoir_usace_persistence_index,
+    const float[:,:] reservoir_rfc_obs,
+    const int[:] reservoir_rfc_wbody_idx,
+    const int[:] reservoir_rfc_totalCounts,
+    list reservoir_rfc_file,
+    const int[:] reservoir_rfc_use_forecast,
+    const int[:] reservoir_rfc_timeseries_idx,
+    const float[:] reservoir_rfc_update_time,
+    const int[:] reservoir_rfc_da_timestep,
+    const int[:] reservoir_rfc_persist_days,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
     int da_check_gage = -1,
+    bint from_files=True,
     ):
     
     """
@@ -290,11 +301,41 @@ cpdef object compute_network_structured(
                 reach_objects.append(lp_obj)
 
             else:
-                # If reservoir_type is 1, 2, or 3, then initialize Levelpool reservoir
-                # reservoir_type 1 is a straight levelpool reservoir.
-                # reservoir_types 2 and 3 are USGS and USACE Hybrid reservoirs, respectively.
-                if (reservoir_types[wbody_index][0] >= 1 and reservoir_types[wbody_index][0] <= 3):
-                                        
+                # Check whether to use the fortran or python RFC DA module:
+                if from_files:
+                    # If reservoir_type is 1, 2, or 3, then initialize Levelpool reservoir
+                    # reservoir_type 1 is a straight levelpool reservoir.
+                    # reservoir_types 2 and 3 are USGS and USACE Hybrid reservoirs, respectively.
+                    if (reservoir_types[wbody_index][0] >= 1 and reservoir_types[wbody_index][0] <= 3):
+                                            
+                        # Initialize levelpool reservoir object
+                        lp_obj =  MC_Levelpool(
+                            my_id[0],                        # index position of waterbody reach  
+                            lake_numbers_col[wbody_index],   # lake number 
+                            array('l',upstream_ids),         # upstream segment IDs
+                            wbody_parameters[wbody_index],   # water body parameters
+                            reservoir_types[wbody_index][0], # waterbody type code
+                        )
+                        reach_objects.append(lp_obj)
+
+                    #If reservoir_type is 4, then initialize RFC forecast reservoir
+                    elif (reservoir_types[wbody_index][0] == 4 or reservoir_types[wbody_index][0] == 5):
+                        
+                        # Initialize rfc reservoir object
+                        rfc_obj = MC_RFC(
+                            my_id[0], 
+                            lake_numbers_col[wbody_index],
+                            array('l',upstream_ids),
+                            wbody_parameters[wbody_index],
+                            reservoir_types[wbody_index][0],
+                            waterbody_parameters["rfc"]["reservoir_parameter_file"],
+                            model_start_time,
+                            waterbody_parameters["rfc"]["reservoir_rfc_forecasts_time_series_path"],
+                            waterbody_parameters["rfc"]["reservoir_rfc_forecasts_lookback_hours"],
+                        )
+                        reach_objects.append(rfc_obj)
+                
+                else:
                     # Initialize levelpool reservoir object
                     lp_obj =  MC_Levelpool(
                         my_id[0],                        # index position of waterbody reach  
@@ -304,23 +345,6 @@ cpdef object compute_network_structured(
                         reservoir_types[wbody_index][0], # waterbody type code
                     )
                     reach_objects.append(lp_obj)
-
-                #If reservoir_type is 4, then initialize RFC forecast reservoir
-                elif (reservoir_types[wbody_index][0] == 4 or reservoir_types[wbody_index][0] == 5):
-                    
-                    # Initialize rfc reservoir object
-                    rfc_obj = MC_RFC(
-                        my_id[0], 
-                        lake_numbers_col[wbody_index],
-                        array('l',upstream_ids),
-                        wbody_parameters[wbody_index],
-                        reservoir_types[wbody_index][0],
-                        waterbody_parameters["rfc"]["reservoir_parameter_file"],
-                        model_start_time,
-                        waterbody_parameters["rfc"]["reservoir_rfc_forecasts_time_series_path"],
-                        waterbody_parameters["rfc"]["reservoir_rfc_forecasts_lookback_hours"],
-                    )
-                    reach_objects.append(rfc_obj)
 
         else:
             segment_ids = binary_find(data_idx, reach)
@@ -381,10 +405,12 @@ cpdef object compute_network_structured(
     # reservoir id index arrays
     cdef np.ndarray[int, ndim=1] usgs_idx  = np.asarray(reservoir_usgs_wbody_idx)
     cdef np.ndarray[int, ndim=1] usace_idx = np.asarray(reservoir_usace_wbody_idx)
+    cdef np.ndarray[int, ndim=1] rfc_idx = np.asarray(reservoir_rfc_wbody_idx)
     
     # reservoir update time arrays
     cdef np.ndarray[float, ndim=1] usgs_update_time  = np.asarray(reservoir_usgs_update_time)
     cdef np.ndarray[float, ndim=1] usace_update_time = np.asarray(reservoir_usace_update_time)
+    cdef np.ndarray[float, ndim=1] rfc_update_time = np.asarray(reservoir_rfc_update_time)
     
     # reservoir persisted outflow arrays
     cdef np.ndarray[float, ndim=1] usgs_prev_persisted_ouflow  = np.asarray(reservoir_usgs_prev_persisted_flow)
@@ -397,6 +423,7 @@ cpdef object compute_network_structured(
     # reservoir persisted outflow period index
     cdef np.ndarray[float, ndim=1] usgs_prev_persistence_index  = np.asarray(reservoir_usgs_persistence_index)
     cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.asarray(reservoir_usace_persistence_index)
+    cdef np.ndarray[int, ndim=1] rfc_timeseries_idx             = np.asarray(reservoir_rfc_timeseries_idx)
 
     #---------------------------------------------------------------------------------------------
     #---------------------------------------------------------------------------------------------
@@ -547,6 +574,74 @@ cpdef object compute_network_structured(
                     usace_prev_persisted_ouflow[res_idx[0][0]]   = new_persisted_outflow
                     usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
                     usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
+
+
+                # RFC reservoir hybrid DA inputs
+                if r.reach.lp.wbody_type_code == 4:
+                    # find index location of waterbody in reservoir_rfc_obs 
+                    # and reservoir_rfc_time
+                    res_idx            = np.where(rfc_idx == r.reach.lp.lake_number)
+                    wbody_gage_obs     = reservoir_rfc_obs[res_idx[0][0],:]
+                    totalCounts        = reservoir_rfc_totalCounts[res_idx[0][0]]
+                    rfc_file           = reservoir_rfc_file[res_idx[0][0]]
+                    use_RFC            = reservoir_rfc_use_forecast[res_idx[0][0]]
+                    current_timeseries_idx = rfc_timeseries_idx[res_idx[0][0]]
+                    update_time        = rfc_update_time[res_idx[0][0]]
+                    rfc_timestep       = reservoir_rfc_da_timestep[res_idx[0][0]]
+                    rfc_persist_days   = reservoir_rfc_persist_days[res_idx[0][0]]
+
+                # Execute RFC reservoir DA - both RFC(4) and Glacially Dammed Lake(5) types
+                if r.reach.lp.wbody_type_code == 4 or r.reach.lp.wbody_type_code == 5:
+                    
+                    #print('***********************************************************')
+                    #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
+                    #print('before DA, simulated outflow = ', reservoir_outflow)
+                    #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
+                    
+                    (
+                        new_outflow, 
+                        new_water_elevation, 
+                        new_update_time,
+                        new_timeseries_idx,
+                        dynamic_reservoir_type, 
+                        assimilated_value, 
+                        assimilated_source_file,
+                    ) = reservoir_RFC_da(
+                        use_RFC,                            # boolean whether to use RFC values or not
+                        wbody_gage_obs,              # gage observation values (cms)
+                        current_timeseries_idx,                     # index of for current time series observation
+                        totalCounts,                       # total number of observations in RFC timeseries
+                        routing_period,                          # routing period (sec)
+                        dt * timestep,                               # model time (sec)
+                        update_time,                        # time to advance to next time series index
+                        rfc_timestep,                       # frequency of DA observations (sec)
+                        rfc_persist_days*24*60*60, # max seconds RFC forecasts will be used/persisted (days -> seconds)
+                        r.reach.lp.wbody_type_code,                           # reservoir type
+                        upstream_flows,                                   # waterbody inflow (cms)
+                        initial_water_elevation,                  # water surface el., previous timestep (m)
+                        reservoir_outflow,                  # levelpool simulated outflow (cms)
+                        reservoir_water_elevation,                # levelpool simulated water elevation (m)
+                        r.reach.lp.area*1.0e6,          # waterbody surface area (km2 -> m2)
+                        r.reach.lp.max_depth,                # max waterbody depth (m)
+                        rfc_file,                # RFC file name
+                    )
+                    
+                    #print('After DA, outflow = ', new_outflow)
+                    #print('After DA, water elevation =', new_water_elevation)
+                    
+                    # update levelpool water elevation state
+                    update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
+                    
+                    # change reservoir_outflow
+                    reservoir_outflow = new_outflow
+                    
+                    #print('confirming DA elevation replacement:', reservoir_water_elevation)
+                    #print('===========================================================')
+                    
+                    # update RFC DA reservoir state arrays
+                    rfc_update_time[res_idx[0][0]]      = new_update_time
+                    rfc_timeseries_idx[res_idx[0][0]] = new_timeseries_idx
+                    
                 
                 # populate flowveldepth array with levelpool or hybrid DA results 
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
@@ -653,4 +748,4 @@ cpdef object compute_network_structured(
     #do the same for the upstream_array
     output_upstream = np.asarray(upstream_array[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt)), output_upstream.reshape(output.shape[0], -1)[fill_index_mask]
+    return np.asarray(data_idx, dtype=np.intp)[fill_index_mask], output.reshape(output.shape[0], -1)[fill_index_mask], 0, (np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions]), np.asarray(lastobs_times), np.asarray(lastobs_values)), (usgs_idx, usgs_update_time-((timestep-1)*dt), usgs_prev_persisted_ouflow, usgs_prev_persistence_index, usgs_persistence_update_time-((timestep-1)*dt)), (usace_idx, usace_update_time-((timestep-1)*dt), usace_prev_persisted_ouflow, usace_prev_persistence_index, usace_persistence_update_time-((timestep-1)*dt)), output_upstream.reshape(output.shape[0], -1)[fill_index_mask], (rfc_idx, rfc_update_time, rfc_timeseries_idx)
