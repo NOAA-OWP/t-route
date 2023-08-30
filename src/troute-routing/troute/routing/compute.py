@@ -139,7 +139,15 @@ def _prep_da_positions_byreach(reach_list, gage_index):
 
     return reach_key, gage_reach_i
 
-def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, reservoir_usace_df, reservoir_usace_param_df, waterbody_types_df_sub, t0, exclude_segments=None):
+def _prep_reservoir_da_dataframes(reservoir_usgs_df,
+                                  reservoir_usgs_param_df,
+                                  reservoir_usace_df,
+                                  reservoir_usace_param_df,
+                                  reservoir_rfc_df,
+                                  reservoir_rfc_param_df,
+                                  waterbody_types_df_sub,
+                                  t0, 
+                                  exclude_segments=None):
     '''
     Helper function to build reservoir DA data arrays for routing computations
 
@@ -149,6 +157,8 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
     reservoir_usgs_param_df  (DataFrame): USGS reservoir DA state parameters
     reservoir_usace_df       (DataFrame): gage flow observations at USACE-type reservoirs
     reservoir_usace_param_df (DataFrame): USACE reservoir DA state parameters
+    reservoir_rfc_df         (DataFrame): gage flow observations and forecasts at RFC-type reservoirs
+    reservoir_rfc_param_df   (DataFrame): RFC reservoir DA state parameters
     waterbody_types_df_sub   (DataFrame): type-codes for waterbodies in sub domain
     t0                        (datetime): model initialization time
 
@@ -174,7 +184,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
                                     waterbody_types_df_sub['reservoir_type']==2
                                 ].index
         if exclude_segments:
-            usgs_wbodies_sub = set(usgs_wbodies_sub).difference(set(exclude_segments))
+            usgs_wbodies_sub = list(set(usgs_wbodies_sub).difference(set(exclude_segments)))
         reservoir_usgs_df_sub = reservoir_usgs_df.loc[usgs_wbodies_sub]
         reservoir_usgs_df_time = []
         for timestamp in reservoir_usgs_df.columns:
@@ -200,7 +210,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
                                     waterbody_types_df_sub['reservoir_type']==3
                                 ].index
         if exclude_segments:
-            usace_wbodies_sub = set(usace_wbodies_sub).difference(set(exclude_segments))
+            usace_wbodies_sub = list(set(usace_wbodies_sub).difference(set(exclude_segments)))
         reservoir_usace_df_sub = reservoir_usace_df.loc[usace_wbodies_sub]
         reservoir_usace_df_time = []
         for timestamp in reservoir_usace_df.columns:
@@ -219,8 +229,40 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df, reservoir_usgs_param_df, re
         reservoir_usace_persistence_index = pd.DataFrame().to_numpy().reshape(0,)
         if not waterbody_types_df_sub.empty:
             waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 3] = 1
-        
-    return reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usgs_update_time, reservoir_usgs_prev_persisted_flow, reservoir_usgs_persistence_update_time, reservoir_usgs_persistence_index,  reservoir_usace_df_sub, reservoir_usace_df_time, reservoir_usace_update_time, reservoir_usace_prev_persisted_flow, reservoir_usace_persistence_update_time, reservoir_usace_persistence_index, waterbody_types_df_sub
+    
+    # RFC reservoirs
+    if not reservoir_rfc_df.empty:
+        rfc_wbodies_sub = waterbody_types_df_sub[
+            waterbody_types_df_sub['reservoir_type']==4
+            ].index
+        if exclude_segments:
+            rfc_wbodies_sub = list(set(rfc_wbodies_sub).difference(set(exclude_segments)))
+        reservoir_rfc_df_sub = reservoir_rfc_df.loc[rfc_wbodies_sub]
+        reservoir_rfc_totalCounts = reservoir_rfc_param_df['totalCounts'].loc[rfc_wbodies_sub].to_numpy()
+        reservoir_rfc_file = reservoir_rfc_param_df['file'].loc[rfc_wbodies_sub].to_list()
+        reservoir_rfc_use_forecast = reservoir_rfc_param_df['use_rfc'].loc[rfc_wbodies_sub].to_numpy()
+        reservoir_rfc_timeseries_idx = reservoir_rfc_param_df['timeseries_idx'].loc[rfc_wbodies_sub].to_numpy()
+        reservoir_rfc_update_time = reservoir_rfc_param_df['update_time'].loc[rfc_wbodies_sub].to_numpy()
+        reservoir_rfc_da_timestep = reservoir_rfc_param_df['da_timestep'].loc[rfc_wbodies_sub].to_numpy()
+        reservoir_rfc_persist_days = reservoir_rfc_param_df['rfc_persist_days'].loc[rfc_wbodies_sub].to_numpy()
+    else:
+        reservoir_rfc_df_sub = pd.DataFrame()
+        reservoir_rfc_totalCounts = pd.DataFrame().to_numpy().reshape(0,)
+        reservoir_rfc_file = []
+        reservoir_rfc_use_forecast = pd.DataFrame().to_numpy().reshape(0,)
+        reservoir_rfc_timeseries_idx = pd.DataFrame().to_numpy().reshape(0,)
+        reservoir_rfc_update_time = pd.DataFrame().to_numpy().reshape(0,)
+        reservoir_rfc_da_timestep = pd.DataFrame().to_numpy().reshape(0,)
+        reservoir_rfc_persist_days = pd.DataFrame().to_numpy().reshape(0,)
+        if not waterbody_types_df_sub.empty:
+            waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 4] = 1
+
+    return (
+        reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usgs_update_time, reservoir_usgs_prev_persisted_flow, reservoir_usgs_persistence_update_time, reservoir_usgs_persistence_index,
+        reservoir_usace_df_sub, reservoir_usace_df_time, reservoir_usace_update_time, reservoir_usace_prev_persisted_flow, reservoir_usace_persistence_update_time, reservoir_usace_persistence_index,
+        reservoir_rfc_df_sub, reservoir_rfc_totalCounts, reservoir_rfc_file, reservoir_rfc_use_forecast, reservoir_rfc_timeseries_idx, reservoir_rfc_update_time, reservoir_rfc_da_timestep, reservoir_rfc_persist_days,
+        waterbody_types_df_sub
+        )
 
 def compute_nhd_routing_v02(
     connections,
@@ -245,6 +287,8 @@ def compute_nhd_routing_v02(
     reservoir_usgs_param_df,
     reservoir_usace_df,
     reservoir_usace_param_df,
+    reservoir_rfc_df,
+    reservoir_rfc_param_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -254,6 +298,7 @@ def compute_nhd_routing_v02(
     waterbody_type_specified,
     subnetwork_list,
     flowveldepth_interorder = {},
+    from_files = True,
 ):
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
@@ -479,12 +524,22 @@ def compute_nhd_routing_v02(
                      reservoir_usace_prev_persisted_flow,
                      reservoir_usace_persistence_update_time,
                      reservoir_usace_persistence_index,
+                     reservoir_rfc_df_sub, 
+                     reservoir_rfc_totalCounts, 
+                     reservoir_rfc_file, 
+                     reservoir_rfc_use_forecast, 
+                     reservoir_rfc_timeseries_idx, 
+                     reservoir_rfc_update_time, 
+                     reservoir_rfc_da_timestep, 
+                     reservoir_rfc_persist_days,
                      waterbody_types_df_sub,
                      ) = _prep_reservoir_da_dataframes(
                         reservoir_usgs_df,
                         reservoir_usgs_param_df,
                         reservoir_usace_df, 
                         reservoir_usace_param_df,
+                        reservoir_rfc_df,
+                        reservoir_rfc_param_df,
                         waterbody_types_df_sub, 
                         t0,
                         offnetwork_upstreams
@@ -517,11 +572,11 @@ def compute_nhd_routing_v02(
                             np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get(
                                 "lastobs_discharge",
-                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32"),
                             ).values.astype("float32"),
                             lastobs_df_sub.get(
                                 "time_since_lastobs",
-                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
                             # USGS Hybrid Reservoir DA data
@@ -540,6 +595,16 @@ def compute_nhd_routing_v02(
                             reservoir_usace_prev_persisted_flow.astype("float32"),
                             reservoir_usace_persistence_update_time.astype("float32"),
                             reservoir_usace_persistence_index.astype("float32"),
+                            # RFC Reservoir DA data
+                            reservoir_rfc_df_sub.values.astype("float32"),
+                            reservoir_rfc_df_sub.index.values.astype("int32"),
+                            reservoir_rfc_totalCounts.astype("int32"),
+                            reservoir_rfc_file,
+                            reservoir_rfc_use_forecast.astype("int32"),
+                            reservoir_rfc_timeseries_idx.astype("int32"),
+                            reservoir_rfc_update_time.astype("float32"),
+                            reservoir_rfc_da_timestep.astype("int32"),
+                            reservoir_rfc_persist_days.astype("int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -547,6 +612,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            from_files = from_files,
                         )
                     )
                 results_subn[order] = parallel(jobs)
@@ -745,14 +811,25 @@ def compute_nhd_routing_v02(
                      reservoir_usace_prev_persisted_flow,
                      reservoir_usace_persistence_update_time,
                      reservoir_usace_persistence_index,
+                     reservoir_rfc_df_sub, 
+                     reservoir_rfc_totalCounts, 
+                     reservoir_rfc_file, 
+                     reservoir_rfc_use_forecast, 
+                     reservoir_rfc_timeseries_idx, 
+                     reservoir_rfc_update_time, 
+                     reservoir_rfc_da_timestep, 
+                     reservoir_rfc_persist_days,
                      waterbody_types_df_sub,
                      ) = _prep_reservoir_da_dataframes(
                         reservoir_usgs_df,
                         reservoir_usgs_param_df,
                         reservoir_usace_df, 
                         reservoir_usace_param_df,
+                        reservoir_rfc_df,
+                        reservoir_rfc_param_df,
                         waterbody_types_df_sub, 
-                        t0
+                        t0,
+                        offnetwork_upstreams
                     )
 
                     jobs.append(
@@ -780,11 +857,11 @@ def compute_nhd_routing_v02(
                             np.array(da_positions_list_bygage, dtype="int32"),
                             lastobs_df_sub.get(
                                 "lastobs_discharge",
-                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32"),
                             ).values.astype("float32"),
                             lastobs_df_sub.get(
                                 "time_since_lastobs",
-                                pd.Series(index=lastobs_df_sub.index, name="Null"),
+                                pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32"),
                             ).values.astype("float32"),
                             da_decay_coefficient,
                             # USGS Hybrid Reservoir DA data
@@ -803,6 +880,16 @@ def compute_nhd_routing_v02(
                             reservoir_usace_prev_persisted_flow.astype("float32"),
                             reservoir_usace_persistence_update_time.astype("float32"),
                             reservoir_usace_persistence_index.astype("float32"),
+                            # RFC Reservoir DA data
+                            reservoir_rfc_df_sub.values.astype("float32"),
+                            reservoir_rfc_df_sub.index.values.astype("int32"),
+                            reservoir_rfc_totalCounts.astype("int32"),
+                            reservoir_rfc_file,
+                            reservoir_rfc_use_forecast.astype("int32"),
+                            reservoir_rfc_timeseries_idx.astype("int32"),
+                            reservoir_rfc_update_time.astype("float32"),
+                            reservoir_rfc_da_timestep.astype("int32"),
+                            reservoir_rfc_persist_days.astype("int32"),
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -810,6 +897,7 @@ def compute_nhd_routing_v02(
                             },
                             assume_short_ts,
                             return_courant,
+                            from_files=from_files,
                         )
                     )
 
@@ -925,15 +1013,26 @@ def compute_nhd_routing_v02(
                  reservoir_usace_prev_persisted_flow,
                  reservoir_usace_persistence_update_time,
                  reservoir_usace_persistence_index,
+                 reservoir_rfc_df_sub, 
+                 reservoir_rfc_totalCounts, 
+                 reservoir_rfc_file, 
+                 reservoir_rfc_use_forecast, 
+                 reservoir_rfc_timeseries_idx, 
+                 reservoir_rfc_update_time, 
+                 reservoir_rfc_da_timestep, 
+                 reservoir_rfc_persist_days,
                  waterbody_types_df_sub,
-                 ) = _prep_reservoir_da_dataframes(
+                ) = _prep_reservoir_da_dataframes(
                     reservoir_usgs_df,
                     reservoir_usgs_param_df,
                     reservoir_usace_df, 
                     reservoir_usace_param_df,
+                    reservoir_rfc_df,
+                    reservoir_rfc_param_df,
                     waterbody_types_df_sub, 
-                    t0
-                )
+                    t0,
+                    offnetwork_upstreams
+                    )
 
                 jobs.append(
                     delayed(compute_func)(
@@ -957,8 +1056,8 @@ def compute_nhd_routing_v02(
                         np.array(da_positions_list_byseg, dtype="int32"),
                         np.array(da_positions_list_byreach, dtype="int32"),
                         np.array(da_positions_list_bygage, dtype="int32"),
-                        lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                        lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                        lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
+                        lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
                         da_decay_coefficient,
                         # USGS Hybrid Reservoir DA data
                         reservoir_usgs_df_sub.values.astype("float32"),
@@ -976,9 +1075,20 @@ def compute_nhd_routing_v02(
                         reservoir_usace_prev_persisted_flow.astype("float32"),
                         reservoir_usace_persistence_update_time.astype("float32"),
                         reservoir_usace_persistence_index.astype("float32"),
+                        # RFC Reservoir DA data
+                        reservoir_rfc_df_sub.values.astype("float32"),
+                        reservoir_rfc_df_sub.index.values.astype("int32"),
+                        reservoir_rfc_totalCounts.astype("int32"),
+                        reservoir_rfc_file,
+                        reservoir_rfc_use_forecast.astype("int32"),
+                        reservoir_rfc_timeseries_idx.astype("int32"),
+                        reservoir_rfc_update_time.astype("float32"),
+                        reservoir_rfc_da_timestep.astype("int32"),
+                        reservoir_rfc_persist_days.astype("int32"),
                         {},
                         assume_short_ts,
                         return_courant,
+                        from_files=from_files,
                     )
                 )
 
@@ -1069,16 +1179,26 @@ def compute_nhd_routing_v02(
              reservoir_usace_prev_persisted_flow,
              reservoir_usace_persistence_update_time,
              reservoir_usace_persistence_index,
+             reservoir_rfc_df_sub, 
+             reservoir_rfc_totalCounts, 
+             reservoir_rfc_file, 
+             reservoir_rfc_use_forecast, 
+             reservoir_rfc_timeseries_idx, 
+             reservoir_rfc_update_time, 
+             reservoir_rfc_da_timestep, 
+             reservoir_rfc_persist_days,
              waterbody_types_df_sub,
              ) = _prep_reservoir_da_dataframes(
                 reservoir_usgs_df,
                 reservoir_usgs_param_df,
                 reservoir_usace_df, 
                 reservoir_usace_param_df,
+                reservoir_rfc_df,
+                reservoir_rfc_param_df,
                 waterbody_types_df_sub, 
-                t0
-            )
-
+                t0,
+                )
+            
             results.append(
                 compute_func(
                     nts,
@@ -1101,8 +1221,8 @@ def compute_nhd_routing_v02(
                     np.array(da_positions_list_byseg, dtype="int32"),
                     np.array(da_positions_list_byreach, dtype="int32"),
                     np.array(da_positions_list_bygage, dtype="int32"),
-                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
-                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null")).values.astype("float32"),
+                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
+                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
                     da_decay_coefficient,
                     # USGS Hybrid Reservoir DA data
                     reservoir_usgs_df_sub.values.astype("float32"),
@@ -1120,11 +1240,23 @@ def compute_nhd_routing_v02(
                     reservoir_usace_prev_persisted_flow.astype("float32"),
                     reservoir_usace_persistence_update_time.astype("float32"),
                     reservoir_usace_persistence_index.astype("float32"),
+                    # RFC Reservoir DA data
+                    reservoir_rfc_df_sub.values.astype("float32"),
+                    reservoir_rfc_df_sub.index.values.astype("int32"),
+                    reservoir_rfc_totalCounts.astype("int32"),
+                    reservoir_rfc_file,
+                    reservoir_rfc_use_forecast.astype("int32"),
+                    reservoir_rfc_timeseries_idx.astype("int32"),
+                    reservoir_rfc_update_time.astype("float32"),
+                    reservoir_rfc_da_timestep.astype("int32"),
+                    reservoir_rfc_persist_days.astype("int32"),
                     {},
                     assume_short_ts,
                     return_courant,
+                    from_files=from_files,
                 )
             )
+
 
     elif parallel_compute_method == "bmi":
         results = []
@@ -1254,8 +1386,8 @@ def compute_nhd_routing_v02(
                     np.array(da_positions_list_byseg, dtype="int32"),
                     np.array(da_positions_list_byreach, dtype="int32"),
                     np.array(da_positions_list_bygage, dtype="int32"),
-                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float64")).values.astype("float32"),
-                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float64")).values.astype("float32"),
+                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
+                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
                     da_decay_coefficient,
                     # USGS Hybrid Reservoir DA data
                     reservoir_usgs_df_sub.values.astype("float32"),
