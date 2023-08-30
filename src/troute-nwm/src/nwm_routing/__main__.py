@@ -179,6 +179,8 @@ def main_v04(argv):
             data_assimilation.reservoir_usgs_param_df,
             data_assimilation.reservoir_usace_df,
             data_assimilation.reservoir_usace_param_df,
+            data_assimilation.reservoir_rfc_df,
+            data_assimilation.reservoir_rfc_param_df,
             data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
@@ -1034,6 +1036,8 @@ def nwm_route(
     reservoir_usgs_param_df,
     reservoir_usace_df,
     reservoir_usace_param_df,
+    reservoir_rfc_df,
+    reservoir_rfc_param_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -1049,6 +1053,7 @@ def nwm_route(
     coastal_boundary_depth_df,
     unrefactored_topobathy_df,
     flowveldepth_interorder={},
+    from_files=True,
 ):
 
     ################### Main Execution Loop across ordered networks
@@ -1087,6 +1092,8 @@ def nwm_route(
         reservoir_usgs_param_df,
         reservoir_usace_df,
         reservoir_usace_param_df,
+        reservoir_rfc_df,
+        reservoir_rfc_param_df,
         da_parameter_dict,
         assume_short_ts,
         return_courant,
@@ -1096,6 +1103,7 @@ def nwm_route(
         waterbody_type_specified,
         subnetwork_list,
         flowveldepth_interorder,
+        from_files = from_files,
     )
     LOG.debug("MC computation complete in %s seconds." % (time.time() - start_time_mc))
     # returns list, first item is run result, second item is subnetwork items
@@ -1489,6 +1497,8 @@ def main_v03(argv):
             reservoir_usgs_param_df,
             reservoir_usace_df,
             reservoir_usace_param_df,
+            pd.DataFrame(), #empty dataframe for RFC data...not needed unless running via BMI
+            pd.DataFrame(), #empty dataframe for RFC param data...not needed unless running via BMI
             da_parameter_dict,
             assume_short_ts,
             return_courant,
