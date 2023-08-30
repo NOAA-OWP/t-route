@@ -512,16 +512,19 @@ class HYFeaturesNetwork(AbstractNetwork):
 
             dfs=[]
             for f in qlat_files:
-                df = read_file(f).set_index(['feature_id']) 
+                df = read_file(f)
+                df['feature_id'] = df['feature_id'].map(lambda x: int(str(x).removeprefix('nex-')) if str(x).startswith('nex') else int(x))
+                df = df.set_index('feature_id')
                 dfs.append(df)
             
             # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
-            nexuses_lateralflows_df = pd.concat(dfs, axis=1)  
+            nexuses_lateralflows_df = pd.concat(dfs, axis=1) 
             
             # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids
-            qlats_df = pd.concat( (nexuses_lateralflows_df.loc[int(k)].rename(v)
-                                for k,v in self.downstream_flowpath_dict.items() ), axis=1
-                                ).T 
+            qlats_df = pd.concat(
+                (nexuses_lateralflows_df.loc[int(k)].rename(v) for k,v in self.downstream_flowpath_dict.items() if k in nexuses_lateralflows_df.index.to_list()),
+                axis=1
+            ).T 
             qlats_df.columns=range(len(qlat_files))
             qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
 
@@ -604,9 +607,12 @@ def read_file(file_name):
         df = pq.read_table(file_name).to_pandas().reset_index()
         df.index.name = None
     elif extension=='.nc':
-        df = xr.open_dataset(file_name).to_pandas().reset_index()
+        nc = xr.open_dataset(file_name)
+        ts = str(nc.get('time').values)
+        df = nc.to_pandas().reset_index()[['feature_id', 'q_lateral']]
+        df.rename(columns={'q_lateral': f'{ts}'}, inplace=True)
         df.index.name = None
-    
+
     return df
 
 def tailwaters(N):

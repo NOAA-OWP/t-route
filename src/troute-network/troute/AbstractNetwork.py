@@ -877,5 +877,4 @@ def read_file(file_name):
     elif extension=='.nc':
         df = xr.open_dataset(file_name).to_pandas().reset_index()
         df.index.name = None
-    
     return df
