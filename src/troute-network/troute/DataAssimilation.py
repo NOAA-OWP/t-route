@@ -528,13 +528,14 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_param_df).
                     set_index('rfc_lake_id')
                 )
-                #self._reservoir_rfc_param_df['timeseries_idx'] = self._reservoir_rfc_df.columns.get_loc(network.t0)
                 new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0)
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - self._reservoir_rfc_param_df['timeseries_idx'])
                 self._reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
                 self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
                 self._reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
+                self._reservoir_rfc_param_df['da_timestep'].fillna(0, inplace=True)
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'].astype(int)
+                self._reservoir_rfc_param_df['da_timestep'] = self._reservoir_rfc_param_df['da_timestep'].astype(int)
                 self._reservoir_rfc_param_df['update_time'] = 0
                 self._reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
 
@@ -616,6 +617,14 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     @property
     def reservoir_usace_param_df(self):
         return self._reservoir_usace_param_df
+    
+    @property
+    def reservoir_rfc_df(self):
+        return self._reservoir_rfc_df
+    
+    @property
+    def reservoir_rfc_param_df(self):
+        return self._reservoir_rfc_param_df
 
 
 # --------------------------------------------------------------
