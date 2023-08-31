@@ -350,18 +350,18 @@ class PersistenceDA(AbstractDA):
         
         Arguments:
         ----------
-        - run_results                  (list): output from the compute kernel sequence,
-                                               organized (because that is how it comes 
-                                               out of the kernel) by network.
-                                               For each item in the result, there are 
-                                               seven elements, the fifth (usgs) and sixth 
-                                               (usace) of which are lists of five elements 
-                                               containing: 1) a list of the segments ids 
-                                               where data assimilation was performed (if any) 
-                                               in that network; 2) a list of the lupdate time; 
-                                               3) a list of the previously persisted outflow; 
-                                               4) a list of the persistence index; 5) a list 
-                                               of the persistence update time.
+        - run_results (list): output from the compute kernel sequence,
+                              organized (because that is how it comes 
+                              out of the kernel) by network.
+                              For each item in the result, there are 
+                              seven elements, the fifth (usgs) and sixth 
+                              (usace) of which are lists of five elements 
+                              containing: 1) a list of the segments ids 
+                              where data assimilation was performed (if any) 
+                              in that network; 2) a list of the lupdate time; 
+                              3) a list of the previously persisted outflow; 
+                              4) a list of the persistence index; 5) a list 
+                              of the persistence update time.
         
         Returns:
         --------
@@ -370,7 +370,7 @@ class PersistenceDA(AbstractDA):
             - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
         '''
         # get reservoir DA initial parameters for next loop itteration
-        self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_reservoir_da_params(run_results)
+        self._reservoir_usgs_param_df, self._reservoir_usace_param_df = _set_persistence_reservoir_da_params(run_results)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -528,7 +528,7 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_param_df).
                     set_index('rfc_lake_id')
                 )
-                new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0)
+                new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0) - 1 #minus 1 so on first call of reservoir_rfc_da(), timeseries_idx will advance 1 position to t0.
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - self._reservoir_rfc_param_df['timeseries_idx'])
                 self._reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
                 self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
@@ -545,8 +545,34 @@ class RFCDA(AbstractDA):
         else:
             pass
 
-    def update_after_compute(self,):
-        pass
+    def update_after_compute(self, run_results):
+        '''
+        Function to update data assimilation object after running routing module.
+        
+        Arguments:
+        ----------
+        - run_results (list): output from the compute kernel sequence,
+                              organized (because that is how it comes 
+                              out of the kernel) by network.
+                              For each item in the result, there are 
+                              seven elements, the fifth (usgs) and sixth 
+                              (usace) of which are lists of five elements 
+                              containing: 1) a list of the segments ids 
+                              where data assimilation was performed (if any) 
+                              in that network; 2) a list of the lupdate time; 
+                              3) a list of the previously persisted outflow; 
+                              4) a list of the persistence index; 5) a list 
+                              of the persistence update time.
+        
+        Returns:
+        --------
+        - data_assimilation               (Object): Object containing all data assimilation information
+            - reservoir_usgs_param_df  (DataFrame): USGS reservoir DA parameters
+            - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
+        '''
+        # get reservoir DA initial parameters for next loop itteration
+        self._reservoir_rfc_param_df = _set_rfc_reservoir_da_params(self._reservoir_rfc_param_df, run_results)
+
 
     def update_for_next_loop(self,):
         pass
@@ -579,7 +605,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         '''
         NudgingDA.update_after_compute(self, run_results, time_increment)
         PersistenceDA.update_after_compute(self, run_results)
-        RFCDA.update_after_compute(self)
+        RFCDA.update_after_compute(self, run_results)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -798,7 +824,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
         
     return reservoir_df, reservoir_param_df
     
-def _set_reservoir_da_params(run_results):
+def _set_persistence_reservoir_da_params(run_results):
     '''
     Update persistence reservoir DA parameters for subsequent loops
     Arguments:
@@ -850,6 +876,33 @@ def _set_reservoir_da_params(run_results):
             reservoir_usace_param_df = pd.concat([reservoir_usace_param_df, tmp_usace])
     
     return reservoir_usgs_param_df, reservoir_usace_param_df
+
+def _set_rfc_reservoir_da_params(reservoir_rfc_param_df, run_results):
+    '''
+    Update RFC reservoir DA parameters for subsequent loops
+    Arguments:
+    ----------
+    - reservoir_rfc_param_df (DataFrame): RFC reservoir DA parameters
+    - run_results                 (list): output from the compute kernel sequence, organized
+                                          (because that is how it comes out of the kernel) by network.
+                                          For each item in the result, there are seven elements, the
+                                          eigth of which is a list of three elements containing: 
+                                          1) a list of the segments ids where data assimilation 
+                                          was performed (if any) in that network; 
+                                          2) a list of the update time; 
+                                          3) a list of the rfc timeseries index.
+    
+    Returns:
+    --------
+    - reservoir_rfc_param_df (DataFrame): RFC reservoir DA parameters (updated)
+    '''
+    for r in run_results:
+        if len(r[7][0]) > 0:
+            rfc_idx = r[7][0]
+            reservoir_rfc_param_df.loc[rfc_idx, 'update_time'] = r[7][1]
+            reservoir_rfc_param_df.loc[rfc_idx, 'timeseries_idx'] = r[7][2]
+    
+    return reservoir_rfc_param_df
 
 def build_lastobs_df(
         lastobsfile,
