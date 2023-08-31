@@ -229,8 +229,8 @@ def reservoir_RFC_da(use_RFC, time_series, timeseries_idx, total_counts, routing
     Notes
     -----
     ''' 
-    if use_RFC and (current_time+routing_period)<=rfc_forecast_persist_seconds:
-        if (current_time+routing_period) >= update_time and timeseries_idx<total_counts:
+    if use_RFC and (current_time)<=rfc_forecast_persist_seconds:
+        if (current_time) >= update_time and timeseries_idx<total_counts:
             # Advance update_time to the next timestep and time_series_idx to next index
             update_time += DA_time_step
             timeseries_idx += 1
