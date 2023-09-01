@@ -521,11 +521,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             nexuses_lateralflows_df = pd.concat(dfs, axis=1) 
             
             # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids
-            qlats_df = pd.concat(
-                (nexuses_lateralflows_df.loc[int(k)].rename(v) for k,v in self.downstream_flowpath_dict.items() if k in nexuses_lateralflows_df.index.to_list()),
-                axis=1
-            ).T 
-            qlats_df.columns=range(len(qlat_files))
+            qlats_df = nexuses_lateralflows_df.rename(index=self.downstream_flowpath_dict)
             qlats_df = qlats_df[qlats_df.index.isin(self.segment_index)]
 
             '''
