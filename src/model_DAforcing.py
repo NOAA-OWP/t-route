@@ -232,13 +232,18 @@ def _interpolate_one(df, interpolation_limit, frequency):
     return interp_out
 
 def _read_timeseries_files(filepath, timeseries_dates, t0, final_persist_datetime):
+    # Search for most recent RFC timseries file based on offset hours and lookback window
+    # for each location.
     files = glob.glob(filepath + '/*')
+    # create temporary dataframe with file names, split up by location and datetime
     df = pd.DataFrame([f.split('/')[-1].split('.') for f in files], columns=['Datetime','dt','ID','rfc','ext'])
     df = df[df['Datetime'].isin(timeseries_dates)][['ID','Datetime']]
+    # For each location, find the most recent timeseries file (within timeseries window calculated a priori)
     df['Datetime'] = df['Datetime'].apply(lambda _: datetime.strptime(_, '%Y-%m-%d_%H'))
     df = df.groupby('ID').max().reset_index()
     df['Datetime'] = df['Datetime'].dt.strftime('%Y-%m-%d_%H')
 
+    # Loop through list of timeseries files and store relevent information in dataframe.
     file_list = (df['Datetime'] + '.60min.' + df['ID'] + '.RFCTimeSeries.ncdf').tolist()
     rfc_df = pd.DataFrame()
     for f in file_list:
@@ -247,10 +252,14 @@ def _read_timeseries_files(filepath, timeseries_dates, t0, final_persist_datetim
         sliceTimeResolutionMinutes = ds.attrs.get('sliceTimeResolutionMinutes')
         df = ds.to_dataframe().reset_index().sort_values('forecastInd')[['stationId','discharges','synthetic_values','totalCounts','timeSteps']]
         df['Datetime'] = pd.date_range(sliceStartTime, periods=df.shape[0], freq=sliceTimeResolutionMinutes+'T')
+        # Filter out forecasts that go beyond the rfc_persist_days parameter. This isn't necessary, but removes
+        # excess data, keeping the dataframe of observations as small as possible.
         df = df[df['Datetime']<final_persist_datetime]
+        # Locate where t0 is in the timeseries
         df['timeseries_idx'] = df.index[df.Datetime == t0][0]
         df['file'] = f
 
+        # Validate data to determine whether or not it will be used.
         use_rfc = _validate_RFC_data(
             df['stationId'][0],
             df.discharges,
