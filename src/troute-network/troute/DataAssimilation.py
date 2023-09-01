@@ -510,9 +510,12 @@ class RFCDA(AbstractDA):
 
         if not from_files:
             if rfc:
+                # Retrieve rfc timeseries dataframe from BMI dictionary
                 rfc_df = value_dict['rfc_timeseries_df']
+                # Create reservoir_rfc_df dataframe of observations, rows are locations and columns are dates.
                 self._reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
                 self._reservoir_rfc_df.columns = self._reservoir_rfc_df.columns.droplevel()
+                # Replace gage IDs with lake IDs
                 self._reservoir_rfc_df = (
                     network.rfc_lake_gage_crosswalk.
                     reset_index().
@@ -520,6 +523,7 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_df).
                     set_index('rfc_lake_id')
                 )
+                # Create reservoir_rfc_df dataframe of parameters
                 self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','timeseries_idx','file','use_rfc','da_timestep']].drop_duplicates().set_index('stationId')
                 self._reservoir_rfc_param_df = (
                     network.rfc_lake_gage_crosswalk.
@@ -528,12 +532,18 @@ class RFCDA(AbstractDA):
                     join(self._reservoir_rfc_param_df).
                     set_index('rfc_lake_id')
                 )
+                # To pass RFC observations to mc_reach they need to be in an array. But the RFC timeseries have different
+                # lengths/start dates for each location so the array ends up having many NaN observations after we 
+                # pivot the dataframe from long to wide format. We therefore need to adjust the timeseries index and
+                # total counts to reflect the new position of t0 in the observation array. 
                 new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0) - 1 #minus 1 so on first call of reservoir_rfc_da(), timeseries_idx will advance 1 position to t0.
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - self._reservoir_rfc_param_df['timeseries_idx'])
                 self._reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
+                # Fill in NaNs with default values.
                 self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
                 self._reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
                 self._reservoir_rfc_param_df['da_timestep'].fillna(0, inplace=True)
+                # Make sure columns are the correct types
                 self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'].astype(int)
                 self._reservoir_rfc_param_df['da_timestep'] = self._reservoir_rfc_param_df['da_timestep'].astype(int)
                 self._reservoir_rfc_param_df['update_time'] = 0
