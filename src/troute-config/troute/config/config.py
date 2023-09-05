@@ -12,7 +12,7 @@ from .bmi_parameters import BMIParameters
 from ._utils import use_strict
 
 
-class Config(BaseModel):
+class Config(BaseModel, extra='forbid'):
     log_parameters: LoggingParameters = Field(default_factory=LoggingParameters)
     # TODO: not sure if default is None or {}. see nhd_io.read_config_file ~:100
     network_topology_parameters: Optional[NetworkTopologyParameters] = None

@@ -5,7 +5,7 @@ from typing import Optional, List
 from .types import FilePath, DirectoryPath
 
 
-class OutputParameters(BaseModel):
+class OutputParameters(BaseModel, extra='forbid'):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
@@ -28,30 +28,30 @@ class OutputParameters(BaseModel):
     test_output: Optional[FilePath] = None
 
 
-class ChanobsOutput(BaseModel):
+class ChanobsOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing chanobs files
     chanobs_output_directory: Optional[DirectoryPath] = None
     # NOTE: required if writing chanobs files
     chanobs_filepath: Optional[FilePath] = None
 
 
-class CsvOutput(BaseModel):
+class CsvOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing results to csv
     csv_output_folder: Optional[DirectoryPath] = None
     csv_output_segments: Optional[List[str]] = None
 
 
-class ChrtoutOutput(BaseModel):
+class ChrtoutOutput(BaseModel, extra='forbid'):
     # NOTE: mandatory if writing results to CHRTOUT.
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
 
-class LiteRestart(BaseModel):
+class LiteRestart(BaseModel, extra='forbid'):
     # NOTE: required if writing restart data lite files.
     lite_restart_output_directory: Optional[DirectoryPath] = None
 
 
-class HydroRstOutput(BaseModel):
+class HydroRstOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing restart data to HYDRO_RST
     wrf_hydro_restart_dir: Optional[DirectoryPath] = None
     wrf_hydro_channel_restart_pattern_filter: str = "HYDRO_RST.*"
@@ -60,7 +60,7 @@ class HydroRstOutput(BaseModel):
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
 
-class WrfHydroParityCheck(BaseModel):
+class WrfHydroParityCheck(BaseModel, extra='forbid'):
     # NOTE: required for parity check to occur
     # TODO: not sure if this should be optional?
     # shorvath: I'm ok with removing parity_checks for t-routeV4...
@@ -71,7 +71,7 @@ class WrfHydroParityCheck(BaseModel):
     parity_check_compare_file_sets: Optional[List["ParityCheckCompareFileSet"]] = None
 
 
-class ParityCheckCompareFileSet(BaseModel):
+class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
     validation_files: List[FilePath]
 
 
