@@ -22,7 +22,7 @@ ParallelComputeMethod = Literal[
 ComputeKernel = Literal["V02-structured", "diffusive", "diffusice_cnt"]
 
 
-class ComputeParameters(BaseModel):
+class ComputeParameters(BaseModel, extra='forbid'):
     parallel_compute_method: ParallelComputeMethod = "by-network"
     compute_kernel: ComputeKernel = "V02-structured"
     assume_short_ts: bool = False
@@ -44,7 +44,7 @@ class ComputeParameters(BaseModel):
 
 # TODO: determine how to handle context specific required fields
 # TODO: consider other ways to handle wrf hydro fields (i.e. subclass)
-class RestartParameters(BaseModel):
+class RestartParameters(BaseModel, extra='forbid'):
     # NOTE: this is technically optional as it can be derived from the
     # `wrf_hydro_channel_restart_file` if the `start_datetime` is not provided.
     start_datetime: Optional[datetime] = None
@@ -77,7 +77,7 @@ class RestartParameters(BaseModel):
 
 
 # TODO: determine how to handle context specific required fields
-class HybridParameters(BaseModel):
+class HybridParameters(BaseModel, extra='forbid'):
     # NOTE: required for hybrid simulations
     run_hybrid_routing: bool
     # NOTE: required for hybrid simulations
@@ -97,15 +97,15 @@ class HybridParameters(BaseModel):
     coastal_boundary_domain: Optional[FilePath] = None
 
 
-class QLateralForcingSet(BaseModel):
+class QLateralForcingSet(BaseModel, extra='forbid'):
     nts: "QLateralFiles"
 
 
-class QLateralFiles(BaseModel):
+class QLateralFiles(BaseModel, extra='forbid'):
     qlat_files: List[FilePath]
 
 
-class StreamflowDA(BaseModel):
+class StreamflowDA(BaseModel, extra='forbid'):
     # NOTE: mandatory for streamflow DA, defaults to False
     streamflow_nudging: bool = False
     # NOTE: mandatory for streamflow DA on NHDNetwork.
@@ -129,7 +129,7 @@ class StreamflowDA(BaseModel):
     diffusive_streamflow_nudging: bool = False
 
 
-class ReservoirPersistenceDA(BaseModel):
+class ReservoirPersistenceDA(BaseModel, extra='forbid'):
     # NOTE: mandatory for USGS reservoir DA, defaults to False
     reservoir_persistence_usgs: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
@@ -141,20 +141,20 @@ class ReservoirPersistenceDA(BaseModel):
     crosswalk_usace_lakeID_field: str = "usace_lake_id"
 
 
-class ReservoirRfcParameters(BaseModel):
+class ReservoirRfcParameters(BaseModel, extra='forbid'):
     reservoir_rfc_forecasts: bool = False
     reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
     reservoir_rfc_forecasts_lookback_hours: int = 28
     reservoir_rfc_forecast_persist_days: int = 11
 
 
-class ReservoirDA(BaseModel):
+class ReservoirDA(BaseModel, extra='forbid'):
     reservoir_persistence_da: Optional[ReservoirPersistenceDA] = None
     reservoir_rfc_da: Optional[ReservoirRfcParameters] = None
     reservoir_parameter_file: Optional[FilePath] = None
 
 
-class DataAssimilationParameters(BaseModel):
+class DataAssimilationParameters(BaseModel, extra='forbid'):
     # NOTE: required for streamflow nudging and/or USGS reservoir DA
     usgs_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for USACE reservoir DA
@@ -179,7 +179,7 @@ class DataAssimilationParameters(BaseModel):
     )(coerce_none_to_default)
 
 
-class ForcingParameters(BaseModel):
+class ForcingParameters(BaseModel, extra='forbid'):
     qts_subdivisions: int = 12
     dt: int = 300
     # TODO: see note about potentially throwing in v3_doc.yaml
