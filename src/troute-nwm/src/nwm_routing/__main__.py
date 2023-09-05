@@ -14,7 +14,7 @@ from troute.DataAssimilation import DataAssimilation
 import numpy as np
 import pandas as pd
 
-from .input import _input_handler_v03
+from .input import _input_handler_v03, _input_handler_v04
 from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
@@ -50,8 +50,8 @@ def main_v04(argv):
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
-    ) = _input_handler_v03(args)
-
+    ) = _input_handler_v04(args)
+    
     run_parameters = {
         'dt': forcing_parameters.get('dt'),
         'nts': forcing_parameters.get('nts'),
