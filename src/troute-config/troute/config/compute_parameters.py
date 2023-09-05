@@ -144,7 +144,9 @@ class ReservoirPersistenceDA(BaseModel):
 class ReservoirRfcParameters(BaseModel):
     reservoir_rfc_forecasts: bool = False
     reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
-    reservoir_rfc_forecasts_lookback_hours: int = 48
+    reservoir_rfc_forecasts_lookback_hours: int = 28
+    reservoir_rfc_forecasts_offset_hours: int = 28
+    reservoir_rfc_forecast_persist_days: int = 11
 
 
 class ReservoirDA(BaseModel):
