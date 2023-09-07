@@ -670,7 +670,7 @@ class AbstractNetwork(ABC):
         except AssertionError:
             raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
 
-        forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.NEXOUT")
+        forcing_glob_filter = forcing_parameters["qlat_file_pattern_filter"]
 
         if forcing_glob_filter=="nex-*":
             print("Reformating qlat nexus files as hourly binary files...")
