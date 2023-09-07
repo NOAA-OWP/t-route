@@ -662,8 +662,6 @@ class AbstractNetwork(ABC):
         max_loop_size      = forcing_parameters.get("max_loop_size", 12)
         dt                 = forcing_parameters.get("dt", None)
 
-        geo_file_type      = supernetwork_parameters.get('geo_file_type')
-
         try:
             qlat_input_folder = pathlib.Path(qlat_input_folder)
             assert qlat_input_folder.is_dir() == True
