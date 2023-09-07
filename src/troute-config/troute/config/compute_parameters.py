@@ -159,8 +159,8 @@ class DataAssimilationParameters(BaseModel, extra='forbid'):
     usgs_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for USACE reservoir DA
     usace_timeslices_folder: Optional[DirectoryPath] = None
-    # NOTE: required for reservoir DA - suggested value 48 (2 days)
-    timeslice_lookback_hours: int = 48
+    # NOTE: required for reservoir DA - suggested value 24 (1 days)
+    timeslice_lookback_hours: int = 24
 
     interpolation_limit_min: int = 59
 
