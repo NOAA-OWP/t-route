@@ -35,7 +35,7 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
     title_string: Optional[str] = None
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
     geo_file_path: str
-    geo_file_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
+    network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
     mask_file_path: Optional[FilePath] = None
     mask_layer_string: str = ""
     # TODO: determine if this is still used
