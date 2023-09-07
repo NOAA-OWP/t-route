@@ -109,7 +109,7 @@ def main_v04(argv):
         da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
         
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
-    if "wrf_hydro_parity_check" in output_parameters:
+    if output_parameters.get("wrf_hydro_parity_check"):
         parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
     else:
         parity_sets = []
