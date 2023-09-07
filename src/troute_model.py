@@ -3,6 +3,9 @@ import pandas as pd
 from pathlib import Path #TODO: remove?
 import yaml
 import time
+
+from nwm_routing.log_level_set import log_level_set
+from troute.config import Config
 import nwm_routing.__main__ as tr
 
 
@@ -346,37 +349,26 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
-    log_parameters = data.get("log_parameters", {})
-    network_topology_parameters = data.get("network_topology_parameters", None)
-    supernetwork_parameters = network_topology_parameters.get(
-        "supernetwork_parameters", None
-    )
-    # add attributes when HYfeature network is selected
-    if supernetwork_parameters['geo_file_path'][-4:] == "gpkg":
-        supernetwork_parameters["title_string"]       = "HY_Features Test"
-        supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
-        supernetwork_parameters["flowpath_edge_list"] = None    
-        supernetwork_parameters["waterbody_null_code"] = -9999
-        supernetwork_parameters["terminal_code"]       =  0
-        supernetwork_parameters["driver_string"]       = "NetCDF"
-        supernetwork_parameters["layer_string"]        = 0
-        
-    preprocessing_parameters = network_topology_parameters.get(
-        "preprocessing_parameters", {}
-    )        
-    waterbody_parameters = network_topology_parameters.get(
-        "waterbody_parameters", {}
-    )
-    compute_parameters = data.get("compute_parameters", {})
-    forcing_parameters = compute_parameters.get("forcing_parameters", {})
-    restart_parameters = compute_parameters.get("restart_parameters", {})
-    hybrid_parameters = compute_parameters.get("hybrid_parameters", {})
-    data_assimilation_parameters = compute_parameters.get(
-        "data_assimilation_parameters", {}
-    )
-    output_parameters = data.get("output_parameters", {})
-    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
-    bmi_parameters = data.get("bmi_parameters", {})
+    troute_configuration = Config(**data)
+    config_dict = troute_configuration.dict()
+
+    log_parameters = config_dict.get('log_parameters')
+    compute_parameters = config_dict.get('compute_parameters')
+    network_topology_parameters = config_dict.get('network_topology_parameters')
+    output_parameters = config_dict.get('output_parameters')
+    bmi_parameters = config_dict.get('bmi_parameters')
+
+    preprocessing_parameters = network_topology_parameters.get('preprocessing_parameters')
+    supernetwork_parameters = network_topology_parameters.get('supernetwork_parameters')
+    waterbody_parameters = network_topology_parameters.get('waterbody_parameters')
+    forcing_parameters = compute_parameters.get('forcing_parameters')
+    restart_parameters = compute_parameters.get('restart_parameters')
+    hybrid_parameters = compute_parameters.get('hybrid_parameters')
+    parity_parameters = output_parameters.get('wrf_hydro_parity_check')
+    data_assimilation_parameters = compute_parameters.get('data_assimilation_parameters')
+
+    # configure python logger
+    log_level_set(log_parameters)
 
     return (
         log_parameters,
