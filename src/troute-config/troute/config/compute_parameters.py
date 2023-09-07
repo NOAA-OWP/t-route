@@ -194,7 +194,7 @@ class ForcingParameters(BaseModel, extra='forbid'):
     qlat_file_value_col: str = "q_lateral"
     qlat_file_gw_bucket_flux_col: str = "qBucket"
     qlat_file_terrain_runoff_col: str = "qSfcLatRunoff"
-    qlat_file_pattern_filter: Optional[str] = None
+    qlat_file_pattern_filter: Optional[str] = "*NEXOUT"
     # NOTE:
     # If this variable is not present, make sure nts, qlat_file_pattern_filter, and
     # max_loop_size variables are listed above.
