@@ -644,29 +644,7 @@ class AbstractNetwork(ABC):
                 )
             
             # get initial time from user inputs
-            if restart_parameters.get("start_datetime", None):
-                t0_str = restart_parameters.get("start_datetime")
-                
-                def _try_parsing_date(text):
-                    for fmt in (
-                        "%Y-%m-%d_%H:%M", 
-                        "%Y-%m-%d_%H:%M:%S", 
-                        "%Y-%m-%d %H:%M", 
-                        "%Y-%m-%d %H:%M:%S", 
-                        "%Y/%m/%d %H:%M", 
-                        "%Y/%m/%d %H:%M:%S"
-                    ):
-                        try:
-                            return datetime.strptime(text, fmt)
-                        except ValueError:
-                            pass
-                    LOG.error('No valid date format found for start_datetime input. Please use format YYYY-MM-DD_HH:MM')
-                    quit()
-                    
-                self._t0 = _try_parsing_date(t0_str)
-            
-            else:
-                raise(RuntimeError("No start_datetime provided in config file for cold start."))
+            self._t0 = restart_parameters.get("start_datetime")
 
         LOG.debug(
             "channel initial states complete in %s seconds."\
