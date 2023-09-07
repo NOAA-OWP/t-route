@@ -75,7 +75,7 @@ def main_v04(argv):
         network_start_time = time.time()
     
     #if "ngen_nexus_file" in supernetwork_parameters:
-    if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
+    if supernetwork_parameters["network_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters,
                                     data_assimilation_parameters,
@@ -85,7 +85,7 @@ def main_v04(argv):
                                     hybrid_parameters,
                                     verbose=True, showtiming=showtiming) 
         
-    elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
+    elif supernetwork_parameters["network_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
                              waterbody_parameters,
                              restart_parameters,
