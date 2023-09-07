@@ -8,6 +8,8 @@ import glob
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
+from nwm_routing.log_level_set import log_level_set
+from troute.config import Config
 
 class DAforcing_model():
 
@@ -131,9 +133,12 @@ def _read_config_file(custom_input_file):
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
-    compute_parameters = data.get("compute_parameters", None)
-    forcing_parameters = compute_parameters.get("forcing_parameters", None)
-    data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters", None)
+    troute_configuration = Config(**data)
+    config_dict = troute_configuration.dict()
+
+    compute_parameters = config_dict.get("compute_parameters")
+    forcing_parameters = compute_parameters.get("forcing_parameters")
+    data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters")
 
     return (
         compute_parameters,
