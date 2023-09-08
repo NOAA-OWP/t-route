@@ -45,7 +45,7 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_type: HYFeaturesNetwork
+        network_type: HYFeaturesNetwork
         geo_file_path: /home/sean.horvath/projects/data/large_network/conus.gpkg
         columns: 
             key: 'id'
@@ -56,7 +56,7 @@ network_topology_parameters:
             s0 : 'So'
             bw : 'BtmWdth'
             waterbody : 'rl_NHDWaterbodyComID'
-            #gages : 'rl_gages'
+            gages : 'rl_gages'
             tw : 'TopWdth'
             twcc : 'TopWdthCC'
             musk : 'MusK'
@@ -153,17 +153,18 @@ compute_parameters:
             gage_segID_crosswalk_file     : /home/sean.horvath/projects/data/large_network/conus.gpkg  
         reservoir_da:
             #----------
-            reservoir_persistence_usgs  : True
-            reservoir_persistence_usace : True
-            gage_lakeID_crosswalk_file  : /home/sean.horvath/projects/data/large_network/conus.gpkg
+            reservoir_persistence_da:
+                #----------
+                reservoir_persistence_usgs  : True
+                reservoir_persistence_usace : True
+            reservoir_rfc_da:
+                #----------
+                reservoir_rfc_forecasts: False
+                reservoir_rfc_forecasts_time_series_path: /home/sean.horvath/projects/data/extended_AnA/rfc_timeseries/
+                reservoir_rfc_forecasts_lookback_hours: 28
+                reservoir_rfc_forecasts_offset_hours: 28
+                reservoir_rfc_forecast_persist_days: 11
+            reservoir_parameter_file: /home/sean.horvath/projects/data/large_network/conus.gpkg
 #--------------------------------------------------------------------------------
-output_parameters:
-    #----------
-    lite_restart:
-        #----------
-        lite_restart_output_directory:
-    chrtout_output:
-        #----------
-    chanobs_output:
-        #----------
+
     
