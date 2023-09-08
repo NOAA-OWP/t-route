@@ -481,7 +481,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             streamflow_nudging = self.data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
             usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
             usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
-            rfc_da = self.waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+            rfc_da = self.data_assimilation.get('reservoir_da',{}).get('reservoir_rfc_da',{}).get('reservoir_rfc_forecasts',False)
             #NOTE: The order here matters. Some waterbody IDs have both a USGS gage designation and
             # a NID ID used for USACE gages. It seems the USGS gages should take precedent (based on
             # gages in timeslice files), so setting type 2 reservoirs second should overwrite type 3 
