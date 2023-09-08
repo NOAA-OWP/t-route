@@ -65,7 +65,7 @@ We are constantly looking to improve. Please see the Git Issues for additional i
 
 ## Getting help
 
-If you have any questions, please contact adam.wlostowski@noaa.gov or dongha.kim@noaa.gov, the technical maintainers of the repository. 
+If you have any questions, please contact dongha.kim@noaa.gov or sean.horvath@noaa.gov, the technical maintainers of the repository. 
 
 ## Getting involved
 
