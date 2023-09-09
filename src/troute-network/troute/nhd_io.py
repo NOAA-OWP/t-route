@@ -1947,3 +1947,71 @@ def write_waterbody_netcdf(
                     'model_configuration': ''
                 }
             )
+
+#==========
+
+
+def write_flowveldepth_netcdf(qvd_filepath, flowveldepth, nudge):
+    '''
+    Write results of flowveldepth to netcdf. 
+
+    Arguments
+    -------------
+    qvd_filepath (Path or string) - directory where file will be created
+    flowveldepth (DataFrame) -  including flowrate, velocity, and depth for each time step
+    nudge (numpy.ndarray) - nudge data with shape (76, 289)
+    '''
+    # Number of timesteps and features
+    nsteps = len(flowveldepth.columns) // 3
+    num_features = len(flowveldepth)
+    # Check if the first column of nudge is all zeros
+    if np.all(nudge[:, 0] == 0):
+        # Drop the first column
+        nudge = nudge[:, 1:]
+    gage, nudge_timesteps = nudge.shape
+
+    if qvd_filepath:
+        # Open netCDF4 Dataset in write mode
+        with netCDF4.Dataset(
+            filename=qvd_filepath + '/' + "flowveldepth.nc",
+            mode='w',
+            format='NETCDF4'
+        ) as ncfile:
+
+            # ============ DIMENSIONS ===================
+            _ = ncfile.createDimension('feature_id', num_features)
+            _ = ncfile.createDimension('time_step', nsteps)
+            _ = ncfile.createDimension('gage', gage)
+            _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
+
+            # =========== q,v,d VARIABLES ===============
+            for counter, var in enumerate(['flowrate', 'velocity', 'depth']):
+                QVD = ncfile.createVariable(
+                    varname=var,
+                    datatype=np.float32,
+                    dimensions=('feature_id', 'time_step'),
+                )
+
+                QVD.units = 'm3/s m/s m'
+                QVD.description = f'Data for {var}'
+
+                # Prepare data for writing
+                col_indices = [i for i in range(counter, nsteps * 3, 3)]  # Indices of columns with the specific var
+                data_array = flowveldepth.iloc[:, col_indices].to_numpy(dtype=np.float32)
+
+                # Set data for each feature_id and time_step
+                ncfile.variables[var][:] = data_array
+
+            # =========== nudge VARIABLE ===============
+            nudge_var = ncfile.createVariable(
+                varname='nudge',
+                datatype=np.float32,
+                dimensions=('gage', 'nudge_timestep'),  # Use the new dimension
+            )
+
+            # Set data for the nudge variable
+            ncfile.variables['nudge'][:] = nudge
+
+            print(f"Flowveldepth and nudge saved as netcdf.")
+            
+
