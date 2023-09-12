@@ -44,7 +44,6 @@ class DAforcing_model():
             # Produce list of datetimes to search for timeslice files
             lookback_hrs = data_assimilation_parameters.get('timeslice_lookback_hours')
             start_datetime = compute_parameters.get('restart_parameters').get('start_datetime')
-            start_datetime = datetime.strptime(start_datetime, '%Y-%m-%d_%H:%M')
             dt = compute_parameters.get('forcing_parameters').get('dt')
             nts = compute_parameters.get('forcing_parameters').get('nts')
             timeslice_start = start_datetime - timedelta(hours=lookback_hrs)
@@ -64,7 +63,7 @@ class DAforcing_model():
 
             # USGS Observations
             if nudging or usgs_persistence:
-                usgs_timeslice_path = data_assimilation_parameters.get('usgs_timeslices_folder')
+                usgs_timeslice_path = str(data_assimilation_parameters.get('usgs_timeslices_folder'))
                 if nudging:
                     self._usgs_df = _read_timeslice_files(usgs_timeslice_path,
                                                           timeslice_dates,
@@ -87,7 +86,7 @@ class DAforcing_model():
 
             # USACE Observations
             if usace_persistence:
-                usace_timeslice_path = data_assimilation_parameters.get('usace_timeslices_folder')
+                usace_timeslice_path = str(data_assimilation_parameters.get('usace_timeslices_folder'))
                 self._reservoir_usace_df = _read_timeslice_files(usace_timeslice_path, 
                                                                  timeslice_dates,
                                                                  qc_threshold,
@@ -110,7 +109,7 @@ class DAforcing_model():
 
             # RFC Observations
             if rfc:
-                rfc_timeseries_path = rfc_parameters.get('reservoir_rfc_forecasts_time_series_path')
+                rfc_timeseries_path = str(rfc_parameters.get('reservoir_rfc_forecasts_time_series_path'))
                 self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)
 
             # Lastobs
