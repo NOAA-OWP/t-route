@@ -332,6 +332,9 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._dataframe.set_index("key", inplace=True)
             self._dataframe = self.dataframe.sort_index()
 
+        # Drop 'gages' column if it is present
+        if 'gages' in self.dataframe:
+            self._dataframe = self.dataframe.drop('gages', axis=1)
         # numeric code used to indicate network terminal segments
         terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
 
