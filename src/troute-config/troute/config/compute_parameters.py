@@ -145,6 +145,7 @@ class ReservoirRfcParameters(BaseModel, extra='forbid'):
     reservoir_rfc_forecasts: bool = False
     reservoir_rfc_forecasts_time_series_path: Optional[FilePath] = None
     reservoir_rfc_forecasts_lookback_hours: int = 28
+    reservoir_rfc_forecasts_offset_hours: int = 28
     reservoir_rfc_forecast_persist_days: int = 11
 
 
