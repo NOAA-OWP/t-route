@@ -1173,12 +1173,12 @@ def get_obs_from_timeslices(
     observation_df = (df.join(timeslice_obs_df).
                reset_index().
                set_index(crosswalk_dest_field).
-               drop([crosswalk_gage_field], axis=1))
+               select_dtypes(include='number'))
 
     observation_qual_df = (df.join(timeslice_qual_df).
                reset_index().
                set_index(crosswalk_dest_field).
-               drop([crosswalk_gage_field], axis=1))
+               select_dtypes(include='number'))
 
     # ---- Laugh testing ------
     # screen-out erroneous qc flags
