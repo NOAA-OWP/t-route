@@ -27,6 +27,7 @@ from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_ro
 
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
+import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
 
@@ -106,7 +107,7 @@ def main_v04(argv):
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
-        da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
+        da_sets = hnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
         
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
     if output_parameters.get("wrf_hydro_parity_check"):
