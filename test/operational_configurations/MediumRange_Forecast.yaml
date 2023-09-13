@@ -1,0 +1,50 @@
+# $ python -m nwm_routing -f -V4 MediumRange_Forecast.yaml
+
+# Usage: Parameters that have "#REQUIRED" must be updated by user. All other parameters
+# should not be altered.
+
+#--------------------------------------------------------------------------------
+log_parameters:
+    #----------
+    showtiming: True
+    log_level : CRITICAL
+#--------------------------------------------------------------------------------
+network_topology_parameters:
+    #----------
+    supernetwork_parameters:
+        #----------
+        geo_file_path: #REQUIRED
+    waterbody_parameters:
+        #----------
+        break_network_at_waterbodies: True       
+#--------------------------------------------------------------------------------
+compute_parameters:
+    #----------
+    restart_parameters:
+        #----------
+        start_datetime             : #REQUIRED
+        lite_channel_restart_file  : #REQUIRED
+        lite_waterbody_restart_file: #REQUIRED
+    forcing_parameters:
+        #----------
+        nts               : 2880
+        qlat_input_folder : #REQUIRED 
+    data_assimilation_parameters:
+        #----------
+        usgs_timeslices_folder   : #REQUIRED
+        usace_timeslices_folder  : #REQUIRED
+        streamflow_da:
+            #----------
+            streamflow_nudging   : True
+            lastobs_file         : #REQUIRED
+            lastobs_output_folder: #REQUIRED
+        reservoir_da:
+            #----------
+            reservoir_persistence_da:
+                #----------
+                reservoir_persistence_usgs : True
+                reservoir_persistence_usace: True
+            reservoir_rfc_da:
+                #----------
+                reservoir_rfc_forecasts                 : True
+                reservoir_rfc_forecasts_time_series_path: #REQUIRED
