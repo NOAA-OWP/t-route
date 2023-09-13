@@ -2005,11 +2005,11 @@ if __name__ == "__main__":
     v_parser.add_argument(
         "-V",
         "--input-version",
-        default=3,
+        default=4,
         nargs="?",
         choices=[2, 3, 4],
         type=int,
-        help="Use version 2 or 3 of the input format. Default 3",
+        help="Use version 3 or 4 of the input format. Default 4",
     )
     v_args = v_parser.parse_known_args()
     '''
