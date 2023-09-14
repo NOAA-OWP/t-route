@@ -17,7 +17,7 @@ from troute.nhd_network import reverse_dict, extract_connections, reverse_networ
 __verbose__ = False
 __showtiming__ = False
 
-def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
+def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, cpu_pool):
     # Establish which layers we will read. We'll always need the flowpath tables
     layers = ['flowpaths','flowpath_attributes']
 
@@ -34,26 +34,27 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
         layers.append('network')
     
     # Retrieve geopackage information:
-    with Parallel(n_jobs=len(layers)) as parallel:
-        jobs = []
-        for layer in layers:
-            jobs.append(
-                delayed(gpd.read_file)
-                #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
-                #delayed(nhd_io.get_ql_from_csv)
-                (filename=file_path, layer=layer)                    
-            )
-        gpkg_list = parallel(jobs)
-    table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
-    flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
-    lakes = table_dict.get('lakes', pd.DataFrame())
-    network = table_dict.get('network', pd.DataFrame())
-
-    '''
-    flowpaths = gpd.read_file(file_path, layer='flowpaths')
-    flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
-    flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
-    '''
+    if cpu_pool > 1:
+        with Parallel(n_jobs=len(layers)) as parallel:
+            jobs = []
+            for layer in layers:
+                jobs.append(
+                    delayed(gpd.read_file)
+                    #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
+                    #delayed(nhd_io.get_ql_from_csv)
+                    (filename=file_path, layer=layer)                    
+                )
+            gpkg_list = parallel(jobs)
+        table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
+        flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
+        lakes = table_dict.get('lakes', pd.DataFrame())
+        network = table_dict.get('network', pd.DataFrame())
+    else:
+        flowpaths = gpd.read_file(file_path, layer='flowpaths')
+        flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
+        flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
+        lakes = gpd.read_file(file_path, layer='lakes')
+        network = gpd.read_file(file_path, layer='network')
 
     return flowpaths, lakes, network
 
@@ -130,7 +131,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
-def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters):
+def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
     
@@ -138,7 +139,8 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilati
     if(  file_type == '.gpkg' ):        
         flowpaths, lakes, network = read_geopkg(geo_file_path, 
                                                 data_assimilation_parameters,
-                                                waterbody_parameters)
+                                                waterbody_parameters,
+                                                cpu_pool)
         #TODO Do we need to keep .json as an option?
         '''
         elif( file_type == '.json') :
@@ -226,7 +228,8 @@ class HYFeaturesNetwork(AbstractNetwork):
             flowpaths, lakes, network = read_geo_file(
                 self.supernetwork_parameters,
                 self.waterbody_parameters,
-                self.data_assimilation_parameters
+                self.data_assimilation_parameters,
+                self.compute_parameters.get('cpu_pool', 1)
             )
         else:
             flowpaths, lakes, network = load_bmi_data(
