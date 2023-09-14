@@ -194,7 +194,10 @@ def nwm_output_generator(
 
     if test:
         flowveldepth.to_pickle(Path(test))
-    
+        
+        nudge = results[0][8]
+        usgs_positions_id = results[0][3][0]
+        nhd_io.write_flowveldepth_netcdf('../LowerColorado_TX/output', flowveldepth, nudge, usgs_positions_id, t0)
     if wbdyo and not waterbodies_df.empty:
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))

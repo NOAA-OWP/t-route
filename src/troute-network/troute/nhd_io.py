@@ -1942,3 +1942,89 @@ def write_waterbody_netcdf(
                     'model_configuration': ''
                 }
             )
+
+def write_flowveldepth_netcdf(qvd_filepath, flowveldepth, nudge, usgs_positions_id, t0):
+    '''
+    Write the results of flowveldepth and nudge to netcdf- break. 
+    Arguments
+    -------------
+    qvd_filepath (Path or string) - directory where file will be created
+    flowveldepth (DataFrame) -  including flowrate, velocity, and depth for each time step
+    nudge (numpy.ndarray) - nudge data with shape (76, 289)
+    usgs_positions_id (array) - Position ids of usgs gages
+    '''
+    # Number of timesteps and features
+    nsteps = len(flowveldepth.columns) // 3
+    num_features = len(flowveldepth)
+    nstep_nc = 12 
+    # Check if the first column of nudge is all zeros
+    if np.all(nudge[:, 0] == 0):
+        # Drop the first column
+        nudge = nudge[:, 1:]
+
+    gage, nudge_timesteps = nudge.shape
+    
+    #--------- Add 'nudge' column based on usgs_positions_id----------
+    
+    # Create a copy of the flowveldepth DataFrame to add 'ndg' columns
+    qvd_ndg = flowveldepth.copy()
+    # Create a list for names of the columns for nudge values
+    ndg_columns = [(j,'ndg') for j in range(nsteps)]
+    # Add 'ndg' columns based on usgs_positions_id
+    for i, usgs_id in enumerate(usgs_positions_id):
+        # Extract the corresponding nudge values for the usgs_id
+        nudge_values = nudge[i]
+
+        # Assign nudge values to 'ndg' columns for the corresponding row
+        qvd_ndg.loc[usgs_id, ndg_columns] = nudge_values
+    new_order = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
+    # Reorder the columns
+    qvd_ndg = qvd_ndg[new_order]
+
+    # Create time step values based on t0
+    time_steps = [t0 + timedelta(hours= i) for i in range(nsteps//12)]
+    
+    for counter, i in enumerate(range(0, nsteps, 12)):
+        # Define the range of columns for this file
+        start_col = i * 4
+        end_col = min((i + 12) * 4 , nsteps * 4)
+
+        # Create a subset DataFrame for the current range of columns
+        subset_df = qvd_ndg.iloc[:, start_col:end_col]
+        
+        # Create the file name based on the current time step
+        current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
+        file_name = f"{current_time_step}.flowveldepth.nc"
+       
+        if qvd_filepath:
+            # Open netCDF4 Dataset in write mode
+            with netCDF4.Dataset(
+                filename=f"{qvd_filepath}/{file_name}",
+                mode='w',
+                format='NETCDF4'
+            ) as ncfile:
+
+                # ============ DIMENSIONS ===================
+                _ = ncfile.createDimension('feature_id', num_features)
+                _ = ncfile.createDimension('time_step', nstep_nc)
+                _ = ncfile.createDimension('gage', gage)
+                _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
+
+                # =========== q,v,d,ndg VARIABLES ===============
+                for counter, var in enumerate(['flowrate', 'velocity', 'depth', 'nudge']):
+                    QVD = ncfile.createVariable(
+                        varname=var,
+                        datatype=np.float32,
+                        dimensions=('feature_id', 'time_step'),
+                    )
+
+                    QVD.units = 'm3/s m/s m m'
+                    QVD.description = f'Data for {var}'
+                    
+                    # Prepare data for writing
+                    data_array = subset_df.iloc[:, counter::4].to_numpy(dtype=np.float32)
+
+                    # Set data for each feature_id and time_step
+                    ncfile.variables[var][:] = data_array
+
+                print(f"Flowveldepth data saved as NetCDF files in {qvd_filepath}")
