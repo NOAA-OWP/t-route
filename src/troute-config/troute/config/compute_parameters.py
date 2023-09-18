@@ -26,8 +26,8 @@ class ComputeParameters(BaseModel, extra='forbid'):
     parallel_compute_method: ParallelComputeMethod = "by-network"
     compute_kernel: ComputeKernel = "V02-structured"
     assume_short_ts: bool = False
-    subnetwork_target_size: int = 1
-    cpu_pool: Optional[int] = None
+    subnetwork_target_size: int = 10000
+    cpu_pool: Optional[int] = 1
     return_courant: bool = False
 
     # TODO: default appears to be {}. see nhd_io.read_config_file ~:138
