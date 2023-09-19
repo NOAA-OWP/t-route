@@ -84,6 +84,7 @@ def main_v04(argv):
                                     compute_parameters,
                                     forcing_parameters,
                                     hybrid_parameters,
+                                    preprocessing_parameters,
                                     verbose=True, showtiming=showtiming) 
         
     elif supernetwork_parameters["network_type"] == 'NHDNetwork':
