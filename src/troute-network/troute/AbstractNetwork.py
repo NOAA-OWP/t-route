@@ -32,7 +32,8 @@ class AbstractNetwork(ABC):
                 "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
-                "hybrid_parameters", "verbose", "showtiming", "break_points", "_routing"]
+                "hybrid_parameters", "preprocessing_parameters",
+                "verbose", "showtiming", "break_points", "_routing"]
     
     def __init__(self,):
 
