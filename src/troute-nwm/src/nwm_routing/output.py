@@ -114,6 +114,7 @@ def nwm_output_generator(
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
     wbdyo = output_parameters.get("lakeout_output", None)
+    qvd_ndg = output_parameters.get("nudge_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -194,10 +195,11 @@ def nwm_output_generator(
 
     if test:
         flowveldepth.to_pickle(Path(test))
+        import pdb; pdb.set_trace()
+        nudge = np.concatenate([r[8] for r in results])
+        usgs_positions_id = np.concatenate([r[3][0] for r in results])
         
-        nudge = results[0][8]
-        usgs_positions_id = results[0][3][0]
-        nhd_io.write_flowveldepth_netcdf('../LowerColorado_TX/output', flowveldepth, nudge, usgs_positions_id, t0)
+        nhd_io.write_flowveldepth_netcdf(Path(qvd_ndg), flowveldepth, nudge, usgs_positions_id, t0)
     if wbdyo and not waterbodies_df.empty:
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
