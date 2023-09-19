@@ -1660,6 +1660,8 @@ def lastobs_df_output(
     ds.attrs["modelTimeAtOutput"] = modelTimeAtOutput_str
 
     # write-out LastObs file as netcdf
+    if isinstance(lastobs_output_folder, pathlib.Path):
+        lastobs_output_folder = str(lastobs_output_folder)
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
     ds.to_netcdf(str(output_path))
 
