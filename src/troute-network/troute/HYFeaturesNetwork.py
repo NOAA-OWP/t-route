@@ -198,6 +198,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                  compute_parameters,
                  forcing_parameters,
                  hybrid_parameters, 
+                 preprocessing_parameters,
                  verbose=False, 
                  showtiming=False,
                  from_files=True,
@@ -213,6 +214,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         self.compute_parameters = compute_parameters
         self.forcing_parameters = forcing_parameters
         self.hybrid_parameters = hybrid_parameters
+        self.preprocessing_parameters = preprocessing_parameters
         self.verbose = verbose
         self.showtiming = showtiming
 
@@ -224,27 +226,37 @@ class HYFeaturesNetwork(AbstractNetwork):
         #------------------------------------------------
         # Load hydrofabric information
         #------------------------------------------------
-        if from_files:
-            flowpaths, lakes, network = read_geo_file(
-                self.supernetwork_parameters,
-                self.waterbody_parameters,
-                self.data_assimilation_parameters,
-                self.compute_parameters.get('cpu_pool', 1)
-            )
+        if self.preprocessing_parameters.get('use_preprocessed_data', False):
+            self.read_preprocessed_data()
         else:
-            flowpaths, lakes, network = load_bmi_data(
-                value_dict, 
-                bmi_parameters,
+            if from_files:
+                flowpaths, lakes, network = read_geo_file(
+                    self.supernetwork_parameters,
+                    self.waterbody_parameters,
+                    self.data_assimilation_parameters,
+                    self.compute_parameters.get('cpu_pool', 1)
                 )
+            else:
+                flowpaths, lakes, network = load_bmi_data(
+                    value_dict, 
+                    bmi_parameters,
+                    )
 
-        # Preprocess network objects
-        self.preprocess_network(flowpaths)
+            # Preprocess network objects
+            self.preprocess_network(flowpaths)
 
-        # Preprocess waterbody objects
-        self.preprocess_waterbodies(lakes)
+            # Preprocess waterbody objects
+            self.preprocess_waterbodies(lakes)
 
-        # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
-        self.preprocess_data_assimilation(network)
+            # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
+            self.preprocess_data_assimilation(network)
+        
+            if self.preprocessing_parameters.get('preprocess_output_folder', None):
+                self.write_preprocessed_data()
+
+                if self.preprocessing_parameters.get('preprocess_only', False):
+                    #TODO: Add LOG message here...
+                    quit()
 
         if self.verbose:
             print("supernetwork connections set complete")
@@ -508,6 +520,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._gages = {}
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usace_lake_gage_crosswalk = pd.DataFrame()
+            self._rfc_lake_gage_crosswalk = pd.DataFrame()
     
     def build_qlateral_array(self, run,):
         
@@ -618,6 +631,62 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._dataframe['waterbody'] = self._dataframe['waterbody'].replace('1711354','1710676')
         self._waterbody_df.rename(index={1711354: 1710676}, inplace=True)
     #######################################################################
+
+    def write_preprocessed_data(self,):
+        #LOG.debug("saving preprocessed network data to disk for future use")
+        # todo: consider a better default than None
+        destination_folder = self.preprocessing_parameters.get('preprocess_output_folder', None)
+        if destination_folder:
+
+            output_filename = self.preprocessing_parameters.get(
+                'preprocess_output_filename', 
+                'preprocess_output'
+            )
+
+        outputs = {
+            'dataframe': self.dataframe,
+            'flowpath_dict': self._flowpath_dict,
+            'terminal_codes': self._terminal_codes,
+            'upstream_termincal': self._upstream_terminal,
+            'connections': self._connections,
+            'waterbody_df': self._waterbody_df,
+            'waterbody_types_df': self._waterbody_types_df,
+            'waterbody_connections': self._waterbody_connections,
+            'waterbody_type_specified': self._waterbody_type_specified,
+            'link_lake_crosswalk': self._link_lake_crosswalk,
+            'gages': self._gages,
+            'usgs_lake_gage_crosswalk': self._usgs_lake_gage_crosswalk,
+            'usace_lake_gage_crosswalk': self._usace_lake_gage_crosswalk,
+            'rfc_lake_gage_crosswalk': self._rfc_lake_gage_crosswalk
+        }
+        np.save(
+            Path(destination_folder).joinpath(output_filename),
+            outputs
+            )
+    
+    def read_preprocessed_data(self,):
+        preprocess_filepath = self.preprocessing_parameters.get('preprocess_source_file',None)
+        if preprocess_filepath:
+            try:
+                inputs = np.load(Path(preprocess_filepath),allow_pickle='TRUE').item()
+            except:
+                #LOG.critical('Canonot find %s' % Path(preprocess_filepath))
+                quit()
+                
+            self._dataframe = inputs.get('dataframe',None)
+            self._flowpath_dict = inputs.get('flowpath_dict',None)
+            self._terminal_codes = inputs.get('terminal_codes',None)
+            self._upstream_terminal = inputs.get('upstream_termincal',None)
+            self._connections = inputs.get('connections',None)
+            self._waterbody_df = inputs.get('waterbody_df',None)
+            self._waterbody_types_df = inputs.get('waterbody_types_df',None)
+            self._waterbody_connections = inputs.get('waterbody_connections',None)
+            self._waterbody_type_specified = inputs.get('waterbody_type_specified',None)
+            self._link_lake_crosswalk = inputs.get('link_lake_crosswalk',None)
+            self._gages = inputs.get('gages',None)
+            self._usgs_lake_gage_crosswalk = inputs.get('usgs_lake_gage_crosswalk',None)
+            self._usace_lake_gage_crosswalk = inputs.get('usace_lake_gage_crosswalk',None)
+            self._rfc_lake_gage_crosswalk = inputs.get('rfc_lake_gage_crosswalk',None)
 
 
 def read_file(file_name):
