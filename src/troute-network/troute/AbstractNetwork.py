@@ -32,7 +32,8 @@ class AbstractNetwork(ABC):
                 "_qlateral", "_break_segments", "_segment_index", "_coastal_boundary_depth_df",
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
-                "hybrid_parameters", "verbose", "showtiming", "break_points", "_routing"]
+                "hybrid_parameters", "preprocessing_parameters",
+                "verbose", "showtiming", "break_points", "_routing"]
     
     def __init__(self,):
 
@@ -644,29 +645,7 @@ class AbstractNetwork(ABC):
                 )
             
             # get initial time from user inputs
-            if restart_parameters.get("start_datetime", None):
-                t0_str = restart_parameters.get("start_datetime")
-                
-                def _try_parsing_date(text):
-                    for fmt in (
-                        "%Y-%m-%d_%H:%M", 
-                        "%Y-%m-%d_%H:%M:%S", 
-                        "%Y-%m-%d %H:%M", 
-                        "%Y-%m-%d %H:%M:%S", 
-                        "%Y/%m/%d %H:%M", 
-                        "%Y/%m/%d %H:%M:%S"
-                    ):
-                        try:
-                            return datetime.strptime(text, fmt)
-                        except ValueError:
-                            pass
-                    LOG.error('No valid date format found for start_datetime input. Please use format YYYY-MM-DD_HH:MM')
-                    quit()
-                    
-                self._t0 = _try_parsing_date(t0_str)
-            
-            else:
-                raise(RuntimeError("No start_datetime provided in config file for cold start."))
+            self._t0 = restart_parameters.get("start_datetime")
 
         LOG.debug(
             "channel initial states complete in %s seconds."\
@@ -684,8 +663,6 @@ class AbstractNetwork(ABC):
         max_loop_size      = forcing_parameters.get("max_loop_size", 12)
         dt                 = forcing_parameters.get("dt", None)
 
-        geo_file_type      = supernetwork_parameters.get('geo_file_type')
-
         try:
             qlat_input_folder = pathlib.Path(qlat_input_folder)
             assert qlat_input_folder.is_dir() == True
@@ -694,7 +671,7 @@ class AbstractNetwork(ABC):
         except AssertionError:
             raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
 
-        forcing_glob_filter = forcing_parameters.get("qlat_file_pattern_filter", "*.NEXOUT")
+        forcing_glob_filter = forcing_parameters["qlat_file_pattern_filter"]
 
         if forcing_glob_filter=="nex-*":
             print("Reformating qlat nexus files as hourly binary files...")

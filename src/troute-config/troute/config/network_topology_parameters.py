@@ -6,7 +6,7 @@ from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
 
-class NetworkTopologyParameters(BaseModel):
+class NetworkTopologyParameters(BaseModel, extra='forbid'):
     # TODO: default {}. see nhd_io.read_config_file ~:100
     preprocessing_parameters: "PreprocessingParameters" = Field(default_factory=dict)
     # TODO: not sure if default {}. see nhd_io.read_config_file ~:100
@@ -19,7 +19,7 @@ class NetworkTopologyParameters(BaseModel):
 
 # TODO: This is an old parameter but probably worth keeping moving forward. However, it is
 # not implemented in V4 at the moment (Aug 11, 2023). Need to add this functionality to t-route.
-class PreprocessingParameters(BaseModel):
+class PreprocessingParameters(BaseModel, extra='forbid'):
     preprocess_only: bool = False
     # NOTE: required if preprocess_only = True
     # TODO: determine if str type
@@ -31,11 +31,11 @@ class PreprocessingParameters(BaseModel):
     preprocess_source_file: Optional[FilePath] = None
 
 
-class SupernetworkParameters(BaseModel):
+class SupernetworkParameters(BaseModel, extra='forbid'):
     title_string: Optional[str] = None
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
     geo_file_path: str
-    geo_file_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
+    network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
     mask_file_path: Optional[FilePath] = None
     mask_layer_string: str = ""
     # TODO: determine if this is still used
@@ -105,7 +105,7 @@ class SupernetworkParameters(BaseModel):
     layer_string: int = 0
 
 
-class Columns(BaseModel):
+class Columns(BaseModel, extra='forbid'):
     # string, unique segment identifier
     key: str 
     # string, unique identifier of downstream segment
@@ -138,14 +138,14 @@ class Columns(BaseModel):
     gages: str 
 
 
-class WaterbodyParameters(BaseModel):
+class WaterbodyParameters(BaseModel, extra='forbid'):
     # NOTE: required, True for simulations with waterbodies.
     break_network_at_waterbodies: bool = False
     level_pool: Optional["LevelPool"] = None
     waterbody_null_code: int = -9999
 
 
-class LevelPool(BaseModel):
+class LevelPool(BaseModel, extra='forbid'):
     # string, filepath to waterbody parameter file (LAKEPARM.nc)
     level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"

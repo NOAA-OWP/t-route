@@ -18,6 +18,161 @@ import troute.nhd_io as nhd_io
 LOG = logging.getLogger('')
 
 
+def build_da_sets(da_params, run_sets, t0):
+    """
+    Create set lists of USGS and/or USACE TimeSlice files used for 
+    streamflow and reservoir data assimilation
+    
+    Arguments
+    --------
+    - da_params (dict): user-input data assimilation parameters
+    - run_sets (list) : forcing files for each run set in the simlation
+    - t0 (datetime)   : model initialization time
+    
+    Returns
+    -------
+    - da_sets (list)  : lists of USGS and USACE TimeSlice files for each run set 
+                        in the simulation
+    
+    Notes
+    -----
+    
+    """
+    
+    # check for user-input usgs and usace timeslice directories
+    usgs_timeslices_folder = da_params.get(
+        "usgs_timeslices_folder",
+        None
+    )
+    usace_timeslices_folder = da_params.get(
+        "usace_timeslices_folder",
+        None
+    )
+
+    # User-specified DA ON/OFF preferences
+    usace_da = False
+    usgs_da = False
+    reservoir_persistence_da = da_params.get('reservoir_da', {}).get('reservoir_persistence_da', False)
+    if reservoir_persistence_da:
+        usgs_da = reservoir_persistence_da.get('reservoir_persistence_usgs', False)
+        usace_da = reservoir_persistence_da.get('reservoir_persistence_usace', False)
+    
+    nudging = False
+    streamflow_da = da_params.get('streamflow_da', False)
+    if streamflow_da:
+        nudging = streamflow_da.get('streamflow_nudging', False)
+        
+    if not usgs_da and not usace_da and not nudging:
+        # if all DA capabilities are OFF, return empty dictionary
+        da_sets = [{} for _ in run_sets]
+    
+    # if no user-input timeslice folders, a list of empty dictionaries
+    elif not usgs_timeslices_folder and not usace_timeslices_folder:
+        # if no timeslice folders, return empty dictionary
+        da_sets = [{} for _ in run_sets]
+        
+    # if user-input timeslice folders are present, build TimeSlice sets
+    else:
+        
+        # create Path objects for each TimeSlice directory
+        if usgs_timeslices_folder:
+            usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
+        if usace_timeslices_folder:
+            usace_timeslices_folder = pathlib.Path(usace_timeslices_folder)
+        
+        # the number of timeslice files appended to the front- and back-ends
+        # of the TimeSlice file interpolation stack
+        pad_hours = da_params.get("timeslice_lookback_hours",0)
+        timeslice_pad = pad_hours * 4 # number of 15 minute TimeSlices in the pad
+
+        # timedelta of TimeSlice data - typically 15 minutes
+        dt_timeslice = timedelta(minutes = 15)
+
+        da_sets = [] # initialize list to store TimeSlice set lists
+
+        # Loop through each run set and build lists of available TimeSlice files
+        for (i, set_dict) in enumerate(run_sets):
+            
+            # Append an empty dictionary to the loop, which be used to hold
+            # lists of USGS and USACE TimeSlice files.
+            da_sets.append({})
+
+            # timestamps of TimeSlice files desired for run set i
+            timestamps = pd.date_range(
+                t0 - dt_timeslice * timeslice_pad,
+                run_sets[i]['final_timestamp'] + dt_timeslice * 4,
+                freq=dt_timeslice
+            )
+
+            # identify available USGS TimeSlices in run set i
+            if (usgs_timeslices_folder and nudging) or (usgs_timeslices_folder and usgs_da):
+                filenames_usgs = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
+                            + '.15min.usgsTimeSlice.ncdf').to_list()
+                
+                # identify available USGS TimeSlices
+                filenames_usgs = _check_timeslice_exists(
+                    filenames_usgs, 
+                    usgs_timeslices_folder
+                )
+                
+                # Add available TimeSlices to da_sets list
+                da_sets[i]['usgs_timeslice_files'] = filenames_usgs
+                
+            # identify available USACE TimeSlices in run set i
+            if usace_timeslices_folder and usace_da:
+                filenames_usace = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
+                            + '.15min.usaceTimeSlice.ncdf').to_list()
+                
+                # identify available USACE TimeSlices
+                filenames_usace = _check_timeslice_exists(
+                    filenames_usace, 
+                    usace_timeslices_folder
+                )
+                
+                # Add available TimeSlices to da_sets list
+                da_sets[i]['usace_timeslice_files'] = filenames_usace
+
+            # reset initialization time for loop set i+1
+            t0 = run_sets[i]['final_timestamp']
+            
+    return da_sets
+
+def _check_timeslice_exists(filenames, timeslices_folder):
+    """
+    Check that each TimeSlice file in a list of files exists. Return a list of 
+    available files.
+    
+    Arguments
+    ---------
+    - filenames               (list of str): TimeSlice filenames
+    - timeslices_folder (pathlib.PosixPath): TimeSlice directory
+    
+    Returns
+    -------
+    - filenames_existing (list of chr): Existing TimeSlice filenames in 
+                                        TimeSlice directory
+    
+    Notes
+    -----
+    - This is a utility function used by build_da_sets
+    
+    """
+    
+    # check that all USGS TimeSlice files in the set actually exist
+    drop_list = []
+    for f in filenames:
+        try:
+            J = pathlib.Path(timeslices_folder.joinpath(f))     
+            assert J.is_file() == True
+        except AssertionError:
+            LOG.warning("Missing TimeSlice file %s", J)
+            drop_list.append(f)
+
+    # Assemble a list of existing TimeSlice files, only
+    filenames_existing = [x for x in filenames if x not in drop_list]   
+    
+    return filenames_existing
+
 def build_forcing_sets(
     forcing_parameters,
     t0

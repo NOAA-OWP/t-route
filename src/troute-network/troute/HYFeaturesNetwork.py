@@ -17,7 +17,7 @@ from troute.nhd_network import reverse_dict, extract_connections, reverse_networ
 __verbose__ = False
 __showtiming__ = False
 
-def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
+def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, cpu_pool):
     # Establish which layers we will read. We'll always need the flowpath tables
     layers = ['flowpaths','flowpath_attributes']
 
@@ -34,26 +34,27 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters):
         layers.append('network')
     
     # Retrieve geopackage information:
-    with Parallel(n_jobs=len(layers)) as parallel:
-        jobs = []
-        for layer in layers:
-            jobs.append(
-                delayed(gpd.read_file)
-                #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
-                #delayed(nhd_io.get_ql_from_csv)
-                (filename=file_path, layer=layer)                    
-            )
-        gpkg_list = parallel(jobs)
-    table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
-    flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
-    lakes = table_dict.get('lakes', pd.DataFrame())
-    network = table_dict.get('network', pd.DataFrame())
-
-    '''
-    flowpaths = gpd.read_file(file_path, layer='flowpaths')
-    flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
-    flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
-    '''
+    if cpu_pool > 1:
+        with Parallel(n_jobs=len(layers)) as parallel:
+            jobs = []
+            for layer in layers:
+                jobs.append(
+                    delayed(gpd.read_file)
+                    #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
+                    #delayed(nhd_io.get_ql_from_csv)
+                    (filename=file_path, layer=layer)                    
+                )
+            gpkg_list = parallel(jobs)
+        table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
+        flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
+        lakes = table_dict.get('lakes', pd.DataFrame())
+        network = table_dict.get('network', pd.DataFrame())
+    else:
+        flowpaths = gpd.read_file(file_path, layer='flowpaths')
+        flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
+        flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
+        lakes = gpd.read_file(file_path, layer='lakes')
+        network = gpd.read_file(file_path, layer='network')
 
     return flowpaths, lakes, network
 
@@ -130,7 +131,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
-def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters):
+def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
     
@@ -138,7 +139,8 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilati
     if(  file_type == '.gpkg' ):        
         flowpaths, lakes, network = read_geopkg(geo_file_path, 
                                                 data_assimilation_parameters,
-                                                waterbody_parameters)
+                                                waterbody_parameters,
+                                                cpu_pool)
         #TODO Do we need to keep .json as an option?
         '''
         elif( file_type == '.json') :
@@ -196,6 +198,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                  compute_parameters,
                  forcing_parameters,
                  hybrid_parameters, 
+                 preprocessing_parameters,
                  verbose=False, 
                  showtiming=False,
                  from_files=True,
@@ -211,6 +214,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         self.compute_parameters = compute_parameters
         self.forcing_parameters = forcing_parameters
         self.hybrid_parameters = hybrid_parameters
+        self.preprocessing_parameters = preprocessing_parameters
         self.verbose = verbose
         self.showtiming = showtiming
 
@@ -222,26 +226,37 @@ class HYFeaturesNetwork(AbstractNetwork):
         #------------------------------------------------
         # Load hydrofabric information
         #------------------------------------------------
-        if from_files:
-            flowpaths, lakes, network = read_geo_file(
-                self.supernetwork_parameters,
-                self.waterbody_parameters,
-                self.data_assimilation_parameters
-            )
+        if self.preprocessing_parameters.get('use_preprocessed_data', False):
+            self.read_preprocessed_data()
         else:
-            flowpaths, lakes, network = load_bmi_data(
-                value_dict, 
-                bmi_parameters,
+            if from_files:
+                flowpaths, lakes, network = read_geo_file(
+                    self.supernetwork_parameters,
+                    self.waterbody_parameters,
+                    self.data_assimilation_parameters,
+                    self.compute_parameters.get('cpu_pool', 1)
                 )
+            else:
+                flowpaths, lakes, network = load_bmi_data(
+                    value_dict, 
+                    bmi_parameters,
+                    )
 
-        # Preprocess network objects
-        self.preprocess_network(flowpaths)
+            # Preprocess network objects
+            self.preprocess_network(flowpaths)
 
-        # Preprocess waterbody objects
-        self.preprocess_waterbodies(lakes)
+            # Preprocess waterbody objects
+            self.preprocess_waterbodies(lakes)
 
-        # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
-        self.preprocess_data_assimilation(network)
+            # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
+            self.preprocess_data_assimilation(network)
+        
+            if self.preprocessing_parameters.get('preprocess_output_folder', None):
+                self.write_preprocessed_data()
+
+                if self.preprocessing_parameters.get('preprocess_only', False):
+                    #TODO: Add LOG message here...
+                    quit()
 
         if self.verbose:
             print("supernetwork connections set complete")
@@ -332,6 +347,9 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._dataframe.set_index("key", inplace=True)
             self._dataframe = self.dataframe.sort_index()
 
+        # Drop 'gages' column if it is present
+        if 'gages' in self.dataframe:
+            self._dataframe = self.dataframe.drop('gages', axis=1)
         # numeric code used to indicate network terminal segments
         terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
 
@@ -479,10 +497,9 @@ class HYFeaturesNetwork(AbstractNetwork):
             )
             
             # Set waterbody types if DA is turned on:
-            streamflow_nudging = self.data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
-            usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
-            usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
-            rfc_da = self.waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+            usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_da',{}).get('reservoir_persistence_usgs',False)
+            usace_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_da',{}).get('reservoir_persistence_usace',False)
+            rfc_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_rfc_da',{}).get('reservoir_rfc_forecasts',False)
             #NOTE: The order here matters. Some waterbody IDs have both a USGS gage designation and
             # a NID ID used for USACE gages. It seems the USGS gages should take precedent (based on
             # gages in timeslice files), so setting type 2 reservoirs second should overwrite type 3 
@@ -503,6 +520,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._gages = {}
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usace_lake_gage_crosswalk = pd.DataFrame()
+            self._rfc_lake_gage_crosswalk = pd.DataFrame()
     
     def build_qlateral_array(self, run,):
         
@@ -613,6 +631,62 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._dataframe['waterbody'] = self._dataframe['waterbody'].replace('1711354','1710676')
         self._waterbody_df.rename(index={1711354: 1710676}, inplace=True)
     #######################################################################
+
+    def write_preprocessed_data(self,):
+        #LOG.debug("saving preprocessed network data to disk for future use")
+        # todo: consider a better default than None
+        destination_folder = self.preprocessing_parameters.get('preprocess_output_folder', None)
+        if destination_folder:
+
+            output_filename = self.preprocessing_parameters.get(
+                'preprocess_output_filename', 
+                'preprocess_output'
+            )
+
+        outputs = {
+            'dataframe': self.dataframe,
+            'flowpath_dict': self._flowpath_dict,
+            'terminal_codes': self._terminal_codes,
+            'upstream_termincal': self._upstream_terminal,
+            'connections': self._connections,
+            'waterbody_df': self._waterbody_df,
+            'waterbody_types_df': self._waterbody_types_df,
+            'waterbody_connections': self._waterbody_connections,
+            'waterbody_type_specified': self._waterbody_type_specified,
+            'link_lake_crosswalk': self._link_lake_crosswalk,
+            'gages': self._gages,
+            'usgs_lake_gage_crosswalk': self._usgs_lake_gage_crosswalk,
+            'usace_lake_gage_crosswalk': self._usace_lake_gage_crosswalk,
+            'rfc_lake_gage_crosswalk': self._rfc_lake_gage_crosswalk
+        }
+        np.save(
+            Path(destination_folder).joinpath(output_filename),
+            outputs
+            )
+    
+    def read_preprocessed_data(self,):
+        preprocess_filepath = self.preprocessing_parameters.get('preprocess_source_file',None)
+        if preprocess_filepath:
+            try:
+                inputs = np.load(Path(preprocess_filepath),allow_pickle='TRUE').item()
+            except:
+                #LOG.critical('Canonot find %s' % Path(preprocess_filepath))
+                quit()
+                
+            self._dataframe = inputs.get('dataframe',None)
+            self._flowpath_dict = inputs.get('flowpath_dict',None)
+            self._terminal_codes = inputs.get('terminal_codes',None)
+            self._upstream_terminal = inputs.get('upstream_termincal',None)
+            self._connections = inputs.get('connections',None)
+            self._waterbody_df = inputs.get('waterbody_df',None)
+            self._waterbody_types_df = inputs.get('waterbody_types_df',None)
+            self._waterbody_connections = inputs.get('waterbody_connections',None)
+            self._waterbody_type_specified = inputs.get('waterbody_type_specified',None)
+            self._link_lake_crosswalk = inputs.get('link_lake_crosswalk',None)
+            self._gages = inputs.get('gages',None)
+            self._usgs_lake_gage_crosswalk = inputs.get('usgs_lake_gage_crosswalk',None)
+            self._usace_lake_gage_crosswalk = inputs.get('usace_lake_gage_crosswalk',None)
+            self._rfc_lake_gage_crosswalk = inputs.get('rfc_lake_gage_crosswalk',None)
 
 
 def read_file(file_name):
