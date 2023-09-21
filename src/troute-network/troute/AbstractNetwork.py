@@ -124,11 +124,9 @@ class AbstractNetwork(ABC):
         start_time = time.time()
         LOG.info("Creating a DataFrame of lateral inflow forcings ...")
 
-        from_file = True
-        if from_file:
-            self.build_qlateral_array(
-                run,
-            )
+        self.build_qlateral_array(
+            run,
+        )
         
         LOG.debug(
             "lateral inflow DataFrame creation complete in %s seconds." \
