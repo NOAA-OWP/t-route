@@ -123,7 +123,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or chano or test or wbdyo:
+    if csv_output_folder or rsrto or chrto or chano or test or wbdyo or qvd_ndg:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
