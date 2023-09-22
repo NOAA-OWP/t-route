@@ -2018,7 +2018,7 @@ def write_flowveldepth_netcdf(qvd_filepath, flowveldepth, nudge, usgs_positions_
                         dimensions=('feature_id', 'time_step'),
                     )
 
-                    QVD.units = 'm3/s m/s m m'
+                    QVD.units = 'm3/s m/s m m3/s'
                     QVD.description = f'Data for {var}'
                     
                     # Prepare data for writing
@@ -2026,5 +2026,14 @@ def write_flowveldepth_netcdf(qvd_filepath, flowveldepth, nudge, usgs_positions_
 
                     # Set data for each feature_id and time_step
                     ncfile.variables[var][:] = data_array
-
+                # =========== GLOBAL ATTRIBUTES ===============
+                ncfile.setncatts(
+                    {
+                        'TITLE': 'OUTPUT FROM T-ROUTE',
+                        'Time step': '5 minutes',
+                        'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                        'comment': 'The file includes 1 hour data which includes 12 timesteps',
+                        'code_version': '',
+                    }
+                )
                 print(f"Flowveldepth data saved as NetCDF files in {qvd_filepath}")

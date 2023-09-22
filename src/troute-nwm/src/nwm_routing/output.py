@@ -192,14 +192,15 @@ def nwm_output_generator(
                 courant.set_index(fvdidxs, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
+    
+    if qvd_ndg:
+        nudge = np.concatenate([r[8] for r in results])
+        usgs_positions_id = np.concatenate([r[3][0] for r in results])
+        nhd_io.write_flowveldepth_netcdf(Path(qvd_ndg), flowveldepth, nudge, usgs_positions_id, t0)
 
     if test:
         flowveldepth.to_pickle(Path(test))
-        import pdb; pdb.set_trace()
-        nudge = np.concatenate([r[8] for r in results])
-        usgs_positions_id = np.concatenate([r[3][0] for r in results])
-        
-        nhd_io.write_flowveldepth_netcdf(Path(qvd_ndg), flowveldepth, nudge, usgs_positions_id, t0)
+           
     if wbdyo and not waterbodies_df.empty:
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
