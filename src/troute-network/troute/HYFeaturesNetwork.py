@@ -53,8 +53,14 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, c
         flowpaths = gpd.read_file(file_path, layer='flowpaths')
         flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
         flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
-        lakes = gpd.read_file(file_path, layer='lakes')
-        network = gpd.read_file(file_path, layer='network')
+        # If waterbodies are being simulated, read lakes table
+        lakes = pd.DataFrame()
+        if waterbody_parameters.get('break_network_at_waterbodies', False):
+            lakes = gpd.read_file(file_path, layer='lakes')
+        # If any DA is activated, read network table as well for gage information
+        network = pd.DataFrame()
+        if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
+            network = gpd.read_file(file_path, layer='network')
 
     return flowpaths, lakes, network
 
