@@ -325,7 +325,7 @@ class AbstractNetwork(ABC):
         if self._link_gage_df is None:
             self._link_gage_df = pd.DataFrame.from_dict(self._gages)
             self._link_gage_df.index.name = 'link'
-        return self._link_gage_df
+        return self._link_gage_df.copy()
 
     @property
     def usgs_lake_gage_crosswalk(self):
