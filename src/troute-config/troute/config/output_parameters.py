@@ -27,8 +27,7 @@ class OutputParameters(BaseModel, extra='forbid'):
     # see nwm_routing/output.py :114
     test_output: Optional[FilePath] = None
     stream_output: Optional["StreamOutput"] = None
-    stream_output_time: Optional["StreamOutputTime"] = None
-    stream_output_type: Optional["StreamOutputType"] = None
+
 
 class ChanobsOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing chanobs files
@@ -79,20 +78,16 @@ class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
-
-class StreamOutputTime(BaseModel):
-    # NOTE: required if writing StreamOutput files
-    stream_output_timediff: Optional[conint(ge=1)] = None
-
-class StreamOutputType(BaseModel):
-    # NOTE: required if writing StreamOutput files
-    stream_output_type: Optional[str] = None
-
-    @validator('stream_output_type')
-    def validate_stream_output_type(cls, value):
-        allowed_types = ['.csv', '.nc', '.pkl']
-        if value not in allowed_types:
-            raise ValueError(f"Invalid stream output type. Allowed types are {', '.join(allowed_types)}.")
+    stream_output_time: int = 1
+    stream_output_type:streamOutput_allowedTypes = ".nc"
+    stream_output_internal_frequency: Optional[conint(ge=5)] = None
+    @validator('stream_output_internal_frequency')
+    def validate_stream_output_internal_frequency(cls, value, values):
+        if value is not None:
+            if value % 5 != 0:
+                raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
+            if value / 60 > values['stream_output_time']:
+                raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
 
 OutputParameters.update_forward_refs()
