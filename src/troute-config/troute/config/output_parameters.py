@@ -26,7 +26,7 @@ class OutputParameters(BaseModel):
     # TODO: missing from `v3_doc.yaml`
     # see nwm_routing/output.py :114
     test_output: Optional[FilePath] = None
-
+    nudge_output: Optional["NudgeOutput"] = None
 
 class ChanobsOutput(BaseModel):
     # NOTE: required if writing chanobs files
@@ -74,6 +74,9 @@ class WrfHydroParityCheck(BaseModel):
 class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
 
+class NudgeOutput(BaseModel):
+    # NOTE: required if writing nudgeoutput files
+    qvd_ndg: Optional[DirectoryPath] = None
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
