@@ -215,6 +215,8 @@ class bmi_troute(Bmi):
         self._values['reservoir_usace_df'] = np.zeros(0)
         self._values['rfc_timeseries_df'] = np.zeros(0)
         self._values['lastobs_df'] = np.zeros(0)
+        self._values['nudging'] = np.zeros(0)
+        self._values['nudging_ids'] = np.zeros(0)
 
         '''
         self._values['gage_crosswalk__segID'] = np.zeros(0, dtype=int)
