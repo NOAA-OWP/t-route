@@ -271,6 +271,8 @@ class troute_model():
         nudge = np.concatenate([r[8] for r in self._run_results])[:,1:]
         usgs_positions_id = np.concatenate([r[3][0] for r in self._run_results]).astype(int)
         self._nudge = pd.DataFrame(data=nudge, index=usgs_positions_id)
+        values['nudging'] = self._nudge
+        values['nudging_ids'] = usgs_positions_id
 
         # Get output from final timestep
         (values['channel_exit_water_x-section__volume_flow_rate'], 
@@ -279,7 +281,6 @@ class troute_model():
          values['lake_water~incoming__volume_flow_rate'], 
          values['lake_water~outgoing__volume_flow_rate'], 
          values['lake_surface__elevation'],
-         #TODO: add 'assimilated_value' as an output?
         ) = _retrieve_last_output(
             self._run_results, 
             nts, 
