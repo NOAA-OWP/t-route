@@ -41,7 +41,12 @@ class bmi_DAforcing(Bmi):
     #---------------------------------------------
     # Input variable names (CSDMS standard names)
     #---------------------------------------------
-    _input_var_names = []
+    _input_var_names = [
+        'flowvelocitydepth',
+        'flowvelocitydepth_ids',
+        'nudging',
+        'nudging_ids'
+    ]
 
     #---------------------------------------------
     # Output variable names (CSDMS standard names)
@@ -128,6 +133,11 @@ class bmi_DAforcing(Bmi):
         self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
         self._values['lastobs_df'] = self._model._lastobs_df
 
+        self._values['flowvelocitydepth'] = np.zeros(0)
+        self._values['flowvelocitydepth_ids'] = np.zeros(0)
+        self._values['nudging'] = np.zeros(0)
+        self._values['nudging_ids'] = np.zeros(0)
+
     def get_value(self, var_name):
         """Copy of values.
         Parameters
@@ -147,13 +157,7 @@ class bmi_DAforcing(Bmi):
 
     def update(self):
         """Advance model by one time step."""
-        '''
-        if self._model._time==0.0:
-            self._model.preprocess_static_vars(self._values) 
-
         self._model.run(self._values)
-        '''
-        pass
 
     def update_until(self, until):
         """Update model until a particular time.
