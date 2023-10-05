@@ -18,17 +18,20 @@ class DAforcing_model():
         
         """
         __slots__ = ['_data_assimilation_parameters', '_forcing_parameters', '_compute_parameters',
-                     '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df', '_lastobs_df' ]
+                     '_output_parameters', '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', 
+                     '_rfc_timeseries_df', '_lastobs_df',]
 
         if bmi_cfg_file:
             (compute_parameters,
              forcing_parameters,
              data_assimilation_parameters,
+             output_parameters,
             ) = _read_config_file(bmi_cfg_file)
             
             self._compute_parameters = compute_parameters
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
+            self._output_parameters = output_parameters
 
             #############################
             # Read DA files:
@@ -119,7 +122,31 @@ class DAforcing_model():
 
         else:
             raise(RuntimeError("No config file provided."))
-            
+
+    def run(self, values: dict):
+        """
+        Write t-route output values to files. Namely, create restart files (channel and waterbody), 
+        lastobs files, and flowveldepth files to pass to coastal hydraulics models.
+        Parameters
+        ----------
+        values: dict
+            The static and dynamic values for the model.
+        Returns
+        -------
+        """
+        output_parameters = self._output_parameters
+        da_parameters = self._data_assimilation_parameters
+
+        if output_parameters.get('lite_restart',{}).get('lite_restart_output_directory'):
+            #write restart file
+            pass
+        if da_parameters.get('streamflow_da',{}).get('lastobs_output_folder'):
+            #write lastobs file
+            pass
+        if output_parameters.get('nudge_output',{}).get('qvd_nudge'):
+            #write flowveldepth file
+            pass
+
 
 # Utility functions -------
 def _read_config_file(custom_input_file):
@@ -147,11 +174,13 @@ def _read_config_file(custom_input_file):
     compute_parameters = config_dict.get("compute_parameters")
     forcing_parameters = compute_parameters.get("forcing_parameters")
     data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters")
+    output_parameters = config_dict.get('output_parameters')
 
     return (
         compute_parameters,
         forcing_parameters,
         data_assimilation_parameters,
+        output_parameters,
         )
 
 def _read_timeslice_files(filepath, 
