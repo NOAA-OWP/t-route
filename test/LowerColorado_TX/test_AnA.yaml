@@ -95,5 +95,7 @@ output_parameters:
         chanobs_output_directory: output/
         chanobs_filepath        : lcr_chanobs.nc
     lakeout_output: lakeout/
-    nudge_output: output/
+    stream_output: output/
+    stream_output_time: 1 #[hr]
+    stream_output_type: '.pkl' #please select only between netcdf '.nc' or '.csv' or '.pkl'
     

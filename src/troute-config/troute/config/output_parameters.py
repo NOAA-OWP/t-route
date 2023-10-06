@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, conint, validator
 
 from typing import Optional, List
 
@@ -26,7 +26,9 @@ class OutputParameters(BaseModel):
     # TODO: missing from `v3_doc.yaml`
     # see nwm_routing/output.py :114
     test_output: Optional[FilePath] = None
-    nudge_output: Optional["NudgeOutput"] = None
+    stream_output: Optional["StreamOutput"] = None
+    stream_output_time: Optional["StreamOutputTime"] = None
+    stream_output_type: Optional["StreamOutputType"] = None
 
 class ChanobsOutput(BaseModel):
     # NOTE: required if writing chanobs files
@@ -74,9 +76,24 @@ class WrfHydroParityCheck(BaseModel):
 class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
 
-class NudgeOutput(BaseModel):
-    # NOTE: required if writing nudgeoutput files
-    qvd_ndg: Optional[DirectoryPath] = None
+class StreamOutput(BaseModel):
+    # NOTE: required if writing StreamOutput files
+    stream_output_directory: Optional[DirectoryPath] = None
+
+class StreamOutputTime(BaseModel):
+    # NOTE: required if writing StreamOutput files
+    stream_output_timediff: Optional[conint(ge=1)] = None
+
+class StreamOutputType(BaseModel):
+    # NOTE: required if writing StreamOutput files
+    stream_output_type: Optional[str] = None
+
+    @validator('stream_output_type')
+    def validate_stream_output_type(cls, value):
+        allowed_types = ['.csv', '.nc', '.pkl']
+        if value not in allowed_types:
+            raise ValueError(f"Invalid stream output type. Allowed types are {', '.join(allowed_types)}.")
+        return value
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
