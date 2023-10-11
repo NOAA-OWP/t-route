@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, conint, validator
+from pydantic import BaseModel, Field, conint, validator, confloat
 
 from typing import Optional, List
-
+from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
 class OutputParameters(BaseModel, extra='forbid'):
     chanobs_output: Optional["ChanobsOutput"] = None
@@ -89,6 +90,5 @@ class StreamOutput(BaseModel):
             if value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
-
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()

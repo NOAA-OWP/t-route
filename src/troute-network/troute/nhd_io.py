@@ -1951,7 +1951,8 @@ def write_flowveldepth_netcdf(stream_output_directory,
                               usgs_positions_id, 
                               t0, 
                               stream_output_timediff, 
-                              stream_output_type):
+                              stream_output_type,
+                              stream_output_internal_frequency = 5):
     '''
     Write the results of flowveldepth and nudge to netcdf- break. 
     Arguments
@@ -1996,10 +1997,13 @@ def write_flowveldepth_netcdf(stream_output_directory,
         # Define the range of columns for this file
         start_col = i * 4
         end_col = min((i + nstep_nc) * 4 , nsteps * 4)
-
+        selected_col = stream_output_internal_frequency / 5
         # Create a subset DataFrame for the current range of columns
         subset_df = qvd_ndg.iloc[:, start_col:end_col]
-        
+        # Create a list of column names to keep
+        columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col[0]) % selected_col == 0]
+        subset_df = qvd_ndg[columns_to_keep]
+        # import pdb;pdb.set_trace()
         # Create the file name based on the current time step
         current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
         if stream_output_directory:
@@ -2056,7 +2060,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
                     ncfile.setncatts(
                         {
                             'TITLE': 'OUTPUT FROM T-ROUTE',
-                            'Time step': '5 minutes',
+                            'Time step': f'every {stream_output_internal_frequency} minutes',
                             'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
                             'comment': f'The file includes {stream_output_timediff} hour data which includes {nstep_nc} timesteps',
                             'code_version': '',
