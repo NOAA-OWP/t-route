@@ -1294,6 +1294,7 @@ def get_channel_restart_from_wrf_hydro(
     """
 
     with xr.open_dataset(crosswalk_file) as xds:
+        
         xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
@@ -1540,7 +1541,7 @@ def get_reservoir_restart_from_wrf_hydro(
 
     with xr.open_dataset(crosswalk_file) as xds:
         X = xds[waterbody_ID_field]
-
+        
         if crosswalk_filter_file:
             with xr.open_dataset(crosswalk_filter_file) as fds:
                 xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
@@ -2003,7 +2004,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
         # Create a list of column names to keep
         columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col[0]) % selected_col == 0]
         subset_df = qvd_ndg[columns_to_keep]
-        # import pdb;pdb.set_trace()
+        
         # Create the file name based on the current time step
         current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
         if stream_output_directory:

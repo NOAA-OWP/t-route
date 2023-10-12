@@ -35,10 +35,10 @@ compute_parameters:
     restart_parameters:
         #----------
         start_datetime: 2021-08-23_13:00
-        # wrf_hydro_channel_restart_file        : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        wrf_hydro_channel_restart_file        : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
         #lite_channel_restart_file            : restart/RESTART.2020082600_DOMAIN1
         wrf_hydro_channel_ID_crosswalk_file   : domain/RouteLink.nc
-        # wrf_hydro_waterbody_restart_file      : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        wrf_hydro_waterbody_restart_file      : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
         #lite_waterbody_restart_file          : restart/waterbody_restart_202006011200
         wrf_hydro_waterbody_ID_crosswalk_file : domain/LAKEPARM.nc 
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc 
@@ -98,6 +98,9 @@ output_parameters:
     stream_output: 
         stream_output_directory: output/
         stream_output_time: 1 #[hr]
-        stream_output_type: '.csv' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+        stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60
+#-------------------------------------------------------------------
+#-------------------------------------------------------------------
+
     
