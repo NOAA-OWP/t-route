@@ -1173,12 +1173,12 @@ def get_obs_from_timeslices(
     observation_df = (df.join(timeslice_obs_df).
                reset_index().
                set_index(crosswalk_dest_field).
-               drop([crosswalk_gage_field], axis=1))
+               select_dtypes(include='number'))
 
     observation_qual_df = (df.join(timeslice_qual_df).
                reset_index().
                set_index(crosswalk_dest_field).
-               drop([crosswalk_gage_field], axis=1))
+               select_dtypes(include='number'))
 
     # ---- Laugh testing ------
     # screen-out erroneous qc flags
@@ -1660,6 +1660,8 @@ def lastobs_df_output(
     ds.attrs["modelTimeAtOutput"] = modelTimeAtOutput_str
 
     # write-out LastObs file as netcdf
+    if isinstance(lastobs_output_folder, pathlib.Path):
+        lastobs_output_folder = str(lastobs_output_folder)
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
     ds.to_netcdf(str(output_path))
 

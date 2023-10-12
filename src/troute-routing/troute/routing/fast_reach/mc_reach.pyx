@@ -173,7 +173,7 @@ cpdef object compute_network_structured(
     const float[:,:] qlat_values,
     list lake_numbers_col,
     const double[:,:] wbody_cols,
-    dict waterbody_parameters,
+    dict data_assimilation_parameters,
     const int[:,:] reservoir_types,
     bint reservoir_type_specified,
     str model_start_time,
@@ -328,10 +328,10 @@ cpdef object compute_network_structured(
                             array('l',upstream_ids),
                             wbody_parameters[wbody_index],
                             reservoir_types[wbody_index][0],
-                            waterbody_parameters["rfc"]["reservoir_parameter_file"],
+                            data_assimilation_parameters["reservoir_da"]["reservoir_parameter_file"],
                             model_start_time,
-                            waterbody_parameters["rfc"]["reservoir_rfc_forecasts_time_series_path"],
-                            waterbody_parameters["rfc"]["reservoir_rfc_forecasts_lookback_hours"],
+                            data_assimilation_parameters["reservoir_da"]["reservoir_rfc_da"]["reservoir_rfc_forecasts_time_series_path"],
+                            data_assimilation_parameters["reservoir_da"]["reservoir_rfc_da"]["reservoir_rfc_forecasts_lookback_hours"],
                         )
                         reach_objects.append(rfc_obj)
                 

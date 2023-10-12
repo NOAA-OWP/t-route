@@ -147,6 +147,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
                                   reservoir_rfc_param_df,
                                   waterbody_types_df_sub,
                                   t0, 
+                                  from_files,
                                   exclude_segments=None):
     '''
     Helper function to build reservoir DA data arrays for routing computations
@@ -254,8 +255,9 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
         reservoir_rfc_update_time = pd.DataFrame().to_numpy().reshape(0,)
         reservoir_rfc_da_timestep = pd.DataFrame().to_numpy().reshape(0,)
         reservoir_rfc_persist_days = pd.DataFrame().to_numpy().reshape(0,)
-        if not waterbody_types_df_sub.empty:
-            waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 4] = 1
+        if not from_files:
+            if not waterbody_types_df_sub.empty:
+                waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 4] = 1
 
     return (
         reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usgs_update_time, reservoir_usgs_prev_persisted_flow, reservoir_usgs_persistence_update_time, reservoir_usgs_persistence_index,
@@ -293,7 +295,7 @@ def compute_nhd_routing_v02(
     assume_short_ts,
     return_courant,
     waterbodies_df,
-    waterbody_parameters,
+    data_assimilation_parameters,
     waterbody_types_df,
     waterbody_type_specified,
     subnetwork_list,
@@ -542,6 +544,7 @@ def compute_nhd_routing_v02(
                         reservoir_rfc_param_df,
                         waterbody_types_df_sub, 
                         t0,
+                        from_files,
                         offnetwork_upstreams
                     )
                     
@@ -561,7 +564,7 @@ def compute_nhd_routing_v02(
                             qlat_sub.values.astype("float32"),
                             lake_segs, 
                             waterbodies_df_sub.values,
-                            waterbody_parameters,
+                            data_assimilation_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
                             t0.strftime('%Y-%m-%d_%H:%M:%S'),
@@ -829,6 +832,7 @@ def compute_nhd_routing_v02(
                         reservoir_rfc_param_df,
                         waterbody_types_df_sub, 
                         t0,
+                        from_files,
                         offnetwork_upstreams
                     )
 
@@ -846,7 +850,7 @@ def compute_nhd_routing_v02(
                             qlat_sub.values.astype("float32"),
                             lake_segs,
                             waterbodies_df_sub.values,
-                            waterbody_parameters,
+                            data_assimilation_parameters,
                             waterbody_types_df_sub.values.astype("int32"),
                             waterbody_type_specified,
                             t0.strftime('%Y-%m-%d_%H:%M:%S'),
@@ -1031,6 +1035,7 @@ def compute_nhd_routing_v02(
                     reservoir_rfc_param_df,
                     waterbody_types_df_sub, 
                     t0,
+                    from_files,
                     offnetwork_upstreams
                     )
 
@@ -1048,7 +1053,7 @@ def compute_nhd_routing_v02(
                         qlat_sub.values.astype("float32"),
                         lake_segs,
                         waterbodies_df_sub.values,
-                        waterbody_parameters,
+                        data_assimilation_parameters,
                         waterbody_types_df_sub.values.astype("int32"),
                         waterbody_type_specified,
                         t0.strftime('%Y-%m-%d_%H:%M:%S'),
@@ -1197,6 +1202,7 @@ def compute_nhd_routing_v02(
                 reservoir_rfc_param_df,
                 waterbody_types_df_sub, 
                 t0,
+                from_files,
                 )
             
             results.append(
@@ -1213,7 +1219,7 @@ def compute_nhd_routing_v02(
                     qlat_sub.values.astype("float32"),
                     lake_segs,
                     waterbodies_df_sub.values,
-                    waterbody_parameters,
+                    data_assimilation_parameters,
                     waterbody_types_df_sub.values.astype("int32"),
                     waterbody_type_specified,
                     t0.strftime('%Y-%m-%d_%H:%M:%S'),
@@ -1361,7 +1367,8 @@ def compute_nhd_routing_v02(
                 reservoir_usace_df, 
                 reservoir_usace_param_df,
                 waterbody_types_df_sub, 
-                t0
+                t0,
+                from_files,
             )
             
             results.append(
@@ -1378,7 +1385,7 @@ def compute_nhd_routing_v02(
                     qlat_sub.values.astype("float32"),
                     lake_segs,
                     waterbodies_df_sub.values,
-                    waterbody_parameters,
+                    data_assimilation_parameters,
                     waterbody_types_df_sub.values.astype("int32"),
                     waterbody_type_specified,
                     t0.strftime('%Y-%m-%d_%H:%M:%S'),

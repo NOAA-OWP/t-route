@@ -14,7 +14,7 @@ from troute.DataAssimilation import DataAssimilation
 import numpy as np
 import pandas as pd
 
-from .input import _input_handler_v03
+from .input import _input_handler_v03, _input_handler_v04
 from .preprocess import (
     nwm_network_preprocess,
     nwm_initial_warmstate_preprocess,
@@ -27,6 +27,7 @@ from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_ro
 
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
+import troute.hyfeature_network_utilities as hnu
 
 LOG = logging.getLogger('')
 
@@ -50,8 +51,8 @@ def main_v04(argv):
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
-    ) = _input_handler_v03(args)
-
+    ) = _input_handler_v04(args)
+    
     run_parameters = {
         'dt': forcing_parameters.get('dt'),
         'nts': forcing_parameters.get('nts'),
@@ -75,7 +76,7 @@ def main_v04(argv):
         network_start_time = time.time()
     
     #if "ngen_nexus_file" in supernetwork_parameters:
-    if supernetwork_parameters["geo_file_type"] == 'HYFeaturesNetwork':
+    if supernetwork_parameters["network_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
                                     waterbody_parameters,
                                     data_assimilation_parameters,
@@ -83,9 +84,10 @@ def main_v04(argv):
                                     compute_parameters,
                                     forcing_parameters,
                                     hybrid_parameters,
+                                    preprocessing_parameters,
                                     verbose=True, showtiming=showtiming) 
         
-    elif supernetwork_parameters["geo_file_type"] == 'NHDNetwork':
+    elif supernetwork_parameters["network_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
                              waterbody_parameters,
                              restart_parameters,
@@ -106,10 +108,10 @@ def main_v04(argv):
 
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
-        da_sets = nnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
+        da_sets = hnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
         
     # Create parity_sets: sets of CHRTOUT files against which to compare t-route flows
-    if "wrf_hydro_parity_check" in output_parameters:
+    if output_parameters.get("wrf_hydro_parity_check"):
         parity_sets = nnu.build_parity_sets(parity_parameters, run_sets)
     else:
         parity_sets = []
@@ -185,7 +187,7 @@ def main_v04(argv):
             assume_short_ts,
             return_courant,
             network.waterbody_dataframe,
-            waterbody_parameters,
+            data_assimilation_parameters,
             network.waterbody_types_dataframe,
             network.waterbody_type_specified,
             network.diffusive_network_data,
@@ -213,7 +215,7 @@ def main_v04(argv):
         data_assimilation.update_after_compute(run_results, dt*nts)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
-        if "lite_restart" in output_parameters:
+        if output_parameters['lite_restart'] is not None:
             nhd_io.write_lite_restart(
                 network.q0, 
                 network._waterbody_df, 
@@ -1042,7 +1044,7 @@ def nwm_route(
     assume_short_ts,
     return_courant,
     waterbodies_df,
-    waterbody_parameters,
+    data_assimilation_parameters,
     waterbody_types_df,
     waterbody_type_specified,
     diffusive_network_data,
@@ -1098,7 +1100,7 @@ def nwm_route(
         assume_short_ts,
         return_courant,
         waterbodies_df,
-        waterbody_parameters,
+        data_assimilation_parameters,
         waterbody_types_df,
         waterbody_type_specified,
         subnetwork_list,
@@ -2004,11 +2006,11 @@ if __name__ == "__main__":
     v_parser.add_argument(
         "-V",
         "--input-version",
-        default=3,
+        default=4,
         nargs="?",
         choices=[2, 3, 4],
         type=int,
-        help="Use version 2 or 3 of the input format. Default 3",
+        help="Use version 3 or 4 of the input format. Default 4",
     )
     v_args = v_parser.parse_known_args()
     '''

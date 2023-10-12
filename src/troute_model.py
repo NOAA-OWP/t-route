@@ -1,6 +1,10 @@
 import pandas as pd
+import numpy as np
 import yaml
 import time
+
+from nwm_routing.log_level_set import log_level_set
+from troute.config import Config
 import nwm_routing.__main__ as tr
 
 
@@ -23,7 +27,7 @@ class troute_model():
                      '_restart_parameters', '_hybrid_parameters', '_output_parameters', 
                      '_parity_parameters', '_data_assimilation_parameters', '_time', 
                      '_segment_attributes', '_waterbody_attributes', '_network',
-                     '_data_assimilation', '_fvd', '_lakeout']
+                     '_data_assimilation', '_fvd', '_lakeout', '_nudge']
         
         (
             self._log_parameters,
@@ -66,6 +70,8 @@ class troute_model():
                 'data_assimilation_time' : 0,
 
             }
+        
+        self._subnetwork_list = [None, None, None]
     
     def preprocess_static_vars(self, values: dict):
         """
@@ -89,6 +95,7 @@ class troute_model():
             data_assimilation_parameters=self._data_assimilation_parameters,
             compute_parameters=self._compute_parameters,
             hybrid_parameters=self._hybrid_parameters,
+            preprocessing_parameters=self._preprocessing_parameters,
             from_files=False, value_dict=values,
             bmi_parameters=self._bmi_parameters,)
 
@@ -136,10 +143,20 @@ class troute_model():
         if self.showtiming:
             forcing_start_time = time.time()
 
-        self._network._qlateral = pd.DataFrame(index=self._network.segment_index).join(
-            pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
-                         index=values['land_surface_water_source__id'])
-        )
+        qlats_df = pd.DataFrame(values['land_surface_water_source__volume_flow_rate'],
+                                index=values['land_surface_water_source__id'])
+        qlats_df = qlats_df[qlats_df.index.isin(self._network.segment_index)]
+        
+        all_df = pd.DataFrame( np.zeros( (len(self._network.segment_index), len(qlats_df.columns)) ), index=self._network.segment_index,
+            columns=qlats_df.columns )
+        all_df.loc[ qlats_df.index ] = qlats_df
+        qlats_df = all_df.sort_index()
+        
+        if not self._network.segment_index.empty:
+            qlats_df = qlats_df[qlats_df.index.isin(self._network.segment_index)]
+        
+        self._network._qlateral = qlats_df
+
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
         if len(values['upstream_id'])>0:
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
@@ -203,7 +220,7 @@ class troute_model():
                          self._network.topobathy_df,
                          self._network.refactored_diffusive_domain,
                          self._network.refactored_reaches,
-                         [None, None, None], #subnetwork_list,
+                         self._subnetwork_list,
                          self._network.coastal_boundary_depth_df,
                          self._network.unrefactored_topobathy_df,
                          flowveldepth_interorder,
@@ -212,6 +229,7 @@ class troute_model():
         
         # update initial conditions with results output
         self._network.new_q0(self._run_results)
+        '''
         # update offnetwork_upstream initial conditions
         if flowveldepth_interorder:
             self._network._q0 = pd.concat(
@@ -228,9 +246,9 @@ class troute_model():
                     )
                 ]
             ).sort_index()
-        
+        '''
         self._network.update_waterbody_water_elevation()               
-        
+
         # update t0
         self._network.new_t0(self._time_step, nts)
 
@@ -249,7 +267,11 @@ class troute_model():
         )
         values['fvd_results'] = self._fvd.values.flatten()
         values['fvd_index'] = self._fvd.index
-        
+
+        nudge = np.concatenate([r[8] for r in self._run_results])[:,1:]
+        usgs_positions_id = np.concatenate([r[3][0] for r in self._run_results]).astype(int)
+        self._nudge = pd.DataFrame(data=nudge, index=usgs_positions_id)
+
         # Get output from final timestep
         (values['channel_exit_water_x-section__volume_flow_rate'], 
          values['channel_water_flow__speed'], 
@@ -347,37 +369,26 @@ def _read_config_file(custom_input_file): #TODO: Update this function, I dont' t
     with open(custom_input_file) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
-    log_parameters = data.get("log_parameters", {})
-    network_topology_parameters = data.get("network_topology_parameters", None)
-    supernetwork_parameters = network_topology_parameters.get(
-        "supernetwork_parameters", None
-    )
-    # add attributes when HYfeature network is selected
-    if supernetwork_parameters['geo_file_path'][-4:] == "gpkg":
-        supernetwork_parameters["title_string"]       = "HY_Features Test"
-        supernetwork_parameters["geo_file_path"]      = supernetwork_parameters['geo_file_path']
-        supernetwork_parameters["flowpath_edge_list"] = None    
-        supernetwork_parameters["waterbody_null_code"] = -9999
-        supernetwork_parameters["terminal_code"]       =  0
-        supernetwork_parameters["driver_string"]       = "NetCDF"
-        supernetwork_parameters["layer_string"]        = 0
-        
-    preprocessing_parameters = network_topology_parameters.get(
-        "preprocessing_parameters", {}
-    )        
-    waterbody_parameters = network_topology_parameters.get(
-        "waterbody_parameters", {}
-    )
-    compute_parameters = data.get("compute_parameters", {})
-    forcing_parameters = compute_parameters.get("forcing_parameters", {})
-    restart_parameters = compute_parameters.get("restart_parameters", {})
-    hybrid_parameters = compute_parameters.get("hybrid_parameters", {})
-    data_assimilation_parameters = compute_parameters.get(
-        "data_assimilation_parameters", {}
-    )
-    output_parameters = data.get("output_parameters", {})
-    parity_parameters = output_parameters.get("wrf_hydro_parity_check", {})
-    bmi_parameters = data.get("bmi_parameters", {})
+    troute_configuration = Config(**data)
+    config_dict = troute_configuration.dict()
+
+    log_parameters = config_dict.get('log_parameters')
+    compute_parameters = config_dict.get('compute_parameters')
+    network_topology_parameters = config_dict.get('network_topology_parameters')
+    output_parameters = config_dict.get('output_parameters')
+    bmi_parameters = config_dict.get('bmi_parameters')
+
+    preprocessing_parameters = network_topology_parameters.get('preprocessing_parameters')
+    supernetwork_parameters = network_topology_parameters.get('supernetwork_parameters')
+    waterbody_parameters = network_topology_parameters.get('waterbody_parameters')
+    forcing_parameters = compute_parameters.get('forcing_parameters')
+    restart_parameters = compute_parameters.get('restart_parameters')
+    hybrid_parameters = compute_parameters.get('hybrid_parameters')
+    parity_parameters = output_parameters.get('wrf_hydro_parity_check')
+    data_assimilation_parameters = compute_parameters.get('data_assimilation_parameters')
+
+    # configure python logger
+    log_level_set(log_parameters)
 
     return (
         log_parameters,

@@ -338,7 +338,11 @@ def nwm_output_generator(
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             link_gage_df = _reindex_lake_to_link_id(link_gage_df, link_lake_crosswalk)
-                
+
+        if isinstance(chano['chanobs_output_directory'], Path):
+            chano['chanobs_output_directory'] = str(chano['chanobs_output_directory']) + '/'
+            chano['chanobs_filepath'] = str(chano['chanobs_filepath'])
+
         nhd_io.write_chanobs(
             Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 
             flowveldepth, 

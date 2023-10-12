@@ -12,7 +12,7 @@ from .bmi_parameters import BMIParameters
 from ._utils import use_strict
 
 
-class Config(BaseModel):
+class Config(BaseModel, extra='forbid'):
     log_parameters: LoggingParameters = Field(default_factory=LoggingParameters)
     # TODO: not sure if default is None or {}. see nhd_io.read_config_file ~:100
     network_topology_parameters: Optional[NetworkTopologyParameters] = None
@@ -46,7 +46,7 @@ class Config(BaseModel):
 
     @root_validator(skip_on_failure=True)
     def check_levelpool_filepath(cls, values):
-        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+        network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
         waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
         if waterbody_parameters:
             simulate_waterbodies = waterbody_parameters.break_network_at_waterbodies
@@ -105,7 +105,7 @@ class Config(BaseModel):
     def check_gage_segID_crosswalk_file(cls, values):
         streamflow_DA = values['compute_parameters'].data_assimilation_parameters.streamflow_da
         streamflow_nudging = streamflow_DA.streamflow_nudging
-        network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+        network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
         if streamflow_nudging and network_type=='NHDNetwork':
             assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
 
@@ -122,7 +122,7 @@ class Config(BaseModel):
                 reservoir_rfc_forecasts_time_series_path = reservoir_rfc_da.reservoir_rfc_forecasts_time_series_path
             if reservoir_rfc_forecasts:
                 error_message = ''
-                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
                 reservoir_parameter_file = reservoir_da.reservoir_parameter_file
                 if not reservoir_parameter_file and network_type=='NHDNetwork':
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
@@ -143,7 +143,7 @@ class Config(BaseModel):
                 usgs_timeslices_folder = values['compute_parameters'].data_assimilation_parameters.usgs_timeslices_folder
             if reservoir_persistence_usgs:
                 error_message = ''
-                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
                 reservoir_parameter_file = reservoir_da.reservoir_parameter_file
                 if not reservoir_parameter_file and network_type=='NHDNetwork':
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
@@ -164,7 +164,7 @@ class Config(BaseModel):
                 usace_timeslices_folder = values['compute_parameters'].data_assimilation_parameters.usace_timeslices_folder
             if reservoir_persistence_usace:
                 error_message = ''
-                network_type = values['network_topology_parameters'].supernetwork_parameters.geo_file_type
+                network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
                 reservoir_parameter_file = reservoir_da.reservoir_parameter_file
                 if not reservoir_parameter_file and network_type=='NHDNetwork':
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'

@@ -166,7 +166,7 @@ class PersistenceDA(AbstractDA):
         run_parameters = self._run_parameters
 
         # isolate user-input parameters for reservoir data assimilation
-        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
+        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', None)
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
 
         # check if user explictly requests USGS and/or USACE reservoir DA
@@ -500,8 +500,7 @@ class RFCDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict):
-        waterbody_parameters = self._waterbody_parameters
-        rfc_parameters = waterbody_parameters.get('rfc', None)
+        rfc_parameters = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', None)
 
         # check if user explictly requests RFC reservoir DA
         rfc  = False
@@ -553,7 +552,8 @@ class RFCDA(AbstractDA):
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
         else:
-            pass
+            self._reservoir_rfc_df = pd.DataFrame()
+            self._reservoir_rfc_param_df = pd.DataFrame()
 
     def update_after_compute(self, run_results):
         '''
