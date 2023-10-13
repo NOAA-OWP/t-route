@@ -267,6 +267,15 @@ class troute_model():
         )
         values['fvd_results'] = self._fvd.values.flatten()
         values['fvd_index'] = self._fvd.index
+        values['lakeout'] = self._lakeout.values.flatten()
+        values['lakeout_index'] = self._lakeout.index
+        values['q0'] = self._network.q0.values.flatten()
+        values['q0_index'] = self._network.q0.index
+        values['waterbody_df'] = self._network.waterbody_dataframe.values.flatten()
+        values['waterbody_df_index'] = self._network.waterbody_dataframe.index
+        lastobs_df = self._data_assimilation.lastobs_df.join(self._network.link_gage_df)
+        values['lastobs_df'] = lastobs_df.values.flatten()
+        values['lastobs_df_index'] = lastobs_df.index
 
         nudge = np.concatenate([r[8] for r in self._run_results])[:,1:]
         usgs_positions_id = np.concatenate([r[3][0] for r in self._run_results]).astype(int)
