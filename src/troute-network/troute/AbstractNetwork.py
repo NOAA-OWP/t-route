@@ -599,6 +599,9 @@ class AbstractNetwork(ABC):
                         data=waterbodies_initial_states_df.reshape(len(waterbodies_initial_states_ids), -1),
                         index=waterbodies_initial_states_ids,
                         columns=['qd0','h0'])
+                    waterbodies_initial_states_df["index"] = range(
+                        len(waterbodies_initial_states_df)
+                    )
                 else:
                     # TODO: Consider adding option to read cold state from route-link file
                     waterbodies_initial_ds_flow_const = 0.0
