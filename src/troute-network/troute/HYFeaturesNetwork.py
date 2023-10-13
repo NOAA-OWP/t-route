@@ -236,7 +236,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         if self.preprocessing_parameters.get('use_preprocessed_data', False):
             self.read_preprocessed_data()
         else:
-            #FIXME: Temporary solution, from files should only be from command line.
+            #FIXME: Temporary solution, from_files should only be from command line.
             # Update this once ngen framework is capable of providing this info via BMI.
             from_files=True
             if from_files:
@@ -253,7 +253,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                     )
             #FIXME: See FIXME above.
             from_files=False
-            
+
             # Preprocess network objects
             self.preprocess_network(flowpaths)
 
