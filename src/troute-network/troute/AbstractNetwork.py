@@ -554,10 +554,17 @@ class AbstractNetwork(ABC):
                 waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
                     restart_parameters['lite_waterbody_restart_file']
                 )
-                
+               
             # read waterbody initial states from WRF-Hydro type restart file
             elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
+                
+                if restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name") is None:
+                    restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file_field_name"] = index_id
+                if restart_parameters.get("wrf_hydro_waterbody_crosswalk_filter_file_field_name") is None:
+                    restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file_field_name"] = 'NHDWaterbodyComID'
+
                 waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
+
                     restart_parameters["wrf_hydro_waterbody_restart_file"],
                     restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
                     restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", index_id),
@@ -617,6 +624,15 @@ class AbstractNetwork(ABC):
             )
         
         elif restart_parameters.get("wrf_hydro_channel_restart_file", None):
+            if restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name") is None:
+                restart_parameters["wrf_hydro_channel_ID_crosswalk_file_field_name"] = 'link'
+            if restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name") is None:
+                restart_parameters["wrf_hydro_channel_restart_upstream_flow_field_name"] = 'qlink1'
+            if restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name") is None:
+                restart_parameters["wrf_hydro_channel_restart_downstream_flow_field_name"] = 'qlink2'
+            if restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name") is None:
+                restart_parameters["wrf_hydro_channel_restart_depth_flow_field_name"] = 'hlink'
+            
             self._q0 = nhd_io.get_channel_restart_from_wrf_hydro(
                 restart_parameters["wrf_hydro_channel_restart_file"],
                 restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
@@ -644,7 +660,7 @@ class AbstractNetwork(ABC):
             
             # get initial time from user inputs
             self._t0 = restart_parameters.get("start_datetime")
-
+            
         LOG.debug(
             "channel initial states complete in %s seconds."\
             % (time.time() - start_time)
@@ -713,7 +729,7 @@ class AbstractNetwork(ABC):
             all_files          = sorted(qlat_input_folder.glob(forcing_glob_filter))
             first_file         = all_files[0]
             second_file        = all_files[1]
-
+            
             # Deduce the timeinterval of the forcing data from the output timestamps of the first
             # two ordered CHRTOUT files
             if forcing_glob_filter=="*.CHRTOUT_DOMAIN1":
@@ -736,7 +752,7 @@ class AbstractNetwork(ABC):
             
             dt_qlat_timedelta = t2 - t1
             dt_qlat = dt_qlat_timedelta.seconds
-
+            
             # determine qts_subdivisions
             qts_subdivisions = dt_qlat / dt
             if dt_qlat % dt == 0:

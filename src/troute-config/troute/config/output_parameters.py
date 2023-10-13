@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, conint, validator, confloat
 
 from typing import Optional, List
-
+from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
 class OutputParameters(BaseModel, extra='forbid'):
     chanobs_output: Optional["ChanobsOutput"] = None
@@ -26,6 +27,7 @@ class OutputParameters(BaseModel, extra='forbid'):
     # TODO: missing from `v3_doc.yaml`
     # see nwm_routing/output.py :114
     test_output: Optional[FilePath] = None
+    stream_output: Optional["StreamOutput"] = None
 
 
 class ChanobsOutput(BaseModel, extra='forbid'):
@@ -74,6 +76,19 @@ class WrfHydroParityCheck(BaseModel, extra='forbid'):
 class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
     validation_files: List[FilePath]
 
-
+class StreamOutput(BaseModel):
+    # NOTE: required if writing StreamOutput files
+    stream_output_directory: Optional[DirectoryPath] = None
+    stream_output_time: int = 1
+    stream_output_type:streamOutput_allowedTypes = ".nc"
+    stream_output_internal_frequency: Optional[conint(ge=5)] = None
+    @validator('stream_output_internal_frequency')
+    def validate_stream_output_internal_frequency(cls, value, values):
+        if value is not None:
+            if value % 5 != 0:
+                raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
+            if value / 60 > values['stream_output_time']:
+                raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
+        return value
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
