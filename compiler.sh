@@ -94,7 +94,7 @@ fi
 if [[ "$build_config" == true ]]; then
   #updates troute package with the execution script
   cd $REPOROOT/src/troute-config
-  pip install -e . || exit
+  pip install $E . || exit
 fi
 
 if [[ "$build_nwm" == true ]]; then
