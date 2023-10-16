@@ -533,6 +533,8 @@ class HYFeaturesNetwork(AbstractNetwork):
                 rfc_lake_gage_crosswalk = pd.read_csv(temp_rfc_file)
                 self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
                 self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
+            else:
+                self._rfc_lake_gage_crosswalk = pd.DataFrame()
             
         else:
             self._gages = {}
