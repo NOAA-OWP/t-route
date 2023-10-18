@@ -488,10 +488,15 @@ def _write_lastobs(
 
     # timestamp of last observation
     var = [timedelta(seconds=d) for d in lastobs_df.time_since_lastobs.fillna(0)]
-    lastobs_timestamp = [modelTimeAtOutput - d for d in var]
+    # shorvath (10/18/23): This code was copied from nhd_io.py based on V3 operations.
+    # I changed 'modelTimeAtOutput - d' to 'modelTimeAtOutput + d' here because the '-' was
+    # creating timestamps that are ahead of the model time which can't be right. I'm not sure
+    # if this method was thoroughly checked for V3, but I've only made the update here.
+    #TODO: Determine if this should also be changed in nhd_io.py...
+    lastobs_timestamp = [modelTimeAtOutput + d for d in var]
     lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
     lastobs_timestamp_str_array = np.asarray(lastobs_timestamp_str,dtype = '|S19').reshape(len(lastobs_timestamp_str),1)
-
+    
     # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
     ds = xr.Dataset(
         {
