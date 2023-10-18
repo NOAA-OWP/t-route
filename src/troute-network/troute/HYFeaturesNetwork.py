@@ -238,7 +238,9 @@ class HYFeaturesNetwork(AbstractNetwork):
         else:
             #FIXME: Temporary solution, from_files should only be from command line.
             # Update this once ngen framework is capable of providing this info via BMI.
-            from_files=True
+            from_files_copy = from_files
+            if not from_files_copy:
+                from_files=True
             if from_files:
                 flowpaths, lakes, network = read_geo_file(
                     self.supernetwork_parameters,
@@ -252,7 +254,8 @@ class HYFeaturesNetwork(AbstractNetwork):
                     bmi_parameters,
                     )
             #FIXME: See FIXME above.
-            from_files=False
+            if not from_files_copy:
+                from_files=False
 
             # Preprocess network objects
             self.preprocess_network(flowpaths)
