@@ -1078,9 +1078,11 @@ def nwm_forcing_preprocess(
         link_lake_df = (
             gage_lake_df.
             join(gage_link_df, how = 'inner').
-            reset_index().set_index('link').
-            drop(['index'], axis = 1)
+            reset_index().set_index('link')
         )
+        
+        if 'index' in link_lake_df.columns:
+            link_lake_df=link_lake_df.drop(['index'], axis = 1)
         
         # resample `usgs_df` to 15 minute intervals
         usgs_df_15min = (
@@ -1094,10 +1096,12 @@ def nwm_forcing_preprocess(
         reservoir_usgs_df = (
             usgs_df_15min.join(link_lake_df, how = 'inner').
             reset_index().
-            set_index('usgs_lake_id').
-            drop(['index'], axis = 1)
+            set_index('usgs_lake_id')
         )
         
+        if 'index' in reservoir_usgs_df.columns:
+            reservoir_usgs_df=reservoir_usgs_df.drop(['index'], axis = 1)
+
         LOG.debug(
             "Reservoir DA USGS observation DataFrame creation complete in %s seconds." \
             % (time.time() - start_time)
