@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
       
-    - name: Install t-route OS dependencies
+    - name: Install dependencies
       run: |
         sudo apt-add-repository universe
         sudo apt-get update -y && sudo apt-get upgrade -y
@@ -39,11 +39,8 @@ jobs:
         sudo apt-get install gfortran libudunits2-dev udunits-bin -y
         sudo apt-get install libstdc++-10-dev libgfortran-10-dev glibc-source openmpi-bin openmpi-common libopenmpi-dev libopenmpi3 libgtk-3-bin libgtk-3-common libgtk-3-dev -y
         sudo apt-get install netcdf-bin libnetcdf-dev libnetcdff-dev libnetcdf-c++4 libnetcdf-c++4-dev -y
-        pip3 install wheel deprecated dask pyarrow geopandas pyproj fiona pandas xarray netcdf4 joblib toolz pyyaml bmipy opencv-contrib-python-headless
-
-    - name: Install dependencies
-      run: |
         python -m pip install --upgrade pip
+        pip3 install wheel deprecated dask pyarrow geopandas pyproj fiona pandas xarray netcdf4 joblib toolz pyyaml bmipy opencv-contrib-python-headless
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         
     - name: Install t-route
