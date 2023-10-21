@@ -44,7 +44,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         
     - name: Install t-route
@@ -53,4 +52,4 @@ jobs:
     
     - name: Run Test
       run: |
-        python -m nwm_routing -f -V3 test/LowerColorado_TXtest_AnA.yaml
+        python -m nwm_routing -f -V3 test/LowerColorado_TX/test_AnA.yaml
