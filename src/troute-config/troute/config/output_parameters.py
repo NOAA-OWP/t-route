@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, conint, validator, confloat
 
 from typing import Optional, List
 from typing_extensions import Literal
-from .types import FilePath, DirectoryPath
+from .types import FilePath, DirectoryPath, Annotated
 
 streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
@@ -78,7 +78,7 @@ class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
 
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
-    stream_output_directory: Optional[DirectoryPath] = None
+    stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)]
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Optional[conint(ge=5)] = None
