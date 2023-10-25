@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, conint, validator, confloat
 
-from typing import Optional, List
+from typing import Optional, List, Annotated
 from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
@@ -78,10 +78,11 @@ class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
 
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
+   
     stream_output_directory: Optional[DirectoryPath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
-    stream_output_internal_frequency: Optional[conint(ge=5)] = None
+    stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)]
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
