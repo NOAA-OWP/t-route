@@ -623,12 +623,28 @@ class HYFeaturesNetwork(AbstractNetwork):
     #FIXME Temporary solution to hydrofabric issues. Fix specific instances here for now...
     def bandaid(self,):
         #This chunk assigns lake_ids to segments that reside within the waterbody:
-        self._dataframe.loc[[5548,5551,],'waterbody'] = '5194634'
-        self._dataframe.loc[[5539,5541,5542],'waterbody'] = '5194604'
-        self._dataframe.loc[[2710744,2710746],'waterbody'] = '120051895'
-        self._dataframe.loc[[1536065,1536067],'waterbody'] = '7100709'
-        self._dataframe.loc[[1536104,1536099,1536084,1536094],'waterbody'] = '120052233'
-        self._dataframe.loc[[2711040,2711044,2711047],'waterbody'] = '120052275'
+        wbody_replacement_dict = {
+            5548: '5194634',
+            5551: '5194634',
+            5539: '5194604',
+            5541: '5194604',
+            5542: '5194604',
+            2710744: '120051895',
+            2710746: '120051895',
+            1536065: '7100709',
+            1536067: '7100709',
+            1536104: '120052233',
+            1536099: '120052233',
+            1536084: '120052233',
+            1536094: '120052233',
+            2711040: '120052275',
+            2711044: '120052275',
+            2711047: '120052275'
+        }
+
+        for key, value in wbody_replacement_dict.items():
+            if key in self.dataframe.index:
+                self._dataframe.loc[[key],'waterbody'] = value
         
         #This chunk replaces waterbody_id 1711354 with 1710676. I don't know where the 
         #former came from, but the latter is listed in the flowpath_attributes table
