@@ -1995,6 +1995,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
 
     # Create time step values based on t0
     time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(nsteps//nstep_nc)]
+    time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(stream_output_timediff * 60 / stream_output_internal_frequency) + 1)]
     
     for counter, i in enumerate(range(1, nsteps, nstep_nc)):
         # Define the range of columns for this file
@@ -2038,8 +2039,8 @@ def write_flowveldepth_netcdf(stream_output_directory,
                 ) as ncfile:
 
                     # ============ DIMENSIONS ===================
-                    _ = ncfile.createDimension('feature_id', num_features)
-                    _ = ncfile.createDimension('time_step', subset_df.iloc[:, 0::4].shape[1])
+                    _ = ncfile.createDimension('feature_id', None)
+                    _ = ncfile.createDimension('time_step (sec)', subset_df.iloc[:, 0::4].shape[1])
                     _ = ncfile.createDimension('gage', gage)
                     _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
                     
@@ -2048,7 +2049,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
                         QVD = ncfile.createVariable(
                             varname=var,
                             datatype=np.float32,
-                            dimensions=('feature_id', 'time_step'),
+                            dimensions=('feature_id', 'time_step (sec)',),
                         )
 
                         QVD.units = 'm3/s m/s m m3/s'
@@ -2059,13 +2060,30 @@ def write_flowveldepth_netcdf(stream_output_directory,
                         
                         # Set data for each feature_id and time_step
                         ncfile.variables[var][:] = data_array
+                    feature_id = ncfile.createVariable(
+                        varname='feature_id',
+                        datatype=np.int32,
+                        dimensions=('feature_id',),
+                    )
+                    feature_id[:] = flowveldepth.index.to_numpy(dtype=np.int32)
+                    feature_id.units = 'None'
+                    feature_id.description = 'Feature IDs'
+                    ###
+                    time_step = ncfile.createVariable(
+                        varname='time_step (sec)',
+                        datatype=np.int32,
+                        dimensions=('time_step (sec)',),
+                    )
+                    time_step[:] = np.array(time_dim, dtype=np.int32)
+                    time_step.units = 'sec'
+                    time_step.description = 'time stamp'
                     # =========== GLOBAL ATTRIBUTES ===============
                     ncfile.setncatts(
                         {
                             'TITLE': 'OUTPUT FROM T-ROUTE',
-                            'Time step': f'every {stream_output_internal_frequency} minutes',
+                            'Time step (sec)': f'{stream_output_internal_frequency}',
                             'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
-                            'comment': f'The file includes {stream_output_timediff} hour data which includes {nstep_nc} timesteps',
+                            'comment': f'The file includes {stream_output_timediff} hour data which includes {len(time_dim)} timesteps',
                             'code_version': '',
                         }
                     )
