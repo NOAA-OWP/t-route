@@ -1294,10 +1294,13 @@ def get_channel_restart_from_wrf_hydro(
     """
 
     with xr.open_dataset(crosswalk_file) as xds:
+        
         xdf = xds[channel_ID_column].to_dataframe()
     xdf = xdf.reset_index()
     xdf = xdf[[channel_ID_column]]
+    
     with xr.open_dataset(channel_initial_states_file) as qds:
+        
         if depth_column in qds:
             qdf2 = qds[[us_flow_column, ds_flow_column, depth_column]].to_dataframe()
         else:
@@ -1540,7 +1543,7 @@ def get_reservoir_restart_from_wrf_hydro(
 
     with xr.open_dataset(crosswalk_file) as xds:
         X = xds[waterbody_ID_field]
-
+        
         if crosswalk_filter_file:
             with xr.open_dataset(crosswalk_filter_file) as fds:
                 xdf = X.loc[X.isin(fds[crosswalk_filter_file_field])].to_dataframe()
@@ -1972,9 +1975,9 @@ def write_flowveldepth_netcdf(stream_output_directory,
         nudge = nudge[:, 1:]
 
     gage, nudge_timesteps = nudge.shape
-
+    
     #--------- Add 'nudge' column based on usgs_positions_id----------
-
+    
     # Create a copy of the flowveldepth DataFrame to add 'ndg' columns
     qvd_ndg = flowveldepth.copy()
     # Create a list for names of the columns for nudge values
@@ -1992,18 +1995,18 @@ def write_flowveldepth_netcdf(stream_output_directory,
 
     # Create time step values based on t0
     time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(nsteps//nstep_nc)]
-
-    for counter, i in enumerate(range(0, nsteps, nstep_nc)):
+    
+    for counter, i in enumerate(range(1, nsteps, nstep_nc)):
         # Define the range of columns for this file
         start_col = i * 4
         end_col = min((i + nstep_nc) * 4 , nsteps * 4)
-        selected_col = stream_output_internal_frequency / 5
+        selected_col = stream_output_internal_frequency // 5
         # Create a subset DataFrame for the current range of columns
-        subset_df = qvd_ndg.iloc[:, start_col:end_col]
+        # subset_df = qvd_ndg.iloc[:, start_col:end_col]
         # Create a list of column names to keep
         columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col[0]) % selected_col == 0]
         subset_df = qvd_ndg[columns_to_keep]
-
+        
         # Create the file name based on the current time step
         current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
         if stream_output_directory:
@@ -2021,10 +2024,10 @@ def write_flowveldepth_netcdf(stream_output_directory,
                 # Save the data to Pickle file
                 subset_df.to_pickle(f"{stream_output_directory}/{file_name}")
                 print(f"Flowveldepth data saved as PICKLE files in {stream_output_directory}")
-
+                
             else:
                 print('WRONG FORMAT')
-
+        
         if stream_output_directory:
             if (stream_output_type =='.nc'):
                 # Open netCDF4 Dataset in write mode
@@ -2036,12 +2039,12 @@ def write_flowveldepth_netcdf(stream_output_directory,
 
                     # ============ DIMENSIONS ===================
                     _ = ncfile.createDimension('feature_id', num_features)
-                    _ = ncfile.createDimension('time_step', nstep_nc)
+                    _ = ncfile.createDimension('time_step', subset_df.iloc[:, 0::4].shape[1])
                     _ = ncfile.createDimension('gage', gage)
                     _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
-
+                    
                     # =========== q,v,d,ndg VARIABLES ===============
-                    for counter, var in enumerate(['flowrate', 'velocity', 'depth', 'nudge']):
+                    for counters, var in enumerate(['flowrate', 'velocity', 'depth', 'nudge']):
                         QVD = ncfile.createVariable(
                             varname=var,
                             datatype=np.float32,
@@ -2050,10 +2053,10 @@ def write_flowveldepth_netcdf(stream_output_directory,
 
                         QVD.units = 'm3/s m/s m m3/s'
                         QVD.description = f'Data for {var}'
-
+                        
                         # Prepare data for writing
-                        data_array = subset_df.iloc[:, counter::4].to_numpy(dtype=np.float32)
-
+                        data_array = subset_df.iloc[:, counters::4].to_numpy(dtype=np.float32)
+                        
                         # Set data for each feature_id and time_step
                         ncfile.variables[var][:] = data_array
                     # =========== GLOBAL ATTRIBUTES ===============
@@ -2067,3 +2070,4 @@ def write_flowveldepth_netcdf(stream_output_directory,
                         }
                     )
                     print(f"Flowveldepth data saved as NetCDF files in {stream_output_directory}")
+            
