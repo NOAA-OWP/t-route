@@ -56,7 +56,7 @@ $ ./compiler.sh
 
 # execute a demonstration test
 $ cd test/LowerColorado_TX
-$ python3 -m nwm_routing -f test_AnA.yaml
+$ python3 -m nwm_routing -V3 -f test_AnA.yaml
 ```
 
 ## Known issues
