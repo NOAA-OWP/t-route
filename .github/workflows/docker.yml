@@ -1,0 +1,26 @@
+name: Build and Test Docker Image
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t troute -f docker/Dockerfile.troute .
+
+      # To run tests in a separate job
+      # either save image artifact or upload to dockerhub
+      - name: Run LowerColorado Test
+        continue-on-error: true  # Continue with the next steps even if this step fails
+        run: docker/troute.sh -V3 -f test/LowerColorado_TX/test_AnA.yaml
+
