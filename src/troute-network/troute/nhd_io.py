@@ -2017,7 +2017,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
             elif stream_output_type=='.csv':
                 file_name = f"{current_time_step}.flowveldepth.csv"
                 # Save the data to CSV file
-                subset_df.to_csv(f"{stream_output_directory}/{file_name}", index=False)
+                subset_df.to_csv(f"{stream_output_directory}/{file_name}", index=True)
                 print(f"Flowveldepth data saved as CSV files in {stream_output_directory}")
 
             elif stream_output_type=='.pkl':
@@ -2074,7 +2074,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
                         datatype=np.int32,
                         dimensions=('time_step (sec)',),
                     )
-                    time_step[:] = np.array(time_dim, dtype=np.int32)
+                    time_step[:] = np.array(time_dim[:subset_df.iloc[:, 0::4].shape[1]], dtype=np.int32)
                     time_step.units = 'sec'
                     time_step.description = 'time stamp'
                     # =========== GLOBAL ATTRIBUTES ===============
