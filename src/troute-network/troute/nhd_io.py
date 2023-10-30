@@ -1989,15 +1989,15 @@ def write_flowveldepth_netcdf(stream_output_directory,
 
         # Assign nudge values to 'ndg' columns for the corresponding row
         qvd_ndg.loc[usgs_id, ndg_columns] = nudge_values
-    new_order = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
+    new_order = [(i, attr) for i in range(0, nsteps) for attr in ['q', 'v', 'd', 'ndg']]
     # Reorder the columns
     qvd_ndg = qvd_ndg[new_order]
-
+    
     # Create time step values based on t0
-    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(nsteps//nstep_nc)]
+    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(1, nsteps//nstep_nc+1)]
     time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(stream_output_timediff * 60 / stream_output_internal_frequency) + 1)]
     
-    for counter, i in enumerate(range(1, nsteps, nstep_nc)):
+    for counter, i in enumerate(range(0, nsteps, nstep_nc)):
         # Define the range of columns for this file
         start_col = i * 4
         end_col = min((i + nstep_nc) * 4 , nsteps * 4)
