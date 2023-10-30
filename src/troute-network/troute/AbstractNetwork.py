@@ -35,7 +35,7 @@ class AbstractNetwork(ABC):
                 "hybrid_parameters", "preprocessing_parameters",
                 "verbose", "showtiming", "break_points", "_routing"]
     
-    def __init__(self,):
+    def __init__(self, from_files=True, value_dict={}):
 
         self._independent_networks = None
         self._reverse_network = None
@@ -74,7 +74,7 @@ class AbstractNetwork(ABC):
 
         self.create_independent_networks()
 
-        self.initial_warmstate_preprocess()
+        self.initial_warmstate_preprocess(from_files, value_dict)
 
 
     def assemble_forcings(self, run,):
@@ -517,7 +517,7 @@ class AbstractNetwork(ABC):
         
         LOG.debug("reach organization complete in %s seconds." % (time.time() - start_time))
 
-    def initial_warmstate_preprocess(self,):
+    def initial_warmstate_preprocess(self, from_files, value_dict):
 
         '''
         Assemble model initial condition data:
@@ -548,48 +548,81 @@ class AbstractNetwork(ABC):
             start_time = time.time()
             LOG.info("setting waterbody initial states ...")
 
-            # if a lite restart file is provided, read initial states from it.
-            if restart_parameters.get("lite_waterbody_restart_file", None):
+            if from_files:
+                # if a lite restart file is provided, read initial states from it.
+                if restart_parameters.get("lite_waterbody_restart_file", None):
+                    
+                    waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
+                        restart_parameters['lite_waterbody_restart_file']
+                    )
+                    
+                # read waterbody initial states from WRF-Hydro type restart file
+                elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
+                    waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
+                        restart_parameters["wrf_hydro_waterbody_restart_file"],
+                        restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
+                        restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", index_id),
+                        restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
+                        restart_parameters.get(
+                            "wrf_hydro_waterbody_crosswalk_filter_file_field_name",
+                            'NHDWaterbodyComID'
+                        ),
+                    )
                 
-                waterbodies_initial_states_df, _ = nhd_io.read_lite_restart(
-                    restart_parameters['lite_waterbody_restart_file']
-                )
-                
-            # read waterbody initial states from WRF-Hydro type restart file
-            elif restart_parameters.get("wrf_hydro_waterbody_restart_file", None):
-                waterbodies_initial_states_df = nhd_io.get_reservoir_restart_from_wrf_hydro(
-                    restart_parameters["wrf_hydro_waterbody_restart_file"],
-                    restart_parameters["wrf_hydro_waterbody_ID_crosswalk_file"],
-                    restart_parameters.get("wrf_hydro_waterbody_ID_crosswalk_file_field_name", index_id),
-                    restart_parameters["wrf_hydro_waterbody_crosswalk_filter_file"],
-                    restart_parameters.get(
-                        "wrf_hydro_waterbody_crosswalk_filter_file_field_name",
-                        'NHDWaterbodyComID'
-                    ),
-                )
+                # if no restart file is provided, default initial states
+                else:
+                    # TODO: Consider adding option to read cold state from route-link file
+                    waterbodies_initial_ds_flow_const = 0.0
+                    waterbodies_initial_depth_const = -1e9
+                    # Set initial states from cold-state
+                    waterbodies_initial_states_df = pd.DataFrame(
+                        0,
+                        index=self.waterbody_dataframe.index,
+                        columns=[
+                            "qd0",
+                            "h0",
+                        ],
+                        dtype="float32",
+                    )
+                    # TODO: This assignment could probably by done in the above call
+                    waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
+                    waterbodies_initial_states_df["h0"] = waterbodies_initial_depth_const
+                    waterbodies_initial_states_df["index"] = range(
+                        len(waterbodies_initial_states_df)
+                    )
             
-            # if no restart file is provided, default initial states
             else:
-                # TODO: Consider adding option to read cold state from route-link file
-                waterbodies_initial_ds_flow_const = 0.0
-                waterbodies_initial_depth_const = -1e9
-                # Set initial states from cold-state
-                waterbodies_initial_states_df = pd.DataFrame(
-                    0,
-                    index=self.waterbody_dataframe.index,
-                    columns=[
-                        "qd0",
-                        "h0",
-                    ],
-                    dtype="float32",
-                )
-                # TODO: This assignment could probably by done in the above call
-                waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
-                waterbodies_initial_states_df["h0"] = waterbodies_initial_depth_const
-                waterbodies_initial_states_df["index"] = range(
-                    len(waterbodies_initial_states_df)
-                )
-
+                waterbodies_initial_states_df = value_dict['waterbody_df']
+                waterbodies_initial_states_ids = value_dict['waterbody_df_index']
+                if len(waterbodies_initial_states_df)>0:
+                    waterbodies_initial_states_df = pd.DataFrame(
+                        data=waterbodies_initial_states_df.reshape(len(waterbodies_initial_states_ids), -1),
+                        index=waterbodies_initial_states_ids,
+                        columns=['qd0','h0'])
+                    waterbodies_initial_states_df["index"] = range(
+                        len(waterbodies_initial_states_df)
+                    )
+                else:
+                    # TODO: Consider adding option to read cold state from route-link file
+                    waterbodies_initial_ds_flow_const = 0.0
+                    waterbodies_initial_depth_const = -1e9
+                    # Set initial states from cold-state
+                    waterbodies_initial_states_df = pd.DataFrame(
+                        0,
+                        index=self.waterbody_dataframe.index,
+                        columns=[
+                            "qd0",
+                            "h0",
+                        ],
+                        dtype="float32",
+                    )
+                    # TODO: This assignment could probably by done in the above call
+                    waterbodies_initial_states_df["qd0"] = waterbodies_initial_ds_flow_const
+                    waterbodies_initial_states_df["h0"] = waterbodies_initial_depth_const
+                    waterbodies_initial_states_df["index"] = range(
+                        len(waterbodies_initial_states_df)
+                    )
+            
             self._waterbody_df = pd.merge(
                 self.waterbody_dataframe, waterbodies_initial_states_df, on=index_id
             )
@@ -611,39 +644,57 @@ class AbstractNetwork(ABC):
         LOG.info("setting channel initial states ...")
 
         # if lite restart file is provided, the read channel initial states from it
-        if restart_parameters.get("lite_channel_restart_file", None):
-            self._q0, self._t0 = nhd_io.read_lite_restart(
-                restart_parameters['lite_channel_restart_file']
-            )
-        
-        elif restart_parameters.get("wrf_hydro_channel_restart_file", None):
-            self._q0 = nhd_io.get_channel_restart_from_wrf_hydro(
-                restart_parameters["wrf_hydro_channel_restart_file"],
-                restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
-                restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", 'link'),
-                restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", 'qlink1'),
-                restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
-                restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
-                )
-
-            t0_str = nhd_io.get_param_str(
-                    restart_parameters["wrf_hydro_channel_restart_file"], 
-                    "Restart_Time"
+        if from_files:
+            if restart_parameters.get("lite_channel_restart_file", None):
+                self._q0, self._t0 = nhd_io.read_lite_restart(
+                    restart_parameters['lite_channel_restart_file']
                 )
             
-            # convert timestamp from string to datetime
-            self._t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
+            elif restart_parameters.get("wrf_hydro_channel_restart_file", None):
+                self._q0 = nhd_io.get_channel_restart_from_wrf_hydro(
+                    restart_parameters["wrf_hydro_channel_restart_file"],
+                    restart_parameters["wrf_hydro_channel_ID_crosswalk_file"],
+                    restart_parameters.get("wrf_hydro_channel_ID_crosswalk_file_field_name", 'link'),
+                    restart_parameters.get("wrf_hydro_channel_restart_upstream_flow_field_name", 'qlink1'),
+                    restart_parameters.get("wrf_hydro_channel_restart_downstream_flow_field_name", 'qlink2'),
+                    restart_parameters.get("wrf_hydro_channel_restart_depth_flow_field_name", 'hlink'),
+                    )
+
+                t0_str = nhd_io.get_param_str(
+                        restart_parameters["wrf_hydro_channel_restart_file"], 
+                        "Restart_Time"
+                    )
+                
+                # convert timestamp from string to datetime
+                self._t0 = datetime.strptime(t0_str, "%Y-%m-%d_%H:%M:%S")
+            
+            else:
+                # Set cold initial state
+                # assume to be zero
+                # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
+                self._q0 = pd.DataFrame(
+                    0, index=self.segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+                    )
+                
+                # get initial time from user inputs
+                self._t0 = restart_parameters.get("start_datetime")
         
         else:
-            # Set cold initial state
-            # assume to be zero
-            # 0, index=connections.keys(), columns=["qu0", "qd0", "h0",], dtype="float32"
-            self._q0 = pd.DataFrame(
-                0, index=self.segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
-                )
-            
-            # get initial time from user inputs
-            self._t0 = restart_parameters.get("start_datetime")
+            q0 = value_dict['q0']
+            q0_ids = value_dict['q0_index']
+            if len(q0)>0:
+                self._q0 = pd.DataFrame(data=q0.reshape(len(q0_ids), -1),
+                                        index=q0_ids,
+                                        columns=['qu0','qd0','h0'])
+                self._t0 = value_dict['t0']
+            else:
+                # Set cold initial state
+                self._q0 = pd.DataFrame(
+                    0, index=self.segment_index, columns=["qu0", "qd0", "h0"], dtype="float32",
+                    )
+                
+                # get initial time from user inputs
+                self._t0 = restart_parameters.get("start_datetime")
 
         LOG.debug(
             "channel initial states complete in %s seconds."\
