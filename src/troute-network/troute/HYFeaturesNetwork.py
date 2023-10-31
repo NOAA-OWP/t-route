@@ -402,8 +402,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                        'OrificeC','OrificeE','WeirC','WeirE','WeirL']]
                 .rename(columns={'hl_link': 'lake_id'})
                 )
+
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
-            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
+            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index().dropna()
             
             # Create wbody_conn dictionary:
             #FIXME temp solution for missing waterbody info in hydrofabric
