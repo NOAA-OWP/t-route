@@ -30,8 +30,6 @@ class DAforcing_model():
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
 
-            print(data_assimilation_parameters)
-
             #############################
             # Read DA files:
             #############################
@@ -40,8 +38,6 @@ class DAforcing_model():
             usgs_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usgs', False)
             usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
             rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
-
-            #usace_persistence = False
 
             qc_threshold = data_assimilation_parameters.get('qc_threshold')
             cpu_pool = compute_parameters.get('cpu_pool')
@@ -89,8 +85,6 @@ class DAforcing_model():
                                                                     900, #15 minutes
                                                                     cpu_pool,)
 
-            #import pdb; pdb.set_trace()
-
             # USACE Observations        
             if usace_persistence:
                 usace_timeslice_path = str(data_assimilation_parameters.get('usace_timeslices_folder'))
@@ -123,12 +117,6 @@ class DAforcing_model():
             lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)
             if lastobs_file:
                 self._lastobs_df = _read_lastobs_file(lastobs_file)
-
-            # to do: flatten the following arrays:
-            #   Confirm that there is no usace dataframe (only a reservoir usace dataframe)? 
-            #   self._reservoir_usace_df
-
-            #import pdb; pdb.set_trace()
 
             # save time reference: start_datetime
             self.dateNull = start_datetime
@@ -167,8 +155,6 @@ class DAforcing_model():
                 _usgsArray = _flatten_array(self._usgs_df)
                 # ... and save it with the class instance
                 self.usgsArray = _usgsArray
-         
-                #import pdb; pdb.set_trace()
 
                 # 
                 # Reservoir USGS and USACE dataframes: Array structures of 
@@ -220,8 +206,6 @@ class DAforcing_model():
                 # ... and save it with the class instance
                 self.reservoirUsaceArray = _reservoirUsaceArray  
 
-                #import pdb; pdb.set_trace()
-
             # RFC Timeseries        
             if rfc:
 
@@ -244,8 +228,6 @@ class DAforcing_model():
                 self.rfc_List_array = _rfc_List_array
                 self.rfc_List_stringLengths = _rfc_List_stringLengths
 
-                #import pdb; pdb.set_trace()
-
 
             testRevert = True
             # The following code segments revert the array troute -> bmi-flattened
@@ -256,18 +238,17 @@ class DAforcing_model():
             if (testRevert):
 
                 # USGS dataframe
-                
-                #import pdb; pdb.set_trace()
+
                 # Unflatten the arrays
                 df_raw_usgs = _unflatten_array(self.usgsArray,self.nDates_usgs,\
                                           self.nStations_usgs)
-                #import pdb; pdb.set_trace()
+
                 # Decode time/date axis
                 timeAxisName = 'time'
                 freqString = '5T'
                 df_withDates_usgs = _time_retrieve_from_arrays(df_raw_usgs, self.dateNull, \
                             self.datesSecondsArray_usgs, timeAxisName, freqString)
-                #import pdb; pdb.set_trace()
+
                 # Decode station ID axis
                 stationAxisName = 'stationId'
                 df_withStationsAndDates_usgs = _stations_retrieve_from_arrays(df_withDates_usgs, \
@@ -276,17 +257,16 @@ class DAforcing_model():
 
                 # Reservoir USGS dataframe
 
-                #import pdb; pdb.set_trace()
                 # Unflatten the arrays
                 df_raw_reservoirUsgs = _unflatten_array(self.reservoirUsgsArray,self.nDates_reservoir_usgs,\
                                           self.nStations_reservoir_usgs)
-                #import pdb; pdb.set_trace()
+                
                 # Decode time/date axis
                 timeAxisName = 'time'
                 freqString = '15T'
                 df_withDates_reservoirUsgs = _time_retrieve_from_arrays(df_raw_reservoirUsgs, self.dateNull, \
                             self.datesSecondsArray_reservoir_usgs, timeAxisName, freqString)
-                #import pdb; pdb.set_trace()
+
                 # Decode station ID axis
                 stationAxisName = 'stationId'
                 df_withStationsAndDates_reservoirUsgs = _stations_retrieve_from_arrays(df_withDates_reservoirUsgs, \
@@ -295,17 +275,16 @@ class DAforcing_model():
                 
                 # Reservoir USACE dataframe
 
-                #import pdb; pdb.set_trace()
                 # Unflatten the arrays
                 df_raw_reservoirUsace = _unflatten_array(self.reservoirUsaceArray,self.nDates_reservoir_usace,\
                                           self.nStations_reservoir_usace)
-                #import pdb; pdb.set_trace()
+
                 # Decode time/date axis
                 timeAxisName = 'time'
                 freqString = '15T'
                 df_withDates_reservoirUsace = _time_retrieve_from_arrays(df_raw_reservoirUsace, self.dateNull, \
                             self.datesSecondsArray_reservoir_usace, timeAxisName, freqString)
-                #import pdb; pdb.set_trace()
+
                 # Decode station ID axis
                 stationAxisName = 'stationId'
                 df_withStationsAndDates_reservoirUsace = _stations_retrieve_from_arrays(df_withDates_reservoirUsace, \
@@ -318,8 +297,6 @@ class DAforcing_model():
                     self.rfc_use_rfc, self.rfc_Datetime, self.rfc_timeSteps, self.rfc_StationId_array, \
                     self.rfc_StationId_stringLengths, self.rfc_List_array, \
                     self.rfc_List_stringLengths, self.dateNull)
-                
-                #import pdb; pdb.set_trace()
 
         else:
             raise(RuntimeError("No config file provided."))
@@ -516,8 +493,6 @@ def _stations_retrieve_from_arrays(dataFrame, stationsArray, stationStringLength
             else:
                 stationID_asString += chrAdd
 
-        #import pdb; pdb.set_trace()
-
         # done with one station ID
         stationsList.append(stationID_asString)
 
@@ -525,8 +500,6 @@ def _stations_retrieve_from_arrays(dataFrame, stationsArray, stationStringLength
     index = pd.Index(stationsList, name=stationAxisName, dtype=object)
 
     dataFrame.index = (index)
-
-    #import pdb; pdb.set_trace()
 
     return dataFrame
 
@@ -560,8 +533,6 @@ def _BMI_toStrings(stringArray, stringLengthArray):
             else:
                 string_asString += chrAdd
 
-        #import pdb; pdb.set_trace()
-
         # done with one station ID
         stringList.append(string_asString)
 
@@ -581,8 +552,6 @@ def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
     # Build up dataframe
     dataFrame = pd.DataFrame()
     for col in columnList:
-
-        #import pdb; pdb.set_trace()
 
         if (col == 'stationId'):
             addedCol = _BMI_toStrings(rfc_StationId_array, rfc_StationId_stringLengths)
@@ -661,18 +630,9 @@ def _read_timeslice_files(filepath,
     for d in dates:
         f = glob.glob(filepath + '/' + d + '*')
 
-        print('date ',d)
-        print('file ',filepath + '/' + d + '*')
-
         if f:
             temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
             observation_df = pd.concat([observation_df, temp_df])
-    
-
-    print('Dates ',dates)
-    print('Observation station ID ',observation_df)
-
-    #import pdb; pdb.set_trace()
 
     observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8').str.strip()
     observation_df['time'] = observation_df['time'].str.decode('utf-8')
@@ -694,8 +654,6 @@ def _read_timeslice_files(filepath,
     
     # specify resampling frequency 
     frequency = str(int(frequency_secs/60))+"min"    
-    
-    print('Enter interpolate and resample')
 
     # interpolate and resample frequency
     buffer_df = observation_df_T.resample(frequency).asfreq()
