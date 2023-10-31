@@ -222,6 +222,31 @@ class DAforcing_model():
 
                 #import pdb; pdb.set_trace()
 
+            # RFC Timeseries        
+            if rfc:
+
+                (_rfc_da_timestep, _rfc_totalCounts, _rfc_synthetic_values, _rfc_discharges, \
+                    _rfc_timeseries_idx, _rfc_use_rfc, _rfc_Datetime, _rfc_timeSteps, \
+                    _rfc_StationId_array, _rfc_StationId_stringLengths, _rfc_List_array, \
+                    _rfc_List_stringLengths) = \
+                    _bmi_disassemble_rfc_timeseries (self._rfc_timeseries_df, start_datetime)
+                # save all data in class instance
+                self.rfc_da_timestep = _rfc_da_timestep
+                self.rfc_totalCounts = _rfc_totalCounts
+                self.rfc_synthetic_values= _rfc_synthetic_values
+                self.rfc_discharges = _rfc_discharges
+                self.rfc_timeseries_idx = _rfc_timeseries_idx
+                self.rfc_use_rfc = _rfc_use_rfc
+                self.rfc_Datetime = _rfc_Datetime
+                self.rfc_timeSteps = _rfc_timeSteps
+                self.rfc_StationId_array = _rfc_StationId_array
+                self.rfc_StationId_stringLengths = _rfc_StationId_stringLengths
+                self.rfc_List_array = _rfc_List_array
+                self.rfc_List_stringLengths = _rfc_List_stringLengths
+
+                import pdb; pdb.set_trace()
+
+
             testRevert = True
             # The following code segments revert the array troute -> bmi-flattened
             # array conversions, and are placed here only temporarily for
@@ -287,6 +312,13 @@ class DAforcing_model():
                     self.stationArray_reservoir_usace, self.stationStringLengthArray_reservoir_usace, \
                     stationAxisName)                
 
+                # Decode rfc timeseries
+                df_rfc_timeseries = _bmi_reassemble_rfc_timeseries (self.rfc_da_timestep, self.rfc_totalCounts, \
+                    self.rfc_synthetic_values, self.rfc_discharges, self.rfc_timeseries_idx, \
+                    self.rfc_use_rfc, self.rfc_Datetime, self.rfc_timeSteps, self.rfc_StationId_array, \
+                    self.rfc_StationId_stringLengths, self.rfc_List_array, \
+                    self.rfc_List_stringLengths, self.dateNull)
+                
                 import pdb; pdb.set_trace()
 
         else:
@@ -336,6 +368,83 @@ def _time_stations_from_df(dataFrame, timeBase):
             stationArray = np.concatenate([stationArray, addArray])
 
     return datesSecondsArray, nDates, stationArray, stationStringLengthArray, nStations
+
+
+def _bmi_disassemble_rfc_timeseries (dataFrame, timeRef):
+
+    # Extract individual columns and convert to ndarrays
+
+    # Column entries that are already float or int:
+    rfc_da_timestep = dataFrame["da_timestep"].to_numpy(dtype=int, copy=True)
+    rfc_totalCounts = dataFrame["totalCounts"].to_numpy(dtype=int, copy=True)
+    rfc_synthetic_values = dataFrame["synthetic_values"].to_numpy(dtype=np.float32, copy=True)
+    rfc_discharges = dataFrame["discharges"].to_numpy(dtype=np.float32, copy=True)
+    rfc_timeseries_idx = dataFrame["timeseries_idx"].to_numpy(dtype=int, copy=True)
+
+    # Convert Boolean entry to in (use_rfc)
+    # first, conversion to list
+    boolList = (dataFrame["use_rfc"]).tolist()
+    totalDim = len(boolList)
+    rfc_use_rfc = np.zeros(totalDim)
+    rfc_use_rfc = [int(d) for d in boolList]
+
+    # Datetime and timedelta entries
+    # Get into list
+    DatetimeList = (dataFrame["Datetime"]).tolist()
+    timeStepsList = (dataFrame["timeSteps"]).tolist()
+    # Convert to seconds (relative to timeRef for the absolute time stamp)
+    DatetimeListSeconds = [int((d-timeRef).total_seconds()) for d in DatetimeList]
+    timeStepsListSeconds = [int(d.total_seconds()) for d in timeStepsList]
+    # Convert into numpy array
+    rfc_Datetime = np.array(DatetimeListSeconds)
+    rfc_timeSteps = np.array(timeStepsListSeconds)
+  
+    # String entries: two arrays:
+    #   1st array: conversion of entries into ASCII code
+    #   2nd array: array with length of entries
+    # Extract entries as list
+    stationId_List = (dataFrame["stationId"]).tolist()
+    file_List = (dataFrame["file"]).tolist()    
+    (rfc_StationId_array, rfc_StationId_stringLengths) = _stringsToBMI(stationId_List)
+    (rfc_List_array, rfc_List_stringLengths) = _stringsToBMI(file_List)   
+
+    return (rfc_da_timestep, rfc_totalCounts, rfc_synthetic_values, rfc_discharges, \
+            rfc_timeseries_idx, rfc_use_rfc, rfc_Datetime, rfc_timeSteps, rfc_StationId_array, \
+            rfc_StationId_stringLengths, rfc_List_array, rfc_List_stringLengths)
+
+
+def _stringsToBMI(stringList):
+
+    # Generate ASCII array for list of strings (one giant 1D ndarray with ASCII encodings
+    # concatenated together), aided by an array of how many strings each string consists 
+    #
+    nEntries = len(stringList)
+    # define array defining string length for each station ID
+    stringLengthArray = np.empty(nEntries, dtype=np.int64)
+    stringLengthArray[0] = len(stringList[0])
+
+    # start big array with first string
+    stringArray = np.empty(stringLengthArray[0], dtype=np.int64)
+
+    # init some aux. variables
+    firstIter = True
+    index = 0
+    # iterate through all stations
+    for stringRead in stringList:
+        # capture string length of present station
+        stringLengthArray[index] = len(stringRead)
+        index += 1        
+        # convert string to ASCII code
+        charArray = np.array(stringRead, dtype='c')
+        addArray = np.array([ord(ch) for ch in charArray])        
+        # build up big array
+        if (firstIter):
+            stringArray = addArray
+            firstIter = False
+        else:
+            stringArray = np.concatenate([stringArray, addArray])    
+
+    return (stringArray, stringLengthArray)
 
 
 def _flatten_array(dataFrame):
@@ -418,6 +527,87 @@ def _stations_retrieve_from_arrays(dataFrame, stationsArray, stationStringLength
     dataFrame.index = (index)
 
     #import pdb; pdb.set_trace()
+
+    return dataFrame
+
+
+def _BMI_toStrings(stringArray, stringLengthArray):
+
+    # Reassemble list of strings from main array with ASCII encodings and array of 
+    # how many characters each string consists 
+    
+
+    # first create station outputs as list
+    stringList = []
+
+    # mark place in global stationsArray
+    i=0
+
+    for stringLength in stringLengthArray:
+
+        # extract small array with ASCII codes of one station ID
+        string_asArray = stringArray[i:i+stringLength]
+        # increment global pointer along array
+        i=i+stringLength
+        # convert to list of characters
+        firstRun = True
+        for asciiCode in string_asArray:
+            # decode Ascii back to character and stick it to the end of the list
+            chrAdd = chr(asciiCode)
+            if firstRun == True:
+                string_asString = chrAdd
+                firstRun = False
+            else:
+                string_asString += chrAdd
+
+        #import pdb; pdb.set_trace()
+
+        # done with one station ID
+        stringList.append(string_asString)
+
+    return stringList
+
+
+def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
+                rfc_synthetic_values, rfc_discharges, rfc_timeseries_idx, \
+                rfc_use_rfc, rfc_Datetime, rfc_timeSteps, rfc_StationId_array, \
+                rfc_StationId_stringLengths, rfc_List_array, \
+                rfc_List_stringLengths, timeRef):
+
+    # Create empty dataframe with appropriate column names
+    columnList = ['stationId','discharges','synthetic_values','totalCounts',\
+                  'timeSteps','Datetime','timeseries_idx','file','use_rfc','da_timestep']
+    
+    # Build up dataframe
+    dataFrame = pd.DataFrame()
+    for col in columnList:
+
+        import pdb; pdb.set_trace()
+
+        if (col == 'stationId'):
+            addedCol = _BMI_toStrings(rfc_StationId_array, rfc_StationId_stringLengths)
+        elif (col == 'discharges'):
+            addedCol = rfc_discharges
+        elif (col == 'synthetic_values'):
+            addedCol = rfc_synthetic_values
+        elif (col == 'totalCounts'):
+            addedCol = rfc_totalCounts
+        elif (col == 'timeSteps'):
+            datesList = rfc_timeSteps.tolist()
+            addedCol = [(timedelta(seconds=d)) for d in datesList]
+        elif (col == 'Datetime'):
+            datesList = rfc_Datetime.tolist()
+            addedCol = [(timedelta(seconds=d)+timeRef) for d in datesList]       
+        elif (col == 'timeseries_idx'):
+            addedCol = rfc_timeseries_idx
+        elif (col == 'file'):
+            addedCol = _BMI_toStrings(rfc_List_array, rfc_List_stringLengths)        
+        elif (col == 'use_rfc'):
+            addedCol = [bool(d) for d in rfc_use_rfc]
+        elif (col == 'da_timestep'):
+            addedCol = rfc_da_timestep      
+        # add the selected column
+        dataFrame[col] = addedCol
 
     return dataFrame
 
