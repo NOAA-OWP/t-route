@@ -244,7 +244,7 @@ class DAforcing_model():
                 self.rfc_List_array = _rfc_List_array
                 self.rfc_List_stringLengths = _rfc_List_stringLengths
 
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
 
 
             testRevert = True
@@ -319,7 +319,7 @@ class DAforcing_model():
                     self.rfc_StationId_stringLengths, self.rfc_List_array, \
                     self.rfc_List_stringLengths, self.dateNull)
                 
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
 
         else:
             raise(RuntimeError("No config file provided."))
@@ -582,7 +582,7 @@ def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
     dataFrame = pd.DataFrame()
     for col in columnList:
 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
 
         if (col == 'stationId'):
             addedCol = _BMI_toStrings(rfc_StationId_array, rfc_StationId_stringLengths)
