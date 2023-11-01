@@ -39,6 +39,8 @@ class DAforcing_model():
             usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
             rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
 
+            #usace_persistence = False
+
             qc_threshold = data_assimilation_parameters.get('qc_threshold')
             cpu_pool = compute_parameters.get('cpu_pool')
 
@@ -228,8 +230,7 @@ class DAforcing_model():
                 self.rfc_List_array = _rfc_List_array
                 self.rfc_List_stringLengths = _rfc_List_stringLengths
 
-
-            testRevert = True
+            testRevert = False
             # The following code segments revert the array troute -> bmi-flattened
             # array conversions, and are placed here only temporarily for
             # verification purposes, to be moved to DataAssimilation eventually.
@@ -237,68 +238,84 @@ class DAforcing_model():
             # by setting the testRevert flag to False
             if (testRevert):
 
-                # USGS dataframe
+                # USGS Observations
+                if nudging or usgs_persistence:
 
-                # Unflatten the arrays
-                df_raw_usgs = _unflatten_array(self.usgsArray,self.nDates_usgs,\
+                    # USGS dataframe
+                
+                    # Unflatten the arrays
+                    df_raw_usgs = _unflatten_array(self.usgsArray,self.nDates_usgs,\
                                           self.nStations_usgs)
 
-                # Decode time/date axis
-                timeAxisName = 'time'
-                freqString = '5T'
-                df_withDates_usgs = _time_retrieve_from_arrays(df_raw_usgs, self.dateNull, \
+                    # Decode time/date axis
+                    timeAxisName = 'time'
+                    freqString = '5T'
+                    df_withDates_usgs = _time_retrieve_from_arrays(df_raw_usgs, self.dateNull, \
                             self.datesSecondsArray_usgs, timeAxisName, freqString)
 
-                # Decode station ID axis
-                stationAxisName = 'stationId'
-                df_withStationsAndDates_usgs = _stations_retrieve_from_arrays(df_withDates_usgs, \
-                    self.stationArray_usgs, self.stationStringLengthArray_usgs, \
-                    stationAxisName)
+                    # Decode station ID axis
+                    stationAxisName = 'stationId'
+                    df_withStationsAndDates_usgs = _stations_retrieve_from_arrays(\
+                        df_withDates_usgs, self.stationArray_usgs, \
+                        self.stationStringLengthArray_usgs, stationAxisName)
 
-                # Reservoir USGS dataframe
+                    # Reservoir USGS dataframe
 
-                # Unflatten the arrays
-                df_raw_reservoirUsgs = _unflatten_array(self.reservoirUsgsArray,self.nDates_reservoir_usgs,\
-                                          self.nStations_reservoir_usgs)
+                    # Unflatten the arrays
+                    df_raw_reservoirUsgs = _unflatten_array(self.reservoirUsgsArray,\
+                                                            self.nDates_reservoir_usgs,\
+                                                            self.nStations_reservoir_usgs)
+
+                    # Decode time/date axis
+                    timeAxisName = 'time'
+                    freqString = '15T'
+                    df_withDates_reservoirUsgs = _time_retrieve_from_arrays(\
+                        df_raw_reservoirUsgs, self.dateNull, \
+                        self.datesSecondsArray_reservoir_usgs, timeAxisName, freqString)
+
+                    # Decode station ID axis
+                    stationAxisName = 'stationId'
+                    df_withStationsAndDates_reservoirUsgs = _stations_retrieve_from_arrays\
+                        (df_withDates_reservoirUsgs, self.stationArray_reservoir_usgs, \
+                         self.stationStringLengthArray_reservoir_usgs, stationAxisName)
                 
-                # Decode time/date axis
-                timeAxisName = 'time'
-                freqString = '15T'
-                df_withDates_reservoirUsgs = _time_retrieve_from_arrays(df_raw_reservoirUsgs, self.dateNull, \
-                            self.datesSecondsArray_reservoir_usgs, timeAxisName, freqString)
+                # USACE Observations        
+                if usace_persistence:
 
-                # Decode station ID axis
-                stationAxisName = 'stationId'
-                df_withStationsAndDates_reservoirUsgs = _stations_retrieve_from_arrays(df_withDates_reservoirUsgs, \
-                    self.stationArray_reservoir_usgs, self.stationStringLengthArray_reservoir_usgs, \
-                    stationAxisName)
-                
-                # Reservoir USACE dataframe
+                    # Reservoir USACE dataframe
 
-                # Unflatten the arrays
-                df_raw_reservoirUsace = _unflatten_array(self.reservoirUsaceArray,self.nDates_reservoir_usace,\
-                                          self.nStations_reservoir_usace)
+                    # Unflatten the arrays
+                    df_raw_reservoirUsace = _unflatten_array(self.reservoirUsaceArray,\
+                                                            self.nDates_reservoir_usace,\
+                                                            self.nStations_reservoir_usace)
 
-                # Decode time/date axis
-                timeAxisName = 'time'
-                freqString = '15T'
-                df_withDates_reservoirUsace = _time_retrieve_from_arrays(df_raw_reservoirUsace, self.dateNull, \
-                            self.datesSecondsArray_reservoir_usace, timeAxisName, freqString)
+                    # Decode time/date axis
+                    timeAxisName = 'time'
+                    freqString = '15T'
+                    df_withDates_reservoirUsace = _time_retrieve_from_arrays\
+                        (df_raw_reservoirUsace, self.dateNull, \
+                        self.datesSecondsArray_reservoir_usace, timeAxisName, freqString)
 
-                # Decode station ID axis
-                stationAxisName = 'stationId'
-                df_withStationsAndDates_reservoirUsace = _stations_retrieve_from_arrays(df_withDates_reservoirUsace, \
-                    self.stationArray_reservoir_usace, self.stationStringLengthArray_reservoir_usace, \
-                    stationAxisName)                
+                    # Decode station ID axis
+                    stationAxisName = 'stationId'
+                    df_withStationsAndDates_reservoirUsace = _stations_retrieve_from_arrays\
+                        (df_withDates_reservoirUsace, self.stationArray_reservoir_usace, \
+                         self.stationStringLengthArray_reservoir_usace, stationAxisName)                
 
-                # Decode rfc timeseries
-                df_rfc_timeseries = _bmi_reassemble_rfc_timeseries (self.rfc_da_timestep, self.rfc_totalCounts, \
-                    self.rfc_synthetic_values, self.rfc_discharges, self.rfc_timeseries_idx, \
-                    self.rfc_use_rfc, self.rfc_Datetime, self.rfc_timeSteps, self.rfc_StationId_array, \
-                    self.rfc_StationId_stringLengths, self.rfc_List_array, \
-                    self.rfc_List_stringLengths, self.dateNull)
+                # RFC Timeseries        
+                if rfc:
+
+                    # Decode rfc timeseries
+                    df_rfc_timeseries = _bmi_reassemble_rfc_timeseries (self.rfc_da_timestep, \
+                                        self.rfc_totalCounts, self.rfc_synthetic_values, \
+                                        self.rfc_discharges, self.rfc_timeseries_idx, \
+                                        self.rfc_use_rfc, self.rfc_Datetime, self.rfc_timeSteps, \
+                                        self.rfc_StationId_array, self.rfc_StationId_stringLengths, \
+                                        self.rfc_List_array, self.rfc_List_stringLengths, self.dateNull)
+
 
         else:
+
             raise(RuntimeError("No config file provided."))
 
 
