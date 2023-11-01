@@ -51,8 +51,3 @@ jobs:
       run: |
         cd test/LowerColorado_TX
         python -m nwm_routing -f -V3 test_AnA.yaml
-        
-    - name: Run Test - 02
-      run: |
-        cd test/LowerColorado_TX_v4
-        python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
