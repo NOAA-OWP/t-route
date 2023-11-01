@@ -10,6 +10,7 @@ from itertools import chain
 from joblib import delayed, Parallel
 from collections import defaultdict
 import xarray as xr
+import os
 
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
@@ -235,6 +236,11 @@ class HYFeaturesNetwork(AbstractNetwork):
         if self.preprocessing_parameters.get('use_preprocessed_data', False):
             self.read_preprocessed_data()
         else:
+            #FIXME: Temporary solution, from_files should only be from command line.
+            # Update this once ngen framework is capable of providing this info via BMI.
+            from_files_copy = from_files
+            if not from_files_copy:
+                from_files=True
             if from_files:
                 flowpaths, lakes, network = read_geo_file(
                     self.supernetwork_parameters,
@@ -247,6 +253,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                     value_dict, 
                     bmi_parameters,
                     )
+            #FIXME: See FIXME above.
+            if not from_files_copy:
+                from_files=False
 
             # Preprocess network objects
             self.preprocess_network(flowpaths)
@@ -270,7 +279,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             print("... in %s seconds." % (time.time() - start_time))
             
 
-        super().__init__()   
+        super().__init__(from_files, value_dict)   
             
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
@@ -393,8 +402,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                        'OrificeC','OrificeE','WeirC','WeirE','WeirL']]
                 .rename(columns={'hl_link': 'lake_id'})
                 )
+
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
-            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
+            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index().dropna()
             
             # Create wbody_conn dictionary:
             #FIXME temp solution for missing waterbody info in hydrofabric
@@ -466,10 +476,15 @@ class HYFeaturesNetwork(AbstractNetwork):
                 )
             # transform dataframe into a dictionary where key is segment ID and value is gage ID
             usgs_ind = gages_df.value.str.isnumeric() #usgs gages used for streamflow DA
-            self._gages = gages_df.loc[usgs_ind][['value']].rename(columns={'value': 'gages'}).to_dict()
-
             # Use hydroseq information to determine furthest downstream gage when multiple are present.
-            # Also create our lake_gage_df to make crosswalk dataframes.
+            self._gages = (
+                gages_df.loc[usgs_ind].reset_index()
+                .groupby('value').max('hydroseq').reset_index()
+                .set_index('index')[['value']].rename(columns={'value': 'gages'})
+                .rename_axis(None, axis=0).to_dict()
+            )
+            
+            # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
             lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
             lake_gage_hydroseq_df['lake_id'] = lake_gage_hydroseq_df['lake_id'].astype(int)
             lake_gage_df = lake_gage_hydroseq_df[['lake_id','gages']].drop_duplicates()
@@ -518,9 +533,12 @@ class HYFeaturesNetwork(AbstractNetwork):
             if rfc_da:
                 #FIXME: Temporary fix, read in predefined rfc lake gage crosswalk file for rfc reservoirs.
                 # Replace relevant waterbody_types as type 4.
-                rfc_lake_gage_crosswalk = pd.read_csv('/home/sean.horvath/projects/t-route/test/ngen/rfc_lake_gage_crosswalk.csv')
+                temp_rfc_file = Path(__file__).parent / 'rfc_lake_gage_crosswalk.csv'
+                rfc_lake_gage_crosswalk = pd.read_csv(temp_rfc_file)
                 self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
                 self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
+            else:
+                self._rfc_lake_gage_crosswalk = pd.DataFrame()
             
         else:
             self._gages = {}
@@ -623,12 +641,28 @@ class HYFeaturesNetwork(AbstractNetwork):
     #FIXME Temporary solution to hydrofabric issues. Fix specific instances here for now...
     def bandaid(self,):
         #This chunk assigns lake_ids to segments that reside within the waterbody:
-        self._dataframe.loc[[5548,5551,],'waterbody'] = '5194634'
-        self._dataframe.loc[[5539,5541,5542],'waterbody'] = '5194604'
-        self._dataframe.loc[[2710744,2710746],'waterbody'] = '120051895'
-        self._dataframe.loc[[1536065,1536067],'waterbody'] = '7100709'
-        self._dataframe.loc[[1536104,1536099,1536084,1536094],'waterbody'] = '120052233'
-        self._dataframe.loc[[2711040,2711044,2711047],'waterbody'] = '120052275'
+        wbody_replacement_dict = {
+            5548: '5194634',
+            5551: '5194634',
+            5539: '5194604',
+            5541: '5194604',
+            5542: '5194604',
+            2710744: '120051895',
+            2710746: '120051895',
+            1536065: '7100709',
+            1536067: '7100709',
+            1536104: '120052233',
+            1536099: '120052233',
+            1536084: '120052233',
+            1536094: '120052233',
+            2711040: '120052275',
+            2711044: '120052275',
+            2711047: '120052275'
+        }
+
+        for key, value in wbody_replacement_dict.items():
+            if key in self.dataframe.index:
+                self._dataframe.loc[[key],'waterbody'] = value
         
         #This chunk replaces waterbody_id 1711354 with 1710676. I don't know where the 
         #former came from, but the latter is listed in the flowpath_attributes table

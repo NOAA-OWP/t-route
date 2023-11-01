@@ -114,6 +114,7 @@ def nwm_output_generator(
     test = output_parameters.get("test_output", None)
     chano = output_parameters.get("chanobs_output", None)
     wbdyo = output_parameters.get("lakeout_output", None)
+    stream_output = output_parameters.get("stream_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -122,7 +123,7 @@ def nwm_output_generator(
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
     
-    if csv_output_folder or rsrto or chrto or chano or test or wbdyo:
+    if csv_output_folder or rsrto or chrto or chano or test or wbdyo or stream_output:
         
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
@@ -191,6 +192,23 @@ def nwm_output_generator(
                 courant.set_index(fvdidxs, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
+    
+    if stream_output:
+        stream_output_directory = stream_output['stream_output_directory']
+        stream_output_timediff = stream_output['stream_output_time']
+        stream_output_type = stream_output['stream_output_type']
+        stream_output_internal_frequency = stream_output['stream_output_internal_frequency']
+
+        nudge = np.concatenate([r[8] for r in results])
+        usgs_positions_id = np.concatenate([r[3][0] for r in results])
+        nhd_io.write_flowveldepth_netcdf(Path(stream_output_directory), 
+                                         flowveldepth, 
+                                         nudge, 
+                                         usgs_positions_id, 
+                                         t0, 
+                                         int(stream_output_timediff), 
+                                         stream_output_type,
+                                         stream_output_internal_frequency)
 
     if test:
         flowveldepth.to_pickle(Path(test))
