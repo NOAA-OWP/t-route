@@ -320,7 +320,6 @@ class DAforcing_model():
                                         self.rfc_List_array, self.rfc_List_stringLengths, self.dateNull)
 
 
-=======
             #############################
             # Read Restart files:
             #############################
@@ -341,7 +340,7 @@ class DAforcing_model():
 
             raise(RuntimeError("No config file provided."))
 
-=======
+
     def run(self, values: dict):
         """
         Write t-route output values to files. Namely, create restart files (channel and waterbody), 
