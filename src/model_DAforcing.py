@@ -132,8 +132,7 @@ class DAforcing_model():
             # read in metadata for BMI compliant arrays:
 
             # USGS Observations
-            if nudging or usgs_persistence:
-
+            if not self._usgs_df.empty:
                 # 
                 # USGS dataframe: 
                 # 
@@ -163,7 +162,8 @@ class DAforcing_model():
                 _usgsArray = _flatten_array(self._usgs_df)
                 # ... and save it with the class instance
                 self.usgsArray = _usgsArray
-
+            
+            if not self._reservoir_usgs_df.empty:
                 # 
                 # Reservoir USGS and USACE dataframes: Array structures of 
                 # _reservoir_usgs_df and _reservoir_usace_df are
@@ -196,7 +196,7 @@ class DAforcing_model():
                 self.reservoirUsgsArray = _reservoirUsgsArray            
 
             # USACE Observations        
-            if usace_persistence:
+            if not self._reservoir_usace_df.empty:
 
                 # see detailed comments in USGS branch
                 ( _datesSecondsArray_reservoir_usace, _nDates_reservoir_usace, \
@@ -215,7 +215,7 @@ class DAforcing_model():
                 self.reservoirUsaceArray = _reservoirUsaceArray  
 
             # RFC Timeseries        
-            if rfc:
+            if not self._rfc_timeseries_df.empty:
 
                 (_rfc_da_timestep, _rfc_totalCounts, _rfc_synthetic_values, _rfc_discharges, \
                     _rfc_timeseries_idx, _rfc_use_rfc, _rfc_Datetime, _rfc_timeSteps, \
