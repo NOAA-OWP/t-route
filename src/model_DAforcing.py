@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from joblib import delayed, Parallel
 import xarray as xr
 import glob
+import pathlib
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
@@ -18,17 +19,22 @@ class DAforcing_model():
         
         """
         __slots__ = ['_data_assimilation_parameters', '_forcing_parameters', '_compute_parameters',
-                     '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', '_rfc_timeseries_df', '_lastobs_df' ]
+                     '_output_parameters', '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', 
+                     '_rfc_timeseries_df', '_lastobs_df', '_t0', '_q0', '_waterbody_df']
 
         if bmi_cfg_file:
             (compute_parameters,
              forcing_parameters,
              data_assimilation_parameters,
+             output_parameters,
             ) = _read_config_file(bmi_cfg_file)
             
             self._compute_parameters = compute_parameters
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
+            self._output_parameters = output_parameters
+
+            self._t0 = self._compute_parameters['restart_parameters']['start_datetime']
 
             #############################
             # Read DA files:
@@ -314,11 +320,62 @@ class DAforcing_model():
                                         self.rfc_List_array, self.rfc_List_stringLengths, self.dateNull)
 
 
+=======
+            #############################
+            # Read Restart files:
+            #############################
+
+            # Create empty default dataframes:
+            self._q0 = pd.DataFrame()
+            self._waterbody_df = pd.DataFrame()
+
+            lite_restart_file = self._compute_parameters['restart_parameters']['lite_channel_restart_file']
+            if lite_restart_file:
+                self._q0, self._t0 = _read_lite_restart(lite_restart_file)
+            
+            lite_restart_file = self._compute_parameters['restart_parameters']['lite_waterbody_restart_file']
+            if lite_restart_file:
+                self._waterbody_df, _ = _read_lite_restart(lite_restart_file)
+            
         else:
 
             raise(RuntimeError("No config file provided."))
 
+=======
+    def run(self, values: dict):
+        """
+        Write t-route output values to files. Namely, create restart files (channel and waterbody), 
+        lastobs files, and flowveldepth files to pass to coastal hydraulics models.
+        Parameters
+        ----------
+        values: dict
+            The static and dynamic values for the model.
+        Returns
+        -------
+        """
+        output_parameters = self._output_parameters
+        da_parameters = self._data_assimilation_parameters
 
+        if output_parameters['lite_restart'] is not None:
+            _write_lite_restart(
+                values,
+                self._t0,
+                output_parameters['lite_restart']
+            )   
+
+        lastobs_output_folder = da_parameters.get('streamflow_da',{}).get('lastobs_output_folder', None)
+        if lastobs_output_folder:
+            _write_lastobs(
+                values,
+                self._t0,
+                lastobs_output_folder
+            )
+            
+        if output_parameters.get('stream_output',{}).get('qvd_nudge'):
+            #write flowveldepth file
+            pass
+
+          
 def _time_stations_from_df(dataFrame, timeBase):
 
     # get columns (date-time), extract as list at first
@@ -598,10 +655,6 @@ def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
     return dataFrame
 
 
-
-        
-
-
 # Utility functions -------
 def _read_config_file(custom_input_file):
     '''
@@ -628,11 +681,13 @@ def _read_config_file(custom_input_file):
     compute_parameters = config_dict.get("compute_parameters")
     forcing_parameters = compute_parameters.get("forcing_parameters")
     data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters")
+    output_parameters = config_dict.get('output_parameters')
 
     return (
         compute_parameters,
         forcing_parameters,
         data_assimilation_parameters,
+        output_parameters,
         )
 
 def _read_timeslice_files(filepath, 
@@ -817,3 +872,123 @@ def _read_lastobs_file(
     lastobs_df['gages'] = lastobs_df['gages'].str.decode('utf-8')
 
     return lastobs_df
+
+def _read_lite_restart(file):
+    '''
+    Open lite restart pickle files. Can open either waterbody_restart or channel_restart
+    
+    Arguments
+    -----------
+        file (string): File path to lite restart file
+        
+    Returns
+    ----------
+        df (DataFrame): restart states
+        t0 (datetime): restart datetime
+    '''
+    # open pickle file to pandas DataFrame
+    df = pd.read_pickle(pathlib.Path(file))
+    
+    # extract restart time as datetime object
+    t0 = df['time'].iloc[0].to_pydatetime()
+    
+    return df.drop(columns = 'time') , t0
+
+def _write_lite_restart(
+    values,
+    t0,
+    lite_restart
+):
+    '''
+    Save initial conditions dataframes as pickle files
+    
+    Arguments
+    -----------
+        q0 (DataFrame):
+        waterbodies_df (DataFrame):
+        t0 (datetime.datetime):
+        restart_parameters (string):
+        
+    Returns
+    -----------
+        
+    '''
+    
+    output_directory = lite_restart.get('lite_restart_output_directory', None)
+    if output_directory:
+        
+        # retrieve/reconstruct t-route produced output dataframes
+        q0 = values['q0']
+        q0_ids = values['q0_ids']
+        q0 = pd.DataFrame(data=q0.reshape(len(q0_ids), -1), 
+                          index=q0_ids,
+                          columns=['qu0','qd0','h0'])
+
+        waterbodies_df = values['waterbody_df']
+        waterbodies_ids = values['waterbody_df_ids']
+        
+        waterbodies_df = pd.DataFrame(data=waterbodies_df.reshape(len(waterbodies_ids), -1), 
+                                      index=waterbodies_ids,
+                                      columns=['ifd','LkArea','LkMxE','OrificeA','OrificeC','OrificeE',
+                                               'WeirC','WeirE','WeirL','qd0','h0','index'])
+        waterbodies_df.index.name = 'lake_id'
+
+        timestamp = t0 + timedelta(seconds=values['t-route_model_time'])
+
+        # create restart filenames
+        timestamp_str = timestamp.strftime("%Y%m%d%H%M")
+        channel_restart_filename = 'channel_restart_' + timestamp_str
+        waterbody_restart_filename = 'waterbody_restart_' + timestamp_str
+        
+        q0_out = q0.copy()
+        q0_out['time'] = timestamp
+        q0_out.to_pickle(pathlib.Path.joinpath(output_directory, channel_restart_filename))
+
+        if not waterbodies_df.empty:
+            wbody_initial_states = waterbodies_df.loc[:,['qd0','h0']]
+            wbody_initial_states['time'] = timestamp
+            wbody_initial_states.to_pickle(pathlib.Path.joinpath(output_directory, waterbody_restart_filename))
+
+def _write_lastobs(
+    values,
+    t0,
+    lastobs_output_folder=False,
+):
+
+    # join gageIDs to lastobs_df
+    lastobs_df = values['lastobs_df']
+    lastobs_df_ids = values['lastobs_df_ids']
+    lastobs_df = pd.DataFrame(data=lastobs_df.reshape(len(lastobs_df_ids), -1),
+                              index=lastobs_df_ids,
+                              columns=['time_since_lastobs','lastobs_discharge','gages'])
+
+    # timestamp of last simulation timestep
+    modelTimeAtOutput = t0 + timedelta(seconds = values['t-route_model_time'])
+    modelTimeAtOutput_str = modelTimeAtOutput.strftime('%Y-%m-%d_%H:%M:%S')
+
+    # timestamp of last observation
+    var = [timedelta(seconds=d) for d in lastobs_df.time_since_lastobs.fillna(0)]
+    # shorvath (10/18/23): This code was copied from nhd_io.py based on V3 operations.
+    # I changed 'modelTimeAtOutput - d' to 'modelTimeAtOutput + d' here because the '-' was
+    # creating timestamps that are ahead of the model time which can't be right. I'm not sure
+    # if this method was thoroughly checked for V3, but I've only made the update here.
+    #TODO: Determine if this should also be changed in nhd_io.py...
+    lastobs_timestamp = [modelTimeAtOutput + d for d in var]
+    lastobs_timestamp_str = [d.strftime('%Y-%m-%d_%H:%M:%S') for d in lastobs_timestamp]
+    lastobs_timestamp_str_array = np.asarray(lastobs_timestamp_str,dtype = '|S19').reshape(len(lastobs_timestamp_str),1)
+    
+    # create xarray Dataset similarly structured to WRF-generated lastobs netcdf files
+    ds = xr.Dataset(
+        {
+            "stationId": (["stationIdInd"], lastobs_df["gages"].to_numpy(dtype = '|S15')),
+            "time": (["stationIdInd", "timeInd"], np.asarray(lastobs_timestamp_str_array,dtype = '|S19')),
+            "discharge": (["stationIdInd", "timeInd"], lastobs_df["lastobs_discharge"].to_numpy().reshape(len(lastobs_df["lastobs_discharge"]),1)),
+        }
+    )
+    ds.attrs["modelTimeAtOutput"] = modelTimeAtOutput_str
+
+    # write-out LastObs file as netcdf
+    if isinstance(lastobs_output_folder, pathlib.Path):
+        lastobs_output_folder = str(lastobs_output_folder)
+    output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
+    ds.to_netcdf(str(output_path))

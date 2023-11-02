@@ -208,6 +208,15 @@ class bmi_troute(Bmi):
         # that cycles through variables first, then time steps, then segment ids.
         self._values['fvd_results'] = np.zeros(0)
         self._values['fvd_index'] = np.zeros(0)
+        self._values['lakeout'] = np.zeros(0)
+        self._values['lakeout_index'] = np.zeros(0)
+        self._values['q0'] = np.zeros(0)
+        self._values['q0_index'] = np.zeros(0)
+        self._values['t0'] = np.zeros(0)
+        self._values['waterbody_df'] = np.zeros(0)
+        self._values['waterbody_df_index'] = np.zeros(0)
+        self._values['lastobs_df'] = np.zeros(0)
+        self._values['lastobs_df_index'] = np.zeros(0)
 
         # Data assimilation values
         self._values['usgs_df'] = np.zeros(0)
@@ -215,6 +224,8 @@ class bmi_troute(Bmi):
         self._values['reservoir_usace_df'] = np.zeros(0)
         self._values['rfc_timeseries_df'] = np.zeros(0)
         self._values['lastobs_df'] = np.zeros(0)
+        self._values['nudging'] = np.zeros(0)
+        self._values['nudging_ids'] = np.zeros(0)
 
         '''
         self._values['gage_crosswalk__segID'] = np.zeros(0, dtype=int)
