@@ -705,56 +705,60 @@ def _read_timeslice_files(filepath,
             temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
             observation_df = pd.concat([observation_df, temp_df])
 
-    observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8').str.strip()
-    observation_df['time'] = observation_df['time'].str.decode('utf-8')
-    observation_df['discharge_quality'] = observation_df['discharge_quality']/100
+    if not observation_df.empty:
+        observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8').str.strip()
+        observation_df['time'] = observation_df['time'].str.decode('utf-8')
+        observation_df['discharge_quality'] = observation_df['discharge_quality']/100
 
-    #QC/QA and interpolation
-    observation_df.loc[observation_df['discharge_quality']<0, 'discharge'] = np.nan
-    observation_df.loc[observation_df['discharge_quality']>1, 'discharge'] = np.nan
-    observation_df.loc[observation_df['discharge_quality']<qc_threshold, 'discharge'] = np.nan
-    observation_df.loc[observation_df['discharge']<=0, 'discharge'] = np.nan
+        #QC/QA and interpolation
+        observation_df.loc[observation_df['discharge_quality']<0, 'discharge'] = np.nan
+        observation_df.loc[observation_df['discharge_quality']>1, 'discharge'] = np.nan
+        observation_df.loc[observation_df['discharge_quality']<qc_threshold, 'discharge'] = np.nan
+        observation_df.loc[observation_df['discharge']<=0, 'discharge'] = np.nan
 
-    observation_df = observation_df[['stationId','time','discharge']].set_index(['stationId', 'time']).unstack(1, fill_value = np.nan)['discharge']
+        observation_df = observation_df[['stationId','time','discharge']].set_index(['stationId', 'time']).unstack(1, fill_value = np.nan)['discharge']
 
-    # ---- Interpolate USGS observations to the input frequency (frequency_secs)
-    observation_df_T = observation_df.transpose()             # transpose, making time the index
-    observation_df_T.index = pd.to_datetime(
-        observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
-    )
-    
-    # specify resampling frequency 
-    frequency = str(int(frequency_secs/60))+"min"    
-
-    # interpolate and resample frequency
-    buffer_df = observation_df_T.resample(frequency).asfreq()
-    with Parallel(n_jobs=cpu_pool) as parallel:
+        # ---- Interpolate USGS observations to the input frequency (frequency_secs)
+        observation_df_T = observation_df.transpose()             # transpose, making time the index
+        observation_df_T.index = pd.to_datetime(
+            observation_df_T.index, format = "%Y-%m-%d_%H:%M:%S"  # index variable as type datetime
+        )
         
-        jobs = []
-        interp_chunks = ()
-        step = 200
-        for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
-            
-            start = i
-            if (i+step-1) < buffer_df.shape[1]:
-                stop = i+(step)
-            else:
-                stop = buffer_df.shape[1]
-                
-            jobs.append(
-                delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
-            )
-            
-        interp_chunks = parallel(jobs)
+        # specify resampling frequency 
+        frequency = str(int(frequency_secs/60))+"min"    
 
-    observation_df_T = pd.DataFrame(
-        data = np.concatenate(interp_chunks, axis = 1), 
-        columns = buffer_df.columns, 
-        index = buffer_df.index
-    )
+        # interpolate and resample frequency
+        buffer_df = observation_df_T.resample(frequency).asfreq()
+        with Parallel(n_jobs=cpu_pool) as parallel:
+            
+            jobs = []
+            interp_chunks = ()
+            step = 200
+            for a, i in enumerate(range(0, len(observation_df_T.columns), step)):
+                
+                start = i
+                if (i+step-1) < buffer_df.shape[1]:
+                    stop = i+(step)
+                else:
+                    stop = buffer_df.shape[1]
+                    
+                jobs.append(
+                    delayed(_interpolate_one)(observation_df_T.iloc[:,start:stop], interpolation_limit, frequency)
+                )
+                
+            interp_chunks = parallel(jobs)
+
+        observation_df_T = pd.DataFrame(
+            data = np.concatenate(interp_chunks, axis = 1), 
+            columns = buffer_df.columns, 
+            index = buffer_df.index
+        )
+        
+        # re-transpose, making link the index
+        observation_df_new = observation_df_T.transpose()
     
-    # re-transpose, making link the index
-    observation_df_new = observation_df_T.transpose()
+    else:
+        observation_df_new = pd.DataFrame()
 
     return observation_df_new
 
