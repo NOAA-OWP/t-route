@@ -404,12 +404,15 @@ class HYFeaturesNetwork(AbstractNetwork):
                 )
 
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
-            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index().dropna()
+            self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
             
-            # Create wbody_conn dictionary:
             #FIXME temp solution for missing waterbody info in hydrofabric
             self.bandaid()
             
+            # Drop any waterbodies that do not have parameters
+            self._waterbody_df = self.waterbody_dataframe.dropna()
+
+            # Create wbody_conn dictionary:
             wbody_conn = self.dataframe[['waterbody']].dropna()
             wbody_conn = (
                 wbody_conn['waterbody']
