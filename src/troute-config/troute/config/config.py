@@ -4,12 +4,13 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from typing_extensions import Self
 
-from .logging_parameters import LoggingParameters
-from .network_topology_parameters import NetworkTopologyParameters
-from .compute_parameters import ComputeParameters
-from .output_parameters import OutputParameters
-from .bmi_parameters import BMIParameters
-from ._utils import use_strict
+# DE-LOCALIZED
+from logging_parameters import LoggingParameters
+from network_topology_parameters import NetworkTopologyParameters
+from compute_parameters import ComputeParameters
+from output_parameters import OutputParameters
+from bmi_parameters import BMIParameters
+from _utils import use_strict
 
 
 class Config(BaseModel, extra='forbid'):
