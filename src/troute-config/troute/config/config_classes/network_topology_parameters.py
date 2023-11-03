@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Union
 from typing_extensions import Literal
 
-from config_classes.typesConfig import FilePath, DirectoryPath
+from .typesConfig import FilePath, DirectoryPath
 
 
 class NetworkTopologyParameters(BaseModel, extra='forbid'):

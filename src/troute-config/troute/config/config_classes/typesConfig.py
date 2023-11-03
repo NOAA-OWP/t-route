@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pydantic.typing import CallableGenerator
 
-from config_classes._utils import strict_set
+from ._utils import strict_set
 
 
 class FilePath(PydanticFilePath):

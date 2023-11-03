@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Optional, List
 from typing_extensions import Literal
 
-from config_classes.typesConfig import FilePath, DirectoryPath
-from config_classes._validators import coerce_datetime, coerce_none_to_default
+from .typesConfig import FilePath, DirectoryPath
+from ._validators import coerce_datetime, coerce_none_to_default
 
 
 # ---------------------------- Compute Parameters ---------------------------- #
