@@ -123,6 +123,7 @@ class DAforcing_model():
 
             # Lastobs
             lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)
+
             if lastobs_file:
                 self._lastobs_df = _read_lastobs_file(lastobs_file)
 
@@ -130,6 +131,17 @@ class DAforcing_model():
             self.dateNull = start_datetime
 
             # read in metadata for BMI compliant arrays:
+
+            if lastobs_file:
+
+                (_lastObs_gageArray, _lastObs_gageStringLengths, \
+                 _lastObs_timeSince, _lastObs_discharge) = \
+                _bmi_disassemble_lastObs (self._lastobs_df) 
+
+                self.lastObs_gageArray = _lastObs_gageArray
+                self.lastObs_gageStringLengths = _lastObs_gageStringLengths
+                self.lastObs_timeSince = _lastObs_timeSince
+                self.lastObs_discharge = _lastObs_discharge
 
             # USGS Observations
             if not self._usgs_df.empty:
@@ -159,7 +171,7 @@ class DAforcing_model():
                 self.stationStringLengthArray_usgs = _stationStringLengthArray_usgs
                 self.nStations_usgs = _nStations_usgs
                 # flatten the actual USGS datafrane into a numpy ndarray
-                _usgsArray = _flatten_array(self._usgs_df)
+                _usgsArray = _flatten_array(self._usgs_df, np.float16)
                 # ... and save it with the class instance
                 self.usgsArray = _usgsArray
             
@@ -191,7 +203,7 @@ class DAforcing_model():
                 self.stationStringLengthArray_reservoir_usgs = _stationStringLengthArray_reservoir_usgs
                 self.nStations_reservoir_usgs = _nStations_reservoir_usgs
                 # flatten the actual USGS datafrane into a numpy ndarray
-                _reservoirUsgsArray = _flatten_array(self._reservoir_usgs_df)
+                _reservoirUsgsArray = _flatten_array(self._reservoir_usgs_df, np.float16)
                 # ... and save it with the class instance
                 self.reservoirUsgsArray = _reservoirUsgsArray            
 
@@ -210,7 +222,7 @@ class DAforcing_model():
                 self.stationStringLengthArray_reservoir_usace = _stationStringLengthArray_reservoir_usace
                 self.nStations_reservoir_usace = _nStations_reservoir_usace
                 # flatten the actual USACE datafrane into a numpy ndarray
-                _reservoirUsaceArray = _flatten_array(self._reservoir_usace_df)
+                _reservoirUsaceArray = _flatten_array(self._reservoir_usace_df, np.float16)
                 # ... and save it with the class instance
                 self.reservoirUsaceArray = _reservoirUsaceArray  
 
@@ -330,12 +342,58 @@ class DAforcing_model():
 
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_channel_restart_file']
             if lite_restart_file:
+
                 self._q0, self._t0 = _read_lite_restart(lite_restart_file)
-            
+
+                (_q0_columnArray, _q0_columnLengthArray, _q0_nCol, \
+                    _q0_indexArray, _q0_nIndex, _q0_Array) = \
+                    _bmi_disassemble_lite_restart (self._q0,np.float32)
+
+                self.q0_columnArray = _q0_columnArray
+                self.q0_columnLengthArray = _q0_columnLengthArray
+                self.q0_nCol = _q0_nCol
+                self.q0_indexArray = _q0_indexArray
+                self.q0_nIndex = _q0_nIndex
+                self.q0_Array = _q0_Array
+
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_waterbody_restart_file']
             if lite_restart_file:
+
                 self._waterbody_df, _ = _read_lite_restart(lite_restart_file)
-            
+
+                (_waterbodyLR_columnArray, _waterbodyLR_columnLengthArray, _waterbodyLR_nCol, \
+                    _waterbodyLR_indexArray, _waterbodyLR_nIndex, _waterbodyLR_Array) = \
+                    _bmi_disassemble_lite_restart (self._waterbody_df,np.float64)
+
+                self.waterbodyLR_columnArray = _waterbodyLR_columnArray
+                self.waterbodyLR_columnLengthArray = _waterbodyLR_columnLengthArray
+                self.waterbodyLR_nCol = _waterbodyLR_nCol
+                self.waterbodyLR_indexArray = _waterbodyLR_indexArray
+                self.waterbodyLR_nIndex = _waterbodyLR_nIndex
+                self.waterbodyLR_Array = _waterbodyLR_Array
+
+            #testRevert = True
+
+            if (testRevert):
+
+                if lite_restart_file:
+
+                    df_restart_q0 = _bmi_reassemble_lite_restart (self.q0_columnArray,\
+                         self.q0_columnLengthArray, self.q0_nCol, self.q0_indexArray,\
+                         self.q0_nIndex, self.q0_Array)
+
+                    df_restart_waterbody = _bmi_reassemble_lite_restart (self.waterbodyLR_columnArray,\
+                         self.waterbodyLR_columnLengthArray, self.waterbodyLR_nCol,\
+                         self.waterbodyLR_indexArray, self.waterbodyLR_nIndex,\
+                         self.waterbodyLR_Array)                
+
+                if lastobs_file:
+
+                    df_lastObs = _bmi_reassemble_lastObs (self.lastObs_gageArray,\
+                                    self.lastObs_gageStringLengths, \
+                                    self.lastObs_timeSince,
+                                    self.lastObs_discharge)
+
         else:
 
             raise(RuntimeError("No config file provided."))
@@ -497,10 +555,10 @@ def _stringsToBMI(stringList):
     return (stringArray, stringLengthArray)
 
 
-def _flatten_array(dataFrame):
+def _flatten_array(dataFrame, dataType):
 
     # convert to numpy array first
-    array1 = dataFrame.to_numpy(copy=True, dtype=np.float16)
+    array1 = dataFrame.to_numpy(copy=True, dtype=dataType)
     # flatten it
     array2 = array1.reshape(-1)
 
@@ -652,6 +710,88 @@ def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
         dataFrame[col] = addedCol
 
     return dataFrame
+
+
+def _bmi_disassemble_lite_restart (dataFrame, dataType):
+
+    # These are the q0- and waterbody dataframes for "lite-restart"
+    # index is int64, columns are strings, and array proper is float32 or float64
+
+    # get columns and convert to BMI compliant arrays
+    columnList = (dataFrame.columns).tolist()
+    nCol = len(columnList)
+    (columnArray, columnLengthArray) = _stringsToBMI(columnList)
+
+    # get index array (already BMI compliant; int64)
+    indexArray = (dataFrame.index).to_numpy(dtype=np.int64, copy=True)
+    nIndex = len(indexArray)
+
+    mainArray = _flatten_array(dataFrame, dataType)
+
+    return (columnArray, columnLengthArray, nCol, indexArray, nIndex, mainArray)
+
+
+def _bmi_reassemble_lite_restart (columnArray, columnLengthArray, nCol, indexArray,\
+                                    nIndex, Array):
+    
+    # reverse flattening of array proper
+    df_raw = _unflatten_array(Array,nCol,nIndex)
+
+    # get column names back as strings
+    colList = _BMI_toStrings(columnArray, columnLengthArray)
+    colListAttach = pd.Index(colList, dtype=object)
+
+    # transpose dataframe
+    df_raw_transpose = df_raw.T
+    # add column axis as index on transposed dataframe
+    df_raw_transpose.index = colListAttach
+    # revert transpose
+    df_raw_withCol = df_raw_transpose.T
+
+    # add index
+    index = pd.Index(indexArray, dtype=np.int64)
+    df_raw_withCol.index = index 
+
+    df_complete = df_raw_withCol
+
+    return df_complete
+
+
+def _bmi_disassemble_lastObs (lastobs_df):
+                
+    # Column entries that are already float or int:
+    timeSinceArray = lastobs_df["time_since_lastobs"].to_numpy(dtype=np.float64, copy=True)
+    lastDischargeArray = lastobs_df["lastobs_discharge"].to_numpy(dtype=np.float64, copy=True)
+
+    # Gage IDs: string entry
+    gageList = (lastobs_df["gages"]).tolist()
+    (gageArray, gageStringLengthArray) = _stringsToBMI(gageList)  
+
+    return(gageArray, gageStringLengthArray, timeSinceArray, lastDischargeArray)
+
+
+def _bmi_reassemble_lastObs (gageArray, gageStringLengthArray, \
+                             timeSinceArray, lastDischargeArray):
+
+    # Create empty dataframe with appropriate column names
+    columnList = ['gages','time_since_lastobs','lastobs_discharge']
+    
+    # Build up dataframe
+    dataFrame = pd.DataFrame()
+    for col in columnList:
+
+        if (col == 'gages'):
+            addedCol = _BMI_toStrings(gageArray, gageStringLengthArray)
+        elif (col == 'time_since_lastobs'):
+            addedCol = timeSinceArray
+        elif (col == 'lastobs_discharge'):
+            addedCol = lastDischargeArray
+  
+        # add the selected column
+        dataFrame[col] = addedCol
+
+    return dataFrame
+
 
 
 # Utility functions -------
