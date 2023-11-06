@@ -406,6 +406,18 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
             self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
             
+            # Convert to lat/lon for LAKEOUT files:
+            lat_lon_crs = lakes[['hl_link','hl_reference','geometry']].rename(columns={'hl_link': 'lake_id'})
+            lat_lon_crs = lat_lon_crs[lat_lon_crs['hl_reference']=='WBOut']
+            lat_lon_crs['lake_id'] = lat_lon_crs.lake_id.astype(float).astype(int)
+            lat_lon_crs = lat_lon_crs.set_index('lake_id').drop_duplicates().sort_index()
+            lat_lon_crs = lat_lon_crs.loc[self.waterbody_dataframe.index]
+            lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
+
+            self._waterbody_df['lon'] = lat_lon_crs.geometry.x
+            self._waterbody_df['lat'] = lat_lon_crs.geometry.y
+            self._waterbody_df['crs'] = str(lat_lon_crs.crs)
+            
             #FIXME temp solution for missing waterbody info in hydrofabric
             self.bandaid()
             
