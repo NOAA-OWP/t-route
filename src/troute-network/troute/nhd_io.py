@@ -1982,13 +1982,18 @@ def write_flowveldepth_netcdf(stream_output_directory,
     qvd_ndg = flowveldepth.copy()
     # Create a list for names of the columns for nudge values
     ndg_columns = [(j,'ndg') for j in range(nsteps)]
-    # Add 'ndg' columns based on usgs_positions_id
-    for i, usgs_id in enumerate(usgs_positions_id):
-        # Extract the corresponding nudge values for the usgs_id
-        nudge_values = nudge[i]
 
-        # Assign nudge values to 'ndg' columns for the corresponding row
-        qvd_ndg.loc[usgs_id, ndg_columns] = nudge_values
+    if len(usgs_positions_id)>0:
+        # Add 'ndg' columns based on usgs_positions_id
+        for i, usgs_id in enumerate(usgs_positions_id):
+            # Extract the corresponding nudge values for the usgs_id
+            nudge_values = nudge[i]
+
+            # Assign nudge values to 'ndg' columns for the corresponding row
+            qvd_ndg.loc[usgs_id, ndg_columns] = nudge_values
+    else:
+        qvd_ndg.loc[:, ndg_columns] = -9999.0
+
     new_order = [(i, attr) for i in range(0, nsteps) for attr in ['q', 'v', 'd', 'ndg']]
     # Reorder the columns
     qvd_ndg = qvd_ndg[new_order]
@@ -2018,13 +2023,13 @@ def write_flowveldepth_netcdf(stream_output_directory,
                 file_name = f"{current_time_step}.flowveldepth.csv"
                 # Save the data to CSV file
                 subset_df.to_csv(f"{stream_output_directory}/{file_name}", index=True)
-                print(f"Flowveldepth data saved as CSV files in {stream_output_directory}")
+                LOG.debug(f"Flowveldepth data saved as CSV files in {stream_output_directory}")
 
             elif stream_output_type=='.pkl':
                 file_name = f"{current_time_step}.flowveldepth.pkl"
                 # Save the data to Pickle file
                 subset_df.to_pickle(f"{stream_output_directory}/{file_name}")
-                print(f"Flowveldepth data saved as PICKLE files in {stream_output_directory}")
+                LOG.debug(f"Flowveldepth data saved as PICKLE files in {stream_output_directory}")
                 
             else:
                 print('WRONG FORMAT')
@@ -2087,5 +2092,5 @@ def write_flowveldepth_netcdf(stream_output_directory,
                             'code_version': '',
                         }
                     )
-                    print(f"Flowveldepth data saved as NetCDF files in {stream_output_directory}")
+                    LOG.debug(f"Flowveldepth data saved as NetCDF files in {stream_output_directory}")
             
