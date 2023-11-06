@@ -132,16 +132,18 @@ class DAforcing_model():
 
             # read in metadata for BMI compliant arrays:
 
-            if lastobs_file:
+            if not self._lastobs_df.empty:
 
-                (_lastObs_gageArray, _lastObs_gageStringLengths, \
-                 _lastObs_timeSince, _lastObs_discharge) = \
-                _bmi_disassemble_lastObs (self._lastobs_df) 
+                if lastobs_file:
 
-                self.lastObs_gageArray = _lastObs_gageArray
-                self.lastObs_gageStringLengths = _lastObs_gageStringLengths
-                self.lastObs_timeSince = _lastObs_timeSince
-                self.lastObs_discharge = _lastObs_discharge
+                    (_lastObs_gageArray, _lastObs_gageStringLengths, \
+                    _lastObs_timeSince, _lastObs_discharge) = \
+                    _bmi_disassemble_lastObs (self._lastobs_df) 
+
+                    self.lastObs_gageArray = _lastObs_gageArray
+                    self.lastObs_gageStringLengths = _lastObs_gageStringLengths
+                    self.lastObs_timeSince = _lastObs_timeSince
+                    self.lastObs_discharge = _lastObs_discharge
 
             # USGS Observations
             if not self._usgs_df.empty:
@@ -248,89 +250,6 @@ class DAforcing_model():
                 self.rfc_List_array = _rfc_List_array
                 self.rfc_List_stringLengths = _rfc_List_stringLengths
 
-            testRevert = False
-            # The following code segments revert the array troute -> bmi-flattened
-            # array conversions, and are placed here only temporarily for
-            # verification purposes, to be moved to DataAssimilation eventually.
-            # If "reverse" code is not removed, it can be temporarily disabled
-            # by setting the testRevert flag to False
-            if (testRevert):
-
-                # USGS Observations
-                if nudging or usgs_persistence:
-
-                    # USGS dataframe
-                
-                    # Unflatten the arrays
-                    df_raw_usgs = _unflatten_array(self.usgsArray,self.nDates_usgs,\
-                                          self.nStations_usgs)
-
-                    # Decode time/date axis
-                    timeAxisName = 'time'
-                    freqString = '5T'
-                    df_withDates_usgs = _time_retrieve_from_arrays(df_raw_usgs, self.dateNull, \
-                            self.datesSecondsArray_usgs, timeAxisName, freqString)
-
-                    # Decode station ID axis
-                    stationAxisName = 'stationId'
-                    df_withStationsAndDates_usgs = _stations_retrieve_from_arrays(\
-                        df_withDates_usgs, self.stationArray_usgs, \
-                        self.stationStringLengthArray_usgs, stationAxisName)
-
-                    # Reservoir USGS dataframe
-
-                    # Unflatten the arrays
-                    df_raw_reservoirUsgs = _unflatten_array(self.reservoirUsgsArray,\
-                                                            self.nDates_reservoir_usgs,\
-                                                            self.nStations_reservoir_usgs)
-
-                    # Decode time/date axis
-                    timeAxisName = 'time'
-                    freqString = '15T'
-                    df_withDates_reservoirUsgs = _time_retrieve_from_arrays(\
-                        df_raw_reservoirUsgs, self.dateNull, \
-                        self.datesSecondsArray_reservoir_usgs, timeAxisName, freqString)
-
-                    # Decode station ID axis
-                    stationAxisName = 'stationId'
-                    df_withStationsAndDates_reservoirUsgs = _stations_retrieve_from_arrays\
-                        (df_withDates_reservoirUsgs, self.stationArray_reservoir_usgs, \
-                         self.stationStringLengthArray_reservoir_usgs, stationAxisName)
-                
-                # USACE Observations        
-                if usace_persistence:
-
-                    # Reservoir USACE dataframe
-
-                    # Unflatten the arrays
-                    df_raw_reservoirUsace = _unflatten_array(self.reservoirUsaceArray,\
-                                                            self.nDates_reservoir_usace,\
-                                                            self.nStations_reservoir_usace)
-
-                    # Decode time/date axis
-                    timeAxisName = 'time'
-                    freqString = '15T'
-                    df_withDates_reservoirUsace = _time_retrieve_from_arrays\
-                        (df_raw_reservoirUsace, self.dateNull, \
-                        self.datesSecondsArray_reservoir_usace, timeAxisName, freqString)
-
-                    # Decode station ID axis
-                    stationAxisName = 'stationId'
-                    df_withStationsAndDates_reservoirUsace = _stations_retrieve_from_arrays\
-                        (df_withDates_reservoirUsace, self.stationArray_reservoir_usace, \
-                         self.stationStringLengthArray_reservoir_usace, stationAxisName)                
-
-                # RFC Timeseries        
-                if rfc:
-
-                    # Decode rfc timeseries
-                    df_rfc_timeseries = _bmi_reassemble_rfc_timeseries (self.rfc_da_timestep, \
-                                        self.rfc_totalCounts, self.rfc_synthetic_values, \
-                                        self.rfc_discharges, self.rfc_timeseries_idx, \
-                                        self.rfc_use_rfc, self.rfc_Datetime, self.rfc_timeSteps, \
-                                        self.rfc_StationId_array, self.rfc_StationId_stringLengths, \
-                                        self.rfc_List_array, self.rfc_List_stringLengths, self.dateNull)
-
 
             #############################
             # Read Restart files:
@@ -341,58 +260,42 @@ class DAforcing_model():
             self._waterbody_df = pd.DataFrame()
 
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_channel_restart_file']
+            
             if lite_restart_file:
 
                 self._q0, self._t0 = _read_lite_restart(lite_restart_file)
 
-                (_q0_columnArray, _q0_columnLengthArray, _q0_nCol, \
-                    _q0_indexArray, _q0_nIndex, _q0_Array) = \
-                    _bmi_disassemble_lite_restart (self._q0,np.float32)
+                if not self._q0.empty:
 
-                self.q0_columnArray = _q0_columnArray
-                self.q0_columnLengthArray = _q0_columnLengthArray
-                self.q0_nCol = _q0_nCol
-                self.q0_indexArray = _q0_indexArray
-                self.q0_nIndex = _q0_nIndex
-                self.q0_Array = _q0_Array
+                    (_q0_columnArray, _q0_columnLengthArray, _q0_nCol, \
+                        _q0_indexArray, _q0_nIndex, _q0_Array) = \
+                        _bmi_disassemble_lite_restart (self._q0,np.float32)
+
+                    self.q0_columnArray = _q0_columnArray
+                    self.q0_columnLengthArray = _q0_columnLengthArray
+                    self.q0_nCol = _q0_nCol
+                    self.q0_indexArray = _q0_indexArray
+                    self.q0_nIndex = _q0_nIndex
+                    self.q0_Array = _q0_Array
 
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_waterbody_restart_file']
+            
             if lite_restart_file:
 
                 self._waterbody_df, _ = _read_lite_restart(lite_restart_file)
 
-                (_waterbodyLR_columnArray, _waterbodyLR_columnLengthArray, _waterbodyLR_nCol, \
-                    _waterbodyLR_indexArray, _waterbodyLR_nIndex, _waterbodyLR_Array) = \
-                    _bmi_disassemble_lite_restart (self._waterbody_df,np.float64)
+                if not self._waterbody_df.empty:
 
-                self.waterbodyLR_columnArray = _waterbodyLR_columnArray
-                self.waterbodyLR_columnLengthArray = _waterbodyLR_columnLengthArray
-                self.waterbodyLR_nCol = _waterbodyLR_nCol
-                self.waterbodyLR_indexArray = _waterbodyLR_indexArray
-                self.waterbodyLR_nIndex = _waterbodyLR_nIndex
-                self.waterbodyLR_Array = _waterbodyLR_Array
+                    (_waterbodyLR_columnArray, _waterbodyLR_columnLengthArray, _waterbodyLR_nCol, \
+                        _waterbodyLR_indexArray, _waterbodyLR_nIndex, _waterbodyLR_Array) = \
+                        _bmi_disassemble_lite_restart (self._waterbody_df,np.float64)
 
-            #testRevert = True
-
-            if (testRevert):
-
-                if lite_restart_file:
-
-                    df_restart_q0 = _bmi_reassemble_lite_restart (self.q0_columnArray,\
-                         self.q0_columnLengthArray, self.q0_nCol, self.q0_indexArray,\
-                         self.q0_nIndex, self.q0_Array)
-
-                    df_restart_waterbody = _bmi_reassemble_lite_restart (self.waterbodyLR_columnArray,\
-                         self.waterbodyLR_columnLengthArray, self.waterbodyLR_nCol,\
-                         self.waterbodyLR_indexArray, self.waterbodyLR_nIndex,\
-                         self.waterbodyLR_Array)                
-
-                if lastobs_file:
-
-                    df_lastObs = _bmi_reassemble_lastObs (self.lastObs_gageArray,\
-                                    self.lastObs_gageStringLengths, \
-                                    self.lastObs_timeSince,
-                                    self.lastObs_discharge)
+                    self.waterbodyLR_columnArray = _waterbodyLR_columnArray
+                    self.waterbodyLR_columnLengthArray = _waterbodyLR_columnLengthArray
+                    self.waterbodyLR_nCol = _waterbodyLR_nCol
+                    self.waterbodyLR_indexArray = _waterbodyLR_indexArray
+                    self.waterbodyLR_nIndex = _waterbodyLR_nIndex
+                    self.waterbodyLR_Array = _waterbodyLR_Array
 
         else:
 
