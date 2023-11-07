@@ -6,7 +6,7 @@ from joblib import delayed, Parallel
 import xarray as xr
 import glob
 import pathlib
-
+import netCDF4
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 from nwm_routing.log_level_set import log_level_set
@@ -354,13 +354,16 @@ class DAforcing_model():
         """
         output_parameters = self._output_parameters
         da_parameters = self._data_assimilation_parameters
-
-        if output_parameters['lite_restart'] is not None:
-            _write_lite_restart(
-                values,
-                self._t0,
-                output_parameters['lite_restart']
-            )   
+        q0 = values.get('q0')
+        waterbody_df = values.get('waterbody_df')
+        lastobs_df = values.get('lastobs_df')
+        if len(q0) != 0 and len(waterbody_df) != 0 and len(lastobs_df) != 0:
+            if output_parameters['lite_restart'] is not None:
+                _write_lite_restart(
+                    values,
+                    self._t0,
+                    output_parameters['lite_restart']
+                )   
 
         lastobs_output_folder = da_parameters.get('streamflow_da',{}).get('lastobs_output_folder', None)
         if lastobs_output_folder:
@@ -369,10 +372,22 @@ class DAforcing_model():
                 self._t0,
                 lastobs_output_folder
             )
+  
+        # if output_parameters.get('stream_output',{}) is not None and output_parameters.get('stream_output',{}).get('qvd_nudge'):
+        if output_parameters.get('stream_output',{}):
             
-        if output_parameters.get('stream_output',{}).get('qvd_nudge'):
-            #write flowveldepth file
-            pass
+            t0 = self._t0
+            stream_output_directory =  output_parameters.get('stream_output').get('stream_output_directory')
+            stream_output_type = output_parameters.get('stream_output').get('stream_output_type')
+            stream_output_internal_frequency = output_parameters.get('stream_output').get('stream_output_internal_frequency')
+            
+            write_flowveldepth_netcdf(values,
+                                      stream_output_directory,   
+                                      t0,
+                                      1, 
+                                      stream_output_type,
+                                      stream_output_internal_frequency)
+
 
           
 def _time_stations_from_df(dataFrame, timeBase):
@@ -704,7 +719,7 @@ def _read_timeslice_files(filepath,
         if f:
             temp_df = xr.open_dataset(f[0])[['stationId','time','discharge','discharge_quality']].to_dataframe()
             observation_df = pd.concat([observation_df, temp_df])
-
+            
     if not observation_df.empty:
         observation_df['stationId'] = observation_df['stationId'].str.decode('utf-8').str.strip()
         observation_df['time'] = observation_df['time'].str.decode('utf-8')
@@ -929,13 +944,12 @@ def _write_lite_restart(
 
         waterbodies_df = values['waterbody_df']
         waterbodies_ids = values['waterbody_df_ids']
-        
         waterbodies_df = pd.DataFrame(data=waterbodies_df.reshape(len(waterbodies_ids), -1), 
                                       index=waterbodies_ids,
                                       columns=['ifd','LkArea','LkMxE','OrificeA','OrificeC','OrificeE',
-                                               'WeirC','WeirE','WeirL','qd0','h0','index'])
+                                               'WeirC','WeirE','WeirL','lon', 'lat', 'crs','qd0','h0','index'])
         waterbodies_df.index.name = 'lake_id'
-
+        waterbodies_df.drop(columns=['lon', 'lat', 'crs'], inplace=True)
         timestamp = t0 + timedelta(seconds=values['t-route_model_time'])
 
         # create restart filenames
@@ -995,3 +1009,153 @@ def _write_lastobs(
         lastobs_output_folder = str(lastobs_output_folder)
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
     ds.to_netcdf(str(output_path))
+
+def write_flowveldepth_netcdf(values,
+                              stream_output_directory,   
+                              t0, 
+                              stream_output_timediff = 1, 
+                              stream_output_type = '.nc',
+                              stream_output_internal_frequency = 5):
+    '''
+    Write the results of flowveldepth and nudge to netcdf- break. 
+    Arguments
+    -------------
+    stream_output_directory (Path or string) - directory where file will be created
+    flowveldepth (DataFrame) -  including flowrate, velocity, and depth for each time step
+    nudge (numpy.ndarray) - nudge data with shape (76, 289)
+    usgs_positions_id (array) - Position ids of usgs gages
+    '''
+    ## getting the flatten value of nudge
+    flatten_nudge = values.get('nudging')
+    nudging_ids = values.get('nudging_ids')
+    # reconstruct the df
+    num_rows_ndg = len(nudging_ids)
+    num_columns_ndg = len(flatten_nudge) // len(nudging_ids)
+    nudge = pd.DataFrame(flatten_nudge.reshape(num_rows_ndg, num_columns_ndg), index=nudging_ids)
+    
+    ## getting the flatten value of flowveldepth
+    flatten_fvd = values.get('fvd_results')
+    fvd_index = values.get('fvd_index')
+    # reconstruct the df
+    num_rows_fvd = len(fvd_index)
+    num_columns_fvd = len(flatten_fvd) // len(fvd_index)
+    flowveldepth = pd.DataFrame(flatten_fvd.reshape(num_rows_fvd, num_columns_fvd), index=fvd_index)
+    # Number of timesteps and features
+    nsteps = len(flowveldepth.columns) // 3
+    num_features = len(flowveldepth)
+    nstep_nc = 12 * stream_output_timediff
+    gage, nudge_timesteps = nudge.shape
+    column_name = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd']]
+    flowveldepth.columns = column_name
+    #--------- Add 'nudge' column based on usgs_positions_id----------
+    
+    # Create a copy of the flowveldepth DataFrame to add 'ndg' columns
+    qvd_ndg = flowveldepth.copy()
+    # Create a list for names of the columns for nudge values
+
+    ndg_columns = [(j,'ndg') for j in range(nsteps)]
+    # renaming nudge columns
+    nudge.columns = ndg_columns
+    # Left joining qvd and nudge values on index
+    qvd_ndg = pd.merge(qvd_ndg, nudge, left_index=True, right_index=True, how='left')
+    
+    new_order = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
+    # Reorder the columns
+    qvd_ndg = qvd_ndg[new_order]
+    hr = values.get('t-route_model_time') // 3600
+    # Create time step values based on t0
+    time_steps = [t0 + timedelta(hours= hr)]
+    time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(1 * 60 / stream_output_internal_frequency) + 1)]
+
+    for counter, i in enumerate(range(0, nsteps, nstep_nc)):
+        # Define the range of columns for this file
+        start_col = i * 4
+        end_col = min((i + nstep_nc) * 4 , nsteps * 4)
+        selected_col = stream_output_internal_frequency // 5
+        # Create a subset DataFrame for the current range of columns
+        # subset_df = qvd_ndg.iloc[:, start_col:end_col]
+        # Create a list of column names to keep
+        columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col[0]) % selected_col == 0]
+        subset_df = qvd_ndg[columns_to_keep]
+        
+        # Create the file name based on the current time step
+        current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
+        if stream_output_directory:
+            if stream_output_type =='.nc':
+                file_name = f"{current_time_step}.flowveldepth.nc"
+
+            elif stream_output_type=='.csv':
+                file_name = f"{current_time_step}.flowveldepth.csv"
+                # Save the data to CSV file
+                subset_df.to_csv(f"{stream_output_directory}/{file_name}", index=True)
+                print(f"{file_name} saved as CSV in {stream_output_directory}")
+
+            elif stream_output_type=='.pkl':
+                file_name = f"{current_time_step}.flowveldepth.pkl"
+                # Save the data to Pickle file
+                subset_df.to_pickle(f"{stream_output_directory}/{file_name}")
+                print(f"{file_name} saved as PICKLE in {stream_output_directory}")
+                
+            else:
+                print('WRONG FORMAT')
+        
+        if stream_output_directory:
+            if (stream_output_type =='.nc'):
+                # Open netCDF4 Dataset in write mode
+                with netCDF4.Dataset(
+                    filename=f"{stream_output_directory}/{file_name}",
+                    mode='w',
+                    format='NETCDF4'
+                ) as ncfile:
+
+                    # ============ DIMENSIONS ===================
+                    _ = ncfile.createDimension('feature_id', None)
+                    _ = ncfile.createDimension('time_step (sec)', subset_df.iloc[:, 0::4].shape[1])
+                    _ = ncfile.createDimension('gage', gage)
+                    _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
+                    
+                    # =========== q,v,d,ndg VARIABLES ===============
+                    for counters, var in enumerate(['flowrate', 'velocity', 'depth', 'nudge']):
+                        QVD = ncfile.createVariable(
+                            varname=var,
+                            datatype=np.float32,
+                            dimensions=('feature_id', 'time_step (sec)',),
+                        )
+
+                        QVD.units = 'm3/s m/s m m3/s'
+                        QVD.description = f'Data for {var}'
+                        
+                        # Prepare data for writing
+                        data_array = subset_df.iloc[:, counters::4].to_numpy(dtype=np.float32)
+                        
+                        # Set data for each feature_id and time_step
+                        ncfile.variables[var][:] = data_array
+                    feature_id = ncfile.createVariable(
+                        varname='feature_id',
+                        datatype=np.int32,
+                        dimensions=('feature_id',),
+                    )
+                    feature_id[:] = flowveldepth.index.to_numpy(dtype=np.int32)
+                    feature_id.units = 'None'
+                    feature_id.description = 'Feature IDs'
+                    ###
+                    time_step = ncfile.createVariable(
+                        varname='time_step (sec)',
+                        datatype=np.int32,
+                        dimensions=('time_step (sec)',),
+                    )
+                    time_step[:] = np.array(time_dim[:subset_df.iloc[:, 0::4].shape[1]], dtype=np.int32)
+                    time_step.units = 'sec'
+                    time_step.description = 'time stamp'
+                    # =========== GLOBAL ATTRIBUTES ===============
+                    ncfile.setncatts(
+                        {
+                            'TITLE': 'OUTPUT FROM T-ROUTE',
+                            'Time step (sec)': f'{stream_output_internal_frequency}',
+                            'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                            'comment': f'The file includes {stream_output_timediff} hour data which includes {len(time_dim)} timesteps',
+                            'code_version': '',
+                        }
+                    )
+                    print(f"{file_name} saved as NetCDF in {stream_output_directory}")
+            

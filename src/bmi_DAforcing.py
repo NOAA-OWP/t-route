@@ -56,7 +56,8 @@ class bmi_DAforcing(Bmi):
         'reservoir_usgs_df',
         'reservoir_usace_df',
         'rfc_timeseries_df',
-        'lastobs_df'
+        'lastobs_df',
+        'waterbody_df'
     ]
 
     #------------------------------------------------------
