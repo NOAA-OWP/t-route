@@ -502,10 +502,13 @@ class HYFeaturesNetwork(AbstractNetwork):
             # transform dataframe into a dictionary where key is segment ID and value is gage ID
             usgs_ind = gages_df.value.str.isnumeric() #usgs gages used for streamflow DA
             # Use hydroseq information to determine furthest downstream gage when multiple are present.
+            idx_id = gages_df.index.name
+            if not idx_id:
+                idx_id = 'index'
             self._gages = (
                 gages_df.loc[usgs_ind].reset_index()
                 .groupby('value').max('hydroseq').reset_index()
-                .set_index('index')[['value']].rename(columns={'value': 'gages'})
+                .set_index(idx_id)[['value']].rename(columns={'value': 'gages'})
                 .rename_axis(None, axis=0).to_dict()
             )
             
