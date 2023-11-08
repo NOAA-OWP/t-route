@@ -507,7 +507,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 idx_id = 'index'
             self._gages = (
                 gages_df.loc[usgs_ind].reset_index()
-                .groupby('value').max('hydroseq').reset_index()
+                .sort_values('hydroseq').drop_duplicates(['value'],keep='last')
                 .set_index(idx_id)[['value']].rename(columns={'value': 'gages'})
                 .rename_axis(None, axis=0).to_dict()
             )
