@@ -433,7 +433,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._waterbody_df['lon'] = np.nan
                 self._waterbody_df['lat'] = np.nan
                 self._waterbody_df['crs'] = np.nan
-            import pdb; pdb.set_trace()
+            
             # Create wbody_conn dictionary:
             wbody_conn = self.dataframe[['waterbody']].dropna()
             wbody_conn = (
