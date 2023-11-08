@@ -1999,7 +1999,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
     qvd_ndg = qvd_ndg[new_order]
     
     # Create time step values based on t0
-    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(1, nsteps//nstep_nc+1)]
+    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(nsteps//nstep_nc)]
     time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(stream_output_timediff * 60 / stream_output_internal_frequency) + 1)]
     
     for counter, i in enumerate(range(0, nsteps, nstep_nc)):
@@ -2088,6 +2088,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
                             'TITLE': 'OUTPUT FROM T-ROUTE',
                             'Time step (sec)': f'{stream_output_internal_frequency}',
                             'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                            'model_reference_time': time_steps[counter].strftime('%Y-%m-%d_%H:%M:%S'),
                             'comment': f'The file includes {stream_output_timediff} hour data which includes {len(time_dim)} timesteps',
                             'code_version': '',
                         }
