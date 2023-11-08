@@ -206,6 +206,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                  forcing_parameters,
                  hybrid_parameters, 
                  preprocessing_parameters,
+                 output_parameters,
                  verbose=False, 
                  showtiming=False,
                  from_files=True,
@@ -222,6 +223,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         self.forcing_parameters = forcing_parameters
         self.hybrid_parameters = hybrid_parameters
         self.preprocessing_parameters = preprocessing_parameters
+        self.output_parameters = output_parameters
         self.verbose = verbose
         self.showtiming = showtiming
 
@@ -406,24 +408,32 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
             self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
             
-            # Convert to lat/lon for LAKEOUT files:
-            lat_lon_crs = lakes[['hl_link','hl_reference','geometry']].rename(columns={'hl_link': 'lake_id'})
-            lat_lon_crs = lat_lon_crs[lat_lon_crs['hl_reference']=='WBOut']
-            lat_lon_crs['lake_id'] = lat_lon_crs.lake_id.astype(float).astype(int)
-            lat_lon_crs = lat_lon_crs.set_index('lake_id').drop_duplicates().sort_index()
-            lat_lon_crs = lat_lon_crs.loc[self.waterbody_dataframe.index]
-            lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
-
-            self._waterbody_df['lon'] = lat_lon_crs.geometry.x
-            self._waterbody_df['lat'] = lat_lon_crs.geometry.y
-            self._waterbody_df['crs'] = str(lat_lon_crs.crs)
-            
             #FIXME temp solution for missing waterbody info in hydrofabric
             self.bandaid()
             
             # Drop any waterbodies that do not have parameters
             self._waterbody_df = self.waterbody_dataframe.dropna()
 
+            # Add lat, lon, and crs columns for LAKEOUT files:
+            lakeout = self.output_parameters.get("lakeout_output", None)
+            if lakeout:
+                lat_lon_crs = lakes[['hl_link','hl_reference','geometry']].rename(columns={'hl_link': 'lake_id'})
+                lat_lon_crs = lat_lon_crs[lat_lon_crs['hl_reference']=='WBOut']
+                lat_lon_crs['lake_id'] = lat_lon_crs.lake_id.astype(float).astype(int)
+                lat_lon_crs = lat_lon_crs.set_index('lake_id').drop_duplicates().sort_index()
+                lat_lon_crs = lat_lon_crs[lat_lon_crs.index.isin(self.waterbody_dataframe.index)]
+                lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
+                lat_lon_crs['lon'] = lat_lon_crs.geometry.x
+                lat_lon_crs['lat'] = lat_lon_crs.geometry.y
+                lat_lon_crs['crs'] = str(lat_lon_crs.crs)
+                lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
+
+                self._waterbody_df = self.waterbody_dataframe.join(lat_lon_crs)
+            else:
+                self._waterbody_df['lon'] = np.nan
+                self._waterbody_df['lat'] = np.nan
+                self._waterbody_df['crs'] = np.nan
+            import pdb; pdb.set_trace()
             # Create wbody_conn dictionary:
             wbody_conn = self.dataframe[['waterbody']].dropna()
             wbody_conn = (
