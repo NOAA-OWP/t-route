@@ -2017,6 +2017,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
         # Create a list of column names to keep
         columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col.split('_')[1]) % selected_col == 0]
         subset_df = qvd_ndg[columns_to_keep]
+        subset_df.columns = ['_'.join([col.split('_')[0], col.split('_')[2]]) for col in subset_df.columns]
         
         # Create the file name based on the current time step
         current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
