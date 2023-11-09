@@ -1998,8 +1998,13 @@ def write_flowveldepth_netcdf(stream_output_directory,
     # Reorder the columns
     qvd_ndg = qvd_ndg[new_order]
     
+    # renaming the columns based on timestamp
+    column_name_timeStamp = [t0 + timedelta(minutes=(i * 5)) for i in range(nsteps)]
+    new_column_name_timeStamp = [(attr + '_' +str(cnt) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
+    qvd_ndg.columns = new_column_name_timeStamp
+
     # Create time step values based on t0
-    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(1, nsteps//nstep_nc+1)]
+    time_steps = [t0 + timedelta(hours= (i * stream_output_timediff)) for i in range(nsteps//nstep_nc)]
     time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(stream_output_timediff * 60 / stream_output_internal_frequency) + 1)]
     
     for counter, i in enumerate(range(0, nsteps, nstep_nc)):
@@ -2010,7 +2015,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
         # Create a subset DataFrame for the current range of columns
         # subset_df = qvd_ndg.iloc[:, start_col:end_col]
         # Create a list of column names to keep
-        columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col[0]) % selected_col == 0]
+        columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col.split('_')[1]) % selected_col == 0]
         subset_df = qvd_ndg[columns_to_keep]
         
         # Create the file name based on the current time step
@@ -2088,6 +2093,7 @@ def write_flowveldepth_netcdf(stream_output_directory,
                             'TITLE': 'OUTPUT FROM T-ROUTE',
                             'Time step (sec)': f'{stream_output_internal_frequency}',
                             'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                            'model_reference_time': time_steps[counter].strftime('%Y-%m-%d_%H:%M:%S'),
                             'comment': f'The file includes {stream_output_timediff} hour data which includes {len(time_dim)} timesteps',
                             'code_version': '',
                         }
