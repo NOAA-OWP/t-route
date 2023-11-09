@@ -56,7 +56,7 @@ def main_v04(argv):
     run_parameters = {
         'dt': forcing_parameters.get('dt'),
         'nts': forcing_parameters.get('nts'),
-        'cpu_pool': compute_parameters.get('cpu_pool')
+        'cpu_pool': compute_parameters.get('cpu_pool'),
     }
     
     showtiming = log_parameters.get("showtiming", None)
@@ -1055,12 +1055,10 @@ def nwm_route(
     coastal_boundary_depth_df,
     unrefactored_topobathy_df,
     flowveldepth_interorder={},
-    from_files=True,
+    from_files=False,
 ):
 
-    ################### Main Execution Loop across ordered networks
-    
-    
+    ################### Main Execution Loop across ordered networks      
     start_time = time.time()
 
     if return_courant:

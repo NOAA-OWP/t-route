@@ -3,12 +3,14 @@ import pandas as pd
 import numpy as np
 import pathlib
 import xarray as xr
-from datetime import datetime
+from datetime import datetime, timedelta
 from abc import ABC
 from joblib import delayed, Parallel
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
-
+import sys
+sys.path.append("../../src/")
+from model_DAforcing import _read_timeseries_files
 
 # -----------------------------------------------------------------------------
 # Abstract DA Class:
@@ -524,9 +526,11 @@ class RFCDA(AbstractDA):
             rfc = rfc_parameters.get('reservoir_rfc_forecasts', False)
 
         if not from_files:
+            # Use BMI-provided 1-D arrays for creating rfc dataframes
             if rfc:
                 # Retrieve rfc timeseries dataframe from BMI dictionary
                 rfc_df = value_dict['rfc_timeseries_df']
+                '''
                 # Create reservoir_rfc_df dataframe of observations, rows are locations and columns are dates.
                 self._reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
                 self._reservoir_rfc_df.columns = self._reservoir_rfc_df.columns.droplevel()
@@ -563,13 +567,42 @@ class RFCDA(AbstractDA):
                 self._reservoir_rfc_param_df['da_timestep'] = self._reservoir_rfc_param_df['da_timestep'].astype(int)
                 self._reservoir_rfc_param_df['update_time'] = 0
                 self._reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
-
+                '''
+                self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
+                                                                                            rfc_df, 
+                                                                                            network.rfc_lake_gage_crosswalk,
+                                                                                            network.t0, 
+                                                                                            rfc_parameters,
+                                                                                            )                
             else: 
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
         else:
-            self._reservoir_rfc_df = pd.DataFrame()
-            self._reservoir_rfc_param_df = pd.DataFrame()
+            # In order to use only RFC python module (not fortran module), create rfc dataframes from reading files
+            #rfc_parameters   = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
+            lookback_hrs     = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
+            offset_hrs       = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
+            start_datetime   = network.t0 
+            timeseries_end   = start_datetime + timedelta(hours=offset_hrs)
+            timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
+            delta            = timedelta(hours=1)
+            timeseries_dates = []
+            while timeseries_start <= timeseries_end:
+                timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
+                timeseries_start += delta
+            rfc_forecast_persist_days = rfc_parameters.get('reservoir_rfc_forecast_persist_days')
+            final_persist_datetime = start_datetime + timedelta(days=rfc_forecast_persist_days)
+            # RFC Observations
+            if rfc:
+                rfc_timeseries_path = str(rfc_parameters.get('reservoir_rfc_forecasts_time_series_path'))
+                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)           
+
+            self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
+                                                                                            self._rfc_timeseries_df, 
+                                                                                            network.rfc_lake_gage_crosswalk,
+                                                                                            network.t0, 
+                                                                                            rfc_parameters,
+                                                                                            )
 
     def update_after_compute(self, run_results):
         '''
@@ -612,7 +645,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     """
     
     """
-    __slots__ = ["_data_assimilation_parameters", "_run_parameters", "_waterbody_parameters"]
+    __slots__ = ["_data_assimilation_parameters", "_run_parameters", "_waterbody_parameters"]            
 
     def __init__(self, network, data_assimilation_parameters, run_parameters, waterbody_parameters,
                  from_files=True, value_dict=None, da_run=[]):
@@ -1429,3 +1462,45 @@ def _rfc_timeseries_qcqa(discharge,stationId,synthetic,totalCounts,timestamp,tim
     set_index('stationId'))
 
     return rfc_df, rfc_param_df
+
+def assemble_rfc_dataframes(rfc_timeseries_df, rfc_lake_gage_crosswalk, t0, rfc_parameters):
+    # Retrieve rfc timeseries dataframe from BMI dictionary
+    rfc_df = rfc_timeseries_df
+    # Create reservoir_rfc_df dataframe of observations, rows are locations and columns are dates.
+    reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
+    reservoir_rfc_df.columns = reservoir_rfc_df.columns.droplevel()
+    # Replace gage IDs with lake IDs
+    reservoir_rfc_df = (
+                        rfc_lake_gage_crosswalk.
+                        reset_index().
+                        set_index('rfc_gage_id').
+                        join(reservoir_rfc_df).
+                        set_index('rfc_lake_id')
+                        )
+    # Create reservoir_rfc_df dataframe of parameters
+    reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','timeseries_idx','file','use_rfc','da_timestep']].drop_duplicates().set_index('stationId')
+    reservoir_rfc_param_df = (
+                            rfc_lake_gage_crosswalk.
+                            reset_index().
+                            set_index('rfc_gage_id').
+                            join(reservoir_rfc_param_df).
+                            set_index('rfc_lake_id')
+                            )
+    # To pass RFC observations to mc_reach they need to be in an array. But the RFC timeseries have different
+    # lengths/start dates for each location so the array ends up having many NaN observations after we 
+    # pivot the dataframe from long to wide format. We therefore need to adjust the timeseries index and
+    # total counts to reflect the new position of t0 in the observation array. 
+    new_timeseries_idx = reservoir_rfc_df.columns.get_loc(t0) - 1 #minus 1 so on first call of reservoir_rfc_da(), timeseries_idx will advance 1 position to t0.
+    reservoir_rfc_param_df['totalCounts'] = reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - reservoir_rfc_param_df['timeseries_idx'])
+    reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
+    # Fill in NaNs with default values.
+    reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
+    reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
+    reservoir_rfc_param_df['da_timestep'].fillna(0, inplace=True)
+    # Make sure columns are the correct types
+    reservoir_rfc_param_df['totalCounts'] = reservoir_rfc_param_df['totalCounts'].astype(int)
+    reservoir_rfc_param_df['da_timestep'] = reservoir_rfc_param_df['da_timestep'].astype(int)
+    reservoir_rfc_param_df['update_time'] = 0
+    reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
+
+    return reservoir_rfc_df, reservoir_rfc_param_df
