@@ -469,6 +469,30 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_type_specified = False
             self._link_lake_crosswalk = None
 
+
+    def get_da_gages(
+        self,
+        gages_df,
+        usgs_ind,
+        gages_id="gages",
+        val_id="value",
+        seq_id="hydroseq",
+        keep_opt="last",
+    ):
+        """Returns last gage in each segment to support data assimilation"""
+        idx_id=gages_df.index.name
+        return (
+            gages_df.loc[usgs_ind]
+            .reset_index()
+            .sort_values(seq_id)
+            .drop_duplicates([val_id], keep=keep_opt)
+            .set_index(idx_id)[[val_id]]
+            .rename(columns={val_id: gages_id})
+            .rename_axis(None, axis=0)
+            .to_dict()
+        )
+
+
     def preprocess_data_assimilation(self, network):
         if not network.empty:
             gages_df = network[['id','hl_uri','hydroseq']].drop_duplicates()
@@ -492,12 +516,9 @@ class HYFeaturesNetwork(AbstractNetwork):
             # transform dataframe into a dictionary where key is segment ID and value is gage ID
             usgs_ind = gages_df.value.str.isnumeric() #usgs gages used for streamflow DA
             # Use hydroseq information to determine furthest downstream gage when multiple are present.
-            self._gages = (
-                gages_df.loc[usgs_ind].reset_index()
-                .groupby('value').max('hydroseq').reset_index()
-                .set_index('index')[['value']].rename(columns={'value': 'gages'})
-                .rename_axis(None, axis=0).to_dict()
-            )
+            if not gages_df.index.name:
+                gages_df.index.name = 'index'
+            self._gages = self.get_da_gages(gages_df, usgs_ind)
             
             # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
             lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
