@@ -65,19 +65,35 @@ class NudgingDA(AbstractDA):
         if nudging:
             if not from_files:
                 usgs_df = value_dict['usgs_df']
-                usgs_df = usgs_df.join(
-                    network.link_gage_df.
-                    reset_index().
-                    set_index('gages'),
-                    how='inner'
-                ).set_index('link').sort_index()
+                #usgs_df = usgs_df.join(network.link_gage_df.reset_index().set_index('gages'),how='inner').set_index('link').sort_index()
+                usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
 
                 self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
                 
-                lastobs = streamflow_da_parameters.get("bmi_lastobs", False)
+                lastobs = streamflow_da_parameters.get("lastobs_file", False)
                 self._last_obs_df = pd.DataFrame()
                 if lastobs:
                     lastobs_df = value_dict['lastobs_df']
+                    lastobs_df_ids = value_dict['lastobs_df_index']
+                    lastobs_df = pd.DataFrame(data=lastobs_df.reshape(len(lastobs_df_ids),-1),
+                                              index=lastobs_df_ids,
+                                              columns=['gages','time_since_lastobs','lastobs_discharge']).set_index('gages')
+                    link_gage_df = network.link_gage_df.reset_index().set_index('gages')
+                    col_name = link_gage_df.columns[0]
+                    link_gage_df[col_name] = link_gage_df[col_name].astype(int)
+                    gages_dict = link_gage_df.to_dict().get(col_name)
+                    lastobs_df = lastobs_df.rename(index=gages_dict)
+                    # remove 'nan' values from index
+                    temp_df = lastobs_df.reset_index()
+                    temp_df = temp_df[temp_df['gages']!='nan']
+                    temp_df['gages'] = temp_df['gages'].astype(int)
+                    lastobs_df = temp_df.set_index('gages').dropna()
+                    '''
+                    link_lake_dict = pd.DataFrame.from_dict(network.link_lake_crosswalk, orient='index').reset_index()
+                    link_lake_dict.columns = ['lake_id', 'link']
+                    link_lake_dict = link_lake_dict.set_index('link').to_dict().get('lake_id')
+                    '''
+                    
                     self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
             
             else:

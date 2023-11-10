@@ -1076,10 +1076,8 @@ def nwm_forcing_preprocess(
         
         # build dataframe that crosswalks segmentIDs to lakeIDs
         link_lake_df = (
-            gage_lake_df.
-            join(gage_link_df, how = 'inner').
-            reset_index().set_index('link').
-            drop(['index'], axis = 1)
+            gage_lake_df.join(gage_link_df, how = 'inner').
+            reset_index(drop=True).set_index('link')
         )
         
         # resample `usgs_df` to 15 minute intervals
@@ -1093,9 +1091,8 @@ def nwm_forcing_preprocess(
         # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
         reservoir_usgs_df = (
             usgs_df_15min.join(link_lake_df, how = 'inner').
-            reset_index().
-            set_index('usgs_lake_id').
-            drop(['index'], axis = 1)
+            reset_index(drop=True).
+            set_index('usgs_lake_id')
         )
         
         LOG.debug(
