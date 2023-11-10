@@ -41,7 +41,12 @@ class bmi_DAforcing(Bmi):
     #---------------------------------------------
     # Input variable names (CSDMS standard names)
     #---------------------------------------------
-    _input_var_names = []
+    _input_var_names = [
+        'flowvelocitydepth',
+        'flowvelocitydepth_ids',
+        'nudging',
+        'nudging_ids'
+    ]
 
     #---------------------------------------------
     # Output variable names (CSDMS standard names)
@@ -126,7 +131,37 @@ class bmi_DAforcing(Bmi):
         self._values['reservoir_usgs_df'] = self._model._reservoir_usgs_df
         self._values['reservoir_usace_df'] = self._model._reservoir_usace_df
         self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
-        self._values['lastobs_df'] = self._model._lastobs_df
+        
+        if not self._model._lastobs_df.empty:
+            self._values['lastobs_df'] = self._model._lastobs_df.values.flatten()
+            self._values['lastobs_df_ids'] = self._model._lastobs_df.index
+        else:
+            self._values['lastobs_df'] = np.zeros(0)
+            self._values['lastobs_df_ids'] = np.zeros(0)
+        
+        if not self._model._q0.empty:
+            self._values['q0'] = self._model._q0.values.flatten()
+            self._values['q0_ids'] = self._model._q0.index
+            self._values['t0'] = self._model._t0
+        else:
+            self._values['q0'] = np.zeros(0)
+            self._values['q0_ids'] = np.zeros(0)
+            self._values['t0'] = np.zeros(0)
+        
+        if not self._model._waterbody_df.empty:
+            self._values['waterbody_df'] = self._model._waterbody_df.values.flatten()
+            self._values['waterbody_df_ids'] = self._model._waterbody_df.index
+        else:
+            self._values['waterbody_df'] = np.zeros(0)
+            self._values['waterbody_df_ids'] = np.zeros(0)
+
+        self._values['flowvelocitydepth'] = np.zeros(0)
+        self._values['flowvelocitydepth_ids'] = np.zeros(0)
+        self._values['lakeout'] = np.zeros(0)
+        self._values['lakeout_ids'] = np.zeros(0)
+        self._values['nudging'] = np.zeros(0)
+        self._values['nudging_ids'] = np.zeros(0)
+        self._values['t-route_model_time'] = np.zeros(0)
 
     def get_value(self, var_name):
         """Copy of values.
@@ -147,13 +182,23 @@ class bmi_DAforcing(Bmi):
 
     def update(self):
         """Advance model by one time step."""
-        '''
-        if self._model._time==0.0:
-            self._model.preprocess_static_vars(self._values) 
-
         self._model.run(self._values)
-        '''
-        pass
+
+    def set_value(self, var_name, src):
+        """
+        Set model values
+        
+        Parameters
+        ----------
+        var_name : str
+            Name of variable as CSDMS Standard Name.
+        src : array_like
+            Array of new values.
+        """
+        #val = self.get_value_ptr(var_name)
+        #val[:] = src.reshape(val.shape)
+        
+        self._values[var_name] = src
 
     def update_until(self, until):
         """Update model until a particular time.
@@ -306,22 +351,6 @@ class bmi_DAforcing(Bmi):
         """
         dest[:] = self.get_value_ptr(var_name).take(indices)
         return dest
-
-    def set_value(self, var_name, src):
-        """
-        Set model values
-        
-        Parameters
-        ----------
-        var_name : str
-            Name of variable as CSDMS Standard Name.
-        src : array_like
-            Array of new values.
-        """
-        val = self.get_value_ptr(var_name)
-        val[:] = src.reshape(val.shape)
-        
-        #self._values[var_name] = src
 
     def set_value_at_indices(self, name, inds, src):
         """Set model values at particular indices.

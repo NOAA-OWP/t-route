@@ -1,8 +1,11 @@
 numpy
-Cython
+Cython<3.0.4
 pandas>=1.1.5
 xarray
 netcdf4
 pyyaml
 toolz
 joblib
+deprecated
+pyarrow<12.0
+geopandas
