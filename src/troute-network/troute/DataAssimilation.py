@@ -541,22 +541,23 @@ class RFCDA(AbstractDA):
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
         else:
-            # In order to use only RFC python module (not fortran module), create rfc dataframes from reading files
-            #rfc_parameters   = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
-            lookback_hrs     = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
-            offset_hrs       = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
-            start_datetime   = network.t0 
-            timeseries_end   = start_datetime + timedelta(hours=offset_hrs)
-            timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
-            delta            = timedelta(hours=1)
-            timeseries_dates = []
-            while timeseries_start <= timeseries_end:
-                timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
-                timeseries_start += delta
-            rfc_forecast_persist_days = rfc_parameters.get('reservoir_rfc_forecast_persist_days')
-            final_persist_datetime = start_datetime + timedelta(days=rfc_forecast_persist_days)
-            # RFC Observations
             if rfc:
+                # In order to use only RFC python module (not fortran module), create rfc dataframes from reading files
+                #rfc_parameters   = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
+                lookback_hrs     = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
+                offset_hrs       = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
+                start_datetime   = network.t0 
+                timeseries_end   = start_datetime + timedelta(hours=offset_hrs)
+                timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
+                delta            = timedelta(hours=1)
+                timeseries_dates = []
+                while timeseries_start <= timeseries_end:
+                    timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
+                    timeseries_start += delta
+                rfc_forecast_persist_days = rfc_parameters.get('reservoir_rfc_forecast_persist_days')
+                final_persist_datetime = start_datetime + timedelta(days=rfc_forecast_persist_days)
+                
+                # RFC Observations
                 rfc_timeseries_path = str(rfc_parameters.get('reservoir_rfc_forecasts_time_series_path'))
                 self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)           
                 self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
