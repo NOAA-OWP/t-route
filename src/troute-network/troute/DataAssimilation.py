@@ -26,7 +26,7 @@ class AbstractDA(ABC):
                  "_reservoir_usgs_df", "_reservoir_usgs_param_df", 
                  "_reservoir_usace_df", "_reservoir_usace_param_df",
                  "_reservoir_rfc_df", "_reservoir_rfc_synthetic",
-                 "_reservoir_rfc_param_df"]
+                 "_reservoir_rfc_param_df", "_rfc_timeseries_df"]
 
 
 # -----------------------------------------------------------------------------
