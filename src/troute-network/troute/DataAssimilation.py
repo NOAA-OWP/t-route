@@ -559,13 +559,15 @@ class RFCDA(AbstractDA):
             if rfc:
                 rfc_timeseries_path = str(rfc_parameters.get('reservoir_rfc_forecasts_time_series_path'))
                 self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)           
-
-            self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
-                                                                                            self._rfc_timeseries_df, 
-                                                                                            network.rfc_lake_gage_crosswalk,
-                                                                                            network.t0, 
-                                                                                            rfc_parameters,
-                                                                                            )
+                self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
+                                                                                                self._rfc_timeseries_df, 
+                                                                                                network.rfc_lake_gage_crosswalk,
+                                                                                                network.t0, 
+                                                                                                rfc_parameters,
+                                                                                                )
+            else:
+                self._reservoir_rfc_df = pd.DataFrame()
+                self._reservoir_rfc_param_df = pd.DataFrame()
 
     def update_after_compute(self, run_results):
         '''
