@@ -70,24 +70,29 @@ def read_json(file_path, edge_list):
     with open(edge_list) as edge_file:
         edge_data = json.load(edge_file)
         edge_map = {}
+        wb_id, toid = edge_data[0].keys()
         for id_dict in edge_data:
-            edge_map[ id_dict['id'] ] = id_dict['toid']
+            edge_map[ id_dict[wb_id] ] = id_dict[toid]
         with open(file_path) as data_file:
             json_data = json.load(data_file)  
             for key_wb, value_params in json_data.items():
                 df = pd.json_normalize(value_params)
-                df['id'] = key_wb
-                df['toid'] = edge_map[key_wb]
+                df[wb_id] = key_wb
+                df[toid] = edge_map[key_wb]
                 dfs.append(df)
         df_main = pd.concat(dfs, ignore_index=True)
 
     return df_main
 
+def read_geojson(file_path):
+    flowpaths = gpd.read_file(file_path)
+    return flowpaths
+
 def numeric_id(flowpath):
-    id = flowpath['id'].split('-')[-1]
-    toid = flowpath['toid'].split('-')[-1]
-    flowpath['id'] = int(float(id))
-    flowpath['toid'] = int(float(toid))
+    id = flowpath['key'].split('-')[-1]
+    toid = flowpath['downstream'].split('-')[-1]
+    flowpath['key'] = int(float(id))
+    flowpath['downstream'] = int(float(toid))
     return flowpath
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
@@ -141,19 +146,19 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
 def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
+    flowpaths = lakes = network = pd.DataFrame()
     
     file_type = Path(geo_file_path).suffix
-    if(  file_type == '.gpkg' ):        
+    if(file_type=='.gpkg'):        
         flowpaths, lakes, network = read_geopkg(geo_file_path, 
                                                 data_assimilation_parameters,
                                                 waterbody_parameters,
                                                 cpu_pool)
-        #TODO Do we need to keep .json as an option?
-        '''
-        elif( file_type == '.json') :
-            edge_list = supernetwork_parameters['flowpath_edge_list']
-            self._dataframe = read_json(geo_file_path, edge_list) 
-        '''
+    elif(file_type == '.json'):
+        edge_list = supernetwork_parameters['flowpath_edge_list']
+        flowpaths = read_json(geo_file_path, edge_list)
+    elif(file_type=='.geojson'):
+        flowpaths = read_geojson(geo_file_path)
     else:
         raise RuntimeError("Unsupported file type: {}".format(file_type))
     
@@ -319,31 +324,11 @@ class HYFeaturesNetwork(AbstractNetwork):
     
     def preprocess_network(self, flowpaths):
         self._dataframe = flowpaths
-
-        # Don't need the string prefix anymore, drop it
-        mask = ~ self.dataframe['toid'].str.startswith("tnex") 
-        self._dataframe = self.dataframe.apply(numeric_id, axis=1)
         
-        # handle segment IDs that are also waterbody IDs. The fix here adds a large value
-        # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
-        # will get confused because there will be repeat IDs...
-        duplicate_wb_segments = self.supernetwork_parameters.get("duplicate_wb_segments", None)
-        duplicate_wb_id_offset = self.supernetwork_parameters.get("duplicate_wb_id_offset", 9.99e11)
-        if duplicate_wb_segments:
-            # update the values of the duplicate segment IDs
-            fix_idx = self.dataframe.id.isin(set(duplicate_wb_segments))
-            self._dataframe.loc[fix_idx,"id"] = (self.dataframe[fix_idx].id + duplicate_wb_id_offset).astype("int64")
-
-        # make the flowpath linkage, ignore the terminal nexus
-        self._flowpath_dict = dict(zip(self.dataframe.loc[mask].toid, self.dataframe.loc[mask].id))
-        
-        # **********  need to be included in flowpath_attributes  *************
-        self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
-
-        cols = self.supernetwork_parameters.get('columns',None)
-        
+        cols = self.supernetwork_parameters.get('columns', None)
         if cols:
-            self._dataframe = self.dataframe[list(cols.values())]
+            col_idx = list(set(cols.values()).intersection(set(self.dataframe.columns)))
+            self._dataframe = self.dataframe[col_idx]
             # Rename parameter columns to standard names: from route-link names
             #        key: "link"
             #        downstream: "to"
@@ -361,8 +346,30 @@ class HYFeaturesNetwork(AbstractNetwork):
             #        musx: "MusX"
             #        cs: "ChSlp"  # TODO: rename to `sideslope`
             self._dataframe = self.dataframe.rename(columns=reverse_dict(cols))
-            self._dataframe.set_index("key", inplace=True)
-            self._dataframe = self.dataframe.sort_index()
+        
+        # Don't need the string prefix anymore, drop it
+        mask = ~ self.dataframe['downstream'].str.startswith("tnx") 
+        self._dataframe = self.dataframe.apply(numeric_id, axis=1)
+        
+        # handle segment IDs that are also waterbody IDs. The fix here adds a large value
+        # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
+        # will get confused because there will be repeat IDs...
+        duplicate_wb_segments = self.supernetwork_parameters.get("duplicate_wb_segments", None)
+        duplicate_wb_id_offset = self.supernetwork_parameters.get("duplicate_wb_id_offset", 9.99e11)
+        if duplicate_wb_segments:
+            # update the values of the duplicate segment IDs
+            fix_idx = self.dataframe.key.isin(set(duplicate_wb_segments))
+            self._dataframe.loc[fix_idx,"key"] = (self.dataframe[fix_idx].key + duplicate_wb_id_offset).astype("int64")
+
+        # make the flowpath linkage, ignore the terminal nexus
+        self._flowpath_dict = dict(zip(self.dataframe.loc[mask].downstream, self.dataframe.loc[mask].key))
+        
+        self._dataframe.set_index("key", inplace=True)
+        self._dataframe = self.dataframe.sort_index()
+        
+        # **********  need to be included in flowpath_attributes  *************
+        if 'alt' not in self.dataframe.columns:
+            self._dataframe['alt'] = 1.0 #FIXME get the right value for this... 
 
         # Drop 'gages' column if it is present
         if 'gages' in self.dataframe:
