@@ -96,6 +96,7 @@ class troute_model():
             compute_parameters=self._compute_parameters,
             hybrid_parameters=self._hybrid_parameters,
             preprocessing_parameters=self._preprocessing_parameters,
+            output_parameters = self._output_parameters, 
             from_files=False, value_dict=values,
             bmi_parameters=self._bmi_parameters,)
 
@@ -280,8 +281,8 @@ class troute_model():
         nudge = np.concatenate([r[8] for r in self._run_results])[:,1:]
         usgs_positions_id = np.concatenate([r[3][0] for r in self._run_results]).astype(int)
         self._nudge = pd.DataFrame(data=nudge, index=usgs_positions_id)
-        values['nudging'] = self._nudge
-        values['nudging_ids'] = usgs_positions_id
+        values['nudging'] = self._nudge.values.flatten()
+        values['nudging_ids'] = self._nudge.index
 
         # Get output from final timestep
         (values['channel_exit_water_x-section__volume_flow_rate'], 
