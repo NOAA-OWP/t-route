@@ -1,0 +1,138 @@
+# $ python -m nwm_routing -f -V4 Extended_AnA.yaml
+
+# Usage: Parameters that have "#REQUIRED" must be updated by user. All other parameters
+# should not be altered.
+
+#--------------------------------------------------------------------------------
+bmi_parameters:
+    #----------
+    flowpath_columns:
+        - 'id'
+        - 'toid'
+        - 'lengthkm'
+    attributes_columns:
+        - 'attributes_id'
+        - 'rl_gages'
+        - 'rl_NHDWaterbodyComID'
+        - 'MusK'
+        - 'MusX'
+        - 'n'
+        - 'So'
+        - 'ChSlp'
+        - 'BtmWdth'
+        - 'nCC'
+        - 'TopWdthCC'
+        - 'TopWdth'
+    waterbody_columns:
+        - 'hl_link'
+        - 'ifd'
+        - 'LkArea'
+        - 'LkMxE'
+        - 'OrificeA'
+        - 'OrificeC'
+        - 'OrificeE'
+        - 'WeirC'
+        - 'WeirE'
+        - 'WeirL'
+    network_columns:
+        - 'network_id'
+        - 'hydroseq'
+        - 'hl_uri'
+#--------------------------------------------------------------------------------
+log_parameters:
+    #----------
+    showtiming: True
+    log_level : CRITICAL
+#--------------------------------------------------------------------------------
+network_topology_parameters:
+    #----------
+    supernetwork_parameters:
+        #----------
+        geo_file_path: /home/amin/Amin_fork/t-route/test/LowerColorado_TX_bmi/domain/LowerColorado_NGENv20.gpkg        
+        columns: 
+            key: 'id'
+            downstream: 'toid'
+            dx : 'lengthkm'
+            n : 'n'
+            ncc : 'nCC'
+            s0 : 'So'
+            bw : 'BtmWdth'
+            waterbody : 'rl_NHDWaterbodyComID'
+            gages : 'rl_gages'
+            tw : 'TopWdth'
+            twcc : 'TopWdthCC'
+            musk : 'MusK'
+            musx : 'MusX'
+            cs : 'ChSlp'
+            alt: 'alt'
+    waterbody_parameters:
+        #----------
+        break_network_at_waterbodies: True  
+    preprocessing_parameters:
+        #----------
+        preprocess_only: False
+        # NOTE: required if preprocess_only = True
+        # TODO: determine if str type
+        preprocess_output_folder: #/home/APD/inland_hydraulics/Apr2023_testcase/preprocess/
+        preprocess_output_filename: None #Extended_AnA_output
+        use_preprocessed_data: False
+        # NOTE: required if use_preprocessed_data = True
+        # TODO: determine if str type
+        preprocess_source_file: #/home/APD/inland_hydraulics/Apr2023_testcase/preprocess/Extended_AnA_output.npy
+#--------------------------------------------------------------------------------
+compute_parameters:
+    #----------
+    parallel_compute_method: by-subnetwork-jit-clustered
+    cpu_pool               : 16
+    subnetwork_target_size : 10000
+    assume_short_ts        : True
+    restart_parameters:
+        #----------
+        start_datetime             : 2023-04-02_00:00:00 #2023-04-29_21:00:00
+        lite_channel_restart_file  : #/home/APD/inland_hydraulics/Apr2023_testcase/restart/channel_restart_202304182100
+        lite_waterbody_restart_file: #/home/APD/inland_hydraulics/Apr2023_testcase/restart/waterbody_restart_202304182100
+    forcing_parameters:
+        #----------
+        nts                      : 8640 #336 
+        max_loop_size            : 1
+        qlat_input_folder        : /home/APD/inland_hydraulics/Apr2023_testcase/forcing/synthetic/ # noah_nasa/
+        qlat_file_pattern_filter : "*.CHRTOUT_DOMAIN1.csv" 
+    data_assimilation_parameters:
+        #----------
+        usgs_timeslices_folder : /home/amin/Amin_fork/t-route/test/LowerColorado_TX_bmi/usgs_timeslices
+        usace_timeslices_folder: /home/amin/Amin_fork/t-route/test/LowerColorado_TX_bmi/usace_timeslices
+        #usgs_timeslices_folder : /home/dongha.kim/github/data/LowerColorado_April2023/usgs
+        #usace_timeslices_folder: /home/dongha.kim/github/data/LowerColorado_April2023/usace
+        streamflow_da:
+            #----------
+            streamflow_nudging   : True
+            lastobs_file         : #/home/APD/inland_hydraulics/Apr2023_testcase/lastobs/nudgingLastObs.2023-04-18_21:00:00.nc
+            lastobs_output_folder: #None #/home/dongha.kim/github/t-route/test/bmi_restart_lastobs/lastobs/ #/home/APD/inland_hydraulics/Apr2023_testcase/lastobs/
+        reservoir_da:
+            #----------
+            reservoir_parameter_file: /home/sean.horvath/projects/data/extended_AnA/reservoir_index_Extended_AnA_NWMv2.1.nc
+            reservoir_persistence_da:
+                #----------
+                reservoir_persistence_usgs : False
+                reservoir_persistence_usace: False
+            reservoir_rfc_da:
+                #----------
+                reservoir_rfc_forecasts                 : False
+                reservoir_rfc_forecasts_time_series_path: /home/APD/inland_hydraulics/Apr2023_testcase/rfc_timeseries
+                #reservoir_rfc_forecasts_time_series_path: /home/dongha.kim/github/data/LowerColorado_April2023/rfc
+#--------------------------------------------------------------------------------
+output_parameters:
+    #----------
+    lite_restart:
+        #----------
+        lite_restart_output_directory: restart/ #/home/APD/inland_hydraulics/Apr2023_testcase/restart/
+    chanobs_output:
+        #----------
+        chanobs_output_directory: output/
+        chanobs_filepath        : test_chanobs.nc
+    lakeout_output: #/home/APD/inland_hydraulics/Apr2023_testcase/lakeout/
+    stream_output: 
+        stream_output_directory: output/
+        stream_output_time: 1 #[hr]
+        stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+        stream_output_internal_frequency: 30 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60
