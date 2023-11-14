@@ -216,7 +216,7 @@ def main_v04(argv):
         data_assimilation.update_after_compute(run_results, dt*nts)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
-        if output_parameters['lite_restart'] is not None:
+        if output_parameters.get('lite_restart',{}).get('lite_restart_output_directory', None):
             nhd_io.write_lite_restart(
                 network.q0, 
                 network._waterbody_df, 
