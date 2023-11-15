@@ -214,3 +214,13 @@ class Config(BaseModel, extra='forbid'):
 
         return values
 
+    @root_validator(skip_on_failure=True)
+    def check_flowpath_edge_list(cls, values):
+        geo_file_path = values['network_topology_parameters'].supernetwork_parameters.geo_file_path
+        flowpath_edge_list = values['network_topology_parameters'].supernetwork_parameters.flowpath_edge_list
+        if Path(geo_file_path).suffix=='.json':
+            assert flowpath_edge_list, "geo_file_path is json, but no flowpath_edge_list is provided."
+            assert Path(flowpath_edge_list).suffix=='.json', "geo_file_path is json, but flowpath_edge_list is a different file type."
+
+        return values
+    
