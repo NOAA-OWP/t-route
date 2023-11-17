@@ -211,7 +211,7 @@ def main_v04(argv):
         # create initial conditions for next loop itteration
         network.new_q0(run_results)
         network.update_waterbody_water_elevation()    
-        
+ 
         # update reservoir parameters and lastobs_df
         data_assimilation.update_after_compute(run_results, dt*nts)
 
@@ -243,7 +243,7 @@ def main_v04(argv):
 
         if showtiming:
             output_start_time = time.time()
-        
+
         #TODO Update this to work with either network type...
         nwm_output_generator(
             run,

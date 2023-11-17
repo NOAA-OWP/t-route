@@ -619,7 +619,7 @@ def compute_nhd_routing_v02(
                         )
                     )
                 results_subn[order] = parallel(jobs)
-   
+
                 if order > 0:  # This is not needed for the last rank of subnetworks
                     flowveldepth_interorder = {}
                     for ci, (cluster, clustered_subns) in enumerate(

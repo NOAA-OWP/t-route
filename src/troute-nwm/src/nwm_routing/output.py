@@ -115,6 +115,7 @@ def nwm_output_generator(
     chano = output_parameters.get("chanobs_output", None)
     wbdyo = output_parameters.get("lakeout_output", None)
     stream_output = output_parameters.get("stream_output", None)
+    lastobso = output_parameters.get("lastobs_output", None)
 
     if csv_output:
         csv_output_folder = output_parameters["csv_output"].get(
@@ -387,6 +388,38 @@ def nwm_output_generator(
             )
 
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
+
+    if lastobso: 
+    #if 1==1:
+        # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
+        # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
+        # folder is provided by the user.
+        lastobs_output_folder = None
+        nudging_true = None
+        streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
+        if streamflow_da:
+            lastobs_output_folder = streamflow_da.get(
+                "lastobs_output_folder", None
+                )
+            nudging_true = streamflow_da.get('streamflow_nudging', None)
+
+        if nudging_true and lastobs_output_folder:
+
+            LOG.info("- writing lastobs files")
+            start = time.time()
+
+            nhd_io.lastobs_df_output(
+                lastobs_df,
+                dt,
+                nts,
+                t0,
+                link_gage_df['gages'],
+                lastobs_output_folder,
+            )
+
+            LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
+
+
 
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)
