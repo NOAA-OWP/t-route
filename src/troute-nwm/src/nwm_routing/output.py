@@ -390,7 +390,6 @@ def nwm_output_generator(
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
     if lastobso: 
-    #if 1==1:
         # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
         # folder is provided by the user.
@@ -418,7 +417,6 @@ def nwm_output_generator(
             )
 
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
-
 
 
     if 'flowveldepth' in locals():

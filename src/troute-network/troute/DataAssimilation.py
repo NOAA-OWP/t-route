@@ -98,36 +98,38 @@ class NudgingDA(AbstractDA):
                     self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
             
             else:
-                import pdb; pdb.set_trace()
-                # lastobs Dataframe for NHD Hydrofabric
-                lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                #TODO: Is it a sustainable to figure out if using NHD or HYfeature based on lastobs_crosswalk_file?
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
-                lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
-                
-                if lastobs_file:
-                    self._last_obs_df = build_lastobs_df(
-                        lastobs_file,
-                        lastobs_crosswalk_file,
-                        lastobs_start,
-                    )
-
-                # lastobs Dataframe forHYfeature HYdrofabric
-                lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)              
-                if lastobs_file:
-                    lastobs_df = _read_lastobs_file(lastobs_file)
-                    lastobs_df = lastobs_df.set_index('gages')
-                    link_gage_df = network.link_gage_df.reset_index().set_index('gages')
-                    col_name = link_gage_df.columns[0]
-                    link_gage_df[col_name] = link_gage_df[col_name].astype(int)
-                    gages_dict = link_gage_df.to_dict().get(col_name)
-                    lastobs_df = lastobs_df.rename(index=gages_dict)
-                    # remove 'nan' values from index
-                    temp_df = lastobs_df.reset_index()
-                    temp_df = temp_df[temp_df['gages']!='nan']
-                    temp_df['gages'] = temp_df['gages'].astype(int)
-                    lastobs_df = temp_df.set_index('gages').dropna()
-                    self._last_obs_df = lastobs_df
-
+                if lastobs_crosswalk_file:
+                    # lastobs Dataframe for NHD Hydrofabric
+                    lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                    lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+                    lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
+                    
+                    if lastobs_file:
+                        self._last_obs_df = build_lastobs_df(
+                            lastobs_file,
+                            lastobs_crosswalk_file,
+                            lastobs_start,
+                        )
+                else:
+                    # lastobs Dataframe forHYfeature HYdrofabric
+                    lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)              
+                    if lastobs_file:
+                        lastobs_df = _read_lastobs_file(lastobs_file)
+                        lastobs_df = lastobs_df.set_index('gages')
+                        link_gage_df = network.link_gage_df.reset_index().set_index('gages')
+                        col_name = link_gage_df.columns[0]
+                        link_gage_df[col_name] = link_gage_df[col_name].astype(int)
+                        gages_dict = link_gage_df.to_dict().get(col_name)
+                        lastobs_df = lastobs_df.rename(index=gages_dict)
+                        # remove 'nan' values from index
+                        temp_df = lastobs_df.reset_index()
+                        temp_df = temp_df[temp_df['gages']!='nan']
+                        temp_df['gages'] = temp_df['gages'].astype(int)
+                        lastobs_df = temp_df.set_index('gages').dropna()
+                        self._last_obs_df = lastobs_df
+                    
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
                 # segments because connections dic has replaced all link ids within

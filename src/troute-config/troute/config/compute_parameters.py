@@ -119,6 +119,7 @@ class StreamflowDA(BaseModel, extra='forbid'):
     # TODO: changed the name of this parameter from "wrf_hydro_lastobs_file" to "lastobs_file"
     # Need to update this in t-route as well.
     lastobs_file: Optional[FilePath] = None
+    wrf_hydro_lastobs_file: Optional[FilePath] = None
 
     # NOTE: required if lastobs are to be written out during and after simulations
     lastobs_output_folder: Optional[DirectoryPath] = None
