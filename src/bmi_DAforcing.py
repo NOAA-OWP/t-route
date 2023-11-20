@@ -59,6 +59,85 @@ class bmi_DAforcing(Bmi):
         'lastobs_df'
     ]
 
+    #---------------------------------------------
+    # BMI variable output namesnames (CSDMS standard names)
+    #---------------------------------------------
+    # USGS DF
+    _BMI_output_usgs = [
+        'datesSecondsArray_usgs',
+        'nDates_usgs',
+        'stationArray_usgs',
+        'stationStringLengthArray_usgs',
+        'nStations_usgs',
+        'usgs_Array'
+    ]    
+    
+    # Reservoir USGS DF
+    _BMI_output_reservoir_usgs = [
+        'datesSecondsArray_reservoir_usgs',
+        'nDates_reservoir_usgs',
+        'stationArray_reservoir_usgs',
+        'stationStringLengthArray_reservoir_usgs',
+        'nStations_reservoir_usgs',
+        'reservoir_usgs_Array'
+    ]
+
+    # Reservoir USACE DF
+    _BMI_output_reservoir_usgs = [
+        'datesSecondsArray_reservoir_usace',
+        'nDates_reservoir_usace',
+        'stationArray_reservoir_usace',
+        'stationStringLengthArray_reservoir_usace',
+        'nStations_reservoir_usace',
+        'reservoir_usace_Array'
+    ]
+
+    # RFC DF
+    _BMI_output_reservoir_usgs = [
+        'rfc_da_timestep',
+        'rfc_totalCounts',
+        'rfc_synthetic_values',
+        'rfc_discharges',
+        'rfc_timeseries_idx',
+        'rfc_use_rfc',
+        'rfc_Datetime',
+        'rfc_da_timestep',
+        'rfc_timeSteps',
+        'rfc_StationId_array',
+        'rfc_StationId_stringLengths',
+        'rfc_List_array',
+        'rfc_List_stringLengths'
+    ]
+
+    # lastobs DF
+    _BMI_output_lastobs = [
+        'lastObs_gageArray',
+        'lastObs_gageStringLengths',
+        'lastObs_timeSince',
+        'lastObs_discharge'
+    ]
+
+    # lite restart dataframes (q0, waterbody_df)
+    _BMI_lite_restart = [
+        'q0_columnArray',
+        'q0_columnLengthArray',
+        'q0_nCol',
+        'q0_indexArray',
+        'q0_nIndex',
+        'q0_Array',
+        'waterbodyLR_columnArray',
+        'waterbodyLR_columnLengthArray',
+        'waterbodyLR_nCol',
+        'waterbodyLR_indexArray',
+        'waterbodyLR_nIndex',
+        'waterbodyLR_Array'
+    ]
+
+    # BMI support variables
+    _BMI_support_vars = [
+        'dateNull'
+    ]
+
     #------------------------------------------------------
     # Create a Python dictionary that maps CSDMS Standard
     # Names to the model's internal variable names.
@@ -154,6 +233,74 @@ class bmi_DAforcing(Bmi):
         else:
             self._values['waterbody_df'] = np.zeros(0)
             self._values['waterbody_df_ids'] = np.zeros(0)
+
+        #
+        # Initialize BMI transport arrays
+        #
+        # Auxiliary variables
+        self._values['dateNull'] = self._model._dateNull
+        #
+        # USGS dataframe converted
+        self._values['datesSecondsArray_usgs'] = self._model._datesSecondsArray_usgs
+        self._values['nDates_usgs'] = self._model._nDates_usgs
+        self._values['stationArray_usgs'] = self._model._stationArray_usgs
+        self._values['stationStringLengthArray_usgs'] = self._model._stationStringLengthArray_usgs
+        self._values['nStations_usgs'] = self._model._nStations_usgs
+        self._values['usgs_Array'] = self._model._usgsArray
+        #
+        # USGS reservoir dataframe converted
+        self._values['datesSecondsArray_reservoir_usgs'] = self._model._datesSecondsArray_reservoir_usgs
+        self._values['nDates_reservoir_usgs'] = self._model._nDates_reservoir_usgs
+        self._values['stationArray_reservoir_usgs'] = self._model._stationArray_reservoir_usgs
+        self._values['stationStringLengthArray_reservoir_usgs'] = self._model._stationStringLengthArray_reservoir_usgs
+        self._values['nStations_reservoir_usgs'] = self._model._nStations_reservoir_usgs
+        self._values['usgs_reservoir_Array'] = self._model._reservoirUsgsArray
+        #
+        # USACE reservoir dataframe converted        
+        self._values['datesSecondsArray_reservoir_usace'] = self._model._datesSecondsArray_reservoir_usace
+        self._values['nDates_reservoir_usace'] = self._model._nDates_reservoir_usace
+        self._values['stationArray_reservoir_usace'] = self._model._stationArray_reservoir_usace
+        self._values['stationStringLengthArray_reservoir_usace'] = self._model._stationStringLengthArray_reservoir_usace
+        self._values['nStations_reservoir_usace'] = self._model._reservoirUsaceArray
+        self._values['usace_reservoir_Array'] = self._model._reservoirUsaceArray
+        #
+        # RFC timeseries dataframe converted
+        self._values['rfc_da_timestep'] = self._model._rfc_da_timestep
+        self._values['rfc_totalCounts'] = self._model._rfc_totalCounts
+        self._values['rfc_synthetic_values'] = self._model._rfc_synthetic_values
+        self._values['rfc_discharges'] = self._model._rfc_discharges
+        self._values['rfc_timeseries_idx'] = self._model._rfc_timeseries_idx
+        self._values['rfc_use_rfc'] = self._model._rfc_use_rfc
+        self._values['rfc_Datetime'] = self._model._rfc_Datetime
+        self._values['rfc_timeSteps'] = self._model._rfc_timeSteps
+        self._values['rfc_StationId_array'] = self._model._rfc_StationId_array
+        self._values['rfc_StationId_stringLengths'] = self._model._rfc_StationId_stringLengths
+        self._values['rfc_List_array'] = self._model._rfc_List_array
+        self._values['rfc_List_stringLengths'] = self._model._rfc_List_stringLengths    
+        #
+        # lastobs dataframe
+        self._values['lastObs_gageArray'] = self._model._lastObs_gageArray
+        self._values['lastObs_gageStringLengths'] = self._model._lastObs_gageStringLengths
+        self._values['lastObs_timeSince'] = self._model._lastObs_timeSince
+        self._values['lastObs_discharge'] = self._model._lastObs_discharge
+        #
+        # lite restart dataframes
+        # q0    
+        self._values['q0_columnArray'] = self._model._q0_columnArray
+        self._values['q0_columnLengthArray'] = self._model._q0_columnLengthArray
+        self._values['q0_nCol'] = self._model._q0_nCol   
+        self._values['q0_indexArray'] = self._model._q0_indexArray
+        self._values['q0_nIndex'] = self._model._q0_nIndex 
+        self._values['q0_Array'] = self._model._q0_Array
+        #
+        # waterbody_df
+        self._values['waterbodyLR_columnArray'] = self._model._waterbodyLR_columnArray
+        self._values['waterbodyLR_columnLengthArray'] = self._model._waterbodyLR_columnLengthArray    
+        self._values['waterbodyLR_nCol'] = self._model._waterbodyLR_nCol 
+        self._values['waterbodyLR_indexArray'] = self._model._waterbodyLR_indexArray
+        self._values['waterbodyLR_nIndex'] = self._model._waterbodyLR_nIndex 
+        self._values['waterbodyLR_Array'] = self._model._waterbodyLR_Array
+
 
         self._values['flowvelocitydepth'] = np.zeros(0)
         self._values['flowvelocitydepth_ids'] = np.zeros(0)
