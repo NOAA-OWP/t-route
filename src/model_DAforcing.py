@@ -324,94 +324,6 @@ class DAforcing_model():
                 self._rfc_List_array = _rfc_List_array
                 self._rfc_List_stringLengths = _rfc_List_stringLengths
 
-            testRevert = True
-            # The following code segments revert the array troute -> bmi-flattened
-            # array conversions, and are placed here only temporarily for
-            # verification purposes, to be moved to DataAssimilation eventually.
-            # If "reverse" code is not removed, it can be temporarily disabled
-            # by setting the testRevert flag to False
-            if (testRevert):
-
-                # USGS Observations
-                if nudging or usgs_persistence:
-
-                    # USGS dataframe
-                
-                    if len(self._usgsArray) >=1:
-
-                        # Unflatten the arrays
-                        df_raw_usgs = a2df._unflatten_array(self._usgsArray,self._nDates_usgs,\
-                                          self._nStations_usgs)
-
-                        # Decode time/date axis
-                        timeAxisName = 'time'
-                        freqString = '5T'
-                        df_withDates_usgs = a2df._time_retrieve_from_arrays(df_raw_usgs, self._dateNull, \
-                            self._datesSecondsArray_usgs, timeAxisName, freqString)
-
-                        # Decode station ID axis
-                        stationAxisName = 'stationId'
-                        df_withStationsAndDates_usgs = a2df._stations_retrieve_from_arrays(\
-                            df_withDates_usgs, self._stationArray_usgs, \
-                            self._stationStringLengthArray_usgs, stationAxisName)
-
-                    # Reservoir USGS dataframe
-
-                    if len(self._reservoirUsgsArray) >=1:
-
-                        # Unflatten the arrays
-                        df_raw_reservoirUsgs = a2df._unflatten_array(self._reservoirUsgsArray,\
-                                                            self._nDates_reservoir_usgs,\
-                                                            self._nStations_reservoir_usgs)
-
-                        # Decode time/date axis
-                        timeAxisName = 'time'
-                        freqString = '15T'
-                        df_withDates_reservoirUsgs = a2df._time_retrieve_from_arrays(\
-                            df_raw_reservoirUsgs, self._dateNull, \
-                            self._datesSecondsArray_reservoir_usgs, timeAxisName, freqString)
-
-                        # Decode station ID axis
-                        stationAxisName = 'stationId'
-                        df_withStationsAndDates_reservoirUsgs = a2df._stations_retrieve_from_arrays\
-                            (df_withDates_reservoirUsgs, self._stationArray_reservoir_usgs, \
-                            self._stationStringLengthArray_reservoir_usgs, stationAxisName)
-                
-                # USACE Observations        
-                if usace_persistence and len(self._reservoirUsaceArray) >=1:
-
-                    # Reservoir USACE dataframe
-
-                    # Unflatten the arrays
-                    df_raw_reservoirUsace = a2df._unflatten_array(self._reservoirUsaceArray,\
-                                                            self._nDates_reservoir_usace,\
-                                                            self._nStations_reservoir_usace)
-
-                    # Decode time/date axis
-                    timeAxisName = 'time'
-                    freqString = '15T'
-                    df_withDates_reservoirUsace = a2df._time_retrieve_from_arrays\
-                        (df_raw_reservoirUsace, self._dateNull, \
-                        self._datesSecondsArray_reservoir_usace, timeAxisName, freqString)
-
-                    # Decode station ID axis
-                    stationAxisName = 'stationId'
-                    df_withStationsAndDates_reservoirUsace = a2df._stations_retrieve_from_arrays\
-                        (df_withDates_reservoirUsace, self._stationArray_reservoir_usace, \
-                         self._stationStringLengthArray_reservoir_usace, stationAxisName)                
-
-                # RFC Timeseries        
-                if rfc:
-
-                    # Decode rfc timeseries
-                    df_rfc_timeseries = a2df._bmi_reassemble_rfc_timeseries (self._rfc_da_timestep, \
-                                        self._rfc_totalCounts, self._rfc_synthetic_values, \
-                                        self._rfc_discharges, self._rfc_timeseries_idx, \
-                                        self._rfc_use_rfc, self._rfc_Datetime, self._rfc_timeSteps, \
-                                        self._rfc_StationId_array, self._rfc_StationId_stringLengths, \
-                                        self._rfc_List_array, self._rfc_List_stringLengths, self._dateNull)
-
-
             #############################
             # Read Restart files:
             #############################
@@ -472,28 +384,6 @@ class DAforcing_model():
                     self._waterbodyLR_indexArray = _waterbodyLR_indexArray
                     self._waterbodyLR_nIndex = _waterbodyLR_nIndex
                     self._waterbodyLR_Array = _waterbodyLR_Array
-
-            #testRevert = True
-
-            if (testRevert):
-
-                if lite_restart_file:
-
-                    df_restart_q0 = a2df._bmi_reassemble_lite_restart (self._q0_columnArray,\
-                         self._q0_columnLengthArray, self._q0_nCol, self._q0_indexArray,\
-                         self._q0_nIndex, self._q0_Array)
-
-                    df_restart_waterbody = a2df._bmi_reassemble_lite_restart (self._waterbodyLR_columnArray,\
-                         self._waterbodyLR_columnLengthArray, self._waterbodyLR_nCol,\
-                         self._waterbodyLR_indexArray, self._waterbodyLR_nIndex,\
-                         self._waterbodyLR_Array)                
-
-                if lastobs_file:
-
-                    df_lastObs = a2df._bmi_reassemble_lastObs (self._lastObs_gageArray,\
-                                    self._lastObs_gageStringLengths, \
-                                    self._lastObs_timeSince,
-                                    self._lastObs_discharge)
 
         else:
 
