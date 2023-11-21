@@ -211,18 +211,19 @@ def main_v04(argv):
         # create initial conditions for next loop itteration
         network.new_q0(run_results)
         network.update_waterbody_water_elevation()    
- 
+        
         # update reservoir parameters and lastobs_df
         data_assimilation.update_after_compute(run_results, dt*nts)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
-        if output_parameters.get('lite_restart',{}).get('lite_restart_output_directory', None):
-            nhd_io.write_lite_restart(
-                network.q0, 
-                network._waterbody_df, 
-                t0 + timedelta(seconds = dt * nts), 
-                output_parameters['lite_restart']
-            )      
+        if output_parameters:
+            if output_parameters['lite_restart'] is not None:
+                nhd_io.write_lite_restart(
+                    network.q0, 
+                    network._waterbody_df, 
+                    t0 + timedelta(seconds = dt * nts), 
+                    output_parameters['lite_restart']
+                )      
 
         # Prepare input forcing for next time loop simulation when mutiple time loops are presented.
         if run_set_iterator < len(run_sets) - 1:
@@ -243,7 +244,7 @@ def main_v04(argv):
 
         if showtiming:
             output_start_time = time.time()
-
+        
         #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
