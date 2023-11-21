@@ -224,3 +224,14 @@ class Config(BaseModel, extra='forbid'):
 
         return values
     
+    @root_validator(skip_on_failure=True)
+    def check_lite_restart_directory(cls, values):
+        if values['output_parameters']:
+            lite_restart = values['output_parameters'].lite_restart
+            import pdb; pdb.set_trace()
+            if lite_restart is not None:
+                lite_restart_directory = lite_restart.lite_restart_output_directory
+                assert lite_restart_directory, "lite_restart is present in output parameters, but no lite_restart_output_directory is provided."
+        
+        return values
+    
