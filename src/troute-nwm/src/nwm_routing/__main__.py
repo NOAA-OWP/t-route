@@ -222,8 +222,8 @@ def main_v04(argv):
                 network._waterbody_df, 
                 t0 + timedelta(seconds = dt * nts), 
                 output_parameters['lite_restart']
-            )    
-
+            )            
+        
         # Prepare input forcing for next time loop simulation when mutiple time loops are presented.
         if run_set_iterator < len(run_sets) - 1:
             # update t0
