@@ -1,11 +1,8 @@
 import sys
 import os
-import glob
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-import pickle
-from datetime import datetime, timedelta
+from datetime import timedelta
 import time
 
 # Compute the base path relative to this script's location
@@ -13,7 +10,6 @@ script_dir = os.path.dirname(__file__)
 # Correctly navigate to the 'src' directory
 t_route_src_path = os.path.join(script_dir, '../../', 'src')
 sys.path.append(os.path.abspath(t_route_src_path))
-
 
 import bmi_troute
 import bmi_DAforcing
@@ -107,6 +103,7 @@ def run_troute(config):
             
             DAforcing.set_value('waterbody_df', troute.get_value('waterbody_df'))
             DAforcing.set_value('waterbody_df_ids', troute.get_value('waterbody_df_index'))
+            DAforcing.set_value('write_lite_restart', 1)
 
             DAforcing.set_value('lastobs_df', troute.get_value('lastobs_df'))
             DAforcing.set_value('lastobs_df_ids', troute.get_value('lastobs_df_index'))

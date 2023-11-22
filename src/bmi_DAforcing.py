@@ -132,6 +132,7 @@ class bmi_DAforcing(Bmi):
         self._values['reservoir_usace_df'] = self._model._reservoir_usace_df
         self._values['rfc_timeseries_df'] = self._model._rfc_timeseries_df
         
+        self._values['write_lite_restart'] = self._model._write_lite_restart
         if not self._model._lastobs_df.empty:
             self._values['lastobs_df'] = self._model._lastobs_df.values.flatten()
             self._values['lastobs_df_ids'] = self._model._lastobs_df.index

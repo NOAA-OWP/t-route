@@ -21,7 +21,7 @@ class DAforcing_model():
         """
         __slots__ = ['_data_assimilation_parameters', '_forcing_parameters', '_compute_parameters',
                      '_output_parameters', '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', 
-                     '_rfc_timeseries_df', '_lastobs_df', '_t0', '_q0', '_waterbody_df']
+                     '_rfc_timeseries_df', '_lastobs_df', '_t0', '_q0', '_waterbody_df', '_write_lite_restart']
 
         if bmi_cfg_file:
             (compute_parameters,
@@ -34,9 +34,9 @@ class DAforcing_model():
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
             self._output_parameters = output_parameters
-
+            
             self._t0 = self._compute_parameters['restart_parameters']['start_datetime']
-
+            self._write_lite_restart = 0
             #############################
             # Read DA files:
             #############################
@@ -316,18 +316,19 @@ class DAforcing_model():
         """
         output_parameters = self._output_parameters
         da_parameters = self._data_assimilation_parameters
-
+        write_lite_restart = values.get('write_lite_restart')
         q0 = values.get('q0')
         waterbody_df = values.get('waterbody_df')
         lastobs_df = values.get('lastobs_df')
-        if len(q0) != 0 and len(waterbody_df) != 0 and len(lastobs_df) != 0:
-            if output_parameters['lite_restart'] is not None:
+        
+        if write_lite_restart == 1:
+            if output_parameters and output_parameters['lite_restart'] is not None:
                 _write_lite_restart(
                     values,
                     self._t0,
                     output_parameters['lite_restart']
                 )   
-
+            values['write_lite_restart'] = 0
         lastobs_output_folder = da_parameters.get('streamflow_da',{}).get('lastobs_output_folder', None)
         if lastobs_output_folder:
             _write_lastobs(
@@ -336,7 +337,6 @@ class DAforcing_model():
                 lastobs_output_folder
             )
             
-        # if output_parameters.get('stream_output',{}) is not None and output_parameters.get('stream_output',{}).get('qvd_nudge'):
         if output_parameters.get('stream_output',{}):
 
             t0 = self._t0
@@ -1109,15 +1109,16 @@ def write_flowveldepth_netcdf(values,
     new_order = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
     # Reorder the columns
     qvd_ndg = qvd_ndg[new_order]
-    # renaming the columns based on timestamp
-    column_name_timeStamp = [t0 + timedelta(minutes=(i * 5)) for i in range(nsteps)]
-    new_column_name_timeStamp = [(attr + '_' +str(cnt) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
-    qvd_ndg.columns = new_column_name_timeStamp
 
     hr = values.get('t-route_model_time') // 3600 - 1
     # Create time step values based on t0
     time_steps = [t0 + timedelta(hours= hr)]
     time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(1 * 60 / stream_output_internal_frequency) + 1)]
+
+    # renaming the columns based on timestamp
+    column_name_timeStamp = [t0 + timedelta(hours= hr) + timedelta(minutes=(i * 5)) for i in range(nsteps)]
+    new_column_name_timeStamp = [(attr + '_' +str(cnt) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
+    qvd_ndg.columns = new_column_name_timeStamp
 
     for counter, i in enumerate(range(0, nsteps, nstep_nc)):
         # Define the range of columns for this file
@@ -1130,7 +1131,7 @@ def write_flowveldepth_netcdf(values,
         columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col.split('_')[1]) % selected_col == 0]
         subset_df = qvd_ndg[columns_to_keep]
         subset_df.columns = ['_'.join([col.split('_')[0], col.split('_')[2]]) for col in subset_df.columns]
-
+        
         # Create the file name based on the current time step
         current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
         if stream_output_directory:
