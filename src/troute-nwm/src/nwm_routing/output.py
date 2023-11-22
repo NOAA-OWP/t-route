@@ -361,45 +361,17 @@ def nwm_output_generator(
         
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
 
-        # Write out LastObs as netcdf.
-        # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
-        # folder is provided by the user.
-        lastobs_output_folder = None
-        nudging_true = None
-        streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
-        if streamflow_da:
-            lastobs_output_folder = streamflow_da.get(
-                "lastobs_output_folder", None
-                )
-            nudging_true = streamflow_da.get('streamflow_nudging', None)
-
-        if nudging_true and lastobs_output_folder:
-
-            LOG.info("- writing lastobs files")
-            start = time.time()
-
-            nhd_io.lastobs_df_output(
-                lastobs_df,
-                dt,
-                nts,
-                t0,
-                link_gage_df['gages'],
-                lastobs_output_folder,
-            )
-
-            LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
-
-    if lastobso: 
+    if lastobso:        
         # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
         # folder is provided by the user.
+        start = time.time()
         lastobs_output_folder = None
         nudging_true = None
         streamflow_da = data_assimilation_parameters.get('streamflow_da', None)
         if streamflow_da:
-            lastobs_output_folder = streamflow_da.get(
-                "lastobs_output_folder", None
-                )
+            lastobs_output_folder = output_parameters.get("lastobs_output", None)
+
             nudging_true = streamflow_da.get('streamflow_nudging', None)
 
         if nudging_true and lastobs_output_folder:
