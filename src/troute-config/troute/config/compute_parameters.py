@@ -121,9 +121,6 @@ class StreamflowDA(BaseModel, extra='forbid'):
     lastobs_file: Optional[FilePath] = None
     wrf_hydro_lastobs_file: Optional[FilePath] = None
 
-    # NOTE: required if lastobs are to be written out during and after simulations
-    #lastobs_output_folder: Optional[DirectoryPath] = None
-
     # TODO: missing from `v3_doc.yaml`
     # see troute/DataAssimilation.py :57
     # see troute/nhd_network_utilities_v02.py :765
