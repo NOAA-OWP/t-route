@@ -47,7 +47,26 @@ jobs:
       run: |
         ./compiler.sh no-e
     
-    - name: Run Test
+    - name: Run V3 Test
       run: |
         cd test/LowerColorado_TX
         python -m nwm_routing -f -V3 test_AnA.yaml
+        cd ../..
+  
+    - name: Run V4 Test on NHD
+      run: |
+        cd test/LowerColorado_TX
+        python -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
+        cd ../..
+
+    - name: Run V4 Test on HYFeature
+      run: |
+        cd test/LowerColorado_TX_v4
+        python -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
+        cd ../..
+    
+    - name: Run V4 Test on HYFeature without DA
+      run: |
+        cd test/LowerColorado_TX_v4
+        python -m nwm_routing -f -V4 test_AnA_V4_HYFeature_noDA.yaml
+        cd ../..

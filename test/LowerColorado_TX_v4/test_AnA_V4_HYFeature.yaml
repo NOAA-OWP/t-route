@@ -47,7 +47,7 @@ network_topology_parameters:
         columns: 
             key: 'id'
             downstream: 'toid'
-            dx : 'lengthkm'
+            dx : 'length_m'
             n : 'n'
             ncc : 'nCC'
             s0 : 'So'
@@ -116,6 +116,7 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 28
                 reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
+
 output_parameters:
     #----------
     test_output : output/lcr_flowveldepth.pkl
@@ -128,3 +129,4 @@ output_parameters:
         stream_output_time: 1 #[hr]
         stream_output_type: '.csv' #please select only between netcdf '.nc' or '.csv' or '.pkl'
         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
+
