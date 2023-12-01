@@ -4,6 +4,7 @@ import yaml
 import json
 import xarray as xr
 import pandas as pd
+from pathlib import Path
 
 from troute.nhd_network import reverse_network
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
@@ -24,7 +25,8 @@ def read_diffusive_domain(domain_file):
                             (includeing tailwater segment) 
     
     '''
-    if domain_file[-4:] == "yaml":
+    import pdb; pdb.set_trace()
+    if domain_file.suffix == ".yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
     else:

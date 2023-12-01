@@ -1553,7 +1553,11 @@ def compute_diffusive_routing(
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 # place holder for reservoir inflows
-                np.zeros(dat_all[~x,3::3].shape)
+                np.zeros(dat_all[~x,3::3].shape),
+                # place-holder for rfc DA parameters
+                (np.asarray([]), np.asarray([]), np.asarray([])),
+                # place-holder for nudge values
+                (np.asarray([])),
             )
         )
 
