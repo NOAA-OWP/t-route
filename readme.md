@@ -2,11 +2,11 @@
 
 **Fast, flexible, modular channel routing for the National water model and beyond**:  
 
-T-route, a dynamic channel routing model, offers a comprehensive solution for river network routing problems. It is designed to handle 1-D channel routing challenges in vector-based river network data, such as the USGS's NHDPlus High Resolution dataset, and OGC WaterML 2.0 Surface Hydrology Features (HY_Features) data model used in NWMv3.0.
+t-route, a dynamic channel routing model, offers a comprehensive solution for river network routing problems. It is designed to handle 1-D channel routing challenges in vector-based river network data, such as the USGS's NHDPlus High Resolution dataset, and OGC WaterML 2.0 Surface Hydrology Features (HY_Features) data model used in NextGen framework.
 
 Provided a series lateral inflows for each node in a channel network, t-route computes the resulting streamflows. t-route requires that all routing computations srictly obey an upstream-to-downstream ordering. Such ordering facilitates the heterogenous application of routing models in a single river network. For example, hydrologic models - such as Muskingum Cunge - may be more appropriate for low-order headwater streams where backwater conditions have minimal impact on flooding. In contrast, t-route empowers users to apply computationally intensive hydraulic models, such as the diffusive wave approximation of St. Venant equations, for high-order streams and rivers, where backwater flooding is a significant concern. This flexibility enables users to allocate computational resources precisely where they are needed most, optimizing efficiency.
 
-Expanding its capabilities, t-route now supports the OGC WaterML 2.0 Surface Hydrology Features (HY_Features) data model, facilitating the management of complex acyclic network connectivity. This extends t-route's applicability to simulating reservoirs, assimilating reservoir release data, streamflow nudging, and provides users with a choice of routing solutions, including Muskingum-Cunge, Diffusive Wave, or Dynamic Wave.
+Expanding its capabilities, t-route now supports the OGC WaterML 2.0 Surface Hydrology Features (HY_Features) data model, facilitating the management of complex acyclic network connectivity. HY_Features data model provides users with a choice of routing solutions, including Muskingum-Cunge, Diffusive Wave, or Dynamic Wave.
 
 **Key Features of t-route:**
 - Adaptable to multiple network formulations.
@@ -92,9 +92,15 @@ $ git clone --progress --single-branch --branch master http://github.com/NOAA-OW
 # compile and install
 $ ./compiler.sh
 
-# execute a demonstration test
+# execute a demonstration test with NHD network
 $ cd test/LowerColorado_TX
-$ python3 -m nwm_routing -V3 -f test_AnA.yaml
+$ python3 -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
+
+# OR
+
+# execute a demonstration test with HYFeature network
+$ cd test/LowerColorado_TX_v4
+$ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
 ```
 
 ### T-Route Setup Instructions and Troubleshooting Guide for Windows Users
