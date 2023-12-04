@@ -1091,7 +1091,7 @@ def write_flowveldepth_netcdf(values,
     num_features = len(flowveldepth)
     nstep_nc = 12 * stream_output_timediff
     gage, nudge_timesteps = nudge.shape
-    column_name = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd']]
+    column_name = [(i+1, attr) for i in range(nsteps) for attr in ['q', 'v', 'd']]
     flowveldepth.columns = column_name
     #--------- Add 'nudge' column based on usgs_positions_id----------
 
@@ -1099,13 +1099,13 @@ def write_flowveldepth_netcdf(values,
     qvd_ndg = flowveldepth.copy()
     # Create a list for names of the columns for nudge values
 
-    ndg_columns = [(j,'ndg') for j in range(nsteps)]
+    ndg_columns = [(j+1,'ndg') for j in range(nsteps)]
     # renaming nudge columns
     nudge.columns = ndg_columns
     # Left joining qvd and nudge values on index
     qvd_ndg = pd.merge(qvd_ndg, nudge, left_index=True, right_index=True, how='left')
 
-    new_order = [(i, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
+    new_order = [(i+1, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
     # Reorder the columns
     qvd_ndg = qvd_ndg[new_order]
 
@@ -1115,8 +1115,8 @@ def write_flowveldepth_netcdf(values,
     time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(1 * 60 / stream_output_internal_frequency) + 1)]
 
     # renaming the columns based on timestamp
-    column_name_timeStamp = [t0 + timedelta(hours= hr) + timedelta(minutes=(i * 5)) for i in range(nsteps)]
-    new_column_name_timeStamp = [(attr + '_' +str(cnt) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
+    column_name_timeStamp = [t0 + timedelta(hours= hr) + timedelta(minutes=(i * 5)) for i in range(1, nsteps+1)]
+    new_column_name_timeStamp = [(attr + '_' +str(cnt+1) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
     qvd_ndg.columns = new_column_name_timeStamp
 
     for counter, i in enumerate(range(0, nsteps, nstep_nc)):

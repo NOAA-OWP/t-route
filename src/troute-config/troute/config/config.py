@@ -253,6 +253,6 @@ class Config(BaseModel, extra='forbid'):
                 if nts and dt and internal_freq:
                     result = nts * dt / (internal_freq * 60)
                     if not result.is_integer():
-                        raise ValueError("UPDATE nts. nts*dt/(stream_output_internal_frequency*60) must be an integer.")
+                        raise ValueError("UPDATE nts. Make sure 'nts' times 'dt' divided by ('stream_output_internal_frequency' times 60) is a whole number in your configuration.")
 
         return values    
