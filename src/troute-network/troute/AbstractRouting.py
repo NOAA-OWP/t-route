@@ -25,7 +25,6 @@ def read_diffusive_domain(domain_file):
                             (includeing tailwater segment) 
     
     '''
-    import pdb; pdb.set_trace()
     if domain_file.suffix == ".yaml":
         with open(domain_file) as domain:
             data = yaml.load(domain, Loader=yaml.SafeLoader)
