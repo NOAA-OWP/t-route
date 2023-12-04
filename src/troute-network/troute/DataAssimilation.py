@@ -58,7 +58,7 @@ class AbstractDA(ABC):
                  "_q0_nIndex", "_q0_Array",
                  "_waterbodyLR_columnArray", "_waterbodyLR_columnLengthArray", 
                  "_waterbodyLR_nCol", "_waterbodyLR_indexArray", "_waterbodyLR_nIndex",
-                 "_waterbodyLR_Array"
+                 "_waterbodyLR_Array", "_rfc_timeseries_df"
                  ]
 
 
