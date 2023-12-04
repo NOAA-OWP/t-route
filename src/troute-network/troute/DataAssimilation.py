@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 import pathlib
 import xarray as xr
-from datetime import datetime
+from datetime import datetime, timedelta
 from abc import ABC
 from joblib import delayed, Parallel
+import glob
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
@@ -137,10 +138,10 @@ class NudgingDA(AbstractDA):
                                 df_withDates_usgs, stationArray_usgs, \
                                 stationStringLengthArray_usgs, stationAxisName)
                 
-                    #usgs_df = usgs_df.join(network.link_gage_df.reset_index().set_index('gages'),how='inner').set_index('link').sort_index()
-                    usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
+                #usgs_df = usgs_df.join(network.link_gage_df.reset_index().set_index('gages'),how='inner').set_index('link').sort_index()
+                usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
 
-                    self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+                self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
                 
                 # Next is lastobs - can also be implemented following bmi_array2df module
                 lastobs = streamflow_da_parameters.get("lastobs_file", False)
@@ -317,26 +318,26 @@ class PersistenceDA(AbstractDA):
                                 (df_withDates_reservoirUsgs, stationArray_reservoir_usgs, \
                                 stationStringLengthArray_reservoir_usgs, stationAxisName)
 
-                    reservoir_usgs_df = (
-                        network.usgs_lake_gage_crosswalk.
-                        reset_index().
-                        set_index('usgs_gage_id').
-                        join(reservoir_usgs_df).
-                        set_index('usgs_lake_id')
-                        )
+                reservoir_usgs_df = (
+                    network.usgs_lake_gage_crosswalk.
+                    reset_index().
+                    set_index('usgs_gage_id').
+                    join(reservoir_usgs_df).
+                    set_index('usgs_lake_id')
+                    )
 
-                    # create reservoir persistence DA initial parameters dataframe    
-                    if not reservoir_usgs_df.empty:
-                        reservoir_usgs_param_df = pd.DataFrame(
-                            data = 0, 
-                            index = reservoir_usgs_df.index ,
-                            columns = ['update_time']
-                        )
-                        reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
-                        reservoir_usgs_param_df['persistence_update_time'] = 0
-                        reservoir_usgs_param_df['persistence_index'] = 0
-                    else:
-                        reservoir_usgs_param_df = pd.DataFrame()
+                # create reservoir persistence DA initial parameters dataframe    
+                if not reservoir_usgs_df.empty:
+                    reservoir_usgs_param_df = pd.DataFrame(
+                    data = 0, 
+                    index = reservoir_usgs_df.index ,
+                        columns = ['update_time']
+                    )
+                    reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
+                    reservoir_usgs_param_df['persistence_update_time'] = 0
+                    reservoir_usgs_param_df['persistence_index'] = 0
+                else:
+                    reservoir_usgs_param_df = pd.DataFrame()
 
             if usace_persistence: 
 
@@ -381,26 +382,26 @@ class PersistenceDA(AbstractDA):
                                 stationStringLengthArray_reservoir_usace, \
                                 stationAxisName)                
 
-                    reservoir_usace_df = (
-                        network.usace_lake_gage_crosswalk.
-                        reset_index().
-                        set_index('usace_gage_id').
-                        join(reservoir_usace_df).
-                        set_index('usace_lake_id')
-                        )
+                reservoir_usace_df = (
+                    network.usace_lake_gage_crosswalk.
+                    reset_index().
+                    set_index('usace_gage_id').
+                    join(reservoir_usace_df).
+                    set_index('usace_lake_id')
+                    )
 
-                    # create reservoir hybrid DA initial parameters dataframe    
-                    if not reservoir_usace_df.empty:
-                        reservoir_usace_param_df = pd.DataFrame(
-                            data = 0, 
-                            index = reservoir_usace_df.index,
-                            columns = ['update_time']
-                        )
-                        reservoir_usace_param_df['prev_persisted_outflow'] = np.nan
-                        reservoir_usace_param_df['persistence_update_time'] = 0
-                        reservoir_usace_param_df['persistence_index'] = 0
-                    else:
-                        reservoir_usace_param_df = pd.DataFrame()
+                # create reservoir hybrid DA initial parameters dataframe    
+                if not reservoir_usace_df.empty:
+                    reservoir_usace_param_df = pd.DataFrame(
+                        data = 0, 
+                        index = reservoir_usace_df.index,
+                        columns = ['update_time']
+                    )
+                    reservoir_usace_param_df['prev_persisted_outflow'] = np.nan
+                    reservoir_usace_param_df['persistence_update_time'] = 0
+                    reservoir_usace_param_df['persistence_index'] = 0
+                else:
+                    reservoir_usace_param_df = pd.DataFrame()
                 
         else:
 
@@ -723,43 +724,12 @@ class RFCDA(AbstractDA):
                                 rfc_List_array, rfc_List_stringLengths, 
                                 dateNull)
 
-                    # Create reservoir_rfc_df dataframe of observations, rows are locations and columns are dates.
-                    self._reservoir_rfc_df = rfc_df[['stationId','discharges','Datetime']].sort_values(['stationId','Datetime']).pivot(index='stationId',columns='Datetime').fillna(-999.0)
-                    self._reservoir_rfc_df.columns = self._reservoir_rfc_df.columns.droplevel()
-                    # Replace gage IDs with lake IDs
-                    self._reservoir_rfc_df = (
-                        network.rfc_lake_gage_crosswalk.
-                        reset_index().
-                        set_index('rfc_gage_id').
-                        join(self._reservoir_rfc_df).
-                        set_index('rfc_lake_id')
-                    )
-                    # Create reservoir_rfc_df dataframe of parameters
-                    self._reservoir_rfc_param_df = rfc_df[['stationId','totalCounts','timeseries_idx','file','use_rfc','da_timestep']].drop_duplicates().set_index('stationId')
-                    self._reservoir_rfc_param_df = (
-                        network.rfc_lake_gage_crosswalk.
-                        reset_index().
-                        set_index('rfc_gage_id').
-                        join(self._reservoir_rfc_param_df).
-                        set_index('rfc_lake_id')
-                    )
-
-                    # To pass RFC observations to mc_reach they need to be in an array. But the RFC timeseries have different
-                    # lengths/start dates for each location so the array ends up having many NaN observations after we 
-                    # pivot the dataframe from long to wide format. We therefore need to adjust the timeseries index and
-                    # total counts to reflect the new position of t0 in the observation array. 
-                    new_timeseries_idx = self._reservoir_rfc_df.columns.get_loc(network.t0) - 1 #minus 1 so on first call of reservoir_rfc_da(), timeseries_idx will advance 1 position to t0.
-                    self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'] + (new_timeseries_idx - self._reservoir_rfc_param_df['timeseries_idx'])
-                    self._reservoir_rfc_param_df['timeseries_idx'] = new_timeseries_idx
-                    # Fill in NaNs with default values.
-                    self._reservoir_rfc_param_df['use_rfc'].fillna(False, inplace=True)
-                    self._reservoir_rfc_param_df['totalCounts'].fillna(0, inplace=True)
-                    self._reservoir_rfc_param_df['da_timestep'].fillna(0, inplace=True)
-                    # Make sure columns are the correct types
-                    self._reservoir_rfc_param_df['totalCounts'] = self._reservoir_rfc_param_df['totalCounts'].astype(int)
-                    self._reservoir_rfc_param_df['da_timestep'] = self._reservoir_rfc_param_df['da_timestep'].astype(int)
-                    self._reservoir_rfc_param_df['update_time'] = 0
-                    self._reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
+                self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
+                                                                                            rfc_df, 
+                                                                                            network.rfc_lake_gage_crosswalk,
+                                                                                            network.t0, 
+                                                                                            rfc_parameters,
+                                                                                            )
 
             else: 
 
@@ -768,8 +738,35 @@ class RFCDA(AbstractDA):
         
         else:
 
-            self._reservoir_rfc_df = pd.DataFrame()
-            self._reservoir_rfc_param_df = pd.DataFrame()
+            if rfc:
+                # In order to use only RFC python module (not fortran module), create rfc dataframes from reading files
+                #rfc_parameters   = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
+                lookback_hrs     = rfc_parameters.get('reservoir_rfc_forecasts_lookback_hours')
+                offset_hrs       = rfc_parameters.get('reservoir_rfc_forecasts_offset_hours')
+                start_datetime   = network.t0 
+                timeseries_end   = start_datetime + timedelta(hours=offset_hrs)
+                timeseries_start = timeseries_end - timedelta(hours=lookback_hrs)
+                delta            = timedelta(hours=1)
+                timeseries_dates = []
+                while timeseries_start <= timeseries_end:
+                    timeseries_dates.append(timeseries_start.strftime('%Y-%m-%d_%H'))
+                    timeseries_start += delta
+                rfc_forecast_persist_days = rfc_parameters.get('reservoir_rfc_forecast_persist_days')
+                final_persist_datetime = start_datetime + timedelta(days=rfc_forecast_persist_days)
+                
+                # RFC Observations
+                rfc_timeseries_path = str(rfc_parameters.get('reservoir_rfc_forecasts_time_series_path'))
+                self._rfc_timeseries_df = _read_timeseries_files(rfc_timeseries_path, timeseries_dates, start_datetime, final_persist_datetime)           
+                self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
+                                                                                                self._rfc_timeseries_df, 
+                                                                                                network.rfc_lake_gage_crosswalk,
+                                                                                                network.t0, 
+                                                                                                rfc_parameters,
+                                                                                                )
+            else:    
+
+                self._reservoir_rfc_df = pd.DataFrame()
+                self._reservoir_rfc_param_df = pd.DataFrame()
 
     def update_after_compute(self, run_results):
         '''

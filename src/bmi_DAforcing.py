@@ -83,7 +83,7 @@ class bmi_DAforcing(Bmi):
     ]
 
     # Reservoir USACE DF
-    _BMI_output_reservoir_usgs = [
+    _BMI_output_reservoir_usace = [
         'datesSecondsArray_reservoir_usace',
         'nDates_reservoir_usace',
         'stationArray_reservoir_usace',
@@ -93,7 +93,7 @@ class bmi_DAforcing(Bmi):
     ]
 
     # RFC DF
-    _BMI_output_reservoir_usgs = [
+    _BMI_output_reservoir_rfc = [
         'rfc_da_timestep',
         'rfc_totalCounts',
         'rfc_synthetic_values',
