@@ -67,8 +67,8 @@ compute_parameters:
         streamflow_da:
             #----------
             streamflow_nudging            : False
-            diffusive_streamflow_nudging  : False                    
-            lastobs_output_folder         : lastobs/
+            diffusive_streamflow_nudging  : False   
+            #lastobs_file                  : lastobs/nudgingLastObs.2023-04-02_00:00:00.nc                                  
         reservoir_da:
             #----------
             reservoir_persistence_da:
