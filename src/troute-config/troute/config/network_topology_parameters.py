@@ -36,6 +36,7 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
     geo_file_path: str
     network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
+    flowpath_edge_list: Optional[str] = None
     mask_file_path: Optional[FilePath] = None
     mask_layer_string: str = ""
     # TODO: determine if this is still used
@@ -121,13 +122,13 @@ class Columns(BaseModel, extra='forbid'):
     # string, channel bottom width
     bw: str 
     # string, waterbody identifier
-    waterbody: str 
+    waterbody: Optional[str] 
     # string, channel top width
     tw: str 
     # string, compound channel top width
     twcc: str 
     # string, channel bottom altitude
-    alt: str 
+    alt: Optional[str] 
     # string, muskingum K parameter
     musk: str 
     # string, muskingum X parameter
@@ -135,7 +136,7 @@ class Columns(BaseModel, extra='forbid'):
     # string, channel sideslope
     cs: str 
     # string, gage ID
-    gages: str 
+    gages: Optional[str]
 
 
 class WaterbodyParameters(BaseModel, extra='forbid'):
