@@ -73,7 +73,7 @@ compute_parameters:
             gage_segID_crosswalk_file     : domain/RouteLink.nc  
             crosswalk_gage_field          : 'gages'
             crosswalk_segID_field         : 'link'
-            wrf_hydro_lastobs_file        : lastobs/nudgingLastObs.2021-08-23_12:00:00.nc                    
+            lastobs_file                  : #lastobs/nudgingLastObs.2021-08-23_12:00:00.nc                     
         reservoir_da:
             #----------
             reservoir_persistence_usgs  : True

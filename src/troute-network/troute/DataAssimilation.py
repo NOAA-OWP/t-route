@@ -61,7 +61,6 @@ class NudgingDA(AbstractDA):
 
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
-
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
             if not from_files:
@@ -102,7 +101,8 @@ class NudgingDA(AbstractDA):
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
                 if lastobs_crosswalk_file:
                     # lastobs Dataframe for NHD Hydrofabric
-                    lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                    #lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                    lastobs_file = streamflow_da_parameters.get("lastobs_file", None)
                     lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
                     lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
                     
@@ -760,7 +760,7 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     - usgs_df (DataFrame): dataframe of USGS gage observations
     '''
     usgs_timeslices_folder = data_assimilation_parameters.get("usgs_timeslices_folder", None)
-    lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+    #lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
     lastobs_start          = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",0)
     lastobs_type           = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
     crosswalk_file         = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
