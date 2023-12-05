@@ -227,6 +227,52 @@ class bmi_troute(Bmi):
         self._values['nudging'] = np.zeros(0)
         self._values['nudging_ids'] = np.zeros(0)
 
+        # Data assimilation for BMI compliant arrays containing data frames
+        #
+        # usgs_df
+        self._values['datesSecondsArray_usgs'] = np.zeros(0)
+        self._values['nDates_usgs'] = np.zeros(0)
+        self._values['stationArray_usgs'] = np.zeros(0)
+        self._values['stationStringLengthArray_usgs'] = np.zeros(0)
+        self._values['nStations_usgs'] = np.zeros(0)
+        self._values['usgs_Array'] = np.zeros(0)
+        #
+        # reservoir_usgs_df
+        self._values['datesSecondsArray_reservoir_usgs'] = np.zeros(0)
+        self._values['nDates_reservoir_usgs'] = np.zeros(0)
+        self._values['stationArray_reservoir_usgs'] = np.zeros(0)
+        self._values['stationStringLengthArray_reservoir_usgs'] = np.zeros(0)
+        self._values['nStations_reservoir_usgs'] = np.zeros(0)
+        self._values['usgs_reservoir_Array'] = np.zeros(0)
+        #
+        # reservoir_usace_df
+        self._values['datesSecondsArray_reservoir_usace'] = np.zeros(0)
+        self._values['nDates_reservoir_usace'] = np.zeros(0)
+        self._values['stationArray_reservoir_usace'] = np.zeros(0)
+        self._values['stationStringLengthArray_reservoir_usace'] = np.zeros(0)
+        self._values['nStations_reservoir_usace'] = np.zeros(0)
+        self._values['usace_reservoir_Array'] = np.zeros(0)
+        #
+        # RFC dataframe
+        self._values['rfc_da_timestep'] = np.zeros(0)
+        self._values['rfc_totalCounts'] = np.zeros(0)
+        self._values['rfc_synthetic_values'] = np.zeros(0)
+        self._values['rfc_discharges'] = np.zeros(0)
+        self._values['rfc_timeseries_idx'] = np.zeros(0)
+        self._values['rfc_use_rfc'] = np.zeros(0)
+        self._values['rfc_Datetime'] = np.zeros(0)
+        self._values['rfc_timeSteps'] = np.zeros(0)
+        self._values['rfc_StationId_array'] = np.zeros(0)
+        self._values['rfc_StationId_stringLengths'] = np.zeros(0)
+        self._values['rfc_List_array'] = np.zeros(0)
+        self._values['rfc_List_stringLengths'] = np.zeros(0)
+        #
+        # lastobs dataframe
+        #self._values['lastObs_gageArray'] = np.zeros(0)
+        #self._values['lastObs_gageStringLengths'] = np.zeros(0)
+        #self._values['lastObs_timeSince'] = np.zeros(0)
+        #self._values['lastObs_discharge'] = np.zeros(0)
+
         '''
         self._values['gage_crosswalk__segID'] = np.zeros(0, dtype=int)
         self._values['gage_crosswalk__gageID'] = np.zeros(0, dtype='<U19')

@@ -1,4 +1,38 @@
 # $ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
+bmi_parameters:
+    #----------
+    flowpath_columns:
+        - 'id'
+        - 'toid'
+        - 'lengthkm'
+    attributes_columns:
+        - 'attributes_id'
+        - 'rl_gages'
+        - 'rl_NHDWaterbodyComID'
+        - 'MusK'
+        - 'MusX'
+        - 'n'
+        - 'So'
+        - 'ChSlp'
+        - 'BtmWdth'
+        - 'nCC'
+        - 'TopWdthCC'
+        - 'TopWdth'
+    waterbody_columns:
+        - 'hl_link'
+        - 'ifd'
+        - 'LkArea'
+        - 'LkMxE'
+        - 'OrificeA'
+        - 'OrificeC'
+        - 'OrificeE'
+        - 'WeirC'
+        - 'WeirE'
+        - 'WeirL'
+    network_columns:
+        - 'network_id'
+        - 'hydroseq'
+        - 'hl_uri'
 #--------------------------------------------------------------------------------
 log_parameters:
     #----------
@@ -68,7 +102,7 @@ compute_parameters:
             #----------
             streamflow_nudging            : True
             diffusive_streamflow_nudging  : False                    
-            lastobs_output_folder         : lastobs/
+            lastobs_output_folder         : #lastobs/
         reservoir_da:
             #----------
             reservoir_persistence_da:
@@ -82,15 +116,15 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 28
                 reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
-# output_parameters:
-#     #----------
-#     test_output : output/lcr_flowveldepth.pkl
-#     lite_restart:
-#         #----------
-#         lite_restart_output_directory: restart/
-#     lakeout_output: lakeout/
-#     stream_output : 
-#         stream_output_directory: output/
-#         stream_output_time: 1 #[hr]
-#         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
-#         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
+output_parameters:
+    #----------
+    test_output : output/lcr_flowveldepth.pkl
+    lite_restart:
+        #----------
+        lite_restart_output_directory: restart/
+    lakeout_output: lakeout/
+    stream_output : 
+        stream_output_directory: output/
+        stream_output_time: 1 #[hr]
+        stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+        stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
