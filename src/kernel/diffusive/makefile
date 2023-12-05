@@ -2,8 +2,8 @@
 FC := ${F90}
 
 # compile flags
-F90FLAGSGFORTRAN = -g -c -O2 -fPIC -fbounds-check
-F90FLAGSINTEL = -free -g -c -O2 -fPIC -I${NETCDF}/include
+F90FLAGSGFORTRAN = -g -c -O2 -fPIC -fbounds-check 
+F90FLAGSINTEL = -free -g -c -O2 -fPIC -I${NETCDF}/include 
 ifeq ($(notdir ${FC}), ifort)
 FCFLAGS = $(F90FLAGSINTEL)
 else ifeq ($(notdir ${FC}), mpiifort)
@@ -23,3 +23,7 @@ install:
 
 clean:
 	rm -f *.o *.mod
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/diffusive.o
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/pydiffusive.o
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/diffusive.c
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/diffusive.cpython*.so

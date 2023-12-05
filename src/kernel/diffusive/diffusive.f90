@@ -103,9 +103,9 @@ contains
   !
   ! Development Team:
   !  - Dong Ha Kim
-  !  - Adam N. Wlostowski
   !  - Nazmul Azim Beg
   !  - Ehab Meselhe
+  !  - Adam N. Wlostowski
   !  - James Halgren
   !  - Jacob Hreha
   !
@@ -406,10 +406,12 @@ contains
   ! Build natural / synthetic cross sections and related hydraulic lookup table
   if (mxnbathy == 0) then
     applyNaturalSection = 0
+    print*, 'Applying synthetic channel cross section...'
   else
     applyNaturalSection = 1
-  end if
-  
+    print*, 'Applying natural channel cross section...'
+  end if 
+    
   if (applyNaturalSection == 1) then
   
     ! use bathymetry data 
@@ -448,7 +450,7 @@ contains
           call readXsection(i, (1.0/skLeft(i,j)), (1.0/skMain(i,j)), &
                             (1.0/skRight(i,j)), leftBank(i,j),       &
                             rightBank(i,j), timesDepth, j, z_ar_g,   &
-                            bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g)
+                            bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mxncomp_g, nrch_g)
         end do
     end do  
   end if  
@@ -773,10 +775,12 @@ contains
       !  j = mstem_frj(jm)
       !  call calc_dimensionless_numbers(j)
       !end do
-      
+
       ! diffusive wave simulation time print
-      print*, "diffusive simulation time in minute=", t
-   
+      if (mod(t,30.)==0.) then
+        print*, "diffusive simulation time in minute=", t
+      endif
+
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
         do jm = 1, nmstem_rch
@@ -2069,7 +2073,7 @@ contains
   end subroutine readXsection_natural_mann_vertices
 
   subroutine readXsection(k,lftBnkMann,rmanning_main,rgtBnkMann,leftBnkX_given,rghtBnkX_given,timesDepth,num_reach,&
-                            z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g )
+                            z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, lmxncomp, lnlinks)
     implicit none
 
     !------------------------------------------------------------------------------------------------- 
@@ -2083,10 +2087,10 @@ contains
     !------------------------------------------------------------------------------------------------- 
 
     ! subroutine arguments
-    integer,                                      intent(in) :: k, num_reach
-    double precision,                             intent(in) :: rmanning_main,lftBnkMann,rgtBnkMann
-    double precision,                             intent(in) :: leftBnkX_given,rghtBnkX_given, timesDepth
-    double precision, dimension(mxncomp, nlinks), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
+    integer,                                        intent(in) :: k, num_reach, lmxncomp, lnlinks
+    double precision,                               intent(in) :: rmanning_main,lftBnkMann,rgtBnkMann
+    double precision,                               intent(in) :: leftBnkX_given,rghtBnkX_given, timesDepth
+    double precision, dimension(lmxncomp, lnlinks), intent(in) :: z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g
     
     ! subroutine local variables
     integer          :: i_area, i_find, i, j, jj, num  
@@ -2129,7 +2133,7 @@ contains
     tw_g    = tw_ar_g(k, num_reach)
     twcc_g  = twcc_ar_g(k, num_reach)
     hbf     = (tw_g - bo_g)/(2.0 * traps_g) !* bankfull depth
-    
+
     maxTableLength = 8
     allocate(xcs(maxTableLength), ycs(maxTableLength))
     allocate(allXcs(maxTableLength,3), allYcs(maxTableLength,3))
