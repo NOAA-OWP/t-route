@@ -119,7 +119,6 @@ class StreamflowDA(BaseModel, extra='forbid'):
     # TODO: changed the name of this parameter from "wrf_hydro_lastobs_file" to "lastobs_file"
     # Need to update this in t-route as well.
     lastobs_file: Optional[FilePath] = None
-    wrf_hydro_lastobs_file: Optional[FilePath] = None
 
     # TODO: missing from `v3_doc.yaml`
     # see troute/DataAssimilation.py :57
