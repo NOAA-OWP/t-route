@@ -7,10 +7,19 @@ import xarray as xr
 import glob
 import pathlib
 
-from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
+import logging
 
+#from bmi_array2df import *
+#import bmi_array2df as a2df
+
+#from bmi_df2array import *
+import bmi_df2array as df2a
+
+from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
+import netCDF4
 from nwm_routing.log_level_set import log_level_set
 from troute.config import Config
+LOG = logging.getLogger('')
 
 class DAforcing_model():
 
@@ -20,7 +29,33 @@ class DAforcing_model():
         """
         __slots__ = ['_data_assimilation_parameters', '_forcing_parameters', '_compute_parameters',
                      '_output_parameters', '_usgs_df', 'reservoir_usgs_df', 'reservoir_usace_df', 
-                     '_rfc_timeseries_df', '_lastobs_df', '_t0', '_q0', '_waterbody_df']
+                     '_rfc_timeseries_df', '_lastobs_df', '_t0', '_q0', '_waterbody_df', '_write_lite_restart',
+                     '_dateNull', 
+                     '_datesSecondsArray_usgs', '_nDates_usgs', '_stationArray_usgs', 
+                     '_stationStringLengthArray_usgs', '_nStations_usgs',
+                     '_usgs_Array',
+                     '_datesSecondsArray_reservoir_usgs', '_nDates_reservoir_usgs',
+                     '_stationArray_reservoir_usgs', '_stationStringLengthArray_reservoir_usgs',
+                     '_nStations_reservoir_usgs',
+                     '_usgs_reservoir_Array',
+                     '_datesSecondsArray_reservoir_usace', '_nDates_reservoir_usace',
+                     '_stationArray_reservoir_usace', '_stationStringLengthArray_reservoir_usace',
+                     '_nStations_reservoir_usace', 
+                     '_usace_reservoir_Array',
+                     '_rfc_da_timestep', '_rfc_totalCounts', '_rfc_synthetic_values',
+                     '_rfc_discharges', '_rfc_timeseries_idx', '_rfc_use_rfc',
+                     '_rfc_Datetime', '_rfc_timeSteps', '_rfc_StationId_array',
+                     '_rfc_StationId_stringLengths', '_rfc_List_array',
+                     '_rfc_List_stringLengths',
+                     '_lastObs_gageArray', '_lastObs_gageStringLengths', '_lastObs_timeSince',
+                     '_lastObs_discharge',
+                     '_q0_columnArray', '_q0_columnLengthArray', '_q0_nCol', '_q0_indexArray',
+                     '_q0_nIndex', '_q0_Array',
+                     '_waterbodyLR_columnArray', '_waterbodyLR_columnLengthArray', 
+                     '_waterbodyLR_nCol', '_waterbodyLR_indexArray', '_waterbodyLR_nIndex',
+                     '_waterbodyLR_Array'                    
+                     ]
+
 
         if bmi_cfg_file:
             (compute_parameters,
@@ -33,9 +68,9 @@ class DAforcing_model():
             self._forcing_parameters = forcing_parameters
             self._data_assimilation_parameters = data_assimilation_parameters
             self._output_parameters = output_parameters
-
+            
             self._t0 = self._compute_parameters['restart_parameters']['start_datetime']
-
+            self._write_lite_restart = 0
             #############################
             # Read DA files:
             #############################
@@ -44,8 +79,6 @@ class DAforcing_model():
             usgs_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usgs', False)
             usace_persistence = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {}).get('reservoir_persistence_usace', False)
             rfc = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
-
-            #usace_persistence = False
 
             qc_threshold = data_assimilation_parameters.get('qc_threshold')
             cpu_pool = compute_parameters.get('cpu_pool')
@@ -128,9 +161,16 @@ class DAforcing_model():
                 self._lastobs_df = _read_lastobs_file(lastobs_file)
 
             # save time reference: start_datetime
-            self.dateNull = start_datetime
+            self._dateNull = start_datetime
 
             # read in metadata for BMI compliant arrays:
+
+            self._values = {} 
+
+            self._lastObs_gageArray = np.zeros(0)
+            self._lastObs_gageStringLengths = np.zeros(0)
+            self._lastObs_timeSince = np.zeros(0)
+            self._lastObs_discharge = np.zeros(0)
 
             if not self._lastobs_df.empty:
 
@@ -138,14 +178,21 @@ class DAforcing_model():
 
                     (_lastObs_gageArray, _lastObs_gageStringLengths, \
                     _lastObs_timeSince, _lastObs_discharge) = \
-                    _bmi_disassemble_lastObs (self._lastobs_df) 
+                    df2a._bmi_disassemble_lastObs (self._lastobs_df) 
 
-                    self.lastObs_gageArray = _lastObs_gageArray
-                    self.lastObs_gageStringLengths = _lastObs_gageStringLengths
-                    self.lastObs_timeSince = _lastObs_timeSince
-                    self.lastObs_discharge = _lastObs_discharge
+                    self._lastObs_gageArray = _lastObs_gageArray
+                    self._lastObs_gageStringLengths = _lastObs_gageStringLengths
+                    self._lastObs_timeSince = _lastObs_timeSince
+                    self._lastObs_discharge = _lastObs_discharge
 
             # USGS Observations
+            self._datesSecondsArray_usgs = np.zeros(0)
+            self._nDates_usgs = np.zeros(0)
+            self._stationArray_usgs = np.zeros(0)
+            self._stationStringLengthArray_usgs = np.zeros(0)
+            self._nStations_usgs = np.zeros(0)
+            self._usgsArray = np.zeros(0)
+
             if not self._usgs_df.empty:
                 # 
                 # USGS dataframe: 
@@ -165,18 +212,26 @@ class DAforcing_model():
                 #
                 ( _datesSecondsArray_usgs, _nDates_usgs, _stationArray_usgs, \
                     _stationStringLengthArray_usgs, _nStations_usgs) \
-                    = _time_stations_from_df(self._usgs_df,start_datetime)
+                    = df2a._time_stations_from_df(self._usgs_df,start_datetime)
                 # save metadata in class instances
-                self.datesSecondsArray_usgs = _datesSecondsArray_usgs
-                self.nDates_usgs = _nDates_usgs
-                self.stationArray_usgs = _stationArray_usgs
-                self.stationStringLengthArray_usgs = _stationStringLengthArray_usgs
-                self.nStations_usgs = _nStations_usgs
-                # flatten the actual USGS datafrane into a numpy ndarray
-                _usgsArray = _flatten_array(self._usgs_df, np.float16)
+                self._datesSecondsArray_usgs = _datesSecondsArray_usgs
+                self._nDates_usgs = _nDates_usgs
+                self._stationArray_usgs = _stationArray_usgs
+                self._stationStringLengthArray_usgs = _stationStringLengthArray_usgs
+                self._nStations_usgs = _nStations_usgs
+                # flatten the actual USGS dataframe into a numpy ndarray
+                _usgsArray = df2a._flatten_array(self._usgs_df, np.float32)
                 # ... and save it with the class instance
-                self.usgsArray = _usgsArray
-            
+                self._usgsArray = _usgsArray
+
+            # USGS Reservoir Observations
+            self._datesSecondsArray_reservoir_usgs = np.zeros(0)
+            self._nDates_reservoir_usgs = np.zeros(0)
+            self._stationArray_reservoir_usgs = np.zeros(0)
+            self._stationStringLengthArray_reservoir_usgs = np.zeros(0)
+            self._nStations_reservoir_usgs = np.zeros(0)
+            self._reservoirUsgsArray = np.zeros(0)
+
             if not self._reservoir_usgs_df.empty:
                 # 
                 # Reservoir USGS and USACE dataframes: Array structures of 
@@ -197,59 +252,79 @@ class DAforcing_model():
                 ( _datesSecondsArray_reservoir_usgs, _nDates_reservoir_usgs, \
                      _stationArray_reservoir_usgs, _stationStringLengthArray_reservoir_usgs, \
                     _nStations_reservoir_usgs) \
-                    = _time_stations_from_df(self._reservoir_usgs_df,start_datetime)
+                    = df2a._time_stations_from_df(self._reservoir_usgs_df,start_datetime)
                 # save metadata in class instances
-                self.datesSecondsArray_reservoir_usgs = _datesSecondsArray_reservoir_usgs
-                self.nDates_reservoir_usgs = _nDates_reservoir_usgs
-                self.stationArray_reservoir_usgs = _stationArray_reservoir_usgs
-                self.stationStringLengthArray_reservoir_usgs = _stationStringLengthArray_reservoir_usgs
-                self.nStations_reservoir_usgs = _nStations_reservoir_usgs
+                self._datesSecondsArray_reservoir_usgs = _datesSecondsArray_reservoir_usgs
+                self._nDates_reservoir_usgs = _nDates_reservoir_usgs
+                self._stationArray_reservoir_usgs = _stationArray_reservoir_usgs
+                self._stationStringLengthArray_reservoir_usgs = _stationStringLengthArray_reservoir_usgs
+                self._nStations_reservoir_usgs = _nStations_reservoir_usgs
                 # flatten the actual USGS datafrane into a numpy ndarray
-                _reservoirUsgsArray = _flatten_array(self._reservoir_usgs_df, np.float16)
+                _reservoirUsgsArray = df2a._flatten_array(self._reservoir_usgs_df, np.float32)
                 # ... and save it with the class instance
-                self.reservoirUsgsArray = _reservoirUsgsArray            
+                self._reservoirUsgsArray = _reservoirUsgsArray            
 
-            # USACE Observations        
+            # USACE Reservoir Observations    
+            self._datesSecondsArray_reservoir_usace = np.zeros(0)
+            self._nDates_reservoir_usace = np.zeros(0)
+            self._stationArray_reservoir_usace = np.zeros(0)
+            self._stationStringLengthArray_reservoir_usace = np.zeros(0)
+            self._nStations_reservoir_usace = np.zeros(0)
+            self._reservoirUsaceArray = np.zeros(0)
+    
             if not self._reservoir_usace_df.empty:
 
                 # see detailed comments in USGS branch
                 ( _datesSecondsArray_reservoir_usace, _nDates_reservoir_usace, \
                     _stationArray_reservoir_usace, _stationStringLengthArray_reservoir_usace, \
                     _nStations_reservoir_usace) \
-                    = _time_stations_from_df(self._reservoir_usace_df,start_datetime)
+                    = df2a._time_stations_from_df(self._reservoir_usace_df,start_datetime)
                 # save metadata in class instances
-                self.datesSecondsArray_reservoir_usace = _datesSecondsArray_reservoir_usace
-                self.nDates_reservoir_usace = _nDates_reservoir_usace
-                self.stationArray_reservoir_usace = _stationArray_reservoir_usace
-                self.stationStringLengthArray_reservoir_usace = _stationStringLengthArray_reservoir_usace
-                self.nStations_reservoir_usace = _nStations_reservoir_usace
+                self._datesSecondsArray_reservoir_usace = _datesSecondsArray_reservoir_usace
+                self._nDates_reservoir_usace = _nDates_reservoir_usace
+                self._stationArray_reservoir_usace = _stationArray_reservoir_usace
+                self._stationStringLengthArray_reservoir_usace = _stationStringLengthArray_reservoir_usace
+                self._nStations_reservoir_usace = _nStations_reservoir_usace
                 # flatten the actual USACE datafrane into a numpy ndarray
-                _reservoirUsaceArray = _flatten_array(self._reservoir_usace_df, np.float16)
+                _reservoirUsaceArray = df2a._flatten_array(self._reservoir_usace_df, np.float32)
                 # ... and save it with the class instance
-                self.reservoirUsaceArray = _reservoirUsaceArray  
+                self._reservoirUsaceArray = _reservoirUsaceArray  
 
-            # RFC Timeseries        
+
+            # RFC Timeseries    
+            self._rfc_da_timestep = np.zeros(0)    
+            self._rfc_totalCounts = np.zeros(0)   
+            self._rfc_synthetic_values = np.zeros(0)   
+            self._rfc_discharges = np.zeros(0)   
+            self._rfc_timeseries_idx = np.zeros(0)   
+            self._rfc_use_rfc = np.zeros(0)   
+            self._rfc_Datetime = np.zeros(0)   
+            self._rfc_timeSteps = np.zeros(0)   
+            self._rfc_StationId_array = np.zeros(0) 
+            self._rfc_StationId_stringLengths = np.zeros(0) 
+            self._rfc_List_array = np.zeros(0) 
+            self._rfc_List_stringLengths = np.zeros(0) 
+
             if not self._rfc_timeseries_df.empty:
 
                 (_rfc_da_timestep, _rfc_totalCounts, _rfc_synthetic_values, _rfc_discharges, \
                     _rfc_timeseries_idx, _rfc_use_rfc, _rfc_Datetime, _rfc_timeSteps, \
                     _rfc_StationId_array, _rfc_StationId_stringLengths, _rfc_List_array, \
                     _rfc_List_stringLengths) = \
-                    _bmi_disassemble_rfc_timeseries (self._rfc_timeseries_df, start_datetime)
+                    df2a._bmi_disassemble_rfc_timeseries (self._rfc_timeseries_df, start_datetime)
                 # save all data in class instance
-                self.rfc_da_timestep = _rfc_da_timestep
-                self.rfc_totalCounts = _rfc_totalCounts
-                self.rfc_synthetic_values= _rfc_synthetic_values
-                self.rfc_discharges = _rfc_discharges
-                self.rfc_timeseries_idx = _rfc_timeseries_idx
-                self.rfc_use_rfc = _rfc_use_rfc
-                self.rfc_Datetime = _rfc_Datetime
-                self.rfc_timeSteps = _rfc_timeSteps
-                self.rfc_StationId_array = _rfc_StationId_array
-                self.rfc_StationId_stringLengths = _rfc_StationId_stringLengths
-                self.rfc_List_array = _rfc_List_array
-                self.rfc_List_stringLengths = _rfc_List_stringLengths
-
+                self._rfc_da_timestep = _rfc_da_timestep
+                self._rfc_totalCounts = _rfc_totalCounts
+                self._rfc_synthetic_values= _rfc_synthetic_values
+                self._rfc_discharges = _rfc_discharges
+                self._rfc_timeseries_idx = _rfc_timeseries_idx
+                self._rfc_use_rfc = _rfc_use_rfc
+                self._rfc_Datetime = _rfc_Datetime
+                self._rfc_timeSteps = _rfc_timeSteps
+                self._rfc_StationId_array = _rfc_StationId_array
+                self._rfc_StationId_stringLengths = _rfc_StationId_stringLengths
+                self._rfc_List_array = _rfc_List_array
+                self._rfc_List_stringLengths = _rfc_List_stringLengths
 
             #############################
             # Read Restart files:
@@ -259,8 +334,23 @@ class DAforcing_model():
             self._q0 = pd.DataFrame()
             self._waterbody_df = pd.DataFrame()
 
+            # q0    
+            self._q0_columnArray = np.zeros(0)    
+            self._q0_columnLengthArray = np.zeros(0)   
+            self._q0_nCol = np.zeros(0)   
+            self._q0_indexArray = np.zeros(0)   
+            self._q0_nIndex = np.zeros(0)   
+            self._q0_Array = np.zeros(0) 
+
+            # waterbody_df
+            self._waterbodyLR_columnArray = np.zeros(0)    
+            self._waterbodyLR_columnLengthArray = np.zeros(0)    
+            self._waterbodyLR_nCol = np.zeros(0)    
+            self._waterbodyLR_indexArray = np.zeros(0)    
+            self._waterbodyLR_nIndex = np.zeros(0)    
+            self._waterbodyLR_Array = np.zeros(0)    
+
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_channel_restart_file']
-            
             if lite_restart_file:
 
                 self._q0, self._t0 = _read_lite_restart(lite_restart_file)
@@ -269,14 +359,14 @@ class DAforcing_model():
 
                     (_q0_columnArray, _q0_columnLengthArray, _q0_nCol, \
                         _q0_indexArray, _q0_nIndex, _q0_Array) = \
-                        _bmi_disassemble_lite_restart (self._q0,np.float32)
+                        df2a._bmi_disassemble_lite_restart (self._q0,np.float32)
 
-                    self.q0_columnArray = _q0_columnArray
-                    self.q0_columnLengthArray = _q0_columnLengthArray
-                    self.q0_nCol = _q0_nCol
-                    self.q0_indexArray = _q0_indexArray
-                    self.q0_nIndex = _q0_nIndex
-                    self.q0_Array = _q0_Array
+                    self._q0_columnArray = _q0_columnArray
+                    self._q0_columnLengthArray = _q0_columnLengthArray
+                    self._q0_nCol = _q0_nCol
+                    self._q0_indexArray = _q0_indexArray
+                    self._q0_nIndex = _q0_nIndex
+                    self._q0_Array = _q0_Array
 
             lite_restart_file = self._compute_parameters['restart_parameters']['lite_waterbody_restart_file']
             
@@ -288,19 +378,19 @@ class DAforcing_model():
 
                     (_waterbodyLR_columnArray, _waterbodyLR_columnLengthArray, _waterbodyLR_nCol, \
                         _waterbodyLR_indexArray, _waterbodyLR_nIndex, _waterbodyLR_Array) = \
-                        _bmi_disassemble_lite_restart (self._waterbody_df,np.float64)
+                        df2a._bmi_disassemble_lite_restart (self._waterbody_df,np.float64)
 
-                    self.waterbodyLR_columnArray = _waterbodyLR_columnArray
-                    self.waterbodyLR_columnLengthArray = _waterbodyLR_columnLengthArray
-                    self.waterbodyLR_nCol = _waterbodyLR_nCol
-                    self.waterbodyLR_indexArray = _waterbodyLR_indexArray
-                    self.waterbodyLR_nIndex = _waterbodyLR_nIndex
-                    self.waterbodyLR_Array = _waterbodyLR_Array
+                    self._waterbodyLR_columnArray = _waterbodyLR_columnArray
+                    self._waterbodyLR_columnLengthArray = _waterbodyLR_columnLengthArray
+                    self._waterbodyLR_nCol = _waterbodyLR_nCol
+                    self._waterbodyLR_indexArray = _waterbodyLR_indexArray
+                    self._waterbodyLR_nIndex = _waterbodyLR_nIndex
+                    self._waterbodyLR_Array = _waterbodyLR_Array
 
         else:
 
             raise(RuntimeError("No config file provided."))
-
+            
 
     def run(self, values: dict):
         """
@@ -315,386 +405,39 @@ class DAforcing_model():
         """
         output_parameters = self._output_parameters
         da_parameters = self._data_assimilation_parameters
-
-        if output_parameters['lite_restart'] is not None:
-            _write_lite_restart(
-                values,
-                self._t0,
-                output_parameters['lite_restart']
-            )   
-
-        lastobs_output_folder = da_parameters.get('streamflow_da',{}).get('lastobs_output_folder', None)
-        if lastobs_output_folder:
-            _write_lastobs(
-                values,
-                self._t0,
-                lastobs_output_folder
-            )
+        write_lite_restart = values.get('write_lite_restart')
+        
+        
+        if write_lite_restart == 1:
+            if output_parameters and output_parameters['lite_restart'] is not None:
+                _write_lite_restart(
+                    values,
+                    self._t0,
+                    output_parameters['lite_restart']
+                )   
+            values['write_lite_restart'] = 0
             
-        if output_parameters.get('stream_output',{}).get('qvd_nudge'):
-            #write flowveldepth file
-            pass
-
-          
-def _time_stations_from_df(dataFrame, timeBase):
-
-    # get columns (date-time), extract as list at first
-    datesList = (dataFrame.columns).tolist()
-    # then subtract timebase
-    datesListSeconds = [int((d-timeBase).total_seconds()) for d in datesList]
-    nDates = len(datesListSeconds)
-    datesSecondsArray = np.array(datesListSeconds)
-
-    # get station IDs, as list
-    stations = (dataFrame).index.tolist()
-    nStations = len(stations)
-
-    # build station array (one giant 1D ndarray with ASCII encodings
-    # concatenated together), aided by an array of how many strings each
-    # station ID consists of - completely USGS, USACE, etc agnostic 
-    #
-    # define array defining string length for each station ID
-    stationStringLengthArray = np.empty(nStations, dtype=np.int64)
-    stationStringLengthArray[0] = len(stations[0])
-
-    # start big array with ID for first station
-    stationArray = np.empty(stationStringLengthArray[0], dtype=np.int64)
-
-    # init some aux. variables
-    firstIter = True
-    stationIndex = 0
-    # iterate through all stations
-    for station in stations:
-        # capture string length of present station
-        stationStringLengthArray[stationIndex] = len(station)
-        stationIndex += 1        
-        # convert string to ASCII code
-        charArray = np.array(station, dtype='c')
-        addArray = np.array([ord(ch) for ch in charArray])        
-        # build up big array
-        if (firstIter):
-            stationArray = addArray
-            firstIter = False
-        else:
-            stationArray = np.concatenate([stationArray, addArray])
-
-    return datesSecondsArray, nDates, stationArray, stationStringLengthArray, nStations
-
-
-def _bmi_disassemble_rfc_timeseries (dataFrame, timeRef):
-
-    # Extract individual columns and convert to ndarrays
-
-    # Column entries that are already float or int:
-    rfc_da_timestep = dataFrame["da_timestep"].to_numpy(dtype=int, copy=True)
-    rfc_totalCounts = dataFrame["totalCounts"].to_numpy(dtype=int, copy=True)
-    rfc_synthetic_values = dataFrame["synthetic_values"].to_numpy(dtype=np.float32, copy=True)
-    rfc_discharges = dataFrame["discharges"].to_numpy(dtype=np.float32, copy=True)
-    rfc_timeseries_idx = dataFrame["timeseries_idx"].to_numpy(dtype=int, copy=True)
-
-    # Convert Boolean entry to in (use_rfc)
-    # first, conversion to list
-    boolList = (dataFrame["use_rfc"]).tolist()
-    totalDim = len(boolList)
-    rfc_use_rfc = np.zeros(totalDim)
-    rfc_use_rfc = [int(d) for d in boolList]
-
-    # Datetime and timedelta entries
-    # Get into list
-    DatetimeList = (dataFrame["Datetime"]).tolist()
-    timeStepsList = (dataFrame["timeSteps"]).tolist()
-    # Convert to seconds (relative to timeRef for the absolute time stamp)
-    DatetimeListSeconds = [int((d-timeRef).total_seconds()) for d in DatetimeList]
-    timeStepsListSeconds = [int(d.total_seconds()) for d in timeStepsList]
-    # Convert into numpy array
-    rfc_Datetime = np.array(DatetimeListSeconds)
-    rfc_timeSteps = np.array(timeStepsListSeconds)
-  
-    # String entries: two arrays:
-    #   1st array: conversion of entries into ASCII code
-    #   2nd array: array with length of entries
-    # Extract entries as list
-    stationId_List = (dataFrame["stationId"]).tolist()
-    file_List = (dataFrame["file"]).tolist()    
-    (rfc_StationId_array, rfc_StationId_stringLengths) = _stringsToBMI(stationId_List)
-    (rfc_List_array, rfc_List_stringLengths) = _stringsToBMI(file_List)   
-
-    return (rfc_da_timestep, rfc_totalCounts, rfc_synthetic_values, rfc_discharges, \
-            rfc_timeseries_idx, rfc_use_rfc, rfc_Datetime, rfc_timeSteps, rfc_StationId_array, \
-            rfc_StationId_stringLengths, rfc_List_array, rfc_List_stringLengths)
-
-
-def _stringsToBMI(stringList):
-
-    # Generate ASCII array for list of strings (one giant 1D ndarray with ASCII encodings
-    # concatenated together), aided by an array of how many strings each string consists 
-    #
-    nEntries = len(stringList)
-    # define array defining string length for each station ID
-    stringLengthArray = np.empty(nEntries, dtype=np.int64)
-    stringLengthArray[0] = len(stringList[0])
-
-    # start big array with first string
-    stringArray = np.empty(stringLengthArray[0], dtype=np.int64)
-
-    # init some aux. variables
-    firstIter = True
-    index = 0
-    # iterate through all stations
-    for stringRead in stringList:
-        # capture string length of present station
-        stringLengthArray[index] = len(stringRead)
-        index += 1        
-        # convert string to ASCII code
-        charArray = np.array(stringRead, dtype='c')
-        addArray = np.array([ord(ch) for ch in charArray])        
-        # build up big array
-        if (firstIter):
-            stringArray = addArray
-            firstIter = False
-        else:
-            stringArray = np.concatenate([stringArray, addArray])    
-
-    return (stringArray, stringLengthArray)
-
-
-def _flatten_array(dataFrame, dataType):
-
-    # convert to numpy array first
-    array1 = dataFrame.to_numpy(copy=True, dtype=dataType)
-    # flatten it
-    array2 = array1.reshape(-1)
-
-    return array2
-
-
-def _unflatten_array(array_1D,nx,ny):
-
-    # reshape numpy array
-    array_2D = array_1D.reshape(ny,nx)
-
-    # convert to data frame
-    df_raw = pd.DataFrame(array_2D)
-
-    return df_raw
-
-
-def _time_retrieve_from_arrays(dataFrame, timeBase, datesSecondsArrays, \
-                               timeAxisName, freqString):
-
-    # convert array to list at first
-    datesList = (datesSecondsArrays).tolist()
-
-    # add timebase back in, and convert to datetime format
-    datesList = [(timedelta(seconds=d)+timeBase) for d in datesList]
-
-    # convert to DatetimeIndex
-    dateTimeIndex = pd.DatetimeIndex(datesList, name=timeAxisName, freq=freqString)
-
-    # transpose dataframe
-    dataFrameTranspose = dataFrame.T
-    # add time axis as index on transposed dataframe (time is in rows)
-    dataFrameTranspose = dataFrameTranspose.set_index(dateTimeIndex)
-    # revert to original (time is in columns)
-    dataFrameWithTime = dataFrameTranspose.T
-
-    return dataFrameWithTime
-
-
-def _stations_retrieve_from_arrays(dataFrame, stationsArray, stationStringLengthArray, \
-                               stationAxisName):
-
-    # first create station outputs as list
-    stationsList = []
-
-    # mark place in global stationsArray
-    i=0
-
-    for stringLength in stationStringLengthArray:
-
-        # extract small array with ASCII codes of one station ID
-        stationID_asArray = stationsArray[i:i+stringLength]
-        # increment global pointer along array
-        i=i+stringLength
-        # convert to list of characters
-        firstRun = True
-        for asciiCode in stationID_asArray:
-            # decode Ascii back to character and stick it to the end of the list
-            chrAdd = chr(asciiCode)
-            if firstRun == True:
-                stationID_asString = chrAdd
-                firstRun = False
-            else:
-                stationID_asString += chrAdd
-
-        # done with one station ID
-        stationsList.append(stationID_asString)
-
-    # construct index    
-    index = pd.Index(stationsList, name=stationAxisName, dtype=object)
-
-    dataFrame.index = (index)
-
-    return dataFrame
-
-
-def _BMI_toStrings(stringArray, stringLengthArray):
-
-    # Reassemble list of strings from main array with ASCII encodings and array of 
-    # how many characters each string consists 
-    
-
-    # first create station outputs as list
-    stringList = []
-
-    # mark place in global stationsArray
-    i=0
-
-    for stringLength in stringLengthArray:
-
-        # extract small array with ASCII codes of one station ID
-        string_asArray = stringArray[i:i+stringLength]
-        # increment global pointer along array
-        i=i+stringLength
-        # convert to list of characters
-        firstRun = True
-        for asciiCode in string_asArray:
-            # decode Ascii back to character and stick it to the end of the list
-            chrAdd = chr(asciiCode)
-            if firstRun == True:
-                string_asString = chrAdd
-                firstRun = False
-            else:
-                string_asString += chrAdd
-
-        # done with one station ID
-        stringList.append(string_asString)
-
-    return stringList
-
-
-def _bmi_reassemble_rfc_timeseries (rfc_da_timestep, rfc_totalCounts, \
-                rfc_synthetic_values, rfc_discharges, rfc_timeseries_idx, \
-                rfc_use_rfc, rfc_Datetime, rfc_timeSteps, rfc_StationId_array, \
-                rfc_StationId_stringLengths, rfc_List_array, \
-                rfc_List_stringLengths, timeRef):
-
-    # Create empty dataframe with appropriate column names
-    columnList = ['stationId','discharges','synthetic_values','totalCounts',\
-                  'timeSteps','Datetime','timeseries_idx','file','use_rfc','da_timestep']
-    
-    # Build up dataframe
-    dataFrame = pd.DataFrame()
-    for col in columnList:
-
-        if (col == 'stationId'):
-            addedCol = _BMI_toStrings(rfc_StationId_array, rfc_StationId_stringLengths)
-        elif (col == 'discharges'):
-            addedCol = rfc_discharges
-        elif (col == 'synthetic_values'):
-            addedCol = rfc_synthetic_values
-        elif (col == 'totalCounts'):
-            addedCol = rfc_totalCounts
-        elif (col == 'timeSteps'):
-            datesList = rfc_timeSteps.tolist()
-            addedCol = [(timedelta(seconds=d)) for d in datesList]
-        elif (col == 'Datetime'):
-            datesList = rfc_Datetime.tolist()
-            addedCol = [(timedelta(seconds=d)+timeRef) for d in datesList]       
-        elif (col == 'timeseries_idx'):
-            addedCol = rfc_timeseries_idx
-        elif (col == 'file'):
-            addedCol = _BMI_toStrings(rfc_List_array, rfc_List_stringLengths)        
-        elif (col == 'use_rfc'):
-            addedCol = [bool(d) for d in rfc_use_rfc]
-        elif (col == 'da_timestep'):
-            addedCol = rfc_da_timestep      
-        # add the selected column
-        dataFrame[col] = addedCol
-
-    return dataFrame
-
-
-def _bmi_disassemble_lite_restart (dataFrame, dataType):
-
-    # These are the q0- and waterbody dataframes for "lite-restart"
-    # index is int64, columns are strings, and array proper is float32 or float64
-
-    # get columns and convert to BMI compliant arrays
-    columnList = (dataFrame.columns).tolist()
-    nCol = len(columnList)
-    (columnArray, columnLengthArray) = _stringsToBMI(columnList)
-
-    # get index array (already BMI compliant; int64)
-    indexArray = (dataFrame.index).to_numpy(dtype=np.int64, copy=True)
-    nIndex = len(indexArray)
-
-    mainArray = _flatten_array(dataFrame, dataType)
-
-    return (columnArray, columnLengthArray, nCol, indexArray, nIndex, mainArray)
-
-
-def _bmi_reassemble_lite_restart (columnArray, columnLengthArray, nCol, indexArray,\
-                                    nIndex, Array):
-    
-    # reverse flattening of array proper
-    df_raw = _unflatten_array(Array,nCol,nIndex)
-
-    # get column names back as strings
-    colList = _BMI_toStrings(columnArray, columnLengthArray)
-    colListAttach = pd.Index(colList, dtype=object)
-
-    # transpose dataframe
-    df_raw_transpose = df_raw.T
-    # add column axis as index on transposed dataframe
-    df_raw_transpose.index = colListAttach
-    # revert transpose
-    df_raw_withCol = df_raw_transpose.T
-
-    # add index
-    index = pd.Index(indexArray, dtype=np.int64)
-    df_raw_withCol.index = index 
-
-    df_complete = df_raw_withCol
-
-    return df_complete
-
-
-def _bmi_disassemble_lastObs (lastobs_df):
-                
-    # Column entries that are already float or int:
-    timeSinceArray = lastobs_df["time_since_lastobs"].to_numpy(dtype=np.float64, copy=True)
-    lastDischargeArray = lastobs_df["lastobs_discharge"].to_numpy(dtype=np.float64, copy=True)
-
-    # Gage IDs: string entry
-    gageList = (lastobs_df["gages"]).tolist()
-    (gageArray, gageStringLengthArray) = _stringsToBMI(gageList)  
-
-    return(gageArray, gageStringLengthArray, timeSinceArray, lastDischargeArray)
-
-
-def _bmi_reassemble_lastObs (gageArray, gageStringLengthArray, \
-                             timeSinceArray, lastDischargeArray):
-
-    # Create empty dataframe with appropriate column names
-    columnList = ['gages','time_since_lastobs','lastobs_discharge']
-    
-    # Build up dataframe
-    dataFrame = pd.DataFrame()
-    for col in columnList:
-
-        if (col == 'gages'):
-            addedCol = _BMI_toStrings(gageArray, gageStringLengthArray)
-        elif (col == 'time_since_lastobs'):
-            addedCol = timeSinceArray
-        elif (col == 'lastobs_discharge'):
-            addedCol = lastDischargeArray
-  
-        # add the selected column
-        dataFrame[col] = addedCol
-
-    return dataFrame
-
+            lastobs_output_folder = da_parameters.get('streamflow_da',{}).get('lastobs_output_folder', None)
+            if lastobs_output_folder:
+                _write_lastobs(
+                    values,
+                    self._t0,
+                    lastobs_output_folder
+                )
+            
+        if output_parameters.get('stream_output',{}):
+
+            t0 = self._t0
+            stream_output_directory =  output_parameters.get('stream_output').get('stream_output_directory')
+            stream_output_type = output_parameters.get('stream_output').get('stream_output_type')
+            stream_output_internal_frequency = output_parameters.get('stream_output').get('stream_output_internal_frequency')
+            stream_output_time = output_parameters.get('stream_output').get('stream_output_time')
+            write_flowveldepth_netcdf(values,
+                                      stream_output_directory,   
+                                      t0,
+                                      stream_output_time, 
+                                      stream_output_type,
+                                      stream_output_internal_frequency)
 
 
 # Utility functions -------
@@ -724,6 +467,8 @@ def _read_config_file(custom_input_file):
     forcing_parameters = compute_parameters.get("forcing_parameters")
     data_assimilation_parameters = compute_parameters.get("data_assimilation_parameters")
     output_parameters = config_dict.get('output_parameters')
+    # configure python logger
+    log_level_set(config_dict.get('log_parameters'))
 
     return (
         compute_parameters,
@@ -976,9 +721,9 @@ def _write_lite_restart(
         waterbodies_df = pd.DataFrame(data=waterbodies_df.reshape(len(waterbodies_ids), -1), 
                                       index=waterbodies_ids,
                                       columns=['ifd','LkArea','LkMxE','OrificeA','OrificeC','OrificeE',
-                                               'WeirC','WeirE','WeirL','qd0','h0','index'])
+                                               'WeirC','WeirE','WeirL','lon', 'lat', 'crs','qd0','h0','index'])
         waterbodies_df.index.name = 'lake_id'
-
+        waterbodies_df.drop(columns=['lon', 'lat', 'crs'], inplace=True)
         timestamp = t0 + timedelta(seconds=values['t-route_model_time'])
 
         # create restart filenames
@@ -1038,3 +783,160 @@ def _write_lastobs(
         lastobs_output_folder = str(lastobs_output_folder)
     output_path = pathlib.Path(lastobs_output_folder + "/nudgingLastObs." + modelTimeAtOutput_str + ".nc").resolve()
     ds.to_netcdf(str(output_path))
+
+def write_flowveldepth_netcdf(values,
+                              stream_output_directory,   
+                              t0, 
+                              stream_output_timediff = 1, 
+                              stream_output_type = '.nc',
+                              stream_output_internal_frequency = 5):
+    '''
+    Write the results of flowveldepth and nudge to netcdf- break. 
+    Arguments
+    -------------
+    stream_output_directory (Path or string) - directory where file will be created
+    flowveldepth (DataFrame) -  including flowrate, velocity, and depth for each time step
+    nudge (numpy.ndarray) - nudge data with shape (76, 289)
+    usgs_positions_id (array) - Position ids of usgs gages
+    '''
+    ## getting the flatten value of nudge
+    flatten_nudge = values.get('nudging')
+    nudging_ids = values.get('nudging_ids')
+    # reconstruct the df
+    num_rows_ndg = len(nudging_ids)
+    num_columns_ndg = len(flatten_nudge) // len(nudging_ids)
+    nudge = pd.DataFrame(flatten_nudge.reshape(num_rows_ndg, num_columns_ndg), index=nudging_ids)
+
+    ## getting the flatten value of flowveldepth
+    flatten_fvd = values.get('fvd_results')
+    fvd_index = values.get('fvd_index')
+    # reconstruct the df
+    num_rows_fvd = len(fvd_index)
+    num_columns_fvd = len(flatten_fvd) // len(fvd_index)
+    flowveldepth = pd.DataFrame(flatten_fvd.reshape(num_rows_fvd, num_columns_fvd), index=fvd_index)
+    # Number of timesteps and features
+    nsteps = len(flowveldepth.columns) // 3
+    num_features = len(flowveldepth)
+    nstep_nc = 12 * stream_output_timediff
+    gage, nudge_timesteps = nudge.shape
+    column_name = [(i+1, attr) for i in range(nsteps) for attr in ['q', 'v', 'd']]
+    flowveldepth.columns = column_name
+    #--------- Add 'nudge' column based on usgs_positions_id----------
+
+    # Create a copy of the flowveldepth DataFrame to add 'ndg' columns
+    qvd_ndg = flowveldepth.copy()
+    # Create a list for names of the columns for nudge values
+
+    ndg_columns = [(j+1,'ndg') for j in range(nsteps)]
+    # renaming nudge columns
+    nudge.columns = ndg_columns
+    # Left joining qvd and nudge values on index
+    qvd_ndg = pd.merge(qvd_ndg, nudge, left_index=True, right_index=True, how='left')
+
+    new_order = [(i+1, attr) for i in range(nsteps) for attr in ['q', 'v', 'd', 'ndg']]
+    # Reorder the columns
+    qvd_ndg = qvd_ndg[new_order]
+
+    hr = values.get('t-route_model_time') // 3600 - 1
+    # Create time step values based on t0
+    time_steps = [t0 + timedelta(hours= hr)]
+    time_dim = [t * stream_output_internal_frequency*60 for t in range(1, int(1 * 60 / stream_output_internal_frequency) + 1)]
+
+    # renaming the columns based on timestamp
+    column_name_timeStamp = [t0 + timedelta(hours= hr) + timedelta(minutes=(i * 5)) for i in range(1, nsteps+1)]
+    new_column_name_timeStamp = [(attr + '_' +str(cnt+1) + '_' + times.strftime('%Y%m%d%H%M')) for cnt, times in enumerate(column_name_timeStamp) for attr in ['q', 'v', 'd', 'ndg']]
+    qvd_ndg.columns = new_column_name_timeStamp
+
+    for counter, i in enumerate(range(0, nsteps, nstep_nc)):
+        # Define the range of columns for this file
+        start_col = i * 4
+        end_col = min((i + nstep_nc) * 4 , nsteps * 4)
+        selected_col = stream_output_internal_frequency // 5
+        # Create a subset DataFrame for the current range of columns
+        # subset_df = qvd_ndg.iloc[:, start_col:end_col]
+        # Create a list of column names to keep
+        columns_to_keep = [col for col in qvd_ndg.columns[start_col:end_col] if int(col.split('_')[1]) % selected_col == 0]
+        subset_df = qvd_ndg[columns_to_keep]
+        subset_df.columns = ['_'.join([col.split('_')[0], col.split('_')[2]]) for col in subset_df.columns]
+        
+        # Create the file name based on the current time step
+        current_time_step = time_steps[counter].strftime('%Y%m%d%H%M')
+        if stream_output_directory:
+            if stream_output_type =='.nc':
+                file_name = f"{current_time_step}.flowveldepth.nc"
+
+            elif stream_output_type=='.csv':
+                file_name = f"{current_time_step}.flowveldepth.csv"
+                # Save the data to CSV file
+                subset_df.to_csv(f"{stream_output_directory}/{file_name}", index=True)
+                LOG.debug(f"Flowveldepth data saved as CSV files in {stream_output_directory}")
+
+            elif stream_output_type=='.pkl':
+                file_name = f"{current_time_step}.flowveldepth.pkl"
+                # Save the data to Pickle file
+                subset_df.to_pickle(f"{stream_output_directory}/{file_name}")
+                LOG.debug(f"Flowveldepth data saved as PICKLE files in {stream_output_directory}")
+
+            else:
+                print('WRONG FORMAT')
+
+        if stream_output_directory:
+            if (stream_output_type =='.nc'):
+                # Open netCDF4 Dataset in write mode
+                with netCDF4.Dataset(
+                    filename=f"{stream_output_directory}/{file_name}",
+                    mode='w',
+                    format='NETCDF4'
+                ) as ncfile:
+
+                    # ============ DIMENSIONS ===================
+                    _ = ncfile.createDimension('feature_id', None)
+                    _ = ncfile.createDimension('time_step (sec)', subset_df.iloc[:, 0::4].shape[1])
+                    _ = ncfile.createDimension('gage', gage)
+                    _ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
+
+                    # =========== q,v,d,ndg VARIABLES ===============
+                    for counters, var in enumerate(['flowrate', 'velocity', 'depth', 'nudge']):
+                        QVD = ncfile.createVariable(
+                            varname=var,
+                            datatype=np.float32,
+                            dimensions=('feature_id', 'time_step (sec)',),
+                        )
+
+                        QVD.units = 'm3/s m/s m m3/s'
+                        QVD.description = f'Data for {var}'
+
+                        # Prepare data for writing
+                        data_array = subset_df.iloc[:, counters::4].to_numpy(dtype=np.float32)
+
+                        # Set data for each feature_id and time_step
+                        ncfile.variables[var][:] = data_array
+                    feature_id = ncfile.createVariable(
+                        varname='feature_id',
+                        datatype=np.int32,
+                        dimensions=('feature_id',),
+                    )
+                    feature_id[:] = flowveldepth.index.to_numpy(dtype=np.int32)
+                    feature_id.units = 'None'
+                    feature_id.description = 'Feature IDs'
+                    ###
+                    time_step = ncfile.createVariable(
+                        varname='time_step (sec)',
+                        datatype=np.int32,
+                        dimensions=('time_step (sec)',),
+                    )
+                    time_step[:] = np.array(time_dim[:subset_df.iloc[:, 0::4].shape[1]], dtype=np.int32)
+                    time_step.units = 'sec'
+                    time_step.description = 'time stamp'
+                    # =========== GLOBAL ATTRIBUTES ===============
+                    ncfile.setncatts(
+                        {
+                            'TITLE': 'OUTPUT FROM T-ROUTE',
+                            'Time step (sec)': f'{stream_output_internal_frequency}',
+                            'model_initialization_time': t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                            'model_reference_time': time_steps[counter].strftime('%Y-%m-%d_%H:%M:%S'),
+                            'comment': f'The file includes {stream_output_timediff} hour data which includes {len(time_dim)} timesteps',
+                            'code_version': '',
+                        }
+                    )
+                    LOG.debug(f"Flowveldepth data saved as NetCDF files in {stream_output_directory}")    

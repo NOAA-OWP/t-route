@@ -10,6 +10,14 @@ import glob
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
+#from bmi_array2df import *
+#import bmi_array2df as a2df
+
+from . import bmi_array2df as a2df
+
+# set legacy run flag: option to pass data frames through BMI formalism 
+# not to be used in regular BMI runs any longer, only for debugging
+legacy_bmi_df = False
 
 # -----------------------------------------------------------------------------
 # Abstract DA Class:
@@ -26,7 +34,32 @@ class AbstractDA(ABC):
                  "_reservoir_usgs_df", "_reservoir_usgs_param_df", 
                  "_reservoir_usace_df", "_reservoir_usace_param_df",
                  "_reservoir_rfc_df", "_reservoir_rfc_synthetic",
-                 "_reservoir_rfc_param_df", "_rfc_timeseries_df"]
+                 "_reservoir_rfc_param_df", 
+                 "_dateNull", 
+                 "_datesSecondsArray_usgs", "_nDates_usgs", "_stationArray_usgs", 
+                 "_stationStringLengthArray_usgs", "_nStations_usgs",
+                 "_usgs_Array"
+                 "_datesSecondsArray_reservoir_usgs", "nDates_reservoir_usgs",
+                 "_stationArray_reservoir_usgs", "_stationStringLengthArray_reservoir_usgs",
+                 "_nStations_reservoir_usgs",
+                 "_usgs_reservoir_Array",
+                 "_datesSecondsArray_reservoir_usace", "_nDates_reservoir_usace",
+                 "_stationArray_reservoir_usace", "_stationStringLengthArray_reservoir_usace",
+                 "_nStations_reservoir_usace", 
+                 "_usace_reservoir_Array",
+                 "_rfc_da_timestep", "_rfc_totalCounts", "_rfc_synthetic_values",
+                 "_rfc_discharges", "_rfc_timeseries_idx", "_rfc_use_rfc",
+                 "_rfc_Datetime", "_rfc_timeSteps", "_rfc_StationId_array",
+                 "_rfc_StationId_stringLengths", "_rfc_List_array",
+                 "_rfc_List_stringLengths",
+                 "_lastObs_gageArray", "_lastObs_gageStringLengths", "_lastObs_timeSince",
+                 "_lastObs_discharge",
+                 "_q0_columnArray", "_q0_columnLengthArray", "_q0_nCol", "_q0_indexArray",
+                 "_q0_nIndex", "_q0_Array",
+                 "_waterbodyLR_columnArray", "_waterbodyLR_columnLengthArray", 
+                 "_waterbodyLR_nCol", "_waterbodyLR_indexArray", "_waterbodyLR_nIndex",
+                 "_waterbodyLR_Array", "_rfc_timeseries_df"
+                 ]
 
 
 # -----------------------------------------------------------------------------
@@ -62,16 +95,57 @@ class NudgingDA(AbstractDA):
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
 
+        usgs_df = pd.DataFrame()
+
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
         if nudging:
+
             if not from_files:
-                usgs_df = value_dict['usgs_df']
+
+                if (legacy_bmi_df):
+
+                    # THIS LINE WAS REPLACED BY THE BMI TRANSPORT STUFF
+                    usgs_df = value_dict['usgs_df']
+
+                else:
+
+                    # check if there are data transported
+                    usgs_Array = value_dict['usgs_Array']
+                    if len(usgs_Array) >0:
+
+                        dateNull = value_dict['dateNull']    
+
+                        datesSecondsArray_usgs = value_dict['datesSecondsArray_usgs']
+                        nDates_usgs = value_dict['nDates_usgs']
+                        stationArray_usgs = value_dict['stationArray_usgs']
+                        stationStringLengthArray_usgs = value_dict['stationStringLengthArray_usgs']
+                        nStations_usgs = value_dict['nStations_usgs']
+                
+                        # Unflatten the arrays
+                        df_raw_usgs = a2df._unflatten_array(usgs_Array,\
+                                    nDates_usgs, nStations_usgs)
+
+                        # Decode time/date axis
+                        timeAxisName = 'time'
+                        freqString = '5T'
+                        df_withDates_usgs = a2df._time_retrieve_from_arrays(\
+                            df_raw_usgs, dateNull, datesSecondsArray_usgs, \
+                            timeAxisName, freqString)
+
+                        # Decode station ID axis
+                        stationAxisName = 'stationId'
+                        usgs_df = a2df._stations_retrieve_from_arrays(\
+                                df_withDates_usgs, stationArray_usgs, \
+                                stationStringLengthArray_usgs, stationAxisName)
+                
                 #usgs_df = usgs_df.join(network.link_gage_df.reset_index().set_index('gages'),how='inner').set_index('link').sort_index()
                 usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
 
                 self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
                 
+                # Next is lastobs - can also be implemented following bmi_array2df module
                 lastobs = streamflow_da_parameters.get("lastobs_file", False)
+                
                 self._last_obs_df = pd.DataFrame()
                 if lastobs:
                     lastobs_df = value_dict['lastobs_df']
@@ -98,6 +172,7 @@ class NudgingDA(AbstractDA):
                     self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
             
             else:
+                
                 lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
                 lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
@@ -178,7 +253,7 @@ class PersistenceDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
-        
+
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
 
@@ -202,9 +277,47 @@ class PersistenceDA(AbstractDA):
         reservoir_usace_param_df = pd.DataFrame()
 
         if not from_files:
+
             if usgs_persistence:
-                reservoir_usgs_df = value_dict['reservoir_usgs_df']
-                
+
+                if (legacy_bmi_df):
+
+                    # THIS LINE WAS REPLACED BY THE BMI TRANSPORT STUFF
+                    reservoir_usgs_df = value_dict['reservoir_usgs_df']
+
+                else:
+
+                    usgs_reservoir_Array = value_dict['usgs_reservoir_Array']
+                    if len(usgs_reservoir_Array) >0:
+
+                        dateNull = value_dict['dateNull']    
+
+                        datesSecondsArray_reservoir_usgs = value_dict['datesSecondsArray_reservoir_usgs']
+                        nDates_reservoir_usgs = value_dict['nDates_reservoir_usgs']
+                        stationArray_reservoir_usgs = value_dict['stationArray_reservoir_usgs']
+                        stationStringLengthArray_reservoir_usgs = value_dict['stationStringLengthArray_reservoir_usgs']
+                        nStations_reservoir_usgs = value_dict['nStations_reservoir_usgs']
+ 
+                        # Unflatten the arrays
+                        df_raw_reservoirUsgs = a2df._unflatten_array(\
+                                        usgs_reservoir_Array,\
+                                        nDates_reservoir_usgs,\
+                                        nStations_reservoir_usgs)
+
+                        # Decode time/date axis
+                        timeAxisName = 'time'
+                        freqString = '15T'
+                        df_withDates_reservoirUsgs = a2df._time_retrieve_from_arrays(\
+                                df_raw_reservoirUsgs, dateNull, \
+                                datesSecondsArray_reservoir_usgs, \
+                                timeAxisName, freqString)
+
+                        # Decode station ID axis
+                        stationAxisName = 'stationId'
+                        reservoir_usgs_df = a2df._stations_retrieve_from_arrays\
+                                (df_withDates_reservoirUsgs, stationArray_reservoir_usgs, \
+                                stationStringLengthArray_reservoir_usgs, stationAxisName)
+
                 reservoir_usgs_df = (
                     network.usgs_lake_gage_crosswalk.
                     reset_index().
@@ -216,8 +329,8 @@ class PersistenceDA(AbstractDA):
                 # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
-                        data = 0, 
-                        index = reservoir_usgs_df.index ,
+                    data = 0, 
+                    index = reservoir_usgs_df.index ,
                         columns = ['update_time']
                     )
                     reservoir_usgs_param_df['prev_persisted_outflow'] = np.nan
@@ -225,9 +338,49 @@ class PersistenceDA(AbstractDA):
                     reservoir_usgs_param_df['persistence_index'] = 0
                 else:
                     reservoir_usgs_param_df = pd.DataFrame()
-            
+
             if usace_persistence: 
-                reservoir_usace_df = value_dict['reservoir_usace_df']
+
+                if (legacy_bmi_df):
+
+                    # THIS LINE WAS REPLACED BY THE BMI TRANSPORT STUFF
+                    reservoir_usace_df = value_dict['reservoir_usace_df']
+
+                else:
+                
+                    # first check if there are data transported
+                    usace_reservoir_Array = value_dict['usace_reservoir_Array']
+                    if len(usace_reservoir_Array) >0:
+
+                        dateNull = value_dict['dateNull']    
+
+                        datesSecondsArray_reservoir_usace = value_dict['datesSecondsArray_reservoir_usace']
+                        nDates_reservoir_usace = value_dict['nDates_reservoir_usace']
+                        stationArray_reservoir_usace = value_dict['stationArray_reservoir_usace']
+                        stationStringLengthArray_reservoir_usace = value_dict['stationStringLengthArray_reservoir_usace']
+                        nStations_reservoir_usace = value_dict['nStations_reservoir_usace']
+                
+                        # Unflatten the arrays
+                        df_raw_reservoirUsace = a2df._unflatten_array(\
+                                            usace_reservoir_Array,\
+                                            nDates_reservoir_usace,\
+                                            nStations_reservoir_usace)
+
+                        # Decode time/date axis
+                        timeAxisName = 'time'
+                        freqString = '15T'
+                        df_withDates_reservoirUsace = a2df._time_retrieve_from_arrays\
+                                (df_raw_reservoirUsace, dateNull, \
+                                datesSecondsArray_reservoir_usace, 
+                                timeAxisName, freqString)
+
+                        # Decode station ID axis
+                        stationAxisName = 'stationId'
+                        reservoir_usace_df = a2df._stations_retrieve_from_arrays\
+                                (df_withDates_reservoirUsace,\
+                                stationArray_reservoir_usace, \
+                                stationStringLengthArray_reservoir_usace, \
+                                stationAxisName)                
 
                 reservoir_usace_df = (
                     network.usace_lake_gage_crosswalk.
@@ -251,6 +404,7 @@ class PersistenceDA(AbstractDA):
                     reservoir_usace_param_df = pd.DataFrame()
                 
         else:
+
             if usgs_persistence:
                 # if usgs_df is already created, make reservoir_usgs_df from that rather than reading in data again
                 if not self._usgs_df.empty: 
@@ -517,6 +671,7 @@ class RFCDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict):
+
         rfc_parameters = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', None)
 
         # check if user explictly requests RFC reservoir DA
@@ -524,23 +679,65 @@ class RFCDA(AbstractDA):
         if rfc_parameters:
             rfc = rfc_parameters.get('reservoir_rfc_forecasts', False)
 
+        self._reservoir_rfc_df = pd.DataFrame()
+        self._reservoir_rfc_param_df = pd.DataFrame()
+        rfc_df = pd.DataFrame()
+
         if not from_files:
-            # Use BMI-provided 1-D arrays for creating rfc dataframes
+
             if rfc:
-                # Retrieve rfc timeseries dataframe from BMI dictionary
-                rfc_df = value_dict['rfc_timeseries_df']
-                # Create reservoir_rfc_df dataframe of observations, rows are locations and columns are dates
-                # Create reservoir_rfc_df dataframe of parameter
+
+                if (legacy_bmi_df):
+
+                    # THIS LINE WAS REPLACED BY THE BMI TRANSPORT STUFF
+                    # Retrieve rfc timeseries dataframe from BMI dictionary
+                    rfc_df = value_dict['rfc_timeseries_df']
+
+                else:
+
+                    # check if there are any data transported
+                    rfc_StationId_array = value_dict['rfc_StationId_array']
+                    if len(rfc_StationId_array) >0:
+
+                        dateNull = value_dict['dateNull']    
+
+                        # RFC timeseries dataframe converted
+                        rfc_da_timestep = value_dict['rfc_da_timestep']
+                        rfc_totalCounts = value_dict['rfc_totalCounts']
+                        rfc_synthetic_values = value_dict['rfc_synthetic_values']
+                        rfc_discharges = value_dict['rfc_discharges']
+                        rfc_timeseries_idx = value_dict['rfc_timeseries_idx']
+                        rfc_use_rfc = value_dict['rfc_use_rfc']
+                        rfc_Datetime = value_dict['rfc_Datetime']
+                        rfc_timeSteps = value_dict['rfc_timeSteps']
+                
+                        rfc_StationId_stringLengths = value_dict['rfc_StationId_stringLengths']
+                        rfc_List_array = value_dict['rfc_List_array']
+                        rfc_List_stringLengths = value_dict['rfc_List_stringLengths']
+
+                        # Decode rfc timeseries
+                        rfc_df = a2df._bmi_reassemble_rfc_timeseries (rfc_da_timestep, \
+                                rfc_totalCounts, rfc_synthetic_values, \
+                                rfc_discharges, rfc_timeseries_idx, \
+                                rfc_use_rfc, rfc_Datetime, rfc_timeSteps, \
+                                rfc_StationId_array, rfc_StationId_stringLengths, \
+                                rfc_List_array, rfc_List_stringLengths, 
+                                dateNull)
+
                 self._reservoir_rfc_df, self._reservoir_rfc_param_df = assemble_rfc_dataframes(
                                                                                             rfc_df, 
                                                                                             network.rfc_lake_gage_crosswalk,
                                                                                             network.t0, 
                                                                                             rfc_parameters,
-                                                                                            )                
+                                                                                            )
+
             else: 
+
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
+        
         else:
+
             if rfc:
                 # In order to use only RFC python module (not fortran module), create rfc dataframes from reading files
                 #rfc_parameters   = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {})
@@ -566,7 +763,8 @@ class RFCDA(AbstractDA):
                                                                                                 network.t0, 
                                                                                                 rfc_parameters,
                                                                                                 )
-            else:
+            else:    
+
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
 
@@ -611,7 +809,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     """
     
     """
-    __slots__ = ["_data_assimilation_parameters", "_run_parameters", "_waterbody_parameters"]            
+    __slots__ = ["_data_assimilation_parameters", "_run_parameters", "_waterbody_parameters"]
 
     def __init__(self, network, data_assimilation_parameters, run_parameters, waterbody_parameters,
                  from_files=True, value_dict=None, da_run=[]):
@@ -1428,6 +1626,7 @@ def _rfc_timeseries_qcqa(discharge,stationId,synthetic,totalCounts,timestamp,tim
     set_index('stationId'))
 
     return rfc_df, rfc_param_df
+
 
 def _read_timeseries_files(filepath, timeseries_dates, t0, final_persist_datetime):
     # Search for most recent RFC timseries file based on offset hours and lookback window
