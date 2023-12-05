@@ -233,4 +233,26 @@ class Config(BaseModel, extra='forbid'):
                 assert lite_restart_directory, "lite_restart is present in output parameters, but no lite_restart_output_directory is provided."
         
         return values
-    
+
+    @root_validator(skip_on_failure=True)
+    def check_nts_dt_stream_output_internal_frequency(cls, values):
+        compute_params = values.get('compute_parameters')
+        output_params = values.get('output_parameters')
+        
+        if compute_params and output_params:
+            # Directly access ForcingParameters
+            forcing_params = compute_params.forcing_parameters
+            stream_output = output_params.stream_output
+
+            if forcing_params and stream_output:
+                nts = forcing_params.nts
+                dt = forcing_params.dt
+                internal_freq = stream_output.stream_output_internal_frequency
+
+                # Perform the check
+                if nts and dt and internal_freq:
+                    result = nts * dt / (internal_freq * 60)
+                    if not result.is_integer():
+                        raise ValueError("UPDATE nts. Make sure 'nts' times 'dt' divided by ('stream_output_internal_frequency' times 60) is a whole number in your configuration.")
+
+        return values    
