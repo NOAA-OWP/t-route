@@ -94,7 +94,7 @@ class NudgingDA(AbstractDA):
 
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
-
+        
         usgs_df = pd.DataFrame()
 
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
@@ -172,21 +172,42 @@ class NudgingDA(AbstractDA):
                     self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
             
             else:
-                
-                lastobs_file = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+                #TODO: Is it a sustainable to figure out if using NHD or HYfeature based on lastobs_crosswalk_file?
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
-                lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
-                
-                if lastobs_file:
-                    self._last_obs_df = build_lastobs_df(
-                        lastobs_file,
-                        lastobs_crosswalk_file,
-                        lastobs_start,
-                    )
-                
+                if lastobs_crosswalk_file:
+                    # lastobs Dataframe for NHD Hydrofabric
+                    lastobs_file = streamflow_da_parameters.get("lastobs_file", None)
+                    lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+                    lastobs_start = streamflow_da_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time", 0)
+                    
+                    if lastobs_file:
+                        self._last_obs_df = build_lastobs_df(
+                            lastobs_file,
+                            lastobs_crosswalk_file,
+                            lastobs_start,
+                        )
+                else:
+                    # lastobs Dataframe for HYfeature HYdrofabric
+                    lastobs_file = data_assimilation_parameters.get('streamflow_da', {}).get('lastobs_file', False)              
+                    if lastobs_file:
+                        lastobs_df = _read_lastobs_file(lastobs_file)
+                        lastobs_df = lastobs_df.set_index('gages')
+                        link_gage_df = network.link_gage_df.reset_index().set_index('gages')
+                        col_name = link_gage_df.columns[0]
+                        link_gage_df[col_name] = link_gage_df[col_name].astype(int)
+                        gages_dict = link_gage_df.to_dict().get(col_name)
+                        lastobs_df = lastobs_df.rename(index=gages_dict)
+                        # remove 'nan' values from index
+                        temp_df = lastobs_df.reset_index()
+                        temp_df = temp_df[temp_df['gages']!='nan']
+                        temp_df['gages'] = temp_df['gages'].astype(int)
+                        lastobs_df = temp_df.set_index('gages').dropna()
+                        self._last_obs_df = lastobs_df
+                    
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
-                # segments.
+                # segments because connections dic has replaced all link ids within
+                # waterbodies with related lake ids.
                 if network.link_lake_crosswalk:
                     self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
                 
@@ -217,7 +238,7 @@ class NudgingDA(AbstractDA):
             - lastobs_df               (DataFrame): Last gage observations data for DA
         '''
         streamflow_da_parameters = self._data_assimilation_parameters.get('streamflow_da', None)
-
+ 
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
                 self._last_obs_df = new_lastobs(run_results, time_increment)
@@ -936,7 +957,7 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     - usgs_df (DataFrame): dataframe of USGS gage observations
     '''
     usgs_timeslices_folder = data_assimilation_parameters.get("usgs_timeslices_folder", None)
-    lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+    #lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
     lastobs_start          = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",0)
     lastobs_type           = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
     crosswalk_file         = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
@@ -1714,3 +1735,60 @@ def assemble_rfc_dataframes(rfc_timeseries_df, rfc_lake_gage_crosswalk, t0, rfc_
     reservoir_rfc_param_df['rfc_persist_days'] = rfc_parameters.get('reservoir_rfc_forecast_persist_days', 11)
 
     return reservoir_rfc_df, reservoir_rfc_param_df
+
+def _read_lastobs_file(
+        lastobsfile,
+        station_id = "stationId",
+        ref_t_attr_id = "modelTimeAtOutput",
+        time_idx_id = "timeInd",
+        obs_discharge_id = "discharge",
+        discharge_nan = -9999.0,
+        time_shift = 0,
+        ):
+    with xr.open_dataset(lastobsfile) as ds:
+        gages = ds[station_id].values
+        
+        ref_time = datetime.strptime(ds.attrs[ref_t_attr_id], "%Y-%m-%d_%H:%M:%S")
+        
+        last_ts = ds[time_idx_id].values[-1]
+        
+        df_discharge = (
+            ds[obs_discharge_id].to_dataframe().                 # discharge to MultiIndex DF
+            replace(to_replace = discharge_nan, value = np.nan). # replace null values with nan
+            unstack(level = 0)                                   # unstack to single Index (timeInd)    
+        )
+        
+        last_obs_index = (
+            df_discharge.
+            apply(pd.Series.last_valid_index).                   # index of last non-nan value, each gage
+            to_numpy()                                           # to numpy array
+        )
+        last_obs_index = np.nan_to_num(last_obs_index, nan = last_ts).astype(int)
+                        
+        last_observations = []
+        lastobs_times     = []
+        for i, idx in enumerate(last_obs_index):
+            last_observations.append(df_discharge.iloc[idx,i])
+            lastobs_times.append(ds.time.values[i, idx].decode('utf-8'))
+            
+        last_observations = np.array(last_observations)
+        lastobs_times     = pd.to_datetime(
+            np.array(lastobs_times), 
+            format="%Y-%m-%d_%H:%M:%S", 
+            errors = 'coerce'
+        )
+
+        lastobs_times = (lastobs_times - ref_time).total_seconds()
+        lastobs_times = lastobs_times - time_shift
+
+    data_var_dict = {
+        'gages'               : gages,
+        'time_since_lastobs'  : lastobs_times,
+        'lastobs_discharge'   : last_observations
+    }
+
+    lastobs_df = pd.DataFrame(data = data_var_dict)
+    lastobs_df['gages'] = lastobs_df['gages'].str.decode('utf-8')
+
+    return lastobs_df
+

@@ -96,7 +96,7 @@ class troute_model():
             compute_parameters=self._compute_parameters,
             hybrid_parameters=self._hybrid_parameters,
             preprocessing_parameters=self._preprocessing_parameters,
-            output_parameters = self._output_parameters,
+            output_parameters=self._output_parameters,
             from_files=False, value_dict=values,
             bmi_parameters=self._bmi_parameters,)
 
