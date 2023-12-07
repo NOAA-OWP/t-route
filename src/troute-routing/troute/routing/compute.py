@@ -11,7 +11,7 @@ import copy
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
-import troute.routing.diffusive_utils as diff_utils
+import troute.routing.diffusive_utils_v02 as diff_utils
 from troute.routing.fast_reach import diffusive
 
 import logging
