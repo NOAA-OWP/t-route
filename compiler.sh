@@ -37,16 +37,6 @@ fi
 if [ -z "$NETCDF" ]
 then
     export NETCDFINC=/usr/include/openmpi-x86_64/
-    # set alternative NETCDF variable include path, for example for WSL
-    # (Windows Subsystems for Linux).
-    #
-    # EXAMPLE USAGE: export NETCDFALTERNATIVE=$HOME/.conda/envs/py39/include/
-    # (before ./compiler.sh)
-    if [ -n "$NETCDFALTERNATIVE" ]
-    then
-	echo "using alternative NETCDF inc ${NETCDFALTERNATIVE}"
-	export NETCDFINC=$NETCDFALTERNATIVE
-    fi
 else
     export NETCDFINC="${NETCDF}"
 fi
