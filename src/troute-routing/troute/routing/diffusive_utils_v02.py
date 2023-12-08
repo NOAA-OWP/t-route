@@ -253,7 +253,6 @@ def fp_qlat_map(
     -----
     data in qlat_g are normalized by segment length with units of m2/sec = m3/sec/m
     """
-
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -534,10 +533,13 @@ def fp_da_map(
     
         usgs_df_complete = usgs_df.replace(np.nan, -4444.0)
     
-        for i in range(len(timestamps)):
-            if timestamps[i] not in usgs_df.columns:
-                usgs_df_complete.insert(i, timestamps[i], -4444.0*np.ones(len(usgs_df)), allow_duplicates=False)
-  
+        missing_timestamps = [ts for ts in timestamps if ts not in usgs_df.columns]  
+        missing_data = pd.DataFrame(-4444.0*np.ones((len(usgs_df), len(missing_timestamps))), 
+                                    columns=missing_timestamps, 
+                                    index=usgs_df.index)
+        usgs_df_complete = pd.concat([usgs_df_complete, missing_data], axis=1)
+        usgs_df_complete = usgs_df_complete[timestamps]
+
         frj = -1
         for x in range(mx_jorder, -1, -1):
             for head_segment, reach in ordered_reaches[x]:
@@ -683,7 +685,6 @@ def diffusive_input_data_v02(
     -------
     diff_ins -- (dict) formatted inputs for diffusive wave model
     """
-
     # lateral inflow timestep (sec). Currently, lateral flow in CHAROUT files at one hour time step
     dt_ql_g = 3600.0
     # upstream boundary condition timestep = MC simulation time step (sec)
