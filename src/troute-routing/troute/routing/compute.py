@@ -1485,9 +1485,9 @@ def compute_diffusive_routing(
         # diffusive streamflow DA activation switch
         #if da_parameter_dict['diffusive_streamflow_nudging']==True:
         if 'diffusive_streamflow_nudging' in da_parameter_dict:
-            diff_usgs_df = usgs_df
+            diffusive_usgs_df = usgs_df
         else:
-            diff_usgs_df = pd.DataFrame()
+            diffusive_usgs_df = pd.DataFrame()
 
         # tw in refactored hydrofabric
         if refactored_diffusive_domain:
@@ -1504,6 +1504,11 @@ def compute_diffusive_routing(
         else:
             coastal_boundary_depth_bytw_df = pd.DataFrame()
 
+        # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
+        # the column names need to be changed to intergers from zero incrementing by 1
+        diffusive_qlats = qlats.copy()
+        diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
+
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1514,7 +1519,7 @@ def compute_diffusive_routing(
             diffusive_network_data[tw]['tributary_segments'],
             None, # place holder for diffusive parameters
             diffusive_network_data[tw]['param_df'],
-            qlats,
+            diffusive_qlats,
             q0,
             junction_inflows,
             qts_subdivisions,
@@ -1523,7 +1528,7 @@ def compute_diffusive_routing(
             dt,
             waterbodies_df,
             topobathy_bytw,
-            diff_usgs_df,
+            diffusive_usgs_df,
             refactored_diffusive_domain_bytw,
             refactored_reaches_byrftw, 
             coastal_boundary_depth_bytw_df,
