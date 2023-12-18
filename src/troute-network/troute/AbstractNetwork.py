@@ -864,33 +864,57 @@ class AbstractNetwork(ABC):
 
         return run_sets
 
+def get_timesteps_from_nex(nexus_files):
+    # Return a list of output files
+    # Open the first nexus file and extract each timestamp
+    output_file_timestamps = []
+    with open(nexus_files[0]) as f:
+        for line in f:
+            output_file_timestamps.append(line.split(', ')[1])
+    # Convert and reformat dates in the list
+    output_file_timestamps = [pd.to_datetime(i).strftime("%Y%m%d%H%M") for i in output_file_timestamps]
+
+    # Sort the list
+    output_file_timestamps.sort()
+    return output_file_timestamps
+
+
+def split_csv_file(nexus_file, cat_id, binary_folder):
+    # Split the csv file into multiple csv files
+    # Unescaped command: awk -F ', ' '{print "114085, "$NF >> "test/outputfile_"$1".txt"}' nex-114085_output.csv
+    os.system(f'awk -F \', \' \'{{print "{cat_id}, "$NF >> "{binary_folder}/tempfile_"$1".csv"}}\' {nexus_file}')
+
+
+def rewrite_to_parquet(tempfile_id, output_file_id, binary_folder):
+    # Rewrite the csv file to parquet
+    df = pd.read_csv(f'{binary_folder}/tempfile_{tempfile_id}.csv', names=['feature_id', output_file_id])
+    df.set_index('feature_id', inplace=True)  # Set feature_id as the index
+    df[output_file_id] = df[output_file_id].astype(float)  # Convert output_file_id column to float64
+    table_new = pa.Table.from_pandas(df)
+    if not os.path.exists(f'{binary_folder}/{output_file_id}NEXOUT.parquet'):
+        pq.write_table(table_new, f'{binary_folder}/{output_file_id}NEXOUT.parquet')
+    else:
+        raise Exception(f'Parquet file {binary_folder}/{output_file_id}NEXOUT.parquet already exists')
+
 def nex_files_to_binary(nexus_files, binary_folder):
-    for f in nexus_files:
-        # read the csv file
-        df = pd.read_csv(f, usecols=[1,2], names=['Datetime','qlat'])
-        
-        # convert and reformat datetime column
-        df['Datetime']= pd.to_datetime(df['Datetime']).dt.strftime("%Y%m%d%H%M")
-
-        # reformat the dataframe
-        df['feature_id'] = get_id_from_filename(f)
-        df = df.pivot(index="feature_id", columns="Datetime", values="qlat")
-        df.columns.name = None
-
-        for col in df.columns:
-            table_new = pa.Table.from_pandas(df.loc[:, [col]])
-            
-            if not os.path.exists(f'{binary_folder}/{col}NEXOUT.parquet'):
-                pq.write_table(table_new, f'{binary_folder}/{col}NEXOUT.parquet')
-            
-            else:
-                table_old = pq.read_table(f'{binary_folder}/{col}NEXOUT.parquet')
-                table = pa.concat_tables([table_old,table_new])
-                pq.write_table(table, f'{binary_folder}/{col}NEXOUT.parquet')
+    # Get the output files
+    output_timesteps = get_timesteps_from_nex(nexus_files)
+    
+    # Split the csv file into multiple csv files
+    for nexus_file in nexus_files:
+        cat_id = get_id_from_filename(nexus_file)
+        split_csv_file(nexus_file, cat_id, binary_folder)
+    
+    # Rewrite the temp csv files to parquet
+    for i, nexus_file in enumerate(output_timesteps):
+        rewrite_to_parquet(i, nexus_file, binary_folder)
+    
+    # Clean up the temp files
+    os.system(f'rm -rf {binary_folder}/tempfile_*.csv')
     
     nexus_input_folder = binary_folder
     forcing_glob_filter = '*NEXOUT.parquet'
-
+    
     return nexus_input_folder, forcing_glob_filter
 
 def get_id_from_filename(file_name):
