@@ -879,10 +879,10 @@ def get_timesteps_from_nex(nexus_files):
     return output_file_timestamps
 
 
-def split_csv_file(nexus_file, cat_id, binary_folder):
+def split_csv_file(nexus_file, catchment_id, binary_folder):
     # Split the csv file into multiple csv files
     # Unescaped command: awk -F ', ' '{print "114085, "$NF >> "test/outputfile_"$1".txt"}' nex-114085_output.csv
-    os.system(f'awk -F \', \' \'{{print "{cat_id}, "$NF >> "{binary_folder}/tempfile_"$1".csv"}}\' {nexus_file}')
+    os.system(f'awk -F \', \' \'{{print "{catchment_id}, "$NF >> "{binary_folder}/tempfile_"$1".csv"}}\' {nexus_file}')
 
 
 def rewrite_to_parquet(tempfile_id, output_file_id, binary_folder):
@@ -902,12 +902,12 @@ def nex_files_to_binary(nexus_files, binary_folder):
     
     # Split the csv file into multiple csv files
     for nexus_file in nexus_files:
-        cat_id = get_id_from_filename(nexus_file)
-        split_csv_file(nexus_file, cat_id, binary_folder)
+        catchment_id = get_id_from_filename(nexus_file)
+        split_csv_file(nexus_file, catchment_id, binary_folder)
     
     # Rewrite the temp csv files to parquet
-    for i, nexus_file in enumerate(output_timesteps):
-        rewrite_to_parquet(i, nexus_file, binary_folder)
+    for tempfile_id, nexus_file in enumerate(output_timesteps):
+        rewrite_to_parquet(tempfile_id, nexus_file, binary_folder)
     
     # Clean up the temp files
     os.system(f'rm -rf {binary_folder}/tempfile_*.csv')
