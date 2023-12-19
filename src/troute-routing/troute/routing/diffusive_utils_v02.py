@@ -471,9 +471,14 @@ def fp_naturalxsec_map(
                         size_bathy_g[seg, frj] = nstations
                         
                         # populate cross section x, z and mannings n arrays
-                        x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].xid_d
-                        z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].z
-                        mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].n
+                        if 'xid_d' not in topobathy_bytw.loc[seg_idx].columns:
+                            x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].X
+                            z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].Z
+                            mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].roughness
+                        else:
+                            x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].xid_d
+                            z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].z
+                            mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].n
                         
                         # if terminal node of the network, then adjust the cross section z data using
                         # channel slope and length data

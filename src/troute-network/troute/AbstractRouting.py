@@ -5,7 +5,7 @@ import json
 import xarray as xr
 import pandas as pd
 from pathlib import Path
-
+import pyarrow.parquet as pq
 from troute.nhd_network import reverse_network
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
 
@@ -53,6 +53,32 @@ def read_netcdf(geo_file_path):
     '''
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
+
+def read_parquet(file_path):
+    '''
+    Open a parquet file with pyarrow read_table and convert to dataframe
+    
+    Arguments
+    ---------
+    file_path (str or pathlib.Path): nparquetetCDF filepath
+    
+    Returns
+    -------
+    
+    ds.to_pandas() (DataFrame): parquet contents 
+    
+    Notes
+    -----
+    - It checks if the column 'hy_id' exists in the DataFrame and if there's at least one value in that column that is not numeric (means its like wb-254530)
+    
+
+    '''
+    tbl = pq.read_table(file_path)
+    df = tbl.to_pandas().dropna()
+    if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
+        df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
+        df = df[df['cs_id'] == 1]
+    return df
 
 
 class AbstractRouting(ABC):
@@ -246,8 +272,14 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
     def topobathy_df(self):
         if self._topobathy_df.empty:
             topobathy_file = self.hybrid_params.get("topobathy_domain", None)
-            self._topobathy_df = read_netcdf(topobathy_file).set_index('link')
-            self._topobathy_df.index = self._topobathy_df.index.astype(int)
+            if topobathy_file.suffix == '.nc':
+                self._topobathy_df = read_netcdf(topobathy_file).set_index('link')
+                self._topobathy_df.index = self._topobathy_df.index.astype(int)
+
+            elif topobathy_file.suffix == '.parquet':
+                self._topobathy_df = read_parquet(topobathy_file).set_index('hy_id')
+                self._topobathy_df.index = self._topobathy_df.index.astype(int)
+                
         return self._topobathy_df
 
 
