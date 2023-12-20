@@ -77,7 +77,6 @@ def read_parquet(file_path):
     df = tbl.to_pandas().dropna()
     if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
         df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
-        #df = df[df['cs_id'] == 1]
     return df
 
 
@@ -278,7 +277,7 @@ class MCwithDiffusive(AbstractRouting):
             uslink_mainstem = dslink_mainstem   
         diffusive_domain={}
         diffusive_domain[twlink_mainstem] = mainstem_list
-        
+                
         return self._diffusive_domain
 
 
@@ -313,13 +312,12 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                             new_index = pd.Index([mainstem_segment]*len(temp_df))
                             temp_df.index = new_index
                             cs_id_max = temp_df['cs_id'].max()
-                            fill_in_topobathy_df = temp_df[temp_df.cs_id==cs_id_max]
+                            fill_in_topobathy_df = pd.DataFrame(temp_df[temp_df.cs_id==cs_id_max])
                             fill_in_topobathy_df.cs_id = fill_in_topobathy_df.cs_id.replace(cs_id_max,1) 
                             combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
                             self._topobathy_df = combined_df
                 # Among multiple xsec profiles, select one in the most upstream of stream segment
                 self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
-
         return self._topobathy_df
 
 
