@@ -77,7 +77,7 @@ def read_parquet(file_path):
     df = tbl.to_pandas().dropna()
     if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
         df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
-        df = df[df['cs_id'] == 1]
+        #df = df[df['cs_id'] == 1]
     return df
 
 
@@ -173,37 +173,6 @@ class MCwithDiffusive(AbstractRouting):
     def update_routing_domain(self, dataframe, connections):
         #==========================================================================
         # build diffusive domain data and edit MC domain data for hybrid simulation
-        '''
-        # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
-        # Lower Colorado TX mainstem
-        #headlink_mainstem = 2421017
-        #twlink_mainstem   = 2421105 
-        # Guadalupe River TX mainstem
-        #headlink_mainstem = 2405287
-        #twlink_mainstem   = 2405359  
-        # Brazos River TX mainstem
-        #headlink_mainstem = 2408552
-        #twlink_mainstem   = 2408609
-        # Brays Bayou TX mainstem
-        #headlink_mainstem = 2398553
-        #twlink_mainstem   = 2398446
-        # Goose Creek TX mainstem
-        #headlink_mainstem = 2404194
-        #twlink_mainstem   = 2404199 
-        # Cedar Bayou, TX mainstem
-        headlink_mainstem = 2404205
-        twlink_mainstem   = 2404220          
-        
-        uslink_mainstem = headlink_mainstem
-        dslink_mainstem = 1 # initial value
-        mainstem_list =[headlink_mainstem]
-        while dslink_mainstem != twlink_mainstem:
-            dslink_mainstem = connections[uslink_mainstem][0]
-            mainstem_list.append(dslink_mainstem)
-            uslink_mainstem = dslink_mainstem   
-        diffusive_domain={}
-        diffusive_domain[twlink_mainstem] = mainstem_list
-        '''
         domain_file = self.hybrid_params.get("diffusive_domain", None)
         self._diffusive_domain = read_diffusive_domain(domain_file)
         self._diffusive_network_data = {}
@@ -291,6 +260,26 @@ class MCwithDiffusive(AbstractRouting):
     @property
     def unrefactored_topobathy_df(self):
         return self._unrefactored_topobathy_df
+        
+    @property
+    def diffusive_domain_by_both_ends_streamid(self, connections):
+        # temporary code to build diffusive_domain using given segment IDs at upper and lower ends of mainstem.
+        # TODO: headlink and twlink ids can be passed from config file and it can be a list of headlink or twlink
+        # Lower Colorado TX mainstem, for example.
+        headlink_mainstem = 2421017
+        twlink_mainstem   = 2421105 
+       
+        uslink_mainstem = headlink_mainstem
+        dslink_mainstem = 1 # initial value
+        mainstem_list =[headlink_mainstem]
+        while dslink_mainstem != twlink_mainstem:
+            dslink_mainstem = connections[uslink_mainstem][0]
+            mainstem_list.append(dslink_mainstem)
+            uslink_mainstem = dslink_mainstem   
+        diffusive_domain={}
+        diffusive_domain[twlink_mainstem] = mainstem_list
+        
+        return self._diffusive_domain
 
 
 class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
@@ -325,8 +314,11 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                             temp_df.index = new_index
                             cs_id_max = temp_df['cs_id'].max()
                             fill_in_topobathy_df = temp_df[temp_df.cs_id==cs_id_max]
+                            fill_in_topobathy_df.cs_id = fill_in_topobathy_df.cs_id.replace(cs_id_max,1) 
                             combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
                             self._topobathy_df = combined_df
+                # Among multiple xsec profiles, select one in the most upstream of stream segment
+                self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
 
         return self._topobathy_df
 
