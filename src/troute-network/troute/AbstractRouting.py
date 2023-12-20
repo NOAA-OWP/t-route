@@ -173,6 +173,37 @@ class MCwithDiffusive(AbstractRouting):
     def update_routing_domain(self, dataframe, connections):
         #==========================================================================
         # build diffusive domain data and edit MC domain data for hybrid simulation
+        '''
+        # temporary code to build diffusive_domain using given IDs of head segment and tailwater segment of mainstem.
+        # Lower Colorado TX mainstem
+        #headlink_mainstem = 2421017
+        #twlink_mainstem   = 2421105 
+        # Guadalupe River TX mainstem
+        #headlink_mainstem = 2405287
+        #twlink_mainstem   = 2405359  
+        # Brazos River TX mainstem
+        #headlink_mainstem = 2408552
+        #twlink_mainstem   = 2408609
+        # Brays Bayou TX mainstem
+        #headlink_mainstem = 2398553
+        #twlink_mainstem   = 2398446
+        # Goose Creek TX mainstem
+        #headlink_mainstem = 2404194
+        #twlink_mainstem   = 2404199 
+        # Cedar Bayou, TX mainstem
+        headlink_mainstem = 2404205
+        twlink_mainstem   = 2404220          
+        
+        uslink_mainstem = headlink_mainstem
+        dslink_mainstem = 1 # initial value
+        mainstem_list =[headlink_mainstem]
+        while dslink_mainstem != twlink_mainstem:
+            dslink_mainstem = connections[uslink_mainstem][0]
+            mainstem_list.append(dslink_mainstem)
+            uslink_mainstem = dslink_mainstem   
+        diffusive_domain={}
+        diffusive_domain[twlink_mainstem] = mainstem_list
+        '''
         domain_file = self.hybrid_params.get("diffusive_domain", None)
         self._diffusive_domain = read_diffusive_domain(domain_file)
         self._diffusive_network_data = {}
@@ -279,7 +310,24 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
             elif topobathy_file.suffix == '.parquet':
                 self._topobathy_df = read_parquet(topobathy_file).set_index('hy_id')
                 self._topobathy_df.index = self._topobathy_df.index.astype(int)
-                
+
+                #If any diffusive mainstem segments doesn't have channel bathy date in topobathy_df,
+                #estimate one from adjacent segments with available bathy data
+                for tw in self._diffusive_domain:
+                    for mainstem_segment in self._diffusive_network_data[tw]['mainstem_segs']:
+                        if mainstem_segment not in self._topobathy_df.index:
+                            # Temp.Solution: when topobaty is not available, use available topobathy of the closest upstream segment
+                            upstream_mainstem_segment = set(self._diffusive_network_data[tw]['rconn'][mainstem_segment]).intersection(
+                                                                                    self._diffusive_network_data[tw]['mainstem_segs'])
+                            upstream_mainstem_segment = list(upstream_mainstem_segment)[0]
+                            temp_df = self._topobathy_df[self._topobathy_df.index==upstream_mainstem_segment]
+                            new_index = pd.Index([mainstem_segment]*len(temp_df))
+                            temp_df.index = new_index
+                            cs_id_max = temp_df['cs_id'].max()
+                            fill_in_topobathy_df = temp_df[temp_df.cs_id==cs_id_max]
+                            combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
+                            self._topobathy_df = combined_df
+
         return self._topobathy_df
 
 

@@ -446,7 +446,7 @@ def fp_naturalxsec_map(
 
                     # loop through segments in mainstem reach
                     for seg, segID in enumerate(seg_list):
-
+                        
                         # identify the index in topobathy dataframe that contains
                         # the data we want for this node.
                         if seg == ncomp-1 and x > 0: 
@@ -469,10 +469,10 @@ def fp_naturalxsec_map(
                         
                         # populate cross section size (# of stations) array
                         size_bathy_g[seg, frj] = nstations
-                        
+  
                         # populate cross section x, z and mannings n arrays
-                        if 'xid_d' not in topobathy_bytw.loc[seg_idx].columns:
-                            x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].X
+                        if 'cs_id' in topobathy_bytw.loc[seg_idx].columns:
+                            x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].relative_dist
                             z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].Z
                             mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].roughness
                         else:
