@@ -210,7 +210,7 @@ def nwm_output_generator(
                                          int(stream_output_timediff), 
                                          stream_output_type,
                                          stream_output_internal_frequency,
-                                         cpu_pool)
+                                         cpu_pool = cpu_pool)
 
     if test:
         flowveldepth.to_pickle(Path(test))
