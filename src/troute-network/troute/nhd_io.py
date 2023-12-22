@@ -2044,7 +2044,8 @@ def write_flowveldepth_netcdf(stream_output_directory,
                               stream_output_timediff, 
                               stream_output_type,
                               stream_output_internal_frequency = 5,
-                              cpu_pool = 6):
+                              cpu_pool = 6, 
+                              use_parallel = True):
     '''
     Write the results of flowveldepth and nudge to netcdf- break. 
     Arguments
@@ -2118,9 +2119,19 @@ def write_flowveldepth_netcdf(stream_output_directory,
         stream_output_directory, stream_output_type, gage, 
         nudge_timesteps, time_dim, stream_output_internal_frequency, time_steps,
         counter, t0, stream_output_timediff)
+        import pdb;pdb.set_trace()
+        if use_parallel and cpu_pool > 1:
+            jobs.append(delayed(helper_write_flowveldepth)(*args))
+            LOG.debug(f"Job for step {counter} added for parallel processing.")
+        else:
+            helper_write_flowveldepth(*args)
 
-        jobs.append(delayed(helper_write_flowveldepth)(*args))
-    # Execute all jobs in parallel
-    with Parallel(n_jobs=cpu_pool) as parallel:
-        parallel(jobs)
-            
+    if use_parallel and cpu_pool > 1:
+        try:
+            # Execute all jobs in parallel
+            with Parallel(n_jobs=cpu_pool) as parallel:
+                parallel(jobs)
+        except Exception as e:
+            LOG.error("Error during parallel processing: %s", e)   
+    
+    LOG.debug("Completed the write_flowveldepth_netcdf function") 
