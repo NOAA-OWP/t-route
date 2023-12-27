@@ -1,0 +1,14 @@
+US_DS_link_mainstem:
+# please use a tuple of (upstream, downstream)
+# Lower Colorado River TX
+- (2421017, 2421105)
+# Guadalupe River, TX
+- (2405287, 2405359) 
+# Brazos River, TX
+- (2408552, 2408609) 
+# Brays Bayou, TX
+- (2398553, 2398446)
+# Goose Creek, TX
+- (2404194, 2404199)
+# Cedar Bayou, TX
+- (2404205, 2404220)

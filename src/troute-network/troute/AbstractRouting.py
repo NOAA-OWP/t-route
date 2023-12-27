@@ -8,7 +8,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 from troute.nhd_network import reverse_network
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
-
+import ast
 LOG = logging.getLogger('')
 
 def read_diffusive_domain(domain_file):
@@ -173,9 +173,16 @@ class MCwithDiffusive(AbstractRouting):
         #==========================================================================
         # build diffusive domain data and edit MC domain data for hybrid simulation
         domain_file = self.hybrid_params.get("diffusive_domain", None)
-        self._diffusive_domain = read_diffusive_domain(domain_file)
+        # self._diffusive_domain = read_diffusive_domain(domain_file)
+        links_US_DS = read_diffusive_domain(domain_file)
         self._diffusive_network_data = {}
-    
+        diffusive_domain_all = {}
+        
+        for item in links_US_DS['US_DS_link_mainstem']:
+            headlink_mainstem, twlink_mainstem = ast.literal_eval(item)
+            diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem)
+            
+        self._diffusive_domain = diffusive_domain_all
         rconn_diff0 = reverse_network(connections)
         
         for tw in self._diffusive_domain:
@@ -260,25 +267,25 @@ class MCwithDiffusive(AbstractRouting):
     def unrefactored_topobathy_df(self):
         return self._unrefactored_topobathy_df
         
-    @property
-    def diffusive_domain_by_both_ends_streamid(self, connections):
-        # temporary code to build diffusive_domain using given segment IDs at upper and lower ends of mainstem.
-        # TODO: headlink and twlink ids can be passed from config file and it can be a list of headlink or twlink
-        # Lower Colorado TX mainstem, for example.
-        headlink_mainstem = 2421017
-        twlink_mainstem   = 2421105 
-       
+    def diffusive_domain_by_both_ends_streamid(self, connections, headlink_mainstem, twlink_mainstem):
+        # This function build diffusive_domain using given headwater segment IDs at upper and tailwater at lower ends of mainstem.
+        
         uslink_mainstem = headlink_mainstem
         dslink_mainstem = 1 # initial value
         mainstem_list =[headlink_mainstem]
         while dslink_mainstem != twlink_mainstem:
-            dslink_mainstem = connections[uslink_mainstem][0]
-            mainstem_list.append(dslink_mainstem)
-            uslink_mainstem = dslink_mainstem   
-        diffusive_domain={}
-        diffusive_domain[twlink_mainstem] = mainstem_list
+            try:
+                dslink_mainstem = connections[uslink_mainstem][0]
+                mainstem_list.append(dslink_mainstem)
+                uslink_mainstem = dslink_mainstem   
+            except KeyError:
+                # Handle the KeyError, e.g., break the loop or log an error
+                LOG.debug(f"KeyError: 'connections' does not have a key '{uslink_mainstem}'")
+                return None 
+
+        diffusive_domain = {'links':sorted(mainstem_list), 'rfc': ['wgrfc'], 'rpu': ['12c'], 'upstream_boundary_link_mainstem':[headlink_mainstem]}
                 
-        return self._diffusive_domain
+        return diffusive_domain
 
 
 class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
