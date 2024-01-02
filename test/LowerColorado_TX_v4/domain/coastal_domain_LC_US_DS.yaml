@@ -1,14 +1,14 @@
 US_DS_link_mainstem:
 # please use a tuple of (upstream, downstream)
 # Lower Colorado River TX
-- (2421017, 2421105)
+- (2421017, 2421105, ['wgrfc'], ['12c'])
 # Guadalupe River, TX
-- (2405287, 2405359) 
+- (2405287, 2405359, ['wgrfc'], ['12c']) 
 # Brazos River, TX
-- (2408552, 2408609) 
+- (2408552, 2408609, ['wgrfc'], ['12c']) 
 # Brays Bayou, TX
-- (2398553, 2398446)
+- (2398553, 2398446, ['wgrfc'], ['12c'])
 # Goose Creek, TX
-- (2404194, 2404199)
+- (2404194, 2404199, ['wgrfc'], ['12c'])
 # Cedar Bayou, TX
-- (2404205, 2404220)
+- (2404205, 2404220, ['wgrfc'], ['12c'])

@@ -179,8 +179,8 @@ class MCwithDiffusive(AbstractRouting):
         diffusive_domain_all = {}
         
         for item in links_US_DS['US_DS_link_mainstem']:
-            headlink_mainstem, twlink_mainstem = ast.literal_eval(item)
-            diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem)
+            headlink_mainstem, twlink_mainstem, rfc_val, rpu_val = ast.literal_eval(item)
+            diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
             
         self._diffusive_domain = diffusive_domain_all
         rconn_diff0 = reverse_network(connections)
@@ -267,7 +267,7 @@ class MCwithDiffusive(AbstractRouting):
     def unrefactored_topobathy_df(self):
         return self._unrefactored_topobathy_df
         
-    def diffusive_domain_by_both_ends_streamid(self, connections, headlink_mainstem, twlink_mainstem):
+    def diffusive_domain_by_both_ends_streamid(self, connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val):
         # This function build diffusive_domain using given headwater segment IDs at upper and tailwater at lower ends of mainstem.
         
         uslink_mainstem = headlink_mainstem
@@ -283,7 +283,7 @@ class MCwithDiffusive(AbstractRouting):
                 LOG.debug(f"KeyError: 'connections' does not have a key '{uslink_mainstem}'")
                 return None 
 
-        diffusive_domain = {'links':sorted(mainstem_list), 'rfc': ['wgrfc'], 'rpu': ['12c'], 'upstream_boundary_link_mainstem':[headlink_mainstem]}
+        diffusive_domain = {'links':sorted(mainstem_list), 'rfc': rfc_val, 'rpu': rpu_val, 'upstream_boundary_link_mainstem':[headlink_mainstem]}
                 
         return diffusive_domain
 
