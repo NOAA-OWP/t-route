@@ -181,7 +181,7 @@ class NHDNetwork(AbstractNetwork):
         self._dataframe = self.dataframe.set_index("key").sort_index()
 
         # get and apply domain mask
-        if "mask_file_path" in self.supernetwork_parameters:
+        if self.supernetwork_parameters["mask_file_path"]:
             data_mask = nhd_io.read_mask(
                 pathlib.Path(self.supernetwork_parameters["mask_file_path"]),
                 layer_string=self.supernetwork_parameters.get("mask_layer_string", None),
