@@ -883,8 +883,9 @@ def get_timesteps_from_nex(nexus_files):
 
 def split_csv_file(nexus_file, catchment_id, binary_folder):
     # Split the csv file into multiple csv files
-    # Unescaped command: awk -F ', ' '{print "114085, "$NF >> "test/outputfile_"$1".txt"}' nex-114085_output.csv
-    os.system(f'awk -F \', \' \'{{print "{catchment_id}, "$NF >> "{binary_folder}/tempfile_"$1".csv"}}\' {nexus_file}')
+    # Unescaped command: awk -F ', ' '{ filename="test/tempfile_"$1".csv"; print "114085, "$NF >> filename; close(filename)}' nex-114085_output.csv
+    cmd = f'awk -F \', \' \'{{ filename="{binary_folder}/tempfile_"$1".csv"; print "{catchment_id}, "$NF >> filename; close(filename) }}\' {nexus_file}'
+    os.system(cmd)
 
 
 def rewrite_to_parquet(tempfile_id, output_file_id, binary_folder):
