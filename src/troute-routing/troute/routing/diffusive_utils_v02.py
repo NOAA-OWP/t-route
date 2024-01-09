@@ -583,10 +583,12 @@ def fp_coastal_boundary_input_map(
     nts_db_g        -- (int) number of coastal boundary input data timesteps
     dbcd_g          -- (float) coastal boundary input data time series [m]
     """    
-  
+    
     if not coastal_boundary_depth_df.empty:   
-        date_time_obj1 = datetime.strptime(coastal_boundary_depth_df.columns[1], '%Y-%m-%d %H:%M:%S')
-        date_time_obj0 = datetime.strptime(coastal_boundary_depth_df.columns[0], '%Y-%m-%d %H:%M:%S')
+        # date_time_obj1 = datetime.strptime(coastal_boundary_depth_df.columns[1], '%Y-%m-%d %H:%M:%S')
+        # date_time_obj0 = datetime.strptime(coastal_boundary_depth_df.columns[0], '%Y-%m-%d %H:%M:%S')
+        date_time_obj1 = coastal_boundary_depth_df.columns[1]
+        date_time_obj0 = coastal_boundary_depth_df.columns[0]
         dt_db_g        = (date_time_obj1 - date_time_obj0).total_seconds()    
         nts_db_g       = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1  # include initial time 0 to the final time    
         dbcd_g         = np.ones(nts_db_g)
