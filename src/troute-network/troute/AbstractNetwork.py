@@ -144,13 +144,15 @@ class AbstractNetwork(ABC):
             if coastal_boundary_elev_files:
                 #start_time = time.time()    
                 #LOG.info("creating coastal dataframe ...")
-                
+                '''
                 coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
                 self._coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
                     coastal_boundary_elev_files,
                     coastal_boundary_domain,
                 )
-                    
+                '''
+                self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files)
+                
                 #LOG.debug(
                 #    "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
                 #    % (time.time() - start_time)
@@ -933,4 +935,26 @@ def read_file(file_name):
     elif extension=='.nc':
         df = xr.open_dataset(file_name).to_pandas().reset_index()
         df.index.name = None
+    return df
+
+def read_DFlow_output(ds):
+    df = ds[['waterlevel','bedlevel']].to_dataframe()
+    df['depth'] = df['waterlevel'] + df['bedlevel']
+    df['station_name'] = df['station_name'].str.decode('utf-8').str.split(' / ',expand=True).loc[:,1].astype(float).astype(int)
+    df = df.reset_index()[['time','station_name','depth']].set_index(['station_name', 'time']).unstack('time', fill_value = np.nan)['depth']
+    return df
+
+def read_SCHISM_output(ds):
+    df = ds.to_dataframe()
+    df['depth'] = df['depth'] + df['elev']
+    df = df[['depth']].unstack('time', fill_value = np.nan)['depth']
+    return df
+
+def read_coastal_output(filepath):
+    ds = xr.open_dataset(filepath)
+    coastal_model_indicator = ds.attrs.get('institution')
+    if coastal_model_indicator=='SCHISM Model output':
+        df = read_SCHISM_output(ds)
+    elif coastal_model_indicator=='Deltares':
+        df = read_DFlow_output(ds)
     return df
