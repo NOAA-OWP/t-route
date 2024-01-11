@@ -460,7 +460,6 @@ class HYFeaturesNetwork(AbstractNetwork):
                 .to_dict()
                 )
             
-            self._dataframe = self.dataframe.drop('waterbody', axis=1)
 
             # if waterbodies are being simulated, adjust the connections graph so that 
             # waterbodies are collapsed to single nodes. Also, build a mapping between 
@@ -486,6 +485,8 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_connections = {}
             self._waterbody_type_specified = False
             self._link_lake_crosswalk = None
+
+        self._dataframe = self.dataframe.drop('waterbody', axis=1)
 
     def preprocess_data_assimilation(self, network):
         if not network.empty:
