@@ -946,16 +946,44 @@ def read_DFlow_output(ds):
     return df
 
 def read_SCHISM_output(ds):
-    df = ds.to_dataframe()
-    df['depth'] = df['depth'] + df['elev']
-    df = df[['depth']].unstack('time', fill_value = np.nan)['depth']
+    #Create map from SCHISM nodes to HYFeatures segments IDs
+    schism_nodes = {3385091: 2421105, 6597441: 2405359, 3552530: 2408609, 5703933: 2398446, 5374087: 2404199, 7189832: 2404220, 9030082: 502249, 5108105: 13407, 4445543: 10072, 2613149: 573}
+    
+    #Retrieve base date
+    base_date = ds.time.attrs.get('base_date').split()
+    base_date[3] = str(int(float(base_date[3])))
+    base_date[4] = str(int(float(base_date[4])))
+    base_date = "_".join(base_date)
+    base_date = datetime.strptime(base_date, '%Y_%m_%d_%H_%M')
+    
+    #Retrieve water depths at specified nodes from 'schism_nodes' dictionary
+    df = ds['elevation'].loc[:,list(schism_nodes.keys())].to_dataframe().reset_index()
+    
+    #Replace schism nodes with HYFeatures segment IDs
+    df_length = len(df)
+    dict_length = len(schism_nodes.values())
+    n = df_length/dict_length
+    df['link'] = list(schism_nodes.values())*int(n)
+    
+    #Replace 'time' columns of seconds with datetimes
+    df['base_date'] = base_date
+    df['time'] = pd.to_timedelta(df['time'],'s')
+    df['time'] = df['base_date'] + df['time']
+    
+    #Drop columns we no longer need
+    df = df.drop(['nSCHISM_hgrid_node', 'base_date'], axis=1)
+    
+    #Reformat dataframe so rows are locations and columns are timestamps
+    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['elevation']
+    
     return df
 
 def read_coastal_output(filepath):
     ds = xr.open_dataset(filepath)
-    coastal_model_indicator = ds.attrs.get('institution')
-    if coastal_model_indicator=='SCHISM Model output':
-        df = read_SCHISM_output(ds)
-    elif coastal_model_indicator=='Deltares':
+    coastal_model_indicator = ds.attrs.get('institution', None)
+    if coastal_model_indicator=='Deltares':
         df = read_DFlow_output(ds)
+    else:
+        df = read_SCHISM_output(ds)
+        
     return df
