@@ -1172,7 +1172,7 @@ def get_obs_from_timeslices(
     df = crosswalk_df.reset_index()
     df[crosswalk_gage_field] = np.asarray(df[crosswalk_gage_field]).astype('<U15')
     df = df.set_index(crosswalk_gage_field)
-    
+    df.index = df.index.str.strip()
     # join crosswalk data with timeslice data, indexed on crosswalk destination field
     observation_df = (df.join(timeslice_obs_df).
                reset_index().
