@@ -1562,7 +1562,7 @@ def compute_diffusive_routing(
                 # place-holder for rfc DA parameters
                 (np.asarray([]), np.asarray([]), np.asarray([])),
                 # place-holder for nudge values
-                (np.asarray([])),
+                (np.empty(shape=(0, nts + 1), dtype='float32')),
             )
         )
 
