@@ -19,7 +19,7 @@ from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk
 __verbose__ = False
 __showtiming__ = False
 
-def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, cpu_pool):
+def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Establish which layers we will read. We'll always need the flowpath tables
     layers = ['flowpaths','flowpath_attributes']
 
@@ -28,12 +28,19 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, c
         layers.append('lakes')
 
     # If any DA is activated, read network table as well for gage information
+    data_assimilation_parameters = compute_parameters.get('data_assimilation_parameters',{})
     streamflow_nudging = data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
     usgs_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
     usace_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
     rfc_da = waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
     if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
         layers.append('network')
+    
+    # If diffusive is activated, read nexus table for lat/lon information
+    hybrid_parameters = compute_parameters.get('hybrid_parameters',{})
+    hybrid_routing = hybrid_parameters.get('run_hybrid_routing', False)
+    if hybrid_routing:
+        layers.append('nexus')
     
     # Retrieve geopackage information:
     if cpu_pool > 1:
@@ -51,6 +58,7 @@ def read_geopkg(file_path, data_assimilation_parameters, waterbody_parameters, c
         flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
         lakes = table_dict.get('lakes', pd.DataFrame())
         network = table_dict.get('network', pd.DataFrame())
+        nexus = table_dict.get('nexus', pd.DataFrame())
     else:
         flowpaths = gpd.read_file(file_path, layer='flowpaths')
         flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
@@ -144,7 +152,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
-def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilation_parameters, cpu_pool):
+def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
     flowpaths = lakes = network = pd.DataFrame()
@@ -152,7 +160,7 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, data_assimilati
     file_type = Path(geo_file_path).suffix
     if(file_type=='.gpkg'):        
         flowpaths, lakes, network = read_geopkg(geo_file_path, 
-                                                data_assimilation_parameters,
+                                                compute_parameters,
                                                 waterbody_parameters,
                                                 cpu_pool)
     elif(file_type == '.json'):
@@ -253,7 +261,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 flowpaths, lakes, network = read_geo_file(
                     self.supernetwork_parameters,
                     self.waterbody_parameters,
-                    self.data_assimilation_parameters,
+                    self.compute_parameters,
                     self.compute_parameters.get('cpu_pool', 1)
                 )
             else:
