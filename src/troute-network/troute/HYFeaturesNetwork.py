@@ -65,14 +65,18 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
         # If waterbodies are being simulated, read lakes table
         lakes = pd.DataFrame()
-        if waterbody_parameters.get('break_network_at_waterbodies', False):
+        if 'lakes' in layers:
             lakes = gpd.read_file(file_path, layer='lakes')
         # If any DA is activated, read network table as well for gage information
         network = pd.DataFrame()
-        if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
+        if 'network' in layers:
             network = gpd.read_file(file_path, layer='network')
+        # If diffusive is activated, read nexus table for lat/lon information
+        nexus = pd.DataFrame()
+        if 'nexus' in layers:
+            nexus = gpd.read_file(file_path, layer='nexus')
 
-    return flowpaths, lakes, network
+    return flowpaths, lakes, network, nexus
 
 def read_json(file_path, edge_list):
     dfs = []
@@ -159,10 +163,10 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_paramet
     
     file_type = Path(geo_file_path).suffix
     if(file_type=='.gpkg'):        
-        flowpaths, lakes, network = read_geopkg(geo_file_path, 
-                                                compute_parameters,
-                                                waterbody_parameters,
-                                                cpu_pool)
+        flowpaths, lakes, network, nexus = read_geopkg(geo_file_path,
+                                                       compute_parameters,
+                                                       waterbody_parameters,
+                                                       cpu_pool)
     elif(file_type == '.json'):
         edge_list = supernetwork_parameters['flowpath_edge_list']
         flowpaths = read_json(geo_file_path, edge_list)
@@ -171,7 +175,7 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_paramet
     else:
         raise RuntimeError("Unsupported file type: {}".format(file_type))
     
-    return flowpaths, lakes, network
+    return flowpaths, lakes, network, nexus
 
 def load_bmi_data(value_dict, bmi_parameters,): 
     # Get the column names that we need from each table of the geopackage
@@ -209,7 +213,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_upstream_terminal"]
+    __slots__ = ["_upstream_terminal", "_nexus_latlon"]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -258,7 +262,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             if not from_files_copy:
                 from_files=True
             if from_files:
-                flowpaths, lakes, network = read_geo_file(
+                flowpaths, lakes, network, nexus = read_geo_file(
                     self.supernetwork_parameters,
                     self.waterbody_parameters,
                     self.compute_parameters,
@@ -274,7 +278,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                 from_files=False
 
             # Preprocess network objects
-            self.preprocess_network(flowpaths)
+            self.preprocess_network(flowpaths, nexus)
 
             # Preprocess waterbody objects
             self.preprocess_waterbodies(lakes)
@@ -331,7 +335,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     def waterbody_null(self):
         return np.nan #pd.NA
     
-    def preprocess_network(self, flowpaths):
+    def preprocess_network(self, flowpaths, nexus):
         self._dataframe = flowpaths
         
         cols = self.supernetwork_parameters.get('columns', None)
@@ -411,6 +415,17 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._connections = extract_connections(
             self.dataframe, "downstream", terminal_codes=self.terminal_codes
         )
+        
+        # Create a dataframe containing lat/lon of nexus points. This will later be used to
+        # advertise tailwater locations of any diffusive domains to the model engine/coastal models
+        nexus['id'] = nexus['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+        lat_lon_crs = nexus[['id','geometry']]
+        lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
+        lat_lon_crs['lon'] = lat_lon_crs.geometry.x
+        lat_lon_crs['lat'] = lat_lon_crs.geometry.y
+        lat_lon_crs['crs'] = str(lat_lon_crs.crs)
+        lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
+        self._nexus_latlon = nexus[['id']].join(lat_lon_crs)
 
     def preprocess_waterbodies(self, lakes):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries
