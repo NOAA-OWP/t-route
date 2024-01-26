@@ -59,6 +59,7 @@ def _time_stations_from_df(dataFrame, timeBase):
 
     # get station IDs, as list
     stations = (dataFrame).index.tolist()
+    stations = [str(x) for x in stations]
     nStations = len(stations)
 
     # build station array (one giant 1D ndarray with ASCII encodings

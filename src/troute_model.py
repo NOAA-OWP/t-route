@@ -7,6 +7,7 @@ from nwm_routing.log_level_set import log_level_set
 from troute.config import Config
 import nwm_routing.__main__ as tr
 
+from troute.network import bmi_array2df as a2df
 
 class troute_model():
 
@@ -159,6 +160,44 @@ class troute_model():
         self._network._qlateral = qlats_df
 
         self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary__depth'])
+
+        depthArray_coastal = values['depthArray_coastal']
+
+        if (len(depthArray_coastal)>0):
+
+            self._depthArray_coastal = depthArray_coastal
+            self._timeArray_coastal = values['timeArray_coastal']
+            self._nTimes_coastal = values['nTimes_coastal']
+            self._stationArray_coastal = values['stationArray_coastal']
+            self._stationStringLengthArray_coastal = values['stationStringLengthArray_coastal']
+            self._nStations_coastal = values['nStations_coastal']
+            self._coastal_timeRef = values['coastal_timeRef']
+
+            # Unflatten the actual depth array
+            df_depthArray_coastal = a2df._unflatten_array(self._depthArray_coastal,\
+                                    self._nTimes_coastal, self._nStations_coastal)
+            
+            # Decode time axis
+            timeAxisName = 'time'
+
+            freqString = 'None'
+            df_withTimes_coastal = a2df._time_retrieve_from_arrays(\
+                        df_depthArray_coastal, self._coastal_timeRef, self._timeArray_coastal, \
+                        timeAxisName, freqString)
+
+            # Decode station ID axis
+            stationAxisName = 'station_name'
+            df_withTimes_withStations_coastal = a2df._stations_retrieve_from_arrays(\
+                            df_withTimes_coastal, self._stationArray_coastal, \
+                            self._stationStringLengthArray_coastal, stationAxisName)
+
+            self._network._coastal_boundary_depth_df = df_withTimes_withStations_coastal
+
+        #import pdb; pdb.set_trace()
+
+
+
+
         if len(values['upstream_id'])>0:
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}
         else:
