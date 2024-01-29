@@ -416,16 +416,11 @@ class HYFeaturesNetwork(AbstractNetwork):
             self.dataframe, "downstream", terminal_codes=self.terminal_codes
         )
         
-        # Create a dataframe containing lat/lon of nexus points. This will later be used to
-        # advertise tailwater locations of any diffusive domains to the model engine/coastal models
-        nexus['id'] = nexus['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
-        lat_lon_crs = nexus[['id','geometry']]
-        lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
-        lat_lon_crs['lon'] = lat_lon_crs.geometry.x
-        lat_lon_crs['lat'] = lat_lon_crs.geometry.y
-        lat_lon_crs['crs'] = str(lat_lon_crs.crs)
-        lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
-        self._nexus_latlon = nexus[['id']].join(lat_lon_crs)
+        # Store a dataframe containing info about nexus points. This will be reprojected to lat/lon
+        # and filtered for only diffusive domain tailwaters in AbstractNetwork.py.
+        # Location information will be used to advertise tailwater locations of diffusive domains 
+        # to the model engine/coastal models
+        self._nexus_latlon = nexus
 
     def preprocess_waterbodies(self, lakes):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries

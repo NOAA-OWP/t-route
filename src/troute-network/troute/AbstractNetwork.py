@@ -485,6 +485,8 @@ class AbstractNetwork(ABC):
         ) = routing.update_routing_domain(self.dataframe, self.connections)
 
         self._routing = routing
+        
+        self.filter_diffusive_nexus_pts()
     
     def create_independent_networks(self,):
 
@@ -867,6 +869,22 @@ class AbstractNetwork(ABC):
                 j += 1
 
         return run_sets
+    
+    def filter_diffusive_nexus_pts(self,):
+        # Filter nexus dataframe containing lat/lon of nexus points for just the diffusive
+        # domain tailwaters.
+        nexus_latlon = self._nexus_latlon
+        diff_tw_ids = list(self._routing.diffusive_network_data.keys())
+        diff_tw_ids = ['nex-' + str(s) for s in diff_tw_ids]
+        nexus_latlon = nexus_latlon[nexus_latlon['id'].isin(diff_tw_ids)]
+        nexus_latlon['id'] = nexus_latlon['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+        lat_lon_crs = nexus_latlon[['id','geometry']]
+        lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
+        lat_lon_crs['lon'] = lat_lon_crs.geometry.x
+        lat_lon_crs['lat'] = lat_lon_crs.geometry.y
+        lat_lon_crs['crs'] = str(lat_lon_crs.crs)
+        lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
+        self._nexus_latlon = nexus_latlon[['id']].join(lat_lon_crs)
 
 def get_timesteps_from_nex(nexus_files):
     # Return a list of output files
