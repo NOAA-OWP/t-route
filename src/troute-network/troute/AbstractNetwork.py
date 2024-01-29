@@ -486,7 +486,8 @@ class AbstractNetwork(ABC):
 
         self._routing = routing
         
-        self.filter_diffusive_nexus_pts()
+        if self.supernetwork_parameters.get('network_type', None)=='HYFeaturesNetwork':
+            self.filter_diffusive_nexus_pts()
     
     def create_independent_networks(self,):
 
