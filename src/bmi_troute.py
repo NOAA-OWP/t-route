@@ -218,6 +218,11 @@ class bmi_troute(Bmi):
         self._values['lastobs_df'] = np.zeros(0)
         self._values['lastobs_df_index'] = np.zeros(0)
 
+        # Diffusive domain tailwater locations
+        self._values['diffusive_tw_ids'] = np.zeros(0)
+        self._values['diffusive_tw_latitude'] = np.zeros(0)
+        self._values['diffusive_tw_longitude'] = np.zeros(0)
+        
         # Data assimilation values
         self._values['usgs_df'] = np.zeros(0)
         self._values['reservoir_usgs_df'] = np.zeros(0)
