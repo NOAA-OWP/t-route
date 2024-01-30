@@ -375,7 +375,7 @@ def nwm_output_generator(
 
             nudging_true = streamflow_da.get('streamflow_nudging', None)
 
-        if nudging_true and lastobs_output_folder:
+        if nudging_true and lastobs_output_folder and not lastobs_df.empty:
 
             LOG.info("- writing lastobs files")
             start = time.time()
