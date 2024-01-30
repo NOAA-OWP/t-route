@@ -238,10 +238,12 @@ class NudgingDA(AbstractDA):
             - lastobs_df               (DataFrame): Last gage observations data for DA
         '''
         streamflow_da_parameters = self._data_assimilation_parameters.get('streamflow_da', None)
- 
+
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
-                self._last_obs_df = new_lastobs(run_results, time_increment)
+                if not run_results[0][3][0].size == 0:
+                    # call new_lastobs only when last obs. time and discharge are updated in mc_reach.pyx 
+                    self._last_obs_df = new_lastobs(run_results, time_increment)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -1282,6 +1284,7 @@ def new_lastobs(run_results, time_increment):
     --------
     - lastobs_df (DataFrame): Last gage observations data for DA
     """
+
     df = pd.concat(
         [
             pd.DataFrame(
