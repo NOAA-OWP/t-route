@@ -108,7 +108,7 @@ class bmi_troute(Bmi):
         'lake_surface__elevation':['waterbody_m','m'],
         #--------------   Dynamic inputs --------------------------------
         'land_surface_water_source__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'coastal_boundary__depth':['depth_m', 'm'],
+        'coastal_boundary_depth':['depth_m', 'm'],
         'usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'reservoir_usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'reservoir_usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
@@ -189,7 +189,9 @@ class bmi_troute(Bmi):
 
         self._values['land_surface_water_source__volume_flow_rate'] = np.zeros(0)
         self._values['land_surface_water_source__id'] = np.zeros(0)
-        self._values['coastal_boundary__depth'] = np.zeros(0)
+        self._values['coastal_boundary_depth'] = np.zeros(0)
+
+        self._values['depthArray_coastal'] = np.zeros(0)
 
         self._values['channel_exit_water_x-section__volume_flow_rate'] = np.zeros(0)
         self._values['channel_water_flow__speed'] = np.zeros(0)

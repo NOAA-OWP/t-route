@@ -95,14 +95,6 @@ def run_troute(config):
     troute.set_value('coastal_timeRef', coastal_timeRef)
     troute.set_value('depthArray_coastal', depthArray_coastal)
 
-
-    value_dict['coastal_waterlevelArray'] = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
-    value_dict['coastal_bedlevelArray'] = np.array([12.0, 12.0, 13.0, 14.0, 15.0], dtype=np.float64)
-    value_dict['coastal_nexusID_array'] = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5], dtype=np.int16)
-    value_dict['coastal_nexusID_StrLength_array'] = np.array([3, 3, 3, 3, 3], dtype=np.int16)
-    value_dict['coastal_timeArray'] = np.array([100000, 100000, 100000, 100000, 100000], dtype=np.int16)
-    value_dict['coastal_timeRef'] = 100
-
     # The following BMI transport is conducted with df2a ("dataframe to array")
     # from dataframes to numerical numpy arrays in the DA module, and then 
     # back to dataframes in DataAssimilation in t-route proper using a2df
