@@ -269,7 +269,7 @@ class MCwithDiffusive(AbstractRouting):
         
     def diffusive_domain_by_both_ends_streamid(self, connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val):
         # This function build diffusive_domain using given headwater segment IDs at upper and tailwater at lower ends of mainstem.
-        
+
         uslink_mainstem = headlink_mainstem
         dslink_mainstem = 1 # initial value
         mainstem_list =[headlink_mainstem]
@@ -283,8 +283,8 @@ class MCwithDiffusive(AbstractRouting):
                 LOG.debug(f"KeyError: 'connections' does not have a key '{uslink_mainstem}'")
                 return None 
 
-        diffusive_domain = {'links':sorted(mainstem_list), 'rfc': rfc_val, 'rpu': rpu_val, 'upstream_boundary_link_mainstem':[headlink_mainstem]}
-                
+        diffusive_domain = {'links':mainstem_list, 'rfc': rfc_val, 'rpu': rpu_val, 'upstream_boundary_link_mainstem':[headlink_mainstem]}
+   
         return diffusive_domain
 
 
@@ -312,10 +312,19 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                     for mainstem_segment in self._diffusive_network_data[tw]['mainstem_segs']:
                         if mainstem_segment not in self._topobathy_df.index:
                             # Temp.Solution: when topobaty is not available, use available topobathy of the closest upstream segment
-                            upstream_mainstem_segment = set(self._diffusive_network_data[tw]['rconn'][mainstem_segment]).intersection(
-                                                                                    self._diffusive_network_data[tw]['mainstem_segs'])
-                            upstream_mainstem_segment = list(upstream_mainstem_segment)[0]
-                            temp_df = self._topobathy_df[self._topobathy_df.index==upstream_mainstem_segment]
+                            temp_df = pd.DataFrame()
+                            position_mainstem_segment =  self._diffusive_network_data[tw]['mainstem_segs'].index(mainstem_segment)
+                            position_upstream_mainstem_segment = position_mainstem_segment
+                            while temp_df.empty:               
+                                try:
+                                    position_upstream_mainstem_segment = position_upstream_mainstem_segment - 1
+                                    upstream_mainstem_segment = self._diffusive_network_data[tw]['mainstem_segs'][position_upstream_mainstem_segment]
+                                    temp_df = self._topobathy_df[self._topobathy_df.index==upstream_mainstem_segment]
+                                except KeyError:
+                                    # Handle teh KeyError, e.g., break the loop or log an error
+                                    LOG.debug(f"KeyError: while filling in missing channel x-sec topobathy data, mainstem segment '{mainstem_segment}' does not have its upstream mainstem segment")
+                                    return None                                     
+
                             new_index = pd.Index([mainstem_segment]*len(temp_df))
                             temp_df.index = new_index
                             cs_id_max = temp_df['cs_id'].max()
