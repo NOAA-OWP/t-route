@@ -159,7 +159,7 @@ class troute_model():
         
         self._network._qlateral = qlats_df
 
-        self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary_depth'])
+        #self._network._coastal_boundary_depth_df = pd.DataFrame(values['coastal_boundary_depth'])
 
         depthArray_coastal = values['depthArray_coastal']
 
