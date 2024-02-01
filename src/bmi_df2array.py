@@ -48,6 +48,18 @@ def _stringsToBMI(stringList):
     return (stringArray, stringLengthArray)
 
 
+def _time_from_df(dataFrame, timeBase):
+
+    # get columns (date-time), extract as list at first
+    datesList = (dataFrame.columns).tolist()
+    # then subtract timebase
+    datesListSeconds = [int((d-timeBase).total_seconds()) for d in datesList]
+    nDates = len(datesListSeconds)
+    datesSecondsArray = np.array(datesListSeconds)
+
+    return datesSecondsArray, nDates
+
+
 def _time_stations_from_df(dataFrame, timeBase):
 
     # get columns (date-time), extract as list at first

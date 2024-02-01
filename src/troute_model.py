@@ -169,7 +169,6 @@ class troute_model():
             self._timeArray_coastal = values['timeArray_coastal']
             self._nTimes_coastal = values['nTimes_coastal']
             self._stationArray_coastal = values['stationArray_coastal']
-            self._stationStringLengthArray_coastal = values['stationStringLengthArray_coastal']
             self._nStations_coastal = values['nStations_coastal']
             self._coastal_timeRef = values['coastal_timeRef']
 
@@ -185,18 +184,13 @@ class troute_model():
                         df_depthArray_coastal, self._coastal_timeRef, self._timeArray_coastal, \
                         timeAxisName, freqString)
 
-            # Decode station ID axis
+            # Add station IDs as index
             stationAxisName = 'station_name'
-            df_withTimes_withStations_coastal = a2df._stations_retrieve_from_arrays(\
-                            df_withTimes_coastal, self._stationArray_coastal, \
-                            self._stationStringLengthArray_coastal, stationAxisName)
+            index = pd.Index(self._stationArray_coastal, name=stationAxisName, dtype=np.int64)
 
-            self._network._coastal_boundary_depth_df = df_withTimes_withStations_coastal
+            df_withTimes_coastal.index = (index)
 
-        #import pdb; pdb.set_trace()
-
-
-
+            self._network._coastal_boundary_depth_df = df_withTimes_coastal
 
         if len(values['upstream_id'])>0:
             flowveldepth_interorder = {values['upstream_id'][0]:{"results": values['upstream_fvd']}}

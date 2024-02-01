@@ -81,8 +81,11 @@ def run_troute(config):
     timeRef = datetime.fromtimestamp(start_time_coastal)
     coastal_timeRef =  timeRef.replace(microsecond=0)
 
-    ( timeArray_coastal, nTimes_coastal, stationArray_coastal, stationStringLengthArray_coastal, nStations_coastal) \
-                    = df2a._time_stations_from_df(coastalDataFrame, coastal_timeRef)
+    # convert index into int64 array following dataframe
+    stationArray_coastal = coastalDataFrame.index.values.astype(np.int64)
+    nStations_coastal = len(stationArray_coastal)
+
+    ( timeArray_coastal, nTimes_coastal) = df2a._time_from_df(coastalDataFrame, coastal_timeRef)
 
     # flatten the actual coastal depth dataframe into a numpy ndarray
     depthArray_coastal = df2a._flatten_array(coastalDataFrame, np.float64)
@@ -90,7 +93,6 @@ def run_troute(config):
     troute.set_value('timeArray_coastal', timeArray_coastal)
     troute.set_value('nTimes_coastal', nTimes_coastal)
     troute.set_value('stationArray_coastal', stationArray_coastal)
-    troute.set_value('stationStringLengthArray_coastal', stationStringLengthArray_coastal)
     troute.set_value('nStations_coastal', nStations_coastal)
     troute.set_value('coastal_timeRef', coastal_timeRef)
     troute.set_value('depthArray_coastal', depthArray_coastal)
