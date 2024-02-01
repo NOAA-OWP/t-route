@@ -86,7 +86,7 @@ class bmi_reservoir(Bmi):
         'lake_surface__elevation':['waterbody_m','m'],
         #--------------   Dynamic inputs --------------------------------
         'land_surface_water_source__volume_flow_rate':['streamflow_cms','m3 s-1'],
-        'coastal_boundary__depth':['depth_m', 'm'],
+        'coastal_boundary_depth':['depth_m', 'm'],
         'usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'reservoir_usgs_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],
         'reservoir_usace_gage_observation__volume_flow_rate':['streamflow_cms','m3 s-1'],

@@ -25,7 +25,13 @@ def _time_retrieve_from_arrays(dataFrame, timeBase, datesSecondsArrays, \
     datesList = [(timedelta(seconds=d)+timeBase) for d in datesList]
 
     # convert to DatetimeIndex
-    dateTimeIndex = pd.DatetimeIndex(datesList, name=timeAxisName, freq=freqString)
+    if (freqString == 'None'):
+
+        dateTimeIndex = pd.DatetimeIndex(datesList, name=timeAxisName)
+
+    else:
+
+        dateTimeIndex = pd.DatetimeIndex(datesList, name=timeAxisName, freq=freqString)
 
     # transpose dataframe
     dataFrameTranspose = dataFrame.T

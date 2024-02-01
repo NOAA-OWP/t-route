@@ -10,10 +10,7 @@ import glob
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
-#from bmi_array2df import *
-#import bmi_array2df as a2df
-
-from . import bmi_array2df as a2df
+from troute.network import bmi_array2df as a2df
 
 # set legacy run flag: option to pass data frames through BMI formalism 
 # not to be used in regular BMI runs any longer, only for debugging
