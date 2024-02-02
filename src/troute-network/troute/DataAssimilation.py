@@ -241,9 +241,7 @@ class NudgingDA(AbstractDA):
 
         if streamflow_da_parameters:
             if streamflow_da_parameters.get('streamflow_nudging', False):
-                if not run_results[0][3][0].size == 0:
-                    # call new_lastobs only when last obs. time and discharge are updated in mc_reach.pyx 
-                    self._last_obs_df = new_lastobs(run_results, time_increment)
+                self._last_obs_df = new_lastobs(run_results, time_increment)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -1294,7 +1292,6 @@ def new_lastobs(run_results, time_increment):
                 columns=["time_since_lastobs", "lastobs_discharge"]
             )
             for rr in run_results
-            if not rr[3][0].size == 0
         ],
         copy=False,
     )
