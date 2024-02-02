@@ -38,7 +38,7 @@ def adj_alt1(
 
                     # head segment id of downstream reach after a junction
                     dsrchID = reach["downstream_head_segment"]                    
-                    z_all[segID]["adj.alt"][0] = param_df.loc[dsrchID, 'alt']
+                    z_all[segID]["adj.alt"][0] = float(param_df.loc[dsrchID, 'alt'].iloc[0])
 
                 elif seg == ncomp - 1 and seg_list.count(dbfksegID) > 0:
                     # channel slope-adjusted bottom elevation at the bottom node of TW reach
@@ -542,7 +542,9 @@ def fp_da_map(
         missing_data = pd.DataFrame(-4444.0*np.ones((len(usgs_df), len(missing_timestamps))), 
                                     columns=missing_timestamps, 
                                     index=usgs_df.index)
-        usgs_df_complete = pd.concat([usgs_df_complete, missing_data], axis=1)
+        if not missing_data.empty:
+            usgs_df_complete = pd.concat([usgs_df_complete, missing_data], axis=1)
+
         usgs_df_complete = usgs_df_complete[timestamps]
 
         frj = -1
