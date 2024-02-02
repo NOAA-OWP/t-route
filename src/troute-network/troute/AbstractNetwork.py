@@ -967,33 +967,48 @@ def read_DFlow_output(ds):
 def read_SCHISM_output(ds):
     #Create map from SCHISM nodes to HYFeatures segments IDs
     schism_nodes = {3385091: 2421105, 6597441: 2405359, 3552530: 2408609, 5703933: 2398446, 5374087: 2404199, 7189832: 2404220, 9030082: 502249, 5108105: 13407, 4445543: 10072, 2613149: 573}
-    
+
     #Retrieve base date
     base_date = ds.time.attrs.get('base_date').split()
     base_date[3] = str(int(float(base_date[3])))
     base_date[4] = str(int(float(base_date[4])))
     base_date = "_".join(base_date)
     base_date = datetime.strptime(base_date, '%Y_%m_%d_%H_%M')
-    
-    #Retrieve water depths at specified nodes from 'schism_nodes' dictionary
-    df = ds['elevation'].loc[:,list(schism_nodes.keys())].to_dataframe().reset_index()
-    
+
+    #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
+    elevation_df = ds['elevation'].loc[:,list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
+
     #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(df)
+    df_length = len(elevation_df)
     dict_length = len(schism_nodes.values())
     n = df_length/dict_length
-    df['link'] = list(schism_nodes.values())*int(n)
-    
+    elevation_df['link'] = list(schism_nodes.values())*int(n)
+
+    #Retrieve depths at specified nodes from 'schism_nodes' dictionary
+    depth_df = ds['depth'].loc[list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
+
+    #Replace schism nodes with HYFeatures segment IDs
+    df_length = len(depth_df)
+    dict_length = len(schism_nodes.values())
+    n = df_length/dict_length
+    depth_df['link'] = list(schism_nodes.values())*int(n)
+
+    #Combine elevation and depth dataframes, and calculate water depth
+    df = pd.merge(elevation_df, depth_df, on='link')
+    df['waterdepth'] = df['elevation'] + df['depth']
+    df = df.drop(['elevation','depth'], axis=1)
+    df
+
     #Replace 'time' columns of seconds with datetimes
     df['base_date'] = base_date
     df['time'] = pd.to_timedelta(df['time'],'s')
     df['time'] = df['base_date'] + df['time']
-    
+
     #Drop columns we no longer need
-    df = df.drop(['nSCHISM_hgrid_node', 'base_date'], axis=1)
-    
+    df = df.drop(['base_date'], axis=1)
+
     #Reformat dataframe so rows are locations and columns are timestamps
-    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['elevation']
+    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
     
     return df
 
