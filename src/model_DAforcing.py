@@ -718,12 +718,21 @@ def _write_lite_restart(
         waterbodies_df = values['waterbody_df']
         waterbodies_ids = values['waterbody_df_ids']
         
-        waterbodies_df = pd.DataFrame(data=waterbodies_df.reshape(len(waterbodies_ids), -1), 
+        # check for empty waterbody df
+        if (len(waterbodies_df)==0):
+
+            waterbodies_df = pd.DataFrame()
+
+        else:
+
+            waterbodies_df = pd.DataFrame(data=waterbodies_df.reshape(len(waterbodies_ids), -1), 
                                       index=waterbodies_ids,
                                       columns=['ifd','LkArea','LkMxE','OrificeA','OrificeC','OrificeE',
                                                'WeirC','WeirE','WeirL','lon', 'lat', 'crs','qd0','h0','index'])
-        waterbodies_df.index.name = 'lake_id'
-        waterbodies_df.drop(columns=['lon', 'lat', 'crs'], inplace=True)
+            
+            waterbodies_df.index.name = 'lake_id'
+            waterbodies_df.drop(columns=['lon', 'lat', 'crs'], inplace=True)
+
         timestamp = t0 + timedelta(seconds=values['t-route_model_time'])
 
         # create restart filenames
@@ -829,7 +838,12 @@ def write_flowveldepth_netcdf(values,
 
     ndg_columns = [(j+1,'ndg') for j in range(nsteps)]
     # renaming nudge columns
-    nudge.columns = ndg_columns
+
+    if (nudge.empty):
+        nudge = pd.DataFrame(columns=ndg_columns)
+    else:
+        nudge.columns = ndg_columns
+    
     # Left joining qvd and nudge values on index
     qvd_ndg = pd.merge(qvd_ndg, nudge, left_index=True, right_index=True, how='left')
 
