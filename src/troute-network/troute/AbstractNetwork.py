@@ -997,7 +997,6 @@ def read_SCHISM_output(ds):
     df = pd.merge(elevation_df, depth_df, on='link')
     df['waterdepth'] = df['elevation'] + df['depth']
     df = df.drop(['elevation','depth'], axis=1)
-    df
 
     #Replace 'time' columns of seconds with datetimes
     df['base_date'] = base_date
