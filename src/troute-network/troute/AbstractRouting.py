@@ -177,14 +177,14 @@ class MCwithDiffusive(AbstractRouting):
         links_US_DS = read_diffusive_domain(domain_file)
         self._diffusive_network_data = {}
         diffusive_domain_all = {}
-        
+
         for item in links_US_DS['US_DS_link_mainstem']:
             headlink_mainstem, twlink_mainstem, rfc_val, rpu_val = ast.literal_eval(item)
             diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
             
         self._diffusive_domain = diffusive_domain_all
         rconn_diff0 = reverse_network(connections)
-        
+
         for tw in self._diffusive_domain:
             mainstem_segs = self._diffusive_domain[tw]['links']
             # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
@@ -234,8 +234,12 @@ class MCwithDiffusive(AbstractRouting):
             self._diffusive_network_data[tw]['upstream_boundary_link'] = upstream_boundary_mainstem_link
 
             # ==== remove diffusive domain segs from MC domain ====        
-            # drop indices from param_df
-            dataframe = dataframe.drop(mainstem_segs)
+            # drop indices from param_df. Make sure when mainstem_segs accidently includes lake ids, exclude them 
+            # from id list to be dropped from dataframe as dataframe only handles channel parameters. 
+            existing_indicies_in_dataframe = [id for id in mainstem_segs if id in dataframe.index]
+            #dataframe = dataframe.drop(mainstem_segs)
+            dataframe = dataframe.drop(existing_indicies_in_dataframe)
+            
 
             # remove keys from connections dictionary
             for s in mainstem_segs:
@@ -306,33 +310,42 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                 self._topobathy_df = read_parquet(topobathy_file).set_index('hy_id')
                 self._topobathy_df.index = self._topobathy_df.index.astype(int)
 
-                #If any diffusive mainstem segments doesn't have channel bathy date in topobathy_df,
-                #estimate one from adjacent segments with available bathy data
-                for tw in self._diffusive_domain:
-                    for mainstem_segment in self._diffusive_network_data[tw]['mainstem_segs']:
-                        if mainstem_segment not in self._topobathy_df.index:
-                            # Temp.Solution: when topobaty is not available, use available topobathy of the closest upstream segment
-                            temp_df = pd.DataFrame()
-                            position_mainstem_segment =  self._diffusive_network_data[tw]['mainstem_segs'].index(mainstem_segment)
-                            position_upstream_mainstem_segment = position_mainstem_segment
-                            while temp_df.empty:               
-                                try:
-                                    position_upstream_mainstem_segment = position_upstream_mainstem_segment - 1
-                                    upstream_mainstem_segment = self._diffusive_network_data[tw]['mainstem_segs'][position_upstream_mainstem_segment]
-                                    temp_df = self._topobathy_df[self._topobathy_df.index==upstream_mainstem_segment]
-                                except KeyError:
-                                    # Handle teh KeyError, e.g., break the loop or log an error
-                                    LOG.debug(f"KeyError: while filling in missing channel x-sec topobathy data, mainstem segment '{mainstem_segment}' does not have its upstream mainstem segment")
-                                    return None                                     
+            #If any diffusive mainstem segments doesn't have channel bathy date in topobathy_df,
+            #estimate one from adjacent segments with available bathy data
+            for tw in self._diffusive_domain:
+                for mainstem_segment in self._diffusive_network_data[tw]['mainstem_segs']:
+                    if mainstem_segment not in self._topobathy_df.index:
+                        # Temp.Solution: when topobaty is not available, use available topobathy of the closest upstream segment
+                        temp_df = pd.DataFrame()
+                        position_mainstem_segment =  self._diffusive_network_data[tw]['mainstem_segs'].index(mainstem_segment)
+                        position_upstream_mainstem_segment = position_mainstem_segment
+                        while temp_df.empty:               
+                            try:
+                                position_upstream_mainstem_segment -= 1
+                                upstream_mainstem_segment = self._diffusive_network_data[tw]['mainstem_segs'][position_upstream_mainstem_segment]
+                                temp_df = self._topobathy_df[self._topobathy_df.index==upstream_mainstem_segment]
+                            except KeyError:
+                                # Handle teh KeyError, e.g., break the loop or log an error
+                                LOG.debug(f"KeyError: while filling in missing channel x-sec topobathy data, mainstem segment '{mainstem_segment}' does not have its upstream mainstem segment")
+                                return None                                     
 
-                            new_index = pd.Index([mainstem_segment]*len(temp_df))
-                            temp_df.index = new_index
+                        new_index = pd.Index([mainstem_segment]*len(temp_df))
+                        temp_df.index = new_index
+                        
+                        if topobathy_file.suffix == '.nc':
+                            fill_in_topobathy_df = temp_df
+
+                        elif topobathy_file.suffix == '.parquet':
                             cs_id_max = temp_df['cs_id'].max()
+                            # Select topobathy data at the most downstream of an upstream mainstem segment
                             fill_in_topobathy_df = pd.DataFrame(temp_df[temp_df.cs_id==cs_id_max])
                             fill_in_topobathy_df.cs_id = fill_in_topobathy_df.cs_id.replace(cs_id_max,1) 
-                            combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
-                            self._topobathy_df = combined_df
-                # Among multiple xsec profiles, select one in the most upstream of stream segment
+                        
+                        combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
+                        self._topobathy_df = combined_df
+          
+            # Among multiple xsec profiles, select one in the most upstream of stream segment
+            if topobathy_file.suffix == '.parquet':     
                 self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
         return self._topobathy_df
 
