@@ -237,10 +237,8 @@ class MCwithDiffusive(AbstractRouting):
             # drop indices from param_df. Make sure when mainstem_segs accidently includes lake ids, exclude them 
             # from id list to be dropped from dataframe as dataframe only handles channel parameters. 
             existing_indicies_in_dataframe = [id for id in mainstem_segs if id in dataframe.index]
-            #dataframe = dataframe.drop(mainstem_segs)
             dataframe = dataframe.drop(existing_indicies_in_dataframe)
             
-
             # remove keys from connections dictionary
             for s in mainstem_segs:
                 connections.pop(s)
