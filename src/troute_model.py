@@ -106,9 +106,9 @@ class troute_model():
             values['diffusive_tw_latitude'] = self._network._nexus_latlon.lat.values
             values['diffusive_tw_longitude'] = self._network._nexus_latlon.lon.values
         else:
-            values['diffusive_tw_ids'] = pd.DataFrame()
-            values['diffusive_tw_latitude'] = pd.DataFrame()
-            values['diffusive_tw_longitude'] = pd.DataFrame()          
+            values['diffusive_tw_ids'] = np.epmty(dtype=np.int32)
+            values['diffusive_tw_latitude'] = np.epmty(dtype=np.float64)
+            values['diffusive_tw_longitude'] = np.epmty(dtype=np.float64)        
 
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
