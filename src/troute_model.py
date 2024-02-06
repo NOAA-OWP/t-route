@@ -101,10 +101,15 @@ class troute_model():
             from_files=False, value_dict=values,
             bmi_parameters=self._bmi_parameters,)
 
-        values['diffusive_tw_ids'] = self._network._nexus_latlon.id.values
-        values['diffusive_tw_latitude'] = self._network._nexus_latlon.lat.values
-        values['diffusive_tw_longitude'] = self._network._nexus_latlon.lon.values
-        
+        if (len(self._network._nexus_latlon) > 0):
+            values['diffusive_tw_ids'] = self._network._nexus_latlon.id.values
+            values['diffusive_tw_latitude'] = self._network._nexus_latlon.lat.values
+            values['diffusive_tw_longitude'] = self._network._nexus_latlon.lon.values
+        else:
+            values['diffusive_tw_ids'] = np.empty(0,dtype=np.int32)
+            values['diffusive_tw_latitude'] = np.empty(0,dtype=np.float64)
+            values['diffusive_tw_longitude'] = np.empty(0,dtype=np.float64)        
+
         # Create data assimilation object with IDs but no dynamic variables yet.
         # Dynamic variables will be assigned during 'run' function. 
         self._data_assimilation = tr.DataAssimilation(
