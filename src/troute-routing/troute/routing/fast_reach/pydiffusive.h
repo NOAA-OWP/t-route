@@ -38,4 +38,5 @@ extern void c_diffnw(double *timestep_ar_g,
                      double *crosswalk_g,  
                      double *z_thalweg_g,
                      double *q_ev_g,
-                     double *elv_ev_g);
+                     double *elv_ev_g,
+                     double *depth_ev_g);

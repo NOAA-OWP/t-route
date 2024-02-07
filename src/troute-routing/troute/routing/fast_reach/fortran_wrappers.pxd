@@ -80,7 +80,8 @@ cdef extern from "pydiffusive.h":
                      double *crosswalk_g, 
                      double *z_thalweg_g,
                      double *q_ev_g,
-                     double *elv_ev_g) nogil;
+                     double *elv_ev_g,
+                     double *depth_ev_g) nogil;
     
 cdef extern from "pydiffusive_cnt.h":
     void c_diffnw_cnt(double *dtini_g,

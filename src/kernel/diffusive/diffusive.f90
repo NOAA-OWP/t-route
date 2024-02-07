@@ -77,7 +77,7 @@ contains
                     iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
                     paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g,   &
                     usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g, z_thalweg_g, &
-                    q_ev_g, elv_ev_g)                                     
+                    q_ev_g, elv_ev_g, depth_ev_g)                                     
                     
 
     IMPLICIT NONE
@@ -156,6 +156,7 @@ contains
     double precision, dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: mann_bathy_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: q_ev_g
     double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: elv_ev_g
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: depth_ev_g
 
   ! Local variables    
     integer :: ncomp
@@ -366,6 +367,7 @@ contains
     dbcd                = dbcd_g   
     q_ev_g              = 0.0
     elv_ev_g            = 0.0
+    depth_ev_g          = 0.0
     temp_q_ev_g         = 0.0
     temp_elv_ev_g       = 0.0    
   !-----------------------------------------------------------------------------
@@ -787,19 +789,18 @@ contains
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
           do i = 1, ncomp
-            q_ev_g  (ts_ev + 1, i, j) = newQ(i, j)
-            elv_ev_g(ts_ev + 1, i, j) = newY(i, j)
+            q_ev_g  (ts_ev + 1, i, j)   = newQ(i, j)
+            elv_ev_g(ts_ev + 1, i, j)   = newY(i, j)
+            depth_ev_g(ts_ev + 1, i, j) = elv_ev_g(ts_ev + 1, i, j) - z(i, j)
           end do
               
-          !* water elevation for tributary/mainstem upstream boundary at a junction point
+          !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
           do k = 1, frnw_g(j, 3)
             usrchj = frnw_g(j, 3 + k)
             if (all(mstem_frj /= usrchj)) then
-                  
-              !* tributary joining mainstem reach or upstream boundary reach in the mainstem
-              wdepth                                       = newY(1, j) - z(1, j)
-              elv_ev_g(ts_ev+1, frnw_g(usrchj, 1), usrchj) = newY(1, j)
-              elv_ev_g(ts_ev+1, 1, usrchj)                 = wdepth + z(1, usrchj)!* test only
+              wdepth                                         = newY(1, j) - z(1, j)
+              elv_ev_g(ts_ev+1, frnw_g(usrchj, 1), usrchj)   = newY(1, j)
+              depth_ev_g(ts_ev+1, frnw_g(usrchj, 1), usrchj) = wdepth
             endif
           end do
         end do
@@ -814,18 +815,18 @@ contains
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
           do i = 1, ncomp
-            q_ev_g  (1, i, j) = oldQ(i, j)
-            elv_ev_g(1, i, j) = oldY(i, j)
+            q_ev_g  (1, i, j)   = oldQ(i, j)
+            elv_ev_g(1, i, j)   = oldY(i, j)
+            depth_ev_g(1, i, j) = elv_ev_g(1, i, j) - z(i, j)
           end do
               
-          !* water elevation for tributary/mainstem upstream boundary at a junction point
+          !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
           do k = 1, frnw_g(j, 3) !* then number of upstream reaches
             usrchj = frnw_g(j, 3 + k) !* js corresponding to upstream reaches
             if (all(mstem_frj /= usrchj)) then                  
-              !* tributary upstream reach or mainstem upstream boundary reach
-              wdepth                                = oldY(1, j) - z(1, j)
-              elv_ev_g(1, frnw_g(usrchj,1), usrchj) = oldY(1,j)
-              elv_ev_g(1, 1, usrchj)                = wdepth + z(1, usrchj)!* test only
+              wdepth                                   = oldY(1, j) - z(1, j)
+              elv_ev_g(1, frnw_g(usrchj,1), usrchj)    = oldY(1,j)
+              depth_ev_g(1, frnw_g(usrchj, 1), usrchj) = wdepth
             end if
           end do
         end do
@@ -1771,16 +1772,13 @@ contains
     double precision, dimension(:), allocatable :: conv1, tpW1
     double precision, dimension(:), allocatable :: newdKdA
     double precision, dimension(:), allocatable :: compoundSKK, elev, dmyarr
-    
-    !test
-    double precision :: dmy1, dmy2, dmy3 
-
+ 
     allocate(el1(nel), a1(nel), peri1(nel), redi1(nel), redi1All(nel))
     allocate(equiv_mann(nel), conv1(nel), tpW1(nel))
     allocate(newdKdA(nel))
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
-    
+
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.
 
