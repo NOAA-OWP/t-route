@@ -1536,14 +1536,14 @@ def compute_diffusive_routing(
         )
 
         # run the simulation
-        out_q, out_elv = diffusive.compute_diffusive(diffusive_inputs)
+        out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs)
 
         # unpack results
         rch_list, dat_all = diff_utils.unpack_output(
             diffusive_inputs['pynw'], 
             diffusive_inputs['ordered_reaches'], 
             out_q, 
-            out_elv
+            out_depth, #out_elv
         )
         
         # mask segments for which we already have MC solution
