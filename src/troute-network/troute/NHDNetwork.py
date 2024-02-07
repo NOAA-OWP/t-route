@@ -269,16 +269,16 @@ class NHDNetwork(AbstractNetwork):
             )
             
             if reservoir_da:
-                usgs_hybrid  = reservoir_da.get(
+                usgs_hybrid  = reservoir_da['reservoir_persistence_da'].get(
                     'reservoir_persistence_usgs', 
                     False
                 )
-                usace_hybrid = reservoir_da.get(
+                usace_hybrid = reservoir_da['reservoir_persistence_da'].get(
                     'reservoir_persistence_usace', 
                     False
                 )
                 param_file   = reservoir_da.get(
-                    'gage_lakeID_crosswalk_file',
+                    'reservoir_parameter_file',
                     None
                 )
             else:
@@ -287,18 +287,20 @@ class NHDNetwork(AbstractNetwork):
                 usgs_hybrid = False
                 
             # check if RFC-type reservoirs are set to true
-            rfc_params = self.waterbody_parameters.get('rfc')
+               
+            rfc_params = reservoir_da['reservoir_rfc_da'] 
             if rfc_params:
                 rfc_forecast = rfc_params.get(
                     'reservoir_rfc_forecasts',
                     False
                 )
-                param_file = rfc_params.get('reservoir_parameter_file',None)
+                param_file = reservoir_da.get('reservoir_parameter_file',None)
             else:
                 rfc_forecast = False
-
+            
             if (param_file and reservoir_da) or (param_file and rfc_forecast):
                 self._waterbody_type_specified = True
+                
                 (
                     self._waterbody_types_df, 
                     self._usgs_lake_gage_crosswalk, 
@@ -315,6 +317,9 @@ class NHDNetwork(AbstractNetwork):
                     reservoir_da.get('crosswalk_usace_lakeID_field', 'usace_lake_id'),
                     self.waterbody_connections.values(),
                 )
+                self._usgs_lake_gage_crosswalk['usgs_gage_id'] = self._usgs_lake_gage_crosswalk['usgs_gage_id'].apply(lambda x: x.decode('utf-8'))
+                self._usgs_lake_gage_crosswalk.index = self._usgs_lake_gage_crosswalk.index.astype(str).str.strip()
+
             else:
                 self._waterbody_type_specified = True
                 self._waterbody_types_df = pd.DataFrame(data = 1, index = self.waterbody_dataframe.index, columns = ['reservoir_type'])

@@ -432,14 +432,15 @@ class PersistenceDA(AbstractDA):
                         reset_index().
                         set_index(['usgs_gage_id']) # <- TODO use input parameter for this
                     )
-                    
+                    gage_lake_df.usgs_lake_id = gage_lake_df.usgs_lake_id.astype(int)
+                    gage_lake_df.index = gage_lake_df.index.astype(str).str.strip()
                     # build dataframe that crosswalks gageIDs to segmentIDs
                     gage_link_df = (
                         network.link_gage_df['gages'].
                         reset_index().
                         set_index(['gages'])
                     )
-                    
+                    gage_link_df.index = gage_link_df.index.astype(str).str.strip()
                     # build dataframe that crosswalks segmentIDs to lakeIDs
                     link_lake_df = (
                         gage_lake_df.
@@ -447,7 +448,7 @@ class PersistenceDA(AbstractDA):
                         reset_index().set_index('link').
                         drop(['index'], axis = 1)
                     )
-
+                    
                     # resample `usgs_df` to 15 minute intervals
                     usgs_df_15min = (
                         self._usgs_df.
@@ -462,18 +463,22 @@ class PersistenceDA(AbstractDA):
                     # containing all of the rows it needs. By using pd.concat here we add in
                     # the missing rows. But this should be fixed earlier, likely in the 
                     # creation of the gages dictionary...
-                    reservoir_usgs_df = pd.concat(
-                        [
-                            usgs_df_15min.join(link_lake_df, how = 'inner').
-                            reset_index().
-                            set_index('usgs_lake_id').
-                            drop(['index'], axis = 1),
-                            usgs_df_15min.join(network.usgs_lake_gage_crosswalk, how='inner').
-                            drop(['usgs_gage_id'], axis = 1).
-                            rename_axis('usgs_lake_id')
-                        ]
-                    )
-                    
+
+                    if not link_lake_df.empty:
+                        reservoir_usgs_df = pd.concat(
+                            [
+                                usgs_df_15min.join(link_lake_df, how = 'inner').
+                                reset_index().
+                                set_index('usgs_lake_id').
+                                drop(['index'], axis = 1),
+                                usgs_df_15min.join(network.usgs_lake_gage_crosswalk, how='inner').
+                                drop(['usgs_gage_id'], axis = 1).
+                                rename_axis('usgs_lake_id')
+                            ]
+                        )
+                    else:
+                        reservoir_usgs_df = pd.DataFrame()
+
                     # create reservoir hybrid DA initial parameters dataframe    
                     if not reservoir_usgs_df.empty:
                         reservoir_usgs_param_df = pd.DataFrame(
@@ -532,7 +537,8 @@ class PersistenceDA(AbstractDA):
         # an error. Need to think through this more. 
         if not self._usgs_df.empty:
             self._usgs_df = self._usgs_df.loc[:,network.t0:]
-    
+            self._usgs_df.index = self._usgs_df.index.astype(str).str.strip()
+
     def update_after_compute(self, run_results,):
         '''
         Function to update data assimilation object after running routing module.
