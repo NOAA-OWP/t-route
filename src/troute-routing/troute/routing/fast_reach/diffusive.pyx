@@ -47,11 +47,13 @@ cdef void diffnw(
         double[::1,:] z_thalweg_g,
         double[:,:,:] out_q,
         double[:,:,:] out_elv,
+        double[:,:,:] out_depth,
 ):
 
     cdef:
-        double[::1,:,:] q_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
-        double[::1,:,:] elv_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
+        double[::1,:,:] q_ev_g     = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
+        double[::1,:,:] elv_ev_g   = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
+        double[::1,:,:] depth_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double, order = 'F')
     
     c_diffnw(
         &timestep_ar_g[0],
@@ -94,12 +96,15 @@ cdef void diffnw(
         &crosswalk_g[0,0],  
         &z_thalweg_g[0,0],
         &q_ev_g[0,0,0],
-        &elv_ev_g[0,0,0]
+        &elv_ev_g[0,0,0],
+        &depth_ev_g[0,0,0]
     )
     
     # copy data from Fortran to Python memory view
-    out_q[:,:,:] = q_ev_g[::1,:,:]
-    out_elv[:,:,:] = elv_ev_g[::1,:,:]
+    out_q[:,:,:]     = q_ev_g[::1,:,:]
+    out_elv[:,:,:]   = elv_ev_g[::1,:,:]
+    out_depth[:,:,:] = depth_ev_g[::1,:,:]
+
 
 cpdef object compute_diffusive(
     dict diff_inputs
@@ -148,6 +153,7 @@ cpdef object compute_diffusive(
         double[::1,:] z_thalweg_g = np.asfortranarray(diff_inputs["z_thalweg_g"])
         double[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
         double[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
+        double[:,:,:] out_depth = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.double)
 
     # call diffusive compute kernel
     diffnw(
@@ -191,6 +197,7 @@ cpdef object compute_diffusive(
         crosswalk_g,
         z_thalweg_g,
         out_q,
-        out_elv
+        out_elv,
+        out_depth
     )
-    return np.asarray(out_q), np.asarray(out_elv)
+    return np.asarray(out_q), np.asarray(out_elv), np.asarray(out_depth)

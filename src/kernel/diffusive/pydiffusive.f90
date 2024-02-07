@@ -11,7 +11,7 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
                     iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
                     paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g,   &                                      
                     usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g, z_thalweg_g, &
-                    q_ev_g, elv_ev_g) bind(c)      
+                    q_ev_g, elv_ev_g, depth_ev_g) bind(c)      
 
     integer(c_int), intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, nts_qtrib_g, nts_da_g
     integer(c_int), intent(in) :: ntss_ev_g
@@ -42,7 +42,7 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
     real(c_double), dimension(mxnbathy_g, mxncomp_g, nrch_g), intent(in ) :: z_bathy_g
     real(c_double), dimension(mxnbathy_g, mxncomp_g, nrch_g), intent(in ) :: mann_bathy_g
     real(c_double), dimension(cwnrow_g, cwncol_g),            intent(in ) :: crosswalk_g 
-    real(c_double), dimension(ntss_ev_g, mxncomp_g, nrch_g),  intent(out) :: q_ev_g, elv_ev_g    
+    real(c_double), dimension(ntss_ev_g, mxncomp_g, nrch_g),  intent(out) :: q_ev_g, elv_ev_g, depth_ev_g    
           
     call diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,      &
                 mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,      &
@@ -50,7 +50,7 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
                 iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
                 paradim, para_ar_g, mxnbathy_g, x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g,   &
                 usgs_da_g, usgs_da_reach_g, rdx_ar_g, cwnrow_g, cwncol_g, crosswalk_g, z_thalweg_g, &
-                q_ev_g, elv_ev_g)                                
+                q_ev_g, elv_ev_g, depth_ev_g)                                
     
 end subroutine c_diffnw
 end module diffusive_interface
