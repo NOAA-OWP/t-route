@@ -4,12 +4,14 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from typing_extensions import Self
 
-from .config_classes.logging_parameters import LoggingParameters
-from .config_classes.network_topology_parameters import NetworkTopologyParameters
-from .config_classes.compute_parameters import ComputeParameters
-from .config_classes.output_parameters import OutputParameters
-from .config_classes.bmi_parameters import BMIParameters
-from .config_classes._utils import use_strict
+# DE-LOCALIZED
+from logging_parameters import LoggingParameters
+from network_topology_parameters import NetworkTopologyParameters
+from compute_parameters import ComputeParameters
+from output_parameters import OutputParameters
+from bmi_parameters import BMIParameters
+from _utils import use_strict
+
 
 class Config(BaseModel, extra='forbid'):
     log_parameters: LoggingParameters = Field(default_factory=LoggingParameters)
@@ -213,45 +215,3 @@ class Config(BaseModel, extra='forbid'):
 
         return values
 
-    @root_validator(skip_on_failure=True)
-    def check_flowpath_edge_list(cls, values):
-        geo_file_path = values['network_topology_parameters'].supernetwork_parameters.geo_file_path
-        flowpath_edge_list = values['network_topology_parameters'].supernetwork_parameters.flowpath_edge_list
-        if Path(geo_file_path).suffix=='.json':
-            assert flowpath_edge_list, "geo_file_path is json, but no flowpath_edge_list is provided."
-            assert Path(flowpath_edge_list).suffix=='.json', "geo_file_path is json, but flowpath_edge_list is a different file type."
-
-        return values
-    
-    @root_validator(skip_on_failure=True)
-    def check_lite_restart_directory(cls, values):
-        if values['output_parameters']:
-            lite_restart = values['output_parameters'].lite_restart
-            if lite_restart is not None:
-                lite_restart_directory = lite_restart.lite_restart_output_directory
-                assert lite_restart_directory, "lite_restart is present in output parameters, but no lite_restart_output_directory is provided."
-        
-        return values
-
-    @root_validator(skip_on_failure=True)
-    def check_nts_dt_stream_output_internal_frequency(cls, values):
-        compute_params = values.get('compute_parameters')
-        output_params = values.get('output_parameters')
-        
-        if compute_params and output_params:
-            # Directly access ForcingParameters
-            forcing_params = compute_params.forcing_parameters
-            stream_output = output_params.stream_output
-
-            if forcing_params and stream_output:
-                nts = forcing_params.nts
-                dt = forcing_params.dt
-                internal_freq = stream_output.stream_output_internal_frequency
-
-                # Perform the check
-                if nts and dt and internal_freq:
-                    result = nts * dt / (internal_freq * 60)
-                    if not result.is_integer():
-                        raise ValueError("UPDATE nts. Make sure 'nts' times 'dt' divided by ('stream_output_internal_frequency' times 60) is a whole number in your configuration.")
-
-        return values    

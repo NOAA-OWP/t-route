@@ -3,8 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Union
 from typing_extensions import Literal
 
-# DE-LOCALIZED
-from typesConfig import FilePath, DirectoryPath
+from .typesConfig import FilePath, DirectoryPath
 
 
 class NetworkTopologyParameters(BaseModel, extra='forbid'):
@@ -37,7 +36,6 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
     geo_file_path: str
     network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
-    flowpath_edge_list: Optional[str] = None
     mask_file_path: Optional[FilePath] = None
     mask_layer_string: str = ""
     # TODO: determine if this is still used
@@ -123,13 +121,13 @@ class Columns(BaseModel, extra='forbid'):
     # string, channel bottom width
     bw: str 
     # string, waterbody identifier
-    waterbody: Optional[str] 
+    waterbody: str 
     # string, channel top width
     tw: str 
     # string, compound channel top width
     twcc: str 
     # string, channel bottom altitude
-    alt: Optional[str] 
+    alt: str 
     # string, muskingum K parameter
     musk: str 
     # string, muskingum X parameter
@@ -137,7 +135,7 @@ class Columns(BaseModel, extra='forbid'):
     # string, channel sideslope
     cs: str 
     # string, gage ID
-    gages: Optional[str]
+    gages: str 
 
 
 class WaterbodyParameters(BaseModel, extra='forbid'):

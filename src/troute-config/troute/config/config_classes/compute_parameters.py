@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Optional, List
 from typing_extensions import Literal
 
-# DE-LOCALIZED
-from typesConfig import FilePath, DirectoryPath
-from _validators import coerce_datetime, coerce_none_to_default
+from .typesConfig import FilePath, DirectoryPath
+from ._validators import coerce_datetime, coerce_none_to_default
 
 
 # ---------------------------- Compute Parameters ---------------------------- #
@@ -120,6 +119,9 @@ class StreamflowDA(BaseModel, extra='forbid'):
     # TODO: changed the name of this parameter from "wrf_hydro_lastobs_file" to "lastobs_file"
     # Need to update this in t-route as well.
     lastobs_file: Optional[FilePath] = None
+
+    # NOTE: required if lastobs are to be written out during and after simulations
+    lastobs_output_folder: Optional[DirectoryPath] = None
 
     # TODO: missing from `v3_doc.yaml`
     # see troute/DataAssimilation.py :57

@@ -3,8 +3,7 @@ from pydantic import BaseModel, Field, conint, validator, confloat
 from typing import Optional, List, Annotated
 from typing_extensions import Literal
 
-# DE-LOCALIZED
-from typesConfig import FilePath, DirectoryPath
+from .typesConfig import FilePath, DirectoryPath
 
 streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
@@ -30,8 +29,6 @@ class OutputParameters(BaseModel, extra='forbid'):
     # see nwm_routing/output.py :114
     test_output: Optional[FilePath] = None
     stream_output: Optional["StreamOutput"] = None
-    # NOTE: mandatory if writing results to lastobs
-    lastobs_output: Optional[DirectoryPath] = None
 
 class ChanobsOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing chanobs files
@@ -93,7 +90,6 @@ class StreamOutput(BaseModel):
             if value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
- 
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
