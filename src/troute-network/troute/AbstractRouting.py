@@ -180,8 +180,11 @@ class MCwithDiffusive(AbstractRouting):
 
         for item in links_US_DS['US_DS_link_mainstem']:
             headlink_mainstem, twlink_mainstem, rfc_val, rpu_val = ast.literal_eval(item)
-            diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
-            
+            diffusive_domain_out = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
+            if (diffusive_domain_out != None):
+                #diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
+                diffusive_domain_all[twlink_mainstem] = diffusive_domain_out
+
         self._diffusive_domain = diffusive_domain_all
         rconn_diff0 = reverse_network(connections)
 
