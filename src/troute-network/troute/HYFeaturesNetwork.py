@@ -365,6 +365,13 @@ class HYFeaturesNetwork(AbstractNetwork):
         mask = ~ self.dataframe['downstream'].str.startswith("tnx") 
         self._dataframe = self.dataframe.apply(numeric_id, axis=1)
         
+        ######### TEMPORARY FIX ###########
+        # There is a waterbody, ID=5569731, that has two segments 'downstream' of it in 
+        # the hydrofabric v20.1, segments 2409607 and 2409629. This is a temporary fix which
+        # changes the downstream segment IDs to always route to 2409628 instead of 2409607
+        self._dataframe['downstream'] = self._dataframe['downstream'].replace(2409607, 2409628)
+        ###################################
+        
         # handle segment IDs that are also waterbody IDs. The fix here adds a large value
         # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
         # will get confused because there will be repeat IDs...
