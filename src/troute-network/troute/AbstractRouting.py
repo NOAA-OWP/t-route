@@ -6,7 +6,8 @@ import xarray as xr
 import pandas as pd
 from pathlib import Path
 import pyarrow.parquet as pq
-from troute.nhd_network import reverse_network
+from collections import defaultdict
+from troute.nhd_network import reverse_network, reachable, headwaters
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
 import ast
 LOG = logging.getLogger('')
@@ -169,29 +170,50 @@ class MCwithDiffusive(AbstractRouting):
         
         super().__init__()
     
-    def update_routing_domain(self, dataframe, connections):
+    def update_routing_domain(self, dataframe, connections, waterbody_dataframe):
         #==========================================================================
         # build diffusive domain data and edit MC domain data for hybrid simulation
         domain_file = self.hybrid_params.get("diffusive_domain", None)
         # self._diffusive_domain = read_diffusive_domain(domain_file)
-        links_US_DS = read_diffusive_domain(domain_file)
+        diffusive_domain = read_diffusive_domain(domain_file)
         self._diffusive_network_data = {}
         diffusive_domain_all = {}
-
-        for item in links_US_DS['US_DS_link_mainstem']:
-            headlink_mainstem, twlink_mainstem, rfc_val, rpu_val = ast.literal_eval(item)
-            diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
-            
-        self._diffusive_domain = diffusive_domain_all
         rconn_diff0 = reverse_network(connections)
+        
+        for tw in diffusive_domain:
+            headlink_mainstem, rfc_val, rpu_val = list(diffusive_domain.get(tw).values())
+            if any(headlink_mainstem):
+                twlink_mainstem = tw
+                diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
+            else:
+                targets = []
+                for wbody in waterbody_dataframe.index:
+                    targets.append(connections.get(wbody)[0])
+                links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
+                sub_conn = defaultdict(list)
+                for src in links:
+                    sub_conn[src] = connections[src]
+                us_boundary_links = list(headwaters(sub_conn))
 
+                diffusive_domain_all[tw] = {
+                    'links': links,
+                    'rfc': rfc_val,
+                    'rpu': rpu_val,
+                    'upstream_boundary_link_mainstem': us_boundary_links
+                }
+        
+        self._diffusive_domain = diffusive_domain_all
+        
         for tw in self._diffusive_domain:
             mainstem_segs = self._diffusive_domain[tw]['links']
             # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
             # in turn not under any waterbody. This boundary mainstem link should be turned into a tributary segment.
-            upstream_boundary_mainstem_link = self._diffusive_domain[tw]['upstream_boundary_link_mainstem']         
-            if upstream_boundary_mainstem_link[0] in mainstem_segs:
-                mainstem_segs.remove(upstream_boundary_mainstem_link[0])
+            upstream_boundary_mainstem_link = self._diffusive_domain[tw]['upstream_boundary_link_mainstem']
+            for us_link in upstream_boundary_mainstem_link:
+                if us_link in mainstem_segs:
+                    mainstem_segs.remove(us_link)
+            # if upstream_boundary_mainstem_link[0] in mainstem_segs:
+            #     mainstem_segs.remove(upstream_boundary_mainstem_link[0])
             
             # ===== build diffusive network data objects ==== 
             self._diffusive_network_data[tw] = {}
