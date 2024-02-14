@@ -482,7 +482,7 @@ class AbstractNetwork(ABC):
         (
             self._dataframe,
             self._connections
-        ) = routing.update_routing_domain(self.dataframe, self.connections)
+        ) = routing.update_routing_domain(self.dataframe, self.connections, self.waterbody_dataframe)
 
         self._routing = routing
         hyf = self.supernetwork_parameters.get('network_type', None)=='HYFeaturesNetwork'
