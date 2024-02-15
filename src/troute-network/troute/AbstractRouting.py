@@ -103,7 +103,7 @@ class AbstractRouting(ABC):
         self._refactored_reaches                = {}
 
     @abstractmethod
-    def update_routing_domain(self, dataframe, connections):
+    def update_routing_domain(self, dataframe, connections, waterbody_dataframe):
         pass
     
     @property
@@ -139,8 +139,8 @@ class MCOnly(AbstractRouting):
         
         super().__init__()
 
-    def update_routing_domain(self, dataframe, connections):
-        return dataframe, connections
+    def update_routing_domain(self, dataframe, connections, waterbody_dataframe):
+        return dataframe, connections, waterbody_dataframe
 
     @property
     def diffusive_network_data(self):
