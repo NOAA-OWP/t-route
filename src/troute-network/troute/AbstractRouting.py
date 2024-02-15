@@ -140,7 +140,7 @@ class MCOnly(AbstractRouting):
         super().__init__()
 
     def update_routing_domain(self, dataframe, connections, waterbody_dataframe):
-        return dataframe, connections, waterbody_dataframe
+        return dataframe, connections
 
     @property
     def diffusive_network_data(self):
