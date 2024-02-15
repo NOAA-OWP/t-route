@@ -481,8 +481,7 @@ class AbstractNetwork(ABC):
 
         (
             self._dataframe,
-            self._connections,
-            self._waterbody_df
+            self._connections
         ) = routing.update_routing_domain(self.dataframe, self.connections, self.waterbody_dataframe)
 
         self._routing = routing
