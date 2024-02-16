@@ -75,7 +75,7 @@ def read_parquet(file_path):
 
     '''
     tbl = pq.read_table(file_path)
-    df = tbl.to_pandas().dropna()
+    df = tbl.to_pandas().dropna(subset=['relative_dist','Z','roughness'])
     if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
         df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
     return df
@@ -365,8 +365,9 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                         self._topobathy_df = combined_df
           
             # Among multiple xsec profiles, select one in the most upstream of stream segment
-            if topobathy_file.suffix == '.parquet':     
-                self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
+            if topobathy_file.suffix == '.parquet':   
+                self._topobathy_df = self._topobathy_df.loc[self._topobathy_df.groupby(level='hy_id').cs_id.idxmin()]
+                #self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
         return self._topobathy_df
 
 
