@@ -188,7 +188,7 @@ class MCwithDiffusive(AbstractRouting):
             else:
                 targets = []
                 for wbody in waterbody_dataframe.index:
-                    targets.append(connections.get(wbody)[0])
+                    targets.append(connections.get(connections.get(wbody)[0])[0])
                 links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
                 sub_conn = defaultdict(list)
                 for src in links:
