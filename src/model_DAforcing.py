@@ -813,9 +813,12 @@ def write_flowveldepth_netcdf(values,
     nudging_ids = values.get('nudging_ids')
     # reconstruct the df
     num_rows_ndg = len(nudging_ids)
-    num_columns_ndg = len(flatten_nudge) // len(nudging_ids)
-    nudge = pd.DataFrame(flatten_nudge.reshape(num_rows_ndg, num_columns_ndg), index=nudging_ids)
-
+    if (num_rows_ndg > 0):
+        num_columns_ndg = len(flatten_nudge) // len(nudging_ids)
+        nudge = pd.DataFrame(flatten_nudge.reshape(num_rows_ndg, num_columns_ndg), index=nudging_ids)
+    else:
+        nudge = pd.DataFrame()
+        
     ## getting the flatten value of flowveldepth
     flatten_fvd = values.get('fvd_results')
     fvd_index = values.get('fvd_index')
