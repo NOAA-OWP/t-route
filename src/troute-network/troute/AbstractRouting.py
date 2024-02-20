@@ -75,7 +75,7 @@ def read_parquet(file_path):
 
     '''
     tbl = pq.read_table(file_path)
-    df = tbl.to_pandas().dropna(subset=['relative_dist','Z','roughness'])
+    df = tbl.to_pandas().dropna(subset=['hy_id','relative_dist','Z','roughness'])
     if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
         df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
     return df
