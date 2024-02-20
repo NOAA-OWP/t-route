@@ -43,7 +43,7 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_path: domain/LowerColorado_NGENv20.gpkg
+        geo_file_path: domain/LowerColorado_NGEN_v201.gpkg
         columns: 
             key: 'id'
             downstream: 'toid'
@@ -77,14 +77,14 @@ compute_parameters:
         lite_channel_restart_file   : #restart/RESTART.2020082600_DOMAIN1
         lite_waterbody_restart_file : #restart/waterbody_restart_202006011200
     hybrid_parameters:
-        run_hybrid_routing: False
-        diffusive_domain  : #domain/coastal_domain_subset.yaml  
-        use_natl_xsections: False
-        topobathy_domain  : #domain/final_diffusive_natural_xs.nc 
+        run_hybrid_routing: True
+        diffusive_domain  : /home/APD/inland_hydraulics/ngen_diffusive_tests/domain/coastal_domain_tw.yaml  
+        use_natl_xsections: True
+        topobathy_domain  : domain/troute_test.parquet
         run_refactored_network: False
         refactored_domain: #domain/refactored_coastal_domain_subset.yaml 
         refactored_topobathy_domain: #domain/refac_final_diffusive_natural_xs.nc 
-        coastal_boundary_domain: #domain/coastal_boundary_domain.yaml
+        coastal_boundary_domain: domain/coastal_boundary_domain.yaml
     forcing_parameters:
         #----------
         qts_subdivisions            : 12
@@ -116,14 +116,14 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 28
                 reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
-output_parameters:
+# output_parameters:
 #     #----------
-     test_output : output/lcr_flowveldepth.pkl
-     lite_restart:
+#      test_output : output/lcr_flowveldepth.pkl
+#      lite_restart:
 #         #----------
-        lite_restart_output_directory: restart/
-     lakeout_output: lakeout/
-     lastobs_output: lastobs/
+#         lite_restart_output_directory: restart/
+#      lakeout_output: lakeout/
+#      lastobs_output: lastobs/
 #     stream_output : 
 #         stream_output_directory: output/
 #         stream_output_time: 1 #[hr]
