@@ -182,25 +182,23 @@ class MCwithDiffusive(AbstractRouting):
         
         for tw in diffusive_domain:
             headlink_mainstem, rfc_val, rpu_val = list(diffusive_domain.get(tw).values())
-            if any(headlink_mainstem):
-                twlink_mainstem = tw
-                diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
-            else:
-                targets = []
+            if 999999 in headlink_mainstem:
+                headlink_mainstem.remove(999999)
+                targets = headlink_mainstem
                 for wbody in waterbody_dataframe.index:
                     targets.append(connections.get(connections.get(wbody)[0])[0])
                 links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
-                sub_conn = defaultdict(list)
-                for src in links:
-                    sub_conn[src] = connections[src]
-                us_boundary_links = list(headwaters(sub_conn))
-
+                          
                 diffusive_domain_all[tw] = {
                     'links': links,
                     'rfc': rfc_val,
                     'rpu': rpu_val,
-                    'upstream_boundary_link_mainstem': us_boundary_links
+                    'upstream_boundary_link_mainstem': []
                 }
+            else:
+                headlink_mainstem = headlink_mainstem[0]
+                twlink_mainstem = tw
+                diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
         
         self._diffusive_domain = diffusive_domain_all
         
@@ -360,14 +358,14 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                             # Select topobathy data at the most downstream of an upstream mainstem segment
                             fill_in_topobathy_df = pd.DataFrame(temp_df[temp_df.cs_id==cs_id_max])
                             fill_in_topobathy_df.cs_id = fill_in_topobathy_df.cs_id.replace(cs_id_max,1) 
-                        
+
+                        fill_in_topobathy_df.index.name = self._topobathy_df.index.name
                         combined_df = pd.concat([self._topobathy_df, fill_in_topobathy_df])
                         self._topobathy_df = combined_df
           
             # Among multiple xsec profiles, select one in the most upstream of stream segment
-            if topobathy_file.suffix == '.parquet':   
+            if topobathy_file.suffix == '.parquet': 
                 self._topobathy_df = self._topobathy_df.loc[self._topobathy_df.groupby(level='hy_id').cs_id.idxmin()]
-                #self._topobathy_df = self._topobathy_df[self._topobathy_df['cs_id'] == 1]
         return self._topobathy_df
 
 
