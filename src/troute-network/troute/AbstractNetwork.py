@@ -142,8 +142,8 @@ class AbstractNetwork(ABC):
             coastal_boundary_domain_files = self.hybrid_parameters.get('coastal_boundary_domain', None)    
             
             if coastal_boundary_elev_files:
-                #start_time = time.time()    
-                #LOG.info("creating coastal dataframe ...")
+                start_time = time.time()    
+                LOG.info("creating coastal dataframe ...")
                 '''
                 coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(coastal_boundary_domain_files)          
                 self._coastal_boundary_depth_df = nhd_io.build_coastal_ncdf_dataframe(
@@ -153,10 +153,10 @@ class AbstractNetwork(ABC):
                 '''
                 self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files)
                 
-                #LOG.debug(
-                #    "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
-                #    % (time.time() - start_time)
-                #)
+                LOG.debug(
+                    "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
+                    % (time.time() - start_time)
+                )
             else:
                 self._coastal_boundary_depth_df = pd.DataFrame()            
 
