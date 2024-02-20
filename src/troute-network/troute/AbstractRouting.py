@@ -210,8 +210,6 @@ class MCwithDiffusive(AbstractRouting):
             for us_link in upstream_boundary_mainstem_link:
                 if us_link in mainstem_segs:
                     mainstem_segs.remove(us_link)
-            # if upstream_boundary_mainstem_link[0] in mainstem_segs:
-            #     mainstem_segs.remove(upstream_boundary_mainstem_link[0])
             
             # ===== build diffusive network data objects ==== 
             self._diffusive_network_data[tw] = {}
