@@ -9,7 +9,7 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_path: domain/LowerColorado_NGENv20.gpkg
+        geo_file_path: domain/LowerColorado_NGEN_v201.gpkg
         columns: 
             key: 'id'
             downstream: 'toid'
