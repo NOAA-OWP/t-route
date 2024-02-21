@@ -78,7 +78,7 @@ compute_parameters:
         lite_waterbody_restart_file : #restart/waterbody_restart_202006011200
     hybrid_parameters:
         run_hybrid_routing: True
-        diffusive_domain  : /home/APD/inland_hydraulics/ngen_diffusive_tests/domain/coastal_domain_tw.yaml  
+        diffusive_domain  : domain/coastal_domain_tw.yaml  
         use_natl_xsections: True
         topobathy_domain  : domain/troute_test.parquet
         run_refactored_network: False
