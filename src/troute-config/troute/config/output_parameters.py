@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, conint, validator, confloat
 
-from typing import Optional, List, Annotated
-from typing_extensions import Literal
+from typing import Optional, List
+from typing_extensions import Annotated, Literal
 from .types import FilePath, DirectoryPath
 
 streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
