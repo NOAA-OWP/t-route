@@ -996,12 +996,6 @@ def nwm_forcing_preprocess(
                 ).
                 loc[link_gage_df.index]
             )
-            
-            # replace link ids with lake ids, for gages at waterbody outlets, 
-            # otherwise, gage data will not be assimilated at waterbody outlet
-            # segments.
-            if link_lake_crosswalk:
-                usgs_df = _reindex_link_to_lake_id(usgs_df, link_lake_crosswalk)
 
         else:
             usgs_df = pd.DataFrame()
@@ -1159,7 +1153,13 @@ def nwm_forcing_preprocess(
         
     else:
         reservoir_usgs_df = pd.DataFrame()
-        
+    
+     # replace link ids with lake ids, for gages at waterbody outlets, 
+    # otherwise, gage data will not be assimilated at waterbody outlet
+    # segments.
+    if link_lake_crosswalk:
+        usgs_df = _reindex_link_to_lake_id(usgs_df, link_lake_crosswalk)
+                    
     # create USGS reservoir hybrid DA initial parameters dataframe    
     if reservoir_usgs_df.empty == False:
         reservoir_usgs_param_df = pd.DataFrame(

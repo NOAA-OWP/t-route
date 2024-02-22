@@ -474,6 +474,12 @@ class PersistenceDA(AbstractDA):
                         ]
                     )
                     
+                    # replace link ids with lake ids, for gages at waterbody outlets, 
+                    # otherwise, gage data will not be assimilated at waterbody outlet
+                    # segments.
+                    if network.link_lake_crosswalk:
+                        usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+            
                     # create reservoir hybrid DA initial parameters dataframe    
                     if not reservoir_usgs_df.empty:
                         reservoir_usgs_param_df = pd.DataFrame(
@@ -624,6 +630,12 @@ class PersistenceDA(AbstractDA):
                     set_index('usgs_lake_id').
                     drop(['index'], axis = 1)
                 )
+                
+                # replace link ids with lake ids, for gages at waterbody outlets, 
+                # otherwise, gage data will not be assimilated at waterbody outlet
+                # segments.
+                if network.link_lake_crosswalk:
+                    usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
         
         elif reservoir_da_parameters.get('reservoir_persistence_usgs', False):
             (
@@ -984,12 +996,6 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
             ).
             loc[network.link_gage_df.index]
         )
-		
-		# replace link ids with lake ids, for gages at waterbody outlets, 
-		# otherwise, gage data will not be assimilated at waterbody outlet
-		# segments.
-        if network.link_lake_crosswalk:
-            usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
     
     else:
         usgs_df = pd.DataFrame()
