@@ -269,16 +269,16 @@ class NHDNetwork(AbstractNetwork):
             )
             
             if reservoir_da:
-                usgs_hybrid  = reservoir_da.get(
+                usgs_hybrid  = reservoir_da['reservoir_persistence_da'].get(
                     'reservoir_persistence_usgs', 
                     False
                 )
-                usace_hybrid = reservoir_da.get(
+                usace_hybrid = reservoir_da['reservoir_persistence_da'].get(
                     'reservoir_persistence_usace', 
                     False
                 )
                 param_file   = reservoir_da.get(
-                    'gage_lakeID_crosswalk_file',
+                    'reservoir_parameter_file',
                     None
                 )
             else:
@@ -287,13 +287,13 @@ class NHDNetwork(AbstractNetwork):
                 usgs_hybrid = False
                 
             # check if RFC-type reservoirs are set to true
-            rfc_params = self.waterbody_parameters.get('rfc')
+            rfc_params = reservoir_da['reservoir_rfc_da']
             if rfc_params:
                 rfc_forecast = rfc_params.get(
                     'reservoir_rfc_forecasts',
                     False
                 )
-                param_file = rfc_params.get('reservoir_parameter_file',None)
+                param_file = reservoir_da.get('reservoir_parameter_file', None)
             else:
                 rfc_forecast = False
 
