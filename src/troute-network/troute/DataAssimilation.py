@@ -136,9 +136,7 @@ class NudgingDA(AbstractDA):
                                 stationStringLengthArray_usgs, stationAxisName)
                 
                 #usgs_df = usgs_df.join(network.link_gage_df.reset_index().set_index('gages'),how='inner').set_index('link').sort_index()
-                usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
-
-                self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+                self._usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
                 
                 # Next is lastobs - can also be implemented following bmi_array2df module
                 lastobs = streamflow_da_parameters.get("lastobs_file", False)
@@ -344,6 +342,8 @@ class PersistenceDA(AbstractDA):
                     set_index('usgs_lake_id')
                     )
 
+                self._usgs_df = _reindex_link_to_lake_id(self._usgs_df, network.link_lake_crosswalk)
+                
                 # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
                     reservoir_usgs_param_df = pd.DataFrame(
@@ -457,28 +457,17 @@ class PersistenceDA(AbstractDA):
                     )
 
                     # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
-                    #FIXME _reindex_link_to_lake_id is replacing some usgs_df indices with
-                    # the waterbody IDs, but not all. This results in reservoir_usgs_df not
-                    # containing all of the rows it needs. By using pd.concat here we add in
-                    # the missing rows. But this should be fixed earlier, likely in the 
-                    # creation of the gages dictionary...
-                    reservoir_usgs_df = pd.concat(
-                        [
-                            usgs_df_15min.join(link_lake_df, how = 'inner').
-                            reset_index().
-                            set_index('usgs_lake_id').
-                            drop(['index'], axis = 1),
-                            usgs_df_15min.join(network.usgs_lake_gage_crosswalk, how='inner').
-                            drop(['usgs_gage_id'], axis = 1).
-                            rename_axis('usgs_lake_id')
-                        ]
+                    reservoir_usgs_df = (
+                        usgs_df_15min.join(link_lake_df, how = 'inner').
+                        reset_index(drop=True).
+                        set_index('usgs_lake_id')
                     )
                     
                     # replace link ids with lake ids, for gages at waterbody outlets, 
                     # otherwise, gage data will not be assimilated at waterbody outlet
                     # segments.
                     if network.link_lake_crosswalk:
-                        usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+                        self._usgs_df = _reindex_link_to_lake_id(self._usgs_df, network.link_lake_crosswalk)
             
                     # create reservoir hybrid DA initial parameters dataframe    
                     if not reservoir_usgs_df.empty:
