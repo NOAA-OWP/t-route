@@ -95,7 +95,7 @@ def gage_mapping(segment_gage_df, gage_col="gages"):
     gage_list = list(map(bytes.strip, segment_gage_df[gage_col].values))
     gage_mask = list(map(bytes.isalnum, gage_list))
     segment_gage_df = segment_gage_df.loc[gage_mask, [gage_col]]
-    segment_gage_df[gage_col] = segment_gage_df[gage_col].apply(lambda x: x.decode('utf-8'))
+    segment_gage_df[gage_col] = segment_gage_df[gage_col].apply(lambda x: x.decode('utf-8')).str.strip()
     gage_map = segment_gage_df.to_dict()
     return gage_map
 

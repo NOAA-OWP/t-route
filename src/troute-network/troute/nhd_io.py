@@ -344,6 +344,7 @@ def read_reservoir_parameter_file(
                 columns = [usgs_gage_id_field]
             )
             usgs_crosswalk.index.name = usgs_lake_id_field
+            usgs_crosswalk[usgs_gage_id_field] = usgs_crosswalk[usgs_gage_id_field].apply(lambda x: x.decode('utf-8')).str.strip()
         else:
             usgs_crosswalk = None
         
@@ -354,6 +355,7 @@ def read_reservoir_parameter_file(
                 columns = [usace_gage_id_field]
             )
             usace_crosswalk.index.name = usace_lake_id_field
+            usace_crosswalk[usace_gage_id_field] = usace_crosswalk[usace_gage_id_field].apply(lambda x: x.decode('utf-8')).str.strip()
         else:
             usace_crosswalk = None
         
