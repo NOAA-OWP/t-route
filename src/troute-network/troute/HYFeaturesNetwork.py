@@ -581,18 +581,22 @@ class HYFeaturesNetwork(AbstractNetwork):
             # gages in timeslice files), so setting type 2 reservoirs second should overwrite type 3 
             # designations
             #FIXME: Related to FIXME above, but we should re-think how to handle waterbody_types...
-            if usace_da:
-                self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
-            if usgs_da:
-                self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
-            if rfc_da:
-                #FIXME: Temporary fix, load predefined rfc lake gage crosswalk info for rfc reservoirs.
-                # Replace relevant waterbody_types as type 4.
-                rfc_lake_gage_crosswalk = get_rfc_lake_gage_crosswalk().reset_index()
-                self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
-                self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
-            else:
-                self._rfc_lake_gage_crosswalk = pd.DataFrame()
+
+            # add provision for when waterbody data frame is empty
+            #if (len(self._waterbody_types_df) != 0):
+            if (1):
+                if usace_da:
+                    self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
+                if usgs_da:
+                    self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
+                if rfc_da:
+                    #FIXME: Temporary fix, load predefined rfc lake gage crosswalk info for rfc reservoirs.
+                    # Replace relevant waterbody_types as type 4.
+                    rfc_lake_gage_crosswalk = get_rfc_lake_gage_crosswalk().reset_index()
+                    self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
+                    self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
+                else:
+                    self._rfc_lake_gage_crosswalk = pd.DataFrame()
             
         else:
             self._gages = {}
