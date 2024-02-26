@@ -21,8 +21,6 @@ from nwm_routing.log_level_set import log_level_set
 from troute.config import Config
 LOG = logging.getLogger('')
 
-dummy = 0
-
 class DAforcing_model():
 
     def __init__(self, bmi_cfg_file=None):
