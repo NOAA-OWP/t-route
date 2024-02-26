@@ -595,7 +595,6 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._rfc_lake_gage_crosswalk = pd.DataFrame()
             
         else:
-            dummy = 0
             self._gages = {}
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usace_lake_gage_crosswalk = pd.DataFrame()
