@@ -139,11 +139,10 @@ class NudgingDA(AbstractDA):
                 usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
 
                 # only run if there are lakes
-                #if (len(network._waterbody_types_df) > 0):
-                if (1):
+                if (len(network._waterbody_types_df) > 0):
                     self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
-                #else:
-                #    self._usgs_df = usgs_df
+                else:
+                    self._usgs_df = usgs_df
 
                 # Next is lastobs - can also be implemented following bmi_array2df module
                 lastobs = streamflow_da_parameters.get("lastobs_file", False)

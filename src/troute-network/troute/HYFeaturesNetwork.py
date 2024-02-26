@@ -583,8 +583,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             #FIXME: Related to FIXME above, but we should re-think how to handle waterbody_types...
 
             # add provision for when waterbody data frame is empty
-            #if (len(self._waterbody_types_df) != 0):
-            if (1):
+            if (len(self._waterbody_types_df) != 0):
                 if usace_da:
                     self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
                 if usgs_da:
