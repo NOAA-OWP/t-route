@@ -1043,7 +1043,7 @@ def nwm_forcing_preprocess(
     
     # create crosswalking dataframes and identify USGS lakeIDs in the model domain
     if usgs_persistence:
-        
+        x = 1
         gage_lake_df = (
             usgs_lake_gage_crosswalk.
             reset_index().
