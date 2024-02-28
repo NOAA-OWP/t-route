@@ -139,7 +139,7 @@ class NudgingDA(AbstractDA):
                 usgs_df = network.link_gage_df.reset_index().set_index('gages').join(usgs_df).set_index('link').sort_index()
 
                 # only run if there are lakes
-                if (len(network._waterbody_types_df) > 0):
+                if (network.link_lake_crosswalk):
                     self._usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
                 else:
                     self._usgs_df = usgs_df
@@ -170,8 +170,11 @@ class NudgingDA(AbstractDA):
                     link_lake_dict = link_lake_dict.set_index('link').to_dict().get('lake_id')
                     '''
                     
-                    self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
-            
+                    if (network.link_lake_crosswalk):
+                        self._last_obs_df = _reindex_link_to_lake_id(lastobs_df, network.link_lake_crosswalk)
+                    else:
+                        self._last_obs_df = lastobs_df
+
             else:
                 #TODO: Is it a sustainable to figure out if using NHD or HYfeature based on lastobs_crosswalk_file?
                 lastobs_crosswalk_file = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
