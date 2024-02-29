@@ -728,10 +728,10 @@ class AbstractNetwork(ABC):
             raise AssertionError("Aborting simulation because the qlat_input_folder:", qlat_input_folder,"does not exist. Please check the the nexus_input_folder variable is correctly entered in the .yaml control file") from None
 
         forcing_glob_filter = forcing_parameters["qlat_file_pattern_filter"]
+        binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
 
-        if forcing_glob_filter=="nex-*":
+        if forcing_glob_filter=="nex-*" and binary_folder:
             print("Reformating qlat nexus files as hourly binary files...")
-            binary_folder = forcing_parameters.get('binary_nexus_file_folder', None)
             qlat_files = qlat_input_folder.glob(forcing_glob_filter)
 
             #Check that directory/files specified will work
@@ -748,9 +748,24 @@ class AbstractNetwork(ABC):
             qlat_input_folder, forcing_glob_filter = nex_files_to_binary(qlat_files_list, binary_folder)
             forcing_parameters["qlat_input_folder"] = qlat_input_folder
             forcing_parameters["qlat_file_pattern_filter"] = forcing_glob_filter
+        
+        if forcing_glob_filter=="nex-*":
+            all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
+            final_timestamp = pd.read_csv(all_files[0], header=None, index_col=[0]).tail(1).iloc[0,0]
+            final_timestamp = datetime.strptime(final_timestamp, "%Y-%m-%d %H:%M:%S")
+            
+            all_files = [os.path.basename(f) for f in all_files]
+            
+            run_sets = [
+                {
+                    'qlat_files': all_files,
+                    'nts': nts,
+                    'final_timestamp': final_timestamp
+                }
+            ]
             
         # TODO: Throw errors if insufficient input data are available
-        if run_sets:        
+        elif run_sets:        
             #FIXME: Change it for hyfeature
             '''
             # append final_timestamp variable to each set_list
@@ -893,7 +908,7 @@ def get_timesteps_from_nex(nexus_files):
     output_file_timestamps = []
     with open(nexus_files[0]) as f:
         for line in f:
-            output_file_timestamps.append(line.split(', ')[1])
+            output_file_timestamps.append(line.split(',')[1].strip())
     # Convert and reformat dates in the list
     output_file_timestamps = [pd.to_datetime(i).strftime("%Y%m%d%H%M") for i in output_file_timestamps]
 
