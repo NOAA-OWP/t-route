@@ -752,7 +752,7 @@ class AbstractNetwork(ABC):
         if forcing_glob_filter=="nex-*":
             all_files = sorted(qlat_input_folder.glob(forcing_glob_filter))
             final_timestamp = pd.read_csv(all_files[0], header=None, index_col=[0]).tail(1).iloc[0,0]
-            final_timestamp = datetime.strptime(final_timestamp, "%Y-%m-%d %H:%M:%S")
+            final_timestamp = datetime.strptime(final_timestamp.strip(), "%Y-%m-%d %H:%M:%S")
             
             all_files = [os.path.basename(f) for f in all_files]
             
