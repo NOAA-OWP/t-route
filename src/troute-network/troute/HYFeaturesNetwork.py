@@ -10,6 +10,7 @@ from itertools import chain
 from joblib import delayed, Parallel
 from collections import defaultdict
 import xarray as xr
+from datetime import datetime
 import os
 
 import troute.nhd_io as nhd_io #FIXME
@@ -618,16 +619,35 @@ class HYFeaturesNetwork(AbstractNetwork):
                     "qlat_file_pattern_filter", "*CHRT_OUT*"
                 )
                 qlat_files = sorted(qlat_input_folder.glob(qlat_file_pattern_filter))
-
-            dfs=[]
-            for f in qlat_files:
-                df = read_file(f)
-                df['feature_id'] = df['feature_id'].map(lambda x: int(str(x).removeprefix('nex-')) if str(x).startswith('nex') else int(x))
-                df = df.set_index('feature_id')
-                dfs.append(df)
             
-            # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
-            nexuses_lateralflows_df = pd.concat(dfs, axis=1) 
+            dfs=[]
+            
+            #FIXME Temporary solution to allow t-route to use ngen nex-* output files as forcing files
+            # This capability should be here, but we need to think through how to handle all of this 
+            # data in memory for large domains and many timesteps... - shorvath, Feb 28, 2024
+            qlat_file_pattern_filter = self.forcing_parameters.get("qlat_file_pattern_filter", None)
+            if qlat_file_pattern_filter=="nex-*":
+                for f in qlat_files:
+                    df = pd.read_csv(f, names=['timestamp', 'qlat'], index_col=[0])
+                    df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y%m%d%H%M')
+                    df = df.set_index('timestamp')
+                    df = df.T
+                    df.index = [int(os.path.basename(f).split('-')[1].split('_')[0])]
+                    df = df.rename_axis(None, axis=1)
+                    df.index.name = 'feature_id'
+                    dfs.append(df)
+                
+                # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
+                nexuses_lateralflows_df = pd.concat(dfs, axis=0) 
+            else:
+                for f in qlat_files:
+                    df = read_file(f)
+                    df['feature_id'] = df['feature_id'].map(lambda x: int(str(x).removeprefix('nex-')) if str(x).startswith('nex') else int(x))
+                    df = df.set_index('feature_id')
+                    dfs.append(df)
+            
+                # lateral flows [m^3/s] are stored at NEXUS points with NEXUS ids
+                nexuses_lateralflows_df = pd.concat(dfs, axis=1) 
             
             # Take flowpath ids entering NEXUS and replace NEXUS ids by the upstream flowpath ids
             qlats_df = nexuses_lateralflows_df.rename(index=self.downstream_flowpath_dict)
