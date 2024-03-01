@@ -2135,7 +2135,8 @@ def write_flowveldepth(
     
     num_files = flowveldepth.shape[1]//3*dt//(stream_output_timediff*60*60)
     if num_files==0:
-        num_files==1
+        num_files=1
+
     file_name_time = t0
     jobs = []
     for _ in range(num_files):
