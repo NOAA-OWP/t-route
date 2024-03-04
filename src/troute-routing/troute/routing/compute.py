@@ -513,6 +513,11 @@ def compute_nhd_routing_v02(
                     qlat_sub = qlat_sub.reindex(param_df_sub.index)
                     q0_sub = q0_sub.reindex(param_df_sub.index)
 
+                    if waterbody_types_df.empty:
+                        reservoir_usgs_df = pd.DataFrame()
+                        reservoir_usace_df = pd.DataFrame()
+                        reservoir_rfc_df = pd.DataFrame()
+
                     # prepare reservoir DA data
                     (reservoir_usgs_df_sub, 
                      reservoir_usgs_df_time,

@@ -277,6 +277,9 @@ class PersistenceDA(AbstractDA):
         reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', None)
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
 
+        if network.usgs_lake_gage_crosswalk.empty:
+            reservoir_da_parameters['reservoir_persistence_usgs'] = False
+
         # check if user explictly requests USGS and/or USACE reservoir DA
         usgs_persistence  = False
         usace_persistence = False
@@ -334,15 +337,17 @@ class PersistenceDA(AbstractDA):
                                 (df_withDates_reservoirUsgs, stationArray_reservoir_usgs, \
                                 stationStringLengthArray_reservoir_usgs, stationAxisName)
 
-                reservoir_usgs_df = (
-                    network.usgs_lake_gage_crosswalk.
-                    reset_index().
-                    set_index('usgs_gage_id').
-                    join(reservoir_usgs_df).
-                    set_index('usgs_lake_id')
-                    )
+                if not network.usgs_lake_gage_crosswalk.empty:
 
-                self._usgs_df = _reindex_link_to_lake_id(self._usgs_df, network.link_lake_crosswalk)
+                    reservoir_usgs_df = (
+                        network.usgs_lake_gage_crosswalk.
+                        reset_index().
+                        set_index('usgs_gage_id').
+                        join(reservoir_usgs_df).
+                        set_index('usgs_lake_id')
+                        )
+
+                    self._usgs_df = _reindex_link_to_lake_id(self._usgs_df, network.link_lake_crosswalk)
                 
                 # create reservoir persistence DA initial parameters dataframe    
                 if not reservoir_usgs_df.empty:
