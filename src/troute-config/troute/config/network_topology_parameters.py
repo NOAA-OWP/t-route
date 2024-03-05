@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 from typing_extensions import Literal
 
 from .types import FilePath, DirectoryPath
@@ -104,6 +104,49 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
     # TODO: It would be nice if this were a literal / str
     driver_string: Union[str, Literal["NetCDF"]] = "NetCDF"
     layer_string: int = 0
+    
+    @validator("columns", always=True)
+    def get_columns(cls, columns: dict, values: Dict[str, Any]) -> dict:
+        if columns is None:
+            if values['network_type']=="HYFeaturesNetwork":
+                default_columns = {
+                    'key'       : 'id',
+                    'downstream': 'toid',
+                    'dx'        : 'length_m',
+                    'n'         : 'n',
+                    'ncc'       : 'nCC',
+                    's0'        : 'So',
+                    'bw'        : 'BtmWdth',
+                    'waterbody' : 'rl_NHDWaterbodyComID',
+                    'gages'     : 'rl_gages',
+                    'tw'        : 'TopWdth',
+                    'twcc'      : 'TopWdthCC',
+                    'musk'      : 'MusK',
+                    'musx'      : 'MusX',
+                    'cs'        : 'ChSlp',
+                    'alt'       : 'alt',
+                    }
+            else:
+                default_columns = {
+                    'key'       : 'link',
+                    'downstream': 'to',
+                    'dx'        : 'Length',
+                    'n'         : 'n',
+                    'ncc'       : 'nCC',
+                    's0'        : 'So',
+                    'bw'        : 'BtmWdth',
+                    'waterbody' : 'NHDWaterbodyComID',
+                    'gages'     : 'gages',
+                    'tw'        : 'TopWdth',
+                    'twcc'      : 'TopWdthCC',
+                    'alt'       : 'alt',
+                    'musk'      : 'MusK',
+                    'musx'      : 'MusX',
+                    'cs'        : 'ChSlp',
+                    }
+        else:
+            default_columns = columns
+        return default_columns
 
 
 class Columns(BaseModel, extra='forbid'):
