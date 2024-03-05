@@ -7,8 +7,8 @@ import troute.nhd_io as nhd_io
 from build_tests import parity_check
 import logging
 
-
 LOG = logging.getLogger('')
+
 
 def _reindex_lake_to_link_id(target_df, crosswalk):
     '''
@@ -29,23 +29,24 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
 
     # evaluate intersection of lake ids and target_df index values
     # i.e. what are the index positions of lake ids that need replacing?
-    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
+    lakeids = np.fromiter(crosswalk.keys(), dtype=int)
     idxs = target_df.index.to_numpy()
     lake_index_intersect = np.intersect1d(
-        idxs, 
-        lakeids, 
-        return_indices = True
+        idxs,
+        lakeids,
+        return_indices=True
     )
 
     # replace lake ids with link IDs in the target_df index array
-    linkids = np.fromiter(crosswalk.values(), dtype = int)
+    linkids = np.fromiter(crosswalk.values(), dtype=int)
     idxs[lake_index_intersect[1]] = linkids[lake_index_intersect[2]]
 
     # (re) set the target_df index
-    target_df.set_index(idxs, inplace = True)
-    
+    target_df.set_index(idxs, inplace=True)
+
     return target_df
 
+<<<<<<< HEAD
 def nwm_output_generator(
     run,
     results,
@@ -66,7 +67,27 @@ def nwm_output_generator(
     link_lake_crosswalk = None,
     logFileName='NONE' 
 ):
+=======
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
+def nwm_output_generator(
+        run,
+        results,
+        supernetwork_parameters,
+        output_parameters,
+        parity_parameters,
+        restart_parameters,
+        parity_set,
+        qts_subdivisions,
+        return_courant,
+        cpu_pool,
+        waterbodies_df,
+        waterbody_types_df,
+        data_assimilation_parameters=False,
+        lastobs_df=None,
+        link_gage_df=None,
+        link_lake_crosswalk=None,
+):
     dt = run.get("dt")
     nts = run.get("nts")
     t0 = run.get("t0")
@@ -104,13 +125,15 @@ def nwm_output_generator(
         )
 
     ################### Output Handling
-    
+
     start_time = time.time()
 
     LOG.info(f"Handling output ...")
 
     csv_output = output_parameters.get("csv_output", None)
     csv_output_folder = None
+    parquet_output = output_parameters.get("parquet_output", None)
+    parquet_output_folder = None
     rsrto = output_parameters.get("hydro_rst_output", None)
     chrto = output_parameters.get("chrtout_output", None)
     test = output_parameters.get("test_output", None)
@@ -125,8 +148,19 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
+<<<<<<< HEAD
     if csv_output_folder or rsrto or chrto or chano or test or wbdyo or stream_output:
         
+=======
+    if parquet_output:
+        parquet_output_folder = output_parameters["parquet_output"].get(
+            "parquet_output_folder", None
+        )
+        parquet_output_segments = parquet_output.get("parquet_output_segments", None)
+
+    if csv_output_folder or parquet_output_folder or rsrto or chrto or chano or test or wbdyo or stream_output:
+
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
         start = time.time()
         qvd_columns = pd.MultiIndex.from_product(
             [range(nts), ["q", "v", "d"]]
@@ -138,7 +172,6 @@ def nwm_output_generator(
         )
 
         if wbdyo and not waterbodies_df.empty:
-            
             # create waterbody dataframe for output to netcdf file
             i_columns = pd.MultiIndex.from_product(
                 [range(nts), ["i"]]
@@ -163,20 +196,20 @@ def nwm_output_generator(
             timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
             ts_set = set(timestep_index[0].tolist())
             flow_df_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-            flow_df = flow_df.iloc[:,flow_df_col_index]
+            flow_df = flow_df.iloc[:, flow_df_col_index]
 
             timestep, variable = zip(*wbdy.columns.tolist())
             timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
             ts_set = set(timestep_index[0].tolist())
             wbdy_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-            i_df = wbdy.iloc[:,wbdy_col_index]
-            q_df = flow_df.iloc[:,0::3]
-            d_df = flow_df.iloc[:,2::3]
+            i_df = wbdy.iloc[:, wbdy_col_index]
+            q_df = flow_df.iloc[:, 0::3]
+            d_df = flow_df.iloc[:, 2::3]
 
         # replace waterbody lake_ids with outlet link ids
         if (link_lake_crosswalk):
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
-            
+
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
         # flowveldepth.to_pickle(output_parameters['test_output'])
@@ -192,15 +225,14 @@ def nwm_output_generator(
                 ],
                 copy=False,
             )
-            
+
             # replace waterbody lake_ids with outlet link ids
             if link_lake_crosswalk:
-                
                 # (re) set the flowveldepth index
-                courant.set_index(fvdidxs, inplace = True)
-            
+                courant.set_index(fvdidxs, inplace=True)
+
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
-    
+
     if stream_output:
         stream_output_directory = stream_output['stream_output_directory']
         stream_output_timediff = stream_output['stream_output_time']
@@ -209,6 +241,7 @@ def nwm_output_generator(
 
         nudge = np.concatenate([r[8] for r in results])
         usgs_positions_id = np.concatenate([r[3][0] for r in results])
+<<<<<<< HEAD
         nhd_io.write_flowveldepth(
             Path(stream_output_directory), 
             flowveldepth, 
@@ -234,11 +267,23 @@ def nwm_output_generator(
                 preRunLog.write("Output of FVD data every "+str(fCalc)+" minutes\n")
                 preRunLog.write("Writing "+str(nTimeBins)+" time bins for "+str(len(flowveldepth.index))+" segments per FVD output file\n")               
             preRunLog.close()      
+=======
+        nhd_io.write_flowveldepth_netcdf(Path(stream_output_directory),
+                                         flowveldepth,
+                                         nudge,
+                                         usgs_positions_id,
+                                         t0,
+                                         int(stream_output_timediff),
+                                         stream_output_type,
+                                         stream_output_internal_frequency,
+                                         cpu_pool=cpu_pool)
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
     if test:
         flowveldepth.to_pickle(Path(test))
-    
+
     if wbdyo and not waterbodies_df.empty:
+<<<<<<< HEAD
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         if not duplicate_ids_df.empty:
@@ -247,10 +292,15 @@ def nwm_output_generator(
         else:
             output_waterbodies_df = waterbodies_df
             output_waterbody_types_df = waterbody_types_df
+=======
+
+        time_index, tmp_variable = map(list, zip(*i_df.columns.tolist()))
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
-        for i in range(i_df.shape[1]):            
+        for i in range(i_df.shape[1]):
             nhd_io.write_waterbody_netcdf(
+<<<<<<< HEAD
                 wbdyo, 
                 i_df.iloc[:,[i]],
                 q_df.iloc[:,[i]],
@@ -271,13 +321,27 @@ def nwm_output_generator(
                 preRunLog.write("-----\n") 
             preRunLog.close()  
          
+=======
+                wbdyo,
+                i_df.iloc[:, [i]],
+                q_df.iloc[:, [i]],
+                d_df.iloc[:, [i]],
+                waterbodies_df,
+                waterbody_types_df,
+                t0,
+                dt,
+                nts,
+                time_index[i],
+            )
+
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
         LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
-    
+
     if rsrto:
 
         LOG.info("- writing restart files")
         start = time.time()
-        
+
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
@@ -315,24 +379,25 @@ def nwm_output_generator(
                     preRunLog.close()  
 
             else:
-                LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
-                
+                LOG.critical(
+                    'Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
+
         else:
-            LOG.critical('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
-            
+            LOG.critical(
+                'wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
+
         LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
     if chrto:
-        
+
         LOG.info("- writing t-route flow results to CHRTOUT files")
         start = time.time()
-        
+
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
-        
-        if chrtout_read_folder:
 
+        if chrtout_read_folder:
             chrtout_files = sorted(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
             )
@@ -343,6 +408,7 @@ def nwm_output_generator(
                 qts_subdivisions,
                 cpu_pool,
             )
+<<<<<<< HEAD
         
             if (not logFileName == 'NONE'):
                 with open(logFileName, 'a') as preRunLog:
@@ -351,11 +417,13 @@ def nwm_output_generator(
                     preRunLog.write("Output of FVD files into folder: "+str(chrtout_read_folder)+"\n") 
                     preRunLog.write("-----\n") 
                 preRunLog.close()  
+=======
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
         LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
 
-    if csv_output_folder: 
-    
+    if csv_output_folder:
+
         LOG.info("- writing flow, velocity, and depth results to .csv")
         start = time.time()
 
@@ -363,10 +431,10 @@ def nwm_output_generator(
         # TO DO: create more descriptive filenames
         if supernetwork_parameters.get("title_string", None):
             filename_fvd = (
-                "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
             )
             filename_courant = (
-                "courant_" + supernetwork_parameters["title_string"] + ".csv"
+                    "courant_" + supernetwork_parameters["title_string"] + ".csv"
             )
         else:
             run_time_stamp = datetime.now().isoformat()
@@ -378,7 +446,7 @@ def nwm_output_generator(
         # no csv_output_segments are specified, then write results for all segments
         if not csv_output_segments:
             csv_output_segments = flowveldepth.index
-        
+
         flowveldepth = flowveldepth.sort_index()
         flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
 
@@ -389,12 +457,46 @@ def nwm_output_generator(
         LOG.debug("writing CSV file took %s seconds." % (time.time() - start))
         # usgs_df_filtered = usgs_df[usgs_df.index.isin(csv_output_segments)]
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
-        
+
+    if parquet_output_folder:
+
+        LOG.info("- writing flow, velocity, and depth results to .parquet")
+        start = time.time()
+
+        # create filenames
+        # TO DO: create more descriptive filenames
+        if supernetwork_parameters.get("title_string", None):
+            filename_fvd = (
+                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".parquet"
+            )
+            filename_courant = (
+                    "courant_" + supernetwork_parameters["title_string"] + ".parquet"
+            )
+        else:
+            run_time_stamp = datetime.now().isoformat()
+            filename_fvd = "flowveldepth_" + run_time_stamp + ".parquet"
+            filename_courant = "courant_" + run_time_stamp + ".parquet"
+
+        output_path = Path(parquet_output_folder).resolve()
+
+        # no csv_output_segments are specified, then write results for all segments
+        if not parquet_output_segments:
+            parquet_output_segments = flowveldepth.index
+
+        flowveldepth = flowveldepth.sort_index()
+        flowveldepth.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_fvd))
+
+        if return_courant:
+            courant = courant.sort_index()
+            courant.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_courant))
+
+        LOG.debug("writing parquet file took %s seconds." % (time.time() - start))
+
     if chano:
 
         LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
         start = time.time()
-        
+
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             link_gage_df = _reindex_lake_to_link_id(link_gage_df, link_lake_crosswalk)
@@ -404,15 +506,16 @@ def nwm_output_generator(
             chano['chanobs_filepath'] = str(chano['chanobs_filepath'])
 
         nhd_io.write_chanobs(
-            Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 
-            flowveldepth, 
-            link_gage_df, 
-            t0, 
-            dt, 
+            Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']),
+            flowveldepth,
+            link_gage_df,
+            t0,
+            dt,
             nts,
             # TODO allow user to pass a list of segments at which they would like to print results
             # rather than just printing at gages. 
         )
+<<<<<<< HEAD
 
         if (not logFileName == 'NONE'):
             with open(logFileName, 'a') as preRunLog:
@@ -423,8 +526,12 @@ def nwm_output_generator(
             preRunLog.close()  
 
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
+=======
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
-    if lastobso:        
+        LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))
+
+    if lastobso:
         # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
         # folder is provided by the user.
@@ -437,8 +544,12 @@ def nwm_output_generator(
 
             nudging_true = streamflow_da.get('streamflow_nudging', None)
 
+<<<<<<< HEAD
         if nudging_true and lastobs_output_folder and not lastobs_df.empty:
 
+=======
+        if nudging_true and lastobs_output_folder:
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
             LOG.info("- writing lastobs files")
             start = time.time()
 
@@ -461,22 +572,26 @@ def nwm_output_generator(
 
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
+<<<<<<< HEAD
 
     # if 'flowveldepth' in locals():
     #     LOG.debug(flowveldepth)
+=======
+    if 'flowveldepth' in locals():
+        LOG.debug(flowveldepth)
+>>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
     LOG.debug("output complete in %s seconds." % (time.time() - start_time))
 
     ################### Parity Check
 
     if parity_set:
-        
         LOG.info(
             "conducting parity check, comparing WRF Hydro results against t-route results"
         )
-    
+
         start_time = time.time()
-       
+
         parity_check(
             parity_set, results,
         )

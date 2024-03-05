@@ -5,13 +5,16 @@ from typing import Optional, List
 from typing_extensions import Annotated, Literal
 from .types import FilePath, DirectoryPath
 
-streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl', '.parquet']
+
 
 class OutputParameters(BaseModel):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:496
+    parquet_output: Optional["ParquetOutput"] = None
+    # NOTE: this appears to be optional. See nwm_routing/input.py ~:563
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
@@ -46,7 +49,13 @@ class CsvOutput(BaseModel):
     csv_output_segments: Optional[List[str]] = None
 
 
-class ChrtoutOutput(BaseModel):
+class ParquetOutput(BaseModel, extra='forbid'):
+    # NOTE: required if writing results to parquet
+    parquet_output_folder: Optional[DirectoryPath] = None
+    parquet_output_segments: Optional[List[str]] = None
+
+
+class ChrtoutOutput(BaseModel, extra='forbid'):
     # NOTE: mandatory if writing results to CHRTOUT.
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
@@ -79,6 +88,7 @@ class WrfHydroParityCheck(BaseModel):
 class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
 
+
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
@@ -93,7 +103,7 @@ class StreamOutput(BaseModel):
             if values.get('stream_output_time') != -1 and value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
- 
+
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
