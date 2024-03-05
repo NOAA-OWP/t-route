@@ -33,7 +33,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     streamflow_nudging = data_assimilation_parameters.get('streamflow_da',{}).get('streamflow_nudging',False)
     usgs_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usgs',False)
     usace_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_usace',False)
-    rfc_da = waterbody_parameters.get('rfc',{}).get('reservoir_rfc_forecasts',False)
+    rfc_da = data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_rfc_da',{}).get('reservoir_rfc_forecasts',False)
     if any([streamflow_nudging, usgs_da, usace_da, rfc_da]):
         layers.append('network')
     
