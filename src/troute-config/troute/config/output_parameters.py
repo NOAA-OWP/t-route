@@ -4,13 +4,16 @@ from typing import Optional, List, Annotated
 from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
-streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl', '.parquet']
+
 
 class OutputParameters(BaseModel, extra='forbid'):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:496
+    parquet_output: Optional["ParquetOutput"] = None
+    # NOTE: this appears to be optional. See nwm_routing/input.py ~:563
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
@@ -31,6 +34,7 @@ class OutputParameters(BaseModel, extra='forbid'):
     # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
 
+
 class ChanobsOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing chanobs files
     chanobs_output_directory: Optional[DirectoryPath] = None
@@ -42,6 +46,12 @@ class CsvOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing results to csv
     csv_output_folder: Optional[DirectoryPath] = None
     csv_output_segments: Optional[List[str]] = None
+
+
+class ParquetOutput(BaseModel, extra='forbid'):
+    # NOTE: required if writing results to parquet
+    parquet_output_folder: Optional[DirectoryPath] = None
+    parquet_output_segments: Optional[List[str]] = None
 
 
 class ChrtoutOutput(BaseModel, extra='forbid'):
@@ -77,21 +87,24 @@ class WrfHydroParityCheck(BaseModel, extra='forbid'):
 class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
     validation_files: List[FilePath]
 
+
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
     stream_output_time: int = 1
-    stream_output_type:streamOutput_allowedTypes = ".nc"
+    stream_output_type: streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)]
+
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
             if value % 5 != 0:
                 raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
             if value / 60 > values['stream_output_time']:
-                raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
+                raise ValueError(
+                    "stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
- 
+
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
