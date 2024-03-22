@@ -85,7 +85,8 @@ mc_reach = Extension(
     libraries=[],
     library_dirs=[],
     extra_objects=[],
-    extra_compile_args=["-O2", "-g"],
+    extra_compile_args=["-O2", "-g", "-fopenmp"],
+    extra_link_args=['-fopenmp'],  # this line includes OpenMP 
 )
 
 simple_da = Extension(
