@@ -4,12 +4,10 @@ import yaml
 import json
 import xarray as xr
 import pandas as pd
-from pathlib import Path
-import pyarrow.parquet as pq
-from collections import defaultdict
-from troute.nhd_network import reverse_network, reachable, headwaters
+
+from troute.nhd_network import reverse_network, reachable
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
-import ast
+
 LOG = logging.getLogger('')
 
 def read_diffusive_domain(domain_file):
@@ -55,7 +53,7 @@ def read_netcdf(geo_file_path):
     with xr.open_dataset(geo_file_path) as ds:
         return ds.to_dataframe()
 
-def read_parquet(file_path):
+def read_parquet(file_path, seg_ids):
     '''
     Open a parquet file with pyarrow read_table and convert to dataframe
     
@@ -74,8 +72,10 @@ def read_parquet(file_path):
     
 
     '''
-    tbl = pq.read_table(file_path)
-    df = tbl.to_pandas().dropna(subset=['hy_id','relative_dist','Z','roughness'])
+    df = pd.read_parquet(file_path,
+                         columns=['hy_id', 'relative_dist', 'Z', 'roughness', 'cs_id'],
+                         filters=[('hy_id', 'in', seg_ids)]).dropna()
+    
     if 'hy_id' in df.columns and not df['hy_id'].str.isnumeric().all():
         df['hy_id'] = df['hy_id'].apply(lambda x: x.split('-')[-1])
     return df
@@ -184,11 +184,14 @@ class MCwithDiffusive(AbstractRouting):
             headlink_mainstem, rfc_val, rpu_val = list(diffusive_domain.get(tw).values())
             if 999999 in headlink_mainstem:
                 headlink_mainstem.remove(999999)
-                targets = headlink_mainstem
-                for wbody in waterbody_dataframe.index:
-                    targets.append(connections.get(connections.get(wbody)[0])[0])
+                targets = headlink_mainstem.copy()
+                wbody_ids = waterbody_dataframe.index.tolist()
+                targets = targets + wbody_ids
                 links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
-                          
+                outlet_ids = [connections.get(id)[0] for id in wbody_ids]
+                wbody_and_outlet_ids = wbody_ids + outlet_ids
+                links = list(set(links).difference(set(wbody_and_outlet_ids)))
+                
                 diffusive_domain_all[tw] = {
                     'links': links,
                     'rfc': rfc_val,
@@ -323,9 +326,13 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                 self._topobathy_df.index = self._topobathy_df.index.astype(int)
 
             elif topobathy_file.suffix == '.parquet':
-                self._topobathy_df = read_parquet(topobathy_file).set_index('hy_id')
+                seg_ids = []
+                for tw in self._diffusive_domain:
+                    seg_ids = seg_ids + self._diffusive_network_data[tw]['mainstem_segs']
+                seg_ids = ['wb-' + str(seg) for seg in seg_ids]
+                self._topobathy_df = read_parquet(topobathy_file, seg_ids).set_index('hy_id')
                 self._topobathy_df.index = self._topobathy_df.index.astype(int)
-
+ 
             #If any diffusive mainstem segments doesn't have channel bathy date in topobathy_df,
             #estimate one from adjacent segments with available bathy data
             for tw in self._diffusive_domain:
