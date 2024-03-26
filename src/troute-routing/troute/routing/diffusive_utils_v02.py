@@ -471,7 +471,7 @@ def fp_naturalxsec_map(
                         size_bathy_g[seg, frj] = nstations
   
                         # populate cross section x, z and mannings n arrays
-                        if 'cs_id' in topobathy_bytw.loc[seg_idx].columns:
+                        if 'cs_id' in topobathy_bytw.loc[[seg_idx]].columns:
                             x_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].relative_dist
                             z_bathy_g[0:nstations, seg, frj]    = topobathy_bytw.loc[seg_idx].Z
                             mann_bathy_g[0:nstations, seg, frj] = topobathy_bytw.loc[seg_idx].roughness
