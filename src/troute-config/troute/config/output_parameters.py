@@ -53,6 +53,7 @@ class ParquetOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing results to parquet
     parquet_output_folder: Optional[DirectoryPath] = None
     parquet_output_segments: Optional[List[str]] = None
+    configuration: Optional[str] = None
 
 
 class ChrtoutOutput(BaseModel, extra='forbid'):

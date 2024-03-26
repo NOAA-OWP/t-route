@@ -70,6 +70,48 @@ def nwm_output_generator(
 =======
 >>>>>>> 184493d (Added functionality to write flow, velocity and depth to parquet)
 
+def _parquet_output_format_converter(df, start_datetime, dt, configuration):
+    '''
+    Utility function for convert flowveldepth dataframe
+    to a timeseries and to match parquet input format
+    of TEEHR
+
+    Arguments:
+    ----------
+    - df (DataFrame): Data frame to be converted
+    - start_datetime: Date time from restart parameters
+    - dt: Time step
+    - configuration: configuration (for instance- short_range, medium_range)
+
+    Returns:
+    --------
+    - timeseries_df (DataFrame): Converted timeseries data frame
+    '''
+
+    df.index.name = 'location_id'
+    df.reset_index(inplace=True)
+    timeseries_df = df.melt(id_vars=['location_id'], var_name='var')
+    timeseries_df['var'] = timeseries_df['var'].astype('string')
+    timeseries_df[['timestep', 'variable']] = timeseries_df['var'].str.strip("()").str.split(",", n=1, expand=True)
+    timeseries_df['variable'] = timeseries_df['variable'].str.strip().str.replace("'", "")
+    timeseries_df['timestep'] = timeseries_df['timestep'].astype('int')
+    timeseries_df['value_time'] = (start_datetime + pd.to_timedelta(timeseries_df['timestep'] * dt, unit='s'))
+    variable_to_name_map = {"q": "streamflow", "d": "depth", "v": "velocity"}
+    timeseries_df["variable_name"] = timeseries_df["variable"].map(variable_to_name_map)
+    timeseries_df.drop(['var', 'timestep', 'variable'], axis=1, inplace=True)
+    timeseries_df['configuration'] = configuration
+    variable_to_units_map = {"streamflow": "m3/s", "velocity": "m/s", "depth": "m"}
+    timeseries_df['units'] = timeseries_df['variable_name'].map(variable_to_units_map)
+    timeseries_df['reference_time'] = start_datetime.date()
+    timeseries_df['location_id'] = timeseries_df['location_id'].astype('string')
+    timeseries_df['location_id'] = 'nex-' + timeseries_df['location_id']
+    timeseries_df['value'] = timeseries_df['value'].astype('double')
+    timeseries_df['reference_time'] = timeseries_df['reference_time'].astype('datetime64[us]')
+    timeseries_df['value_time'] = timeseries_df['value_time'].astype('datetime64[us]')
+
+    return timeseries_df
+
+
 def nwm_output_generator(
         run,
         results,
@@ -484,11 +526,40 @@ def nwm_output_generator(
             parquet_output_segments = flowveldepth.index
 
         flowveldepth = flowveldepth.sort_index()
-        flowveldepth.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_fvd))
+        timeseries_df = _parquet_output_format_converter(flowveldepth, restart_parameters.get("start_datetime"), dt,
+                                                         output_parameters["parquet_output"].get("configuration"))
+        """
+        flowveldepth.index.name = 'Location_ID'
+        flowveldepth.reset_index(inplace=True)
+        timeseries_df = flowveldepth.melt(id_vars=['Location_ID'], var_name='var')
+        timeseries_df['var'] = timeseries_df['var'].astype('string')
+        timeseries_df[['timestep', 'variable']] = timeseries_df['var'].str.strip("()").str.split(",", n=1, expand=True)
+        # timeseries_df[['timestep', 'variable_name']]= pd.DataFrame([x.strip("()").split(',') for x in list(
+        # timeseries_df['variable'])])
+        timeseries_df['variable'] = timeseries_df['variable'].str.strip().str.replace("'", "")
+        timeseries_df['timestep'] = timeseries_df['timestep'].astype('int')
+        timeseries_df['value_time'] = (restart_parameters.get("start_datetime") +
+                                       pd.to_timedelta(timeseries_df['timestep'] * dt, unit='s'))
+        variable_to_name_map = {"q": "streamflow", "d": "depth", "v": "velocity"}
+        timeseries_df["variable_name"] = timeseries_df["variable"].map(variable_to_name_map)
+        timeseries_df.drop(['var', 'timestep', 'variable'], axis=1, inplace=True)
+        timeseries_df['configuration'] = output_parameters["parquet_output"].get("configuration")
+        variable_to_units_map = {"streamflow": "m3/s", "velocity": "m/s", "depth": "m"}
+        timeseries_df['units'] = timeseries_df['variable_name'].map(variable_to_units_map)
+        timeseries_df['reference_time'] = restart_parameters.get("start_datetime").date()
+        """
+        parquet_output_segments_str = ['nex-' + str(segment) for segment in parquet_output_segments]
+        timeseries_df.loc[timeseries_df['location_id'].isin(parquet_output_segments_str)].to_parquet(
+            output_path.joinpath(filename_fvd), allow_truncated_timestamps=True)
+        # flowveldepth.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_fvd))
 
         if return_courant:
             courant = courant.sort_index()
-            courant.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_courant))
+            timeseries_courant = _parquet_output_format_converter(courant, restart_parameters.get("start_datetime"), dt,
+                                                         output_parameters["parquet_output"].get("configuration"))
+            timeseries_courant.loc[timeseries_courant['location_id'].isin(parquet_output_segments_str)].to_parquet(
+                output_path.joinpath(filename_courant), allow_truncated_timestamps=True)
+            #courant.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_courant))
 
         LOG.debug("writing parquet file took %s seconds." % (time.time() - start))
 
