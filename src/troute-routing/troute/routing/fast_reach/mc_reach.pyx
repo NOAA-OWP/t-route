@@ -20,7 +20,7 @@ from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da
 from cython.parallel import prange
-
+import cython
 #import cProfile
 #pr = cProfile.Profile()
 #NJF For whatever reason, when cimporting muskingcunge from reach, the linker breaks in weird ways
@@ -64,6 +64,71 @@ cpdef object binary_find(object arr, object els):
             raise ValueError(f"element {el} not found in {np.asarray(arr)}")
     return idxs
 
+@cython.boundscheck(False)
+cdef void compute_reach_kernel_parallel(float qup_init, float quc_init, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
+    """
+    Parallelized kernel to compute reach using OpenMP.
+    Assumes qup and quc do not change within the loop's execution,
+    or their updates do not depend on the sequential order of iterations.
+    """
+    cdef reach.QVD rv
+    cdef reach.QVD *out = &rv
+
+    cdef:
+        float dt, qlat, dx, bw, tw, twcc, n, ncc, cs, s0, qdp, velp, depthp
+        float qup, quc  # Copy initial values 
+        int i
+
+    for i in prange(nreach, nogil=True, schedule='dynamic', num_threads=8):
+        qup = qup_init  # Use initial value or update appropriately
+        quc = quc_init  
+
+        qlat = input_buf[i, 0] # n x 1
+        dt = input_buf[i, 1] # n x 1
+        dx = input_buf[i, 2] # n x 1
+        bw = input_buf[i, 3]
+        tw = input_buf[i, 4]
+        twcc =input_buf[i, 5]
+        n = input_buf[i, 6]
+        ncc = input_buf[i, 7]
+        cs = input_buf[i, 8]
+        s0 = input_buf[i, 9]
+        qdp = input_buf[i, 10]
+        velp = input_buf[i, 11]
+        depthp = input_buf[i, 12]
+
+        reach.muskingcunge(
+                    dt,
+                    qup,
+                    quc,
+                    qdp,
+                    qlat,
+                    dx,
+                    bw,
+                    tw,
+                    twcc,
+                    n,
+                    ncc,
+                    cs,
+                    s0,
+                    velp,
+                    depthp,
+                    out)
+
+        output_buf[i, 0] = out.qdc
+        output_buf[i, 1] = out.velc
+        output_buf[i, 2] = out.depthc
+
+        if return_courant:
+            output_buf[i, 3] = out.cn
+            output_buf[i, 4] = out.ck
+            output_buf[i, 5] = out.X
+
+        qup = qdp
+        if assume_short_ts:
+            quc = qup
+        else:
+            quc = out.qdc
 
 @cython.boundscheck(False)
 cdef void compute_reach_kernel(float qup, float quc, int nreach, const float[:,:] input_buf, float[:, :] output_buf, bint assume_short_ts, bint return_courant=False) nogil:
@@ -674,7 +739,7 @@ cpdef object compute_network_structured(
                     buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                     buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
 
-                compute_reach_kernel(previous_upstream_flows, upstream_flows,
+                compute_reach_kernel_parallel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
                                      out_buf,
                                      assume_short_ts)
