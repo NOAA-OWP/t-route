@@ -60,6 +60,7 @@ network_topology_parameters:
             musx : 'MusX'
             cs : 'ChSlp'
             alt: 'alt'
+            mainstem: 'mainstem'
     waterbody_parameters:
         #----------
         break_network_at_waterbodies: True  
