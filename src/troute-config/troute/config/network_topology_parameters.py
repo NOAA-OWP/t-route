@@ -125,6 +125,7 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
                     'musx'      : 'MusX',
                     'cs'        : 'ChSlp',
                     'alt'       : 'alt',
+                    'mainstem'  : 'mainstem',
                     }
             else:
                 default_columns = {
@@ -180,6 +181,8 @@ class Columns(BaseModel, extra='forbid'):
     cs: str 
     # string, gage ID
     gages: Optional[str]
+    # string, mainstem ID
+    mainstem: Optional[str]
 
 
 class WaterbodyParameters(BaseModel, extra='forbid'):

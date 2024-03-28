@@ -150,6 +150,9 @@ class NHDNetwork(AbstractNetwork):
             'cs'        : 'ChSlp',
             }
         )
+        # Remove 'mainstem' col if it exists:
+        if 'mainstem' in cols:
+            del cols['mainstem']
         
         # numeric code used to indicate network terminal segments
         terminal_code = self.supernetwork_parameters.get("terminal_code", 0)
