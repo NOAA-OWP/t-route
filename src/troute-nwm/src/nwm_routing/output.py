@@ -521,7 +521,7 @@ def nwm_output_generator(
 
         output_path = Path(parquet_output_folder).resolve()
 
-        # no csv_output_segments are specified, then write results for all segments
+        # no parquet_output_segments are specified, then write results for all segments
         if not parquet_output_segments:
             parquet_output_segments = flowveldepth.index
 
@@ -532,7 +532,6 @@ def nwm_output_generator(
         parquet_output_segments_str = ['nex-' + str(segment) for segment in parquet_output_segments]
         timeseries_df.loc[timeseries_df['location_id'].isin(parquet_output_segments_str)].to_parquet(
             output_path.joinpath(filename_fvd), allow_truncated_timestamps=True)
-        # flowveldepth.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_fvd))
 
         if return_courant:
             courant = courant.sort_index()
@@ -540,7 +539,6 @@ def nwm_output_generator(
                                                          output_parameters["parquet_output"].get("configuration"))
             timeseries_courant.loc[timeseries_courant['location_id'].isin(parquet_output_segments_str)].to_parquet(
                 output_path.joinpath(filename_courant), allow_truncated_timestamps=True)
-            #courant.loc[parquet_output_segments].to_parquet(output_path.joinpath(filename_courant))
 
         LOG.debug("writing parquet file took %s seconds." % (time.time() - start))
 
