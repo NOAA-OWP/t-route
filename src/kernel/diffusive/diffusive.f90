@@ -44,6 +44,7 @@ module diffusive
   double precision :: dt_qtrib
   double precision :: z_g, bo_g, traps_g, tw_g, twcc_g, so_g, mann_g, manncc_g
   double precision :: dmyi, dmyj
+  double precision :: dtini_min
   double precision, dimension(:),       allocatable :: eei, ffi, exi, fxi, qcx, diffusivity2, celerity2
   double precision, dimension(:),       allocatable :: ini_y, ini_q
   double precision, dimension(:),       allocatable :: lowerLimitCount, higherLimitCount
@@ -232,6 +233,7 @@ contains
     dt_qtrib     = timestep_ar_g(8) ! tributary data time step [sec]
     dt_da        = timestep_ar_g(9) ! data assimilation data time step [sec]
     dtini_given  = dtini            ! preserve user-input timestep duration
+    dtini_min    = dtini/10.0       ! minimum increment in internal time step (user-selected value at the denominator)
 
   !-----------------------------------------------------------------------------
   ! miscellaneous parameters
@@ -1388,6 +1390,7 @@ contains
     double precision :: S_ncomp                             
     double precision :: tempDepthi_1
     double precision :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
+    double precision :: C_ulm
 
   !-----------------------------------------------------------------------------
     ncomp = frnw_g(j, 1)
@@ -1478,6 +1481,18 @@ contains
         celerity2(i)    = 5.0 / 3.0 * abs(sfi) ** 0.3 * &
                           abs(qp(i, j)) ** 0.4 / bo(i, j) ** 0.4 &
                           / (1. / (sk(i, j) * q_sk_multi)) ** 0.6
+
+        ! put upper limit on computed celerity to make sure internal temporal increment not being too small.
+        if (i.gt.1) then
+          C_ulm = cfl*dx(i-1,j)/dtini_min
+        else 
+          C_ulm = cfl*dx(i,j)/dtini_min
+        endif
+
+        if (celerity2(i).gt.C_ulm) then
+          celerity2(i) = C_ulm
+        endif
+        
         diffusivity2(i) = abs(qp(i, j)) / 2.0 / bo(i, j) / abs(sfi)
         vel             = qp(i, j) / newArea(i, j)
         
