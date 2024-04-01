@@ -528,26 +528,7 @@ def nwm_output_generator(
         flowveldepth = flowveldepth.sort_index()
         timeseries_df = _parquet_output_format_converter(flowveldepth, restart_parameters.get("start_datetime"), dt,
                                                          output_parameters["parquet_output"].get("configuration"))
-        """
-        flowveldepth.index.name = 'Location_ID'
-        flowveldepth.reset_index(inplace=True)
-        timeseries_df = flowveldepth.melt(id_vars=['Location_ID'], var_name='var')
-        timeseries_df['var'] = timeseries_df['var'].astype('string')
-        timeseries_df[['timestep', 'variable']] = timeseries_df['var'].str.strip("()").str.split(",", n=1, expand=True)
-        # timeseries_df[['timestep', 'variable_name']]= pd.DataFrame([x.strip("()").split(',') for x in list(
-        # timeseries_df['variable'])])
-        timeseries_df['variable'] = timeseries_df['variable'].str.strip().str.replace("'", "")
-        timeseries_df['timestep'] = timeseries_df['timestep'].astype('int')
-        timeseries_df['value_time'] = (restart_parameters.get("start_datetime") +
-                                       pd.to_timedelta(timeseries_df['timestep'] * dt, unit='s'))
-        variable_to_name_map = {"q": "streamflow", "d": "depth", "v": "velocity"}
-        timeseries_df["variable_name"] = timeseries_df["variable"].map(variable_to_name_map)
-        timeseries_df.drop(['var', 'timestep', 'variable'], axis=1, inplace=True)
-        timeseries_df['configuration'] = output_parameters["parquet_output"].get("configuration")
-        variable_to_units_map = {"streamflow": "m3/s", "velocity": "m/s", "depth": "m"}
-        timeseries_df['units'] = timeseries_df['variable_name'].map(variable_to_units_map)
-        timeseries_df['reference_time'] = restart_parameters.get("start_datetime").date()
-        """
+
         parquet_output_segments_str = ['nex-' + str(segment) for segment in parquet_output_segments]
         timeseries_df.loc[timeseries_df['location_id'].isin(parquet_output_segments_str)].to_parquet(
             output_path.joinpath(filename_fvd), allow_truncated_timestamps=True)
