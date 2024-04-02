@@ -1941,7 +1941,11 @@ contains
         ii = iel
         
         do while (conv1(ii) <= (1.0 + incr_rate) * conv1(iel-1))
-          ii = ii + 1
+            ii = ii + 1
+            if (ii == nel) then
+                print*, 'smooth conveyance curve reached the limit at idx_node =', idx_node, ', idx_reach =', idx_reach
+                exit
+            endif
         end do
         
         iel_incr_start = ii
