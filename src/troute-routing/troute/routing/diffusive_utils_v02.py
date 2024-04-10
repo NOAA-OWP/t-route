@@ -54,6 +54,7 @@ def adj_alt1(
 
 def fp_network_map(
                     mainstem_seg_list, 
+                    trib_seg_list, 
                     mx_jorder, 
                     ordered_reaches, 
                     rchbottom_reaches, 
@@ -94,10 +95,14 @@ def fp_network_map(
             ncomp = reach["number_segments"]
             frj = frj + 1
             frnw_g[frj, 0] = ncomp
-         
+  
+            # Determine the number of upstream reaches joining to the reach being considered &
+            # and then the indices of upstream reaches 
             if not reach["upstream_bottom_segments"]:
-                # for diffusive mainstem, this case can be tributaries at the conflunces with the mainstem or mainstem link at its upstream boundary
+                # for diffusive mainstem, this case can be for tributaries at the conflunces with the mainstem or  upstream boundary mainstem segment
+                # for diffusive tributary, this case can be for headwater tribuaries
                 frnw_g[frj, 2] = 0  # to mark these tributaries
+                nusrch = 0
             else:
                 # reaches before a junction
                 nusrch = len(reach["upstream_bottom_segments"])
@@ -123,7 +128,15 @@ def fp_network_map(
                             #    usrch_hseg_mainstem_j=j
                                 # store frj of mainstem headseg's reach in the just upstream of the current reach of frj
                             #    frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
-              
+            
+            # Determine if reach being considered belong to mainstem or tributary reach as
+            # diffusive wave applies to mainstem reach not tributary reach
+            if head_segment in mainstem_seg_list:
+                frnw_g[frj,2+nusrch+1] = 555
+            if head_segment in trib_seg_list:
+                frnw_g[frj,2+nusrch+1] = -555
+         
+            # Determine index of reach that is downstream of the reach being considered
             if seg_list.count(dbfksegID) > 0:
                 # a reach where downstream boundary condition is set.
                 frnw_g[
@@ -272,8 +285,7 @@ def fp_qlat_map(
                         qlat_g[
                             tsi, seg, frj
                         ] = 0.0  # seg=ncomp is actually for bottom node in Fotran code.
-                        # And, lateral flow enters between adjacent nodes.
-
+                        # And, lateral flow enters between adjacent nodes.            
     return qlat_g
 
 def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
@@ -494,7 +506,7 @@ def fp_naturalxsec_map(
         mann_bathy_g = np.array([]).reshape(0,0,0)
         size_bathy_g = np.array([], dtype = 'i4').reshape(0,0)
         mxnbathy_g   = int(0)
-    
+
     return x_bathy_g, z_bathy_g, mann_bathy_g, size_bathy_g, mxnbathy_g
 
 def fp_da_map(
@@ -860,9 +872,10 @@ def diffusive_input_data_v02(
             frj = frj + 1
             pynw[frj] = head_segment
 
-    frnw_col = 15
+    frnw_col = 20
     frnw_g   = fp_network_map(
-                              mainstem_seg_list, 
+                              mainstem_seg_list,
+                              trib_seg_list,  
                               mx_jorder, 
                               ordered_reaches, 
                               rchbottom_reaches, 
@@ -875,6 +888,7 @@ def diffusive_input_data_v02(
 
     # covert data type from integer to float for frnw  
     dfrnw_g = frnw_g.astype('float')    
+
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -983,7 +997,7 @@ def diffusive_input_data_v02(
                 # TODO - if one of the tributary segments is a waterbody, it's initial conditions
                 # will not be in the initial_conditions array, but rather will be in the waterbodies_df array
                 qtrib_g[0,frj] = initial_conditions.loc[head_segment, 'qu0']    
-         
+  
     # ---------------------------------------------------------------------------------
     #                              Step 0-10
 

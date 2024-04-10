@@ -212,13 +212,22 @@ class MCwithDiffusive(AbstractRouting):
         topobathy_df = self.topobathy_df
         missing_topo_ids = list(set(all_links).difference(set(topobathy_df.index)))
         topo_df_list = []
+
         for key in missing_topo_ids:
             topo_df_list.append(_fill_in_missing_topo_data(key, dataframe, topobathy_df))
-        
+
         new_topo_df = pd.concat(topo_df_list)
         bad_links = list(set(missing_topo_ids).difference(set(new_topo_df.index)))
         self._topobathy_df = pd.concat([self.topobathy_df,new_topo_df])
         
+        # select topo data with minimum value of cs_id for each segment
+        df =  self._topobathy_df
+        min_cs_id=df.reset_index().groupby('hy_id')['cs_id'].transform('min')
+        mask = df.reset_index()['cs_id'] == min_cs_id
+        single_topo_df = df.reset_index()[mask]
+        single_topo_df.set_index('hy_id', inplace=True)
+        self._topobathy_df= single_topo_df
+           
         for tw in self._diffusive_domain:
             #mainstem_segs = self._diffusive_domain[tw]['links']
             
@@ -258,7 +267,7 @@ class MCwithDiffusive(AbstractRouting):
 
             # make sure that no downstream link below tw
             self._diffusive_network_data[tw]['connections'][tw] = []
-            
+
             # diffusive domain reaches and upstream connections. 
             # break network at tributary segments
             _, reaches, rconn_diff = organize_independent_networks(
@@ -290,7 +299,6 @@ class MCwithDiffusive(AbstractRouting):
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
-        
         return dataframe, connections
 
     @property
