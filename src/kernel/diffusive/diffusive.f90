@@ -178,6 +178,7 @@ contains
     integer :: ts, cwrow 
     integer :: ri, rj, oi, oj
     integer :: nlnk, lnk
+    integer :: nusrch
     integer, dimension(:), allocatable   :: dmy_frj
     integer, dimension(:,:), allocatable :: flag_lfrac
     double precision :: x
@@ -375,10 +376,12 @@ contains
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
 
-    ! Create a dummy array containing mainstem reaches
+    ! Create a dummy array containing mainstem reaches where diffusive wave is applied.
     nmstem_rch = 0
     do j = 1, nlinks
-      if (frnw_g(j,3) >= 1) then ! mainstem reach identification
+      !if (frnw_g(j,3) >= 1) then  ! mainstem reach identification
+      nusrch = frnw_g(j,3)         ! the number of upstream reaches
+      if (frnw_g(j, 3+nusrch+1)==555) then ! 555 indicate diffusive reach while -555 already routed reach
         nmstem_rch          = nmstem_rch + 1
         dmy_frj(nmstem_rch) = j
       end if
@@ -588,14 +591,13 @@ contains
       if ( (mod( (t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) &
             .or. (t == tfin * 60.) ) then
         do j = 1, nlinks
-          !if (all(mstem_frj /= j)) then ! NOT a mainstem reach
-          if (all(mstem_frj /= j).and.(frnw_g(j, 1) /= -33)) then ! NOT a mainstem reach 
+          if (all(mstem_frj /= j)) then ! NOT a mainstem reach
             do n = 1, nts_qtrib_g
               varr_qtrib(n) = qtrib_g(n, j)
             end do
-              q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
+            q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
                                                       varr_qtrib, t)
-              q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)  
+            q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)            
           end if
         end do
         ts_ev = ts_ev + 1
@@ -651,12 +653,13 @@ contains
           varr_ql(1)        = qlat_g(1, i, j)
           lateralFlow(i, j) = intp_y(nts_ql_g+1, tarr_ql, varr_ql, t)
         end do
+
         !+++----------------------------------------------------------------
         !+ Hand over water from upstream to downstream properly according
         !+ to network connections, i.e., serial or branching.
         !+ Refer to p.52, RM1_MESH
         !+++----------------------------------------------------------------
-        if (frnw_g(j, 3) > 0) then        ! number of upstream reaches, so reach j is not a headwater
+        if (frnw_g(j, 3) > 0) then        ! number of upstream reaches, so reach j is not a headwater reach's index
           newQ(1, j) = 0.0
           do k = 1, frnw_g(j, 3)          ! loop over upstream connected reaches
             usrchj = frnw_g(j, 3 + k) 
@@ -673,13 +676,13 @@ contains
               tf0 = t +  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
             end if
-
             ! add upstream flows to reach head
-            newQ(1,j)= newQ(1,j) + q_usrch
+            newQ(1,j)= newQ(1,j) + q_usrch           
           end do        
         else
-        
-          ! There are no links at the upstream of the reach (frnw_g(j,3)==0)
+
+          ! no stream reaches at the upstream of the reach (frnw_g(j,3)==0) such as a headwater reach among tributaries
+          newQ(1,j)= 0.0          
         end if
 
         ! Add lateral inflows to the reach head
@@ -703,18 +706,15 @@ contains
         !+ a junction or TW.
         !+ Refer to p.53-1,RM1_MESH
         !+++------------------------------------------------------------+
-         if (frnw_g(j, 2) >= 0.0) then 
-         
-            ! Downstream boundary at JUNCTION
-            ! reach index j has a downstream connection (is NOT a tailwater reach)
-              
+         if (frnw_g(j, 2) >= 0.0) then          
+
+            ! reach of index j has a reach in the downstream 
             ! set bottom node WSEL equal WSEL in top node of downstream reach
             linknb         = frnw_g(j,2)
             newY(ncomp, j) = newY(1, linknb) 
         else
         
-          ! Downstream boundary at TAILWATER
-          ! reach index j has NO downstream connection (it IS a tailwater reach)
+          ! reach of index j has NO downstream connection, so it is a tailwater reach
           if (dsbc_option == 1) then  
           ! use downstream boundary data source to set bottom node WSEL value       
             newY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t+dtini/60.)
@@ -750,7 +750,7 @@ contains
           end do
         endif
       end do  ! end of corrector j loop
-
+    
       !+-------------------------------------------------------------------------
       !+                             BOOK KEEPING
       !+
@@ -1787,7 +1787,7 @@ contains
     double precision, dimension(:), allocatable :: conv1, tpW1
     double precision, dimension(:), allocatable :: newdKdA
     double precision, dimension(:), allocatable :: compoundSKK, elev, dmyarr
- 
+
     allocate(el1(nel), a1(nel), peri1(nel), redi1(nel), redi1All(nel))
     allocate(equiv_mann(nel), conv1(nel), tpW1(nel))
     allocate(newdKdA(nel))
@@ -1816,7 +1816,7 @@ contains
       ! avoid too large (egregiously) manning's N value
       if  (manncs(ic).gt.0.15) then !0.15 is typical value for Floodplain trees
         manncs(ic) = 0.15
-      endif      
+      endif 
     end do
 
     num = maxTableLength
