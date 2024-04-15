@@ -725,7 +725,7 @@ def diffusive_input_data_v02(
     tfin_g = (dt * nsteps)/60/60
     
     # package timestep variables into single array
-    timestep_ar_g    = np.zeros(9)
+    timestep_ar_g    = np.zeros(10)
     timestep_ar_g[0] = dtini_g
     timestep_ar_g[1] = t0_g
     timestep_ar_g[2] = tfin_g
@@ -735,6 +735,7 @@ def diffusive_input_data_v02(
     # timestep_ar_g[6] =  dt_db_g <- defined after calling fp_coastal_boundary_input_map
     timestep_ar_g[7] = dt_qtrib_g
     timestep_ar_g[8] = dt_da_g
+    timestep_ar_g[9] = 10.0 # dtini_g/this_number = the min.sim.time interval internally executed within diffusive.f90 
 
     # CN-mod parameters
     paradim       = 11

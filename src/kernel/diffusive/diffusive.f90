@@ -133,7 +133,7 @@ contains
     integer, dimension(nrch_g, frnw_col),  intent(in) :: frnw_ar_g
     integer, dimension(mxncomp_g, nrch_g), intent(in) :: size_bathy_g
     double precision, dimension(paradim ), intent(in) :: para_ar_g
-    double precision, dimension(:)       , intent(in) :: timestep_ar_g(9)
+    double precision, dimension(:)       , intent(in) :: timestep_ar_g(10)
     double precision, dimension(nts_db_g), intent(in) :: dbcd_g    
     double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: z_ar_g
     double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: bo_ar_g
@@ -184,7 +184,7 @@ contains
     double precision :: x
     double precision :: saveInterval, width
     !double precision :: maxCourant
-    double precision :: dtini_given
+    double precision :: dtini_given, dtini_divisor
     double precision :: timesDepth
     double precision :: t
     double precision :: tfin
@@ -224,17 +224,18 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Time domain parameters
-    dtini        = timestep_ar_g(1) ! initial timestep duration [sec]
-    t0           = timestep_ar_g(2) ! simulation start time [hr]
-    tfin         = timestep_ar_g(3) ! simulation end time [hr]
-    saveInterval = timestep_ar_g(4) ! output recording interval [sec]
-    dt_ql        = timestep_ar_g(5) ! lateral inflow data time step [sec]
-    dt_ub        = timestep_ar_g(6) ! upstream boundary time step [sec]
-    dt_db        = timestep_ar_g(7) ! downstream boundary time step [sec]
-    dt_qtrib     = timestep_ar_g(8) ! tributary data time step [sec]
-    dt_da        = timestep_ar_g(9) ! data assimilation data time step [sec]
-    dtini_given  = dtini            ! preserve user-input timestep duration
-    dtini_min    = dtini/10.0       ! minimum increment in internal time step (user-selected value at the denominator)
+    dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
+    t0            = timestep_ar_g(2)    ! simulation start time [hr]
+    tfin          = timestep_ar_g(3)    ! simulation end time [hr]
+    saveInterval  = timestep_ar_g(4)    ! output recording interval [sec]
+    dt_ql         = timestep_ar_g(5)    ! lateral inflow data time step [sec]
+    dt_ub         = timestep_ar_g(6)    ! upstream boundary time step [sec]
+    dt_db         = timestep_ar_g(7)    ! downstream boundary time step [sec]
+    dt_qtrib      = timestep_ar_g(8)    ! tributary data time step [sec]
+    dt_da         = timestep_ar_g(9)    ! data assimilation data time step [sec]
+    dtini_given   = dtini               ! preserve user-input timestep duration
+    dtini_divisor = timestep_ar_g(10)   ! numeric value that divide dtini in the next line
+    dtini_min     = dtini/dtini_divisor ! minimum increment in internal time step 
 
   !-----------------------------------------------------------------------------
   ! miscellaneous parameters
