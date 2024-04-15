@@ -26,7 +26,7 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
     integer(c_int), dimension(mxncomp_g, nrch_g),   intent(in) :: size_bathy_g 
     real(c_double), dimension(nts_db_g),            intent(in) :: dbcd_g
     real(c_double), dimension(paradim),             intent(in) :: para_ar_g
-    real(c_double), dimension(:),                   intent(in) :: timestep_ar_g(9)
+    real(c_double), dimension(:),                   intent(in) :: timestep_ar_g(10)
     real(c_double), dimension(mxncomp_g, nrch_g),   intent(in) :: z_ar_g, bo_ar_g, traps_ar_g
     real(c_double), dimension(mxncomp_g, nrch_g),   intent(in) :: tw_ar_g, twcc_ar_g
     real(c_double), dimension(mxncomp_g, nrch_g),   intent(in) :: mann_ar_g, manncc_ar_g
