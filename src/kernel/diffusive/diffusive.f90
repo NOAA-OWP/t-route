@@ -1950,17 +1950,23 @@ contains
 
     ! smooth conveyance curve (a function of elevation) so as to have monotonically increasing curve
     iel_start = 2
-    incr_rate = 0.02
+    incr_rate = 0.01
     do iel = iel_start, nel
       if (conv1(iel) <= conv1(iel-1)) then
         ! -- find j* such that conv1(j*) >> conv1(j-1)
         ii = iel
         
-        do while (conv1(ii) <= (1.0 + incr_rate) * conv1(iel-1))
+        !do while (conv1(ii) <= (1.0 + incr_rate) * conv1(iel-1))
+        do while ((conv1(ii) < conv1(iel-1)).and.(ii < nel))
           ii = ii + 1
         end do
         
         iel_incr_start = ii
+        ! when there is no data point greater than conv1(iel-1), then use artificially increased one.
+        if ((iel_incr_start.ge.nel).and.(conv1(iel_incr_start) < conv1(iel-1))) then
+          conv1(iel_incr_start) = (1.0 + incr_rate) * conv1(iel-1)
+        endif
+
         pos_slope      = (conv1(iel_incr_start) - conv1(iel-1)) / (el1(iel_incr_start) - el1(iel-1))
 
         do ii = iel, iel_incr_start - 1
@@ -1982,30 +1988,39 @@ contains
 
     ! smooth dKdA curve (a function of elevation) so as to have monotonically increasing curve
     iel_start = 2
-    incr_rate = 0.02
+    incr_rate = 0.01
     do iel = iel_start, nel 
       if (newdKdA(iel) <= newdKdA(iel-1)) then
         ! -- find j* such that conv1(j*) >> conv1(j-1)
         ii = iel
-        do while ((newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1)).and.(ii < nel))
+        !do while ((newdKdA(ii) <= (1.0 + incr_rate) * newdKdA(iel-1)).and.(ii < nel))
+        do while ((newdKdA(ii) < newdKdA(iel-1)).and.(ii < nel))
           ii = ii + 1
         end do
 
-        ! when there is no dK/dA values larger than the one at iel, reduce the starting value by a half to search again
-        if (ii.ge.nel) then
-          iel_incr_start = ii  
-        
-        else
-          iel_decr_start = iel
-          iel_incr_start = ii          
-          pos_slope       = ( newdKdA(iel_incr_start) - newdKdA(iel_decr_start-1)) / &
-                                            (el1(iel_incr_start) - el1(iel_decr_start-1))
-     
-          do ii = iel_decr_start, iel_incr_start - 1
-            newdKdA(ii) = newdKdA(iel_decr_start-1) + pos_slope * (el1(ii) - el1(iel_decr_start-1))
-          enddo
-        
+        iel_incr_start = ii
+        if ((iel_incr_start.ge.nel).and.(newdKdA(iel_incr_start) < newdKdA(iel-1))) then
+          newdKdA(iel_incr_start) =  (1.0 + incr_rate) * newdKdA(iel-1)
         endif
+        pos_slope = (newdKdA(iel_incr_start) - newdKdA(iel-1)) / (el1(iel_incr_start) - el1(iel-1))     
+        
+        do ii = iel, iel_incr_start - 1
+          newdKdA(ii) = newdKdA(iel-1) + pos_slope * (el1(ii) - el1(iel-1))
+        enddo
+
+        ! when there is no dK/dA values larger than the one at iel, reduce the starting value by a half to search again
+        !if (ii.ge.nel) then
+        !  iel_incr_start = ii  
+        !else
+        !  iel_decr_start = iel
+        !  iel_incr_start = ii          
+        !  pos_slope       = ( newdKdA(iel_incr_start) - newdKdA(iel_decr_start-1)) / &
+        !                                    (el1(iel_incr_start) - el1(iel_decr_start-1))     
+        !  do ii = iel_decr_start, iel_incr_start - 1
+        !    newdKdA(ii) = newdKdA(iel_decr_start-1) + pos_slope * (el1(ii) - el1(iel_decr_start-1))
+        !  enddo
+        !endif
+        iel_start = iel_incr_start
       endif 
     enddo
 
