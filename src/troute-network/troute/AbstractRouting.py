@@ -205,6 +205,8 @@ class MCwithDiffusive(AbstractRouting):
                 headlink_mainstem = headlink_mainstem[0]
                 twlink_mainstem = tw
                 diffusive_domain_all[twlink_mainstem] = self.diffusive_domain_by_both_ends_streamid(connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val)
+                diffusive_domain_all[twlink_mainstem]['targets'] = [headlink_mainstem]
+                all_links = all_links + diffusive_domain_all[twlink_mainstem]['links']
 
         self._diffusive_domain = diffusive_domain_all
         
@@ -212,7 +214,7 @@ class MCwithDiffusive(AbstractRouting):
         topobathy_df = self.topobathy_df
         missing_topo_ids = list(set(all_links).difference(set(topobathy_df.index)))
         topo_df_list = []
-   
+        
         for key in missing_topo_ids:
             topo_df_list.append(_fill_in_missing_topo_data(key, dataframe, topobathy_df))
         
@@ -238,6 +240,7 @@ class MCwithDiffusive(AbstractRouting):
             wbody_ids = waterbody_dataframe.index.tolist()
             targets = self._diffusive_domain[tw]['targets'] + bad_links
             links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
+            links = list(set(self._diffusive_domain[tw]['links']).intersection(set(links)))
             outlet_ids = [connections.get(id)[0] for id in wbody_ids]
             wbody_and_outlet_ids = wbody_ids + outlet_ids + bad_links
             mainstem_segs = list(set(links).difference(set(wbody_and_outlet_ids)))
