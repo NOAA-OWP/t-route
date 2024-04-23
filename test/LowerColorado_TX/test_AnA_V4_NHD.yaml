@@ -127,5 +127,6 @@ output_parameters:
     parquet_output:
         #---------
         parquet_output_folder: output/
+        configuration: short_range
 
     
