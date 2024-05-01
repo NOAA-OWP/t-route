@@ -86,7 +86,8 @@ def main_v04(argv):
                                     hybrid_parameters,
                                     preprocessing_parameters,
                                     output_parameters,
-                                    verbose=True, showtiming=showtiming) 
+                                    verbose=True, showtiming=showtiming)
+        duplicate_ids_df = network._duplicate_ids_df
         
     elif supernetwork_parameters["network_type"] == 'NHDNetwork':
         network = NHDNetwork(supernetwork_parameters,
@@ -99,6 +100,7 @@ def main_v04(argv):
                              verbose=True,
                              showtiming=showtiming,          
                             )
+        duplicate_ids_df = pd.DataFrame()
     
     if showtiming:
         network_end_time = time.time()
@@ -259,7 +261,7 @@ def main_v04(argv):
             cpu_pool,
             network.waterbody_dataframe,
             network.waterbody_types_dataframe,
-            network._duplicate_ids_df,
+            duplicate_ids_df,
             data_assimilation_parameters,
             data_assimilation.lastobs_df,
             network.link_gage_df,
