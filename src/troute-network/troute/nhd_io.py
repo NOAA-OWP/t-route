@@ -2145,7 +2145,7 @@ def write_flowveldepth(
     # timesteps, variable = zip(*flowveldepth.columns.tolist())
     # timesteps = list(timesteps)
     n_timesteps = flowveldepth.shape[1]//3
-    ts = stream_output_internal_frequency//5
+    ts = stream_output_internal_frequency//(dt//60)
     ind = [i for i in range(ts-1,n_timesteps,ts)]
     timestamps_sec =  [(i+1)*dt for i in ind]
     
