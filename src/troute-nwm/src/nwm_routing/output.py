@@ -59,6 +59,7 @@ def nwm_output_generator(
     cpu_pool,
     waterbodies_df,
     waterbody_types_df,
+    duplicate_ids_df,
     data_assimilation_parameters=False,
     lastobs_df = None,
     link_gage_df = None,
@@ -151,6 +152,11 @@ def nwm_output_generator(
             wbdy_id_list = waterbodies_df.index.values.tolist()
             flow_df = flowveldepth.loc[wbdy_id_list]
             wbdy = wbdy.loc[wbdy_id_list]
+            
+            # Replace synthetic waterbody IDs (made from duplicate IDs) with
+            # original waterbody IDs:
+            flow_df = flow_df.rename(index=dict(duplicate_ids_df[['synthetic_ids','lake_id']].values))
+            wbdy = wbdy.rename(index=dict(duplicate_ids_df[['synthetic_ids','lake_id']].values))
 
             timestep, variable = zip(*flow_df.columns.tolist())
             timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
@@ -221,6 +227,8 @@ def nwm_output_generator(
     if wbdyo and not waterbodies_df.empty:
         
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
+        output_waterbodies_df = waterbodies_df.rename(index=dict(duplicate_ids_df[['synthetic_ids','lake_id']].values))
+        output_waterbody_types_df = waterbody_types_df.rename(index=dict(duplicate_ids_df[['synthetic_ids','lake_id']].values))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
         for i in range(i_df.shape[1]):            
@@ -229,8 +237,8 @@ def nwm_output_generator(
                 i_df.iloc[:,[i]],
                 q_df.iloc[:,[i]],
                 d_df.iloc[:,[i]],
-                waterbodies_df,
-                waterbody_types_df,
+                output_waterbodies_df,
+                output_waterbody_types_df,
                 t0, 
                 dt, 
                 nts,
