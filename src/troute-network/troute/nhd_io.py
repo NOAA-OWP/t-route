@@ -1960,13 +1960,13 @@ def write_flowveldepth_csv_pkl(stream_output_directory, file_name,
                               t0):
     
     formatted_times = [str(timedelta(seconds=t)) for t in timestamps]
-    column_names = ['flow','velocity', 'depth', 'nudge', 'time']
     
     df_list = []
     
     for i in range(len(formatted_times)):
         # Construct a temporary DataFrame for each column set
         df_temp = pd.DataFrame({
+            't0': str(t0),
             'time': formatted_times[i],
             'flow': flow.iloc[:, i],
             'velocity': velocity.iloc[:, i],
@@ -2146,7 +2146,7 @@ def write_flowveldepth(
     # timesteps = list(timesteps)
     n_timesteps = flowveldepth.shape[1]//3
     ts = stream_output_internal_frequency//5
-    ind = [i for i in range(ts-1,n_timesteps+1,ts)]
+    ind = [i for i in range(ts-1,n_timesteps,ts)]
     timestamps_sec =  [(i+1)*dt for i in ind]
     
     flow = flowveldepth.iloc[:,0::3].iloc[:,ind]
