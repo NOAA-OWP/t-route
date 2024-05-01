@@ -709,9 +709,9 @@ def diffusive_input_data_v02(
     # lateral inflow timestep (sec). Currently, lateral flow in CHAROUT files at one hour time step
     dt_ql_g = 3600.0
     # upstream boundary condition timestep = MC simulation time step (sec)
-    dt_ub_g = 300.0 
+    dt_ub_g = dt
     # tributary inflow timestep (sec) - currently, MC simulation time step = 5 min
-    dt_qtrib_g = 300.0
+    dt_qtrib_g = dt
     # usgs_df time step used for data assimilation. The original timestep of USGS streamflow is 15 min but later interpolated at every dt in min.
     dt_da_g = dt # [sec]
     # time interval at which flow and depth simulations are written out by Tulane diffusive model

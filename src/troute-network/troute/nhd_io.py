@@ -1955,6 +1955,37 @@ def write_waterbody_netcdf(
             )
 
 
+def write_flowveldepth_csv_pkl(stream_output_directory, file_name,
+                              flow, velocity, depth, nudge_df, timestamps,
+                              t0):
+    
+    formatted_times = [str(timedelta(seconds=t)) for t in timestamps]
+    
+    df_list = []
+    
+    for i in range(len(formatted_times)):
+        # Construct a temporary DataFrame for each column set
+        df_temp = pd.DataFrame({
+            't0': str(t0),
+            'time': formatted_times[i],
+            'flow': flow.iloc[:, i],
+            'velocity': velocity.iloc[:, i],
+            'depth': depth.iloc[:, i],
+            'nudge': nudge_df.iloc[:, i]  
+        })
+        df_list.append(df_temp)
+
+    # Concatenate all temporary DataFrames vertically
+    df = pd.concat(df_list)
+    df.index.name = 'feature_id'
+
+    # File format handling
+    file_format = file_name.split('.')[-1]
+    if file_format == 'csv':
+        df.to_csv(f"{stream_output_directory}/{file_name}", index=True)
+    elif file_format == 'pkl':
+        df.to_pickle(f"{stream_output_directory}/{file_name}")
+
 def write_flowveldepth_netcdf(stream_output_directory, file_name,
                               flow, velocity, depth, nudge_df, timestamps,
                               t0):
@@ -2114,10 +2145,10 @@ def write_flowveldepth(
     # timesteps, variable = zip(*flowveldepth.columns.tolist())
     # timesteps = list(timesteps)
     n_timesteps = flowveldepth.shape[1]//3
-    ts = stream_output_internal_frequency//5
-    ind = [i for i in range(ts-1,n_timesteps+1,ts)]
-    timestamps_sec =  [(i+1)*300 for i in ind]
-
+    ts = stream_output_internal_frequency//(dt//60)
+    ind = [i for i in range(ts-1,n_timesteps,ts)]
+    timestamps_sec =  [(i+1)*dt for i in ind]
+    
     flow = flowveldepth.iloc[:,0::3].iloc[:,ind]
     velocity = flowveldepth.iloc[:,1::3].iloc[:,ind]
     depth = flowveldepth.iloc[:,2::3].iloc[:,ind]
@@ -2140,18 +2171,24 @@ def write_flowveldepth(
     file_name_time = t0
     jobs = []
     for _ in range(num_files):
-        filename = 'troute_output_' + file_name_time.strftime('%Y%m%d%H%M') + '.nc'
+        filename = 'troute_output_' + file_name_time.strftime('%Y%m%d%H%M') + stream_output_type
         args = (stream_output_directory,filename,
                 flow.iloc[:,0:ts_per_file],
                 velocity.iloc[:,0:ts_per_file],
                 depth.iloc[:,0:ts_per_file],
                 nudge_df.iloc[:,0:ts_per_file],
                 timestamps_sec[0:ts_per_file],t0)
-        if cpu_pool > 1 & num_files > 1:
-            jobs.append(delayed(write_flowveldepth_netcdf)(*args))
+        if stream_output_type == '.nc':
+            if cpu_pool > 1 & num_files > 1:
+                jobs.append(delayed(write_flowveldepth_netcdf)(*args))
+            else:
+                write_flowveldepth_netcdf(*args)
         else:
-            write_flowveldepth_netcdf(*args)
-            
+            if cpu_pool > 1 & num_files > 1:
+                jobs.append(delayed(write_flowveldepth_csv_pkl)(*args))
+            else:
+                write_flowveldepth_csv_pkl(*args)
+
         flow = flow.iloc[:,ts_per_file:]
         velocity = velocity.iloc[:,ts_per_file:]
         depth = depth.iloc[:,ts_per_file:]
