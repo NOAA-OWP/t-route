@@ -4,6 +4,7 @@ import yaml
 import json
 import xarray as xr
 import pandas as pd
+from itertools import chain
 
 from troute.nhd_network import reverse_network, reachable
 from troute.nhd_network_utilities_v02 import organize_independent_networks, build_refac_connections
@@ -189,7 +190,8 @@ class MCwithDiffusive(AbstractRouting):
                 wbody_ids = waterbody_dataframe.index.tolist()
                 targets = targets + wbody_ids
                 links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
-                outlet_ids = [connections.get(id)[0] for id in wbody_ids]
+                outlet_ids = [connections.get(id) for id in wbody_ids]
+                outlet_ids = list(chain.from_iterable(outlet_ids))
                 wbody_and_outlet_ids = wbody_ids + outlet_ids
                 links = list(set(links).difference(set(wbody_and_outlet_ids)))
                 
@@ -241,7 +243,8 @@ class MCwithDiffusive(AbstractRouting):
             targets = self._diffusive_domain[tw]['targets'] + bad_links
             links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
             links = list(set(self._diffusive_domain[tw]['links']).intersection(set(links)))
-            outlet_ids = [connections.get(id)[0] for id in wbody_ids]
+            outlet_ids = [connections.get(id) for id in wbody_ids]
+            outlet_ids = list(chain.from_iterable(outlet_ids))
             wbody_and_outlet_ids = wbody_ids + outlet_ids + bad_links
             mainstem_segs = list(set(links).difference(set(wbody_and_outlet_ids)))
             
