@@ -259,6 +259,7 @@ def main_v04(argv):
             cpu_pool,
             network.waterbody_dataframe,
             network.waterbody_types_dataframe,
+            network._duplicate_ids_df,
             data_assimilation_parameters,
             data_assimilation.lastobs_df,
             network.link_gage_df,
