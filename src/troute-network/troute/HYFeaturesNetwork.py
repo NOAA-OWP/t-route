@@ -214,7 +214,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_upstream_terminal", "_nexus_latlon"]
+    __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df"]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -365,23 +365,6 @@ class HYFeaturesNetwork(AbstractNetwork):
         mask = ~ self.dataframe['downstream'].str.startswith("tnx") 
         self._dataframe = self.dataframe.apply(numeric_id, axis=1)
         
-        ######### TEMPORARY FIX ###########
-        # There is a waterbody, ID=5569731, that has two segments 'downstream' of it in 
-        # the hydrofabric v20.1, segments 2409607 and 2409629. This is a temporary fix which
-        # changes the downstream segment IDs to always route to 2409628 instead of 2409607
-        self._dataframe['downstream'] = self._dataframe['downstream'].replace(2409607, 2409628)
-        ###################################
-        
-        # handle segment IDs that are also waterbody IDs. The fix here adds a large value
-        # to the segmetn IDs, creating new, unique IDs. Otherwise our connections dictionary
-        # will get confused because there will be repeat IDs...
-        duplicate_wb_segments = self.supernetwork_parameters.get("duplicate_wb_segments", None)
-        duplicate_wb_id_offset = self.supernetwork_parameters.get("duplicate_wb_id_offset", 9.99e11)
-        if duplicate_wb_segments:
-            # update the values of the duplicate segment IDs
-            fix_idx = self.dataframe.key.isin(set(duplicate_wb_segments))
-            self._dataframe.loc[fix_idx,"key"] = (self.dataframe[fix_idx].key + duplicate_wb_id_offset).astype("int64")
-
         # make the flowpath linkage, ignore the terminal nexus
         self._flowpath_dict = dict(zip(self.dataframe.loc[mask].downstream, self.dataframe.loc[mask].key))
         
@@ -435,19 +418,54 @@ class HYFeaturesNetwork(AbstractNetwork):
         if not lakes.empty:
             self._waterbody_df = (
                 lakes[['hl_link','ifd','LkArea','LkMxE','OrificeA',
-                       'OrificeC','OrificeE','WeirC','WeirE','WeirL']]
+                       'OrificeC','OrificeE','WeirC','WeirE','WeirL','id']]
                 .rename(columns={'hl_link': 'lake_id'})
                 )
-
+            
+            id = self.waterbody_dataframe['id'].str.split('-', expand=True).iloc[:,1]
+            self._waterbody_df['id'] = id
+            self._waterbody_df['id'] = self._waterbody_df.id.astype(float).astype(int)
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
             self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
+            
+            # Drop any waterbodies that do not have parameters
+            self._waterbody_df = self.waterbody_dataframe.dropna()
+            
+            # Check if there are any lake_ids that are also segment_ids. If so, add a large value
+            # to the lake_ids:
+            duplicate_ids = list(set(self.waterbody_dataframe.index).intersection(set(self.dataframe.index)))
+            self._duplicate_ids_df = pd.DataFrame({
+                'lake_id': duplicate_ids,
+                'synthetic_ids': [int(id + 9.99e11) for id in duplicate_ids]
+            })
+            update_dict = dict(self._duplicate_ids_df[['lake_id','synthetic_ids']].values)
+            
+            tmp_wbody_conn = self.dataframe[['waterbody']].dropna()
+            tmp_wbody_conn = (
+                tmp_wbody_conn['waterbody']
+                .str.split(',',expand=True)
+                .reset_index()
+                .melt(id_vars='key')
+                .drop('variable', axis=1)
+                .dropna()
+                .astype(int)
+                )
+            tmp_wbody_conn = tmp_wbody_conn[tmp_wbody_conn['value'].isin(self.waterbody_dataframe.index)]
+            self._dataframe = (
+                self.dataframe
+                .reset_index()
+                .merge(tmp_wbody_conn, how='left', on='key')
+                .drop('waterbody', axis=1)
+                .rename(columns={'value': 'waterbody'})
+                .set_index('key')
+            )
+
+            self._waterbody_df = self.waterbody_dataframe.rename(index=update_dict).sort_index()
+            self._dataframe = self.dataframe.replace({'waterbody': update_dict})
             
             #FIXME temp solution for missing waterbody info in hydrofabric
             self.bandaid()
             
-            # Drop any waterbodies that do not have parameters
-            self._waterbody_df = self.waterbody_dataframe.dropna()
-
             # Add lat, lon, and crs columns for LAKEOUT files:
             lakeout = self.output_parameters.get("lakeout_output", None)
             if lakeout:
@@ -468,25 +486,14 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._waterbody_df['lat'] = np.nan
                 self._waterbody_df['crs'] = np.nan
             
-            # Create wbody_conn dictionary:
-            wbody_conn = self.dataframe[['waterbody']].dropna()
-            wbody_conn = (
-                wbody_conn['waterbody']
-                .str.split(',',expand=True)
-                .reset_index()
-                .melt(id_vars='key')
-                .drop('variable', axis=1)
-                .dropna()
-                .astype(int)
-                )
+            wbody_conn = self.dataframe[['waterbody']].dropna().astype(int).reset_index()
             
             self._waterbody_connections = (
-                wbody_conn[wbody_conn['value'].isin(self.waterbody_dataframe.index)]
-                .set_index('key')['value']
+                wbody_conn[wbody_conn['waterbody'].isin(self.waterbody_dataframe.index)]
+                .set_index('key')['waterbody']
                 .to_dict()
                 )
             
-
             # if waterbodies are being simulated, adjust the connections graph so that 
             # waterbodies are collapsed to single nodes. Also, build a mapping between 
             # waterbody outlet segments and lake ids
@@ -512,7 +519,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_type_specified = False
             self._link_lake_crosswalk = None
 
-        self._dataframe = self.dataframe.drop('waterbody', axis=1)
+        self._dataframe = self.dataframe.drop('waterbody', axis=1).drop_duplicates()
 
     def preprocess_data_assimilation(self, network):
         if not network.empty:
@@ -719,32 +726,39 @@ class HYFeaturesNetwork(AbstractNetwork):
         self._qlateral = qlats_df
 
     ######################################################################
-    #FIXME Temporary solution to hydrofabric issues. Fix specific instances here for now...
+    #FIXME Temporary solution to hydrofabric issues.
     def bandaid(self,):
-        #This chunk assigns lake_ids to segments that reside within the waterbody:
-        wbody_replacement_dict = {
-            5548: '5194634',
-            5551: '5194634',
-            5539: '5194604',
-            5541: '5194604',
-            5542: '5194604',
-            2710744: '120051895',
-            2710746: '120051895',
-            1536065: '7100709',
-            1536067: '7100709',
-            1536104: '120052233',
-            1536099: '120052233',
-            1536084: '120052233',
-            1536094: '120052233',
-            2711040: '120052275',
-            2711044: '120052275',
-            2711047: '120052275'
-        }
-
-        for key, value in wbody_replacement_dict.items():
-            if key in self.dataframe.index:
-                self._dataframe.loc[[key],'waterbody'] = value
         
+        # Identify waterbody IDs that have problematic data. There are underlying stream 
+        # segments that should be referenced to the waterbody ID, but are not. This causes
+        # our connections dictionary to have multiple downstream segments for waterbodies which
+        # is not allowed:
+        conn_df = self.dataframe.reset_index()[['key', 'downstream']]
+        lake_id = self.waterbody_dataframe.index.unique()
+
+        wbody_conn_df = self.dataframe['waterbody'].dropna().astype(int).reset_index()
+        wbody_conn_df = wbody_conn_df[wbody_conn_df['waterbody'].isin(lake_id)]
+        
+        conn_df2 = (
+            conn_df
+            .merge(wbody_conn_df, on='key', how='left')
+            .assign(key=lambda x: x['waterbody'].fillna(x['key']))
+            .drop('waterbody', axis=1)
+            .merge(wbody_conn_df.rename(columns={'key': 'downstream'}),
+                   on='downstream', how='left')
+            .assign(downstream=lambda x: x['waterbody'].fillna(x['downstream']))
+            .drop('waterbody', axis=1)
+            .drop_duplicates()
+            .query('key != downstream')
+            .astype(int)
+        )
+        
+        # Find missing segments
+        bad_lake_ids = conn_df2.loc[conn_df2.duplicated(subset=['key'])].key.unique()
+        # Drop waterbodies that are problematic. Instead t-route will simply treat them as
+        # flowpaths and run MC routing.
+        self._waterbody_df = self.waterbody_dataframe.drop(bad_lake_ids)
+
         #This chunk replaces waterbody_id 1711354 with 1710676. I don't know where the 
         #former came from, but the latter is listed in the flowpath_attributes table
         #and exists in NWMv2.1 LAKEPARM file. See hydrofabric github issue 16:
