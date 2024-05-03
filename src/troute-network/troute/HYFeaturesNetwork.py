@@ -15,7 +15,7 @@ import os
 
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
-from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk
+from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk, get_great_lakes_climatology
 
 __verbose__ = False
 __showtiming__ = False
@@ -27,6 +27,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # If waterbodies are being simulated, read lakes table
     if waterbody_parameters.get('break_network_at_waterbodies',False):
         layers.append('lakes')
+        layers.append('nexus')
 
     # If any DA is activated, read network table as well for gage information
     data_assimilation_parameters = compute_parameters.get('data_assimilation_parameters',{})
@@ -40,7 +41,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # If diffusive is activated, read nexus table for lat/lon information
     hybrid_parameters = compute_parameters.get('hybrid_parameters',{})
     hybrid_routing = hybrid_parameters.get('run_hybrid_routing', False)
-    if hybrid_routing:
+    if hybrid_routing & ('nexus' not in layers):
         layers.append('nexus')
     
     # Retrieve geopackage information:
@@ -282,7 +283,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self.preprocess_network(flowpaths, nexus)
 
             # Preprocess waterbody objects
-            self.preprocess_waterbodies(lakes)
+            self.preprocess_waterbodies(lakes, nexus)
 
             # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
             self.preprocess_data_assimilation(network)
@@ -413,7 +414,7 @@ class HYFeaturesNetwork(AbstractNetwork):
         # to the model engine/coastal models
         self._nexus_latlon = nexus
 
-    def preprocess_waterbodies(self, lakes):
+    def preprocess_waterbodies(self, lakes, nexus):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries
         if not lakes.empty:
             self._waterbody_df = (
@@ -466,26 +467,6 @@ class HYFeaturesNetwork(AbstractNetwork):
             #FIXME temp solution for missing waterbody info in hydrofabric
             self.bandaid()
             
-            # Add lat, lon, and crs columns for LAKEOUT files:
-            lakeout = self.output_parameters.get("lakeout_output", None)
-            if lakeout:
-                lat_lon_crs = lakes[['hl_link','hl_reference','geometry']].rename(columns={'hl_link': 'lake_id'})
-                lat_lon_crs = lat_lon_crs[lat_lon_crs['hl_reference']=='WBOut']
-                lat_lon_crs['lake_id'] = lat_lon_crs.lake_id.astype(float).astype(int)
-                lat_lon_crs = lat_lon_crs.set_index('lake_id').drop_duplicates().sort_index()
-                lat_lon_crs = lat_lon_crs[lat_lon_crs.index.isin(self.waterbody_dataframe.index)]
-                lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
-                lat_lon_crs['lon'] = lat_lon_crs.geometry.x
-                lat_lon_crs['lat'] = lat_lon_crs.geometry.y
-                lat_lon_crs['crs'] = str(lat_lon_crs.crs)
-                lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
-
-                self._waterbody_df = self.waterbody_dataframe.join(lat_lon_crs)
-            else:
-                self._waterbody_df['lon'] = np.nan
-                self._waterbody_df['lat'] = np.nan
-                self._waterbody_df['crs'] = np.nan
-            
             wbody_conn = self.dataframe[['waterbody']].dropna().astype(int).reset_index()
             
             self._waterbody_connections = (
@@ -505,11 +486,55 @@ class HYFeaturesNetwork(AbstractNetwork):
             else:
                 self._link_lake_crosswalk = None
             
+            # Add lat, lon, and crs columns for LAKEOUT files:
+            lakeout = self.output_parameters.get("lakeout_output", None)
+            if lakeout:
+                lat_lon_crs = lakes[['hl_link','hl_reference','geometry']].rename(columns={'hl_link': 'lake_id'})
+                lat_lon_crs = lat_lon_crs[lat_lon_crs['hl_reference']=='WBOut']
+                lat_lon_crs['lake_id'] = lat_lon_crs.lake_id.astype(float).astype(int)
+                lat_lon_crs = lat_lon_crs.set_index('lake_id').drop_duplicates().sort_index()
+                lat_lon_crs = lat_lon_crs[lat_lon_crs.index.isin(self.waterbody_dataframe.index)]
+                lat_lon_crs = lat_lon_crs.to_crs(crs=4326)
+                lat_lon_crs['lon'] = lat_lon_crs.geometry.x
+                lat_lon_crs['lat'] = lat_lon_crs.geometry.y
+                lat_lon_crs['crs'] = str(lat_lon_crs.crs)
+                lat_lon_crs = lat_lon_crs[['lon','lat','crs']]
+
+                self._waterbody_df = self.waterbody_dataframe.join(lat_lon_crs)
+            else:
+                self._waterbody_df['lon'] = np.nan
+                self._waterbody_df['lat'] = np.nan
+                self._waterbody_df['crs'] = np.nan
+                
+            # Add the Great Lakes to the connections dictionary and waterbody dataframe
+            nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
+            great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
+            great_lakes_df['toid'] = nexus['toid'].str.extract(r'wb-(\d+)').astype(float).astype(int)
+            great_lakes_df['WBOut_id'] = great_lakes_df['WBOut_id'].astype(int)
+            gl_dict = great_lakes_df.set_index('WBOut_id')['toid'].to_dict()
+            self._connections.update(gl_dict)
+            
+            gl_wbody_df = pd.DataFrame(
+                data=np.ones([len(gl_dict), self.waterbody_dataframe.shape[1]]),
+                index=gl_dict.keys(), 
+                columns=self.waterbody_dataframe.columns
+                )
+            
+            self._waterbody_df = pd.concat(
+                [
+                    self.waterbody_dataframe,
+                    gl_wbody_df
+                ]
+            )
+            
             self._waterbody_types_df = pd.DataFrame(
                 data = 1, 
                 index = self.waterbody_dataframe.index, 
                 columns = ['reservoir_type']).sort_index()
             
+            # Add Great Lakes waterbody type (6)
+            self._waterbody_types_df.loc[gl_dict.keys(),'reservoir_type'] = 6
+                
             self._waterbody_type_specified = True
             
         else:
