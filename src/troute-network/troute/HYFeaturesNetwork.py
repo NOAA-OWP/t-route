@@ -518,6 +518,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_connections = {}
             self._waterbody_type_specified = False
             self._link_lake_crosswalk = None
+            self._duplicate_ids_df = pd.DataFrame()
 
         self._dataframe = self.dataframe.drop('waterbody', axis=1).drop_duplicates()
 
