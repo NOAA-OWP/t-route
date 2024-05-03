@@ -74,3 +74,17 @@ def get_rfc_lake_gage_crosswalk():
     rfc_df.index.name = 'rfc_lake_id'
 
     return rfc_df
+
+def get_great_lakes_climatology():
+    
+    df = pd.DataFrame(
+        {
+            'Month': ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+            'SMR': [1946, 1907, 1879, 1929, 2105, 2202, 2306, 2378, 2343, 2282, 2235, 2046],
+            'SCR': [4623, 4518, 4946, 5217, 5410, 5494, 5546, 5555, 5519, 5475, 5424, 5253],
+            'NIR': [5630, 5523, 5673, 5921, 6179, 6172, 6089, 5977, 5839, 5751, 5757, 5771],
+            'SLR': [6380, 6561, 6875, 7159, 7418, 7547, 7500, 7360, 7161, 6954, 6852, 6725]
+        }
+    )
+    
+    return df
