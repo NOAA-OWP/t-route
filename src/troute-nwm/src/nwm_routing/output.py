@@ -7,8 +7,8 @@ import troute.nhd_io as nhd_io
 from build_tests import parity_check
 import logging
 
-LOG = logging.getLogger('')
 
+LOG = logging.getLogger('')
 
 def _reindex_lake_to_link_id(target_df, crosswalk):
     '''
@@ -29,25 +29,25 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
 
     # evaluate intersection of lake ids and target_df index values
     # i.e. what are the index positions of lake ids that need replacing?
-    lakeids = np.fromiter(crosswalk.keys(), dtype=int)
+    lakeids = np.fromiter(crosswalk.keys(), dtype = int)
     idxs = target_df.index.to_numpy()
     lake_index_intersect = np.intersect1d(
         idxs,
         lakeids,
-        return_indices=True
+        return_indices = True
     )
 
     # replace lake ids with link IDs in the target_df index array
-    linkids = np.fromiter(crosswalk.values(), dtype=int)
+    linkids = np.fromiter(crosswalk.values(), dtype = int)
     idxs[lake_index_intersect[1]] = linkids[lake_index_intersect[2]]
 
     # (re) set the target_df index
-    target_df.set_index(idxs, inplace=True)
+    target_df.set_index(idxs, inplace = True)
 
     return target_df
 
 
-def _parquet_output_format_converter(df, start_datetime, dt, configuration):
+def _parquet_output_format_converter(df, start_datetime, dt, configuration, prefix_ids):
     '''
     Utility function for convert flowveldepth dataframe
     to a timeseries and to match parquet input format
@@ -81,7 +81,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration):
     timeseries_df['units'] = timeseries_df['variable_name'].map(variable_to_units_map)
     timeseries_df['reference_time'] = start_datetime.date()
     timeseries_df['location_id'] = timeseries_df['location_id'].astype('string')
-    timeseries_df['location_id'] = 'nex-' + timeseries_df['location_id']
+    timeseries_df['location_id'] = prefix_ids + '-' + timeseries_df['location_id']
     timeseries_df['value'] = timeseries_df['value'].astype('double')
     timeseries_df['reference_time'] = timeseries_df['reference_time'].astype('datetime64[us]')
     timeseries_df['value_time'] = timeseries_df['value_time'].astype('datetime64[us]')
@@ -90,22 +90,22 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration):
 
 
 def nwm_output_generator(
-        run,
-        results,
-        supernetwork_parameters,
-        output_parameters,
-        parity_parameters,
-        restart_parameters,
-        parity_set,
-        qts_subdivisions,
-        return_courant,
-        cpu_pool,
-        waterbodies_df,
-        waterbody_types_df,
-        data_assimilation_parameters=False,
-        lastobs_df=None,
-        link_gage_df=None,
-        link_lake_crosswalk=None,
+    run,
+    results,
+    supernetwork_parameters,
+    output_parameters,
+    parity_parameters,
+    restart_parameters,
+    parity_set,
+    qts_subdivisions,
+    return_courant,
+    cpu_pool,
+    waterbodies_df,
+    waterbody_types_df,
+    data_assimilation_parameters=False,
+    lastobs_df=None,
+    link_gage_df=None,
+    link_lake_crosswalk=None,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
@@ -204,15 +204,15 @@ def nwm_output_generator(
             timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
             ts_set = set(timestep_index[0].tolist())
             flow_df_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-            flow_df = flow_df.iloc[:, flow_df_col_index]
+            flow_df = flow_df.iloc[:,flow_df_col_index]
 
             timestep, variable = zip(*wbdy.columns.tolist())
             timestep_index = np.where(((np.array(list(set(list(timestep)))) + 1) * dt) % (dt * qts_subdivisions) == 0)
             ts_set = set(timestep_index[0].tolist())
             wbdy_col_index = [i for i, e in enumerate(timestep) if e in ts_set]
-            i_df = wbdy.iloc[:, wbdy_col_index]
-            q_df = flow_df.iloc[:, 0::3]
-            d_df = flow_df.iloc[:, 2::3]
+            i_df = wbdy.iloc[:,wbdy_col_index]
+            q_df = flow_df.iloc[:,0::3]
+            d_df = flow_df.iloc[:,2::3]
 
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
@@ -257,7 +257,7 @@ def nwm_output_generator(
                                          int(stream_output_timediff),
                                          stream_output_type,
                                          stream_output_internal_frequency,
-                                         cpu_pool=cpu_pool)
+                                         cpu_pool = cpu_pool)
 
     if test:
         flowveldepth.to_pickle(Path(test))
@@ -270,9 +270,9 @@ def nwm_output_generator(
         for i in range(i_df.shape[1]):
             nhd_io.write_waterbody_netcdf(
                 wbdyo,
-                i_df.iloc[:, [i]],
-                q_df.iloc[:, [i]],
-                d_df.iloc[:, [i]],
+                i_df.iloc[:,[i]],
+                q_df.iloc[:,[i]],
+                d_df.iloc[:,[i]],
                 waterbodies_df,
                 waterbody_types_df,
                 t0,
@@ -316,12 +316,10 @@ def nwm_output_generator(
                     ),
                 )
             else:
-                LOG.critical(
-                    'Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
+                LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
 
         else:
-            LOG.critical(
-                'wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
+            LOG.critical('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
 
         LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
@@ -357,10 +355,10 @@ def nwm_output_generator(
         # TO DO: create more descriptive filenames
         if supernetwork_parameters.get("title_string", None):
             filename_fvd = (
-                    "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
+                "flowveldepth_" + supernetwork_parameters["title_string"] + ".csv"
             )
             filename_courant = (
-                    "courant_" + supernetwork_parameters["title_string"] + ".csv"
+                "courant_" + supernetwork_parameters["title_string"] + ".csv"
             )
         else:
             run_time_stamp = datetime.now().isoformat()
@@ -410,17 +408,19 @@ def nwm_output_generator(
             parquet_output_segments = flowveldepth.index
 
         flowveldepth = flowveldepth.sort_index()
+        configuration = output_parameters["parquet_output"].get("configuration")
+        prefix_ids = output_parameters["parquet_output"].get("prefix_ids")
         timeseries_df = _parquet_output_format_converter(flowveldepth, restart_parameters.get("start_datetime"), dt,
-                                                         output_parameters["parquet_output"].get("configuration"))
+                                                         configuration, prefix_ids)
 
-        parquet_output_segments_str = ['nex-' + str(segment) for segment in parquet_output_segments]
+        parquet_output_segments_str = [prefix_ids + '-' + str(segment) for segment in parquet_output_segments]
         timeseries_df.loc[timeseries_df['location_id'].isin(parquet_output_segments_str)].to_parquet(
             output_path.joinpath(filename_fvd), allow_truncated_timestamps=True)
 
         if return_courant:
             courant = courant.sort_index()
             timeseries_courant = _parquet_output_format_converter(courant, restart_parameters.get("start_datetime"), dt,
-                                                         output_parameters["parquet_output"].get("configuration"))
+                                                                  configuration, prefix_ids)
             timeseries_courant.loc[timeseries_courant['location_id'].isin(parquet_output_segments_str)].to_parquet(
                 output_path.joinpath(filename_courant), allow_truncated_timestamps=True)
 
@@ -466,6 +466,7 @@ def nwm_output_generator(
             nudging_true = streamflow_da.get('streamflow_nudging', None)
 
         if nudging_true and lastobs_output_folder:
+
             LOG.info("- writing lastobs files")
             start = time.time()
 
@@ -480,6 +481,7 @@ def nwm_output_generator(
 
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
+
     if 'flowveldepth' in locals():
         LOG.debug(flowveldepth)
 
@@ -488,6 +490,7 @@ def nwm_output_generator(
     ################### Parity Check
 
     if parity_set:
+
         LOG.info(
             "conducting parity check, comparing WRF Hydro results against t-route results"
         )

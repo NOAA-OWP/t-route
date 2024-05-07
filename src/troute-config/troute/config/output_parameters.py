@@ -34,7 +34,6 @@ class OutputParameters(BaseModel, extra='forbid'):
     # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
 
-
 class ChanobsOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing chanobs files
     chanobs_output_directory: Optional[DirectoryPath] = None
@@ -53,6 +52,7 @@ class ParquetOutput(BaseModel, extra='forbid'):
     parquet_output_folder: Optional[DirectoryPath] = None
     parquet_output_segments: Optional[List[str]] = None
     configuration: Optional[str] = None
+    prefix_ids: Optional[str] = None
 
 
 class ChrtoutOutput(BaseModel, extra='forbid'):
@@ -88,24 +88,20 @@ class WrfHydroParityCheck(BaseModel, extra='forbid'):
 class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
     validation_files: List[FilePath]
 
-
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
     stream_output_time: int = 1
-    stream_output_type: streamOutput_allowedTypes = ".nc"
+    stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)]
-
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
             if value % 5 != 0:
                 raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
             if value / 60 > values['stream_output_time']:
-                raise ValueError(
-                    "stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
+                raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
-
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
