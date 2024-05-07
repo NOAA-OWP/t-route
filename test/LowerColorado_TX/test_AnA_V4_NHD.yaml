@@ -128,5 +128,6 @@ output_parameters:
         #---------
         parquet_output_folder: output/
         configuration: short_range
+        prefix_ids: nex
 
     
