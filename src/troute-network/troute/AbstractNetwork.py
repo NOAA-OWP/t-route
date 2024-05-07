@@ -3,6 +3,7 @@ from functools import partial
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import pytz
 
 import os
 import pathlib
@@ -151,7 +152,18 @@ class AbstractNetwork(ABC):
                     coastal_boundary_domain,
                 )
                 '''
-                self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files)
+
+                coastal_hy_crosswalk = {}    # default empty
+
+                if (coastal_boundary_domain_files):
+
+                    coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(str(coastal_boundary_domain_files))          
+
+                    if ('coastal_hy_crosswalk' in coastal_boundary_domain.keys()):
+
+                        coastal_hy_crosswalk = coastal_boundary_domain['coastal_hy_crosswalk']
+
+                self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files, coastal_hy_crosswalk)
                 
                 LOG.debug(
                     "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
@@ -979,10 +991,11 @@ def read_DFlow_output(ds):
     df = df.reset_index()[['time','station_name','depth']].set_index(['station_name', 'time']).unstack('time', fill_value = np.nan)['depth']
     return df
 
-def read_SCHISM_output(ds):
-    #Create map from SCHISM nodes to HYFeatures segments IDs
-    #schism_nodes = {3385091: 2421105, 6597441: 2405359, 3552530: 2408609, 5703933: 2398446, 5374087: 2404199, 7189832: 2404220, 9030082: 502249, 5108105: 13407, 4445543: 10072, 2613149: 573}
+def read_SCHISM_output(ds, coastal_hy_crosswalk):
 
+    schism_nodes = coastal_hy_crosswalk
+
+    '''
     schism_nodes = {2027338: 2421100, 4035169: 2421101, 7184797: 2421102, 6417594: 2421103, 6598587: 2421104,\
                     5126576: 2421105, 3041380: 2427740, 5825907: 2427742, 5126581: 2427743, 7496806: 2427745,\
                     5930731: 2427746, 5930765: 2427747, 4872295: 2427748, 3716495: 2427749, 6772610: 2427751,\
@@ -1024,7 +1037,8 @@ def read_SCHISM_output(ds):
                     2801669: 13403, 2610906: 13404, 4304673: 13405, 2826173: 13406, 5231213: 13407,\
                     1500498: 13413, 1616744: 13426, 2407622: 13505, 2020449: 16694, 4306670: 1000000165
                     }
-
+    '''
+                    
     base_date = ds.time.attrs.get('base_date').split()
     base_date[3] = str(int(float(base_date[3])))
     base_date[4] = str(int(float(base_date[4])))
@@ -1068,8 +1082,11 @@ def read_SCHISM_output(ds):
     return df
 
 
-def read_SCHISM_subset(ds):
+def read_SCHISM_subset(ds, coastal_hy_crosswalk):
 
+    schism_nodes = coastal_hy_crosswalk
+
+    '''
     schism_nodes = {2027338: 2421100, 4035169: 2421101, 7184797: 2421102, 6417594: 2421103, 6598587: 2421104,\
                     5126576: 2421105, 3041380: 2427740, 5825907: 2427742, 5126581: 2427743, 7496806: 2427745,\
                     5930731: 2427746, 5930765: 2427747, 4872295: 2427748, 3716495: 2427749, 6772610: 2427751,\
@@ -1111,7 +1128,8 @@ def read_SCHISM_subset(ds):
                     2801669: 13403, 2610906: 13404, 4304673: 13405, 2826173: 13406, 5231213: 13407,\
                     1500498: 13413, 1616744: 13426, 2407622: 13505, 2020449: 16694, 4306670: 1000000165
                     }
-
+    '''
+                    
     ds2 = ds.drop_vars(["SCHISM_hgrid_node_x", "SCHISM_hgrid_node_y"])
 
     # crosswalk from node ID to node index (number)
@@ -1151,21 +1169,24 @@ def read_SCHISM_subset(ds):
     df['waterdepth'] = df['elevation'] + df['depth']
     df = df.drop(['elevation','depth','node_x','node_y'], axis=1)
 
+    #import pdb; pdb.set_trace()
+
     #Reformat dataframe so rows are locations and columns are timestamps
     df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
 
     return df
 
 
-def read_coastal_output(filepath):
+def read_coastal_output(filepath, coastal_hy_crosswalk):
     ds = xr.open_dataset(filepath)
     coastal_model_indicator = ds.attrs.get('institution', None)
     if coastal_model_indicator=='Deltares':
         df = read_DFlow_output(ds)
     else:
+
         if ("base_date" in ds.time.attrs.keys()):
-            df = read_SCHISM_output(ds)
+            df = read_SCHISM_output(ds, coastal_hy_crosswalk)
         else:
-            df = read_SCHISM_subset(ds)
+            df = read_SCHISM_subset(ds, coastal_hy_crosswalk)
 
     return df
