@@ -572,5 +572,5 @@ def nwm_output_generator(
         parity_check(
             parity_set, results,
         )
-
+        
         LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
