@@ -34,7 +34,7 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
     lake_index_intersect = np.intersect1d(
         idxs,
         lakeids,
-        return_indices=True
+        return_indices = True
     )
 
     # replace lake ids with link IDs in the target_df index array
@@ -300,7 +300,7 @@ def nwm_output_generator(
         start = time.time()
         for i in range(i_df.shape[1]):
             nhd_io.write_waterbody_netcdf(
-                wbdyo, 
+                wbdyo,
                 i_df.iloc[:,[i]],
                 q_df.iloc[:,[i]],
                 d_df.iloc[:,[i]],
