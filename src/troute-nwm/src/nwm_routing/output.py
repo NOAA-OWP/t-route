@@ -107,6 +107,7 @@ def nwm_output_generator(
     link_gage_df = None,
     link_lake_crosswalk = None,
 ):
+
     dt = run.get("dt")
     nts = run.get("nts")
     t0 = run.get("t0")
@@ -237,8 +238,9 @@ def nwm_output_generator(
             
             # replace waterbody lake_ids with outlet link ids
             if link_lake_crosswalk:
+
                 # (re) set the flowveldepth index
-                courant.set_index(fvdidxs, inplace=True)
+                courant.set_index(fvdidxs, inplace = True)
             
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
     
@@ -268,7 +270,7 @@ def nwm_output_generator(
         time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
-        for i in range(i_df.shape[1]):        
+        for i in range(i_df.shape[1]):            
             nhd_io.write_waterbody_netcdf(
                 wbdyo, 
                 i_df.iloc[:,[i]],
@@ -334,6 +336,7 @@ def nwm_output_generator(
         )
         
         if chrtout_read_folder:
+
             chrtout_files = sorted(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
             )
@@ -451,9 +454,9 @@ def nwm_output_generator(
             # rather than just printing at gages. 
         )
         
-        LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))
-        
-    if lastobso:
+        LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
+
+    if lastobso:        
         # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
         # folder is provided by the user.
@@ -497,9 +500,9 @@ def nwm_output_generator(
         )
     
         start_time = time.time()
-
+        
         parity_check(
             parity_set, results,
         )
-        
+
         LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
