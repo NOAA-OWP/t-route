@@ -238,7 +238,7 @@ def nwm_output_generator(
             
             # replace waterbody lake_ids with outlet link ids
             if link_lake_crosswalk:
-
+                
                 # (re) set the flowveldepth index
                 courant.set_index(fvdidxs, inplace = True)
             
@@ -500,7 +500,7 @@ def nwm_output_generator(
         )
     
         start_time = time.time()
-        
+       
         parity_check(
             parity_set, results,
         )

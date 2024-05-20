@@ -102,7 +102,7 @@ class StreamOutput(BaseModel):
             if value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
-
+  
 
 OutputParameters.update_forward_refs()
 WrfHydroParityCheck.update_forward_refs()
