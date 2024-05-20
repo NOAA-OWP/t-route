@@ -32,8 +32,8 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
     lakeids = np.fromiter(crosswalk.keys(), dtype = int)
     idxs = target_df.index.to_numpy()
     lake_index_intersect = np.intersect1d(
-        idxs,
-        lakeids,
+        idxs, 
+        lakeids, 
         return_indices = True
     )
 
@@ -43,7 +43,7 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
 
     # (re) set the target_df index
     target_df.set_index(idxs, inplace = True)
-
+    
     return target_df
 
 
@@ -103,9 +103,9 @@ def nwm_output_generator(
     waterbodies_df,
     waterbody_types_df,
     data_assimilation_parameters=False,
-    lastobs_df=None,
-    link_gage_df=None,
-    link_lake_crosswalk=None,
+    lastobs_df = None,
+    link_gage_df = None,
+    link_lake_crosswalk = None,
 ):
     dt = run.get("dt")
     nts = run.get("nts")
@@ -144,7 +144,7 @@ def nwm_output_generator(
         )
 
     ################### Output Handling
-
+    
     start_time = time.time()
 
     LOG.info(f"Handling output ...")
@@ -186,6 +186,7 @@ def nwm_output_generator(
         )
 
         if wbdyo and not waterbodies_df.empty:
+            
             # create waterbody dataframe for output to netcdf file
             i_columns = pd.MultiIndex.from_product(
                 [range(nts), ["i"]]
@@ -217,7 +218,7 @@ def nwm_output_generator(
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
-
+            
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
         # flowveldepth.to_pickle(output_parameters['test_output'])
@@ -233,14 +234,14 @@ def nwm_output_generator(
                 ],
                 copy=False,
             )
-
+            
             # replace waterbody lake_ids with outlet link ids
             if link_lake_crosswalk:
                 # (re) set the flowveldepth index
                 courant.set_index(fvdidxs, inplace=True)
-
+            
         LOG.debug("Constructing the FVD DataFrame took %s seconds." % (time.time() - start))
-
+    
     if stream_output:
         stream_output_directory = stream_output['stream_output_directory']
         stream_output_timediff = stream_output['stream_output_time']
@@ -249,45 +250,45 @@ def nwm_output_generator(
 
         nudge = np.concatenate([r[8] for r in results])
         usgs_positions_id = np.concatenate([r[3][0] for r in results])
-        nhd_io.write_flowveldepth_netcdf(Path(stream_output_directory),
-                                         flowveldepth,
-                                         nudge,
-                                         usgs_positions_id,
-                                         t0,
-                                         int(stream_output_timediff),
+        nhd_io.write_flowveldepth_netcdf(Path(stream_output_directory), 
+                                         flowveldepth, 
+                                         nudge, 
+                                         usgs_positions_id, 
+                                         t0, 
+                                         int(stream_output_timediff), 
                                          stream_output_type,
                                          stream_output_internal_frequency,
                                          cpu_pool = cpu_pool)
 
     if test:
         flowveldepth.to_pickle(Path(test))
-
+    
     if wbdyo and not waterbodies_df.empty:
-
-        time_index, tmp_variable = map(list, zip(*i_df.columns.tolist()))
+        
+        time_index, tmp_variable = map(list,zip(*i_df.columns.tolist()))
         LOG.info("- writing t-route flow results to LAKEOUT files")
         start = time.time()
-        for i in range(i_df.shape[1]):
+        for i in range(i_df.shape[1]):        
             nhd_io.write_waterbody_netcdf(
-                wbdyo,
+                wbdyo, 
                 i_df.iloc[:,[i]],
                 q_df.iloc[:,[i]],
                 d_df.iloc[:,[i]],
                 waterbodies_df,
                 waterbody_types_df,
-                t0,
-                dt,
+                t0, 
+                dt, 
                 nts,
                 time_index[i],
             )
-
+        
         LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
-
+    
     if rsrto:
 
         LOG.info("- writing restart files")
         start = time.time()
-
+        
         wrf_hydro_restart_dir = rsrto.get(
             "wrf_hydro_channel_restart_source_directory", None
         )
@@ -317,21 +318,21 @@ def nwm_output_generator(
                 )
             else:
                 LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
-
+                
         else:
             LOG.critical('wrf_hydro_channel_restart_source_directory not specified in configuration file. Aborting restart write sequence.')
-
+            
         LOG.debug("writing restart files took %s seconds." % (time.time() - start))
 
     if chrto:
-
+        
         LOG.info("- writing t-route flow results to CHRTOUT files")
         start = time.time()
-
+        
         chrtout_read_folder = chrto.get(
             "wrf_hydro_channel_output_source_folder", None
         )
-
+        
         if chrtout_read_folder:
             chrtout_files = sorted(
                 Path(chrtout_read_folder) / f for f in run["qlat_files"]
@@ -343,11 +344,11 @@ def nwm_output_generator(
                 qts_subdivisions,
                 cpu_pool,
             )
-
+        
         LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
 
-    if csv_output_folder:
-
+    if csv_output_folder: 
+    
         LOG.info("- writing flow, velocity, and depth results to .csv")
         start = time.time()
 
@@ -370,7 +371,7 @@ def nwm_output_generator(
         # no csv_output_segments are specified, then write results for all segments
         if not csv_output_segments:
             csv_output_segments = flowveldepth.index
-
+        
         flowveldepth = flowveldepth.sort_index()
         flowveldepth.loc[csv_output_segments].to_csv(output_path.joinpath(filename_fvd))
 
@@ -427,10 +428,10 @@ def nwm_output_generator(
         LOG.debug("writing parquet file took %s seconds." % (time.time() - start))
 
     if chano:
-
+        
         LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
         start = time.time()
-
+        
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
             link_gage_df = _reindex_lake_to_link_id(link_gage_df, link_lake_crosswalk)
@@ -440,18 +441,18 @@ def nwm_output_generator(
             chano['chanobs_filepath'] = str(chano['chanobs_filepath'])
 
         nhd_io.write_chanobs(
-            Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']),
-            flowveldepth,
-            link_gage_df,
-            t0,
-            dt,
+            Path(chano['chanobs_output_directory'] + chano['chanobs_filepath']), 
+            flowveldepth, 
+            link_gage_df, 
+            t0, 
+            dt, 
             nts,
             # TODO allow user to pass a list of segments at which they would like to print results
             # rather than just printing at gages. 
         )
-
+        
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))
-
+        
     if lastobso:
         # Write out LastObs as netcdf when using main_v04 or troute_model with HYfeature.
         # This is only needed if 1) streamflow nudging is ON and 2) a lastobs output
@@ -490,15 +491,15 @@ def nwm_output_generator(
     ################### Parity Check
 
     if parity_set:
-
+        
         LOG.info(
             "conducting parity check, comparing WRF Hydro results against t-route results"
         )
-
+    
         start_time = time.time()
 
         parity_check(
             parity_set, results,
         )
-
+        
         LOG.debug("parity check complete in %s seconds." % (time.time() - start_time))
