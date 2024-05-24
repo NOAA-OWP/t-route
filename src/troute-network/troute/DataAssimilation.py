@@ -207,7 +207,7 @@ class NudgingDA(AbstractDA):
                     self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
                 
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-    
+                self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -262,7 +262,7 @@ class NudgingDA(AbstractDA):
         
         if streamflow_da_parameters.get('streamflow_nudging', False):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-            
+            self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
 
 class PersistenceDA(AbstractDA):
     """
@@ -990,6 +990,61 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
         usgs_df = pd.DataFrame()
     
     return usgs_df
+
+def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
+    '''
+    Function for reading USGS timeslice files and creating a dataframe
+    of USGS gage observations. This dataframe is used for streamflow
+    nudging and can be used for constructing USGS reservoir dataframes.
+    
+    Arguments:
+    ----------
+    - data_assimilation_parameters (dict): user input data re data assimilation
+    - streamflow_da_parameters     (dict): user input data re streamflow nudging
+    - run_parameters               (dict): user input data re subset of compute configuration
+    - network                    (Object): network object created from abstract class
+    - da_run                       (list): list of data assimilation files separated by for loop chunks
+    
+    Returns:
+    --------
+    - usgs_df (DataFrame): dataframe of USGS gage observations
+    '''
+    canada_timeslices_folder = data_assimilation_parameters.get("canada_timeslices_folder", None)
+    #lastobs_file           = streamflow_da_parameters.get("wrf_hydro_lastobs_file", None)
+    lastobs_start          = data_assimilation_parameters.get("wrf_hydro_lastobs_lead_time_relative_to_simulation_start_time",0)
+    lastobs_type           = data_assimilation_parameters.get("wrf_lastobs_type", "error-based")
+    crosswalk_file         = streamflow_da_parameters.get("gage_segID_crosswalk_file", None)
+    crosswalk_gage_field   = streamflow_da_parameters.get('crosswalk_gage_field','gages')
+    crosswalk_segID_field  = streamflow_da_parameters.get('crosswalk_segID_field','link')
+    da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
+    qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
+    interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
+    
+    # TODO: join timeslice folder and files into complete path upstream
+    canada_timeslices_folder = pathlib.Path(canada_timeslices_folder)
+    canada_files = [canada_timeslices_folder.joinpath(f) for f in 
+                  da_run['canada_timeslice_files']]
+	
+    if canada_files:
+        canada_df = (
+            nhd_io.get_obs_from_timeslices(
+                network.link_gage_df,
+                crosswalk_gage_field,
+                crosswalk_segID_field,
+                canada_files,
+                qc_threshold,
+                interpolation_limit,
+                run_parameters.get("dt"),
+                network.t0,
+                run_parameters.get("cpu_pool", None)
+            ).
+            loc[network.link_gage_df.index]
+        )
+    
+    else:
+        canada_df = pd.DataFrame()
+    
+    return canada_df
 
 def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, streamflow_da_parameters, run_parameters, network, da_run, lake_gage_crosswalk, res_source):
     '''

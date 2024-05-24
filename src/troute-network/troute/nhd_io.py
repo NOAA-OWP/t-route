@@ -1059,27 +1059,29 @@ def _read_timeslice_file(f):
         stns      = ds.variables['stationId'][:].filled(fill_value = np.nan)
         t         = ds.variables['time'][:].filled(fill_value = np.nan)
         qual      = ds.variables['discharge_quality'][:].filled(fill_value = np.nan)
+    if discharge.size != 0 and stns.size != 0 and t.size != 0:   
+        stationId = np.apply_along_axis(''.join, 1, stns.astype(str))
+        time_str = np.apply_along_axis(''.join, 1, t.astype(str))
+        stationId = np.char.strip(stationId)
         
-    stationId = np.apply_along_axis(''.join, 1, stns.astype(str))
-    time_str = np.apply_along_axis(''.join, 1, t.astype(str))
-    stationId = np.char.strip(stationId)
-    
-    timeslice_observations = (pd.DataFrame({
-                                'stationId' : stationId,
-                                'datetime'  : time_str,
-                                'discharge' : discharge
-                            }).
-                             set_index(['stationId', 'datetime']).
-                             unstack(1, fill_value = np.nan)['discharge'])
-    
-    observation_quality = (pd.DataFrame({
-                                'stationId' : stationId,
-                                'datetime'  : time_str,
-                                'quality'   : qual/100
-                            }).
-                             set_index(['stationId', 'datetime']).
-                             unstack(1, fill_value = np.nan)['quality'])
-    
+        timeslice_observations = (pd.DataFrame({
+                                    'stationId' : stationId,
+                                    'datetime'  : time_str,
+                                    'discharge' : discharge
+                                }).
+                                set_index(['stationId', 'datetime']).
+                                unstack(1, fill_value = np.nan)['discharge'])
+        
+        observation_quality = (pd.DataFrame({
+                                    'stationId' : stationId,
+                                    'datetime'  : time_str,
+                                    'quality'   : qual/100
+                                }).
+                                set_index(['stationId', 'datetime']).
+                                unstack(1, fill_value = np.nan)['quality'])
+    else:
+        timeslice_observations = pd.DataFrame()
+        observation_quality = pd.DataFrame()
     return timeslice_observations, observation_quality
 
 def _interpolate_one(df, interpolation_limit, frequency):
@@ -1157,7 +1159,11 @@ def get_obs_from_timeslices(
         for f in timeslice_files:
             jobs.append(delayed(_read_timeslice_file)(f))
         timeslice_dataframes = parallel(jobs)
-        
+    
+    all_empty = all(df.empty for tuple in timeslice_dataframes for df in tuple)
+    if all_empty:
+        LOG.debug(f'DataFrames in the list are empty.')
+        return pd.DataFrame()    
     # create lists of observations and obs quality dataframes returned 
     # from _read_timeslice_file
     timeslice_obs_frames = []
