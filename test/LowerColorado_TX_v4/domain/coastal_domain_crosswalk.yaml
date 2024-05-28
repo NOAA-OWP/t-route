@@ -1,12 +1,7 @@
 ##### Description #####
 # Format - 
-# Diffusive domain tailwater ID (int):
-#   headwater (int): Segment IDs identifying any headwaters of the diffusive domain. A value of '999999' indicates
-#                    to t-route that it should start at the tailwater ID and traverse upstream until a headwater or a waterbody
-#                    reached. Traversing upstream will stop at any additional IDs that are provided, essentially making them
-#                    headwaters of the diffusive domain.
-#   rfc: *outdated*
-#   rpu: *outdated*
+#   Crosswalk mapping (1:1) of nexus IDs from any external coastal boundary file (e.g., at the 
+#   time of implementation, SCHISM node IDs) to HY features nexus IDs
 #######################
 
 coastal_hy_crosswalk:
