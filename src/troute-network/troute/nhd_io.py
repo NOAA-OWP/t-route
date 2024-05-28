@@ -1163,7 +1163,7 @@ def get_obs_from_timeslices(
 
     all_empty = all(df.empty for tuple in timeslice_dataframes for df in tuple)
     if all_empty:
-        LOG.debug(f'DataFrames in the list are empty.')
+        LOG.debug(f'{crosswalk_gage_field} DataFrames is empty, check timeslice files.')
         return pd.DataFrame()
        
     # create lists of observations and obs quality dataframes returned 
