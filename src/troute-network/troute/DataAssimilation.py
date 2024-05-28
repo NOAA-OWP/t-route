@@ -1021,8 +1021,10 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
 
     # TODO: join timeslice folder and files into complete path upstream
-    canada_files = [canada_timeslices_folder.joinpath(f) for f in 
-                  da_run['canada_timeslice_files']]
+    if da_run['canada_timeslice_files']:
+        canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
+    else:
+        canada_files = []
 
     if canada_files:
         canada_df = (
