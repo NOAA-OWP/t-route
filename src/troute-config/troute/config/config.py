@@ -1,3 +1,5 @@
+import os
+
 from pydantic import Field, BaseModel, root_validator
 from pathlib import Path
 
@@ -128,6 +130,9 @@ class Config(BaseModel, extra='forbid'):
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
                 if not reservoir_rfc_forecasts_time_series_path:
                     error_message  += ' RFC timeseries path is missing.'
+                else:
+                    if not os.path.exists(reservoir_rfc_forecasts_time_series_path):
+                        error_message += ' reservoir_rfc_forecasts_time_series_path provided does not exist. '                    
                 assert not error_message, 'RFC forecast is enabled, but:' + error_message
 
         return values
@@ -149,6 +154,9 @@ class Config(BaseModel, extra='forbid'):
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
                 if not usgs_timeslices_folder:
                     error_message  += ' USGS_timeslices_folder is missing.'
+                else:
+                    if not os.path.exists(usgs_timeslices_folder):
+                        error_message += ' USGS_timeslices_folder path provided does not exist. '
                 assert not error_message, 'USGS reservoir DA is enabled, but:' + error_message
 
         return values
@@ -170,6 +178,9 @@ class Config(BaseModel, extra='forbid'):
                     error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
                 if not usace_timeslices_folder:
                     error_message  += ' USACE_timeslices_folder is missing.'
+                else:
+                    if not os.path.exists(usace_timeslices_folder):
+                        error_message += ' USACE_timeslices_folder path provided does not exist. '                    
                 assert not error_message, 'USACE reservoir DA is enabled, but:' + error_message
 
         return values
