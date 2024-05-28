@@ -1003,36 +1003,44 @@ def read_SCHISM_output(ds, coastal_hy_crosswalk):
     #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
     elevation_df = ds['elevation'].loc[:,list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(elevation_df)
-    dict_length = len(schism_nodes.values())
-    n = df_length/dict_length
-    elevation_df['link'] = list(schism_nodes.values())*int(n)
 
-    #Retrieve depths at specified nodes from 'schism_nodes' dictionary
-    depth_df = ds['depth'].loc[list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
+    # if none of the nodes from crosswalk are present, return empty df 
+    if (len(elevation_df)==0):
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(depth_df)
-    dict_length = len(schism_nodes.values())
-    n = df_length/dict_length
-    depth_df['link'] = list(schism_nodes.values())*int(n)
+        df=pd.DataFrame()
 
-    #Combine elevation and depth dataframes, and calculate water depth
-    df = pd.merge(elevation_df, depth_df, on='link')
-    df['waterdepth'] = df['elevation'] + df['depth']
-    df = df.drop(['elevation','depth'], axis=1)
+    else:
 
-    #Replace 'time' columns of seconds with datetimes
-    df['base_date'] = base_date
-    df['time'] = pd.to_timedelta(df['time'],'s')
-    df['time'] = df['base_date'] + df['time']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(elevation_df)
+        dict_length = len(schism_nodes.values())
+        n = df_length/dict_length
+        elevation_df['link'] = list(schism_nodes.values())*int(n)
 
-    #Drop columns we no longer need
-    df = df.drop(['base_date'], axis=1)
+        #Retrieve depths at specified nodes from 'schism_nodes' dictionary
+        depth_df = ds['depth'].loc[list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
 
-    #Reformat dataframe so rows are locations and columns are timestamps
-    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(depth_df)
+        dict_length = len(schism_nodes.values())
+        n = df_length/dict_length
+        depth_df['link'] = list(schism_nodes.values())*int(n)
+
+        #Combine elevation and depth dataframes, and calculate water depth
+        df = pd.merge(elevation_df, depth_df, on='link')
+        df['waterdepth'] = df['elevation'] + df['depth']
+        df = df.drop(['elevation','depth'], axis=1)
+
+        #Replace 'time' columns of seconds with datetimes
+        df['base_date'] = base_date
+        df['time'] = pd.to_timedelta(df['time'],'s')
+        df['time'] = df['base_date'] + df['time']
+
+        #Drop columns we no longer need
+        df = df.drop(['base_date'], axis=1)
+
+        #Reformat dataframe so rows are locations and columns are timestamps
+        df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
 
     return df
 
@@ -1057,31 +1065,39 @@ def read_SCHISM_subset(ds, coastal_hy_crosswalk):
             idSelect.append(idmap[snKey])
             idHySelect.append(schism_nodes[snKey])
 
-    #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
-    elevation_df = ds2['elevation'].loc[:,idSelect].to_dataframe().reset_index()
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(elevation_df)
-    dict_length = len(idSelect)
-    nTimes = int(df_length/dict_length)
-    elevation_df['link'] = idHySelect*nTimes
+    # if none of the nodes from crosswalk are present, return empty df 
+    if (len(idSelect)==0):
 
-    #Retrieve depths at specified nodes from 'schism_nodes' dictionary
-    depth_df = ds2['depth'].loc[idSelect].to_dataframe().reset_index()
+        df=pd.DataFrame()
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(depth_df)
-    dict_length = len(idSelect)
-    nTimes = int(df_length/dict_length)
-    depth_df['link'] = idHySelect*nTimes
+    else:
 
-    #Combine elevation and depth dataframes, and calculate water depth
-    df = pd.merge(elevation_df, depth_df, on='link')
-    df['waterdepth'] = df['elevation'] + df['depth']
-    df = df.drop(['elevation','depth','node_x','node_y'], axis=1)
+        #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
+        elevation_df = ds2['elevation'].loc[:,idSelect].to_dataframe().reset_index()
 
-    #Reformat dataframe so rows are locations and columns are timestamps
-    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(elevation_df)
+        dict_length = len(idSelect)
+        nTimes = int(df_length/dict_length)
+        elevation_df['link'] = idHySelect*nTimes
+
+        #Retrieve depths at specified nodes from 'schism_nodes' dictionary
+        depth_df = ds2['depth'].loc[idSelect].to_dataframe().reset_index()
+
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(depth_df)
+        dict_length = len(idSelect)
+        nTimes = int(df_length/dict_length)
+        depth_df['link'] = idHySelect*nTimes
+
+        #Combine elevation and depth dataframes, and calculate water depth
+        df = pd.merge(elevation_df, depth_df, on='link')
+        df['waterdepth'] = df['elevation'] + df['depth']
+        df = df.drop(['elevation','depth','node_x','node_y'], axis=1)
+
+        #Reformat dataframe so rows are locations and columns are timestamps
+        df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
 
     return df
 
@@ -1092,10 +1108,13 @@ def read_coastal_output(filepath, coastal_hy_crosswalk):
     if coastal_model_indicator=='Deltares':
         df = read_DFlow_output(ds)
     else:
-
-        if ("base_date" in ds.time.attrs.keys()):
-            df = read_SCHISM_output(ds, coastal_hy_crosswalk)
+        if (len(coastal_hy_crosswalk)==0):
+            # just create empty coastal dataframe if there is no hy crosswalk
+            df = pd.DataFrame()
         else:
-            df = read_SCHISM_subset(ds, coastal_hy_crosswalk)
+            if ("base_date" in ds.time.attrs.keys()):
+                df = read_SCHISM_output(ds, coastal_hy_crosswalk)
+            else:
+                df = read_SCHISM_subset(ds, coastal_hy_crosswalk)
 
     return df
