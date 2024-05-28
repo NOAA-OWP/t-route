@@ -205,7 +205,7 @@ class NudgingDA(AbstractDA):
                 # waterbodies with related lake ids.
                 if network.link_lake_crosswalk:
                     self._last_obs_df = _reindex_link_to_lake_id(self._last_obs_df, network.link_lake_crosswalk)
-                import pdb;pdb.set_trace()
+                
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
@@ -1021,7 +1021,7 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-    import pdb;pdb.set_trace()
+    
     # TODO: join timeslice folder and files into complete path upstream
     
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
