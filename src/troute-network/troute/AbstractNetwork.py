@@ -975,7 +975,8 @@ def read_file(file_name):
 def read_DFlow_output(ds):
     df = ds[['waterlevel','bedlevel']].to_dataframe()
     df['depth'] = df['waterlevel'] - df['bedlevel']
-    df['station_name'] = df['station_name'].str.decode('utf-8').str.split(' / ',expand=True).loc[:,1].astype(float).astype(int)
+    # df['station_name'] = df['station_name'].str.decode('utf-8').str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+    df['station_name'] = df['station_name'].str.decode('utf-8').str.extract(r'(\d+)').astype(float).astype(int)
     df = df.reset_index()[['time','station_name','depth']].set_index(['station_name', 'time']).unstack('time', fill_value = np.nan)['depth']
     return df
 

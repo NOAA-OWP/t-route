@@ -1059,7 +1059,7 @@ def _read_timeslice_file(f):
         stns      = ds.variables['stationId'][:].filled(fill_value = np.nan)
         t         = ds.variables['time'][:].filled(fill_value = np.nan)
         qual      = ds.variables['discharge_quality'][:].filled(fill_value = np.nan)
-    if discharge.size != 0 and stns.size != 0 and t.size != 0:   
+    if discharge.size != 0 and stns.size != 0 and t.size != 0:        
         stationId = np.apply_along_axis(''.join, 1, stns.astype(str))
         time_str = np.apply_along_axis(''.join, 1, t.astype(str))
         stationId = np.char.strip(stationId)
@@ -1159,11 +1159,11 @@ def get_obs_from_timeslices(
         for f in timeslice_files:
             jobs.append(delayed(_read_timeslice_file)(f))
         timeslice_dataframes = parallel(jobs)
-    
+
     all_empty = all(df.empty for tuple in timeslice_dataframes for df in tuple)
     if all_empty:
-        LOG.debug(f'DataFrames in the list are empty.')
-        return pd.DataFrame()    
+        LOG.debug(f'{crosswalk_gage_field} DataFrames is empty, check timeslice files.')
+        return pd.DataFrame()
     # create lists of observations and obs quality dataframes returned 
     # from _read_timeslice_file
     timeslice_obs_frames = []
