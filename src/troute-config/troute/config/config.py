@@ -186,6 +186,30 @@ class Config(BaseModel, extra='forbid'):
         return values
     
     @root_validator(skip_on_failure=True)
+    def check_canada_reservoir_da_parameters(cls, values):
+        reservoir_da = values['compute_parameters'].data_assimilation_parameters.reservoir_da
+        if reservoir_da:
+            reservoir_persistence_da = reservoir_da.reservoir_persistence_da
+            reservoir_persistence_canada = False
+            if reservoir_persistence_da:
+                reservoir_persistence_canada = reservoir_persistence_da.reservoir_persistence_canada
+                canada_timeslices_folder = values['compute_parameters'].data_assimilation_parameters.canada_timeslices_folder
+            if reservoir_persistence_canada:
+                error_message = ''
+                network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
+                reservoir_parameter_file = reservoir_da.reservoir_parameter_file
+                if not reservoir_parameter_file and network_type=='NHDNetwork':
+                    error_message += ' Reservoir_parameter_file is missing (and network type is NHDNetwork).'
+                if not canada_timeslices_folder:
+                    error_message  += ' canada_timeslices_folder is missing.'
+                else:
+                    if not os.path.exists(canada_timeslices_folder):
+                        error_message += ' canada_timeslices_folder path provided does not exist. '                    
+                assert not error_message, 'Canada reservoir DA is enabled, but:' + error_message
+
+        return values
+
+    @root_validator(skip_on_failure=True)
     def check_qlat_inputs(cls, values):
         forcing_parameters = values['compute_parameters'].forcing_parameters
         if forcing_parameters:
