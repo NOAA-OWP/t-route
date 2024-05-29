@@ -52,6 +52,10 @@ def build_da_sets(da_params, run_sets, t0):
         "canada_timeslices_folder",
         None
     )
+    LakeOntario_outflow = da_params.get(
+        "LakeOntario_outflow",
+        None
+    )    
     # User-specified DA ON/OFF preferences
     usace_da = False
     usgs_da = False
@@ -86,6 +90,9 @@ def build_da_sets(da_params, run_sets, t0):
             usace_timeslices_folder = pathlib.Path(usace_timeslices_folder)
         if canada_timeslices_folder:
             canada_timeslices_folder = pathlib.Path(canada_timeslices_folder)
+        if LakeOntario_outflow:
+            LakeOntario_outflow = pathlib.Path(LakeOntario_outflow)
+            
         # the number of timeslice files appended to the front- and back-ends
         # of the TimeSlice file interpolation stack
         pad_hours = da_params.get("timeslice_lookback_hours",0)
@@ -151,6 +158,8 @@ def build_da_sets(da_params, run_sets, t0):
                 # Add available TimeSlices to da_sets list
                 da_sets[i]['canada_timeslice_files'] = filenames_canada
                 
+            if LakeOntario_outflow:
+                da_sets[i]['LakeOntario_outflow'] = LakeOntario_outflow    
             # reset initialization time for loop set i+1
             t0 = run_sets[i]['final_timestamp']
             

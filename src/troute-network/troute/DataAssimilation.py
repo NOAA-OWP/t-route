@@ -209,6 +209,9 @@ class NudgingDA(AbstractDA):
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                if 'LakeOntario_outflow' in da_run:
+                    self._lake_ontario_df= _create_LakeOntario_df(da_run)
+
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -265,7 +268,8 @@ class NudgingDA(AbstractDA):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             if 'canada_timeslice_files' in da_run:
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-
+            if 'LakeOntario_outflow' in da_run:
+                self._lake_ontario_df= _create_LakeOntario_df(da_run)
 class PersistenceDA(AbstractDA):
     """
     
@@ -992,6 +996,10 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
         usgs_df = pd.DataFrame()
     
     return usgs_df
+
+def _create_LakeOntario_df(da_run):
+    lake_ontario_df = pd.read_csv(da_run.get('LakeOntario_outflow'))
+    return lake_ontario_df
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
