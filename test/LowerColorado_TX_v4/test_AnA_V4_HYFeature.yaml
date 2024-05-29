@@ -98,7 +98,7 @@ compute_parameters:
     data_assimilation_parameters:
         #----------
         usgs_timeslices_folder   : usgs_timeslices/
-        usace_timeslices_folder  : usace_timelices/
+        usace_timeslices_folder  : usace_timeslices/
         streamflow_da:
             #----------
             streamflow_nudging            : True
