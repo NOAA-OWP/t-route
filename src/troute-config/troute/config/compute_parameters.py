@@ -126,11 +126,13 @@ class StreamflowDA(BaseModel, extra='forbid'):
     diffusive_streamflow_nudging: bool = False
 
 
-class ReservoirPersistenceDA(BaseModel, extra='forbid'):
+class ReservoirPersistenceDA(BaseModel, extra='ignore'):
     # NOTE: mandatory for USGS reservoir DA, defaults to False
     reservoir_persistence_usgs: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
     reservoir_persistence_usace: bool = False
+    # NOTE: mandatory for USACE reservoir DA, defaults to False
+    reservoir_persistence_canada: bool = False
 
     crosswalk_usgs_gage_field: str = "usgs_gage_id"
     crosswalk_usace_gage_field: str = "usace_gage_id"
@@ -152,11 +154,13 @@ class ReservoirDA(BaseModel, extra='forbid'):
     reservoir_parameter_file: Optional[FilePath] = None
 
 
-class DataAssimilationParameters(BaseModel, extra='forbid'):
+class DataAssimilationParameters(BaseModel, extra='ignore'):
     # NOTE: required for streamflow nudging and/or USGS reservoir DA
     usgs_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for USACE reservoir DA
     usace_timeslices_folder: Optional[DirectoryPath] = None
+    # NOTE: required for canada reservoir DA
+    canada_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for reservoir DA - suggested value 24 (1 days)
     timeslice_lookback_hours: int = 24
 
