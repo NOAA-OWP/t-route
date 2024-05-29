@@ -151,7 +151,18 @@ class AbstractNetwork(ABC):
                     coastal_boundary_domain,
                 )
                 '''
-                self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files)
+
+                coastal_hy_crosswalk = {}    # default empty
+
+                if (coastal_boundary_domain_files):
+
+                    coastal_boundary_domain   = nhd_io.read_coastal_boundary_domain(str(coastal_boundary_domain_files))          
+
+                    if ('coastal_hy_crosswalk' in coastal_boundary_domain.keys()):
+
+                        coastal_hy_crosswalk = coastal_boundary_domain['coastal_hy_crosswalk']
+
+                self._coastal_boundary_depth_df = read_coastal_output(coastal_boundary_elev_files, coastal_hy_crosswalk)
                 
                 LOG.debug(
                     "coastal boundary elevation observation DataFrame creation complete in %s seconds." \
@@ -980,52 +991,10 @@ def read_DFlow_output(ds):
     df = df.reset_index()[['time','station_name','depth']].set_index(['station_name', 'time']).unstack('time', fill_value = np.nan)['depth']
     return df
 
-def read_SCHISM_output(ds):
-    #Create map from SCHISM nodes to HYFeatures segments IDs
-    #schism_nodes = {3385091: 2421105, 6597441: 2405359, 3552530: 2408609, 5703933: 2398446, 5374087: 2404199, 7189832: 2404220, 9030082: 502249, 5108105: 13407, 4445543: 10072, 2613149: 573}
+def read_SCHISM_output(ds, coastal_hy_crosswalk):
 
-    schism_nodes = {2027338: 2421100, 4035169: 2421101, 7184797: 2421102, 6417594: 2421103, 6598587: 2421104,\
-                    5126576: 2421105, 3041380: 2427740, 5825907: 2427742, 5126581: 2427743, 7496806: 2427745,\
-                    5930731: 2427746, 5930765: 2427747, 4872295: 2427748, 3716495: 2427749, 6772610: 2427751,\
-                    6772821: 2427752, 6686556: 2427753, 6415868: 2427754, 5930696: 2427755, 6509079: 2427757,\
-                    6686355: 2427758, 6941133: 2427759, 6857824: 2427764, 7782295: 2427766, 7713034: 2427767,\
-                    2658810: 1000006226, 4312810: 2405353, 3393109: 2405354, 3560758: 2405355, 2511592: 2405356,\
-                    4183187: 2405357, 3039320: 2405358, 3218843: 2405359, 1676715: 2405418, 1839543: 2405419,\
-                    2024773: 2405420, 2312955: 2405421, 2664683: 2405422, 2017057: 2406522, 3723260: 2406526,\
-                    3723157: 2406527, 2024879: 2406534, 3039501: 2406535, 2665033: 2406549, 2025010: 2406550,\
-                    2511611: 2406551, 3393073: 2406554, 3880749: 2406555, 7980609: 1000006212, 2316378: 2408598,\
-                    3042294: 2408599, 5933809: 2408600, 5004913: 2408601, 6427404: 2408602, 7499073: 2408603,\
-                    8607646: 2408604, 9053055: 2408605, 9013510: 2408606, 8888704: 2408607, 8045070: 2408608,\
-                    5368440: 2408609, 8931693: 2408611, 8753036: 2408612, 8284194: 2408613, 6867830: 2408614,\
-                    5126077: 2408615, 7852440: 2408618, 7853150: 2408619, 2857122: 2408624, 2028510: 2408629,\
-                    6519272: 2416667, 8107300: 2416668, 8227000: 2416669, 8505203: 2416670, 8705366: 2416672,\
-                    2307343: 1000006217, 2030921: 2404195, 2669868: 2404196, 3564827: 2404197, 4611005: 2404198,\
-                    5254419: 2404199, 5827939: 1000006388, 1790145: 3124, 2803279: 3125, 2419051: 3129,\
-                    2416348: 566, 2416380: 567, 2223431: 568, 2419115: 569, 2611483: 570,\
-                    2613148: 571, 2803319: 572, 2613160: 573, 2020673: 593, 2807821: 1000000541,\
-                    2318631: 2404211, 2031052: 2404212, 2669998: 2404213, 3044363: 2404214, 3884737: 2404215,\
-                    5116845: 2404216, 4611072: 2404217, 5254476: 2404218, 6698071: 2404219, 7266700: 2404220,\
-                    2651436: 2404228, 5718260: 2404238, 7421990: 1000006379, 3185415: 10070, 3361095: 10071,\
-                    4980925: 10072, 1777317: 10078, 1777218: 10262, 1953840: 10277, 2144296: 10278,\
-                    4584051: 10279, 4980992: 1000000140, 2017616: 2398436, 2017604: 2398437, 2603127: 2398438,\
-                    3202425: 2398439, 4037385: 2398440, 4472674: 2398441, 4610656: 2398442, 4472535: 2398443,\
-                    3884041: 2398444, 4331403: 2398445, 5813758: 2398446, 3043456: 2398449, 3564255: 2398452,\
-                    1844821: 2398454, 1427858: 2398463, 1844946: 2398464, 3726989: 2398465, 2317704: 2398468,\
-                    1836326: 2398535, 1836349: 2398536, 1536042: 2398541, 2017505: 2398565, 2030085: 2398566,\
-                    1845477: 2398578, 2317890: 2398579, 4745762: 2398580, 1845727: 2398597, 2017818: 2398598,\
-                    2209883: 2398599, 2516187: 2398600, 3564415: 2398601, 5591249: 2398602, 1845628: 2398616,\
-                    2410160: 2398639, 2030432: 2398640, 4186478: 2398641, 6025227: 1000006196, 3235974: 502242,\
-                    4343151: 502243, 5500184: 502244, 5943785: 502245, 8064321: 502246, 8303404: 502247,\
-                    8989887: 502248, 8469736: 502249, 6343477: 502252, 7365493: 502253, 8674004: 502254,\
-                    8722305: 502261, 4342994: 502264, 4621464: 502265, 4621501: 502266, 5140865: 502267,\
-                    4198023: 502270, 2871863: 502275, 2683619: 502481, 1860069: 502538, 7365903: 1000002980,\
-                    2603342: 13388, 2603372: 13389, 2603404: 13390, 2603408: 13391, 2609581: 13392,\
-                    2222641: 13393, 2610580: 13394, 2231391: 13395, 2988292: 13396, 2988309: 13397,\
-                    2417818: 13398, 2417840: 13399, 2610734: 13400, 2417976: 13401, 2418018: 13402,\
-                    2801669: 13403, 2610906: 13404, 4304673: 13405, 2826173: 13406, 5231213: 13407,\
-                    1500498: 13413, 1616744: 13426, 2407622: 13505, 2020449: 16694, 4306670: 1000000165
-                    }
-
+    schism_nodes = coastal_hy_crosswalk
+                    
     base_date = ds.time.attrs.get('base_date').split()
     base_date[3] = str(int(float(base_date[3])))
     base_date[4] = str(int(float(base_date[4])))
@@ -1035,84 +1004,52 @@ def read_SCHISM_output(ds):
     #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
     elevation_df = ds['elevation'].loc[:,list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(elevation_df)
-    dict_length = len(schism_nodes.values())
-    n = df_length/dict_length
-    elevation_df['link'] = list(schism_nodes.values())*int(n)
 
-    #Retrieve depths at specified nodes from 'schism_nodes' dictionary
-    depth_df = ds['depth'].loc[list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
+    # if none of the nodes from crosswalk are present, return empty df 
+    if (len(elevation_df)==0):
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(depth_df)
-    dict_length = len(schism_nodes.values())
-    n = df_length/dict_length
-    depth_df['link'] = list(schism_nodes.values())*int(n)
+        df=pd.DataFrame()
 
-    #Combine elevation and depth dataframes, and calculate water depth
-    df = pd.merge(elevation_df, depth_df, on='link')
-    df['waterdepth'] = df['elevation'] + df['depth']
-    df = df.drop(['elevation','depth'], axis=1)
+    else:
 
-    #Replace 'time' columns of seconds with datetimes
-    df['base_date'] = base_date
-    df['time'] = pd.to_timedelta(df['time'],'s')
-    df['time'] = df['base_date'] + df['time']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(elevation_df)
+        dict_length = len(schism_nodes.values())
+        n = df_length/dict_length
+        elevation_df['link'] = list(schism_nodes.values())*int(n)
 
-    #Drop columns we no longer need
-    df = df.drop(['base_date'], axis=1)
+        #Retrieve depths at specified nodes from 'schism_nodes' dictionary
+        depth_df = ds['depth'].loc[list(schism_nodes.keys())].to_dataframe().reset_index().drop('nSCHISM_hgrid_node', axis=1)
 
-    #Reformat dataframe so rows are locations and columns are timestamps
-    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(depth_df)
+        dict_length = len(schism_nodes.values())
+        n = df_length/dict_length
+        depth_df['link'] = list(schism_nodes.values())*int(n)
+
+        #Combine elevation and depth dataframes, and calculate water depth
+        df = pd.merge(elevation_df, depth_df, on='link')
+        df['waterdepth'] = df['elevation'] + df['depth']
+        df = df.drop(['elevation','depth'], axis=1)
+
+        #Replace 'time' columns of seconds with datetimes
+        df['base_date'] = base_date
+        df['time'] = pd.to_timedelta(df['time'],'s')
+        df['time'] = df['base_date'] + df['time']
+
+        #Drop columns we no longer need
+        df = df.drop(['base_date'], axis=1)
+
+        #Reformat dataframe so rows are locations and columns are timestamps
+        df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
 
     return df
 
 
-def read_SCHISM_subset(ds):
+def read_SCHISM_subset(ds, coastal_hy_crosswalk):
 
-    schism_nodes = {2027338: 2421100, 4035169: 2421101, 7184797: 2421102, 6417594: 2421103, 6598587: 2421104,\
-                    5126576: 2421105, 3041380: 2427740, 5825907: 2427742, 5126581: 2427743, 7496806: 2427745,\
-                    5930731: 2427746, 5930765: 2427747, 4872295: 2427748, 3716495: 2427749, 6772610: 2427751,\
-                    6772821: 2427752, 6686556: 2427753, 6415868: 2427754, 5930696: 2427755, 6509079: 2427757,\
-                    6686355: 2427758, 6941133: 2427759, 6857824: 2427764, 7782295: 2427766, 7713034: 2427767,\
-                    2658810: 1000006226, 4312810: 2405353, 3393109: 2405354, 3560758: 2405355, 2511592: 2405356,\
-                    4183187: 2405357, 3039320: 2405358, 3218843: 2405359, 1676715: 2405418, 1839543: 2405419,\
-                    2024773: 2405420, 2312955: 2405421, 2664683: 2405422, 2017057: 2406522, 3723260: 2406526,\
-                    3723157: 2406527, 2024879: 2406534, 3039501: 2406535, 2665033: 2406549, 2025010: 2406550,\
-                    2511611: 2406551, 3393073: 2406554, 3880749: 2406555, 7980609: 1000006212, 2316378: 2408598,\
-                    3042294: 2408599, 5933809: 2408600, 5004913: 2408601, 6427404: 2408602, 7499073: 2408603,\
-                    8607646: 2408604, 9053055: 2408605, 9013510: 2408606, 8888704: 2408607, 8045070: 2408608,\
-                    5368440: 2408609, 8931693: 2408611, 8753036: 2408612, 8284194: 2408613, 6867830: 2408614,\
-                    5126077: 2408615, 7852440: 2408618, 7853150: 2408619, 2857122: 2408624, 2028510: 2408629,\
-                    6519272: 2416667, 8107300: 2416668, 8227000: 2416669, 8505203: 2416670, 8705366: 2416672,\
-                    2307343: 1000006217, 2030921: 2404195, 2669868: 2404196, 3564827: 2404197, 4611005: 2404198,\
-                    5254419: 2404199, 5827939: 1000006388, 1790145: 3124, 2803279: 3125, 2419051: 3129,\
-                    2416348: 566, 2416380: 567, 2223431: 568, 2419115: 569, 2611483: 570,\
-                    2613148: 571, 2803319: 572, 2613160: 573, 2020673: 593, 2807821: 1000000541,\
-                    2318631: 2404211, 2031052: 2404212, 2669998: 2404213, 3044363: 2404214, 3884737: 2404215,\
-                    5116845: 2404216, 4611072: 2404217, 5254476: 2404218, 6698071: 2404219, 7266700: 2404220,\
-                    2651436: 2404228, 5718260: 2404238, 7421990: 1000006379, 3185415: 10070, 3361095: 10071,\
-                    4980925: 10072, 1777317: 10078, 1777218: 10262, 1953840: 10277, 2144296: 10278,\
-                    4584051: 10279, 4980992: 1000000140, 2017616: 2398436, 2017604: 2398437, 2603127: 2398438,\
-                    3202425: 2398439, 4037385: 2398440, 4472674: 2398441, 4610656: 2398442, 4472535: 2398443,\
-                    3884041: 2398444, 4331403: 2398445, 5813758: 2398446, 3043456: 2398449, 3564255: 2398452,\
-                    1844821: 2398454, 1427858: 2398463, 1844946: 2398464, 3726989: 2398465, 2317704: 2398468,\
-                    1836326: 2398535, 1836349: 2398536, 1536042: 2398541, 2017505: 2398565, 2030085: 2398566,\
-                    1845477: 2398578, 2317890: 2398579, 4745762: 2398580, 1845727: 2398597, 2017818: 2398598,\
-                    2209883: 2398599, 2516187: 2398600, 3564415: 2398601, 5591249: 2398602, 1845628: 2398616,\
-                    2410160: 2398639, 2030432: 2398640, 4186478: 2398641, 6025227: 1000006196, 3235974: 502242,\
-                    4343151: 502243, 5500184: 502244, 5943785: 502245, 8064321: 502246, 8303404: 502247,\
-                    8989887: 502248, 8469736: 502249, 6343477: 502252, 7365493: 502253, 8674004: 502254,\
-                    8722305: 502261, 4342994: 502264, 4621464: 502265, 4621501: 502266, 5140865: 502267,\
-                    4198023: 502270, 2871863: 502275, 2683619: 502481, 1860069: 502538, 7365903: 1000002980,\
-                    2603342: 13388, 2603372: 13389, 2603404: 13390, 2603408: 13391, 2609581: 13392,\
-                    2222641: 13393, 2610580: 13394, 2231391: 13395, 2988292: 13396, 2988309: 13397,\
-                    2417818: 13398, 2417840: 13399, 2610734: 13400, 2417976: 13401, 2418018: 13402,\
-                    2801669: 13403, 2610906: 13404, 4304673: 13405, 2826173: 13406, 5231213: 13407,\
-                    1500498: 13413, 1616744: 13426, 2407622: 13505, 2020449: 16694, 4306670: 1000000165
-                    }
-
+    schism_nodes = coastal_hy_crosswalk
+                    
     ds2 = ds.drop_vars(["SCHISM_hgrid_node_x", "SCHISM_hgrid_node_y"])
 
     # crosswalk from node ID to node index (number)
@@ -1129,44 +1066,56 @@ def read_SCHISM_subset(ds):
             idSelect.append(idmap[snKey])
             idHySelect.append(schism_nodes[snKey])
 
-    #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
-    elevation_df = ds2['elevation'].loc[:,idSelect].to_dataframe().reset_index()
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(elevation_df)
-    dict_length = len(idSelect)
-    nTimes = int(df_length/dict_length)
-    elevation_df['link'] = idHySelect*nTimes
+    # if none of the nodes from crosswalk are present, return empty df 
+    if (len(idSelect)==0):
 
-    #Retrieve depths at specified nodes from 'schism_nodes' dictionary
-    depth_df = ds2['depth'].loc[idSelect].to_dataframe().reset_index()
+        df=pd.DataFrame()
 
-    #Replace schism nodes with HYFeatures segment IDs
-    df_length = len(depth_df)
-    dict_length = len(idSelect)
-    nTimes = int(df_length/dict_length)
-    depth_df['link'] = idHySelect*nTimes
+    else:
 
-    #Combine elevation and depth dataframes, and calculate water depth
-    df = pd.merge(elevation_df, depth_df, on='link')
-    df['waterdepth'] = df['elevation'] + df['depth']
-    df = df.drop(['elevation','depth','node_x','node_y'], axis=1)
+        #Retrieve elevations at specified nodes from 'schism_nodes' dictionary
+        elevation_df = ds2['elevation'].loc[:,idSelect].to_dataframe().reset_index()
 
-    #Reformat dataframe so rows are locations and columns are timestamps
-    df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(elevation_df)
+        dict_length = len(idSelect)
+        nTimes = int(df_length/dict_length)
+        elevation_df['link'] = idHySelect*nTimes
+
+        #Retrieve depths at specified nodes from 'schism_nodes' dictionary
+        depth_df = ds2['depth'].loc[idSelect].to_dataframe().reset_index()
+
+        #Replace schism nodes with HYFeatures segment IDs
+        df_length = len(depth_df)
+        dict_length = len(idSelect)
+        nTimes = int(df_length/dict_length)
+        depth_df['link'] = idHySelect*nTimes
+
+        #Combine elevation and depth dataframes, and calculate water depth
+        df = pd.merge(elevation_df, depth_df, on='link')
+        df['waterdepth'] = df['elevation'] + df['depth']
+        df = df.drop(['elevation','depth','node_x','node_y'], axis=1)
+
+        #Reformat dataframe so rows are locations and columns are timestamps
+        df = df.set_index(['link','time']).unstack('time', fill_value = np.nan)['waterdepth']
 
     return df
 
 
-def read_coastal_output(filepath):
+def read_coastal_output(filepath, coastal_hy_crosswalk):
     ds = xr.open_dataset(filepath)
     coastal_model_indicator = ds.attrs.get('institution', None)
     if coastal_model_indicator=='Deltares':
         df = read_DFlow_output(ds)
     else:
-        if ("base_date" in ds.time.attrs.keys()):
-            df = read_SCHISM_output(ds)
+        if (len(coastal_hy_crosswalk)==0):
+            # just create empty coastal dataframe if there is no hy crosswalk
+            df = pd.DataFrame()
         else:
-            df = read_SCHISM_subset(ds)
+            if ("base_date" in ds.time.attrs.keys()):
+                df = read_SCHISM_output(ds, coastal_hy_crosswalk)
+            else:
+                df = read_SCHISM_subset(ds, coastal_hy_crosswalk)
 
     return df
