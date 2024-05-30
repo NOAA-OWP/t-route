@@ -509,23 +509,28 @@ class HYFeaturesNetwork(AbstractNetwork):
             # Add the Great Lakes to the connections dictionary and waterbody dataframe
             nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
             great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
-            great_lakes_df['toid'] = nexus['toid'].str.extract(r'wb-(\d+)').astype(float).astype(int)
-            great_lakes_df['WBOut_id'] = great_lakes_df['WBOut_id'].astype(int)
-            gl_dict = great_lakes_df.set_index('WBOut_id')['toid'].to_dict()
-            self._connections.update(gl_dict)
-            
-            gl_wbody_df = pd.DataFrame(
-                data=np.ones([len(gl_dict), self.waterbody_dataframe.shape[1]]),
-                index=gl_dict.keys(), 
-                columns=self.waterbody_dataframe.columns
+            if not great_lakes_df.empty:
+                great_lakes_df['toid'] = great_lakes_df['toid'].str.extract(r'wb-(\d+)').astype(float)
+                great_lakes_df = great_lakes_df.astype(int)
+                great_lakes_df['toid'] = great_lakes_df["toid"].apply(lambda x: [x])
+                gl_dict = great_lakes_df.set_index('WBOut_id')['toid'].to_dict()
+                self._connections.update(gl_dict)
+                
+                gl_wbody_df = pd.DataFrame(
+                    data=np.ones([len(gl_dict), self.waterbody_dataframe.shape[1]]),
+                    index=gl_dict.keys(), 
+                    columns=self.waterbody_dataframe.columns
+                    )
+                gl_wbody_df.index.name = self.waterbody_dataframe.index.name
+                
+                self._waterbody_df = pd.concat(
+                    [
+                        self.waterbody_dataframe,
+                        gl_wbody_df
+                    ]
                 )
-            
-            self._waterbody_df = pd.concat(
-                [
-                    self.waterbody_dataframe,
-                    gl_wbody_df
-                ]
-            )
+            else:
+                gl_dict = {}
             
             self._waterbody_types_df = pd.DataFrame(
                 data = 1, 
@@ -534,7 +539,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             
             # Add Great Lakes waterbody type (6)
             self._waterbody_types_df.loc[gl_dict.keys(),'reservoir_type'] = 6
-                
+              
             self._waterbody_type_specified = True
             
         else:
