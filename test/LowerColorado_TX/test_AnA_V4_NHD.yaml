@@ -98,7 +98,7 @@ compute_parameters:
                 #----------
                 reservoir_persistence_usgs  : False
                 reservoir_persistence_usace : False
-                reservoir_persistence_canada : True
+                reservoir_persistence_canada : False
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : False
