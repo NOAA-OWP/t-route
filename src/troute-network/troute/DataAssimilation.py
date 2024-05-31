@@ -693,6 +693,55 @@ class PersistenceDA(AbstractDA):
         if not self.usgs_df.empty:
             self._usgs_df = self.usgs_df.loc[:,network.t0:]
 
+class great_lake(AbstractDA):
+    '''
+    Ok, I think the simplest solution for now is to just hard-code 
+    that crosswalk in the new GreatLakes_DA module you are creating. 
+    Here is a list of the waterbody IDs and the gage they should correspond to:
+    4800002 -> 04127885
+    4800004 -> 04159130
+    4800006 -> 02HA013
+    4800007 -> IJC file    
+    '''
+    def __init__(self, network, from_files, value_dict, da_run):
+        
+       
+        lake_ontario_df = self._lake_ontario_df
+        canada_df = self._canada_df
+        
+        ids_to_check = [4127885, 4159130]
+        # Check if all ids are present in the index
+        if all(id in self._usgs_df.index for id in ids_to_check):
+            usgs_df_GL = (self._usgs_df.loc[ids_to_check]
+                        .transpose()
+                        .resample('15min')
+                        .asfreq()
+                        .transpose()) 
+        lake_ontario_df = lake_ontario_df.T.reset_index().drop('Outflow(m3/s)', axis = 1)
+        lake_ontario_df['link'] = 4800007
+        lake_ontario_df.set_index('link', inplace=True)
+
+        # List of DataFrames
+        dfs = [lake_ontario_df, canada_df, usgs_df_GL]
+        # Filter out empty DataFrames
+        non_empty_dfs = [df for df in dfs if not df.empty]
+
+        # Find common columns
+        if non_empty_dfs:
+            common_columns = set(non_empty_dfs[0].columns)
+            for df in non_empty_dfs[1:]:
+                common_columns &= set(df.columns)
+            common_columns = list(common_columns)
+
+            # Combine DataFrames on the common columns
+            if common_columns:
+                self.combined_df = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
+                self.combined_df = self.combined_df.sort_index()
+            else:
+                self.combined_df = pd.DataFrame()  # No common columns
+        else:
+            self.combined_df = pd.DataFrame()  # All DataFrames are empty
+        
 
 class RFCDA(AbstractDA):
     """
