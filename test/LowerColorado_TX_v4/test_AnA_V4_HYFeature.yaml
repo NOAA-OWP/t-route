@@ -75,8 +75,8 @@ compute_parameters:
     restart_parameters:
         #----------
         start_datetime              : 2023-04-02_00:00
-        lite_channel_restart_file   : #restart/RESTART.2020082600_DOMAIN1
-        lite_waterbody_restart_file : #restart/waterbody_restart_202006011200
+        lite_channel_restart_file   : #restart/channel_restart_202304030000
+        lite_waterbody_restart_file : #restart/waterbody_restart_202304030000
     hybrid_parameters:
         run_hybrid_routing: True
         diffusive_domain  : domain/coastal_domain_tw.yaml  
@@ -110,7 +110,7 @@ compute_parameters:
             reservoir_persistence_da:
                 #----------
                 reservoir_persistence_usgs  : True
-                reservoir_persistence_usace : True
+                reservoir_persistence_usace : False
                 reservoir_persistence_canada : True
             reservoir_rfc_da:
                 #----------
@@ -119,17 +119,17 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 28
                 reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
-# output_parameters:
-#     #----------
-#      test_output : output/lcr_flowveldepth.pkl
-#      lite_restart:
-#         #----------
-#         lite_restart_output_directory: restart/
-#      lakeout_output: lakeout/
-#      lastobs_output: lastobs/
-#     stream_output : 
-#         stream_output_directory: output/
-#         stream_output_time: 1 #[hr]
-#         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
-#         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
+output_parameters:
+     #----------
+      test_output : output/lcr_flowveldepth.pkl
+      lite_restart:
+       #----------
+        lite_restart_output_directory: restart/
+      lakeout_output: lakeout/
+      lastobs_output: lastobs/
+      stream_output : 
+         stream_output_directory: output/
+         stream_output_time: 1 #[hr]
+         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
 
