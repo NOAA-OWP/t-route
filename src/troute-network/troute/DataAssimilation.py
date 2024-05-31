@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from abc import ABC
 from joblib import delayed, Parallel
 import glob
+import re
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
@@ -209,6 +210,9 @@ class NudgingDA(AbstractDA):
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                if 'LakeOntario_outflow' in da_run:
+                    self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -265,6 +269,8 @@ class NudgingDA(AbstractDA):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             if 'canada_timeslice_files' in da_run:
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            if 'LakeOntario_outflow' in da_run:
+                self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
 
 class PersistenceDA(AbstractDA):
     """
@@ -456,8 +462,8 @@ class PersistenceDA(AbstractDA):
                         transpose().
                         resample('15min').asfreq().
                         transpose()
-                    )
-
+                    )                     
+                    import pdb;pdb.set_trace()
                     # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
                     reservoir_usgs_df = (
                         usgs_df_15min.join(link_lake_df, how = 'inner').
@@ -686,6 +692,7 @@ class PersistenceDA(AbstractDA):
         # an error. Need to think through this more. 
         if not self.usgs_df.empty:
             self._usgs_df = self.usgs_df.loc[:,network.t0:]
+
 
 class RFCDA(AbstractDA):
     """
@@ -993,6 +1000,46 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     
     return usgs_df
 
+def _create_LakeOntario_df(run_parameters, network, da_run):
+    t0 = network.t0
+    nts = run_parameters.get('nts')
+    dt = run_parameters.get('dt')
+    end_time = pd.to_datetime(t0) + pd.Timedelta(hours = nts/(3600/dt))
+    time_total = []
+    t = t0
+    while t < end_time:
+        time_total.append(t)
+        t += pd.Timedelta(minutes=15)
+
+
+    lake_ontario_df = pd.read_csv(da_run.get('LakeOntario_outflow'))
+    
+    # Increment the date by one day where Hour is "24:00" and set Hour to "00:00"
+    mask = lake_ontario_df['Hour'] == '24:00'
+    lake_ontario_df.loc[mask, 'Hour'] = '00:00'
+    lake_ontario_df.loc[mask, 'Date'] = (pd.to_datetime(lake_ontario_df.loc[mask, 'Date']) + pd.Timedelta(days=1)).dt.strftime('%Y-%m-%d')
+
+    lake_ontario_df['Hour'] = lake_ontario_df['Hour'].apply(lambda x: re.sub(r':\d{2}$', ':00', x))
+    # Combine Date and Hour into Datetime
+    lake_ontario_df['Datetime'] = pd.to_datetime(lake_ontario_df['Date'] + ' ' + lake_ontario_df['Hour'], format='%Y-%m-%d %H:%M')
+    
+    # Set Datetime as index and remove duplicates and unwanted columns
+    lake_ontario_df = lake_ontario_df.set_index('Datetime')
+    lake_ontario_df = lake_ontario_df.drop_duplicates()
+    lake_ontario_df = lake_ontario_df.drop(['Date', 'Hour'], axis=1)
+
+    # Filter DataFrame based on extracted times
+    time_total_df = pd.DataFrame(time_total, columns=['Datetime'])
+    time_total_df['Outflow(m3/s)'] = None  # Initialize with None or NaN
+    time_total_df = time_total_df.set_index('Datetime')
+    
+    
+    filtered_df = lake_ontario_df.loc[(lake_ontario_df.index >= t0) & (lake_ontario_df.index < end_time)]
+    total_df = pd.merge(time_total_df, filtered_df, left_index=True, right_index=True, how='left')
+    total_df = total_df.rename(columns={'Outflow(m3/s)_y': 'Outflow(m3/s)'}).drop(columns='Outflow(m3/s)_x')
+    
+    return total_df
+
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
     Function for reading USGS timeslice files and creating a dataframe
@@ -1025,7 +1072,7 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     # TODO: join timeslice folder and files into complete path upstream
     
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
-    
+    import pdb;pdb.set_trace()
 
     if canada_files:
         canada_df = (

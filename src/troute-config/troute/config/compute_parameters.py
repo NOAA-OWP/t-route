@@ -161,6 +161,8 @@ class DataAssimilationParameters(BaseModel, extra='ignore'):
     usace_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for canada reservoir DA
     canada_timeslices_folder: Optional[DirectoryPath] = None
+    # NOTE: required for LakeOntario reservoir DA
+    LakeOntario_outflow: Optional[DirectoryPath] = None
     # NOTE: required for reservoir DA - suggested value 24 (1 days)
     timeslice_lookback_hours: int = 24
 

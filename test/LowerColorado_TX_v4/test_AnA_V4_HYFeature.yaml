@@ -100,6 +100,7 @@ compute_parameters:
         usgs_timeslices_folder   : usgs_timeslices/
         usace_timeslices_folder  : usace_timeslices/
         canada_timeslices_folder  : Canadian_timeslices/
+        LakeOntario_outflow  :  domain/cleaned_lakeOntario.csv
         streamflow_da:
             #----------
             streamflow_nudging            : True
