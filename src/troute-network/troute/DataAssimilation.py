@@ -463,7 +463,7 @@ class PersistenceDA(AbstractDA):
                         resample('15min').asfreq().
                         transpose()
                     )                     
-                    import pdb;pdb.set_trace()
+                    
                     # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
                     reservoir_usgs_df = (
                         usgs_df_15min.join(link_lake_df, how = 'inner').
@@ -1072,7 +1072,7 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     # TODO: join timeslice folder and files into complete path upstream
     
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
-    import pdb;pdb.set_trace()
+    
 
     if canada_files:
         canada_df = (
