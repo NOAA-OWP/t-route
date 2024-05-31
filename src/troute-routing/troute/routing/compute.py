@@ -302,6 +302,8 @@ def compute_log_mc(
     
     # TODO: do something with param_df, reservoir_XXX_param_df, or delete them as args
 
+    import pdb; pdb.set_trace()
+
     # append parameters and some statistics to log file
     with open(fileName, 'a') as preRunLog:
 
@@ -331,29 +333,32 @@ def compute_log_mc(
         preRunLog.write("nts: "+str(nts)+'\n')
         preRunLog.write("\n")
         preRunLog.write("Data Assimilation Parameters:\n")
-        preRunLog.write("\n")           
-        preRunLog.write("usgs timeslice folder: "+str(data_assimilation_parameters['usgs_timeslices_folder'])+'\n')
-        preRunLog.write("usace timeslice folder: "+str(data_assimilation_parameters['usace_timeslices_folder'])+'\n')
+        preRunLog.write("\n")
+        if ('usgs_timeslices_folder' in data_assimilation_parameters.keys()):           
+            preRunLog.write("usgs timeslice folder: "+str(data_assimilation_parameters['usgs_timeslices_folder'])+'\n')
+        if ('usace_timeslices_folder' in data_assimilation_parameters.keys()):    
+            preRunLog.write("usace timeslice folder: "+str(data_assimilation_parameters['usace_timeslices_folder'])+'\n')
         preRunLog.write("-----\n")
         preRunLog.write("Streamflow DA\n")
-        outPutStr = "Streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['streamflow_nudging'])
-        preRunLog.write(outPutStr+'\n')
-        LOG.info(outPutStr)
-        outPutStr = "Diffusive streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['diffusive_streamflow_nudging'])
-        preRunLog.write(outPutStr+'\n')
-        LOG.info(outPutStr)
-        preRunLog.write("Lastobs file: "+str(data_assimilation_parameters['streamflow_da']['lastobs_file'])+'\n')
-        preRunLog.write("-----\n")
-        preRunLog.write("Reservoir DA\n")
-        outPutStr = "Reservoir persistence USGS: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'])
-        preRunLog.write(outPutStr+'\n')
-        LOG.info(outPutStr)
-        outPutStr = "Reservoir persistence USACE: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'])
-        preRunLog.write(outPutStr+'\n')
-        LOG.info(outPutStr)
-        preRunLog.write("Reservoir RFC forecasts: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'])+'\n')
-        preRunLog.write("Reservoir RFC forecasts lookback hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_lookback_hours'])+'\n')
-        preRunLog.write("Reservoir RFC forecasts offset hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_offset_hours'])+'\n')
+        if ('streamflow_da' in data_assimilation_parameters.keys()):  
+            outPutStr = "Streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['streamflow_nudging'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            outPutStr = "Diffusive streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['diffusive_streamflow_nudging'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            preRunLog.write("Lastobs file: "+str(data_assimilation_parameters['streamflow_da']['lastobs_file'])+'\n')
+            preRunLog.write("-----\n")
+            preRunLog.write("Reservoir DA\n")
+            outPutStr = "Reservoir persistence USGS: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            outPutStr = "Reservoir persistence USACE: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            preRunLog.write("Reservoir RFC forecasts: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'])+'\n')
+            preRunLog.write("Reservoir RFC forecasts lookback hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_lookback_hours'])+'\n')
+            preRunLog.write("Reservoir RFC forecasts offset hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_offset_hours'])+'\n')
         preRunLog.write("\n")                   
         preRunLog.write("****************************\n") 
         preRunLog.write("Network Topology Parameters:\n") 
