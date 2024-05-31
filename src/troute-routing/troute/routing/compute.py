@@ -8,6 +8,7 @@ import time
 import pandas as pd
 import numpy as np
 import copy
+import os.path
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
@@ -301,8 +302,6 @@ def compute_log_mc(
 ):
     
     # TODO: do something with param_df, reservoir_XXX_param_df, or delete them as args
-
-    import pdb; pdb.set_trace()
 
     # append parameters and some statistics to log file
     with open(fileName, 'a') as preRunLog:
