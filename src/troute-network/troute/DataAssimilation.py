@@ -717,7 +717,10 @@ class great_lake(AbstractDA):
                         .resample('15min')
                         .asfreq()
                         .transpose()) 
-        lake_ontario_df = lake_ontario_df.T.reset_index().drop('Outflow(m3/s)', axis = 1)
+        else:
+            usgs_df_GL = pd.DataFrame()    
+        
+        lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
         lake_ontario_df['link'] = 4800007
         lake_ontario_df.set_index('link', inplace=True)
 
@@ -898,6 +901,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, network, from_files, value_dict)
+        great_lake.__init__(self, network, from_files, value_dict, da_run)
     
     def update_after_compute(self, run_results, time_increment):
         '''
