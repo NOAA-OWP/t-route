@@ -735,12 +735,12 @@ class great_lake(AbstractDA):
 
             # Combine DataFrames on the common columns
             if common_columns:
-                self.combined_df = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
-                self.combined_df = self.combined_df.sort_index()
+                self.great_lake_all = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
+                self.great_lake_all = self.great_lake_all.sort_index()
             else:
-                self.combined_df = pd.DataFrame()  # No common columns
+                self.great_lake_all = pd.DataFrame()  # No common columns
         else:
-            self.combined_df = pd.DataFrame()  # All DataFrames are empty
+            self.great_lake_all = pd.DataFrame()  # All DataFrames are empty
         
 
 class RFCDA(AbstractDA):
