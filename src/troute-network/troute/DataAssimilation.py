@@ -199,7 +199,7 @@ class NudgingDA(AbstractDA):
                         temp_df['gages'] = temp_df['gages'].astype(int)
                         lastobs_df = temp_df.set_index('gages').dropna()
                         self._last_obs_df = lastobs_df
-                    
+                   
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
                 # segments because connections dic has replaced all link ids within
@@ -714,45 +714,52 @@ class great_lake(AbstractDA):
     '''
     def __init__(self, network, from_files, value_dict, da_run):
         
-       
-        lake_ontario_df = self._lake_ontario_df
-        canada_df = self._canada_df
+        data_assimilation_parameters = self._data_assimilation_parameters
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+        # determine if user explictly requests streamflow DA
+        nudging = False
+        if streamflow_da_parameters:
+            nudging = streamflow_da_parameters.get('streamflow_nudging', False)
         
-        ids_to_check = [4127885, 4159130]
-        # Check if all ids are present in the index
-        if all(id in self._usgs_df.index for id in ids_to_check):
-            usgs_df_GL = (self._usgs_df.loc[ids_to_check]
-                        .transpose()
-                        .resample('15min')
-                        .asfreq()
-                        .transpose()) 
-        else:
-            usgs_df_GL = pd.DataFrame()    
-        
-        lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
-        lake_ontario_df['link'] = 4800007
-        lake_ontario_df.set_index('link', inplace=True)
-
-        # List of DataFrames
-        dfs = [lake_ontario_df, canada_df, usgs_df_GL]
-        # Filter out empty DataFrames
-        non_empty_dfs = [df for df in dfs if not df.empty]
-
-        # Find common columns
-        if non_empty_dfs:
-            common_columns = set(non_empty_dfs[0].columns)
-            for df in non_empty_dfs[1:]:
-                common_columns &= set(df.columns)
-            common_columns = list(common_columns)
-
-            # Combine DataFrames on the common columns
-            if common_columns:
-                self.great_lake_all = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
-                self.great_lake_all = self.great_lake_all.sort_index()
+        if nudging:
+            lake_ontario_df = self._lake_ontario_df
+            canada_df = self._canada_df
+            
+            ids_to_check = [4127885, 4159130]
+            # Check if all ids are present in the index
+            if all(id in self._usgs_df.index for id in ids_to_check):
+                usgs_df_GL = (self._usgs_df.loc[ids_to_check]
+                            .transpose()
+                            .resample('15min')
+                            .asfreq()
+                            .transpose()) 
             else:
-                self.great_lake_all = pd.DataFrame()  # No common columns
-        else:
-            self.great_lake_all = pd.DataFrame()  # All DataFrames are empty
+                usgs_df_GL = pd.DataFrame()    
+            
+            lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
+            lake_ontario_df['link'] = 4800007
+            lake_ontario_df.set_index('link', inplace=True)
+
+            # List of DataFrames
+            dfs = [lake_ontario_df, canada_df, usgs_df_GL]
+            # Filter out empty DataFrames
+            non_empty_dfs = [df for df in dfs if not df.empty]
+
+            # Find common columns
+            if non_empty_dfs:
+                common_columns = set(non_empty_dfs[0].columns)
+                for df in non_empty_dfs[1:]:
+                    common_columns &= set(df.columns)
+                common_columns = list(common_columns)
+
+                # Combine DataFrames on the common columns
+                if common_columns:
+                    self.great_lake_all = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
+                    self.great_lake_all = self.great_lake_all.sort_index()
+                else:
+                    self.great_lake_all = pd.DataFrame()  # No common columns
+            else:
+                self.great_lake_all = pd.DataFrame()  # All DataFrames are empty
         
 
 class RFCDA(AbstractDA):
