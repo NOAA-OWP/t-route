@@ -210,8 +210,12 @@ class NudgingDA(AbstractDA):
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                else:
+                    self._canada_df = pd.DataFrame()
                 if 'LakeOntario_outflow' in da_run:
                     self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+                else:
+                    self._lake_ontario_df = pd.DataFrame()    
 
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -269,8 +273,13 @@ class NudgingDA(AbstractDA):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             if 'canada_timeslice_files' in da_run:
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            else:
+                self._canada_df = pd.DataFrame()
+
             if 'LakeOntario_outflow' in da_run:
                 self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+            else:
+                self._lake_ontario_df = pd.DataFrame()
 
 class PersistenceDA(AbstractDA):
     """
