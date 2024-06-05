@@ -78,8 +78,8 @@ compute_parameters:
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_TimeSlice/
-        usace_timeslices_folder  : usace_TimeSlice/
+        usgs_timeslices_folder   : #usgs_TimeSlice/
+        usace_timeslices_folder  : #usace_TimeSlice/
         canada_timeslices_folder  : #Canadian_timeslices/
         timeslice_lookback_hours : 48 
         qc_threshold             : 1
