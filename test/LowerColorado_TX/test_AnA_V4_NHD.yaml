@@ -80,7 +80,7 @@ compute_parameters:
         #----------
         usgs_timeslices_folder   : usgs_TimeSlice/
         usace_timeslices_folder  : usace_TimeSlice/
-        canada_timeslices_folder  : Canadian_timeslices/
+        canada_timeslices_folder  : #Canadian_timeslices/
         timeslice_lookback_hours : 48 
         qc_threshold             : 1
         streamflow_da:
