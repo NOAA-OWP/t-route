@@ -85,7 +85,7 @@ compute_parameters:
         qc_threshold             : 1
         streamflow_da:
             #----------
-            streamflow_nudging            : True
+            streamflow_nudging            : False
             diffusive_streamflow_nudging  : False
             gage_segID_crosswalk_file     : domain/RouteLink.nc  
             crosswalk_gage_field          : 'gages'
