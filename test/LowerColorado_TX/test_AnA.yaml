@@ -49,7 +49,7 @@ compute_parameters:
         topobathy_domain  : domain/final_diffusive_natural_xs.nc 
         run_refactored_network: False
         refactored_domain: domain/refactored_coastal_domain_subset.yaml 
-        refactored_topobathy_domain: domain/refac_final_diffusive_natural_xs.nc 
+        refactored_topobathy_domain: #domain/refac_final_diffusive_natural_xs.nc 
         coastal_boundary_domain: domain/coastal_domain_crosswalk.yaml
     forcing_parameters:
         #----------
