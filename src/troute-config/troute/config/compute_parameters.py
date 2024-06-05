@@ -82,7 +82,6 @@ class HybridParameters(BaseModel, extra='forbid'):
     run_hybrid_routing: bool
     # NOTE: required for hybrid simulations
     diffusive_domain: Optional[FilePath] = None
-
     use_natl_xsections: bool = False
     # NOTE: required for diffusive routing for natural cross sections
     topobathy_domain: Optional[FilePath] = None
