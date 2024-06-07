@@ -474,10 +474,10 @@ class AbstractNetwork(ABC):
         routing_type = [run_hybrid, use_topobathy, run_refactored]
 
         _routing_scheme_map = {
-            MCOnly: [False, False, False],
-            MCwithDiffusive: [True, False, False],
-            MCwithDiffusiveNatlXSectionNonRefactored: [True, True, False],
-            MCwithDiffusiveNatlXSectionRefactored: [True, True, True],
+            MCOnly: [[False, False, False]],
+            MCwithDiffusive: [[True, False, False],[True, True, False]],
+            MCwithDiffusiveNatlXSectionNonRefactored: [[True, True, False]],
+            MCwithDiffusiveNatlXSectionRefactored: [[True, True, True]],
             }
         
         # Default to MCOnly routing
@@ -485,9 +485,9 @@ class AbstractNetwork(ABC):
 
         # Check user input to determine the routing scheme
         for key, value in _routing_scheme_map.items():
-            if value==routing_type:
+            if routing_type in value:
                 routing_scheme = key
-        
+
         routing = routing_scheme(self.hybrid_parameters)
 
         (
