@@ -544,6 +544,13 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_type_specified = True
             
         else:
+
+            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'] = False
+            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'] = False
+            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_canada'] = False
+            self.data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts']
+            self.waterbody_parameters['break_network_at_waterbodies'] = False
+
             self._waterbody_df = pd.DataFrame()
             self._waterbody_types_df = pd.DataFrame()
             self._waterbody_connections = {}
