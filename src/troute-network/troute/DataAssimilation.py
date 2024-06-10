@@ -704,11 +704,10 @@ class PersistenceDA(AbstractDA):
 
 class great_lake(AbstractDA):
     '''
-    Ok, I think the simplest solution for now is to just hard-code 
-    that crosswalk in the new GreatLakes_DA module you are creating. 
+  
     Here is a list of the waterbody IDs and the gage they should correspond to:
-    4800002 -> 04127885
-    4800004 -> 04159130
+    4800002 -> 04127885 -> 
+    4800004 -> 04159130 -> 13196034 (segment_id)
     4800006 -> 02HA013
     4800007 -> IJC file    
     '''
@@ -725,41 +724,42 @@ class great_lake(AbstractDA):
             lake_ontario_df = self._lake_ontario_df
             canada_df = self._canada_df
             
-            ids_to_check = [4127885, 4159130]
-            # Check if all ids are present in the index
-            if all(id in self._usgs_df.index for id in ids_to_check):
-                usgs_df_GL = (self._usgs_df.loc[ids_to_check]
+            ids_to_check = {'4800002': '04127885', '4800004': '13196034'}
+            # the segment corresponding to 04127885 gages isn't exist as of now. Should be replaced in future
+            # Initialize an empty DataFrame with the same columns as the usgs DataFrame
+            usgs_df_GL = pd.DataFrame(columns=self._usgs_df.columns)
+
+            # Check if any ids are present in the index
+            for key, value in ids_to_check.items():
+                if value in self._usgs_df.index:
+                    temp_df = (self._usgs_df.loc[[value]]
                             .transpose()
                             .resample('15min')
                             .asfreq()
-                            .transpose()) 
-            else:
-                usgs_df_GL = pd.DataFrame()    
+                            .transpose())
+                    temp_df.index = [key]
+                    usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)
+                else:
+                    temp_df = pd.DataFrame(index=[key], columns=self._usgs_df.columns)
+                    usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)   
             
-            lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
+            if not lake_ontario_df.empty:
+                lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
+            else:
+                lake_ontario_df = pd.DataFrame(columns=self._usgs_df.columns)
             lake_ontario_df['link'] = 4800007
             lake_ontario_df.set_index('link', inplace=True)
+            
+            if canada_df.empty:
+                canada_df = pd.DataFrame(columns=self._usgs_df.columns, index=pd.Index([4800006], name='link'))
+            
+            canada_df['link'] = 4800006
+            canada_df.set_index('link', inplace=True)
 
             # List of DataFrames
             dfs = [lake_ontario_df, canada_df, usgs_df_GL]
-            # Filter out empty DataFrames
-            non_empty_dfs = [df for df in dfs if not df.empty]
 
-            # Find common columns
-            if non_empty_dfs:
-                common_columns = set(non_empty_dfs[0].columns)
-                for df in non_empty_dfs[1:]:
-                    common_columns &= set(df.columns)
-                common_columns = list(common_columns)
-
-                # Combine DataFrames on the common columns
-                if common_columns:
-                    self.great_lake_all = pd.concat([df[common_columns] for df in non_empty_dfs], axis=0)
-                    self.great_lake_all = self.great_lake_all.sort_index()
-                else:
-                    self.great_lake_all = pd.DataFrame()  # No common columns
-            else:
-                self.great_lake_all = pd.DataFrame()  # All DataFrames are empty
+            self.great_lake_all = pd.concat(dfs, axis=0, join='outer', ignore_index=False)
         
 
 class RFCDA(AbstractDA):
