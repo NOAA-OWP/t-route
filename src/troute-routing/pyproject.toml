@@ -1,0 +1,8 @@
+[build-system]
+requires = ["setuptools", "numpy", "Cython<3.0.4", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "troute.routing"
+version = "0.0.0"
+dependencies = ["hydrotools.nwis_client", "joblib", "numpy", "pandas", "xarray"]
