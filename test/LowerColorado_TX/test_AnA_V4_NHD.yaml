@@ -62,10 +62,10 @@ compute_parameters:
         run_hybrid_routing: False
         diffusive_domain  : domain/coastal_domain_subset.yaml  
         use_natl_xsections: False
-        topobathy_domain  : domain/final_diffusive_natural_xs.nc 
+        topobathy_domain  : #domain/final_diffusive_natural_xs.nc 
         run_refactored_network: False
         refactored_domain: domain/refactored_coastal_domain_subset.yaml 
-        refactored_topobathy_domain: domain/refac_final_diffusive_natural_xs.nc 
+        refactored_topobathy_domain: #domain/refac_final_diffusive_natural_xs.nc 
         coastal_boundary_domain: domain/coastal_domain_crosswalk.yaml
     forcing_parameters:
         #----------
@@ -78,14 +78,14 @@ compute_parameters:
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_TimeSlice/
-        usace_timeslices_folder  : usace_TimeSlice/
-        canada_timeslices_folder  : Canadian_timeslices/
+        usgs_timeslices_folder   : #usgs_TimeSlice/
+        usace_timeslices_folder  : #usace_TimeSlice/
+        canada_timeslices_folder  : #Canadian_timeslices/
         timeslice_lookback_hours : 48 
         qc_threshold             : 1
         streamflow_da:
             #----------
-            streamflow_nudging            : True
+            streamflow_nudging            : False
             diffusive_streamflow_nudging  : False
             gage_segID_crosswalk_file     : domain/RouteLink.nc  
             crosswalk_gage_field          : 'gages'
@@ -98,7 +98,7 @@ compute_parameters:
                 #----------
                 reservoir_persistence_usgs  : False
                 reservoir_persistence_usace : False
-                reservoir_persistence_canada : True
+                reservoir_persistence_canada : False
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : False
