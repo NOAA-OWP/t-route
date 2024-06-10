@@ -1,7 +1,6 @@
 from collections import defaultdict
 from itertools import chain
 from functools import partial
-from tlz import concat
 from joblib import delayed, Parallel
 from datetime import datetime, timedelta
 import time
