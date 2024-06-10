@@ -87,8 +87,8 @@ if [[ "$build_framework" == true ]]; then
   rm -rf build
   ##python setup.py --use-cython install
   ##python setup.py --use-cython develop
-  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install $E . || exit
+  python setup.py build_ext --inplace --use-cython || exit
+  pip install --no-build-isolation $E . || exit
 fi
 
 if [[ "$build_routing" == true ]]; then
@@ -97,8 +97,8 @@ if [[ "$build_routing" == true ]]; then
   rm -rf build
   #python setup.py --use-cython install
   #python setup.py --use-cython develop
-  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install $E . || exit
+  python setup.py build_ext --inplace --use-cython || exit
+  pip install --no-build-isolation $E . || exit
 fi
 
 if [[ "$build_config" == true ]]; then
