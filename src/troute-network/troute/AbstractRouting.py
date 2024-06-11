@@ -89,7 +89,7 @@ class AbstractRouting(ABC):
     __slots__ = ["hybrid_params", "_diffusive_domain", "_coastal_boundary_depth_df",
                 "_diffusive_network_data", "_topobathy_df", "_refactored_diffusive_domain",
                 "_refactored_diffusive_network_data", "_refactored_reaches", 
-                "_unrefactored_topobathy_df",]
+                "_unrefactored_topobathy_df", "_all_links", "_bad_topobathy_links", "_dataframe"]
     
     def __init__(self):
         """
@@ -102,6 +102,9 @@ class AbstractRouting(ABC):
         self._refactored_diffusive_domain       = None
         self._refactored_diffusive_network_data = None   
         self._refactored_reaches                = {}
+        self._all_links                         = []
+        self._bad_topobathy_links               = []
+        self._dataframe                         = pd.DataFrame() 
 
     @abstractmethod
     def update_routing_domain(self, dataframe, connections, waterbody_dataframe):
@@ -131,6 +134,22 @@ class AbstractRouting(ABC):
     @abstractmethod
     def unrefactored_topobathy_df(self):
         pass
+
+    @property
+    @abstractmethod
+    def all_links(self):
+        pass
+
+    @property
+    @abstractmethod
+    def bad_topobathy_links(self):
+        pass
+
+    @property
+    @abstractmethod
+    def dataframe(self):
+        pass
+
 
 
 class MCOnly(AbstractRouting):
@@ -162,6 +181,22 @@ class MCOnly(AbstractRouting):
     @property
     def unrefactored_topobathy_df(self):
         return self._unrefactored_topobathy_df
+    
+    @property
+    def unrefactored_topobathy_df(self):
+        return self._unrefactored_topobathy_df
+
+    @property
+    def all_links(self):
+        self._all_links
+
+    @property
+    def bad_topobathy_links(self):
+        self._bad_topobathy_links
+
+    @property
+    def dataframe(self):
+        return self._dataframe
 
 
 class MCwithDiffusive(AbstractRouting):
@@ -181,6 +216,7 @@ class MCwithDiffusive(AbstractRouting):
         diffusive_domain_all = {}
         rconn_diff0 = reverse_network(connections)
         all_links = []
+        #bad_topobathy_links = []
 
         for tw in diffusive_domain:
             headlink_mainstem, rfc_val, rpu_val = list(diffusive_domain.get(tw).values())
@@ -211,43 +247,20 @@ class MCwithDiffusive(AbstractRouting):
                 all_links = all_links + diffusive_domain_all[twlink_mainstem]['links']
 
         self._diffusive_domain = diffusive_domain_all
+        self._all_links = all_links 
+        self._dataframe = dataframe  
         
-        # Load topobathy data and remove any links for which topo data cannot be obtained
-        if self.hybrid_params['use_natl_xsections']:
-            topobathy_df = self.topobathy_df
-            missing_topo_ids = list(set(all_links).difference(set(topobathy_df.index)))
-            topo_df_list = []
-            
-            for key in missing_topo_ids:
-                topo_df_list.append(_fill_in_missing_topo_data(key, dataframe, topobathy_df))
-            
-            if len(topo_df_list)==0: 
-                new_topo_df = pd.DataFrame() 
-            else:
-                new_topo_df = pd.concat(topo_df_list)
-
-            bad_links = list(set(missing_topo_ids).difference(set(new_topo_df.index)))
-            self._topobathy_df = pd.concat([self.topobathy_df,new_topo_df])
-            
-            # select topo data with minimum value of cs_id for each segment
-            df =  self._topobathy_df
-            min_cs_id=df.reset_index().groupby('hy_id')['cs_id'].transform('min')
-            mask = df.reset_index()['cs_id'] == min_cs_id
-            single_topo_df = df.reset_index()[mask]
-            single_topo_df.set_index('hy_id', inplace=True)
-            self._topobathy_df= single_topo_df
-        else:
-            # Use synthetic channel cross section data instead.
-            bad_links = []
-           
+        # When topodata is available, load topobathy data and remove any links for which topo data cannot be obtained
+        topobathy_df = self.topobathy_df
+ 
         for tw in self._diffusive_domain:          
             wbody_ids = waterbody_dataframe.index.tolist()
-            targets = self._diffusive_domain[tw]['targets'] + bad_links
+            targets = self._diffusive_domain[tw]['targets'] + self._bad_topobathy_links
             links = list(reachable(rconn_diff0, sources=[tw], targets=targets).get(tw))
             links = list(set(self._diffusive_domain[tw]['links']).intersection(set(links)))
             outlet_ids = [connections.get(id) for id in wbody_ids]
             outlet_ids = list(chain.from_iterable(outlet_ids))
-            wbody_and_outlet_ids = wbody_ids + outlet_ids + bad_links
+            wbody_and_outlet_ids = wbody_ids + outlet_ids + self._bad_topobathy_links
             mainstem_segs = list(set(links).difference(set(wbody_and_outlet_ids)))
             
             # we want mainstem_segs start at a mainstem link right after the upstream boundary mainstem link, which is
@@ -271,7 +284,7 @@ class MCwithDiffusive(AbstractRouting):
                 for u in us_list:
                     if u not in mainstem_segs:
                         trib_segs.append(u) 
- 
+
             self._diffusive_network_data[tw]['tributary_segments'] = trib_segs
             # diffusive domain connections object
             self._diffusive_network_data[tw]['connections'] = {k: connections[k] for k in (mainstem_segs + trib_segs)}       
@@ -310,6 +323,7 @@ class MCwithDiffusive(AbstractRouting):
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
+
         return dataframe, connections
 
     @property
@@ -331,6 +345,18 @@ class MCwithDiffusive(AbstractRouting):
     @property
     def unrefactored_topobathy_df(self):
         return self._unrefactored_topobathy_df
+
+    @property
+    def all_links(self):
+        self._all_links
+
+    @property
+    def bad_topobathy_links(self):
+        self._bad_topobathy_links
+
+    @property
+    def dataframe(self):
+        return self._dataframe
         
     def diffusive_domain_by_both_ends_streamid(self, connections, headlink_mainstem, twlink_mainstem, rfc_val, rpu_val):
         # This function build diffusive_domain using given headwater segment IDs at upper and tailwater at lower ends of mainstem.
@@ -374,6 +400,31 @@ class MCwithDiffusiveNatlXSectionNonRefactored(MCwithDiffusive):
                 seg_ids = ['wb-' + str(seg) for seg in seg_ids]
                 self._topobathy_df = read_parquet(topobathy_file, seg_ids).set_index('hy_id')
                 self._topobathy_df.index = self._topobathy_df.index.astype(int)
+        
+            # Load topobathy data and remove any links for which topo data cannot be obtained
+            topobathy_df = self._topobathy_df
+            missing_topo_ids = list(set(self._all_links).difference(set(topobathy_df.index)))
+            topo_df_list = []
+                
+            for key in missing_topo_ids:
+                topo_df_list.append(_fill_in_missing_topo_data(key, self._dataframe, topobathy_df))
+                
+            if len(topo_df_list)==0: 
+                new_topo_df = pd.DataFrame() 
+            else:
+                new_topo_df = pd.concat(topo_df_list)
+
+            bad_topobathy_links = list(set(missing_topo_ids).difference(set(new_topo_df.index)))
+            self._bad_topobathy_links =bad_topobathy_links
+            self._topobathy_df  = pd.concat([topobathy_df,new_topo_df])
+                
+            # select topo data with minimum value of cs_id for each segment
+            df =  self._topobathy_df
+            min_cs_id=df.reset_index().groupby('hy_id')['cs_id'].transform('min')
+            mask = df.reset_index()['cs_id'] == min_cs_id
+            single_topo_df = df.reset_index()[mask]
+            single_topo_df.set_index('hy_id', inplace=True)
+            self._topobathy_df= single_topo_df
  
         return self._topobathy_df
 
