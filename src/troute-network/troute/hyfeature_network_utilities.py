@@ -64,7 +64,7 @@ def build_da_sets(da_params, run_sets, t0):
     if reservoir_persistence_da:
         usgs_da = reservoir_persistence_da.get('reservoir_persistence_usgs', False)
         usace_da = reservoir_persistence_da.get('reservoir_persistence_usace', False)
-        canada_da = reservoir_persistence_da.get('reservoir_persistence_canada', False)
+        canada_da = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
 
     nudging = False
     streamflow_da = da_params.get('streamflow_da', False)

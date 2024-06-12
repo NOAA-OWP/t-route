@@ -112,7 +112,7 @@ compute_parameters:
                 #----------
                 reservoir_persistence_usgs  : True
                 reservoir_persistence_usace : True
-                reservoir_persistence_canada : True
+                reservoir_persistence_greatLake : True
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : True

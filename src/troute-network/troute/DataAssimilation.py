@@ -211,11 +211,7 @@ class NudgingDA(AbstractDA):
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 else:
-                    self._canada_df = pd.DataFrame()
-                if 'LakeOntario_outflow' in da_run:
-                    self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
-                else:
-                    self._lake_ontario_df = pd.DataFrame()    
+                    self._canada_df = pd.DataFrame()    
 
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -276,10 +272,6 @@ class NudgingDA(AbstractDA):
             else:
                 self._canada_df = pd.DataFrame()
 
-            if 'LakeOntario_outflow' in da_run:
-                self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
-            else:
-                self._lake_ontario_df = pd.DataFrame()
 
 class PersistenceDA(AbstractDA):
     """
@@ -704,7 +696,9 @@ class PersistenceDA(AbstractDA):
 
 class great_lake(AbstractDA):
     '''
-  
+    Hey Amin, in your PR it looks like the great_lake class relies on `streamflow_nudging` being set to true. 
+    But I think this should be it's own boolean parameter. Maybe a new parameter class under ReservoirDA? 
+    
     Here is a list of the waterbody IDs and the gage they should correspond to:
     4800002 -> 04127885 -> 
     4800004 -> 04159130 -> 13196034 (segment_id)
@@ -714,19 +708,34 @@ class great_lake(AbstractDA):
     def __init__(self, network, from_files, value_dict, da_run):
         
         data_assimilation_parameters = self._data_assimilation_parameters
-        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
-        # determine if user explictly requests streamflow DA
-        nudging = False
-        if streamflow_da_parameters:
-            nudging = streamflow_da_parameters.get('streamflow_nudging', False)
+        run_parameters = self._run_parameters
+        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', None).get('reservoir_persistence_da', None)
         
-        if nudging:
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+        
+        if 'canada_timeslice_files' in da_run:
+            self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+        else:
+            self._canada_df = pd.DataFrame()
+        if 'LakeOntario_outflow' in da_run:
+            self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+        else:
+            self._lake_ontario_df = pd.DataFrame() 
+        # determine if user explictly requests streamflow DA
+        greatLake = False
+        if reservoir_persistence_da:
+            greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
+        
+        if greatLake:
             lake_ontario_df = self._lake_ontario_df
             canada_df = self._canada_df
             
             ids_to_check = {'4800002': '04127885', '4800004': '13196034'}
             # the segment corresponding to 04127885 gages isn't exist as of now. Should be replaced in future
             # Initialize an empty DataFrame with the same columns as the usgs DataFrame
+            if self._usgs_df.empty:
+                self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            
             usgs_df_GL = pd.DataFrame(columns=self._usgs_df.columns)
 
             # Check if any ids are present in the index
@@ -758,7 +767,7 @@ class great_lake(AbstractDA):
 
             # List of DataFrames
             dfs = [lake_ontario_df, canada_df, usgs_df_GL]
-
+            
             self.great_lake_all = pd.concat(dfs, axis=0, join='outer', ignore_index=False)
         
 

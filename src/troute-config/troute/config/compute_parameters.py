@@ -132,7 +132,7 @@ class ReservoirPersistenceDA(BaseModel, extra='ignore'):
     # NOTE: mandatory for USACE reservoir DA, defaults to False
     reservoir_persistence_usace: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
-    reservoir_persistence_canada: bool = False
+    reservoir_persistence_greatLake: bool = False
 
     crosswalk_usgs_gage_field: str = "usgs_gage_id"
     crosswalk_usace_gage_field: str = "usace_gage_id"
