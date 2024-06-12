@@ -696,9 +696,6 @@ class PersistenceDA(AbstractDA):
 
 class great_lake(AbstractDA):
     '''
-    Hey Amin, in your PR it looks like the great_lake class relies on `streamflow_nudging` being set to true. 
-    But I think this should be it's own boolean parameter. Maybe a new parameter class under ReservoirDA? 
-    
     Here is a list of the waterbody IDs and the gage they should correspond to:
     4800002 -> 04127885 -> 
     4800004 -> 04159130 -> 13196034 (segment_id)
