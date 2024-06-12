@@ -64,6 +64,7 @@ def nwm_output_generator(
     lastobs_df = None,
     link_gage_df = None,
     link_lake_crosswalk = None,
+    logFileName='preRun.log' 
 ):
 
     dt = run.get("dt")
@@ -124,7 +125,6 @@ def nwm_output_generator(
         )
         csv_output_segments = csv_output.get("csv_output_segments", None)
 
-    
     if csv_output_folder or rsrto or chrto or chano or test or wbdyo or stream_output:
         
         start = time.time()
@@ -222,6 +222,18 @@ def nwm_output_generator(
             cpu_pool = cpu_pool
             )
 
+        with open(logFileName, 'a') as preRunLog:
+            preRunLog.write("\n") 
+            preRunLog.write("-----\n") 
+            preRunLog.write("Output of flow velocity depth files into folder: "+str(Path(stream_output_directory))+"\n") 
+            preRunLog.write("-----\n") 
+            nTimeBins = int( len(flowveldepth.columns)/3)
+            fCalc = int(dt/60)
+            preRunLog.write("Internal computation of FVD data every "+str(stream_output_internal_frequency)+" minutes\n")
+            preRunLog.write("Output of FVD data every "+str(fCalc)+" minutes\n")
+            preRunLog.write("Writing "+str(nTimeBins)+" time bins for "+str(len(flowveldepth.index))+" segments per FVD output file\n")               
+        preRunLog.close()      
+
     if test:
         flowveldepth.to_pickle(Path(test))
     
@@ -250,6 +262,13 @@ def nwm_output_generator(
                 time_index[i],
             )
         
+        with open(logFileName, 'a') as preRunLog:
+            preRunLog.write("\n") 
+            preRunLog.write("-----\n") 
+            preRunLog.write("Output of waterbody files into folder: "+str(wbdyo)+"\n") 
+            preRunLog.write("-----\n") 
+        preRunLog.close()  
+         
         LOG.debug("writing LAKEOUT files took a total time of %s seconds." % (time.time() - start))
     
     if rsrto:
@@ -284,6 +303,14 @@ def nwm_output_generator(
                         "wrf_hydro_channel_ID_crosswalk_file_field_name"
                     ),
                 )
+
+                with open(logFileName, 'a') as preRunLog:
+                    preRunLog.write("\n") 
+                    preRunLog.write("-----\n") 
+                    preRunLog.write("Output of wrf hydro restart files into folder: "+str(Path(wrf_hydro_restart_dir))+"\n") 
+                    preRunLog.write("-----\n") 
+                preRunLog.close()  
+
             else:
                 LOG.critical('Did not find any restart files in wrf_hydro_channel_restart_source_directory. Aborting restart write sequence.')
                 
@@ -314,6 +341,13 @@ def nwm_output_generator(
                 cpu_pool,
             )
         
+            with open(logFileName, 'a') as preRunLog:
+                preRunLog.write("\n") 
+                preRunLog.write("-----\n") 
+                preRunLog.write("Output of FVD files into folder: "+str(chrtout_read_folder)+"\n") 
+                preRunLog.write("-----\n") 
+            preRunLog.close()  
+
         LOG.debug("writing CHRTOUT files took a total time of %s seconds." % (time.time() - start))
 
     if csv_output_folder: 
@@ -375,7 +409,14 @@ def nwm_output_generator(
             # TODO allow user to pass a list of segments at which they would like to print results
             # rather than just printing at gages. 
         )
-        
+
+        with open(logFileName, 'a') as preRunLog:
+            preRunLog.write("\n") 
+            preRunLog.write("-----\n") 
+            preRunLog.write("Output of results at gage locations into folder: "+str(Path(chano['chanobs_output_directory'])+"\n"))
+            preRunLog.write("-----\n") 
+        preRunLog.close()  
+
         LOG.debug("writing flow data to CHANOBS took %s seconds." % (time.time() - start))       
 
     if lastobso:        
@@ -404,6 +445,13 @@ def nwm_output_generator(
                 link_gage_df['gages'],
                 lastobs_output_folder,
             )
+
+            with open(logFileName, 'a') as preRunLog:
+                preRunLog.write("\n") 
+                preRunLog.write("-----\n") 
+                preRunLog.write("Output of lastobs data into folder: "+str(lastobs_output_folder)+"\n") 
+                preRunLog.write("-----\n") 
+            preRunLog.close()  
 
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
