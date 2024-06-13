@@ -722,8 +722,7 @@ class great_lake(AbstractDA):
             if 'LakeOntario_outflow' in da_run:
                 self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
             else:
-                self._lake_ontario_df = pd.DataFrame() 
-            # determine if user explictly requests streamflow DA
+                self._lake_ontario_df = pd.DataFrame()        
 
             lake_ontario_df = self._lake_ontario_df
             canada_df = self._canada_df
@@ -759,9 +758,6 @@ class great_lake(AbstractDA):
             
             if canada_df.empty:
                 canada_df = pd.DataFrame(columns=self._usgs_df.columns, index=pd.Index([4800006], name='link'))
-            
-            canada_df['link'] = 4800006
-            canada_df.set_index('link', inplace=True)
 
             # List of DataFrames
             dfs = [lake_ontario_df, canada_df, usgs_df_GL]
