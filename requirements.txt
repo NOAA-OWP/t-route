@@ -1,6 +1,6 @@
 wheel
 numpy
-Cython<3.0.4
+Cython>3,!=3.0.4
 pandas >=1.1.5, <=2.2.0
 xarray
 netcdf4
