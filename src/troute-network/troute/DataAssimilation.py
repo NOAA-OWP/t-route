@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from abc import ABC
 from joblib import delayed, Parallel
 import glob
+import re
 
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
@@ -91,7 +92,8 @@ class NudgingDA(AbstractDA):
 
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
-        
+        self._canada_df = pd.DataFrame()
+        self._canada_is_created = False  
         usgs_df = pd.DataFrame()
 
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
@@ -198,7 +200,7 @@ class NudgingDA(AbstractDA):
                         temp_df['gages'] = temp_df['gages'].astype(int)
                         lastobs_df = temp_df.set_index('gages').dropna()
                         self._last_obs_df = lastobs_df
-                    
+                   
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
                 # segments because connections dic has replaced all link ids within
@@ -209,6 +211,8 @@ class NudgingDA(AbstractDA):
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                    self._canada_is_created = True                    
+
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -265,6 +269,9 @@ class NudgingDA(AbstractDA):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             if 'canada_timeslice_files' in da_run:
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            else:
+                self._canada_df = pd.DataFrame()
+
 
 class PersistenceDA(AbstractDA):
     """
@@ -456,8 +463,8 @@ class PersistenceDA(AbstractDA):
                         transpose().
                         resample('15min').asfreq().
                         transpose()
-                    )
-
+                    )                     
+                    
                     # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
                     reservoir_usgs_df = (
                         usgs_df_15min.join(link_lake_df, how = 'inner').
@@ -687,6 +694,77 @@ class PersistenceDA(AbstractDA):
         if not self.usgs_df.empty:
             self._usgs_df = self.usgs_df.loc[:,network.t0:]
 
+class great_lake(AbstractDA):
+    '''
+    Here is a list of the waterbody IDs and the gage they should correspond to:
+    4800002 -> 04127885 -> 
+    4800004 -> 04159130 -> 13196034 (segment_id)
+    4800006 -> 02HA013
+    4800007 -> IJC file    
+    '''
+    def __init__(self, network, from_files, value_dict, da_run):
+        greatLake = False
+        data_assimilation_parameters = self._data_assimilation_parameters
+        run_parameters = self._run_parameters
+        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', None).get('reservoir_persistence_da', None)
+
+        if reservoir_persistence_da:
+            greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
+
+        if greatLake:
+
+            streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+            
+            if not self._canada_is_created and ('canada_timeslice_files' in da_run):
+                self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                self._canada_is_created = True
+
+            if 'LakeOntario_outflow' in da_run:
+                self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+            else:
+                self._lake_ontario_df = pd.DataFrame()        
+
+            lake_ontario_df = self._lake_ontario_df
+            canada_df = self._canada_df
+            
+            ids_to_check = {'4800002': '04127885', '4800004': '13196034'}
+            # the segment corresponding to 04127885 gages isn't exist as of now. Should be replaced in future
+            # Initialize an empty DataFrame with the same columns as the usgs DataFrame
+            if self._usgs_df.empty:
+                self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+            
+            usgs_df_GL = pd.DataFrame(columns=self._usgs_df.columns)
+
+            # Check if any ids are present in the index
+            for key, value in ids_to_check.items():
+                if value in self._usgs_df.index:
+                    temp_df = (self._usgs_df.loc[[value]]
+                            .transpose()
+                            .resample('15min')
+                            .asfreq()
+                            .transpose())
+                    temp_df.index = [key]
+                else:
+                    temp_df = pd.DataFrame(index=[key], columns=self._usgs_df.columns)
+                
+                usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)   
+            
+            if not lake_ontario_df.empty:
+                lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
+            else:
+                lake_ontario_df = pd.DataFrame(columns=self._usgs_df.columns)
+            lake_ontario_df['link'] = 4800007
+            lake_ontario_df.set_index('link', inplace=True)
+            
+            if canada_df.empty:
+                canada_df = pd.DataFrame(columns=self._usgs_df.columns, index=pd.Index([4800006], name='link'))
+
+            # List of DataFrames
+            dfs = [lake_ontario_df, canada_df, usgs_df_GL]
+            
+            self.great_lake_all = pd.concat(dfs, axis=0, join='outer', ignore_index=False)
+        
+
 class RFCDA(AbstractDA):
     """
     
@@ -842,6 +920,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         NudgingDA.__init__(self, network, from_files, value_dict, da_run)
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, network, from_files, value_dict)
+        great_lake.__init__(self, network, from_files, value_dict, da_run)
     
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -993,11 +1072,51 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     
     return usgs_df
 
+def _create_LakeOntario_df(run_parameters, network, da_run):
+    t0 = network.t0
+    nts = run_parameters.get('nts')
+    dt = run_parameters.get('dt')
+    end_time = pd.to_datetime(t0) + pd.Timedelta(hours = nts/(3600/dt))
+    time_total = []
+    t = t0
+    while t < end_time:
+        time_total.append(t)
+        t += pd.Timedelta(minutes=15)
+
+
+    lake_ontario_df = pd.read_csv(da_run.get('LakeOntario_outflow'))
+    
+    # Increment the date by one day where Hour is "24:00" and set Hour to "00:00"
+    mask = lake_ontario_df['Hour'] == '24:00'
+    lake_ontario_df.loc[mask, 'Hour'] = '00:00'
+    lake_ontario_df.loc[mask, 'Date'] = (pd.to_datetime(lake_ontario_df.loc[mask, 'Date']) + pd.Timedelta(days=1)).dt.strftime('%Y-%m-%d')
+
+    lake_ontario_df['Hour'] = lake_ontario_df['Hour'].apply(lambda x: re.sub(r':\d{2}$', ':00', x))
+    # Combine Date and Hour into Datetime
+    lake_ontario_df['Datetime'] = pd.to_datetime(lake_ontario_df['Date'] + ' ' + lake_ontario_df['Hour'], format='%Y-%m-%d %H:%M')
+    
+    # Set Datetime as index and remove duplicates and unwanted columns
+    lake_ontario_df = lake_ontario_df.set_index('Datetime')
+    lake_ontario_df = lake_ontario_df.drop_duplicates()
+    lake_ontario_df = lake_ontario_df.drop(['Date', 'Hour'], axis=1)
+
+    # Filter DataFrame based on extracted times
+    time_total_df = pd.DataFrame(time_total, columns=['Datetime'])
+    time_total_df['Outflow(m3/s)'] = None  # Initialize with None or NaN
+    time_total_df = time_total_df.set_index('Datetime')
+    
+    
+    filtered_df = lake_ontario_df.loc[(lake_ontario_df.index >= t0) & (lake_ontario_df.index < end_time)]
+    total_df = pd.merge(time_total_df, filtered_df, left_index=True, right_index=True, how='left')
+    total_df = total_df.rename(columns={'Outflow(m3/s)_y': 'Outflow(m3/s)'}).drop(columns='Outflow(m3/s)_x')
+    
+    return total_df
+
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
-    Function for reading USGS timeslice files and creating a dataframe
-    of USGS gage observations. This dataframe is used for streamflow
-    nudging and can be used for constructing USGS reservoir dataframes.
+    Function for reading Canadian timeslice files and creating a dataframe
+    of Canadian gage observations. This dataframe is used for streamflow
+    nudging and can be used for constructing Canadian reservoir dataframes.
     
     Arguments:
     ----------

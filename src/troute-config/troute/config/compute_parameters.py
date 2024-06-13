@@ -132,7 +132,7 @@ class ReservoirPersistenceDA(BaseModel, extra='ignore'):
     # NOTE: mandatory for USACE reservoir DA, defaults to False
     reservoir_persistence_usace: bool = False
     # NOTE: mandatory for USACE reservoir DA, defaults to False
-    reservoir_persistence_canada: bool = False
+    reservoir_persistence_greatLake: bool = False
 
     crosswalk_usgs_gage_field: str = "usgs_gage_id"
     crosswalk_usace_gage_field: str = "usace_gage_id"
@@ -161,6 +161,8 @@ class DataAssimilationParameters(BaseModel, extra='ignore'):
     usace_timeslices_folder: Optional[DirectoryPath] = None
     # NOTE: required for canada reservoir DA
     canada_timeslices_folder: Optional[DirectoryPath] = None
+    # NOTE: required for LakeOntario reservoir DA
+    LakeOntario_outflow: Optional[DirectoryPath] = None
     # NOTE: required for reservoir DA - suggested value 24 (1 days)
     timeslice_lookback_hours: int = 24
 
