@@ -11,6 +11,7 @@ from joblib import delayed, Parallel
 from collections import defaultdict
 import xarray as xr
 from datetime import datetime
+from pprint import pformat
 import os
 
 import troute.nhd_io as nhd_io #FIXME
@@ -688,6 +689,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                 for f in qlat_files:
                     df = read_file(f)
                     df['feature_id'] = df['feature_id'].map(lambda x: int(str(x).removeprefix('nex-')) if str(x).startswith('nex') else int(x))
+                    assert df[
+                        "feature_id"
+                    ].is_unique, f"'feature_id's must be unique. '{f!s}' contains duplicate 'feature_id's: {pformat(df.loc[df['feature_id'].duplicated(), 'feature_id'].to_list())}"
                     df = df.set_index('feature_id')
                     dfs.append(df)
             
