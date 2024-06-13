@@ -59,19 +59,19 @@ def build_da_sets(da_params, run_sets, t0):
     # User-specified DA ON/OFF preferences
     usace_da = False
     usgs_da = False
-    canada_da = False
+    GreatLakes_da = False
     reservoir_persistence_da = da_params.get('reservoir_da', {}).get('reservoir_persistence_da', False)
     if reservoir_persistence_da:
         usgs_da = reservoir_persistence_da.get('reservoir_persistence_usgs', False)
         usace_da = reservoir_persistence_da.get('reservoir_persistence_usace', False)
-        canada_da = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
+        GreatLakes_da = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
 
     nudging = False
     streamflow_da = da_params.get('streamflow_da', False)
     if streamflow_da:
         nudging = streamflow_da.get('streamflow_nudging', False)
         
-    if not usgs_da and not usace_da and not canada_da and not nudging:
+    if not usgs_da and not usace_da and not GreatLakes_da and not nudging:
         # if all DA capabilities are OFF, return empty dictionary
         da_sets = [{} for _ in run_sets]
     
@@ -146,7 +146,7 @@ def build_da_sets(da_params, run_sets, t0):
                 da_sets[i]['usace_timeslice_files'] = filenames_usace
 
             # identify available USGS TimeSlices in run set i
-            if canada_timeslices_folder and canada_da:
+            if canada_timeslices_folder and GreatLakes_da:
                 filenames_canada = (timestamps.strftime('%Y-%m-%d_%H:%M:%S') 
                             + '.15min.wscTimeSlice.ncdf').to_list()
 

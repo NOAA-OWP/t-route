@@ -92,7 +92,8 @@ class NudgingDA(AbstractDA):
 
         self._last_obs_df = pd.DataFrame()
         self._usgs_df = pd.DataFrame()
-        
+        self._canada_df = pd.DataFrame()
+        self._canada_is_created = False  
         usgs_df = pd.DataFrame()
 
         # If streamflow nudging is turned on, create lastobs_df and usgs_df:
@@ -210,8 +211,7 @@ class NudgingDA(AbstractDA):
                 self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-                else:
-                    self._canada_df = pd.DataFrame()    
+                    self._canada_is_created = True                    
 
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -703,27 +703,28 @@ class great_lake(AbstractDA):
     4800007 -> IJC file    
     '''
     def __init__(self, network, from_files, value_dict, da_run):
-        
+        greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
         reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', None).get('reservoir_persistence_da', None)
-        
-        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
-        
-        if 'canada_timeslice_files' in da_run:
-            self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-        else:
-            self._canada_df = pd.DataFrame()
-        if 'LakeOntario_outflow' in da_run:
-            self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
-        else:
-            self._lake_ontario_df = pd.DataFrame() 
-        # determine if user explictly requests streamflow DA
-        greatLake = False
+
         if reservoir_persistence_da:
             greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
-        
+
         if greatLake:
+
+            streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+            
+            if not self._canada_is_created and ('canada_timeslice_files' in da_run):
+                self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
+                self._canada_is_created = True
+
+            if 'LakeOntario_outflow' in da_run:
+                self._lake_ontario_df = _create_LakeOntario_df(run_parameters, network, da_run)
+            else:
+                self._lake_ontario_df = pd.DataFrame() 
+            # determine if user explictly requests streamflow DA
+
             lake_ontario_df = self._lake_ontario_df
             canada_df = self._canada_df
             
@@ -744,10 +745,10 @@ class great_lake(AbstractDA):
                             .asfreq()
                             .transpose())
                     temp_df.index = [key]
-                    usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)
                 else:
                     temp_df = pd.DataFrame(index=[key], columns=self._usgs_df.columns)
-                    usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)   
+                
+                usgs_df_GL = pd.concat([usgs_df_GL, temp_df], axis=0)   
             
             if not lake_ontario_df.empty:
                 lake_ontario_df = lake_ontario_df.T.reset_index().drop('index', axis = 1)
@@ -1117,9 +1118,9 @@ def _create_LakeOntario_df(run_parameters, network, da_run):
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
-    Function for reading USGS timeslice files and creating a dataframe
-    of USGS gage observations. This dataframe is used for streamflow
-    nudging and can be used for constructing USGS reservoir dataframes.
+    Function for reading Canadian timeslice files and creating a dataframe
+    of Canadian gage observations. This dataframe is used for streamflow
+    nudging and can be used for constructing Canadian reservoir dataframes.
     
     Arguments:
     ----------
