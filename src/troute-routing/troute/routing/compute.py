@@ -10,7 +10,10 @@ import numpy as np
 import copy
 
 import troute.nhd_network as nhd_network
-from troute.routing.fast_reach.mc_reach import compute_network_structured
+#from troute.routing.fast_reach.mc_reach import compute_network_structured
+#from troute.routing.fast_reach.mc_reach import compute_network_structured_wDiffusive
+from troute.routing.fast_reach.mc_diffusive_reach import compute_network_structured_wDiffusive
+
 import troute.routing.diffusive_utils_v02 as diff_utils
 from troute.routing.fast_reach import diffusive
 
@@ -19,9 +22,11 @@ import logging
 LOG = logging.getLogger('')
 
 _compute_func_map = defaultdict(
-    compute_network_structured,
+    #compute_network_structured,
+    compute_network_structured_wDiffusive,
     {
-        "V02-structured": compute_network_structured,
+        #"V02-structured": compute_network_structured,
+        "V02-structured": compute_network_structured_wDiffusive,
     },
 )
 
@@ -298,10 +303,13 @@ def compute_nhd_routing_v02(
     data_assimilation_parameters,
     waterbody_types_df,
     waterbody_type_specified,
-    subnetwork_list,
+    subnetwork_list, 
+    diffusive_network_data,
+    topobathy,
+    coastal_boundary_depth_df,
     flowveldepth_interorder = {},
     from_files = True,
-):
+    ):
 
     da_decay_coefficient = da_parameter_dict.get("da_decay_coefficient", 0)
     param_df["dt"] = dt
@@ -547,7 +555,7 @@ def compute_nhd_routing_v02(
                         from_files,
                         offnetwork_upstreams
                     )
-                    
+                    import pdb; pdb.set_trace()
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -1036,7 +1044,7 @@ def compute_nhd_routing_v02(
                     waterbody_types_df_sub, 
                     t0,
                     from_files,
-                    offnetwork_upstreams
+                    offnetwork_upstreams=set(), # TODO: need to be defined.
                     )
 
                 jobs.append(
@@ -1100,6 +1108,7 @@ def compute_nhd_routing_v02(
             results = parallel(jobs)
 
     elif parallel_compute_method == "serial":
+        import pdb; pdb.set_trace()
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
@@ -1204,7 +1213,7 @@ def compute_nhd_routing_v02(
                 t0,
                 from_files,
                 )
-            
+            import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -1262,6 +1271,7 @@ def compute_nhd_routing_v02(
                     from_files=from_files,
                 )
             )
+            import pdb; pdb.set_trace()
 
 
     elif parallel_compute_method == "bmi":
@@ -1422,6 +1432,282 @@ def compute_nhd_routing_v02(
                 )
             )
 
+    elif parallel_compute_method == "serial-diffusive":
+        import pdb; pdb.set_trace()
+        results = []
+        for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
+            # The X_sub lines use SEGS...
+            # which becomes invalid with the wbodies included.
+            # So we define "common_segs" to identify regular routing segments
+            # and wbodies_segs for the waterbody reaches/segments
+            segs = list(chain.from_iterable(reach_list))
+            common_segs = param_df.index.intersection(segs)
+            # Assumes everything else is a waterbody...
+            wbodies_segs = set(segs).symmetric_difference(common_segs)
+
+            #Declare empty dataframe
+            waterbody_types_df_sub = pd.DataFrame()
+
+            # If waterbody parameters exist
+            if not waterbodies_df.empty:
+
+                lake_segs = list(waterbodies_df.index.intersection(segs))
+
+                waterbodies_df_sub = waterbodies_df.loc[
+                    lake_segs,
+                    [
+                        "LkArea",
+                        "LkMxE",
+                        "OrificeA",
+                        "OrificeC",
+                        "OrificeE",
+                        "WeirC",
+                        "WeirE",
+                        "WeirL",
+                        "ifd",
+                        "qd0",
+                        "h0",
+                    ],
+                ]
+
+                #If reservoir types other than Level Pool are active
+                if not waterbody_types_df.empty:
+                    waterbody_types_df_sub = waterbody_types_df.loc[
+                        lake_segs,
+                        [
+                            "reservoir_type",
+                        ],
+                    ]
+
+            else:
+                lake_segs = []
+                waterbodies_df_sub = pd.DataFrame()
+
+            param_df_sub = param_df.loc[
+                common_segs,
+                ["dt", "bw", "tw", "twcc", "dx", "n", "ncc", "cs", "s0", "alt"],
+            ].sort_index()
+
+            reaches_list_with_type = _build_reach_type_list(reach_list, wbodies_segs)
+
+            # qlat_sub = qlats.loc[common_segs].sort_index()
+            # q0_sub = q0.loc[common_segs].sort_index()
+            qlat_sub = qlats.loc[param_df_sub.index]
+            q0_sub = q0.loc[param_df_sub.index]
+
+            param_df_sub = param_df_sub.reindex(
+                param_df_sub.index.tolist() + lake_segs
+            ).sort_index()
+
+            usgs_df_sub, lastobs_df_sub, da_positions_list_byseg = _prep_da_dataframes(usgs_df, lastobs_df, param_df_sub.index)
+            da_positions_list_byreach, da_positions_list_bygage = _prep_da_positions_byreach(reach_list, lastobs_df_sub.index)
+
+            qlat_sub = qlat_sub.reindex(param_df_sub.index)
+            q0_sub = q0_sub.reindex(param_df_sub.index)
+            
+            # prepare reservoir DA data
+            (reservoir_usgs_df_sub, 
+             reservoir_usgs_df_time,
+             reservoir_usgs_update_time,
+             reservoir_usgs_prev_persisted_flow,
+             reservoir_usgs_persistence_update_time,
+             reservoir_usgs_persistence_index,
+             reservoir_usace_df_sub, 
+             reservoir_usace_df_time,
+             reservoir_usace_update_time,
+             reservoir_usace_prev_persisted_flow,
+             reservoir_usace_persistence_update_time,
+             reservoir_usace_persistence_index,
+             reservoir_rfc_df_sub, 
+             reservoir_rfc_totalCounts, 
+             reservoir_rfc_file, 
+             reservoir_rfc_use_forecast, 
+             reservoir_rfc_timeseries_idx, 
+             reservoir_rfc_update_time, 
+             reservoir_rfc_da_timestep, 
+             reservoir_rfc_persist_days,
+             waterbody_types_df_sub,
+             ) = _prep_reservoir_da_dataframes(
+                reservoir_usgs_df,
+                reservoir_usgs_param_df,
+                reservoir_usace_df, 
+                reservoir_usace_param_df,
+                reservoir_rfc_df,
+                reservoir_rfc_param_df,
+                waterbody_types_df_sub, 
+                t0,
+                from_files,
+                )
+            
+            # prepare diffusive wave routing data
+            import pdb; pdb.set_trace()
+            for diffusive_tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
+                # diffusive_tw should be the most downstream stream segment of a given reach. If there are stream segments 
+                # below a tw segment, these segments would not be routed either by diffusive or MC.
+                
+                #trib_segs = None
+                #trib_flow = None
+                # extract junction inflows from results array
+                #for j, i in enumerate(results):
+                #    x = np.in1d(i[0], diffusive_network_data[tw_diffusive]['tributary_segments'])
+                #    if sum(x) > 0:
+                #        if j == 0:
+                #            trib_segs = i[0][x]
+                #            trib_flow = i[1][x, ::3]
+                #        else:
+                #            if trib_segs is None:
+                #                trib_segs = i[0][x]
+                #                trib_flow = i[1][x, ::3]                        
+                #            else:
+                #                trib_segs = np.append(trib_segs, i[0][x])
+                #                trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+
+                # create DataFrame of junction inflow data            
+                #junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
+                num_col = nts
+                trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
+                
+                if not topobathy.empty:
+                    # create topobathy data for diffusive mainstem segments of this given tw segment        
+                    topobathy_bytw               = topobathy.loc[diffusive_network_data[diffusive_tw]['mainstem_segs']] 
+                    unrefactored_topobathy_bytw = pd.DataFrame()                    
+                else:
+                    topobathy_bytw = pd.DataFrame()
+                    unrefactored_topobathy_bytw = pd.DataFrame()
+
+                # diffusive streamflow DA activation switch
+                #if da_parameter_dict['diffusive_streamflow_nudging']==True:
+                if 'diffusive_streamflow_nudging' in da_parameter_dict:
+                    diffusive_usgs_df = usgs_df
+                else:
+                    diffusive_usgs_df = pd.DataFrame()
+
+                # tw in refactored hydrofabric (NOTE: refactored_hydrofabric not in use any more)
+                refactored_diffusive_domain_bytw = None
+                refactored_reaches_byrftw        = None
+        
+                # coastal boundary depth input data at TW
+                if tw in coastal_boundary_depth_df.index:
+                    coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[diffusive_tw].to_frame().T
+                else:
+                    coastal_boundary_depth_bytw_df = pd.DataFrame()
+
+                # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
+                # the column names need to be changed to intergers from zero incrementing by 1
+                diffusive_qlats = qlats.copy()
+                diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
+                import pdb; pdb.set_trace()
+                # build diffusive inputs
+                diffusive_inputs = diff_utils.diffusive_input_data_v02(
+                    diffusive_tw,
+                    diffusive_network_data[diffusive_tw]['connections'],
+                    diffusive_network_data[diffusive_tw]['rconn'],
+                    diffusive_network_data[diffusive_tw]['reaches'],
+                    diffusive_network_data[diffusive_tw]['mainstem_segs'],
+                    diffusive_network_data[diffusive_tw]['tributary_segments'],
+                    None, # place holder for diffusive parameters
+                    diffusive_network_data[diffusive_tw]['param_df'],
+                    diffusive_qlats,
+                    q0,
+                    junction_inflows,
+                    qts_subdivisions,
+                    t0,
+                    nts,
+                    dt,
+                    waterbodies_df,
+                    topobathy_bytw,
+                    diffusive_usgs_df,
+                    refactored_diffusive_domain_bytw,
+                    refactored_reaches_byrftw, 
+                    coastal_boundary_depth_bytw_df,
+                    unrefactored_topobathy_bytw,
+                )
+
+                # diffusive segments and reaches to be routed using the diffusive wave within diffusive_reach.pyx 
+                #diffusive_segs= []
+                diffusive_reaches=[]
+                diffusive_segs = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                nondiffusive_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                for sublist in reach_list:
+                    if any(item in sublist for item in diffusive_segs):
+                        diffusive_reaches.append(sublist)   
+                #dmy = list(itertools.chain(*diffusive_reaches))
+                #segid = 2404219
+                #for sublist in diffusive_reaches:
+                #    if segid in sublist:
+                #        order = sublist.index(segid)
+                #        break
+                #reach_headseg = sublist[0]
+                #seg_order = order
+                #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
+ 
+            import pdb; pdb.set_trace()
+            results.append(
+                compute_func(
+                    nts,
+                    dt,
+                    qts_subdivisions,
+                    reaches_list_with_type,
+                    independent_networks[tw],
+                    param_df_sub.index.values.astype("int64"),
+                    param_df_sub.columns.values,
+                    param_df_sub.values,
+                    q0_sub.values.astype("float32"),
+                    qlat_sub.values.astype("float32"),
+                    lake_segs,
+                    waterbodies_df_sub.values,
+                    data_assimilation_parameters,
+                    waterbody_types_df_sub.values.astype("int32"),
+                    waterbody_type_specified,
+                    t0.strftime('%Y-%m-%d_%H:%M:%S'),
+                    usgs_df_sub.values.astype("float32"),
+                    np.array(da_positions_list_byseg, dtype="int32"),
+                    np.array(da_positions_list_byreach, dtype="int32"),
+                    np.array(da_positions_list_bygage, dtype="int32"),
+                    lastobs_df_sub.get("lastobs_discharge", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
+                    lastobs_df_sub.get("time_since_lastobs", pd.Series(index=lastobs_df_sub.index, name="Null", dtype="float32")).values.astype("float32"),
+                    da_decay_coefficient,
+                    # USGS Hybrid Reservoir DA data
+                    reservoir_usgs_df_sub.values.astype("float32"),
+                    reservoir_usgs_df_sub.index.values.astype("int32"),
+                    reservoir_usgs_df_time.astype('float32'),
+                    reservoir_usgs_update_time.astype('float32'),
+                    reservoir_usgs_prev_persisted_flow.astype('float32'),
+                    reservoir_usgs_persistence_update_time.astype('float32'),
+                    reservoir_usgs_persistence_index.astype('float32'),
+                    # USACE Hybrid Reservoir DA data
+                    reservoir_usace_df_sub.values.astype("float32"),
+                    reservoir_usace_df_sub.index.values.astype("int32"),
+                    reservoir_usace_df_time.astype('float32'),
+                    reservoir_usace_update_time.astype("float32"),
+                    reservoir_usace_prev_persisted_flow.astype("float32"),
+                    reservoir_usace_persistence_update_time.astype("float32"),
+                    reservoir_usace_persistence_index.astype("float32"),
+                    # RFC Reservoir DA data
+                    reservoir_rfc_df_sub.values.astype("float32"),
+                    reservoir_rfc_df_sub.index.values.astype("int32"),
+                    reservoir_rfc_totalCounts.astype("int32"),
+                    reservoir_rfc_file,
+                    reservoir_rfc_use_forecast.astype("int32"),
+                    reservoir_rfc_timeseries_idx.astype("int32"),
+                    reservoir_rfc_update_time.astype("float32"),
+                    reservoir_rfc_da_timestep.astype("int32"),
+                    reservoir_rfc_persist_days.astype("int32"),
+                    # Diffusive wave routing data
+                    diffusive_tw,
+                    #diffusive_segs, 
+                    diffusive_reaches, 
+                    nondiffusive_segs,                   
+                    diffusive_inputs, 
+                    {},
+                    assume_short_ts,
+                    return_courant,
+                    from_files=from_files,
+                )
+            )
+            #import pdb; pdb.set_trace()
+
     return results, subnetwork_list
 
 def compute_diffusive_routing(
@@ -1466,7 +1752,7 @@ def compute_diffusive_routing(
 
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
-
+        import pdb; pdb.set_trace()
         if not topobathy.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
             if refactored_diffusive_domain:
@@ -1508,7 +1794,7 @@ def compute_diffusive_routing(
         # the column names need to be changed to intergers from zero incrementing by 1
         diffusive_qlats = qlats.copy()
         diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
-
+        import pdb; pdb.set_trace()
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1534,7 +1820,7 @@ def compute_diffusive_routing(
             coastal_boundary_depth_bytw_df,
             unrefactored_topobathy_bytw,
         )
-
+        import pdb; pdb.set_trace()
         # run the simulation
         out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs)
 
