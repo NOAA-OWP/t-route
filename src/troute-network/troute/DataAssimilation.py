@@ -8,7 +8,10 @@ from abc import ABC
 from joblib import delayed, Parallel
 import glob
 import re
-
+import time
+import logging
+from nwm_routing.log_level_set import log_level_set
+LOG = logging.getLogger('DataAssimilation_logger')
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 from troute.network import bmi_array2df as a2df
@@ -71,10 +74,10 @@ class NudgingDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
-
+        main_start_time = time.time()
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
-
+        
         # isolate user-input parameters for streamflow data assimilation
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
 
@@ -212,7 +215,8 @@ class NudgingDA(AbstractDA):
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                     self._canada_is_created = True                    
-
+        LOG.debug("NudgingDA complete in %s seconds." % (time.time() - main_start_time))
+        
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -703,6 +707,7 @@ class great_lake(AbstractDA):
     4800007 -> IJC file    
     '''
     def __init__(self, network, from_files, value_dict, da_run):
+        great_lake_start_time = time.time()
         greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
@@ -763,7 +768,7 @@ class great_lake(AbstractDA):
             dfs = [lake_ontario_df, canada_df, usgs_df_GL]
             
             self.great_lake_all = pd.concat(dfs, axis=0, join='outer', ignore_index=False)
-        
+        LOG.debug("great_lake complete in %s seconds." % (time.time() - great_lake_start_time))
 
 class RFCDA(AbstractDA):
     """
