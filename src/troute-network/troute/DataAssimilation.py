@@ -1209,7 +1209,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
     crosswalk_lakeID_field = streamflow_da_parameters.get('crosswalk_' + res_source + '_lakeID_field',res_source + '_lake_id')
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-    LOG.info("_create_canada_df function is started.")
+    LOG.info(f"_create_reservoir_df function for {res_source} is started.")
     reservoir_df_start_time = time.time()	
     # TODO: join timeslice folder and files into complete path upstream in workflow
     res_timeslices_folder = pathlib.Path(res_timeslices_folder)
@@ -1245,7 +1245,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
         reservoir_param_df['persistence_index'] = 0
     else:
         reservoir_param_df = pd.DataFrame()
-    LOG.debug("_create_reservoir_df complete in %s seconds." % (time.time() - reservoir_df_start_time))    
+    LOG.debug(f"_create_reservoir_df for {res_source} complete in %s seconds." % (time.time() - reservoir_df_start_time))    
     return reservoir_df, reservoir_param_df
     
 def _set_persistence_reservoir_da_params(run_results):
