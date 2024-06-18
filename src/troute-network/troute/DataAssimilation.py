@@ -10,7 +10,7 @@ import glob
 import re
 import time
 import logging
-from nwm_routing.log_level_set import log_level_set
+
 LOG = logging.getLogger('DataAssimilation_logger')
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
@@ -74,6 +74,7 @@ class NudgingDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
+        LOG.info("NudgingDA is Started.")
         main_start_time = time.time()
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
@@ -707,6 +708,7 @@ class great_lake(AbstractDA):
     4800007 -> IJC file    
     '''
     def __init__(self, network, from_files, value_dict, da_run):
+        LOG.info("great_lake class is started.")
         great_lake_start_time = time.time()
         greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
@@ -1050,7 +1052,8 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-    
+    LOG.info("_create_usgs_df function is started.")
+    usgs_df_start_time = time.time()    
     # TODO: join timeslice folder and files into complete path upstream
     usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
     usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
@@ -1074,10 +1077,12 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     
     else:
         usgs_df = pd.DataFrame()
-    
+    LOG.debug("_create_usgs_df complete in %s seconds." % (time.time() - usgs_df_start_time))
     return usgs_df
 
 def _create_LakeOntario_df(run_parameters, network, da_run):
+    LOG.info("_create_LakeOntario_df function is started.")
+    LakeOntario_df_start_time = time.time()    
     t0 = network.t0
     nts = run_parameters.get('nts')
     dt = run_parameters.get('dt')
@@ -1114,7 +1119,7 @@ def _create_LakeOntario_df(run_parameters, network, da_run):
     filtered_df = lake_ontario_df.loc[(lake_ontario_df.index >= t0) & (lake_ontario_df.index < end_time)]
     total_df = pd.merge(time_total_df, filtered_df, left_index=True, right_index=True, how='left')
     total_df = total_df.rename(columns={'Outflow(m3/s)_y': 'Outflow(m3/s)'}).drop(columns='Outflow(m3/s)_x')
-    
+    LOG.debug("_create_LakeOntario_df complete in %s seconds." % (time.time() - LakeOntario_df_start_time))
     return total_df
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
@@ -1147,7 +1152,8 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
     
     # TODO: join timeslice folder and files into complete path upstream
-    
+    LOG.info("_create_canada_df function is started.")
+    canada_df_start_time = time.time()
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
     
 
@@ -1169,7 +1175,7 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
 
     else:
         canada_df = pd.DataFrame()
-
+    LOG.debug("_create_canada_df complete in %s seconds." % (time.time() - canada_df_start_time))
     return canada_df
 
 def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, streamflow_da_parameters, run_parameters, network, da_run, lake_gage_crosswalk, res_source):
@@ -1203,7 +1209,8 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
     crosswalk_lakeID_field = streamflow_da_parameters.get('crosswalk_' + res_source + '_lakeID_field',res_source + '_lake_id')
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-	
+    LOG.info("_create_canada_df function is started.")
+    reservoir_df_start_time = time.time()	
     # TODO: join timeslice folder and files into complete path upstream in workflow
     res_timeslices_folder = pathlib.Path(res_timeslices_folder)
     res_files = [res_timeslices_folder.joinpath(f) for f in
@@ -1238,7 +1245,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
         reservoir_param_df['persistence_index'] = 0
     else:
         reservoir_param_df = pd.DataFrame()
-        
+    LOG.debug("_create_reservoir_df complete in %s seconds." % (time.time() - reservoir_df_start_time))    
     return reservoir_df, reservoir_param_df
     
 def _set_persistence_reservoir_da_params(run_results):
