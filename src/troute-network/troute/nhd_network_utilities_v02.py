@@ -12,7 +12,7 @@ from joblib import delayed, Parallel
 import troute.nhd_io as nhd_io
 import troute.nhd_network as nhd_network
 
-LOG = logging.getLogger('')
+LOG = logging.getLogger('nhd_network_utilities_v02_logger')
 
 def build_connections(supernetwork_parameters):
     '''

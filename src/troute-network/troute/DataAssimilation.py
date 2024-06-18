@@ -283,7 +283,8 @@ class PersistenceDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
-
+        LOG.info("PersistenceDA class is started.")
+        PersistenceDA_start_time = time.time()
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
 
@@ -541,7 +542,7 @@ class PersistenceDA(AbstractDA):
         # an error. Need to think through this more. 
         if not self._usgs_df.empty:
             self._usgs_df = self._usgs_df.loc[:,network.t0:]
-    
+        LOG.debug("PersistenceDA complete in %s seconds." % (time.time() - PersistenceDA_start_time))
     def update_after_compute(self, run_results,):
         '''
         Function to update data assimilation object after running routing module.
@@ -701,6 +702,7 @@ class PersistenceDA(AbstractDA):
 
 class great_lake(AbstractDA):
     '''
+    Another task I'm thinking of is that the great_lakes_DA class also probably needs functions for update_after_compute and update_for_next_loop. Can you work on adding those? Should be it's own PR.
     Here is a list of the waterbody IDs and the gage they should correspond to:
     4800002 -> 04127885 -> 
     4800004 -> 04159130 -> 13196034 (segment_id)
@@ -777,7 +779,8 @@ class RFCDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict):
-
+        LOG.info("RFCDA class is started.")
+        RFCDA_start_time = time.time()
         rfc_parameters = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', None)
 
         # check if user explictly requests RFC reservoir DA
@@ -873,7 +876,7 @@ class RFCDA(AbstractDA):
 
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
-
+        LOG.debug("RFCDA complete in %s seconds." % (time.time() - RFCDA_start_time))
     def update_after_compute(self, run_results):
         '''
         Function to update data assimilation object after running routing module.

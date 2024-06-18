@@ -28,8 +28,17 @@ from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_ro
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import troute.hyfeature_network_utilities as hnu
+import sys
+##### uncomment below to save the log file #######
+# logging.basicConfig(
+#     level=logging.DEBUG,
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler("LOG_all.log", mode='w'),  # Log to a file
+#         logging.StreamHandler(sys.stdout)  
+#     ])
 
-LOG = logging.getLogger('')
+LOG = logging.getLogger('main_logger')
 
 '''
 High level orchestration of ngen t-route simulations for NWM application

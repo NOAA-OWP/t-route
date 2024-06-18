@@ -15,7 +15,7 @@ from troute.routing.fast_reach import diffusive
 
 import logging
 
-LOG = logging.getLogger('')
+LOG = logging.getLogger('compute_logger')
 
 _compute_func_map = defaultdict(
     compute_network_structured,
