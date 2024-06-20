@@ -751,9 +751,7 @@ class AbstractNetwork(ABC):
                 raise(RuntimeError("No output binary qlat folder supplied in config"))
             elif not os.path.exists(binary_folder):
                 raise(RuntimeError("Output binary qlat folder supplied in config does not exist"))
-            elif len(list(pathlib.Path(binary_folder).glob('*.parquet'))) != 0:
-                raise(RuntimeError("Output binary qlat folder supplied in config is not empty (already contains '.parquet' files)"))
-
+            
             #Add tnx for backwards compatability
             qlat_files_list = list(qlat_files) + list(qlat_input_folder.glob('tnx*.csv'))
             #Convert files to binary hourly files, reset nexus input information
