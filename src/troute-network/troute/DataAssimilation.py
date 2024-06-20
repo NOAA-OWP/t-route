@@ -702,7 +702,6 @@ class PersistenceDA(AbstractDA):
 
 class great_lake(AbstractDA):
     '''
-    Another task I'm thinking of is that the great_lakes_DA class also probably needs functions for update_after_compute and update_for_next_loop. Can you work on adding those? Should be it's own PR.
     Here is a list of the waterbody IDs and the gage they should correspond to:
     4800002 -> 04127885 -> 
     4800004 -> 04159130 -> 13196034 (segment_id)
