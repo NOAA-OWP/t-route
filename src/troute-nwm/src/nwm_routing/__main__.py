@@ -29,14 +29,7 @@ import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
 import troute.hyfeature_network_utilities as hnu
 import sys
-##### uncomment below to save the log file #######
-# logging.basicConfig(
-#     level=logging.DEBUG,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#     handlers=[
-#         logging.FileHandler("LOG_all.log", mode='w'),  # Log to a file
-#         logging.StreamHandler(sys.stdout)  
-#     ])
+
 
 LOG = logging.getLogger('main_logger')
 
@@ -289,46 +282,46 @@ def main_v04(argv):
     LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
 
     if showtiming:
-        print('************ TIMING SUMMARY ************')
-        print('----------------------------------------')
-        print(
+        LOG.info('************ TIMING SUMMARY ************')
+        LOG.info('----------------------------------------')
+        LOG.info(
             'Network graph construction: {} secs, {} %'\
             .format(
-                round(task_times['network_creation_time'],2),
-                round(task_times['network_creation_time']/task_times['total_time'] * 100,2)
+                round(task_times['network_creation_time'], 2),
+                round(task_times['network_creation_time'] / task_times['total_time'] * 100, 2)
             )
         )
-        print(
+        LOG.info(
             'Forcing array construction: {} secs, {} %'\
             .format(
-                round(task_times['forcing_time'],2),
-                round(task_times['forcing_time']/task_times['total_time'] * 100,2)
+                round(task_times['forcing_time'], 2),
+                round(task_times['forcing_time'] / task_times['total_time'] * 100, 2)
             )
         ) 
-        print(
+        LOG.info(
             'Routing computations: {} secs, {} %'\
             .format(
-                round(task_times['route_time'],2),
-                round(task_times['route_time']/task_times['total_time'] * 100,2)
+                round(task_times['route_time'], 2),
+                round(task_times['route_time'] / task_times['total_time'] * 100, 2)
             )
         ) 
-        print(
+        LOG.info(
             'Output writing: {} secs, {} %'\
             .format(
-                round(task_times['output_time'],2),
-                round(task_times['output_time']/task_times['total_time'] * 100,2)
+                round(task_times['output_time'], 2),
+                round(task_times['output_time'] / task_times['total_time'] * 100, 2)
             )
         )
-        print('----------------------------------------')
-        print(
+        LOG.info('----------------------------------------')
+        LOG.info(
             'Total execution time: {} secs'\
             .format(
-                round(task_times['network_creation_time'],2) +
-                round(task_times['forcing_time'],2) +
-                round(task_times['route_time'],2) +
-                round(task_times['output_time'],2)
+                round(task_times['network_creation_time'], 2) +
+                round(task_times['forcing_time'], 2) +
+                round(task_times['route_time'], 2) +
+                round(task_times['output_time'], 2)
             )
-        ) 
+        )
 
 
 '''

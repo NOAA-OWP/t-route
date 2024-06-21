@@ -1,5 +1,7 @@
 import logging
 import sys   
+from datetime import datetime
+import os
 
 def log_level_set(input_parameters):
     '''
@@ -20,8 +22,25 @@ def log_level_set(input_parameters):
     
     '''
     log_level = input_parameters.get("log_level", 'DEBUG')
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s %(levelname)7s [%(filename)s:%(lineno)s - %(funcName)20s()]: %(message)s',
-        stream=sys.stderr,
-    )
+    if input_parameters.get('log_directory'):
+        directory = input_parameters.get('log_directory')
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_file_name = f"LOG_{timestamp}.log"
+        
+        logging.basicConfig(
+            level=log_level,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+            logging.FileHandler(os.path.join(directory, log_file_name), mode='w'),  # Log to a file
+            logging.StreamHandler(sys.stdout)  
+        ])
+    else:       
+        logging.basicConfig(
+            level=log_level,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            stream=sys.stderr,
+        )   
+    
