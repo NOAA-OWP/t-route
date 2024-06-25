@@ -18,6 +18,13 @@ diffusive.o: diffusive.f90
 pydiffusive.o: pydiffusive.f90
 	$(FC) $(FCFLAGS) -o $@ $<
 
+chxsec_lookuptable.o: chxsec_lookuptable.f90
+	$(FC) $(FCFLAGS) -o $@ $<
+
+pychxsec_lookuptable.o: pychxsec_lookuptable.f90
+	$(FC) $(FCFLAGS) -o $@ $<
+
+
 install:
 	cp *.o ../../../src/troute-routing/troute/routing/fast_reach
 
@@ -27,3 +34,7 @@ clean:
 	rm -f ../../../src/troute-routing/troute/routing/fast_reach/pydiffusive.o
 	rm -f ../../../src/troute-routing/troute/routing/fast_reach/diffusive.c
 	rm -f ../../../src/troute-routing/troute/routing/fast_reach/diffusive.cpython*.so
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/chxsec_lookuptable.o
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/pychxsec_lookuptable.o
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/chxsec_lookuptable.c
+	rm -f ../../../src/troute-routing/troute/routing/fast_reach/chxsec_lookuptable.cpython*.so

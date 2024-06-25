@@ -122,9 +122,21 @@ mc_diffusive_reach = Extension(
     extra_compile_args=["-O2", "-g"],
 )
 
+chxsec_lookuptable = Extension(
+    "troute.routing.fast_reach.chxsec_lookuptable",
+    sources=["troute/routing/fast_reach/chxsec_lookuptable.{}".format(ext)],
+    extra_objects=[
+        "troute/routing/fast_reach/chxsec_lookuptable.o",
+        "troute/routing/fast_reach/pychxsec_lookuptable.o",
+    ],
+    include_dirs=[np.get_include()],
+    extra_compile_args=["-O2", "-g"],
+    libraries=[],
+)
+
 
 package_data = {"troute.fast_reach": ["reach.pxd", "fortran_wrappers.pxd", "utils.pxd"]}
-ext_modules = [reach, mc_reach, diffusive, simple_da, mc_diffusive_reach]
+ext_modules = [reach, mc_reach, diffusive, simple_da, mc_diffusive_reach, chxsec_lookuptable]
 
 if USE_CYTHON:
     from Cython.Build import cythonize

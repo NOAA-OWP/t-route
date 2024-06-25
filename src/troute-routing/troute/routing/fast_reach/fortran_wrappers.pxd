@@ -169,3 +169,26 @@ cdef extern from "pydiffusive_cnx.h":
                      double *q_ev_g,
                      double *elv_ev_g) nogil;
 
+cdef extern from "pychxsec_lookuptable.h":
+    void c_chxsec_lookuptable_calc(int *mxncomp_g,
+                                   int *nrch_g,
+                                   double *z_ar_g,
+                                   double *bo_ar_g,
+                                   double *traps_ar_g,
+                                   double *tw_ar_g,
+                                   double *twcc_ar_g,
+                                   double *mann_ar_g,
+                                   double *manncc_ar_g,
+                                   double *dx_ar_g,
+                                   double *so_lowerlimit_g,
+                                   int *frnw_col,
+                                   int *frnw_g,
+                                   int *mxnbathy_g,
+                                   double *x_bathy_g,
+                                   double *z_bathy_g,
+                                   double *mann_bathy_g,
+                                   int *size_bathy_g,
+                                   int *nrow_chxsec_lookuptable,
+                                   double *chxsec_lookuptable,
+                                   double *z_adj) nogil;
+

@@ -1107,6 +1107,9 @@ def nwm_route(
         waterbody_types_df,
         waterbody_type_specified,
         subnetwork_list,
+        diffusive_network_data,
+        topobathy_df,
+        coastal_boundary_depth_df,
         flowveldepth_interorder,
         from_files = from_files,
     )

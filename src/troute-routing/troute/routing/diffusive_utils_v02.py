@@ -743,16 +743,20 @@ def diffusive_input_data_v02(
     para_ar_g[0]  = 0.95    # Courant number (default: 0.95)
     para_ar_g[1]  = 0.5     # lower limit of celerity (default: 0.5)
     para_ar_g[2]  = 10.0    # lower limit of diffusivity (default: 10)
-    para_ar_g[3]  = 10000.0  # upper limit of diffusivity (default: 10000)
+    para_ar_g[3]  = 10000.0 # upper limit of diffusivity (default: 10000)
     para_ar_g[4]  = -15.0   # lower limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[5]  = -10.0   #upper limit of dimensionless diffusivity, used to determine b/t normal depth and diffusive depth
     para_ar_g[6]  = 1.0     # 0:run Bisection to compute water level; 1: Newton Raphson (default: 1.0)
-    para_ar_g[7]  = 0.02831   # lower limit of discharge (default: 0.02831 cms)
-    para_ar_g[8]  = 0.0001    # lower limit of channel bed slope (default: 0.0001)
+    para_ar_g[7]  = 0.02831 # lower limit of discharge (default: 0.02831 cms)
+    para_ar_g[8]  = 0.00001 # lower limit of channel bed slope (default: 0.00001)
     para_ar_g[9]  = 1.0     # weight in numerically computing 2nd derivative: 0: explicit, 1: implicit (default: 1.0)
-    para_ar_g[10] = 2      # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
+    para_ar_g[10] = 2       # downstream water depth boundary condition: 1: given water depth data, 2: normal depth
+   
     # number of reaches in network
     nrch_g = len(reach_list)
+
+    # the number of rows in the hydraulic value lookup tables for the channel cross sections
+    nrow_chxsec_lookuptable = 501
 
     # maximum number of nodes in a reach
     mxncomp_g = 0
@@ -1098,6 +1102,7 @@ def diffusive_input_data_v02(
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g
         diff_ins["z_thalweg_g"] = z_thalweg_g
+        diff_ins["nrow_chxsec_lookuptable"] = nrow_chxsec_lookuptable 
     else:
         # for refactored hydrofabric
         # model time steps
@@ -1151,6 +1156,7 @@ def diffusive_input_data_v02(
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g   
         diff_ins["z_thalweg_g"] = z_thalweg_g
+        import pdb; pdb.set_trace()
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

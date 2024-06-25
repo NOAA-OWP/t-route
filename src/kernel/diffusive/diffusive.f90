@@ -1794,6 +1794,8 @@ contains
     allocate(newdKdA(nel))
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
+    open(unit=10, file='lookupTable_naturalxsec.txt', status='unknown')
+    open(unit=11, file='z_naturalxsec.txt', status='unknown')
 
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.
@@ -2027,7 +2029,21 @@ contains
       xsec_tab(11,iel, idx_node, idx_reach)     =   compoundSKK(iel)
     end do
 
+    do iel=1, nel, 249
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(1, iel, idx_node, idx_reach)
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(2, iel, idx_node, idx_reach)    
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(3, iel, idx_node, idx_reach)
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(4, iel, idx_node, idx_reach)  
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(5, iel, idx_node, idx_reach)
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(6, iel, idx_node, idx_reach)        
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(7, iel, idx_node, idx_reach)
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(8, iel, idx_node, idx_reach)    
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(9, iel, idx_node, idx_reach)
+      write(10,*) idx_node, idx_reach, iel, xsec_tab(11,iel, idx_node, idx_reach)
+    enddo
+
     z(idx_node, idx_reach)  =   el_min
+    write(11,*) idx_node, idx_reach, z(idx_node, idx_reach)
 
     deallocate(el1, a1, peri1, redi1, redi1All)
     deallocate(conv1, tpW1, equiv_mann)
@@ -2129,14 +2145,15 @@ contains
     double precision, dimension(:),   allocatable :: newdPdA, diffAreaAll, diffPereAll, newdKdA       
     double precision, dimension(:),   allocatable :: compoundSKK, elev
     double precision, dimension(:,:), allocatable :: allXcs, allYcs
-
+    
     allocate(el1(nel,3), a1(nel,3), peri1(nel,3), redi1(nel,3), redi1All(nel))
     allocate(conv1(nel,3), tpW1(nel,3), diffArea(nel,3), newI1(nel,3), diffPere(nel,3))
     allocate(newdPdA(nel), diffAreaAll(nel), diffPereAll(nel), newdKdA(nel))       ! change Nazmul 20210601
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
     allocate(totalNodes(3))
-
+    open(unit=1, file='lookupTable_synch.txt', status='unknown')
+    open(unit=2, file='z_synch.txt', status='unknown')
     f2m = 1.0 ! conversion from feet to meter (actually using meter so no conversion necessary for now)
     
     leftBnkX   = leftBnkX_given
@@ -2428,8 +2445,22 @@ contains
       xsec_tab(9, j, k, num_reach) = newdKdA(j)
       xsec_tab(11,j, k, num_reach) = compoundSKK(j)
     end do
-        
+
+    do j=1, nel, 249
+      write(1,*) k, num_reach, j, xsec_tab(1, j, k, num_reach)
+      write(1,*) k, num_reach, j, xsec_tab(2, j, k, num_reach)    
+      write(1,*) k, num_reach, j, xsec_tab(3, j, k, num_reach)
+      write(1,*) k, num_reach, j, xsec_tab(4, j, k, num_reach)  
+      write(1,*) k, num_reach, j, xsec_tab(5, j, k, num_reach)
+      write(1,*) k, num_reach, j, xsec_tab(6, j, k, num_reach)        
+      write(1,*) k, num_reach, j, xsec_tab(7, j, k, num_reach)
+      write(1,*) k, num_reach, j, xsec_tab(8, j, k, num_reach)    
+      write(1,*) k, num_reach, j, xsec_tab(9, j, k, num_reach)
+      write(1,*) k, num_reach, j, xsec_tab(11, j, k, num_reach)
+    enddo
+
     z(k, num_reach) = el_min
+    write(2,*) k, num_reach, z(k, num_reach)
 
     deallocate(el1, a1, peri1, redi1, redi1All)
     deallocate(conv1, tpW1, diffArea, newI1, diffPere)

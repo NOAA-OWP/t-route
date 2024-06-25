@@ -10,23 +10,23 @@ import numpy as np
 import copy
 
 import troute.nhd_network as nhd_network
-#from troute.routing.fast_reach.mc_reach import compute_network_structured
+from troute.routing.fast_reach.mc_reach import compute_network_structured
 #from troute.routing.fast_reach.mc_reach import compute_network_structured_wDiffusive
 from troute.routing.fast_reach.mc_diffusive_reach import compute_network_structured_wDiffusive
 
 import troute.routing.diffusive_utils_v02 as diff_utils
 from troute.routing.fast_reach import diffusive
+from troute.routing.fast_reach import chxsec_lookuptable
 
 import logging
 
 LOG = logging.getLogger('')
 
 _compute_func_map = defaultdict(
-    #compute_network_structured,
-    compute_network_structured_wDiffusive,
+    compute_network_structured,
     {
-        #"V02-structured": compute_network_structured,
-        "V02-structured": compute_network_structured_wDiffusive,
+        "V02-structured": compute_network_structured,
+        "V02-structured-diffusive": compute_network_structured_wDiffusive,
     },
 )
 
@@ -317,6 +317,7 @@ def compute_nhd_routing_v02(
     
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
+    import pdb; pdb.set_trace()
     if parallel_compute_method == "by-subnetwork-jit-clustered":
         
         # Create subnetwork objects if they have not already been created
@@ -1642,6 +1643,13 @@ def compute_nhd_routing_v02(
                 #seg_order = order
                 #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
  
+                # Compute hydraulic value lookup tables for channel cross sections 
+                import pdb; pdb.set_trace()
+                if not topobathy_bytw.empty:
+                    out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
+                                                        diffusive_inputs)
+                        
+            
             import pdb; pdb.set_trace()
             results.append(
                 compute_func(

@@ -61,11 +61,13 @@ if  [[ "$build_mc_kernel" == true ]]; then
 fi
 
 if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
-  #building reach and resevoir kernel files .o  
+  #building diffusive kernel files .o  
   cd $REPOROOT/src/kernel/diffusive/
   make clean
   make diffusive.o
   make pydiffusive.o
+  make chxsec_lookuptable.o
+  make pychxsec_lookuptable.o
   make install || exit
 fi
 
