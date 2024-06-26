@@ -4,13 +4,16 @@ from typing import Optional, List
 from typing_extensions import Annotated, Literal
 from .types import FilePath, DirectoryPath
 
-streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl', '.parquet']
+
 
 class OutputParameters(BaseModel, extra='forbid'):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:496
+    parquet_output: Optional["ParquetOutput"] = None
+    # NOTE: this appears to be optional. See nwm_routing/input.py ~:563
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
@@ -42,6 +45,14 @@ class CsvOutput(BaseModel, extra='forbid'):
     # NOTE: required if writing results to csv
     csv_output_folder: Optional[DirectoryPath] = None
     csv_output_segments: Optional[List[str]] = None
+
+
+class ParquetOutput(BaseModel, extra='forbid'):
+    # NOTE: required if writing results to parquet
+    parquet_output_folder: Optional[DirectoryPath] = None
+    parquet_output_segments: Optional[List[str]] = None
+    configuration: Optional[str] = None
+    prefix_ids: Optional[str] = None
 
 
 class ChrtoutOutput(BaseModel, extra='forbid'):
