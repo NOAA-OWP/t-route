@@ -327,12 +327,11 @@ def compute_log_mc(
         preRunLog.write("\n")           
         preRunLog.write("qts subdivisions: "+str(qts_subdivisions)+'\n')
         preRunLog.write("dt [sec]: "+str(dt)+'\n')
-        preRunLog.write("qlat forcing time bins: "+str(len(qlats.columns))+'\n')
-        preRunLog.write("qlat forcing nexus points: "+str(len(qlats.index))+'\n')
         preRunLog.write("nts: "+str(nts)+'\n')
         preRunLog.write("\n")
         preRunLog.write("Data Assimilation Parameters:\n")
         preRunLog.write("\n")
+    
         if ('usgs_timeslices_folder' in data_assimilation_parameters.keys()):           
             preRunLog.write("usgs timeslice folder: "+str(data_assimilation_parameters['usgs_timeslices_folder'])+'\n')
         if ('usace_timeslices_folder' in data_assimilation_parameters.keys()):    
@@ -356,8 +355,7 @@ def compute_log_mc(
             preRunLog.write(outPutStr+'\n')
             LOG.info(outPutStr)
             preRunLog.write("Reservoir RFC forecasts: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'])+'\n')
-            preRunLog.write("Reservoir RFC forecasts lookback hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_lookback_hours'])+'\n')
-            preRunLog.write("Reservoir RFC forecasts offset hours: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts_offset_hours'])+'\n')
+
         preRunLog.write("\n")                   
         preRunLog.write("****************************\n") 
         preRunLog.write("Network Topology Parameters:\n") 
@@ -434,6 +432,7 @@ def compute_log_diff(
             preRunLog.write("Reverse connections in network: "+str(revConnGraphLength)+"\n")
             paramDf_Columns = [column for column in diffNw['param_df'].columns]
             preRunLog.write("Diffusive parameters:\n")
+    
             for paramDf_Col in paramDf_Columns:
                 preRunLog.write(str(paramDf_Col)+"  ")
             preRunLog.write("\n")

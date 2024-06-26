@@ -143,7 +143,7 @@ def main_v04(argv):
     compute_kernel = compute_parameters.get("compute_kernel", "V02-caching")
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
-
+    
     logFileName = 'preRun.log'
     # TODO: derive output log filename from a future run name (e.g., defined in yaml file)
     with open(logFileName, 'w') as preRunLog:
