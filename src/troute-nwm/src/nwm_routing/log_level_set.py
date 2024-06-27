@@ -32,7 +32,7 @@ def log_level_set(input_parameters):
         
         logging.basicConfig(
             level=log_level,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)s - %(funcName)s]: %(message)s',
             handlers=[
             logging.FileHandler(os.path.join(directory, log_file_name), mode='w'),  # Log to a file
             logging.StreamHandler(sys.stdout)  
@@ -40,7 +40,7 @@ def log_level_set(input_parameters):
     else:       
         logging.basicConfig(
             level=log_level,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)s - %(funcName)s]: %(message)s',
             stream=sys.stderr,
         )   
     
