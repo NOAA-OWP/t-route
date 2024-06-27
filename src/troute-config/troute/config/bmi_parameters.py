@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
-class BMIParameters(BaseModel, extra='forbid'):
+class BMIParameters(BaseModel):
     flowpath_columns: Optional[List[str]] = Field(
         default_factory=lambda: [
             'id',
