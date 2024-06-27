@@ -8,7 +8,7 @@ from build_tests import parity_check
 import logging
 
 
-LOG = logging.getLogger('output_logger')
+LOG = logging.getLogger('')
 
 def _reindex_lake_to_link_id(target_df, crosswalk):
     '''

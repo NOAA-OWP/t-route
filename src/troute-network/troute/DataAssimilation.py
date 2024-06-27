@@ -11,7 +11,7 @@ import re
 import time
 import logging
 
-LOG = logging.getLogger('DataAssimilation_logger')
+LOG = logging.getLogger('')
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 from troute.network import bmi_array2df as a2df

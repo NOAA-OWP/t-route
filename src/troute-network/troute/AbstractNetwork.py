@@ -17,7 +17,7 @@ from troute.nhd_network_utilities_v02 import organize_independent_networks
 import troute.nhd_io as nhd_io 
 from .AbstractRouting import MCOnly, MCwithDiffusive, MCwithDiffusiveNatlXSectionNonRefactored, MCwithDiffusiveNatlXSectionRefactored
 
-LOG = logging.getLogger('AbstractNetwork_logger')
+LOG = logging.getLogger('')
 
 class AbstractNetwork(ABC):
     """
