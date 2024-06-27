@@ -5,7 +5,7 @@ from typing_extensions import Literal
 LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 
 
-class LoggingParameters(BaseModel, extra='forbid'):
+class LoggingParameters(BaseModel):
     log_level: LogLevel = "DEBUG"
     """
     Python logging level. Can either be a string or an integer from the list below optional,
