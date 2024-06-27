@@ -1035,7 +1035,7 @@ def compute_nhd_routing_v02(
                     waterbody_types_df_sub, 
                     t0,
                     from_files,
-                    offnetwork_upstreams
+                    set()
                     )
 
                 jobs.append(
