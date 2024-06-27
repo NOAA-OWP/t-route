@@ -38,6 +38,7 @@ log_parameters:
     #----------
     showtiming: True
     log_level : DEBUG
+    #log_directory : Log/
 #--------------------------------------------------------------------------------
 network_topology_parameters:
     #----------

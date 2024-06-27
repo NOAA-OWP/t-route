@@ -8,7 +8,10 @@ from abc import ABC
 from joblib import delayed, Parallel
 import glob
 import re
+import time
+import logging
 
+LOG = logging.getLogger('')
 from troute.routing.fast_reach.reservoir_RFC_da import _validate_RFC_data
 
 from troute.network import bmi_array2df as a2df
@@ -71,10 +74,11 @@ class NudgingDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
-
+        LOG.info("NudgingDA class is Started.")
+        main_start_time = time.time()
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
-
+        
         # isolate user-input parameters for streamflow data assimilation
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
 
@@ -212,7 +216,8 @@ class NudgingDA(AbstractDA):
                 if 'canada_timeslice_files' in da_run:
                     self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
                     self._canada_is_created = True                    
-
+        LOG.debug("NudgingDA class is completed in %s seconds." % (time.time() - main_start_time))
+        
     def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
@@ -278,7 +283,8 @@ class PersistenceDA(AbstractDA):
     
     """
     def __init__(self, network, from_files, value_dict, da_run=[]):
-
+        LOG.info("PersistenceDA class is started.")
+        PersistenceDA_start_time = time.time()
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
 
@@ -536,7 +542,7 @@ class PersistenceDA(AbstractDA):
         # an error. Need to think through this more. 
         if not self._usgs_df.empty:
             self._usgs_df = self._usgs_df.loc[:,network.t0:]
-    
+        LOG.debug("PersistenceDA class is completed in %s seconds." % (time.time() - PersistenceDA_start_time))
     def update_after_compute(self, run_results,):
         '''
         Function to update data assimilation object after running routing module.
@@ -703,6 +709,8 @@ class great_lake(AbstractDA):
     4800007 -> IJC file    
     '''
     def __init__(self, network, from_files, value_dict, da_run):
+        LOG.info("great_lake class is started.")
+        great_lake_start_time = time.time()
         greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
@@ -763,14 +771,15 @@ class great_lake(AbstractDA):
             dfs = [lake_ontario_df, canada_df, usgs_df_GL]
             
             self.great_lake_all = pd.concat(dfs, axis=0, join='outer', ignore_index=False)
-        
+        LOG.debug("great_lake class is completed in %s seconds." % (time.time() - great_lake_start_time))
 
 class RFCDA(AbstractDA):
     """
     
     """
     def __init__(self, network, from_files, value_dict):
-
+        LOG.info("RFCDA class is started.")
+        RFCDA_start_time = time.time()
         rfc_parameters = self._data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', None)
 
         # check if user explictly requests RFC reservoir DA
@@ -866,7 +875,7 @@ class RFCDA(AbstractDA):
 
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
-
+        LOG.debug("RFCDA class is completed in %s seconds." % (time.time() - RFCDA_start_time))
     def update_after_compute(self, run_results):
         '''
         Function to update data assimilation object after running routing module.
@@ -1045,7 +1054,8 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     da_decay_coefficient   = data_assimilation_parameters.get("da_decay_coefficient",120)
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-    
+    LOG.info("Reading and preprocessing usgs timeslice files is started.")
+    usgs_df_start_time = time.time()    
     # TODO: join timeslice folder and files into complete path upstream
     usgs_timeslices_folder = pathlib.Path(usgs_timeslices_folder)
     usgs_files = [usgs_timeslices_folder.joinpath(f) for f in 
@@ -1069,10 +1079,12 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
     
     else:
         usgs_df = pd.DataFrame()
-    
+    LOG.debug("Reading and preprocessing usgs timeslice files is completed in %s seconds." % (time.time() - usgs_df_start_time))
     return usgs_df
 
 def _create_LakeOntario_df(run_parameters, network, da_run):
+    LOG.info("Creating Lake Ontario dataframe is started.")
+    LakeOntario_df_start_time = time.time()    
     t0 = network.t0
     nts = run_parameters.get('nts')
     dt = run_parameters.get('dt')
@@ -1109,7 +1121,7 @@ def _create_LakeOntario_df(run_parameters, network, da_run):
     filtered_df = lake_ontario_df.loc[(lake_ontario_df.index >= t0) & (lake_ontario_df.index < end_time)]
     total_df = pd.merge(time_total_df, filtered_df, left_index=True, right_index=True, how='left')
     total_df = total_df.rename(columns={'Outflow(m3/s)_y': 'Outflow(m3/s)'}).drop(columns='Outflow(m3/s)_x')
-    
+    LOG.debug("Creating Lake Ontario dataframe is completed in %s seconds." % (time.time() - LakeOntario_df_start_time))
     return total_df
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
@@ -1142,7 +1154,8 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
     
     # TODO: join timeslice folder and files into complete path upstream
-    
+    LOG.info("Reading Canadian timeslice files is started.")
+    canada_df_start_time = time.time()
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
     
 
@@ -1164,7 +1177,7 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
 
     else:
         canada_df = pd.DataFrame()
-
+    LOG.debug("Reading Canadian timeslice files is completed in %s seconds." % (time.time() - canada_df_start_time))
     return canada_df
 
 def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, streamflow_da_parameters, run_parameters, network, da_run, lake_gage_crosswalk, res_source):
@@ -1198,7 +1211,8 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
     crosswalk_lakeID_field = streamflow_da_parameters.get('crosswalk_' + res_source + '_lakeID_field',res_source + '_lake_id')
     qc_threshold           = data_assimilation_parameters.get("qc_threshold",1)
     interpolation_limit    = data_assimilation_parameters.get("interpolation_limit_min",59)
-	
+    LOG.info(f"Reading {res_source} timeslice files and creating a dataframe is started.")
+    reservoir_df_start_time = time.time()	
     # TODO: join timeslice folder and files into complete path upstream in workflow
     res_timeslices_folder = pathlib.Path(res_timeslices_folder)
     res_files = [res_timeslices_folder.joinpath(f) for f in
@@ -1233,7 +1247,7 @@ def _create_reservoir_df(data_assimilation_parameters, reservoir_da_parameters, 
         reservoir_param_df['persistence_index'] = 0
     else:
         reservoir_param_df = pd.DataFrame()
-        
+    LOG.debug(f"Reading {res_source} timeslice files is completed in %s seconds." % (time.time() - reservoir_df_start_time))    
     return reservoir_df, reservoir_param_df
     
 def _set_persistence_reservoir_da_params(run_results):
@@ -1348,7 +1362,8 @@ def build_lastobs_df(
     -----
     
     '''
-    
+    LOG.info("Building last observation dataframe is started")
+    build_lastobs_start_time = time.time()
     # open crosswalking file and construct dataframe relating gageID to segmentID
     with xr.open_dataset(crosswalk_file) as ds:
         gage_list = list(map(bytes.strip, ds[crosswalk_gage_field].values))
@@ -1417,7 +1432,7 @@ def build_lastobs_df(
             'lastobs_discharge',
         ]
     ]
-    
+    LOG.debug(f"Building last observation dataframe completed in %s seconds." % (time.time() - build_lastobs_start_time))
     return lastobs_df
 
 def new_lastobs(run_results, time_increment):
@@ -1514,6 +1529,8 @@ def read_reservoir_parameter_file(
     -----
     
     """
+    LOG.info("Reading and processing reservoir parameter to create crosswalk is started")
+    read_reservoir_start_time = time.time()
     with xr.open_dataset(reservoir_parameter_file) as ds:
         ds = ds.swap_dims({"feature_id": lake_index_field})
         ds_new = ds["reservoir_type"]
@@ -1555,6 +1572,7 @@ def read_reservoir_parameter_file(
     if rfc_forecast == False:
         df1[df1['reservoir_type'] == 4] = 1
     
+    LOG.debug(f"Reading and processing reservoir is completed in %s seconds." % (time.time() - read_reservoir_start_time))
     return df1, usgs_crosswalk, usace_crosswalk
 
 def _timeslice_qcqa(discharge, 
@@ -1913,6 +1931,8 @@ def _read_lastobs_file(
         discharge_nan = -9999.0,
         time_shift = 0,
         ):
+    LOG.info("Reading last observation file is started")
+    read_lastobs_start_time = time.time()
     with xr.open_dataset(lastobsfile) as ds:
         gages = ds[station_id].values
         
@@ -1958,5 +1978,6 @@ def _read_lastobs_file(
     lastobs_df = pd.DataFrame(data = data_var_dict)
     lastobs_df['gages'] = lastobs_df['gages'].str.decode('utf-8')
 
+    LOG.debug(f"Reading last observation file is completed in %s seconds." % (time.time() - read_lastobs_start_time))
     return lastobs_df
 
