@@ -6,7 +6,7 @@ from .types import FilePath, DirectoryPath
 
 streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
-class OutputParameters(BaseModel, extra='forbid'):
+class OutputParameters(BaseModel):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
@@ -31,30 +31,30 @@ class OutputParameters(BaseModel, extra='forbid'):
     # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
 
-class ChanobsOutput(BaseModel, extra='forbid'):
+class ChanobsOutput(BaseModel):
     # NOTE: required if writing chanobs files
     chanobs_output_directory: Optional[DirectoryPath] = None
     # NOTE: required if writing chanobs files
     chanobs_filepath: Optional[FilePath] = None
 
 
-class CsvOutput(BaseModel, extra='forbid'):
+class CsvOutput(BaseModel):
     # NOTE: required if writing results to csv
     csv_output_folder: Optional[DirectoryPath] = None
     csv_output_segments: Optional[List[str]] = None
 
 
-class ChrtoutOutput(BaseModel, extra='forbid'):
+class ChrtoutOutput(BaseModel):
     # NOTE: mandatory if writing results to CHRTOUT.
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
 
-class LiteRestart(BaseModel, extra='forbid'):
+class LiteRestart(BaseModel):
     # NOTE: required if writing restart data lite files.
     lite_restart_output_directory: Optional[DirectoryPath] = None
 
 
-class HydroRstOutput(BaseModel, extra='forbid'):
+class HydroRstOutput(BaseModel):
     # NOTE: required if writing restart data to HYDRO_RST
     wrf_hydro_restart_dir: Optional[DirectoryPath] = None
     wrf_hydro_channel_restart_pattern_filter: str = "HYDRO_RST.*"
@@ -63,7 +63,7 @@ class HydroRstOutput(BaseModel, extra='forbid'):
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
 
-class WrfHydroParityCheck(BaseModel, extra='forbid'):
+class WrfHydroParityCheck(BaseModel):
     # NOTE: required for parity check to occur
     # TODO: not sure if this should be optional?
     # shorvath: I'm ok with removing parity_checks for t-routeV4...
@@ -74,7 +74,7 @@ class WrfHydroParityCheck(BaseModel, extra='forbid'):
     parity_check_compare_file_sets: Optional[List["ParityCheckCompareFileSet"]] = None
 
 
-class ParityCheckCompareFileSet(BaseModel, extra='forbid'):
+class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
 
 class StreamOutput(BaseModel):
@@ -82,7 +82,7 @@ class StreamOutput(BaseModel):
     stream_output_directory: Optional[DirectoryPath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
-    stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)]
+    stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
