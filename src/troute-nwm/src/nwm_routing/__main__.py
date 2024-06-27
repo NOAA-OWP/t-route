@@ -62,20 +62,20 @@ def main_v04(argv):
     }
     
     showtiming = log_parameters.get("showtiming", None)
-    if showtiming:
-        task_times = {}
-        task_times['forcing_time'] = 0
-        task_times['route_time'] = 0
-        task_times['output_time'] = 0
-        main_start_time = time.time()
+    
+    task_times = {}
+    task_times['forcing_time'] = 0
+    task_times['route_time'] = 0
+    task_times['output_time'] = 0
+    main_start_time = time.time()
     
     cpu_pool = compute_parameters.get("cpu_pool", None)
  
     # Build routing network data objects. Network data objects specify river 
     # network connectivity, channel geometry, and waterbody parameters. Also
     # perform initial warmstate preprocess.
-    if showtiming:
-        network_start_time = time.time()
+    
+    network_start_time = time.time()
     
     #if "ngen_nexus_file" in supernetwork_parameters:
     if supernetwork_parameters["network_type"] == 'HYFeaturesNetwork':
@@ -104,9 +104,9 @@ def main_v04(argv):
                             )
         duplicate_ids_df = pd.DataFrame()
     
-    if showtiming:
-        network_end_time = time.time()
-        task_times['network_creation_time'] = network_end_time - network_start_time
+    
+    network_end_time = time.time()
+    task_times['network_creation_time'] = network_end_time - network_start_time
 
     # Create run_sets: sets of forcing files for each loop
     run_sets = network.build_forcing_sets()
@@ -135,9 +135,9 @@ def main_v04(argv):
         da_run=da_sets[0],
         )
 
-    if showtiming:
-        forcing_end_time = time.time()
-        task_times['forcing_time'] += forcing_end_time - network_end_time
+    
+    forcing_end_time = time.time()
+    task_times['forcing_time'] += forcing_end_time - network_end_time
 
     parallel_compute_method = compute_parameters.get("parallel_compute_method", None)
     subnetwork_target_size = compute_parameters.get("subnetwork_target_size", 1)
@@ -160,8 +160,8 @@ def main_v04(argv):
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
-        if showtiming:
-            route_start_time = time.time()
+        
+        route_start_time = time.time()
 
         run_results = nwm_route(
             network.connections, 
@@ -208,9 +208,9 @@ def main_v04(argv):
         subnetwork_list = run_results[1]
         run_results = run_results[0]
 
-        if showtiming:
-            route_end_time = time.time()
-            task_times['route_time'] += route_end_time - route_start_time
+        
+        route_end_time = time.time()
+        task_times['route_time'] += route_end_time - route_start_time
 
         # create initial conditions for next loop itteration
         network.new_q0(run_results)
@@ -242,12 +242,12 @@ def main_v04(argv):
                 network,
                 da_sets[run_set_iterator + 1])
             
-            if showtiming:
-                forcing_end_time = time.time()
-                task_times['forcing_time'] += forcing_end_time - route_end_time
+            
+            forcing_end_time = time.time()
+            task_times['forcing_time'] += forcing_end_time - route_end_time
 
-        if showtiming:
-            output_start_time = time.time()
+        
+        output_start_time = time.time()
         
         #TODO Update this to work with either network type...
         nwm_output_generator(
@@ -271,57 +271,97 @@ def main_v04(argv):
         )
         
 
-        if showtiming:
-            output_end_time = time.time()
-            task_times['output_time'] += output_end_time - output_start_time
+        output_end_time = time.time()
+        task_times['output_time'] += output_end_time - output_start_time
     # end of for run_set_iterator, run in enumerate(run_sets):
     
-    if showtiming:
-        task_times['total_time'] = time.time() - main_start_time
+    
+    task_times['total_time'] = time.time() - main_start_time
 
     LOG.debug("process complete in %s seconds." % (time.time() - main_start_time))
 
-    if showtiming:
-        LOG.info('************ TIMING SUMMARY ************')
-        LOG.info('----------------------------------------')
-        LOG.info(
+    LOG.info('************ TIMING SUMMARY ************')
+    LOG.info('----------------------------------------')
+    LOG.info(
+        'Network graph construction: {} secs, {} %'\
+        .format(
+            round(task_times['network_creation_time'], 2),
+            round(task_times['network_creation_time'] / task_times['total_time'] * 100, 2)
+        )
+    )
+    LOG.info(
+        'Forcing array construction: {} secs, {} %'\
+        .format(
+            round(task_times['forcing_time'], 2),
+            round(task_times['forcing_time'] / task_times['total_time'] * 100, 2)
+        )
+    ) 
+    LOG.info(
+        'Routing computations: {} secs, {} %'\
+        .format(
+            round(task_times['route_time'], 2),
+            round(task_times['route_time'] / task_times['total_time'] * 100, 2)
+        )
+    ) 
+    LOG.info(
+        'Output writing: {} secs, {} %'\
+        .format(
+            round(task_times['output_time'], 2),
+            round(task_times['output_time'] / task_times['total_time'] * 100, 2)
+        )
+    )
+    LOG.info('----------------------------------------')
+    LOG.info(
+        'Total execution time: {} secs'\
+        .format(
+            round(task_times['network_creation_time'], 2) +
+            round(task_times['forcing_time'], 2) +
+            round(task_times['route_time'], 2) +
+            round(task_times['output_time'], 2)
+        )
+    )
+    
+    if showtiming and log_parameters.get('log_level') not in ['DEBUG', 'INFO']:
+        print('************ TIMING SUMMARY ************')
+        print('----------------------------------------')
+        print(
             'Network graph construction: {} secs, {} %'\
             .format(
-                round(task_times['network_creation_time'], 2),
-                round(task_times['network_creation_time'] / task_times['total_time'] * 100, 2)
+                round(task_times['network_creation_time'],2),
+                round(task_times['network_creation_time']/task_times['total_time'] * 100,2)
             )
         )
-        LOG.info(
+        print(
             'Forcing array construction: {} secs, {} %'\
             .format(
-                round(task_times['forcing_time'], 2),
-                round(task_times['forcing_time'] / task_times['total_time'] * 100, 2)
+                round(task_times['forcing_time'],2),
+                round(task_times['forcing_time']/task_times['total_time'] * 100,2)
             )
         ) 
-        LOG.info(
+        print(
             'Routing computations: {} secs, {} %'\
             .format(
-                round(task_times['route_time'], 2),
-                round(task_times['route_time'] / task_times['total_time'] * 100, 2)
+                round(task_times['route_time'],2),
+                round(task_times['route_time']/task_times['total_time'] * 100,2)
             )
         ) 
-        LOG.info(
+        print(
             'Output writing: {} secs, {} %'\
             .format(
-                round(task_times['output_time'], 2),
-                round(task_times['output_time'] / task_times['total_time'] * 100, 2)
+                round(task_times['output_time'],2),
+                round(task_times['output_time']/task_times['total_time'] * 100,2)
             )
         )
-        LOG.info('----------------------------------------')
-        LOG.info(
+        print('----------------------------------------')
+        print(
             'Total execution time: {} secs'\
             .format(
-                round(task_times['network_creation_time'], 2) +
-                round(task_times['forcing_time'], 2) +
-                round(task_times['route_time'], 2) +
-                round(task_times['output_time'], 2)
+                round(task_times['network_creation_time'],2) +
+                round(task_times['forcing_time'],2) +
+                round(task_times['route_time'],2) +
+                round(task_times['output_time'],2)
             )
-        )
+        ) 
 
 
 '''
