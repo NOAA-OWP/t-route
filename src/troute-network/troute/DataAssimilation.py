@@ -706,14 +706,14 @@ class great_lake(AbstractDA):
         greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
-        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', None).get('reservoir_persistence_da', None)
+        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {})
 
         if reservoir_persistence_da:
             greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
 
         if greatLake:
 
-            streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
+            streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', {})
             
             if not self._canada_is_created and ('canada_timeslice_files' in da_run):
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
