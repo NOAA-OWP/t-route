@@ -16,7 +16,7 @@ from ._utils import use_strict
 class LoggingParameters(BaseModel):
     showtiming: Optional[bool] = None
     log_level: Optional[str] = None
-    log_directory: Optional[str] = None  # Add this line
+    log_directory: Optional[str] = None  
 
 class Config(BaseModel, extra='forbid'):
     log_parameters: LoggingParameters = Field(default_factory=LoggingParameters)
