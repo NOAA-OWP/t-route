@@ -2171,7 +2171,7 @@ def write_flowveldepth(
     nudge_df = pd.concat([nudge_df, empty_df]).loc[flowveldepth.index]
     file_name_time = t0
     jobs = []
-    import pdb;pdb.set_trace()
+    
     if stream_output_timediff > 0:
         ts_per_file = stream_output_timediff*60//stream_output_internal_frequency
         
@@ -2209,10 +2209,10 @@ def write_flowveldepth(
      
         filename = 'troute_output_' + file_name_time.strftime('%Y%m%d%H%M') + stream_output_type
         args = (stream_output_directory,filename,
-                flow.iloc,
-                velocity.iloc,
-                depth.iloc,
-                nudge_df.iloc,
+                flow,
+                velocity,
+                depth,
+                nudge_df,
                 timestamps_sec,
                 t0)
         if stream_output_type == '.nc':
