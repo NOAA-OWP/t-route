@@ -90,7 +90,7 @@ class StreamOutput(BaseModel):
         if value is not None:
             if value % 5 != 0:
                 raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
-            if value / 60 > values['stream_output_time']:
+            if values.get('stream_output_time') != -1 and value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
  
