@@ -992,7 +992,7 @@ cpdef object compute_network_structured_wDiffusive(
             print(f"segment_ids: {segment_ids}")
             # collect network information for applying diffusive wave routing
             if diffusive_tw in reach:
-                diffusive_tw_idx = reach_idx
+                diffusive_tw_reach_idx = reach_idx
             new_pairs = zip(reach, segment_ids)
             segmentid_dict.update(new_pairs)
             
@@ -1018,7 +1018,7 @@ cpdef object compute_network_structured_wDiffusive(
     # test 
     for key, value in segmentid_dict.items():
         print(f"key:{key}, value:{value}")
-    print(f"diffusive_tw index: { diffusive_tw_idx}")
+    print(f"diffusive_tw index: { diffusive_tw_reach_idx}")
     print(f"diffusive segs ids: {diffusive_segs}")
     
     print(f"--------------------------------")
@@ -1341,20 +1341,27 @@ cpdef object compute_network_structured_wDiffusive(
                 print(f"r.id: {r.id} & timestep: {timestep}")
                 print(f"upstream_array[r.id, timestep, 0]: {upstream_array[r.id, timestep, 0]}")
            
-            elif diffusive_segs and i == diffusive_tw_idx: 
+            elif diffusive_segs and i == diffusive_tw_reach_idx: 
                 # run diffusive wave routing when the tw of diffusive domain is included in the current reach
                 print(f"---------- diffusive wave routing -----------")
-                print(f"i: {i} / diffusive reach index: {diffusive_tw_idx}")
+                print(f"i: {i} / diffusive reach index: {diffusive_tw_reach_idx}")
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)
                     print(f"_i: {_i}   segment.id: {segment.id}") 
-                # add MC computed inflow of reaches upstream of the diffusive tailwater segment
+                
+                # Input forcings
+                # 1. Tributary flow: Assign MC computed inflow to corresponding tributary reaches at their own bottom segments
                 for seg in nondiffusive_segs:
                     seg_idx =  segmentid_dict[seg]
                     out_reach_idx = diffusive_reach_crosswalk[seg]
-                    diffusive_inputs["qtrib_g"][:,out_reach_idx] = flowveldepth[seg_idx, timestep, 0]                   
+                    diffusive_inputs["qtrib_g"][timestep-1:,out_reach_idx] = flowveldepth[seg_idx, timestep-1, 0]                   
                     print(f"trib_flow2diffusive: seg:{seg} out_reach_idx: {out_reach_idx}")
                     print(f"trib flow: {diffusive_inputs['qtrib_g'][:,out_reach_idx]}")
+
+                # 2. Initial flow and depth. Here, intial means at each (timestep-1)*(dt or routing_period)
+                
+
+                # The rest forcings, including lateral flow, coastal boundary data, and usgs data, are passed to diffusive fotran kerenl as they are.
 
                 out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs) 
 
@@ -1368,7 +1375,7 @@ cpdef object compute_network_structured_wDiffusive(
                     out_seg_idx = order
                     seg_idx =  segmentid_dict[seg]
                              
-                    flowveldepth[seg_idx, timestep, 0] = out_q[4, out_seg_idx+1, out_reach_idx] # +1 is added to take a value at downstream compute node. 
+                    flowveldepth[seg_idx, timestep, 0] = out_q[4, out_seg_idx+1, out_reach_idx] # +1 is added to take a value at downstream compute node of a given stream segment. 
                     flowveldepth[seg_idx, timestep, 2] = out_depth[4, out_seg_idx+1, out_reach_idx] 
                     print(f"seg: {seg} reach_headseg: {reach_headseg} out_seg_idx+1: {out_seg_idx+1} out_reach_idx: {out_reach_idx}")
                     print(f"seg_idx: {seg_idx}")
@@ -1408,12 +1415,12 @@ cpdef object compute_network_structured_wDiffusive(
                 #Copy the output out
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)
-                    flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]
+                    flowveldepth[segment.id, timestep, 0] = out_buf[_i, 0]  # flow [cms] at at the current time and downstream end 
                     if reach_has_gage[i] == da_check_gage:
                         printf("segment.id: %ld\t", segment.id)
                         printf("segment.id: %d\t", usgs_positions[reach_has_gage[i]])
-                    flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]
-                    flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]
+                    flowveldepth[segment.id, timestep, 1] = out_buf[_i, 1]  # mean velocity [m/s]
+                    flowveldepth[segment.id, timestep, 2] = out_buf[_i, 2]  # mean water depth [m]
 
             # For each reach,
             # at the end of flow calculation, Check if there is something to assimilate

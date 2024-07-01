@@ -537,7 +537,7 @@ contains
               do n = 1, nts_qtrib_g
                 varr_qtrib(n) = qtrib_g(n, usrchj)
               end do
-              tf0 = t +  dtini / 60.
+              tf0 = t  !+  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
             end if
             ! add upstream flows to reach head

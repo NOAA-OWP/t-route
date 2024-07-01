@@ -176,6 +176,7 @@ class AbstractNetwork(ABC):
         Prepare a new q0 dataframe with initial flow and depth to act as
         a warmstate for the next simulation chunk.
         """
+        import pdb; pdb.set_trace()
         self._q0 = pd.concat(
             [
                 pd.DataFrame(
@@ -326,11 +327,14 @@ class AbstractNetwork(ABC):
         """
         # list of all segments in the domain (MC + diffusive)
         self._segment_index = self.dataframe.index
+        # Skip this process for enabling the exchange of flow between MC and diffusive during runtime.
+        '''
         if self._routing.diffusive_network_data:
             for tw in self._routing.diffusive_network_data:
                 self._segment_index = self._segment_index.append(
                     pd.Index(self._routing.diffusive_network_data[tw]['mainstem_segs'])
                 )
+        '''
         return self._segment_index
     
     @property

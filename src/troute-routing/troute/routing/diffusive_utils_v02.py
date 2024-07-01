@@ -130,7 +130,7 @@ def fp_network_map(
                             #    frnw_g[frj, 2 + nusrch + r] = usrch_hseg_mainstem_j + 1
             
             # Determine if reach being considered belong to mainstem or tributary reach as
-            # diffusive wave applies to mainstem reach not tributary reach
+            # diffusive wave applies only to mainstem reach not tributary reach
             if head_segment in mainstem_seg_list:
                 frnw_g[frj,2+nusrch+1] = 555
             if head_segment in trib_seg_list:
@@ -246,6 +246,7 @@ def fp_qlat_map(
     param_df,
     qlat,
     qlat_g,
+    mainstem_seg_list,
 ):
     """
     lateral inflow mapping between Python and Fortran
@@ -275,17 +276,20 @@ def fp_qlat_map(
             for seg in range(0, ncomp):
                 segID = seg_list[seg]
                 for tsi in range(0, nts_ql_g):
-                    if seg < ncomp - 1:
-                        
-                        tlf = qlat.loc[segID, tsi]
-                        dx = param_df.loc[segID, 'dx']
-                        qlat_g[tsi, seg, frj] = tlf / dx  # [m^2/sec]
+                    if head_segment in mainstem_seg_list:
+                        if seg < ncomp - 1:
+                            
+                            tlf = qlat.loc[segID, tsi]
+                            dx = param_df.loc[segID, 'dx']
+                            qlat_g[tsi, seg, frj] = tlf / dx  # [m^2/sec]
 
-                    else:
-                        qlat_g[
-                            tsi, seg, frj
-                        ] = 0.0  # seg=ncomp is actually for bottom node in Fotran code.
-                        # And, lateral flow enters between adjacent nodes.            
+                        else:
+                            qlat_g[
+                                tsi, seg, frj
+                            ] = 0.0  # seg=ncomp is actually for bottom node in Fotran code.
+                            # And, lateral flow enters between adjacent nodes.
+                    else: 
+                        qlat_g[tsi, seg, frj] = 0.0      
     return qlat_g
 
 def fp_ubcd_map(frnw_g, pynw, nts_ub_g, nrch_g, ds_seg, upstream_inflows):
@@ -610,7 +614,7 @@ def fp_coastal_boundary_input_map(
         dt_timeslice = timedelta(minutes=dt_db_g/60.0)
         tfin         = t0 + dt_timeslice*(nts_db_g-1)
         timestamps   = pd.date_range(t0, tfin, freq=dt_timeslice)
- 
+
         timeslice_dbcd_list = []
         tws = coastal_boundary_depth_df.index.values.tolist()
         for i in range(len(timestamps)):
@@ -636,7 +640,7 @@ def fp_coastal_boundary_input_map(
         dbcd_df.loc[tw, dbcd_df.loc[tw]<= 0] = psmindepth        
         
         # interpolate missing value in NaN (np.nan) inbetween available values. For extrapolation, the result is the same as 
-        # a last available value either in the left or right.  
+        # a last available value either to the left or to the right.  
         dbcd_df_interpolated = dbcd_df.interpolate(axis='columns', limit_direction='both', limit=6)
 
         # if still missing data exists, do not use the coastal depth data as diffusive downstream boundary condition
@@ -646,7 +650,7 @@ def fp_coastal_boundary_input_map(
         else: 
             dsbd_option = 1 # use the data as prepared
             dbcd_g[:] = dbcd_df_interpolated.loc[tw].values
-            
+        
     else:
         dt_db_g     = 3600.0 # by default in sec
         nts_db_g    = int((tfin_g - t0_g) * 3600.0 / dt_db_g) + 1 # include initial time 0 to the final time
@@ -807,7 +811,6 @@ def diffusive_input_data_v02(
     # Order reaches by junction depth
     path_func = partial(nhd_network.split_at_waterbodies_and_junctions, set(junction_inflows.index.to_list()),rconn)
     tr = nhd_network.dfs_decomposition_depth_tuple(rconn, path_func)    
-
     jorder_reaches = sorted(tr, key=lambda x: x[0])
     mx_jorder = max(jorder_reaches)[0]  # maximum junction order of subnetwork of TW
 
@@ -959,6 +962,7 @@ def diffusive_input_data_v02(
         param_df,
         qlat,
         qlat_g,
+        mainstem_seg_list,
     )
     
     # ---------------------------------------------------------------------------------
@@ -1046,7 +1050,7 @@ def diffusive_input_data_v02(
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
     ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
-
+    import pdb; pdb.set_trace()
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
     if not refactored_diffusive_domain:
@@ -1156,7 +1160,7 @@ def diffusive_input_data_v02(
         diff_ins["cwncol_g"] = crosswalk_ncol
         diff_ins["crosswalk_g"] =  crosswalk_g   
         diff_ins["z_thalweg_g"] = z_thalweg_g
-        import pdb; pdb.set_trace()
+
     return diff_ins
 
 def unpack_output(pynw, ordered_reaches, out_q, out_elv):

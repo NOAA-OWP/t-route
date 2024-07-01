@@ -160,7 +160,7 @@ def main_v04(argv):
 
         if showtiming:
             route_start_time = time.time()
-
+        import pdb; pdb.set_trace()
         run_results = nwm_route(
             network.connections, 
             network.reverse_network, 
@@ -209,7 +209,7 @@ def main_v04(argv):
         if showtiming:
             route_end_time = time.time()
             task_times['route_time'] += route_end_time - route_start_time
-
+        import pdb; pdb.set_trace()
         # create initial conditions for next loop itteration
         network.new_q0(run_results)
         network.update_waterbody_water_elevation()    

@@ -313,6 +313,8 @@ class MCwithDiffusive(AbstractRouting):
             # ==== remove diffusive domain segs from MC domain ====        
             # drop indices from param_df. Make sure when mainstem_segs accidently includes lake ids, exclude them 
             # from id list to be dropped from dataframe as dataframe only handles channel parameters. 
+            '''
+            # Skip this process for enabling the exchange of flow between MC and diffusive during runtime.
             existing_indicies_in_dataframe = [id for id in mainstem_segs if id in dataframe.index]
             dataframe = dataframe.drop(existing_indicies_in_dataframe)
             
@@ -323,7 +325,7 @@ class MCwithDiffusive(AbstractRouting):
             # update downstream connections of trib segs
             for us in trib_segs:
                 connections[us] = []
-
+            '''
         return dataframe, connections
 
     @property

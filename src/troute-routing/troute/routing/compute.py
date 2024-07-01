@@ -1505,7 +1505,7 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
-            
+            import pdb; pdb.set_trace()
             # prepare reservoir DA data
             (reservoir_usgs_df_sub, 
              reservoir_usgs_df_time,
@@ -1543,112 +1543,122 @@ def compute_nhd_routing_v02(
             # prepare diffusive wave routing data
             import pdb; pdb.set_trace()
             for diffusive_tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
-                # diffusive_tw should be the most downstream stream segment of a given reach. If there are stream segments 
-                # below a tw segment, these segments would not be routed either by diffusive or MC.
-                
-                #trib_segs = None
-                #trib_flow = None
-                # extract junction inflows from results array
-                #for j, i in enumerate(results):
-                #    x = np.in1d(i[0], diffusive_network_data[tw_diffusive]['tributary_segments'])
-                #    if sum(x) > 0:
-                #        if j == 0:
-                #            trib_segs = i[0][x]
-                #            trib_flow = i[1][x, ::3]
-                #        else:
-                #            if trib_segs is None:
-                #                trib_segs = i[0][x]
-                #                trib_flow = i[1][x, ::3]                        
-                #            else:
-                #                trib_segs = np.append(trib_segs, i[0][x])
-                #                trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
+                found = any(tw in sublist for sublist in reach_list)
+                if found:
+                    # diffusive_tw should be the most downstream stream segment of a given reach. If there are stream segments 
+                    # below a tw segment, these segments would not be routed either by diffusive or MC.
+                    
+                    #trib_segs = None
+                    #trib_flow = None
+                    # extract junction inflows from results array
+                    #for j, i in enumerate(results):
+                    #    x = np.in1d(i[0], diffusive_network_data[tw_diffusive]['tributary_segments'])
+                    #    if sum(x) > 0:
+                    #        if j == 0:
+                    #            trib_segs = i[0][x]
+                    #            trib_flow = i[1][x, ::3]
+                    #        else:
+                    #            if trib_segs is None:
+                    #                trib_segs = i[0][x]
+                    #                trib_flow = i[1][x, ::3]                        
+                    #            else:
+                    #                trib_segs = np.append(trib_segs, i[0][x])
+                    #                trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
 
-                # create DataFrame of junction inflow data            
-                #junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
-                num_col = nts
-                trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
-                junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
-                
-                if not topobathy.empty:
-                    # create topobathy data for diffusive mainstem segments of this given tw segment        
-                    topobathy_bytw               = topobathy.loc[diffusive_network_data[diffusive_tw]['mainstem_segs']] 
-                    unrefactored_topobathy_bytw = pd.DataFrame()                    
+                    diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                    
+                    # create DataFrame of junction inflow data            
+                    #junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
+                    num_col = nts
+                    trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                    junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
+                    
+                    if not topobathy.empty:
+                        # create topobathy data for diffusive mainstem segments of this given tw segment        
+                        topobathy_bytw               = topobathy.loc[diffusive_segments] 
+                        unrefactored_topobathy_bytw = pd.DataFrame()                    
+                    else:
+                        topobathy_bytw = pd.DataFrame()
+                        unrefactored_topobathy_bytw = pd.DataFrame()
+
+                    # diffusive streamflow DA activation switch
+                    #if da_parameter_dict['diffusive_streamflow_nudging']==True:
+                    if 'diffusive_streamflow_nudging' in da_parameter_dict:
+                        diffusive_usgs_df = usgs_df.loc[usgs_df.index.isin(diffusive_segments)]
+                    else:
+                        diffusive_usgs_df = pd.DataFrame()
+
+                    # tw in refactored hydrofabric (NOTE: refactored_hydrofabric not in use any more)
+                    refactored_diffusive_domain_bytw = None
+                    refactored_reaches_byrftw        = None
+            
+                    # coastal boundary depth input data at TW
+                    if tw in coastal_boundary_depth_df.index:
+                        coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[diffusive_tw].to_frame().T
+                    else:
+                        coastal_boundary_depth_bytw_df = pd.DataFrame()
+
+                    # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
+                    # the column names need to be changed to intergers from zero incrementing by 1
+                    diffusive_qlats = qlats.copy()
+                    diffusive_qlats = diffusive_qlats.loc[diffusive_segments]
+                    diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
+                    import pdb; pdb.set_trace()
+                    # build diffusive inputs
+                    diffusive_inputs = diff_utils.diffusive_input_data_v02(
+                        diffusive_tw,
+                        diffusive_network_data[diffusive_tw]['connections'],
+                        diffusive_network_data[diffusive_tw]['rconn'],
+                        diffusive_network_data[diffusive_tw]['reaches'],
+                        diffusive_network_data[diffusive_tw]['mainstem_segs'],
+                        diffusive_network_data[diffusive_tw]['tributary_segments'],
+                        None, # place holder for diffusive parameters
+                        diffusive_network_data[diffusive_tw]['param_df'],
+                        diffusive_qlats,
+                        q0,
+                        junction_inflows,
+                        qts_subdivisions,
+                        t0,
+                        nts,
+                        dt,
+                        waterbodies_df,
+                        topobathy_bytw,
+                        diffusive_usgs_df,
+                        refactored_diffusive_domain_bytw,
+                        refactored_reaches_byrftw, 
+                        coastal_boundary_depth_bytw_df,
+                        unrefactored_topobathy_bytw,
+                    )
+
+                    # diffusive segments and reaches to be routed using the diffusive wave within diffusive_reach.pyx 
+                    #diffusive_segs= []
+                    diffusive_reaches=[]
+                    diffusive_segs = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                    nondiffusive_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                    for sublist in reach_list:
+                        if any(item in sublist for item in diffusive_segs):
+                            diffusive_reaches.append(sublist)   
+                    #dmy = list(itertools.chain(*diffusive_reaches))
+                    #segid = 2404219
+                    #for sublist in diffusive_reaches:
+                    #    if segid in sublist:
+                    #        order = sublist.index(segid)
+                    #        break
+                    #reach_headseg = sublist[0]
+                    #seg_order = order
+                    #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
+    
+                    # Compute hydraulic value lookup tables for channel cross sections 
+                    import pdb; pdb.set_trace()
+                    if not topobathy_bytw.empty:
+                        out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
+                                                            diffusive_inputs)
                 else:
-                    topobathy_bytw = pd.DataFrame()
-                    unrefactored_topobathy_bytw = pd.DataFrame()
+                    diffusive_tw = None
+                    diffusive_reaches = []
+                    nondiffusive_segs = []                 
+                    diffusive_inputs = {}
 
-                # diffusive streamflow DA activation switch
-                #if da_parameter_dict['diffusive_streamflow_nudging']==True:
-                if 'diffusive_streamflow_nudging' in da_parameter_dict:
-                    diffusive_usgs_df = usgs_df
-                else:
-                    diffusive_usgs_df = pd.DataFrame()
-
-                # tw in refactored hydrofabric (NOTE: refactored_hydrofabric not in use any more)
-                refactored_diffusive_domain_bytw = None
-                refactored_reaches_byrftw        = None
-        
-                # coastal boundary depth input data at TW
-                if tw in coastal_boundary_depth_df.index:
-                    coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[diffusive_tw].to_frame().T
-                else:
-                    coastal_boundary_depth_bytw_df = pd.DataFrame()
-
-                # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
-                # the column names need to be changed to intergers from zero incrementing by 1
-                diffusive_qlats = qlats.copy()
-                diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
-                import pdb; pdb.set_trace()
-                # build diffusive inputs
-                diffusive_inputs = diff_utils.diffusive_input_data_v02(
-                    diffusive_tw,
-                    diffusive_network_data[diffusive_tw]['connections'],
-                    diffusive_network_data[diffusive_tw]['rconn'],
-                    diffusive_network_data[diffusive_tw]['reaches'],
-                    diffusive_network_data[diffusive_tw]['mainstem_segs'],
-                    diffusive_network_data[diffusive_tw]['tributary_segments'],
-                    None, # place holder for diffusive parameters
-                    diffusive_network_data[diffusive_tw]['param_df'],
-                    diffusive_qlats,
-                    q0,
-                    junction_inflows,
-                    qts_subdivisions,
-                    t0,
-                    nts,
-                    dt,
-                    waterbodies_df,
-                    topobathy_bytw,
-                    diffusive_usgs_df,
-                    refactored_diffusive_domain_bytw,
-                    refactored_reaches_byrftw, 
-                    coastal_boundary_depth_bytw_df,
-                    unrefactored_topobathy_bytw,
-                )
-
-                # diffusive segments and reaches to be routed using the diffusive wave within diffusive_reach.pyx 
-                #diffusive_segs= []
-                diffusive_reaches=[]
-                diffusive_segs = diffusive_network_data[diffusive_tw]['mainstem_segs']
-                nondiffusive_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
-                for sublist in reach_list:
-                    if any(item in sublist for item in diffusive_segs):
-                        diffusive_reaches.append(sublist)   
-                #dmy = list(itertools.chain(*diffusive_reaches))
-                #segid = 2404219
-                #for sublist in diffusive_reaches:
-                #    if segid in sublist:
-                #        order = sublist.index(segid)
-                #        break
-                #reach_headseg = sublist[0]
-                #seg_order = order
-                #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
- 
-                # Compute hydraulic value lookup tables for channel cross sections 
-                import pdb; pdb.set_trace()
-                if not topobathy_bytw.empty:
-                    out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
-                                                        diffusive_inputs)
-                        
             
             import pdb; pdb.set_trace()
             results.append(
@@ -1714,7 +1724,7 @@ def compute_nhd_routing_v02(
                     from_files=from_files,
                 )
             )
-            #import pdb; pdb.set_trace()
+            import pdb; pdb.set_trace()
 
     return results, subnetwork_list
 

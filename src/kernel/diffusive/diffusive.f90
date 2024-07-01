@@ -221,7 +221,7 @@ contains
     double precision, dimension(:,:), allocatable :: used_lfrac    
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
-
+    open(unit=100, file='diffusive_results.txt', status='unknown')
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -674,7 +674,7 @@ contains
               do n = 1, nts_qtrib_g
                 varr_qtrib(n) = qtrib_g(n, usrchj)
               end do
-              tf0 = t +  dtini / 60.
+              tf0 = t !+  dtini / 60
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
             end if
             ! add upstream flows to reach head
@@ -796,7 +796,7 @@ contains
             elv_ev_g(ts_ev + 1, i, j)   = newY(i, j)
             depth_ev_g(ts_ev + 1, i, j) = elv_ev_g(ts_ev + 1, i, j) - z(i, j)
           end do
-              
+          write(100,*) t, i, j, newQ(i,j), newY(i, j), newY(i, j) - z(i, j)
           !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
           do k = 1, frnw_g(j, 3)
             usrchj = frnw_g(j, 3 + k)
