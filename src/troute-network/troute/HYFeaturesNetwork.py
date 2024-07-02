@@ -548,7 +548,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'] = False
             self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'] = False
             self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_canada'] = False
-            self.data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts']
+            self.data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'] = False
             self.waterbody_parameters['break_network_at_waterbodies'] = False
 
             self._waterbody_df = pd.DataFrame()
