@@ -1,3 +1,4 @@
+from pathlib import Path
 from pydantic import BaseModel, Field, validator
 
 from typing import Optional, List
@@ -35,7 +36,8 @@ class ChanobsOutput(BaseModel):
     # NOTE: required if writing chanobs files
     chanobs_output_directory: Optional[DirectoryPath] = None
     # NOTE: required if writing chanobs files
-    chanobs_filepath: Optional[FilePath] = None
+    # NOTE: is `Path` b.c. is output file
+    chanobs_filepath: Optional[Path] = None
 
 
 class CsvOutput(BaseModel):
