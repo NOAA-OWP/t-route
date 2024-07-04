@@ -147,6 +147,7 @@ def main_v04(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
         
+    logFileName = 'NONE'    
     kernelTalks = log_parameters.get("log_directory", None)
     if kernelTalks:
         logFileName = kernelTalks+'/kernelTalks.log'
