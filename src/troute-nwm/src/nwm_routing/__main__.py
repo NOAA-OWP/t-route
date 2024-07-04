@@ -63,6 +63,7 @@ def main_v04(argv):
     
     showtiming = log_parameters.get("showtiming", None)
     
+
     task_times = {}
     task_times['forcing_time'] = 0
     task_times['route_time'] = 0
@@ -146,10 +147,49 @@ def main_v04(argv):
     assume_short_ts = compute_parameters.get("assume_short_ts", False)
     return_courant = compute_parameters.get("return_courant", False)
         
+    kernelTalks = log_parameters.get("log_directory", None)
+    if kernelTalks:
+        logFileName = kernelTalks+'/kernelTalks.log'
+        with open(logFileName, 'w') as preRunLog:
+            preRunLog.write("************************************************************\n") 
+            preRunLog.write("Pre- and post run parameter and run statistics output file. \n") 
+            preRunLog.write("************************************************************\n")         
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+    
+            if (restart_parameters['lite_channel_restart_file']==None):
+                outPutStr = "No channel restart file: cold start."
+                preRunLog.write(outPutStr+"\n") 
+                LOG.info(outPutStr)
+            else:
+                outPutStr = "Warmstart - restart file: "+restart_parameters['lite_channel_restart_file']
+                preRunLog.write(outPutStr+" \n") 
+                LOG.info(outPutStr)
+    
+            if (restart_parameters['lite_waterbody_restart_file']==None):
+                outPutStr = "No waterbody restart file."
+                preRunLog.write(outPutStr+"\n") 
+                LOG.info(outPutStr)
+            else:
+                outPutStr = "Waterbody restart file: "+restart_parameters['lite_waterbody_restart_file']
+                preRunLog.write(outPutStr+" \n")
+                LOG.info(outPutStr)
+
+            preRunLog.write("-----\n")
+            preRunLog.write("\n")
+            preRunLog.close()
+
     # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
     # on first iteration of for loop only. For additional loops this will be passed
     # to function from inital loop.     
     subnetwork_list = [None, None, None]
+
+    # Flag for first run for param output
+    firstRun = True
+    # Disable in case there is no log file
+    if (not kernelTalks):
+        firstRun = False
+
     for run_set_iterator, run in enumerate(run_sets):
         
         t0 = run.get("t0")
@@ -202,6 +242,8 @@ def main_v04(argv):
             subnetwork_list,
             network.coastal_boundary_depth_df,
             network.unrefactored_topobathy_df,
+            firstRun,
+            logFileName            
         )
       
         # returns list, first item is run result, second item is subnetwork items
@@ -249,6 +291,13 @@ def main_v04(argv):
         
         output_start_time = time.time()
         
+        if (kernelTalks):
+            with open(logFileName, 'a') as preRunLog:
+                preRunLog.write("************************************************************\n") 
+                preRunLog.write("Output for iteration "+str(run_set_iterator)+"\n") 
+                preRunLog.write("************************************************************\n")     
+            preRunLog.close()    
+
         #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
@@ -268,11 +317,15 @@ def main_v04(argv):
             data_assimilation.lastobs_df,
             network.link_gage_df,
             network.link_lake_crosswalk, 
+            logFileName            
         )
         
 
         output_end_time = time.time()
         task_times['output_time'] += output_end_time - output_start_time
+    
+        firstRun = False
+    
     # end of for run_set_iterator, run in enumerate(run_sets):
     
     
@@ -1101,6 +1154,8 @@ def nwm_route(
     subnetwork_list,
     coastal_boundary_depth_df,
     unrefactored_topobathy_df,
+    firstRun=False,
+    logFileName='troute_run_log.txt',  
     flowveldepth_interorder={},
     from_files=False,
 ):
@@ -1114,6 +1169,40 @@ def nwm_route(
         )
     else:
         LOG.info(f"executing routing computation ...")
+
+    if (firstRun):
+        compute_log_mc(
+            logFileName,
+            downstream_connections,
+            upstream_connections,
+            waterbodies_in_connections,
+            reaches_bytw,
+            compute_kernel,
+            parallel_compute_method,
+            subnetwork_target_size,
+            cpu_pool,
+            t0,
+            dt,
+            nts,
+            qts_subdivisions,
+            independent_networks,
+            param_df,
+            q0,
+            qlats,
+            usgs_df,
+            lastobs_df,
+            reservoir_usgs_df,
+            reservoir_usgs_param_df,
+            reservoir_usace_df,
+            reservoir_usace_param_df,
+            reservoir_rfc_df,
+            reservoir_rfc_param_df,
+            assume_short_ts,
+            waterbodies_df,
+            data_assimilation_parameters,
+            waterbody_types_df,
+            waterbody_type_specified,
+        )
 
     start_time_mc = time.time()
     results = compute_nhd_routing_v02(
@@ -1177,6 +1266,16 @@ def nwm_route(
             # the very first value at time (0,q) is flow value at the first time step after initial time.
         #    upstream_boundary_flow[tw] = flow_         
           
+        if (firstRun):
+            compute_log_diff(
+                logFileName,
+                diffusive_network_data,
+                topobathy_df,
+                refactored_diffusive_domain,
+                refactored_reaches,                
+                coastal_boundary_depth_df,
+                unrefactored_topobathy_df,                
+            )          
 
         # call diffusive wave simulation and append results to MC results
         results.extend(
@@ -1202,6 +1301,15 @@ def nwm_route(
             )
         )
         LOG.debug("Diffusive computation complete in %s seconds." % (time.time() - start_time_diff))
+
+    else:
+
+        if (firstRun):
+            with open(logFileName, 'a') as preRunLog:
+                preRunLog.write("**********************\n") 
+                preRunLog.write("No diffusive routing. \n") 
+                preRunLog.write("**********************\n")     
+            preRunLog.close()            
 
     LOG.debug("ordered reach computation complete in %s seconds." % (time.time() - start_time))
 
@@ -1503,10 +1611,30 @@ def main_v03(argv):
         forcing_end_time = time.time()
         task_times['forcing_time'] += forcing_end_time - ic_end_time
 
+    logFileName = 'kernelTalks.log'
+
+    kernelTalks = log_parameters.get("log_directory", None)
+
+    if (kernelTalks):
+
+        logFileName = kernelTalks+'/'+logFileName
+
+        with open(logFileName, 'w') as preRunLog:
+            preRunLog.write("************************************************************\n") 
+            preRunLog.write("Pre- and post run parameter and run statistics output file. \n") 
+            preRunLog.write("************************************************************\n")     
+        preRunLog.close()
+
     # Pass empty subnetwork list to nwm_route. These objects will be calculated/populated
     # on first iteration of for loop only. For additional loops this will be passed
     # to function from inital loop. 
     subnetwork_list = [None, None, None]
+
+    # Flag for first run for param output
+    firstRun = True
+    # Disable in case there is no log file
+    if (not kernelTalks):
+        firstRun = False
 
     for run_set_iterator, run in enumerate(run_sets):
 
@@ -1560,6 +1688,8 @@ def main_v03(argv):
             subnetwork_list,
             coastal_boundary_depth_df,
             unrefactored_topobathy_df,
+            firstRun,
+            logFileName              
         )
         
         # returns list, first item is run result, second item is subnetwork items
@@ -1661,6 +1791,15 @@ def main_v03(argv):
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
         
+        if (kernelTalks):        
+            with open(logFileName, 'a') as preRunLog:
+                preRunLog.write("************************************************************\n") 
+                preRunLog.write("Output for iteration "+str(run_set_iterator)+"\n") 
+                preRunLog.write("************************************************************\n")     
+            preRunLog.close() 
+        else:
+            logFileName = 'NONE'
+
         nwm_output_generator(
             run,
             run_results,
@@ -1678,6 +1817,7 @@ def main_v03(argv):
             lastobs_df,
             link_gage_df,
             link_lake_crosswalk,
+            logFileName
         )
         
         if showtiming:
