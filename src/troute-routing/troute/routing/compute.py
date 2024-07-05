@@ -1631,12 +1631,12 @@ def compute_nhd_routing_v02(
                     )
 
                     # diffusive segments and reaches to be routed using the diffusive wave within diffusive_reach.pyx 
-                    #diffusive_segs= []
                     diffusive_reaches=[]
-                    diffusive_segs = diffusive_network_data[diffusive_tw]['mainstem_segs']
-                    nondiffusive_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                    diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                    nondiffusive_segments = diffusive_network_data[diffusive_tw]['tributary_segments']
+                
                     for sublist in reach_list:
-                        if any(item in sublist for item in diffusive_segs):
+                        if any(item in sublist for item in diffusive_segments):
                             diffusive_reaches.append(sublist)   
                     #dmy = list(itertools.chain(*diffusive_reaches))
                     #segid = 2404219
@@ -1649,17 +1649,32 @@ def compute_nhd_routing_v02(
                     #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
     
                     # Compute hydraulic value lookup tables for channel cross sections 
-                    import pdb; pdb.set_trace()
                     if not topobathy_bytw.empty:
                         out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
                                                             diffusive_inputs)
                 else:
                     diffusive_tw = None
                     diffusive_reaches = []
-                    nondiffusive_segs = []                 
+                    nondiffusive_segments = []                 
                     diffusive_inputs = {}
 
-            
+                # Create a dictionary that has diffusive and tributary segment ID: [reach order index, segment order index within a given reach]
+                diffusive_segment2reach_and_segment_idx={}
+                total_reaches = diffusive_reaches.copy()
+                for seg in nondiffusive_segments:
+                    total_reaches.append([seg])
+
+                for sublist in total_reaches:
+                    first_id = sublist[0]
+                    # find reach order index corresponding head segment id 
+                    for key, value in diffusive_inputs['pynw'].items():
+                        if value == first_id:
+                            first_key = key
+                            break
+                    # Iterate through the sublist and populate the results dictionary
+                    for index, id_value in enumerate(sublist):
+                        diffusive_segment2reach_and_segment_idx[id_value] = [first_key, index]
+
             import pdb; pdb.set_trace()
             results.append(
                 compute_func(
@@ -1713,10 +1728,10 @@ def compute_nhd_routing_v02(
                     reservoir_rfc_da_timestep.astype("int32"),
                     reservoir_rfc_persist_days.astype("int32"),
                     # Diffusive wave routing data
-                    diffusive_tw,
-                    #diffusive_segs, 
+                    diffusive_tw,                     
                     diffusive_reaches, 
-                    nondiffusive_segs,                   
+                    nondiffusive_segments,
+                    diffusive_segment2reach_and_segment_idx,                    
                     diffusive_inputs, 
                     {},
                     assume_short_ts,

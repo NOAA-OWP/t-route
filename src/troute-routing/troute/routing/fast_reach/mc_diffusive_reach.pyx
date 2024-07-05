@@ -828,9 +828,9 @@ cpdef object compute_network_structured_wDiffusive(
     const int[:] reservoir_rfc_da_timestep,
     const int[:] reservoir_rfc_persist_days,
     long diffusive_tw,
-    #list diffusive_segs, 
     list diffusive_reaches,
-    list nondiffusive_segs,                       
+    list nondiffusive_segments,                       
+    dict diffusive_segment2reach_and_segment_idx, 
     dict diffusive_inputs,
     dict upstream_results={},
     bint assume_short_ts=False,
@@ -894,7 +894,7 @@ cpdef object compute_network_structured_wDiffusive(
     # list of reach objects to operate on
     cdef list reach_objects = []
     cdef list segment_objects
-    cdef dict segmentid_dict={}
+    cdef dict segmentid2idx={}
 
     cdef long sid
     cdef _MC_Segment segment
@@ -902,13 +902,13 @@ cpdef object compute_network_structured_wDiffusive(
         double[:,:,:] out_q, out_elv, out_depth
 
     diffusive_reach_crosswalk= {v: k for k, v in diffusive_inputs['pynw'].items()}    
-    diffusive_segs = list(itertools.chain(*diffusive_reaches))    
+    diffusive_segments = list(itertools.chain(*diffusive_reaches))    
          
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
     print(f"diffusive tw id: {diffusive_tw}")
-    print(f"diffusive segs ids: {diffusive_segs}")
+    print(f"diffusive segs ids: {diffusive_segments}")
     #print(f"diffusive input dict: {diffusive_inputs}")
 
     print(f"data_idx: {data_idx}")
@@ -994,7 +994,7 @@ cpdef object compute_network_structured_wDiffusive(
             if diffusive_tw in reach:
                 diffusive_tw_reach_idx = reach_idx
             new_pairs = zip(reach, segment_ids)
-            segmentid_dict.update(new_pairs)
+            segmentid2idx.update(new_pairs)
             
             flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
             segment_objects = []
@@ -1016,10 +1016,10 @@ cpdef object compute_network_structured_wDiffusive(
                 )
     
     # test 
-    for key, value in segmentid_dict.items():
+    for key, value in segmentid2idx.items():
         print(f"key:{key}, value:{value}")
     print(f"diffusive_tw index: { diffusive_tw_reach_idx}")
-    print(f"diffusive segs ids: {diffusive_segs}")
+    print(f"diffusive segs ids: {diffusive_segments}")
     
     print(f"--------------------------------")
 
@@ -1142,7 +1142,10 @@ cpdef object compute_network_structured_wDiffusive(
             print(f"---------------- timestep:{timestep} ------------------")
             print(f"reach index: {i}")
             print(f"r.id: {r.id}")
-            print(f"r._num_segments:{r._num_segments}")
+            headseg = get_mc_segment(r, 0)
+            headseg_id = [k for k, v in segmentid2idx.items() if v ==headseg.id]
+            print(f"headsegment_idx: {headseg.id} headseg_id: {headseg_id} ") 
+            print(f"r._num_segments:{r._num_segments}")            
             print(f"r._num_upstream_ids: {r._num_upstream_ids}")
 
             for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
@@ -1151,9 +1154,10 @@ cpdef object compute_network_structured_wDiffusive(
                 upstream_flows += flowveldepth[id, timestep, 0]
                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
                 print(f"_i: {_i}")
-                print(f"id: {id}")
-                print(f"flowveldepth[id, timestep, 0]: {flowveldepth[id, timestep, 0]}")
-                print(f"flowveldepth[id, timestep-1, 0]: {flowveldepth[id, timestep-1, 0]}")
+                segmentid = [k for k, v in segmentid2idx.items() if v ==id]
+                print(f"id: {id} segment ID: {segmentid}")                
+                #print(f"flowveldepth[id, timestep, 0]: {flowveldepth[id, timestep, 0]}")
+                #print(f"flowveldepth[id, timestep-1, 0]: {flowveldepth[id, timestep-1, 0]}")
                 print(f"upstream_flows: {upstream_flows}")
                 print(f"previous_upstream_flows: {previous_upstream_flows}")
 
@@ -1341,50 +1345,70 @@ cpdef object compute_network_structured_wDiffusive(
                 print(f"r.id: {r.id} & timestep: {timestep}")
                 print(f"upstream_array[r.id, timestep, 0]: {upstream_array[r.id, timestep, 0]}")
            
-            elif diffusive_segs and i == diffusive_tw_reach_idx: 
+            elif diffusive_segments and i == diffusive_tw_reach_idx: 
                 # run diffusive wave routing when the tw of diffusive domain is included in the current reach
                 print(f"---------- diffusive wave routing -----------")
                 print(f"i: {i} / diffusive reach index: {diffusive_tw_reach_idx}")
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)
-                    print(f"_i: {_i}   segment.id: {segment.id}") 
+                    print(f"_i: {_i}   segment.idx: {segment.id}") 
                 
                 # Input forcings
                 # 1. Tributary flow: Assign MC computed inflow to corresponding tributary reaches at their own bottom segments
-                for seg in nondiffusive_segs:
-                    seg_idx =  segmentid_dict[seg]
-                    out_reach_idx = diffusive_reach_crosswalk[seg]
-                    diffusive_inputs["qtrib_g"][timestep-1:,out_reach_idx] = flowveldepth[seg_idx, timestep-1, 0]                   
-                    print(f"trib_flow2diffusive: seg:{seg} out_reach_idx: {out_reach_idx}")
-                    print(f"trib flow: {diffusive_inputs['qtrib_g'][:,out_reach_idx]}")
+                for seg in nondiffusive_segments:
+                    seg_idx =  segmentid2idx[seg]
+                    #out_reach_idx = diffusive_reach_crosswalk[seg]
+                    reach_order_idx = diffusive_segment2reach_and_segment_idx[seg][0]
+                    diffusive_inputs["qtrib_g"][timestep-1:, reach_order_idx] = flowveldepth[seg_idx, timestep-1, 0]                   
+                    print(f"trib_flow2diffusive: seg:{seg} reach_order_idx: {reach_order_idx}")
+                    print(f"trib flow: {diffusive_inputs['qtrib_g'][:, reach_order_idx]}")
 
-                # 2. Initial flow and depth. Here, intial means at each (timestep-1)*(dt or routing_period)
-                
+                # 2. Initial flow and depth. Here, intial time means at each (timestep-1)*(dt or routing_period)
+                min_flow_limit = 0.0001 
+                for seg in diffusive_segments:
+                    seg_idx =  segmentid2idx[seg]
+                    reach_order_idx   = diffusive_segment2reach_and_segment_idx[seg][0]
+                    segment_order_idx = diffusive_segment2reach_and_segment_idx[seg][1]
+                    
+                    if segment_order_idx == 0:
+                        # For the head compute node of head segment, sum up flows from upstream segments at the junction
+                        inflow_to_headseg = 0.0
+                        for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
+                            id = r._upstream_ids[_i]
+                            inflow_to_headseg += flowveldepth[id, timestep-1, 0]
+                        diffusive_inputs["iniq"][segment_order_idx, reach_order_idx] = max(inflow_to_headseg, min_flow_limit) 
+                    else: 
+                        diffusive_inputs["iniq"][segment_order_idx, reach_order_idx] = max(flowveldepth[seg_idx, timestep-1, 0], min_flow_limit)
 
-                # The rest forcings, including lateral flow, coastal boundary data, and usgs data, are passed to diffusive fotran kerenl as they are.
+                # The remaining forcings, including lateral flow, coastal boundary data, and usgs data, are passed to diffusive fotran kerenl as they are.
+                # 
 
                 out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs) 
 
-                for seg in diffusive_segs:
-                    for sublist in diffusive_reaches:
-                        if seg in sublist:
-                            order = sublist.index(seg)
-                            break
-                    reach_headseg = sublist[0]    
-                    out_reach_idx = diffusive_reach_crosswalk[reach_headseg]
-                    out_seg_idx = order
-                    seg_idx =  segmentid_dict[seg]
-                             
-                    flowveldepth[seg_idx, timestep, 0] = out_q[4, out_seg_idx+1, out_reach_idx] # +1 is added to take a value at downstream compute node of a given stream segment. 
-                    flowveldepth[seg_idx, timestep, 2] = out_depth[4, out_seg_idx+1, out_reach_idx] 
-                    print(f"seg: {seg} reach_headseg: {reach_headseg} out_seg_idx+1: {out_seg_idx+1} out_reach_idx: {out_reach_idx}")
+                for seg in diffusive_segments:
+                    #for sublist in diffusive_reaches:
+                    #    if seg in sublist:
+                    #        order = sublist.index(seg)
+                    #        break
+                    #reach_headseg = sublist[0]    
+                    #out_reach_idx = diffusive_reach_crosswalk[reach_headseg]
+                    #out_seg_idx = order
+                    #seg_idx =  segmentid2idx[seg]
+                    seg_idx =  segmentid2idx[seg]
+                    reach_order_idx   = diffusive_segment2reach_and_segment_idx[seg][0]
+                    segment_order_idx = diffusive_segment2reach_and_segment_idx[seg][1]
+
+
+                    flowveldepth[seg_idx, timestep, 0] = out_q[4, segment_order_idx+1, reach_order_idx] # +1 is added to take a value at downstream compute node of a given stream segment. 
+                    flowveldepth[seg_idx, timestep, 2] = out_depth[4, segment_order_idx+1, reach_order_idx] 
+                    print(f"seg: {seg} segment_order_idx+1: {segment_order_idx+1} reach_order_idx: {reach_order_idx}")
                     print(f"seg_idx: {seg_idx}")
                     print(f"flowveldepth[seg_idx, timestep, 0]: {flowveldepth[seg_idx, timestep, 0]}")
                     print(f"flowveldepth[seg_idx, timestep, 2]: {flowveldepth[seg_idx, timestep, 2]}")
             else:
                 #Create compute reach kernel input buffer
                 print()
-                print(f"--In MC diffusive--")
+                print(f"--In MC --")
                 print(f"r.reach.mc_reach.num_segments: {r.reach.mc_reach.num_segments}")
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)#r._segments[_i]

@@ -74,7 +74,7 @@ def main_v04(argv):
     # perform initial warmstate preprocess.
     if showtiming:
         network_start_time = time.time()
-    
+    import pdb; pdb.set_trace()
     #if "ngen_nexus_file" in supernetwork_parameters:
     if supernetwork_parameters["network_type"] == 'HYFeaturesNetwork':
         network = HYFeaturesNetwork(supernetwork_parameters,
@@ -101,7 +101,7 @@ def main_v04(argv):
                              showtiming=showtiming,          
                             )
         duplicate_ids_df = pd.DataFrame()
-    
+    import pdb; pdb.set_trace()
     if showtiming:
         network_end_time = time.time()
         task_times['network_creation_time'] = network_end_time - network_start_time

@@ -222,6 +222,7 @@ contains
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
     open(unit=100, file='diffusive_results.txt', status='unknown')
+    open(unit=101, file='time_variable_check_diffusive_singletime.txt', status='unknown')
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -772,7 +773,7 @@ contains
         !end if
       end do
 
-      ! Advance model time
+      ! Advance model time [minute]
       t = t + dtini/60.
       
       ! Calculate dimensionless numbers for each reach
@@ -785,9 +786,10 @@ contains
       if (mod(t,30.)==0.) then
         print*, "diffusive simulation time in minute=", t
       endif
-
+      write(101,*) "out", t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
+        write(101,*) "in", t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
         do jm = 1, nmstem_rch
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -795,8 +797,9 @@ contains
             q_ev_g  (ts_ev + 1, i, j)   = newQ(i, j)
             elv_ev_g(ts_ev + 1, i, j)   = newY(i, j)
             depth_ev_g(ts_ev + 1, i, j) = elv_ev_g(ts_ev + 1, i, j) - z(i, j)
+            write(100,*) t, i, j, newQ(i,j), newY(i, j), newY(i, j) - z(i, j)
           end do
-          write(100,*) t, i, j, newQ(i,j), newY(i, j), newY(i, j) - z(i, j)
+          
           !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
           do k = 1, frnw_g(j, 3)
             usrchj = frnw_g(j, 3 + k)

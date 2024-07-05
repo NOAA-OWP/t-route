@@ -176,7 +176,6 @@ class AbstractNetwork(ABC):
         Prepare a new q0 dataframe with initial flow and depth to act as
         a warmstate for the next simulation chunk.
         """
-        import pdb; pdb.set_trace()
         self._q0 = pd.concat(
             [
                 pd.DataFrame(
@@ -665,7 +664,6 @@ class AbstractNetwork(ABC):
         #----------------------------------------------------------------------------    
         start_time = time.time()
         LOG.info("setting channel initial states ...")
-
         # if lite restart file is provided, the read channel initial states from it
         if from_files:
             if restart_parameters.get("lite_channel_restart_file", None):

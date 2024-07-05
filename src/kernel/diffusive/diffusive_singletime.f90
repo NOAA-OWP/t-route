@@ -60,9 +60,10 @@ module diffusive
 contains
 
   subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,   &
-                    mxncomp_g, nrch_g, dx_ar_g, iniq, frnw_col, frnw_ar_g, qlat_g, dbcd_g, qtrib_g,  &                       &
-                    paradim, para_ar_g, usgs_da_g, usgs_da_reach_g, q_ev_g, elv_ev_g, depth_ev_g)                                     
-                    
+                    mxncomp_g, nrch_g, dx_ar_g, iniq, iniy, frnw_col, frnw_ar_g, qlat_g, dbcd_g, qtrib_g,  &                       &
+                    paradim, para_ar_g, usgs_da_g, usgs_da_reach_g, nrow_chxsec_lookuptable, chxsec_lookuptable, z_adj, &   
+                    q_ev_g, elv_ev_g, depth_ev_g)                                     
+                   
 
     IMPLICIT NONE
           
@@ -109,19 +110,22 @@ contains
     integer, intent(in) :: nts_da_g
     integer, intent(in) :: frnw_col
     integer, intent(in) :: paradim
+    integer, intent(in) ::  nrow_chxsec_lookuptable
     integer, dimension(nrch_g), intent(in) :: usgs_da_reach_g
     integer, dimension(nrch_g, frnw_col),  intent(in) :: frnw_ar_g
     double precision, dimension(paradim ), intent(in) :: para_ar_g
     double precision, dimension(:)       , intent(in) :: timestep_ar_g(10)
     double precision, dimension(nts_db_g), intent(in) :: dbcd_g
-    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: dx_ar_g  
-    double precision, dimension(mxncomp_g,   nrch_g),            intent(in) :: iniq
-    double precision, dimension(nts_qtrib_g, nrch_g),            intent(in) :: qtrib_g 
-    double precision, dimension(nts_da_g,    nrch_g),            intent(in) :: usgs_da_g
-    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g),   intent(in ) :: qlat_g
-    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: q_ev_g
-    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: elv_ev_g
-    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: depth_ev_g
+    double precision, dimension(mxncomp_g,   nrch_g),          intent(in) :: dx_ar_g  
+    double precision, dimension(mxncomp_g,   nrch_g),          intent(in) :: iniq
+    double precision, dimension(nts_qtrib_g, nrch_g),          intent(in) :: qtrib_g 
+    double precision, dimension(nts_da_g,    nrch_g),          intent(in) :: usgs_da_g
+    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in) :: qlat_g
+    double precision, dimension(mxncomp_g, nrch_g),            intent(in) :: z_adj
+    double precision, dimension(11, nrow_chxsec_lookuptable, mxncomp_g, nrch_g), intent(in) :: chxsec_lookuptable
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: q_ev_g
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_ev_g
+    double precision, dimension(ntss_ev_g, mxncomp_g, nrch_g), intent(out) :: depth_ev_g
 
   ! Local variables    
     integer :: ncomp
@@ -134,7 +138,7 @@ contains
     integer :: ts_ev
     integer :: jm
     integer :: usrchj
-    integer :: linknb
+    integer :: downstream_reach_idx
     integer :: xcolID
     integer :: ycolID
     integer :: iel
@@ -166,7 +170,6 @@ contains
     double precision :: tf0
     double precision :: convey
     double precision :: equiv_one
-
     double precision :: mindepth_nstab
     double precision, dimension(:), allocatable :: tarr_ql
     double precision, dimension(:), allocatable :: varr_ql
@@ -174,11 +177,10 @@ contains
     double precision, dimension(:), allocatable :: varr_ub
     double precision, dimension(:), allocatable :: tarr_db
     double precision, dimension(:), allocatable :: varr_db
-    double precision, dimension(:), allocatable :: dbcd 
-
+    double precision, dimension(:), allocatable :: dbcd
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
-
+    open(unit=1, file='time_variable_check_diffusive_singletime.txt', status='unknown')
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -268,11 +270,9 @@ contains
     allocate(topwTable(nel))
     allocate(skkkTable(nel))
     allocate(xsec_tab(11, nel, mxncomp, nlinks))
-
-     allocate(currentSquareDepth(nel))
+    allocate(currentSquareDepth(nel))
     allocate(ini_y(nlinks))
     allocate(ini_q(nlinks))
-
     allocate(tarr_ql(nts_ql_g+1), varr_ql(nts_ql_g+1))
     allocate(tarr_ub(nts_ub_g), varr_ub(nts_ub_g))
     allocate(tarr_qtrib(nts_qtrib_g), varr_qtrib(nts_qtrib_g))
@@ -280,7 +280,6 @@ contains
     allocate(tarr_da(nts_da))
     allocate(dmy_frj(nlinks))
     allocate(frnw_g(nlinks,frnw_col))
-
     allocate(usgs_da_reach(nlinks))
     allocate(usgs_da(nts_da, nlinks))
     allocate(dbcd(nts_db_g))
@@ -290,15 +289,17 @@ contains
   !--------------------------------------------------------------------------------------------
     frnw_g        = frnw_ar_g ! network mapping matrix
 
-    usgs_da_reach = usgs_da_reach_g ! contains indices of reaches where usgs data are available
-    usgs_da       = usgs_da_g       ! contains usgs data at a related reach 
-        
+    usgs_da_reach = usgs_da_reach_g    ! contains indices of reaches where usgs data are available
+    usgs_da       = usgs_da_g          ! contains usgs data at a related reach 
+    xsec_tab      = chxsec_lookuptable ! precomputed hydraulic lookup tables of channel cross sections
+    z             = z_adj              ! precomputed channel bottom elevation at each compute node
   !-----------------------------------------------------------------------------
   ! variable initializations
     x                   = 0.0
     newQ                = -999
     newY                = -999
-    t                   = t0*60.0     ! [min]
+    !t                   = t0*60.0     ! [min]
+    t                   = t_start*60.0 ![min]
     q_sk_multi          = 1.0
     oldQ                = iniq
     newQ                = oldQ
@@ -397,84 +398,96 @@ contains
     end do
 
   !-----------------------------------------------------------------------------
-  ! Initialize water surface elevation, channel area, and volume
-    do jm = nmstem_rch, 1, -1
-      j     = mstem_frj(jm)  ! reach index
-      ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
-      if (frnw_g(j, 2) < 0) then 
-      
-        ! Initial depth at bottom node of tail water reach        
-        if (dsbc_option == 1) then
-        ! use tailwater downstream boundary observations
-        ! needed for coastal coupling
-        ! **** COMING SOON **** 
-          do n = 1, nts_db_g
-            varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
-          end do
-          t              = t0 * 60.0
-          oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
-          newY(ncomp, j) = oldY(ncomp, j)  
-          if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
-            newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
-          end if          
-        else if (dsbc_option == 2) then
-        ! normal depth as TW boundary condition
-          xcolID         = 10
-          ycolID         = 1
-          oldY(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, oldQ(ncomp,j)) ! normal elevation not depth
-          newY(ncomp, j) = oldY(ncomp, j)  
-        endif
-      else
-        ! Initial depth at bottom node of interior reach is equal to the depth at top node of the downstream reach
-        linknb         = frnw_g(j, 2)
-        newY(ncomp, j) = newY(1, linknb)        
-      end if              
-     
-      ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
-      ! ** At initial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
-      ! ** So, let's assume the depth values are all nodes equal to depth at the bottom node.
-      wdepth = newY(ncomp, j) - z(ncomp, j)
-      do i = 1, ncomp -1
-        oldY(i,j) = wdepth + z(i, j)      
-      end do
-      
-      call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
-
-      do i = 1,ncomp      
-        ! copy computed initial depths to initial depth array for first timestep
-        oldY(i, j) = newY(i, j)
+  ! Initialize water surface elevation
+    if (all(inidepth==0.0)) then
+      # compute initial water elevation when it is cold start or previously computed values are not provided. 
+      do jm = nmstem_rch, 1, -1
+        j     = mstem_frj(jm)  ! reach index
+        ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
+        if (frnw_g(j, 2) < 0) then 
         
-        ! Check that node elevation is not lower than bottom node.
-        ! If node elevation is lower than bottom node elevation, correct.
-        if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
-      end do
+          ! Initial depth at bottom node of tail water reach        
+          if (dsbc_option == 1) then
+          ! use tailwater downstream boundary observations
+          ! needed for coastal coupling
+          ! **** COMING SOON **** 
+            do n = 1, nts_db_g
+              varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+            end do
+            !t              = t0 * 60.0
+            t              = t_start * 60.0
+            oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
+            newY(ncomp, j) = oldY(ncomp, j)  
+            if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
+              newY(ncomp, j) = mindepth_nstab + z(ncomp, j)
+            end if          
+          else if (dsbc_option == 2) then
+          ! normal depth as TW boundary condition
+            xcolID         = 10
+            ycolID         = 1
+            oldY(ncomp, j) = intp_xsec_tab(ncomp, j, nel, xcolID, ycolID, oldQ(ncomp,j)) ! normal elevation not depth
+            newY(ncomp, j) = oldY(ncomp, j)  
+          endif
+        else
+          ! Initial depth at bottom node of interior reach is equal to the depth at top node of the downstream reach
+          downstream_reach_idx = frnw_g(j, 2)
+          newY(ncomp, j)       = newY(1, downstream_reach_idx)        
+        end if              
       
-    end do
+        ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
+        ! ** At initial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
+        ! ** So, let's assume the depth values of nodes beyond the bottom node of a reach equal to depth of the bottom node.
+        wdepth = newY(ncomp, j) - z(ncomp, j)
+        do i = 1, ncomp -1
+          oldY(i,j) = wdepth + z(i, j)      
+        end do
+        
+        call mesh_diffusive_backward(t, saveInterval, j)
 
+        do i = 1,ncomp      
+          ! copy computed initial depths to initial depth array for first timestep
+          oldY(i, j) = newY(i, j)
+          
+          ! Check that node elevation is not lower than bottom node.
+          ! If node elevation is lower than bottom node elevation, correct.
+          if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
+        end do      
+      end do
+    else
+      # Use previous state values when it is warm or hot start.
+      do jm = 1, nmstem_rch   ! loop over mainstem reaches [upstream-to-downstream]
+        j     = mstem_frj(jm) ! reach index
+        ncomp = frnw_g(j,1)   ! number of nodes in reach j
+        do i=1, ncomp
+          oldY(i, j) = inidepth(i,j) + z(i,j)
+        enddo
+      enddo
+    endif  
+ 
   !-----------------------------------------------------------------------------
   ! Write tributary results to output arrays
   ! TODO: consider if this is necessary - output arrays are immediately trimmed
   ! to exclude tributary results (from MC) and pass-out only diffusive-calculated
   ! flow and depth on mainstem segments.
           
-    ts_ev = 1
-    do while (t <= tfin * 60.0)
-      if ( (mod( (t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) &
-            .or. (t == tfin * 60.) ) then
-        do j = 1, nlinks
-          if (all(mstem_frj /= j)) then ! NOT a mainstem reach
-            do n = 1, nts_qtrib_g
-              varr_qtrib(n) = qtrib_g(n, j)
-            end do
-            q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
-                                                      varr_qtrib, t)
-            q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)            
-          end if
-        end do
-        ts_ev = ts_ev + 1
-      end if
-      t = t + dtini / 60. !* [min]
-    end do
+  !  ts_ev = 1
+  !  do while (t <= tfin * 60.0)
+  !    if ( (mod( (t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) &
+  !          .or. (t == tfin * 60.) ) then
+  !      do j = 1, nlinks
+  !        if (all(mstem_frj /= j)) then ! NOT a mainstem reach
+  !          do n = 1, nts_qtrib_g
+  !            varr_qtrib(n) = qtrib_g(n, j)
+  !          end do
+  !          q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
+  !                                                    varr_qtrib, t)
+  !          q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)            
+  !        end if
+  !      end do
+  !      ts_ev = ts_ev + 1
+  !    end if
+  !    t = t + dtini / 60. !* [min]
+  !  end do
  
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
@@ -487,12 +500,13 @@ contains
     dimensionless_D         = 0.1
     timestep                = 0
     ts_ev                   = 1
-    t                       = t0 * 60.0
-
+    !t                       = t0 * 60.0
+    t                       = t_start*60.0
   !-----------------------------------------------------------------------------
   ! Ordered network routing computations
 
-    do while ( t < tfin * 60.)
+    !do while ( t < tfin * 60.)
+    do while ( t < t_end * 60.)
       timestep = timestep + 1 ! advance timestep
       !+-------------------------------------------------------------------------
       !+                             PREDICTOR
@@ -506,7 +520,8 @@ contains
         ! Calculate the duration of this timestep (dtini)
         ! Timestep duration is selected to maintain numerical stability
         if (j == mstem_frj(1)) then 
-          call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
+          !call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
+          call calculateDT(t_start, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
         end if                                        
 
         ! estimate lateral flow at current time t
@@ -552,7 +567,7 @@ contains
         ! Add lateral inflows to the reach head
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
 
-        call mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval, j)
+        call mesh_diffusive_forward(t, saveInterval, j)
 
       end do  ! end of j loop for predictor
       
@@ -574,8 +589,8 @@ contains
 
             ! reach of index j has a reach in the downstream 
             ! set bottom node WSEL equal WSEL in top node of downstream reach
-            linknb         = frnw_g(j,2)
-            newY(ncomp, j) = newY(1, linknb) 
+            downstream_reach_idx = frnw_g(j,2)
+            newY(ncomp, j)       = newY(1, downstream_reach_idx) 
         else
         
           ! reach of index j has NO downstream connection, so it is a tailwater reach
@@ -601,7 +616,7 @@ contains
         end if
 
         ! Calculate WSEL at interior reach nodes
-        call mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j)
+        call mesh_diffusive_backward(t, saveInterval, j)
         
         ! Identify the maximum calculated celerity/dx ratio at this timestep
         ! maxCelDx is used to determine the duration of the next timestep
@@ -635,7 +650,7 @@ contains
         !end if
       end do
 
-      ! Advance model time
+      ! Advance model time [minuntes]
       t = t + dtini/60.
       
       ! Calculate dimensionless numbers for each reach
@@ -648,9 +663,11 @@ contains
       if (mod(t,30.)==0.) then
         print*, "diffusive simulation time in minute=", t
       endif
-
+      write(1,*) dtini/60., t
       ! write results to output arrays
-      if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
+      if ( (mod((t - t_start * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == t_end * 60.)) then
+      !if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
+        write(1,*) t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
         do jm = 1, nmstem_rch
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -676,7 +693,8 @@ contains
       end if
 
       ! write initial conditions to output arrays
-      if ( ( t == t0 + dtini / 60. ) ) then
+      if ( ( t == t_start*60.0 + dtini / 60. ) ) then
+      !if ( ( t == t0*60.0 + dtini / 60. ) ) then
         do jm = 1, nmstem_rch  !* mainstem reach only
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -892,7 +910,7 @@ contains
   end subroutine calc_dimensionless_numbers
   
 
-  subroutine mesh_diffusive_forward(dtini_given, t0, t, tfin, saveInterval,j)
+  subroutine mesh_diffusive_forward(t, saveInterval,j)
 
     IMPLICIT NONE
     
@@ -912,10 +930,7 @@ contains
 
     ! Subroutine Arguments
       integer, intent(in) :: j
-      double precision, intent(in) :: dtini_given
-      double precision, intent(in) :: t0
       double precision, intent(in) :: t
-      double precision, intent(in) :: tfin
       double precision, intent(in) :: saveInterval
     
     ! Local variables
@@ -1141,7 +1156,7 @@ contains
       
   end subroutine mesh_diffusive_forward
   
-  subroutine mesh_diffusive_backward(dtini_given, t0, t, tfin, saveInterval, j) ! rightBank)
+  subroutine mesh_diffusive_backward(t, saveInterval, j) 
 
     IMPLICIT NONE
 
@@ -1162,10 +1177,7 @@ contains
 
   ! Subroutine arguments
     integer, intent(in) :: j
-    double precision, intent(in) :: dtini_given
-    double precision, intent(in) :: t0
     double precision, intent(in) :: t
-    double precision, intent(in) :: tfin
     double precision, intent(in) :: saveInterval
       
   ! Subroutine variables
