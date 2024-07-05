@@ -66,6 +66,8 @@ if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
   make clean
   make diffusive.o
   make pydiffusive.o
+  make chxsec_lookuptable.o
+  make pychxsec_lookuptable.o
   make install || exit
 fi
 
