@@ -128,7 +128,7 @@ class Config(BaseModel):
             if reservoir_da:
                 reservoir_rfc_da = reservoir_da.reservoir_rfc_da
                 reservoir_rfc_forecasts = False
-                if reservoir_rfc_da:
+                if reservoir_rfc_da and reservoir_rfc_da.reservoir_rfc_forecasts:
                     reservoir_rfc_forecasts = reservoir_rfc_da.reservoir_rfc_forecasts
                     reservoir_rfc_forecasts_time_series_path = reservoir_rfc_da.reservoir_rfc_forecasts_time_series_path
                 if reservoir_rfc_forecasts:
