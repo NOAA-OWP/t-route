@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
 
-from typing import Optional, List
+from typing import Optional, List, Union
 from typing_extensions import Literal
 
 from .types import FilePath, DirectoryPath
@@ -141,16 +141,22 @@ class ReservoirPersistenceDA(BaseModel, extra='ignore'):
 
 
 class ReservoirRfcParameters(BaseModel):
-    reservoir_rfc_forecasts: bool = False
+    reservoir_rfc_forecasts: Literal[True] = True
     reservoir_rfc_forecasts_time_series_path: Optional[DirectoryPath] = None
     reservoir_rfc_forecasts_lookback_hours: int = 28
     reservoir_rfc_forecasts_offset_hours: int = 28
     reservoir_rfc_forecast_persist_days: int = 11
 
 
+class ReservoirRfcParametersDisabled(BaseModel):
+    reservoir_rfc_forecasts: Literal[False] = False
+
+
 class ReservoirDA(BaseModel):
     reservoir_persistence_da: Optional[ReservoirPersistenceDA] = None
-    reservoir_rfc_da: Optional[ReservoirRfcParameters] = None
+    reservoir_rfc_da: Optional[
+        Union[ReservoirRfcParameters, ReservoirRfcParametersDisabled]
+    ] = Field(None, discriminator="reservoir_rfc_forecasts")
     reservoir_parameter_file: Optional[FilePath] = None
 
 
