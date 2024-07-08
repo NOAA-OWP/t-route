@@ -92,6 +92,10 @@ git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/
 # compile and install
 ./compiler.sh
 
+# In the event that compilation results does not complete and throws a Cython compile error, rerun with a non-editable flag:
+./compiler.sh no-e
+# [ this is a known issue, and may happen in fresh t-route clones; please see https://github.com/NOAA-OWP/t-route/issues/675 for details ]
+
 # execute a demonstration test with NHD network
 cd test/LowerColorado_TX
 python3 -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
