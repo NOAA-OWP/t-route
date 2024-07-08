@@ -940,10 +940,8 @@ def rewrite_to_parquet(tempfile_id, output_file_id, binary_folder):
     df.set_index('feature_id', inplace=True)  # Set feature_id as the index
     df[output_file_id] = df[output_file_id].astype(float)  # Convert output_file_id column to float64
     table_new = pa.Table.from_pandas(df)
-    if not os.path.exists(f'{binary_folder}/{output_file_id}NEXOUT.parquet'):
-        pq.write_table(table_new, f'{binary_folder}/{output_file_id}NEXOUT.parquet')
-    else:
-        raise Exception(f'Parquet file {binary_folder}/{output_file_id}NEXOUT.parquet already exists')
+    pq.write_table(table_new, f'{binary_folder}/{output_file_id}NEXOUT.parquet')
+
 
 def nex_files_to_binary(nexus_files, binary_folder):
     # Get the output files
