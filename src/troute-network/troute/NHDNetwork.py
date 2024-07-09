@@ -27,7 +27,8 @@ class NHDNetwork(AbstractNetwork):
                 forcing_parameters, 
                 compute_parameters, 
                 data_assimilation_parameters, 
-                hybrid_parameters, 
+                hybrid_parameters,
+                output_parameters, 
                 verbose=False, 
                 showtiming=False,
                 ):
@@ -41,6 +42,7 @@ class NHDNetwork(AbstractNetwork):
         self.compute_parameters = compute_parameters
         self.forcing_parameters = forcing_parameters
         self.hybrid_parameters = hybrid_parameters
+        self.output_parameters = output_parameters
         self.verbose = verbose
         self.showtiming = showtiming
 
