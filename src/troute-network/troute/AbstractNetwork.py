@@ -725,7 +725,7 @@ class AbstractNetwork(ABC):
 
         forcing_parameters = self.forcing_parameters
         supernetwork_parameters = self.supernetwork_parameters
-
+        stream_output = self.output_parameters.get('stream_output', None)
         run_sets           = forcing_parameters.get("qlat_forcing_sets", None)
         qlat_input_folder  = forcing_parameters.get("qlat_input_folder", None)
         nts                = forcing_parameters.get("nts", None)
@@ -830,7 +830,10 @@ class AbstractNetwork(ABC):
 
             # the number of files required for the simulation
             nfiles = int(np.ceil(nts / qts_subdivisions))
-            
+            if stream_output:
+                stream_output_time = stream_output.get('stream_output_time', None)
+                if stream_output_time and stream_output_time > max_loop_size:
+                    nfiles = stream_output_time // (nts // 12)
             # list of forcing file datetimes
             #datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
             #                 range(nfiles)]

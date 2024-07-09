@@ -123,12 +123,12 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 # output_parameters:
 #     #----------
-#      test_output : output/lcr_flowveldepth.pkl
-#      lite_restart:
+#     test_output : output/lcr_flowveldepth.pkl
+#     lite_restart:
 #         #----------
 #         lite_restart_output_directory: restart/
-#      lakeout_output: lakeout/
-#      lastobs_output: lastobs/
+#     lakeout_output: lakeout/
+#     lastobs_output: lastobs/
 #     stream_output : 
 #         stream_output_directory: output/
 #         stream_output_time: 1 #[hr] ** Consider `stream_output_time = -1` means save everything in one file **
