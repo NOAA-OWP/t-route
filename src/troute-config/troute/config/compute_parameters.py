@@ -17,10 +17,10 @@ ParallelComputeMethod = Literal[
     "by-subnetwork-jit-clustered",
     "by-subnetwork-diffusive",
     "bmi",
-    "serial-diffusive"
+    "serial-hybrid-routing"
 ]
 
-ComputeKernel = Literal["V02-structured","V02-structured-diffusive", "diffusive"]
+ComputeKernel = Literal["V02-structured","V02-structured-hybrid-routing", "diffusive"]
 
 
 class ComputeParameters(BaseModel, extra='forbid'):

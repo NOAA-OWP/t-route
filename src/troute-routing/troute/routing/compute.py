@@ -12,7 +12,8 @@ import copy
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
 #from troute.routing.fast_reach.mc_reach import compute_network_structured_wDiffusive
-from troute.routing.fast_reach.mc_diffusive_reach import compute_network_structured_wDiffusive
+#from troute.routing.fast_reach.mc_diffusive_reach import compute_network_structured_wDiffusive
+from troute.routing.fast_reach.hybrid_routing_reach import compute_network_structured_with_hybrid_routing
 
 import troute.routing.diffusive_utils_v02 as diff_utils
 from troute.routing.fast_reach import diffusive
@@ -26,7 +27,7 @@ _compute_func_map = defaultdict(
     compute_network_structured,
     {
         "V02-structured": compute_network_structured,
-        "V02-structured-diffusive": compute_network_structured_wDiffusive,
+        "V02-structured-hybrid-routing": compute_network_structured_with_hybrid_routing,
     },
 )
 
@@ -1433,7 +1434,7 @@ def compute_nhd_routing_v02(
                 )
             )
 
-    elif parallel_compute_method == "serial-diffusive":
+    elif parallel_compute_method == "serial-hybrid-routing":
         import pdb; pdb.set_trace()
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
@@ -1733,6 +1734,8 @@ def compute_nhd_routing_v02(
                     nondiffusive_segments,
                     diffusive_segment2reach_and_segment_idx,                    
                     diffusive_inputs, 
+                    out_chxsec_lookuptable,
+                    out_z_adj,
                     {},
                     assume_short_ts,
                     return_courant,

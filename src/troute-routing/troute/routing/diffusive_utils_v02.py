@@ -912,7 +912,6 @@ def diffusive_input_data_v02(
     df_joined.insert(0, last_column, last_column_data)
     df_joined.to_csv('python-fortran network crosswalk map.txt', index=True)
 
-    import pdb; pdb.set_trace()
     # ---------------------------------------------------------------------------------
     #                              Step 0-5
     #                  Prepare channel geometry data
@@ -941,6 +940,7 @@ def diffusive_input_data_v02(
     #                  Prepare initial conditions data
     # ---------------------------------------------------------------------------------
     iniq = np.zeros((mxncomp_g, nrch_g))
+    inidepth = np.zeros((mxncomp_g, nrch_g))
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -1066,7 +1066,7 @@ def diffusive_input_data_v02(
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
     ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
-    import pdb; pdb.set_trace()
+
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
     if not refactored_diffusive_domain:
@@ -1109,8 +1109,9 @@ def diffusive_input_data_v02(
         diff_ins["z_bathy_g"] = z_bathy_g
         diff_ins["mann_bathy_g"] = mann_bathy_g
         diff_ins["size_bathy_g"] = size_bathy_g    
-        # initial flow value
+        # initial flow/depth value
         diff_ins["iniq"] = iniq
+        diff_ins["inidepth"] = inidepth
         # python-fortran crosswalk data
         diff_ins["pynw"] = pynw
         diff_ins["ordered_reaches"] = ordered_reaches    

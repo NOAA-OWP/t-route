@@ -192,3 +192,32 @@ cdef extern from "pychxsec_lookuptable.h":
                                    double *chxsec_lookuptable,
                                    double *z_adj) nogil;
 
+cdef extern from "pydiffusive_lightweight.h":
+    void c_compute_diffusive_couplingtimestep(double *timestep_ar_g, 
+                                                 int *nts_ql_g, 
+                                                 int *nts_db_g, 
+                                                 int *nts_qtrib_g, 
+                                                 int *nts_da_g,
+                                                 int *mxncomp_g, 
+                                                 int *nrch_g, 
+                                                 double *dx_ar_g, 
+                                                 double *iniq, 
+                                                 double *inidepth, 
+                                                 int *frnw_col, 
+                                                 int *frnw_ar_g, 
+                                                 double *qlat_g, 
+                                                 double *dbcd_g,      
+                                                 double *qtrib_g, 
+                                                 int *paradim, 
+                                                 double *para_ar_g, 
+                                                 double *usgs_da_g, 
+                                                 int *usgs_da_reach_g,
+                                                 int *nrow_chxsec_lookuptable, 
+                                                 double *chxsec_lookuptable, 
+                                                 double *z_adj, 
+                                                 double *t_start, 
+                                                 double *t_end,             
+                                                 double *q_next_out_time, 
+                                                 double *elv_next_out_time, 
+                                                 double *depth_next_out_time) nogil;
+

@@ -223,6 +223,7 @@ contains
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
     open(unit=100, file='diffusive_results.txt', status='unknown')
     open(unit=101, file='time_variable_check_diffusive_singletime.txt', status='unknown')
+    open(unit=102, file='chxsec_lookuptable.txt', status='unknown')
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -484,6 +485,24 @@ contains
       end do
     end do
   end do
+
+  !test 
+  i=1
+  j=3
+  do iel = 1, nel
+    write(102,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
+                 xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
+                 xsec_tab(11,iel,i,j) 
+  enddo
+  write(102,*)
+  i=2
+  j=5
+  do iel = 1, nel
+    write(102,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
+                 xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
+                 xsec_tab(11,iel,i,j) 
+  enddo
+
 
   !-----------------------------------------------------------------------------
   ! Build time arrays for lateral flow, upstream boundary, downstream boundary,
