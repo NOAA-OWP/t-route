@@ -27,7 +27,7 @@ class OutputParameters(BaseModel):
     # NOTE: assuming this should be removed
     # TODO: missing from `v3_doc.yaml`
     # see nwm_routing/output.py :114
-    test_output: Optional[FilePath] = None
+    test_output: Optional[Path] = None
     stream_output: Optional["StreamOutput"] = None
     # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
