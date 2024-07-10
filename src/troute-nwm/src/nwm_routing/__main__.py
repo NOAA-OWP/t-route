@@ -23,7 +23,7 @@ from .preprocess import (
 )
 from .output import nwm_output_generator
 from .log_level_set import log_level_set
-from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing
+from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing, compute_log_mc, compute_log_diff
 
 import troute.nhd_io as nhd_io
 import troute.nhd_network_utilities_v02 as nnu
