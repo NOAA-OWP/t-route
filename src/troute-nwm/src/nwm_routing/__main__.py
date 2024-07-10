@@ -290,14 +290,7 @@ def main_v04(argv):
             task_times['forcing_time'] += forcing_end_time - route_end_time
 
         
-        output_start_time = time.time()
-        
-        if (kernelTalks):
-            with open(logFileName, 'a') as preRunLog:
-                preRunLog.write("************************************************************\n") 
-                preRunLog.write("Output for iteration "+str(run_set_iterator)+"\n") 
-                preRunLog.write("************************************************************\n")     
-            preRunLog.close()    
+        output_start_time = time.time()  
 
         #TODO Update this to work with either network type...
         nwm_output_generator(
@@ -1792,13 +1785,7 @@ def main_v03(argv):
             ic_end_time = time.time()
             task_times['initial_condition_time'] += ic_end_time - ic_start_time
         
-        if (kernelTalks):        
-            with open(logFileName, 'a') as preRunLog:
-                preRunLog.write("************************************************************\n") 
-                preRunLog.write("Output for iteration "+str(run_set_iterator)+"\n") 
-                preRunLog.write("************************************************************\n")     
-            preRunLog.close() 
-        else:
+        if (not kernelTalks):        
             logFileName = 'NONE'
 
         nwm_output_generator(
