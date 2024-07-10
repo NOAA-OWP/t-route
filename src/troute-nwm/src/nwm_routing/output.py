@@ -462,8 +462,8 @@ def nwm_output_generator(
             LOG.debug("writing lastobs files took %s seconds." % (time.time() - start))
 
 
-    if 'flowveldepth' in locals():
-        LOG.debug(flowveldepth)
+    # if 'flowveldepth' in locals():
+    #     LOG.debug(flowveldepth)
 
     LOG.debug("output complete in %s seconds." % (time.time() - start_time))
 

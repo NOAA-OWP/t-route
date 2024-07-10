@@ -833,7 +833,7 @@ class AbstractNetwork(ABC):
             if stream_output:
                 stream_output_time = stream_output.get('stream_output_time', None)
                 if stream_output_time and stream_output_time > max_loop_size:
-                    nfiles = stream_output_time // (nts // 12)
+                    max_loop_size = stream_output_time
             # list of forcing file datetimes
             #datetime_list = [t0 + dt_qlat_timedelta * (n + 1) for n in
             #                 range(nfiles)]
