@@ -2013,7 +2013,7 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
         # =========== time VARIABLE ===============
         TIME = ncfile.createVariable(
             varname = "time",
-            datatype = 'int32',
+            datatype = 'float64',
             dimensions = ("time",),
             fill_value = -9999.0
         )
@@ -2022,7 +2022,7 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
             {
                 'long_name': 'valid output time',
                 'standard_name': 'time',
-                'units': 'seconds',
+                'units': f'seconds since {t0.strftime("%Y-%m-%d %H:%M:%S")}',
                 'missing_value': -9999.0
                 #'calendar': 'proleptic_gregorian'
             }
