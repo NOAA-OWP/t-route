@@ -1249,6 +1249,96 @@ def get_obs_from_timeslices(
     return observation_df_new
 
 
+def get_GL_obs_from_timeslices(
+    crosswalk_df,
+    timeslice_files,
+    crosswalk_gage_field='gages',
+    crosswalk_dest_field='link',
+    qc_threshold=1,
+    cpu_pool=1, 
+):
+    """
+    Read observations from TimeSlice files and organize into a Pandas DataFrame.
+    This is specific to observations needed for Great Lakes data assimilation, 
+    so no interpolation happens.
+    
+    Aguments
+    --------                                          
+    - crosswalk_gage_field         (str): fieldname of gage ID data in crosswalk dataframe
+    - crosswalk_dest_field         (str): fieldname of destination data in link_gage_df. 
+                                          For streamflow DA, this is the field
+                                          containing segment IDs. For reservoir DA, 
+                                          this is the field containing waterbody IDs.                                 
+    - timeslice_files (list of PosixPath): Full paths to existing TimeSlice files
+    - qc_threshold                  (int): Numerical observation quality 
+                                           threshold. Observations with quality
+                                           flags less than this value will be 
+                                           removed and replaced witn nan.                                    
+    - cpu_pool                      (int): Number of CPUs used for parallel 
+                                           TimeSlice reading and interolation
+    
+    Returns
+    -------
+    - observation_df_new (Pandas DataFrame): 
+    
+    Notes
+    -----
+    """
+    # open TimeSlce files, organize data into dataframes
+    with Parallel(n_jobs=cpu_pool) as parallel:
+        jobs = []
+        for f in timeslice_files:
+            jobs.append(delayed(_read_timeslice_file)(f))
+        timeslice_dataframes = parallel(jobs)
+
+    all_empty = all(df.empty for tuple in timeslice_dataframes for df in tuple)
+    if all_empty:
+        LOG.debug(f'{crosswalk_gage_field} DataFrames is empty, check timeslice files.')
+        return pd.DataFrame()
+
+    # create lists of observations and obs quality dataframes returned 
+    # from _read_timeslice_file
+    timeslice_obs_frames = []
+    timeslice_qual_frames = []
+    for d in timeslice_dataframes:
+        timeslice_obs_frames.append(d[0])  # TimeSlice gage observation
+        timeslice_qual_frames.append(d[1]) # TimeSlice observation qual
+
+    # concatenate dataframes
+    timeslice_obs_df  = pd.concat(timeslice_obs_frames, axis = 1)
+    timeslice_qual_df = pd.concat(timeslice_qual_frames, axis = 1)   
+
+    # Link <> gage crosswalk data
+    df = crosswalk_df.reset_index()
+    df = df.set_index(crosswalk_gage_field)
+    df.index = df.index.str.strip()
+    # join crosswalk data with timeslice data, indexed on crosswalk destination field
+    observation_df = (df.join(timeslice_obs_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               select_dtypes(include='number'))
+
+    observation_qual_df = (df.join(timeslice_qual_df).
+               reset_index().
+               set_index(crosswalk_dest_field).
+               select_dtypes(include='number'))
+
+    # ---- Laugh testing ------
+    # screen-out erroneous qc flags
+    observation_qual_df = (observation_qual_df.
+                           mask(observation_qual_df < 0, np.nan).
+                           mask(observation_qual_df > 1, np.nan)
+                          )
+
+    # screen-out poor quality flow observations
+    observation_df = (observation_df.
+                      mask(observation_qual_df < qc_threshold, np.nan).
+                      mask(observation_df <= 0, np.nan)
+                     )
+
+    return observation_df
+
+
 def get_param_str(target_file, param):
     # TODO: remove this duplicate function
     return get_attribute(target_file, param)
