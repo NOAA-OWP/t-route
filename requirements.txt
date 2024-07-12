@@ -1,3 +1,5 @@
+pip>=22.1.0
+setuptools>=64.0,<69.0
 wheel
 numpy
 Cython>3,!=3.0.4
