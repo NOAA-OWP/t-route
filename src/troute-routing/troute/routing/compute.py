@@ -145,6 +145,8 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
                                   reservoir_usace_param_df,
                                   reservoir_rfc_df,
                                   reservoir_rfc_param_df,
+                                  great_lakes_df,
+                                  great_lakes_param_df,
                                   waterbody_types_df_sub,
                                   t0, 
                                   from_files,
@@ -258,11 +260,34 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
         if not from_files:
             if not waterbody_types_df_sub.empty:
                 waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 4] = 1
+    
+    # Great Lakes
+    if not great_lakes_df.empty:
+        gl_wbodies_sub = waterbody_types_df_sub[
+            waterbody_types_df_sub['reservoir_type']==6
+            ].index
+        if exclude_segments:
+            gl_wbodies_sub = list(set(gl_wbodies_sub).difference(set(exclude_segments)))
+        gl_df_sub = great_lakes_df[great_lakes_df['lake_id'].isin(gl_wbodies_sub)]
+        gl_param_df_sub = great_lakes_param_df[great_lakes_param_df['lake_id'].isin(gl_wbodies_sub)]
+        gl_parm_lake_id_sub = gl_param_df_sub.lake_id.to_numpy()
+        gl_param_flows_sub = gl_param_df_sub.previous_assimilated_outflows.to_numpy()
+        gl_param_time_sub = gl_param_df_sub.previous_assimilated_time.to_numpy()
+        gl_param_update_time_sub = gl_param_df_sub.update_time.to_numpy()
+    else:
+        gl_df_sub = pd.DataFrame()
+        gl_parm_lake_id_sub = pd.DataFrame().to_numpy().reshape(0,)
+        gl_param_flows_sub = pd.DataFrame().to_numpy().reshape(0,)
+        gl_param_time_sub = pd.DataFrame().to_numpy().reshape(0,)
+        gl_param_update_time_sub = pd.DataFrame().to_numpy().reshape(0,)
+        if not waterbody_types_df_sub.empty:
+            waterbody_types_df_sub.loc[waterbody_types_df_sub['reservoir_type'] == 6] = 1
 
     return (
         reservoir_usgs_df_sub, reservoir_usgs_df_time, reservoir_usgs_update_time, reservoir_usgs_prev_persisted_flow, reservoir_usgs_persistence_update_time, reservoir_usgs_persistence_index,
         reservoir_usace_df_sub, reservoir_usace_df_time, reservoir_usace_update_time, reservoir_usace_prev_persisted_flow, reservoir_usace_persistence_update_time, reservoir_usace_persistence_index,
         reservoir_rfc_df_sub, reservoir_rfc_totalCounts, reservoir_rfc_file, reservoir_rfc_use_forecast, reservoir_rfc_timeseries_idx, reservoir_rfc_update_time, reservoir_rfc_da_timestep, reservoir_rfc_persist_days,
+        gl_df_sub, gl_parm_lake_id_sub, gl_param_flows_sub, gl_param_time_sub, gl_param_update_time_sub,
         waterbody_types_df_sub
         )
 
@@ -501,6 +526,9 @@ def compute_nhd_routing_v02(
     reservoir_usace_param_df,
     reservoir_rfc_df,
     reservoir_rfc_param_df,
+    great_lakes_df,
+    great_lakes_param_df,
+    great_lakes_climatology_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -744,6 +772,11 @@ def compute_nhd_routing_v02(
                      reservoir_rfc_update_time, 
                      reservoir_rfc_da_timestep, 
                      reservoir_rfc_persist_days,
+                     gl_df_sub, 
+                     gl_parm_lake_id_sub, 
+                     gl_param_flows_sub, 
+                     gl_param_time_sub, 
+                     gl_param_update_time_sub,
                      waterbody_types_df_sub,
                      ) = _prep_reservoir_da_dataframes(
                         reservoir_usgs_df,
@@ -752,6 +785,8 @@ def compute_nhd_routing_v02(
                         reservoir_usace_param_df,
                         reservoir_rfc_df,
                         reservoir_rfc_param_df,
+                        great_lakes_df,
+                        great_lakes_param_df,
                         waterbody_types_df_sub, 
                         t0,
                         from_files,
@@ -818,6 +853,15 @@ def compute_nhd_routing_v02(
                             reservoir_rfc_update_time.astype("float32"),
                             reservoir_rfc_da_timestep.astype("int32"),
                             reservoir_rfc_persist_days.astype("int32"),
+                            # Great Lakes DA data
+                            gl_df_sub.lake_id.values.astype("int32"),
+                            gl_df_sub.time.values.astype("int32"),
+                            gl_df_sub.Discharge.values.astype("float32"),
+                            gl_parm_lake_id_sub.astype("int32"),
+                            gl_param_flows_sub.astype("float32"),
+                            gl_param_time_sub.astype("int32"),
+                            gl_param_update_time_sub.astype("int32"),
+                            great_lakes_climatology_df.values,
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -1104,6 +1148,15 @@ def compute_nhd_routing_v02(
                             reservoir_rfc_update_time.astype("float32"),
                             reservoir_rfc_da_timestep.astype("int32"),
                             reservoir_rfc_persist_days.astype("int32"),
+                            # Great Lakes DA data
+                            great_lakes_df.lake_id.values.astype("int32"),
+                            great_lakes_df.time.values.astype("int32"),
+                            great_lakes_df.Discharge.values.astype("float32"),
+                            great_lakes_param_df.lake_id.values.astype("int32"),
+                            great_lakes_param_df.previous_assimilated_outflows.values.astype("float32"),
+                            great_lakes_param_df.previous_assimilated_time.values.astype("int32"),
+                            great_lakes_param_df.update_time.values.astype("int32"),
+                            great_lakes_climatology_df.values,
                             {
                                 us: fvd
                                 for us, fvd in flowveldepth_interorder.items()
@@ -1300,6 +1353,15 @@ def compute_nhd_routing_v02(
                         reservoir_rfc_update_time.astype("float32"),
                         reservoir_rfc_da_timestep.astype("int32"),
                         reservoir_rfc_persist_days.astype("int32"),
+                        # Great Lakes DA data
+                        great_lakes_df.lake_id.values.astype("int32"),
+                        great_lakes_df.time.values.astype("int32"),
+                        great_lakes_df.Discharge.values.astype("float32"),
+                        great_lakes_param_df.lake_id.values.astype("int32"),
+                        great_lakes_param_df.previous_assimilated_outflows.values.astype("float32"),
+                        great_lakes_param_df.previous_assimilated_time.values.astype("int32"),
+                        great_lakes_param_df.update_time.values.astype("int32"),
+                        great_lakes_climatology_df.values,
                         {},
                         assume_short_ts,
                         return_courant,
@@ -1466,6 +1528,15 @@ def compute_nhd_routing_v02(
                     reservoir_rfc_update_time.astype("float32"),
                     reservoir_rfc_da_timestep.astype("int32"),
                     reservoir_rfc_persist_days.astype("int32"),
+                    # Great Lakes DA data
+                    great_lakes_df.lake_id.values.astype("int32"),
+                    great_lakes_df.time.values.astype("int32"),
+                    great_lakes_df.Discharge.values.astype("float32"),
+                    great_lakes_param_df.lake_id.values.astype("int32"),
+                    great_lakes_param_df.previous_assimilated_outflows.values.astype("float32"),
+                    great_lakes_param_df.previous_assimilated_time.values.astype("int32"),
+                    great_lakes_param_df.update_time.values.astype("int32"),
+                    great_lakes_climatology_df.values,
                     {},
                     assume_short_ts,
                     return_courant,
