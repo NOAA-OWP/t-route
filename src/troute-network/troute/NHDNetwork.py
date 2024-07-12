@@ -63,6 +63,7 @@ class NHDNetwork(AbstractNetwork):
             print("... in %s seconds." % (time.time() - start_time))
 
         self._flowpath_dict = {}
+        self._gl_climatology_df = pd.DataFrame()
 
         super().__init__()
 
