@@ -34,7 +34,7 @@ class AbstractNetwork(ABC):
                 "supernetwork_parameters", "waterbody_parameters","data_assimilation_parameters",
                 "restart_parameters", "compute_parameters", "forcing_parameters",
                 "hybrid_parameters", "preprocessing_parameters", "output_parameters",
-                "verbose", "showtiming", "break_points", "_routing"]
+                "verbose", "showtiming", "break_points", "_routing", "_gl_climatology_df"]
     
     def __init__(self, from_files=True, value_dict={}):
 
@@ -402,6 +402,10 @@ class AbstractNetwork(ABC):
     @property
     def unrefactored_topobathy_df(self):
         return self._routing.unrefactored_topobathy_df
+    
+    @property
+    def great_lakes_climatology_df(self):
+        return self._gl_climatology_df
 
         
     def set_synthetic_wb_segments(self, synthetic_wb_segments, synthetic_wb_id_offset):

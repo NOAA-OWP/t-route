@@ -216,7 +216,8 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df"]
+    __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df",
+                 "_canadian_gage_link_df"]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -337,6 +338,10 @@ class HYFeaturesNetwork(AbstractNetwork):
     @property
     def waterbody_null(self):
         return np.nan #pd.NA
+    
+    @property
+    def canadian_gage_df(self):
+        return self._canadian_gage_link_df
     
     def preprocess_network(self, flowpaths, nexus):
         self._dataframe = flowpaths
@@ -529,9 +534,13 @@ class HYFeaturesNetwork(AbstractNetwork):
                         self.waterbody_dataframe,
                         gl_wbody_df
                     ]
-                )
+                ).sort_index()
+                
+                self._gl_climatology_df = get_great_lakes_climatology()
+                
             else:
                 gl_dict = {}
+                self._gl_climatology_df = pd.DataFrame()
             
             self._waterbody_types_df = pd.DataFrame(
                 data = 1, 
@@ -557,6 +566,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._waterbody_type_specified = False
             self._link_lake_crosswalk = None
             self._duplicate_ids_df = pd.DataFrame()
+            self._gl_climatology_df = pd.DataFrame()
 
         self._dataframe = self.dataframe.drop('waterbody', axis=1).drop_duplicates()
 
@@ -592,6 +602,10 @@ class HYFeaturesNetwork(AbstractNetwork):
                 .set_index(idx_id)[['value']].rename(columns={'value': 'gages'})
                 .rename_axis(None, axis=0).to_dict()
             )
+            
+            #FIXME: temporary solution, add canadian gage crosswalk dataframe. This should come from
+            # the hydrofabric.
+            self._canadian_gage_link_df = pd.DataFrame(columns=['gages','link']).set_index('link')
             
             # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
             lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
