@@ -188,6 +188,9 @@ def main_v04(argv):
             data_assimilation.reservoir_usace_param_df,
             data_assimilation.reservoir_rfc_df,
             data_assimilation.reservoir_rfc_param_df,
+            data_assimilation.great_lakes_df,
+            data_assimilation.great_lakes_param_df,
+            network.great_lakes_climatology_df,
             data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
@@ -1087,6 +1090,9 @@ def nwm_route(
     reservoir_usace_param_df,
     reservoir_rfc_df,
     reservoir_rfc_param_df,
+    great_lakes_df,
+    great_lakes_param_df,
+    great_lakes_climatology_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -1141,6 +1147,9 @@ def nwm_route(
         reservoir_usace_param_df,
         reservoir_rfc_df,
         reservoir_rfc_param_df,
+        great_lakes_df,
+        great_lakes_param_df,
+        great_lakes_climatology_df,
         da_parameter_dict,
         assume_short_ts,
         return_courant,
@@ -1546,6 +1555,9 @@ def main_v03(argv):
             reservoir_usace_param_df,
             pd.DataFrame(), #empty dataframe for RFC data...not needed unless running via BMI
             pd.DataFrame(), #empty dataframe for RFC param data...not needed unless running via BMI
+            pd.DataFrame(), #empty dataframe for great lakes data...
+            pd.DataFrame(), #empty dataframe for great lakes param data...
+            pd.DataFrame(), #empty dataframe for great lakes climatology data...
             da_parameter_dict,
             assume_short_ts,
             return_courant,
