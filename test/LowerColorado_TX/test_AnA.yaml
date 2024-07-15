@@ -35,15 +35,15 @@ compute_parameters:
     restart_parameters:
         #----------
         start_datetime: 2021-08-23_13:00
-        wrf_hydro_channel_restart_file        : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        #wrf_hydro_channel_restart_file        : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
         #lite_channel_restart_file            : restart/RESTART.2020082600_DOMAIN1
         wrf_hydro_channel_ID_crosswalk_file   : domain/RouteLink.nc
-        wrf_hydro_waterbody_restart_file      : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
+        #wrf_hydro_waterbody_restart_file      : restart/HYDRO_RST.2021-08-23_12:00_DOMAIN1
         #lite_waterbody_restart_file          : restart/waterbody_restart_202006011200
         wrf_hydro_waterbody_ID_crosswalk_file : domain/LAKEPARM.nc 
         wrf_hydro_waterbody_crosswalk_filter_file: domain/RouteLink.nc 
     hybrid_parameters:
-        run_hybrid_routing: False
+        run_hybrid_routing: True
         diffusive_domain  : domain/coastal_domain_subset.yaml  
         use_natl_xsections: False
         topobathy_domain  : domain/final_diffusive_natural_xs.nc 
