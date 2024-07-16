@@ -1331,6 +1331,12 @@ def get_channel_restart_from_wrf_hydro(
         inplace=True,
     )
     qdf2[channel_ID_column] = xdf
+    
+    # handle GDL sythetic waterbody segmetns
+    gdl_idx = qdf2[qdf2['link'] < 10].index
+    if not gdl_idx.empty:
+        qdf2.loc[gdl_idx,"link"] = (qdf2.loc[gdl_idx,"link"] + 9999).astype("int64")
+    
     qdf2 = qdf2.reset_index().set_index([channel_ID_column])
 
     q_initial_states = qdf2

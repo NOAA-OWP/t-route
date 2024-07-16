@@ -10,7 +10,7 @@ import logging
 
 LOG = logging.getLogger('')
 
-def _reindex_lake_to_link_id(target_df, crosswalk):
+def _reindex_lake_to_link_id(target_df, crosswalk, gdl=False):
     '''
     Utility function for replacing lake ID index values
     with link ID values in a dataframe. This is used to 
@@ -40,6 +40,10 @@ def _reindex_lake_to_link_id(target_df, crosswalk):
     # replace lake ids with link IDs in the target_df index array
     linkids = np.fromiter(crosswalk.values(), dtype = int)
     idxs[lake_index_intersect[1]] = linkids[lake_index_intersect[2]]
+    
+    # accout for re-numbered GDL indices
+    if gdl:
+        idxs = np.where(idxs < 10010, idxs-9999, idxs)
 
     # (re) set the target_df index
     target_df.set_index(idxs, inplace = True)
@@ -175,7 +179,13 @@ def nwm_output_generator(
 
         # replace waterbody lake_ids with outlet link ids
         if link_lake_crosswalk:
-            flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
+            
+            if min(link_lake_crosswalk.keys()) < 10:
+                gdl_flag = True
+            else:
+                gdl_flag = False
+                
+            flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk, gdl_flag)
             
         # todo: create a unit test by saving FVD array to disk and then checking that
         # it matches FVD array from parent branch or other configurations. 
