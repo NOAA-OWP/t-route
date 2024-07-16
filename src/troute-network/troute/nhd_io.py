@@ -2128,9 +2128,53 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
                 'code_version': '',
             }
         )
+def stream_output_mask_reader(stream_output_mask):
+    with open(stream_output_mask, 'r') as file:
+        mask_list = yaml.safe_load(file)
+    
+    return mask_list
+
+def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
+    seg_id = []
+    nex_id = {}
+    
+    if not mask_list:
+        return nex_id, seg_id
+    if 'wb' in mask_list:
+        seg_id.extend(mask_list['wb'])
+
+    if 'nex' in mask_list:
+        for key in mask_list['nex']:
+            item = 'nex-' + str(key)
+            nex_id[key] = [int(val.split('-')[-1]) for val in nexus_dict.get(item, [])]
+
+    return nex_id, seg_id
+
+def updated_flowveldepth(flowveldepth, nex_id, seg_id):
+    filtered_v_columns = [col for col in flowveldepth.columns if col[1] == 'v']
+    filtered_d_columns = [col for col in flowveldepth.columns if col[1] == 'd']
+    if nex_id:
+        for nex_key, nex_val in nex_id.items():
+            
+            flowveldepth.loc[nex_key] = flowveldepth.loc[nex_val].sum()
+            if len(nex_val) > 1:
+                flowveldepth.loc[nex_key, filtered_v_columns] = np.nan
+                flowveldepth.loc[nex_key, filtered_d_columns] = flowveldepth.loc[nex_val, filtered_d_columns].mean()
+        flowveldepth_nex = flowveldepth.loc[list(nex_id.keys())]
+    else:
+        flowveldepth_nex = pd.DataFrame()
+    if seg_id:
+        flowveldepth_seg = flowveldepth.loc[seg_id]
+    else:
+        flowveldepth_seg = pd.DataFrame()
+    if not flowveldepth_seg.empty or not flowveldepth_nex.empty:
+        flowveldepth = pd.concat([flowveldepth_seg, flowveldepth_nex])
+        
+    return flowveldepth
 
 def write_flowveldepth(
     stream_output_directory,
+    stream_output_mask,
     flowveldepth,
     nudge,
     usgs_positions_id,
@@ -2140,6 +2184,8 @@ def write_flowveldepth(
     stream_output_type,
     stream_output_internal_frequency = 5,
     cpu_pool = 1,
+    poi_crosswalk = None,
+    nexus_dict= None,
     ):
     '''
     Write the results of flowveldepth and nudge to netcdf- break. 
@@ -2150,6 +2196,11 @@ def write_flowveldepth(
     nudge (numpy.ndarray) - nudge data with shape (76, 289)
     usgs_positions_id (array) - Position ids of usgs gages
     '''
+    
+    mask_list = stream_output_mask_reader(stream_output_mask)
+    nex_id, seg_id = mask_find_seg(mask_list, nexus_dict, poi_crosswalk)
+    flowveldepth = updated_flowveldepth(flowveldepth, nex_id, seg_id)
+
     # timesteps, variable = zip(*flowveldepth.columns.tolist())
     # timesteps = list(timesteps)
     n_timesteps = flowveldepth.shape[1]//3

@@ -1,0 +1,14 @@
+##### Description #####
+# If you want to mask flowpaths, make the list below.
+# please provide in either POI, NEXUS or flowpath ID.
+#######################
+# mask:
+wb:
+  - 2420800
+  - 2420801
+
+nex:
+  - 2427668
+  - 2427669
+
+

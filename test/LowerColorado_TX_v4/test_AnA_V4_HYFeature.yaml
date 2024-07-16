@@ -121,7 +121,7 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 28
                 reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
-# output_parameters:
+output_parameters:
 #     #----------
 #     test_output : output/lcr_flowveldepth.pkl
 #     lite_restart:
@@ -129,9 +129,10 @@ compute_parameters:
 #         lite_restart_output_directory: restart/
 #     lakeout_output: lakeout/
 #     lastobs_output: lastobs/
-#     stream_output : 
-#         stream_output_directory: output/
-#         stream_output_time: 1 #[hr] ** Consider `stream_output_time = -1` means save everything in one file **
-#         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
-#         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
+    stream_output : 
+        stream_output_directory: output/
+        mask_output: domain/mask_output.yaml
+        stream_output_time: 1 #[hr] ** Consider `stream_output_time = -1` means save everything in one file **
+        stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+        stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
 

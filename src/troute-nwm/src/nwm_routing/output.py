@@ -64,6 +64,8 @@ def nwm_output_generator(
     lastobs_df = None,
     link_gage_df = None,
     link_lake_crosswalk = None,
+    nexus_dict = None,
+    poi_crosswalk = None,
     logFileName='NONE' 
 ):
 
@@ -203,14 +205,16 @@ def nwm_output_generator(
     
     if stream_output:
         stream_output_directory = stream_output['stream_output_directory']
+        stream_output_mask = stream_output['mask_output']
         stream_output_timediff = stream_output['stream_output_time']
         stream_output_type = stream_output['stream_output_type']
         stream_output_internal_frequency = stream_output['stream_output_internal_frequency']
-
+        import pdb;pdb.set_trace()
         nudge = np.concatenate([r[8] for r in results])
         usgs_positions_id = np.concatenate([r[3][0] for r in results])
         nhd_io.write_flowveldepth(
-            Path(stream_output_directory), 
+            Path(stream_output_directory),
+            Path(stream_output_mask), 
             flowveldepth, 
             nudge, 
             usgs_positions_id, 
@@ -219,7 +223,9 @@ def nwm_output_generator(
             int(stream_output_timediff), 
             stream_output_type,
             stream_output_internal_frequency,
-            cpu_pool = cpu_pool
+            cpu_pool = cpu_pool,
+            poi_crosswalk = poi_crosswalk,
+            nexus_dict= nexus_dict,
             )
 
         if (not logFileName == 'NONE'):
