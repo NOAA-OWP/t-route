@@ -587,6 +587,7 @@ class PersistenceDA(AbstractDA):
             - reservoir_usgs_df        (DataFrame): USGS reservoir observations
             - reservoir_usace_df       (DataFrame): USACE reservoir observations
         '''
+        LOG.debug(' Update for next loop started')
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
 
@@ -594,9 +595,9 @@ class PersistenceDA(AbstractDA):
         streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
         reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
         
-        if not self.usgs_df.empty:
-
-            if reservoir_da_parameters.get('reservoir_persistence_usgs', False):
+        if not self._usgs_df.empty:
+            
+            if reservoir_da_parameters.get('reservoir_persistence_da').get('reservoir_persistence_usgs', False):
                 
                 gage_lake_df = (
                     network.usgs_lake_gage_crosswalk.
@@ -621,7 +622,7 @@ class PersistenceDA(AbstractDA):
                 
                 # resample `usgs_df` to 15 minute intervals
                 usgs_df_15min = (
-                    self.usgs_df.
+                    self._usgs_df.
                     transpose().
                     resample('15min').asfreq().
                     transpose()
@@ -632,14 +633,14 @@ class PersistenceDA(AbstractDA):
                     usgs_df_15min.join(link_lake_df, how = 'inner').
                     reset_index().
                     set_index('usgs_lake_id').
-                    drop(['index'], axis = 1)
+                    drop(['link'], axis = 1)
                 )
-                
+
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
                 # segments.
                 if network.link_lake_crosswalk:
-                    usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+                    self._usgs_df = _reindex_link_to_lake_id(self._usgs_df, network.link_lake_crosswalk)
         
         elif reservoir_da_parameters.get('reservoir_persistence_usgs', False):
             (
@@ -656,7 +657,7 @@ class PersistenceDA(AbstractDA):
                 res_source = 'usgs')
         
         # USACE
-        if reservoir_da_parameters.get('reservoir_persistence_usace', False):
+        if reservoir_da_parameters.get('reservoir_persistence_da').get('reservoir_persistence_usace', False):
             
             (
                 self._reservoir_usace_df,
@@ -697,8 +698,8 @@ class PersistenceDA(AbstractDA):
         # what happens if there are timeslice files missing on the front-end? 
         # if the first column is some timestamp greater than t0, then this will throw
         # an error. Need to think through this more. 
-        if not self.usgs_df.empty:
-            self._usgs_df = self.usgs_df.loc[:,network.t0:]
+        if not self._usgs_df.empty:
+            self._usgs_df = self._usgs_df.loc[:,network.t0:]
 
 class great_lake(AbstractDA):
     '''
@@ -1076,7 +1077,7 @@ def _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_
             ).
             loc[network.link_gage_df.index]
         )
-    
+
     else:
         usgs_df = pd.DataFrame()
     LOG.debug("Reading and preprocessing usgs timeslice files is completed in %s seconds." % (time.time() - usgs_df_start_time))

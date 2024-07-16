@@ -100,6 +100,7 @@ def main_v04(argv):
                              compute_parameters,
                              data_assimilation_parameters,
                              hybrid_parameters,
+                             output_parameters,
                              verbose=True,
                              showtiming=showtiming,          
                             )

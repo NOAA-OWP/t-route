@@ -27,7 +27,7 @@ class OutputParameters(BaseModel):
     # NOTE: assuming this should be removed
     # TODO: missing from `v3_doc.yaml`
     # see nwm_routing/output.py :114
-    test_output: Optional[FilePath] = None
+    test_output: Optional[Path] = None
     stream_output: Optional["StreamOutput"] = None
     # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
@@ -90,7 +90,7 @@ class StreamOutput(BaseModel):
         if value is not None:
             if value % 5 != 0:
                 raise ValueError("stream_output_internal_frequency must be a multiple of 5.")
-            if value / 60 > values['stream_output_time']:
+            if values.get('stream_output_time') != -1 and value / 60 > values['stream_output_time']:
                 raise ValueError("stream_output_internal_frequency should be less than or equal to stream_output_time in minutes.")
         return value
  

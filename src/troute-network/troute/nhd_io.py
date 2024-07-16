@@ -2013,7 +2013,7 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
         # =========== time VARIABLE ===============
         TIME = ncfile.createVariable(
             varname = "time",
-            datatype = 'int32',
+            datatype = 'float64',
             dimensions = ("time",),
             fill_value = -9999.0
         )
@@ -2022,7 +2022,7 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
             {
                 'long_name': 'valid output time',
                 'standard_name': 'time',
-                'units': 'seconds',
+                'units': f'seconds since {t0.strftime("%Y-%m-%d %H:%M:%S")}',
                 'missing_value': -9999.0
                 #'calendar': 'proleptic_gregorian'
             }
@@ -2169,42 +2169,64 @@ def write_flowveldepth(
     empty_ids = list(set(flowveldepth.index).difference(set(nudge_df.index)))
     empty_df = pd.DataFrame(index=empty_ids, columns=nudge_df.columns).fillna(-9999.0)
     nudge_df = pd.concat([nudge_df, empty_df]).loc[flowveldepth.index]
-    
-    ts_per_file = stream_output_timediff*60//stream_output_internal_frequency
-    
-    num_files = flowveldepth.shape[1]//3*dt//(stream_output_timediff*60*60)
-    if num_files==0:
-        num_files=1
-
     file_name_time = t0
     jobs = []
-    for _ in range(num_files):
+    
+    if stream_output_timediff > 0:
+        ts_per_file = stream_output_timediff*60//stream_output_internal_frequency
+        
+        num_files = flowveldepth.shape[1]//3*dt//(stream_output_timediff*60*60)
+        if num_files==0:
+            num_files=1
+        
+        for _ in range(num_files):
+            filename = 'troute_output_' + file_name_time.strftime('%Y%m%d%H%M') + stream_output_type
+            args = (stream_output_directory,filename,
+                    flow.iloc[:,0:ts_per_file],
+                    velocity.iloc[:,0:ts_per_file],
+                    depth.iloc[:,0:ts_per_file],
+                    nudge_df.iloc[:,0:ts_per_file],
+                    timestamps_sec[0:ts_per_file],t0)
+            if stream_output_type == '.nc':
+                if cpu_pool > 1 & num_files > 1:
+                    jobs.append(delayed(write_flowveldepth_netcdf)(*args))
+                else:
+                    write_flowveldepth_netcdf(*args)
+            else:
+                if cpu_pool > 1 & num_files > 1:
+                    jobs.append(delayed(write_flowveldepth_csv_pkl)(*args))
+                else:
+                    write_flowveldepth_csv_pkl(*args)
+
+            flow = flow.iloc[:,ts_per_file:]
+            velocity = velocity.iloc[:,ts_per_file:]
+            depth = depth.iloc[:,ts_per_file:]
+            nudge_df = nudge_df.iloc[:,ts_per_file:]
+            timestamps_sec = timestamps_sec[ts_per_file:]
+            file_name_time = file_name_time + timedelta(hours=stream_output_timediff)
+    
+    elif stream_output_timediff == -1:
+     
         filename = 'troute_output_' + file_name_time.strftime('%Y%m%d%H%M') + stream_output_type
         args = (stream_output_directory,filename,
-                flow.iloc[:,0:ts_per_file],
-                velocity.iloc[:,0:ts_per_file],
-                depth.iloc[:,0:ts_per_file],
-                nudge_df.iloc[:,0:ts_per_file],
-                timestamps_sec[0:ts_per_file],t0)
+                flow,
+                velocity,
+                depth,
+                nudge_df,
+                timestamps_sec,
+                t0)
         if stream_output_type == '.nc':
-            if cpu_pool > 1 & num_files > 1:
+            if cpu_pool > 1:
                 jobs.append(delayed(write_flowveldepth_netcdf)(*args))
             else:
                 write_flowveldepth_netcdf(*args)
         else:
-            if cpu_pool > 1 & num_files > 1:
+            if cpu_pool > 1:
                 jobs.append(delayed(write_flowveldepth_csv_pkl)(*args))
             else:
                 write_flowveldepth_csv_pkl(*args)
 
-        flow = flow.iloc[:,ts_per_file:]
-        velocity = velocity.iloc[:,ts_per_file:]
-        depth = depth.iloc[:,ts_per_file:]
-        nudge_df = nudge_df.iloc[:,ts_per_file:]
-        timestamps_sec = timestamps_sec[ts_per_file:]
-        file_name_time = file_name_time + timedelta(hours=stream_output_timediff)
-    
-    if cpu_pool > 1 & num_files > 1:
+    if cpu_pool > 1:
         try:
             # Execute all jobs in parallel
             with Parallel(n_jobs=cpu_pool) as parallel:
