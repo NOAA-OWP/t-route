@@ -282,7 +282,7 @@ class HYFeaturesNetwork(AbstractNetwork):
 
             # Preprocess network objects
             self.preprocess_network(flowpaths, nexus)
-            import pdb;pdb.set_trace()
+            
             self.crosswalk_nex_flowpath_poi(flowpaths, nexus)
 
             # Preprocess waterbody objects
