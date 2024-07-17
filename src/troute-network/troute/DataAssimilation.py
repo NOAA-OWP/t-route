@@ -272,7 +272,7 @@ class NudgingDA(AbstractDA):
         
         if streamflow_da_parameters.get('streamflow_nudging', False):
             self._usgs_df = _create_usgs_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
-            if 'canada_timeslice_files' in da_run:
+            if ('canada_timeslice_files' in da_run) & (not network.canadian_gage_df.empty):
                 self._canada_df = _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run)
             else:
                 self._canada_df = pd.DataFrame()
@@ -750,23 +750,20 @@ class great_lake(AbstractDA):
                               organized (because that is how it comes 
                               out of the kernel) by network.
                               For each item in the result, there are 
-                              seven elements, the fifth (usgs) and sixth 
-                              (usace) of which are lists of five elements 
-                              containing: 1) a list of the segments ids 
-                              where data assimilation was performed (if any) 
-                              in that network; 2) a list of the lupdate time; 
-                              3) a list of the previously persisted outflow; 
-                              4) a list of the persistence index; 5) a list 
-                              of the persistence update time.
+                              10 elements, the 9th  of which are lists of 
+                              four elements containing: 
+                              1) a list of the segments ids where data 
+                              assimilation was performed (if any) in that network; 
+                              2) a list of the previously persisted outflow;
+                              3) a list of the previously assimilated observation times; 
+                              4) a list of the update time.
         
         Returns:
         --------
-        - data_assimilation               (Object): Object containing all data assimilation information
-            - reservoir_usgs_param_df  (DataFrame): USGS reservoir DA parameters
-            - reservoir_usace_param_df (DataFrame): USACE reservoir DA parameters
+        - data_assimilation            (Object): Object containing all data assimilation information
+            - _great_lakes_param_df (DataFrame): Great Lakes reservoir DA parameters
         '''
-        import pdb; pdb.set_trace()
-        tmp_start_time = time.time()
+        # get reservoir DA initial parameters for next loop iteration
         tmp_list = []
         for r in run_results:
             
@@ -777,11 +774,7 @@ class great_lake(AbstractDA):
                 tmp_df['update_time'] = r[9][3]
                 tmp_list.append(tmp_df)
         
-        great_lakes_param_df = pd.concat(tmp_list)
-        print(time.time() - tmp_start_time)
-        pdb.set_trace()
-        # get reservoir DA initial parameters for next loop itteration
-        self._great_lakes_param_df = great_lakes_param_df
+        self._great_lakes_param_df = pd.concat(tmp_list)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -1306,7 +1299,6 @@ def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, ru
     canada_df_start_time = time.time()
     canada_files = [canada_timeslices_folder.joinpath(f) for f in da_run['canada_timeslice_files']]
     
-
     if canada_files:
         canada_df = (
             nhd_io.get_obs_from_timeslices(
