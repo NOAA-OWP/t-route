@@ -80,7 +80,7 @@ compute_parameters:
             reservoir_persistence_usace : True
             gage_lakeID_crosswalk_file  : domain/reservoir_index_AnA.nc
 #--------------------------------------------------------------------------------
-# output_parameters:
+output_parameters:
 #     #----------
 #     test_output: output/lcr_flowveldepth.pkl
 #     lite_restart:
@@ -94,9 +94,9 @@ compute_parameters:
 #         chanobs_output_directory: output/
 #         chanobs_filepath        : lcr_chanobs.nc
 #     lakeout_output: lakeout/
-#     stream_output: 
-#         stream_output_directory: output/
-#         stream_output_time: 1 #[hr]
-#         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
-#         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60
+    stream_output: 
+        stream_output_directory: output/
+        stream_output_time: 1 #[hr]
+        stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
+        stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60
     
