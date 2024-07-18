@@ -2129,6 +2129,8 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
             }
         )
 def stream_output_mask_reader(stream_output_mask):
+    if not stream_output_mask:
+        return {}
     with open(stream_output_mask, 'r') as file:
         mask_list = yaml.safe_load(file)
     
@@ -2140,10 +2142,10 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
     
     if not mask_list:
         return nex_id, seg_id
-    if 'wb' in mask_list:
+    if 'wb' in mask_list and mask_list['wb']:
         seg_id.extend(mask_list['wb'])
 
-    if 'nex' in mask_list:
+    if 'nex' in mask_list and mask_list['nex']:
         for key in mask_list['nex']:
             item = 'nex-' + str(key)
             nex_id[key] = [int(val.split('-')[-1]) for val in nexus_dict.get(item, [])]

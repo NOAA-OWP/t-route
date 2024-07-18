@@ -209,12 +209,14 @@ def nwm_output_generator(
         stream_output_timediff = stream_output['stream_output_time']
         stream_output_type = stream_output['stream_output_type']
         stream_output_internal_frequency = stream_output['stream_output_internal_frequency']
+        if stream_output_mask:
+            stream_output_mask = Path(stream_output_mask)
         
         nudge = np.concatenate([r[8] for r in results])
         usgs_positions_id = np.concatenate([r[3][0] for r in results])
         nhd_io.write_flowveldepth(
             Path(stream_output_directory),
-            Path(stream_output_mask), 
+            stream_output_mask, 
             flowveldepth, 
             nudge, 
             usgs_positions_id, 
