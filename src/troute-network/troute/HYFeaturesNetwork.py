@@ -216,8 +216,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     
     """
-    __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df",
-                 "_canadian_gage_link_df"]
+    __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df",]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -339,9 +338,6 @@ class HYFeaturesNetwork(AbstractNetwork):
     def waterbody_null(self):
         return np.nan #pd.NA
     
-    @property
-    def canadian_gage_df(self):
-        return self._canadian_gage_link_df
     
     def preprocess_network(self, flowpaths, nexus):
         self._dataframe = flowpaths

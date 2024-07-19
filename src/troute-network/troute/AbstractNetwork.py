@@ -27,6 +27,7 @@ class AbstractNetwork(ABC):
     __slots__ = ["_dataframe", "_waterbody_connections", "_gages",  
                 "_terminal_codes", "_connections", "_waterbody_df", 
                 "_waterbody_types_df", "_waterbody_type_specified", "_link_gage_df",
+                "_canadian_gage_link_df",
                 "_independent_networks", "_reaches_by_tw", "_flowpath_dict",
                 "_reverse_network", "_q0", "_t0", "_link_lake_crosswalk",
                 "_usgs_lake_gage_crosswalk", "_usace_lake_gage_crosswalk", "_rfc_lake_gage_crosswalk",
@@ -406,6 +407,10 @@ class AbstractNetwork(ABC):
     @property
     def great_lakes_climatology_df(self):
         return self._gl_climatology_df
+    
+    @property
+    def canadian_gage_df(self):
+        return self._canadian_gage_link_df
 
         
     def set_synthetic_wb_segments(self, synthetic_wb_segments, synthetic_wb_id_offset):
