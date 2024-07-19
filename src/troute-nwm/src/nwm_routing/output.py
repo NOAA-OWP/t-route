@@ -174,7 +174,7 @@ def nwm_output_generator(
             d_df = flow_df.iloc[:,2::3]
 
         # replace waterbody lake_ids with outlet link ids
-        if link_lake_crosswalk:
+        if (link_lake_crosswalk):
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
             
         # todo: create a unit test by saving FVD array to disk and then checking that
@@ -391,7 +391,7 @@ def nwm_output_generator(
         # usgs_df_filtered.to_csv(output_path.joinpath("usgs_df.csv"))
         
     if chano:
-        
+
         LOG.info("- writing t-route flow results at gage locations to CHANOBS file")
         start = time.time()
         
