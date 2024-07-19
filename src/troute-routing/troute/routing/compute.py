@@ -1867,7 +1867,7 @@ def compute_diffusive_routing(
                 rch_list[~x], dat_all[~x,3:], 0,
                 # place-holder for streamflow DA parameters
                 (np.asarray([]), np.asarray([]), np.asarray([])),
-                # place-holder for reservoir DA paramters
+                # place-holder for reservoir DA parameters
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
                 # place holder for reservoir inflows
@@ -1876,6 +1876,8 @@ def compute_diffusive_routing(
                 (np.asarray([]), np.asarray([]), np.asarray([])),
                 # place-holder for nudge values
                 (np.empty(shape=(0, nts + 1), dtype='float32')),
+                # place-holder for great lakes DA values/parameters
+                (np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([])),
             )
         )
 
