@@ -98,7 +98,6 @@ def great_lakes_da(
             # LOG.debug(
             #     'No good observation found, persisting previously assimilated flow'
             # )
-
             outflow = previous_assimilated_outflow
 
         elif gage_lookback_seconds > (persistence_limit*60*60*24):
@@ -112,7 +111,7 @@ def great_lakes_da(
         else:
             '''
             A good observation is found and it is within the persistence limit.
-            '''  
+            ''' 
             outflow = obs
             new_assimilated_outflow = obs
             new_assimilated_time = t_obs
@@ -121,12 +120,12 @@ def great_lakes_da(
     else:
         outflow = previous_assimilated_outflow
 
-        if now - previous_assimilated_time > (persistence_limit*60*60*24):
+        if (now - previous_assimilated_time) > (persistence_limit*60*60*24):
             '''
             If the time difference between the current model time and the 
             observation timestamp is greater than
             the persistence limit, default to climatology.
             '''
             outflow = climatology_outflow
-
+    
     return outflow, new_assimilated_outflow, new_assimilated_time, new_update_time
