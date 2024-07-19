@@ -64,6 +64,7 @@ class NHDNetwork(AbstractNetwork):
 
         self._flowpath_dict = {}
         self._gl_climatology_df = pd.DataFrame()
+        self._canadian_gage_link_df = pd.DataFrame(columns=['gages','link']).set_index('link')
 
         super().__init__()
 
