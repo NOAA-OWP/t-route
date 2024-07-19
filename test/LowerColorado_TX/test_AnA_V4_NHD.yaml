@@ -95,9 +95,9 @@ compute_parameters:
             reservoir_parameter_file                : domain/reservoir_index_AnA.nc
             reservoir_persistence_da:
                 #----------
-                reservoir_persistence_usgs  : False
-                reservoir_persistence_usace : False
-                reservoir_persistence_greatLake : True
+                reservoir_persistence_usgs  : True
+                reservoir_persistence_usace : True
+                reservoir_persistence_greatLake : False
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : False
