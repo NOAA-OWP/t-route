@@ -772,6 +772,7 @@ class great_lake(AbstractDA):
             - _great_lakes_param_df (DataFrame): Great Lakes reservoir DA parameters
         '''
         # get reservoir DA initial parameters for next loop iteration
+        great_lakes_param_df = pd.DataFrame()
         tmp_list = []
         for r in run_results:
             
@@ -782,9 +783,10 @@ class great_lake(AbstractDA):
                 tmp_df['update_time'] = r[9][3]
                 tmp_list.append(tmp_df)
         
-        great_lakes_param_df = pd.concat(tmp_list)
-        great_lakes_param_df['previous_assimilated_time'] = great_lakes_param_df['previous_assimilated_time'] - time_increment
-        great_lakes_param_df['update_time'] = great_lakes_param_df['update_time'] - time_increment
+        if tmp_list:
+            great_lakes_param_df = pd.concat(tmp_list)
+            great_lakes_param_df['previous_assimilated_time'] = great_lakes_param_df['previous_assimilated_time'] - time_increment
+            great_lakes_param_df['update_time'] = great_lakes_param_df['update_time'] - time_increment
         
         self._great_lakes_param_df = great_lakes_param_df
 
