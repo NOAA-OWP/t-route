@@ -1788,6 +1788,8 @@ def main_v03(argv):
         if (not kernelTalks):        
             logFileName = 'NONE'
 
+        duplicate_ids_df = pd.DataFrame()
+
         nwm_output_generator(
             run,
             run_results,
@@ -1801,6 +1803,7 @@ def main_v03(argv):
             cpu_pool,
             waterbodies_df,
             waterbody_types_df,
+            duplicate_ids_df,
             data_assimilation_parameters,
             lastobs_df,
             link_gage_df,

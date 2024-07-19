@@ -174,7 +174,7 @@ def nwm_output_generator(
             d_df = flow_df.iloc[:,2::3]
 
         # replace waterbody lake_ids with outlet link ids
-        if (link_lake_crosswalk and not link_lake_crosswalk=='NONE'):
+        if (link_lake_crosswalk):
             flowveldepth = _reindex_lake_to_link_id(flowveldepth, link_lake_crosswalk)
             
         # todo: create a unit test by saving FVD array to disk and then checking that
