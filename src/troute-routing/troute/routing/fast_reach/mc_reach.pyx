@@ -441,7 +441,8 @@ cpdef object compute_network_structured(
     cdef np.ndarray[int, ndim=1] gl_param_idx = np.asarray(great_lakes_param_idx)
     cdef np.ndarray[int, ndim=1] gl_update_time = np.asarray(great_lakes_param_update_times)
     cdef np.ndarray[float, ndim=1] gl_prev_assim_ouflow = np.asarray(great_lakes_param_prev_assim_flow)
-    cdef np.ndarray[int, ndim=1] gl_prev_assim_timestamp = np.asarray(great_lakes_param_prev_assim_times)  
+    cdef np.ndarray[int, ndim=1] gl_prev_assim_timestamp = np.asarray(great_lakes_param_prev_assim_times)
+    cdef np.ndarray[float, ndim=2] gl_climatology = np.asarray(great_lakes_climatology) 
 
 
     #---------------------------------------------------------------------------------------------
@@ -517,7 +518,7 @@ cpdef object compute_network_structured(
                     param_prev_assim_flow      = gl_prev_assim_ouflow[res_param_idx[0][0]]
                     param_prev_assim_timestamp = gl_prev_assim_timestamp[res_param_idx[0][0]]
                     param_update_time          = gl_update_time[res_param_idx[0][0]]
-                    climatology                = great_lakes_climatology[res_param_idx[0][0],:]
+                    climatology                = gl_climatology[res_param_idx[0][0],:]
 
                     (new_outflow,
                     new_assimilated_outflow, 
