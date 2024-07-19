@@ -723,6 +723,9 @@ class great_lake(AbstractDA):
         run_parameters = self._run_parameters
         reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {})
 
+        self._great_lakes_df = pd.DataFrame()
+        self._great_lakes_param_df = pd.DataFrame()
+        
         if reservoir_persistence_da:
             greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
 
