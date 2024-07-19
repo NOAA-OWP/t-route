@@ -592,12 +592,12 @@ class PersistenceDA(AbstractDA):
         run_parameters = self._run_parameters
 
         # update usgs_df if it is not empty
-        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
-        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
+        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', {})
+        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', {})
         
         if not self.usgs_df.empty:
 
-            if reservoir_da_parameters.get('reservoir_persistence_usgs', False):
+            if reservoir_da_parameters.get('reservoir_persistence_da',{}).get('reservoir_persistence_usgs', False):
                 
                 gage_lake_df = (
                     network.usgs_lake_gage_crosswalk.
@@ -630,17 +630,16 @@ class PersistenceDA(AbstractDA):
                 
                 # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
                 self._reservoir_usgs_df = (
-                    usgs_df_15min.join(link_lake_df, how = 'inner').
-                    reset_index().
-                    set_index('usgs_lake_id').
-                    drop(['index'], axis = 1)
-                )
+                        usgs_df_15min.join(link_lake_df, how = 'inner').
+                        reset_index(drop=True).
+                        set_index('usgs_lake_id')
+                    )
                 
                 # replace link ids with lake ids, for gages at waterbody outlets, 
                 # otherwise, gage data will not be assimilated at waterbody outlet
                 # segments.
                 if network.link_lake_crosswalk:
-                    usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
+                    self._usgs_df = _reindex_link_to_lake_id(self.usgs_df, network.link_lake_crosswalk)
         
         elif reservoir_da_parameters.get('reservoir_persistence_usgs', False):
             (
@@ -655,6 +654,12 @@ class PersistenceDA(AbstractDA):
                 da_run,
                 lake_gage_crosswalk = network.usgs_lake_gage_crosswalk,
                 res_source = 'usgs')
+            
+            # replace link ids with lake ids, for gages at waterbody outlets, 
+            # otherwise, gage data will not be assimilated at waterbody outlet
+            # segments.
+            if network.link_lake_crosswalk:
+                usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
         
         # USACE
         if reservoir_da_parameters.get('reservoir_persistence_usace', False):
@@ -739,7 +744,7 @@ class great_lake(AbstractDA):
             
         LOG.debug("great_lake class is completed in %s seconds." % (time.time() - great_lake_start_time))
     
-    def update_after_compute(self, run_results,):
+    def update_after_compute(self, run_results, time_increment):
         '''
         Function to update data assimilation object after running routing module.
         
@@ -773,7 +778,11 @@ class great_lake(AbstractDA):
                 tmp_df['update_time'] = r[9][3]
                 tmp_list.append(tmp_df)
         
-        self._great_lakes_param_df = pd.concat(tmp_list)
+        great_lakes_param_df = pd.concat(tmp_list)
+        great_lakes_param_df['previous_assimilated_time'] = great_lakes_param_df['previous_assimilated_time'] - time_increment
+        great_lakes_param_df['update_time'] = great_lakes_param_df['update_time'] - time_increment
+        
+        self._great_lakes_param_df = great_lakes_param_df
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -791,118 +800,31 @@ class great_lake(AbstractDA):
             - reservoir_usgs_df        (DataFrame): USGS reservoir observations
             - reservoir_usace_df       (DataFrame): USACE reservoir observations
         '''
+        greatLake = False
         data_assimilation_parameters = self._data_assimilation_parameters
         run_parameters = self._run_parameters
+        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {})
 
-        # update usgs_df if it is not empty
-        streamflow_da_parameters = data_assimilation_parameters.get('streamflow_da', None)
-        reservoir_da_parameters = data_assimilation_parameters.get('reservoir_da', None)
+        if reservoir_persistence_da:
+            greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
         
-        if not self.usgs_df.empty:
+        if greatLake:
 
-            if reservoir_da_parameters.get('reservoir_persistence_usgs', False):
-                
-                gage_lake_df = (
-                    network.usgs_lake_gage_crosswalk.
-                    reset_index().
-                    set_index(['usgs_gage_id']) # <- TODO use input parameter for this
-                )
-                
-                # build dataframe that crosswalks gageIDs to segmentIDs
-                gage_link_df = (
-                    network.link_gage_df['gages'].
-                    reset_index().
-                    set_index(['gages'])
-                )
-                
-                # build dataframe that crosswalks segmentIDs to lakeIDs
-                link_lake_df = (
-                    gage_lake_df.
-                    join(gage_link_df, how = 'inner').
-                    reset_index().set_index('link').
-                    drop(['index'], axis = 1)
-                )
-                
-                # resample `usgs_df` to 15 minute intervals
-                usgs_df_15min = (
-                    self.usgs_df.
-                    transpose().
-                    resample('15min').asfreq().
-                    transpose()
-                )
-                
-                # subset and re-index `usgs_df`, using the segID <> lakeID crosswalk
-                self._reservoir_usgs_df = (
-                    usgs_df_15min.join(link_lake_df, how = 'inner').
-                    reset_index().
-                    set_index('usgs_lake_id').
-                    drop(['index'], axis = 1)
-                )
-                
-                # replace link ids with lake ids, for gages at waterbody outlets, 
-                # otherwise, gage data will not be assimilated at waterbody outlet
-                # segments.
-                if network.link_lake_crosswalk:
-                    usgs_df = _reindex_link_to_lake_id(usgs_df, network.link_lake_crosswalk)
-        
-        elif reservoir_da_parameters.get('reservoir_persistence_usgs', False):
-            (
-                self._reservoir_usgs_df,
-                _,
-            ) = _create_reservoir_df(
-                data_assimilation_parameters,
-                reservoir_da_parameters,
-                streamflow_da_parameters,
-                run_parameters,
-                network,
-                da_run,
-                lake_gage_crosswalk = network.usgs_lake_gage_crosswalk,
-                res_source = 'usgs')
-        
-        # USACE
-        if reservoir_da_parameters.get('reservoir_persistence_usace', False):
+            GL_crosswalk_df = pd.DataFrame(
+                {
+                    'link': [4800002,4800004,4800006],
+                    'gages': ['04127885','04159130','02HA013']
+                }
+            ).set_index('link')
             
-            (
-                self._reservoir_usace_df,
-                _,
-            ) = _create_reservoir_df(
+            self._great_lakes_df, _ = _create_GL_dfs(
+                GL_crosswalk_df,
                 data_assimilation_parameters,
-                reservoir_da_parameters,
-                streamflow_da_parameters,
                 run_parameters,
-                network,
                 da_run,
-                lake_gage_crosswalk = network.usace_lake_gage_crosswalk,
-                res_source = 'usace')
-        
-        # if there are no TimeSlice files available for hybrid reservoir DA in the next loop, 
-        # but there are DA parameters from the previous loop, then create a
-        # dummy observations df. This allows the reservoir persistence to continue across loops.
-        # USGS Reservoirs
-        if not network.waterbody_types_dataframe.empty:
-            if 2 in network.waterbody_types_dataframe['reservoir_type'].unique():
-                if self.reservoir_usgs_df.empty and len(self.reservoir_usgs_param_df.index) > 0:
-                    self._reservoir_usgs_df = pd.DataFrame(
-                        data    = np.nan, 
-                        index   = self.reservoir_usgs_param_df.index, 
-                        columns = [network.t0]
-                    )
-
-            # USACE Reservoirs   
-            if 3 in network.waterbody_types_dataframe['reservoir_type'].unique():
-                if self.reservoir_usace_df.empty and len(self.reservoir_usace_param_df.index) > 0:
-                    self._reservoir_usace_df = pd.DataFrame(
-                        data    = np.nan, 
-                        index   = self.reservoir_usace_param_df.index, 
-                        columns = [network.t0]
-                    )
-
-        # Trim the time-extent of the streamflow_da usgs_df
-        # what happens if there are timeslice files missing on the front-end? 
-        # if the first column is some timestamp greater than t0, then this will throw
-        # an error. Need to think through this more. 
-        if not self.usgs_df.empty:
-            self._usgs_df = self.usgs_df.loc[:,network.t0:]
+                network.t0,
+            )
+            
 
 class RFCDA(AbstractDA):
     """
@@ -1007,6 +929,7 @@ class RFCDA(AbstractDA):
                 self._reservoir_rfc_df = pd.DataFrame()
                 self._reservoir_rfc_param_df = pd.DataFrame()
         LOG.debug("RFCDA class is completed in %s seconds." % (time.time() - RFCDA_start_time))
+    
     def update_after_compute(self, run_results):
         '''
         Function to update data assimilation object after running routing module.
@@ -1069,7 +992,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         NudgingDA.update_after_compute(self, run_results, time_increment)
         PersistenceDA.update_after_compute(self, run_results)
         RFCDA.update_after_compute(self, run_results)
-        great_lake.update_after_compute(self, run_results)
+        great_lake.update_after_compute(self, run_results, time_increment)
 
     def update_for_next_loop(self, network, da_run,):
         '''
