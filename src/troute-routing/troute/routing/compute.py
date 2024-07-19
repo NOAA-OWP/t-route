@@ -278,6 +278,7 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
         gl_param_update_time_sub = gl_param_df_sub.update_time.to_numpy()
     else:
         gl_df_sub = pd.DataFrame()
+        gl_climatology_df_sub = pd.DataFrame()
         gl_parm_lake_id_sub = pd.DataFrame().to_numpy().reshape(0,)
         gl_param_flows_sub = pd.DataFrame().to_numpy().reshape(0,)
         gl_param_time_sub = pd.DataFrame().to_numpy().reshape(0,)
