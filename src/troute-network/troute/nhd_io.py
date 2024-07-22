@@ -2161,7 +2161,7 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
 
     if 'nex' in mask_list and mask_list['nex']:
         if 9999 in mask_list['nex']:
-            import pdb;pdb.set_trace()
+            
             for key, val in nexus_dict.items():
                 nex_key = int(key.split('-')[-1])
                 nex_id[nex_key] = [int(v.split('-')[-1]) for v in val]
