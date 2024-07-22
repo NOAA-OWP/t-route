@@ -2007,6 +2007,8 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
         # ============ DIMENSIONS ===================
         _ = ncfile.createDimension('feature_id', len(flow))
         _ = ncfile.createDimension('time', len(timestamps))
+        max_str_len = max(len(str(x)) for x in flow.index.get_level_values('Type'))
+        _ = ncfile.createDimension('type_strlen', max_str_len)
         #_ = ncfile.createDimension('gage', gage)
         #_ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
         
@@ -2048,10 +2050,22 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
             datatype = 'int64',
             dimensions = ("feature_id",),
         )
-        FEATURE_ID[:] = flow.index
+        FEATURE_ID[:] = flow.index.get_level_values('featureID')
         ncfile['feature_id'].setncatts(
             {
                 'long_name': 'Segment ID',
+            }
+        )
+        # =========== type VARIABLE ===============
+        TYPE = ncfile.createVariable(
+            varname="type",
+            datatype=f'S{max_str_len}',
+            dimensions=("feature_id",),
+        )
+        TYPE[:] = np.array(flow.index.get_level_values('Type').astype(str).tolist(), dtype=f'S{max_str_len}')
+        ncfile['type'].setncatts(
+            {
+                'long_name': 'Type',
             }
         )
 
@@ -2146,32 +2160,56 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
         seg_id.extend(mask_list['wb'])
 
     if 'nex' in mask_list and mask_list['nex']:
-        for key in mask_list['nex']:
-            item = 'nex-' + str(key)
-            nex_id[key] = [int(val.split('-')[-1]) for val in nexus_dict.get(item, [])]
+        if 9999 in mask_list['nex']:
+            import pdb;pdb.set_trace()
+            for key, val in nexus_dict.items():
+                nex_key = int(key.split('-')[-1])
+                nex_id[nex_key] = [int(v.split('-')[-1]) for v in val]
+        else:
+            for key in mask_list['nex']:
+                item = f'nex-{key}'
+                nex_id[key] = [int(val.split('-')[-1]) for val in nexus_dict.get(item, [])]
 
     return nex_id, seg_id
 
-def updated_flowveldepth(flowveldepth, nex_id, seg_id):
+def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
+    flowveldepth.index.name = 'featureID'
+    flowveldepth['Type'] = 'wb-'
+    flowveldepth.set_index('Type', append=True, inplace=True)
+
     filtered_v_columns = [col for col in flowveldepth.columns if col[1] == 'v']
     filtered_d_columns = [col for col in flowveldepth.columns if col[1] == 'd']
+
+    def create_mask(ids):
+        return (flowveldepth.index.get_level_values('featureID').isin(ids)) & (flowveldepth.index.get_level_values('Type') == 'wb-')
+
+    flowveldepth_seg = flowveldepth[create_mask(seg_id)] if seg_id else pd.DataFrame()
+
+    nex_data_list = []
     if nex_id:
         for nex_key, nex_val in nex_id.items():
+            new_index = pd.MultiIndex.from_tuples([(nex_key, 'nex-')], names=['featureID', 'Type'])
+            flowveldepth_nex = flowveldepth[create_mask(nex_val)]
             
-            flowveldepth.loc[nex_key] = flowveldepth.loc[nex_val].sum()
-            if len(nex_val) > 1:
-                flowveldepth.loc[nex_key, filtered_v_columns] = np.nan
-                flowveldepth.loc[nex_key, filtered_d_columns] = flowveldepth.loc[nex_val, filtered_d_columns].mean()
-        flowveldepth_nex = flowveldepth.loc[list(nex_id.keys())]
-    else:
-        flowveldepth_nex = pd.DataFrame()
-    if seg_id:
-        flowveldepth_seg = flowveldepth.loc[seg_id]
-    else:
-        flowveldepth_seg = pd.DataFrame()
-    if not flowveldepth_seg.empty or not flowveldepth_nex.empty:
-        flowveldepth = pd.concat([flowveldepth_seg, flowveldepth_nex])
+            if not flowveldepth_nex.empty:
+                if len(flowveldepth_nex.index) > 1:
+                    summed_data = flowveldepth_nex.sum()
+                    new_data = pd.DataFrame([summed_data], index=new_index)
+                    new_data.loc[(nex_key, 'nex-'), filtered_v_columns] = np.nan
+                    new_data.loc[(nex_key, 'nex-'), filtered_d_columns] = flowveldepth_nex[filtered_d_columns].mean()
+                else:
+                    new_data = flowveldepth_nex.copy()
+                    new_data.index = new_index
+
+                nex_data_list.append(new_data)
         
+        all_nex_data = pd.concat(nex_data_list) if nex_data_list else pd.DataFrame()
+    else:
+        all_nex_data = pd.DataFrame()
+
+    if not flowveldepth_seg.empty or not all_nex_data.empty:
+        flowveldepth = pd.concat([flowveldepth_seg, all_nex_data])
+    
     return flowveldepth
 
 def write_flowveldepth(
@@ -2201,7 +2239,7 @@ def write_flowveldepth(
     
     mask_list = stream_output_mask_reader(stream_output_mask)
     nex_id, seg_id = mask_find_seg(mask_list, nexus_dict, poi_crosswalk)
-    flowveldepth = updated_flowveldepth(flowveldepth, nex_id, seg_id)
+    flowveldepth = updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list)
 
     # timesteps, variable = zip(*flowveldepth.columns.tolist())
     # timesteps = list(timesteps)
