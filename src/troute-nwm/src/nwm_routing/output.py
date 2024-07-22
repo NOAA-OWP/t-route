@@ -205,7 +205,7 @@ def nwm_output_generator(
     
     if stream_output:
         stream_output_directory = stream_output['stream_output_directory']
-        stream_output_mask = stream_output['mask_output']
+        stream_output_mask = stream_output.get('mask_output',)
         stream_output_timediff = stream_output['stream_output_time']
         stream_output_type = stream_output['stream_output_type']
         stream_output_internal_frequency = stream_output['stream_output_internal_frequency']
