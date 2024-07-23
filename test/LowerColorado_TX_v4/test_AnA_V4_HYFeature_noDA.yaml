@@ -63,13 +63,10 @@ compute_parameters:
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_timeslices/
-        usace_timeslices_folder  : usace_timelices/
         streamflow_da:
             #----------
             streamflow_nudging            : False
-            diffusive_streamflow_nudging  : False   
-            lastobs_file                  : #lastobs/nudgingLastObs.2023-04-02_00:00:00.nc                                  
+            diffusive_streamflow_nudging  : False                               
         reservoir_da:
             #----------
             reservoir_persistence_da:
@@ -79,9 +76,6 @@ compute_parameters:
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : False
-                reservoir_rfc_forecasts_time_series_path: rfc_timeseries/
-                reservoir_rfc_forecasts_lookback_hours  : 28
-                reservoir_rfc_forecasts_offset_hours    : 28
 #--------------------------------------------------------------------------------
 # output_parameters:
 #     #----------

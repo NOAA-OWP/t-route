@@ -38,6 +38,7 @@ log_parameters:
     #----------
     showtiming: True
     log_level : DEBUG
+    #log_directory : Log/
 #--------------------------------------------------------------------------------
 network_topology_parameters:
     #----------
@@ -100,6 +101,7 @@ compute_parameters:
         usgs_timeslices_folder   : usgs_timeslices/
         usace_timeslices_folder  : usace_timeslices/
         canada_timeslices_folder  : Canadian_timeslices/
+        LakeOntario_outflow  :  domain/cleaned_lakeOntario.csv
         streamflow_da:
             #----------
             streamflow_nudging            : True
@@ -111,7 +113,7 @@ compute_parameters:
                 #----------
                 reservoir_persistence_usgs  : True
                 reservoir_persistence_usace : True
-                reservoir_persistence_canada : True
+                reservoir_persistence_greatLake : True
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : True
@@ -121,15 +123,15 @@ compute_parameters:
 #--------------------------------------------------------------------------------
 # output_parameters:
 #     #----------
-#      test_output : output/lcr_flowveldepth.pkl
-#      lite_restart:
+#     test_output : output/lcr_flowveldepth.pkl
+#     lite_restart:
 #         #----------
 #         lite_restart_output_directory: restart/
-#      lakeout_output: lakeout/
-#      lastobs_output: lastobs/
+#     lakeout_output: lakeout/
+#     lastobs_output: lastobs/
 #     stream_output : 
 #         stream_output_directory: output/
-#         stream_output_time: 1 #[hr]
+#         stream_output_time: 1 #[hr] ** Consider `stream_output_time = -1` means save everything in one file **
 #         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
 #         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    
 

@@ -24,10 +24,10 @@ then
 fi
 
 #preserve old/default behavior of installing packages with -e
-E="-e"
+WITH_EDITABLE=true
 if [ "$1" == 'no-e' ]
 then
-E=""
+WITH_EDITABLE=false
 fi
 
 #if you have custom static library paths, uncomment below and export them
@@ -89,30 +89,42 @@ if [[ "$build_framework" == true ]]; then
   #creates troute package
   cd $REPOROOT/src/troute-network
   rm -rf build
-  ##python setup.py --use-cython install
-  ##python setup.py --use-cython develop
-  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install $E . || exit
+
+  if [[ ${WITH_EDITABLE} == true ]]; then
+    pip install --no-build-isolation --config-setting='--build-option=--use-cython' --editable . --config-setting='editable_mode=compat' || exit
+  else
+    pip install --no-build-isolation --config-setting='--build-option=--use-cython' . || exit
+  fi
 fi
 
 if [[ "$build_routing" == true ]]; then
   #updates troute package with the execution script
   cd $REPOROOT/src/troute-routing
   rm -rf build
-  #python setup.py --use-cython install
-  #python setup.py --use-cython develop
-  CC=${CC} python setup.py build_ext --inplace --use-cython || exit
-  pip install $E . || exit
+
+  if [[ ${WITH_EDITABLE} == true ]]; then
+    pip install --no-build-isolation --config-setting='--build-option=--use-cython' --editable . --config-setting='editable_mode=compat' || exit
+  else
+    pip install --no-build-isolation --config-setting='--build-option=--use-cython' . || exit
+  fi
 fi
 
 if [[ "$build_config" == true ]]; then
   #updates troute package with the execution script
   cd $REPOROOT/src/troute-config
-  pip install $E . || exit
+  if [[ ${WITH_EDITABLE} == true ]]; then
+    pip install --editable . || exit
+  else
+    pip install . || exit
+  fi
 fi
 
 if [[ "$build_nwm" == true ]]; then
   #updates troute package with the execution script
   cd $REPOROOT/src/troute-nwm
-  pip install $E . || exit
+  if [[ ${WITH_EDITABLE} == true ]]; then
+    pip install --editable . || exit
+  else
+    pip install . || exit
+  fi
 fi

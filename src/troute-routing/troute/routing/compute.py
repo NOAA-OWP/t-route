@@ -1,13 +1,13 @@
 from collections import defaultdict
 from itertools import chain
 from functools import partial
-from tlz import concat
 from joblib import delayed, Parallel
 from datetime import datetime, timedelta
 import time
 import pandas as pd
 import numpy as np
 import copy
+import os.path
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
@@ -269,6 +269,216 @@ def _prep_reservoir_da_dataframes(reservoir_usgs_df,
         reservoir_rfc_df_sub, reservoir_rfc_totalCounts, reservoir_rfc_file, reservoir_rfc_use_forecast, reservoir_rfc_timeseries_idx, reservoir_rfc_update_time, reservoir_rfc_da_timestep, reservoir_rfc_persist_days,
         waterbody_types_df_sub
         )
+
+
+def compute_log_mc(
+    fileName,
+    connections,
+    rconn,
+    wbody_conn,
+    reaches_bytw,
+    compute_func_name,
+    parallel_compute_method,
+    subnetwork_target_size,
+    cpu_pool,
+    t0,
+    dt,
+    nts,
+    qts_subdivisions,
+    independent_networks,
+    param_df,
+    q0,
+    qlats,
+    usgs_df,
+    lastobs_df,
+    reservoir_usgs_df,
+    reservoir_usgs_param_df,
+    reservoir_usace_df,
+    reservoir_usace_param_df,
+    reservoir_rfc_df,
+    reservoir_rfc_param_df,
+    assume_short_ts,
+    waterbodies_df,
+    data_assimilation_parameters,
+    waterbody_types_df,
+    waterbody_type_specified,
+):
+    
+    # TODO: do something with param_df, reservoir_XXX_param_df, or delete them as args
+
+    # append parameters and some statistics to log file
+    with open(fileName, 'a') as preRunLog:
+
+        preRunLog.write("*******************\n") 
+        preRunLog.write("Compute Parameters:\n") 
+        preRunLog.write("*******************\n") 
+        preRunLog.write("\n")   
+        preRunLog.write("General Compute Parameters:\n")
+        preRunLog.write("\n")  
+        preRunLog.write("Parallel Compute Method: "+parallel_compute_method+'\n')
+        preRunLog.write("Compute Kernel Name: "+compute_func_name+'\n')
+        preRunLog.write("Assume Short Timescale: "+str(assume_short_ts)+'\n')
+        preRunLog.write("Subnetwork Target Size: "+str(subnetwork_target_size)+'\n')
+        preRunLog.write("CPU Pool: "+str(cpu_pool)+'\n')
+        #preRunLog.write("\n")
+        #preRunLog.write("Restart Parameters:\n")  
+        #preRunLog.write("\n")
+        preRunLog.write("Start_datetime: "+str(t0)+'\n')
+        preRunLog.write("Coldstart: "+str(((q0==0).all()).all())+'\n')
+        preRunLog.write("\n")
+        preRunLog.write("Forcing Parameters:\n")
+        preRunLog.write("\n")           
+        preRunLog.write("qts subdivisions: "+str(qts_subdivisions)+'\n')
+        preRunLog.write("dt [sec]: "+str(dt)+'\n')
+        preRunLog.write("nts: "+str(nts)+'\n')
+        preRunLog.write("\n")
+        preRunLog.write("Data Assimilation Parameters:\n")
+        preRunLog.write("\n")
+    
+        if ('usgs_timeslices_folder' in data_assimilation_parameters.keys()):           
+            preRunLog.write("usgs timeslice folder: "+str(data_assimilation_parameters['usgs_timeslices_folder'])+'\n')
+        if ('usace_timeslices_folder' in data_assimilation_parameters.keys()):    
+            preRunLog.write("usace timeslice folder: "+str(data_assimilation_parameters['usace_timeslices_folder'])+'\n')
+        preRunLog.write("-----\n")
+        preRunLog.write("Streamflow DA\n")
+        if ('streamflow_da' in data_assimilation_parameters.keys()):  
+            outPutStr = "Streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['streamflow_nudging'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            outPutStr = "Diffusive streamflow nudging: "+str(data_assimilation_parameters['streamflow_da']['diffusive_streamflow_nudging'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            preRunLog.write("Lastobs file: "+str(data_assimilation_parameters['streamflow_da']['lastobs_file'])+'\n')
+            preRunLog.write("-----\n")
+            preRunLog.write("Reservoir DA\n")
+            outPutStr = "Reservoir persistence USGS: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            outPutStr = "Reservoir persistence USACE: "+str(data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'])
+            preRunLog.write(outPutStr+'\n')
+            LOG.info(outPutStr)
+            preRunLog.write("Reservoir RFC forecasts: "+str(data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'])+'\n')
+
+        preRunLog.write("\n")                   
+        preRunLog.write("****************************\n") 
+        preRunLog.write("Network Topology Parameters:\n") 
+        preRunLog.write("****************************\n") 
+        preRunLog.write("\n")   
+        preRunLog.write("General network:\n")
+        preRunLog.write("Number of downstream connections: "+str(len(connections))+'\n')
+        preRunLog.write("Number of upstream connections: "+str(len(rconn))+'\n')
+        preRunLog.write("Number of waterbody connections: "+str(len(wbody_conn))+'\n')
+        preRunLog.write("Number of reaches by tailwater: "+str(len(reaches_bytw))+'\n')
+        preRunLog.write("Number of independent networks: "+str(len(independent_networks))+'\n')
+        preRunLog.write("Number of waterbodies: "+str(len(waterbodies_df.index))+'\n')
+        preRunLog.write("Waterbody type specified: "+str(waterbody_type_specified)+'\n')
+        nH20_types = len(waterbody_types_df.value_counts())
+        if (nH20_types>0):
+            for nH20 in range(nH20_types):
+                preRunLog.write("Type: "+str(waterbody_types_df.value_counts().index[nH20][0]))
+                preRunLog.write("   Number of waterbodies: "+str(waterbody_types_df.value_counts().values[nH20])+'\n')
+        preRunLog.write("-----\n")
+        preRunLog.write("Gages and relations with waterbodies:\n")
+        preRunLog.write("Number of USGS gages in network: "+str(len(usgs_df.index))+'\n')
+        preRunLog.write("Number of USGS gage time bins in network: "+str(len(usgs_df.columns))+'\n')
+        preRunLog.write("Lastobs files, number of gages: "+str(len(lastobs_df.index))+'\n')
+        preRunLog.write("Number of USGS gages in waterbodies: "+str(len(reservoir_usgs_df.index))+'\n')
+        preRunLog.write("Number of USACE gages in waterbodies: "+str(len(reservoir_usace_df.index))+'\n')
+        preRunLog.write("Number of RFC gages in waterbodies: "+str(len(reservoir_rfc_df.index))+'\n')
+        preRunLog.write("\n")        
+
+    preRunLog.close()
+
+
+def compute_log_diff(
+    fileName,
+    diffusive_network_data,
+    topobathy_df,
+    refactored_diffusive_domain,
+    refactored_reaches,                
+    coastal_boundary_depth_df,
+    unrefactored_topobathy_df,                
+):
+
+    # TODO: do something with refactored_diffusive_domain, refactored_reaches, unrefactored_topobathy_df, or delete args
+
+    # append parameters and some statistics to log file
+    with open(fileName, 'a') as preRunLog:
+
+        preRunLog.write("*******************\n") 
+        preRunLog.write("Diffusive Routing :\n") 
+        preRunLog.write("*******************\n") 
+        nTw = len(diffusive_network_data)
+        preRunLog.write("\n")   
+        outPutStr = "Number of diffusive tailwaters: "+str(nTw)
+        preRunLog.write(outPutStr+'\n')
+        LOG.info(outPutStr)
+        preRunLog.write("-----\n")  
+
+        twList = [key for key in diffusive_network_data]
+
+        for i_nTw in range(nTw):  
+            outPutStr = "Tailwater number and ID: "+str(i_nTw+1)+"   "+str(twList[i_nTw])
+            preRunLog.write(outPutStr+"\n")
+            LOG.info(outPutStr)
+            diffNw = diffusive_network_data[twList[i_nTw]]
+            nMainSegs = len(diffNw['mainstem_segs'])
+            firstSeg = diffNw['mainstem_segs'][0]
+            lastSeg = diffNw['mainstem_segs'][-1]
+            preRunLog.write("Number of mainstem segments: "+str(nMainSegs)+"\n")
+            preRunLog.write("First and last segment ID: "+str(firstSeg)+"   "+str(lastSeg)+"\n")
+            nTribSegs = len(diffNw['tributary_segments'])
+            preRunLog.write("Number of tributary segments: "+str(nTribSegs)+"\n")
+            connGraphLength = len(diffNw['connections'])
+            revConnGraphLength = len(diffNw['rconn'])
+            preRunLog.write("Connections in network: "+str(connGraphLength)+"\n")
+            preRunLog.write("Reverse connections in network: "+str(revConnGraphLength)+"\n")
+            paramDf_Columns = [column for column in diffNw['param_df'].columns]
+            preRunLog.write("Diffusive parameters:\n")
+    
+            for paramDf_Col in paramDf_Columns:
+                preRunLog.write(str(paramDf_Col)+"  ")
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+
+        if (not topobathy_df.empty):    
+            topoIDs = topobathy_df.index
+            topoTraces = len(topoIDs)
+            topoTracesUnique = len(set(topoIDs))
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+            outPutStr = "Number of topobathy profiles: "+str(topoTraces)
+            preRunLog.write(outPutStr+"\n")
+            LOG.info(outPutStr)
+            preRunLog.write("Number of segment IDs with topobathy profiles: "+str(topoTracesUnique)+"\n")
+            preRunLog.write("-----\n")
+        else:
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+            outPutStr = "No topobathy profiles."
+            preRunLog.write(outPutStr+"\n")
+            LOG.info(outPutStr)
+            preRunLog.write("-----\n")            
+
+        if (not coastal_boundary_depth_df.empty):    
+            coastalIDs = coastal_boundary_depth_df.index
+            coastalTraces = len(coastalIDs)
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+            outPutStr = "Number of segments with coastal boundary condition: "+str(coastalTraces)
+            preRunLog.write(outPutStr+"\n")
+            LOG.info(outPutStr)            
+            preRunLog.write("-----\n")
+        else:
+            preRunLog.write("\n")
+            preRunLog.write("-----\n")
+            outPutStr = "No coastal boundary condition."
+            preRunLog.write(outPutStr+"\n")
+            LOG.info(outPutStr)  
+            preRunLog.write("-----\n")   
+
+        preRunLog.write("\n")  
+
 
 def compute_nhd_routing_v02(
     connections,

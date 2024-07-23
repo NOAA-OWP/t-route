@@ -19,5 +19,3 @@ extern void c_chxsec_lookuptable_calc(int *mxncomp_g,
                                       int *nrow_chxsec_lookuptable,
                                       double *chxsec_lookuptable,
                                       double *z_adj);
-
-

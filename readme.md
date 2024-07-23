@@ -82,25 +82,29 @@ Currently, there are no specific configuration details. Stand by for updates.
 ## Usage and Testing
 To get a sense of the operation of the routing scheme, follow this sequence of commands:
 
-```
+```shell
 # install required python modules
-$ pip3 install numpy pandas xarray netcdf4 joblib toolz pyyaml Cython geopandas pyarrow deprecated
+pip3 install numpy pandas xarray netcdf4 joblib toolz pyyaml Cython>3,!=3.0.4 geopandas pyarrow deprecated wheel
 
 # clone t-toute
-$ git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
+git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
 
 # compile and install
-$ ./compiler.sh
+./compiler.sh
+
+# In the event that compilation results does not complete and throws a Cython compile error, rerun with a non-editable flag:
+./compiler.sh no-e
+# [ this is a known issue, and may happen in fresh t-route clones; please see https://github.com/NOAA-OWP/t-route/issues/675 for details ]
 
 # execute a demonstration test with NHD network
-$ cd test/LowerColorado_TX
-$ python3 -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
+cd test/LowerColorado_TX
+python3 -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
 
 # OR
 
 # execute a demonstration test with HYFeature network
-$ cd test/LowerColorado_TX_v4
-$ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
+cd test/LowerColorado_TX_v4
+python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
 ```
 
 ### T-Route Setup Instructions and Troubleshooting Guide for Windows Users

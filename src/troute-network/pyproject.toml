@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "numpy", "Cython>3,!=3.0.4", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "troute.network"
+version = "0.0.0"
+dependencies = [
+    "deprecated",
+    "geopandas",
+    "joblib",
+    "netcdf4",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "pyyaml",
+    "toolz",
+    "typing_extensions",
+    "xarray",
+]

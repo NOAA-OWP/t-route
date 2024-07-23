@@ -112,16 +112,6 @@ diffusive = Extension(
     libraries=[],
 )
 
-#mc_diffusive_reach = Extension(
-#    "troute.routing.fast_reach.mc_diffusive_reach",
-#    sources=["troute/routing/fast_reach/mc_diffusive_reach.{}".format(ext)],
-#    include_dirs=_include_paths,
-#    libraries=[],
-#    library_dirs=[],
-#    extra_objects=[],
-#    extra_compile_args=["-O2", "-g"],
-#)
-
 hybrid_routing_reach = Extension(
     "troute.routing.fast_reach.hybrid_routing_reach",
     sources=["troute/routing/fast_reach/hybrid_routing_reach.{}".format(ext)],

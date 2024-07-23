@@ -6,7 +6,7 @@ from typing_extensions import Literal
 from .types import FilePath, DirectoryPath
 
 
-class NetworkTopologyParameters(BaseModel, extra='forbid'):
+class NetworkTopologyParameters(BaseModel):
     # TODO: default {}. see nhd_io.read_config_file ~:100
     preprocessing_parameters: "PreprocessingParameters" = Field(default_factory=dict)
     # TODO: not sure if default {}. see nhd_io.read_config_file ~:100
@@ -19,7 +19,7 @@ class NetworkTopologyParameters(BaseModel, extra='forbid'):
 
 # TODO: This is an old parameter but probably worth keeping moving forward. However, it is
 # not implemented in V4 at the moment (Aug 11, 2023). Need to add this functionality to t-route.
-class PreprocessingParameters(BaseModel, extra='forbid'):
+class PreprocessingParameters(BaseModel):
     preprocess_only: bool = False
     # NOTE: required if preprocess_only = True
     # TODO: determine if str type
@@ -31,10 +31,10 @@ class PreprocessingParameters(BaseModel, extra='forbid'):
     preprocess_source_file: Optional[FilePath] = None
 
 
-class SupernetworkParameters(BaseModel, extra='forbid'):
+class SupernetworkParameters(BaseModel):
     title_string: Optional[str] = None
     # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
-    geo_file_path: str
+    geo_file_path: FilePath
     network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
     flowpath_edge_list: Optional[str] = None
     mask_file_path: Optional[FilePath] = None
@@ -55,51 +55,7 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
         ]
     )
     synthetic_wb_id_offset: float = 9.99e11
-    duplicate_wb_segments: Optional[List[int]] = Field(
-        default_factory=lambda: [
-            717696,
-            1311881,
-            3133581,
-            1010832,
-            1023120,
-            1813525,
-            1531545,
-            1304859,
-            1320604,
-            1233435,
-            11816,
-            1312051,
-            2723765,
-            2613174,
-            846266,
-            1304891,
-            1233595,
-            1996602,
-            2822462,
-            2384576,
-            1021504,
-            2360642,
-            1326659,
-            1826754,
-            572364,
-            1336910,
-            1332558,
-            1023054,
-            3133527,
-            3053788,
-            3101661,
-            2043487,
-            3056866,
-            1296744,
-            1233515,
-            2045165,
-            1230577,
-            1010164,
-            1031669,
-            1291638,
-            1637751,
-        ]
-    )
+
     terminal_code: int = 0
     # TODO: It would be nice if this were a literal / str
     driver_string: Union[str, Literal["NetCDF"]] = "NetCDF"
@@ -150,7 +106,7 @@ class SupernetworkParameters(BaseModel, extra='forbid'):
         return default_columns
 
 
-class Columns(BaseModel, extra='forbid'):
+class Columns(BaseModel):
     # string, unique segment identifier
     key: str 
     # string, unique identifier of downstream segment
@@ -185,14 +141,14 @@ class Columns(BaseModel, extra='forbid'):
     mainstem: Optional[str]
 
 
-class WaterbodyParameters(BaseModel, extra='forbid'):
+class WaterbodyParameters(BaseModel):
     # NOTE: required, True for simulations with waterbodies.
     break_network_at_waterbodies: bool = False
     level_pool: Optional["LevelPool"] = None
     waterbody_null_code: int = -9999
 
 
-class LevelPool(BaseModel, extra='forbid'):
+class LevelPool(BaseModel):
     # string, filepath to waterbody parameter file (LAKEPARM.nc)
     level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"

@@ -1,8 +1,20 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
-    "pip",
-    "Cython"
-]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "nwm_routing"
+authors = [{ name = "Adam Wlostowski", email = "adam.wlostowski@noaa.gov" }]
+dependencies = ["numpy", "pandas>=1.1.5", "xarray", "netcdf4", "pyyaml"]
+description = "Hydrologic and hydraulic routing for the U.S. National Water Model"
+version = "0.0.0"
+license = { text = "DOC" }
+readme = "README.md"
+requires-python = ">=3.6"
+
+[project.urls]
+Homepage = "https://github.com/NOAA-OWP/t-route"
+Issues = "https://github.com/NOAA-OWP/t-route/issues"
+
+# [tool.setuptools.dynamic]
+# version = {attr = "troute.config.__version__"}
