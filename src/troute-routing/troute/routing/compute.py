@@ -11,8 +11,6 @@ import copy
 
 import troute.nhd_network as nhd_network
 from troute.routing.fast_reach.mc_reach import compute_network_structured
-#from troute.routing.fast_reach.mc_reach import compute_network_structured_wDiffusive
-#from troute.routing.fast_reach.mc_diffusive_reach import compute_network_structured_wDiffusive
 from troute.routing.fast_reach.hybrid_routing_reach import compute_network_structured_with_hybrid_routing
 
 import troute.routing.diffusive_utils_v02 as diff_utils
@@ -318,7 +316,7 @@ def compute_nhd_routing_v02(
     
     start_time = time.time()
     compute_func = _compute_func_map[compute_func_name]
-    import pdb; pdb.set_trace()
+
     if parallel_compute_method == "by-subnetwork-jit-clustered":
         
         # Create subnetwork objects if they have not already been created
@@ -557,7 +555,7 @@ def compute_nhd_routing_v02(
                         from_files,
                         offnetwork_upstreams
                     )
-                    import pdb; pdb.set_trace()
+
                     # results_subn[order].append(
                     #     compute_func(
                     jobs.append(
@@ -1110,7 +1108,6 @@ def compute_nhd_routing_v02(
             results = parallel(jobs)
 
     elif parallel_compute_method == "serial":
-        import pdb; pdb.set_trace()
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
@@ -1215,7 +1212,7 @@ def compute_nhd_routing_v02(
                 t0,
                 from_files,
                 )
-            import pdb; pdb.set_trace()
+
             results.append(
                 compute_func(
                     nts,
@@ -1273,7 +1270,6 @@ def compute_nhd_routing_v02(
                     from_files=from_files,
                 )
             )
-            import pdb; pdb.set_trace()
 
 
     elif parallel_compute_method == "bmi":
@@ -1435,7 +1431,7 @@ def compute_nhd_routing_v02(
             )
 
     elif parallel_compute_method == "serial-hybrid-routing":
-        import pdb; pdb.set_trace()
+
         results = []
         for twi, (tw, reach_list) in enumerate(reaches_bytw.items(), 1):
             # The X_sub lines use SEGS...
@@ -1506,7 +1502,7 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
-            import pdb; pdb.set_trace()
+ 
             # prepare reservoir DA data
             (reservoir_usgs_df_sub, 
              reservoir_usgs_df_time,
@@ -1541,35 +1537,14 @@ def compute_nhd_routing_v02(
                 from_files,
                 )
             
-            # prepare diffusive wave routing data
-            import pdb; pdb.set_trace()
+            # prepare diffusive input data for running  hybrid routing
             for diffusive_tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
                 found = any(tw in sublist for sublist in reach_list)
                 if found:
-                    # diffusive_tw should be the most downstream stream segment of a given reach. If there are stream segments 
-                    # below a tw segment, these segments would not be routed either by diffusive or MC.
-                    
-                    #trib_segs = None
-                    #trib_flow = None
-                    # extract junction inflows from results array
-                    #for j, i in enumerate(results):
-                    #    x = np.in1d(i[0], diffusive_network_data[tw_diffusive]['tributary_segments'])
-                    #    if sum(x) > 0:
-                    #        if j == 0:
-                    #            trib_segs = i[0][x]
-                    #            trib_flow = i[1][x, ::3]
-                    #        else:
-                    #            if trib_segs is None:
-                    #                trib_segs = i[0][x]
-                    #                trib_flow = i[1][x, ::3]                        
-                    #            else:
-                    #                trib_segs = np.append(trib_segs, i[0][x])
-                    #                trib_flow = np.append(trib_flow, i[1][x, ::3], axis = 0)  
 
                     diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
                     
                     # create DataFrame of junction inflow data            
-                    #junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
                     num_col = nts
                     trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
                     junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
@@ -1583,7 +1558,6 @@ def compute_nhd_routing_v02(
                         unrefactored_topobathy_bytw = pd.DataFrame()
 
                     # diffusive streamflow DA activation switch
-                    #if da_parameter_dict['diffusive_streamflow_nudging']==True:
                     if 'diffusive_streamflow_nudging' in da_parameter_dict:
                         diffusive_usgs_df = usgs_df.loc[usgs_df.index.isin(diffusive_segments)]
                     else:
@@ -1604,7 +1578,7 @@ def compute_nhd_routing_v02(
                     diffusive_qlats = qlats.copy()
                     diffusive_qlats = diffusive_qlats.loc[diffusive_segments]
                     diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
-                    import pdb; pdb.set_trace()
+ 
                     # build diffusive inputs
                     diffusive_inputs = diff_utils.diffusive_input_data_v02(
                         diffusive_tw,
@@ -1631,7 +1605,7 @@ def compute_nhd_routing_v02(
                         unrefactored_topobathy_bytw,
                     )
 
-                    # diffusive segments and reaches to be routed using the diffusive wave within diffusive_reach.pyx 
+                    # diffusive segments and reaches
                     diffusive_reaches=[]
                     diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
                     nondiffusive_segments = diffusive_network_data[diffusive_tw]['tributary_segments']
@@ -1639,19 +1613,9 @@ def compute_nhd_routing_v02(
                     for sublist in reach_list:
                         if any(item in sublist for item in diffusive_segments):
                             diffusive_reaches.append(sublist)   
-                    #dmy = list(itertools.chain(*diffusive_reaches))
-                    #segid = 2404219
-                    #for sublist in diffusive_reaches:
-                    #    if segid in sublist:
-                    #        order = sublist.index(segid)
-                    #        break
-                    #reach_headseg = sublist[0]
-                    #seg_order = order
-                    #swapped_pynw= {v: k for k, v in diffusive_inputs['pynw'].items()}
     
                     # Compute hydraulic value lookup tables for channel cross sections 
-                    if not topobathy_bytw.empty:
-                        out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
+                    out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
                                                             diffusive_inputs)
                 else:
                     diffusive_tw = None
@@ -1659,8 +1623,8 @@ def compute_nhd_routing_v02(
                     nondiffusive_segments = []                 
                     diffusive_inputs = {}
 
-                # Create a dictionary that has diffusive and tributary segment ID: [reach order index, segment order index within a given reach]
-                diffusive_segment2reach_and_segment_idx={}
+                # Create a dictionary mapping segment ID to a pair of Fotran segment node index and Fortran reach index
+                diffusive_segment2reach_and_segment_bottom_node_idx={}
                 total_reaches = diffusive_reaches.copy()
                 for seg in nondiffusive_segments:
                     total_reaches.append([seg])
@@ -1674,9 +1638,8 @@ def compute_nhd_routing_v02(
                             break
                     # Iterate through the sublist and populate the results dictionary
                     for index, id_value in enumerate(sublist):
-                        diffusive_segment2reach_and_segment_idx[id_value] = [first_key, index]
+                        diffusive_segment2reach_and_segment_bottom_node_idx[id_value] = [first_key, index+1]
 
-            import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -1732,7 +1695,7 @@ def compute_nhd_routing_v02(
                     diffusive_tw,                     
                     diffusive_reaches, 
                     nondiffusive_segments,
-                    diffusive_segment2reach_and_segment_idx,                    
+                    diffusive_segment2reach_and_segment_bottom_node_idx,                    
                     diffusive_inputs, 
                     out_chxsec_lookuptable,
                     out_z_adj,
@@ -1742,7 +1705,6 @@ def compute_nhd_routing_v02(
                     from_files=from_files,
                 )
             )
-            import pdb; pdb.set_trace()
 
     return results, subnetwork_list
 
@@ -1788,7 +1750,7 @@ def compute_diffusive_routing(
 
         # create DataFrame of junction inflow data            
         junction_inflows = pd.DataFrame(data = trib_flow, index = trib_segs)
-        import pdb; pdb.set_trace()
+
         if not topobathy.empty:
             # create topobathy data for diffusive mainstem segments related to this given tw segment        
             if refactored_diffusive_domain:
@@ -1830,7 +1792,7 @@ def compute_diffusive_routing(
         # the column names need to be changed to intergers from zero incrementing by 1
         diffusive_qlats = qlats.copy()
         diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
-        import pdb; pdb.set_trace()
+
         # build diffusive inputs
         diffusive_inputs = diff_utils.diffusive_input_data_v02(
             tw,
@@ -1856,7 +1818,7 @@ def compute_diffusive_routing(
             coastal_boundary_depth_bytw_df,
             unrefactored_topobathy_bytw,
         )
-        import pdb; pdb.set_trace()
+
         # run the simulation
         out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs)
 

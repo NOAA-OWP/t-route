@@ -25,7 +25,6 @@ def adj_alt1(
     ----------
     z_all -- (dict) adjusted altitude dictionary
     """
-
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
             seg_list = reach["segments_list"]
@@ -446,7 +445,6 @@ def fp_naturalxsec_map(
         # loop over reach orders.
         frj = -1
         for x in range(mx_jorder, -1, -1):
-
             # loop through all reaches of order x
             for head_segment, reach in ordered_reaches[x]:
                 frj = frj + 1
@@ -739,7 +737,7 @@ def diffusive_input_data_v02(
     # timestep_ar_g[6] =  dt_db_g <- defined after calling fp_coastal_boundary_input_map
     timestep_ar_g[7] = dt_qtrib_g
     timestep_ar_g[8] = dt_da_g
-    timestep_ar_g[9] = 10.0 # dtini_g/this_number = the min.sim.time interval internally executed within diffusive.f90 
+    timestep_ar_g[9] = 20.0 # divider for the initial simulation time interval to enforce a min. simulation duration. 
 
     # CN-mod parameters
     paradim       = 11
@@ -1066,7 +1064,6 @@ def diffusive_input_data_v02(
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
     ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
-
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
     if not refactored_diffusive_domain:

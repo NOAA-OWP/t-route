@@ -327,13 +327,13 @@ class AbstractNetwork(ABC):
         # list of all segments in the domain (MC + diffusive)
         self._segment_index = self.dataframe.index
         # Skip this process for enabling the exchange of flow between MC and diffusive during runtime.
-        '''
-        if self._routing.diffusive_network_data:
-            for tw in self._routing.diffusive_network_data:
-                self._segment_index = self._segment_index.append(
-                    pd.Index(self._routing.diffusive_network_data[tw]['mainstem_segs'])
-                )
-        '''
+        if 'hybrid-routing' not in self.compute_parameters['compute_kernel']:
+            if self._routing.diffusive_network_data:
+                for tw in self._routing.diffusive_network_data:
+                    self._segment_index = self._segment_index.append(
+                        pd.Index(self._routing.diffusive_network_data[tw]['mainstem_segs'])
+                    )
+
         return self._segment_index
     
     @property
@@ -492,7 +492,7 @@ class AbstractNetwork(ABC):
             if value==routing_type:
                 routing_scheme = key
 
-        routing = routing_scheme(self.hybrid_parameters)
+        routing = routing_scheme(self.hybrid_parameters, self.compute_parameters)
 
         (
             self._dataframe,

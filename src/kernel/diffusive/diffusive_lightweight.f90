@@ -51,7 +51,6 @@ module diffusive_lightweight
   double precision, dimension(:,:),     allocatable :: lateralFlow
   double precision, dimension(:,:),     allocatable :: qtrib 
   double precision, dimension(:,:),     allocatable :: usgs_da
-
   double precision, dimension(:,:,:,:), allocatable :: xsec_tab
   
 contains
@@ -70,7 +69,7 @@ contains
   !   Compute diffusive wave routing on the channel networks of either up to version 3.1   
   !   of the National Water Model or later versions using the NextGen hydrofabric. This
   !   light version skips the computation of hydraulic lookup tables for channel cross sections, but
-  !   takes alreay computed ones as input argments instead. Also, instead of computing diffusive 
+  !   takes already computed ones as input argments instead. Also, instead of computing diffusive 
   !   wave routing throughout the entire simulation period, this subroutine runs for a coupling
   !   time step to interact with other models, including the Muskingum-Cunge model.
   !    
@@ -139,7 +138,6 @@ contains
     integer :: n
     integer :: timestep
     integer :: kkk
-    integer :: ts_ev
     integer :: jm
     integer :: usrchj
     integer :: downstream_reach_idx
@@ -181,8 +179,6 @@ contains
     double precision, dimension(:), allocatable :: varr_db
     double precision, dimension(:), allocatable :: dbcd
 
-    open(unit=1, file='time_variable_check_diffusive_singletime_lightweight.txt', status='unknown')
-    open(unit=2, file='chxsec_lookuptable_lightweight.txt', status='unknown')
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -297,23 +293,6 @@ contains
     elv_next_out_time   = 0.0
     depth_next_out_time = 0.0
 
-    !test 
-    i=1
-    j=3
-    do iel = 1, nel
-      write(2,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
-                  xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
-                  xsec_tab(11,iel,i,j) 
-    enddo
-    write(2,*)
-    i=2
-    j=5
-    do iel = 1, nel
-      write(2,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
-                  xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
-                  xsec_tab(11,iel,i,j) 
-    enddo
-
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
 
@@ -388,7 +367,7 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation
-    if (all(inidepth==0.0)) then
+    if (any(inidepth==0.0)) then
       ! compute initial water elevation when it is cold start or previously computed values are not provided. 
       do jm = nmstem_rch, 1, -1
         j     = mstem_frj(jm)  ! reach index
@@ -440,7 +419,7 @@ contains
           ! Check that node elevation is not lower than bottom node.
           ! If node elevation is lower than bottom node elevation, correct.
           if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
-        end do      
+        end do              
       end do
     else
       ! Use previous state values when it is warm or hot start.
@@ -452,48 +431,40 @@ contains
         enddo
       enddo
     endif  
- 
+
   !-----------------------------------------------------------------------------
-  ! Write tributary results to output arrays
-  ! TODO: consider if this is necessary - output arrays are immediately trimmed
-  ! to exclude tributary results (from MC) and pass-out only diffusive-calculated
-  ! flow and depth on mainstem segments.
-          
-  !  ts_ev = 1
-  !  do while (t <= tfin * 60.0)
-  !    if ( (mod( (t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) &
-  !          .or. (t == tfin * 60.) ) then
-  !      do j = 1, nlinks
-  !        if (all(mstem_frj /= j)) then ! NOT a mainstem reach
-  !          do n = 1, nts_qtrib_g
-  !            varr_qtrib(n) = qtrib_g(n, j)
-  !          end do
-  !          q_ev_g(ts_ev, frnw_g(j, 1), j) = intp_y(nts_qtrib_g, tarr_qtrib, &
-  !                                                    varr_qtrib, t)
-  !          q_ev_g(ts_ev,            1, j) = q_ev_g(ts_ev, frnw_g(j, 1), j)            
-  !        end if
-  !      end do
-  !      ts_ev = ts_ev + 1
-  !    end if
-  !    t = t + dtini / 60. !* [min]
-  !  end do
- 
+  ! With initial flow and depth, identify the maximum calculated celerity/dx ratio 
+  ! maxCelDx, which is used to determine the duration of the next timestep    
+    do jm = nmstem_rch, 1, -1
+      j     = mstem_frj(jm)  ! reach index
+      ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
+      do i=1, ncomp
+        newY(i,j) = oldY(i,j)
+        qp(i,j) = oldQ(i,j)
+      enddo
+      
+      call mesh_diffusive_backward(t, saveInterval, j)
+
+      if (jm == 1) then
+        maxCelDx    = 0.
+        do i = 1, nmstem_rch
+          do kkk = 1, frnw_g(mstem_frj(i), 1)-1
+            maxCelDx = max(maxCelDx, celerity(kkk, mstem_frj(i)) / dx(kkk, mstem_frj(i)))
+          end do
+        end do
+      endif
+    end do
+
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
     qpx                     = 0.
     width                   = 100.
-    maxCelerity             = 1.0
-    maxCelDx                = maxCelerity / minDx
-    timestep                = 0
-    ts_ev                   = 1
-    !t                       = t0 * 60.0
     t                       = t_start*60.0 ![minuntes]
+
   !-----------------------------------------------------------------------------
   ! Ordered network routing computations
-
-    !do while ( t < tfin * 60.)
     do while ( t < t_end * 60.)
-      timestep = timestep + 1 ! advance timestep
+      !timestep = timestep + 1 ! advance timestep
       !+-------------------------------------------------------------------------
       !+                             PREDICTOR
       !+
@@ -506,7 +477,6 @@ contains
         ! Calculate the duration of this timestep (dtini)
         ! Timestep duration is selected to maintain numerical stability
         if (j == mstem_frj(1)) then 
-          !call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
           call calculateDT(t_start, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
         end if                                        
 
@@ -546,7 +516,7 @@ contains
           end do        
         else
 
-          ! no stream reaches at the upstream of the reach (frnw_g(j,3)==0) such as a headwater reach among tributaries
+          ! no stream reaches at the upstream of the reach (frnw_g(j,3)==0) such as a headwater reach 
           newQ(1,j)= 0.0          
         end if
 
@@ -640,14 +610,12 @@ contains
       t = t + dtini/60.
       
       ! diffusive wave simulation time print
-      if (mod(t,30.)==0.) then
+      if (mod(t,5.)==0.) then
         print*, "diffusive simulation time in minute=", t
       endif
-      write(1,*) dtini/60., t
+      
       ! write results to output arrays
       if ( (mod((t - t_start * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == t_end * 60.)) then
-      !if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
-        write(1,*) t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
         do jm = 1, nmstem_rch
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -656,45 +624,8 @@ contains
             elv_next_out_time(i, j)   = newY(i, j)
             depth_next_out_time(i, j) = newY(i, j) - z(i, j)
           end do
-              
-          !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
-          do k = 1, frnw_g(j, 3)
-            usrchj = frnw_g(j, 3 + k)
-            if (all(mstem_frj /= usrchj)) then
-              wdepth                                         = newY(1, j) - z(1, j)
-              elv_next_out_time(frnw_g(usrchj, 1), usrchj)   = newY(1, j)
-              depth_next_out_time(frnw_g(usrchj, 1), usrchj) = wdepth
-            endif
-          end do
         end do
-        
-        ! Advance recording timestep
-        ts_ev = ts_ev+1
       end if
-
-      ! write initial conditions to output arrays
-      !if ( ( t == t_start*60.0 + dtini / 60. ) ) then
-      !if ( ( t == t0*60.0 + dtini / 60. ) ) then
-      !  do jm = 1, nmstem_rch  !* mainstem reach only
-      !    j     = mstem_frj(jm)
-      !    ncomp = frnw_g(j, 1)
-      !    do i = 1, ncomp
-      !      q_ev_g  (1, i, j)   = oldQ(i, j)
-      !      elv_ev_g(1, i, j)   = oldY(i, j)
-      !      depth_ev_g(1, i, j) = elv_ev_g(1, i, j) - z(i, j)
-      !    end do
-              
-          !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
-      !    do k = 1, frnw_g(j, 3) !* then number of upstream reaches
-      !      usrchj = frnw_g(j, 3 + k) !* js corresponding to upstream reaches
-      !      if (all(mstem_frj /= usrchj)) then                  
-      !        wdepth                                   = oldY(1, j) - z(1, j)
-      !        elv_ev_g(1, frnw_g(usrchj,1), usrchj)    = oldY(1,j)
-      !        depth_ev_g(1, frnw_g(usrchj, 1), usrchj) = wdepth
-      !      end if
-      !    end do
-      !  end do
-      !end if
 
       ! update of Y, Q and Area vectors
       oldY    = newY
@@ -753,11 +684,12 @@ contains
   ! Local variables
     integer :: a
     integer :: b
-    
+
   !-----------------------------------------------------------------------------    
   ! Calculate maximum timestep duration for numerical stability
   
     dtini = maxAllowCourantNo / max_C_dx
+
     a     = floor( (time - initialTime * 60.) / &
                  ( saveInterval / 60.))           
     b     = floor(((time - initialTime * 60.) + dtini / 60.) / &
@@ -1410,7 +1342,7 @@ contains
       implicit none
       !---------------------------------------------------------------------------
       ! Description:
-      !   Estimate y for a given along x and y arrays using linear interpolation
+      !   Estimate y for a given xrt from x and y arrays using linear interpolation
       !---------------------------------------------------------------------------         
       ! subroutine arguments
       integer,          intent(in)  :: kk

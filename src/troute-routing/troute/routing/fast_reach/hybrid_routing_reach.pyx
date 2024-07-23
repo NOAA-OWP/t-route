@@ -831,7 +831,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
     long diffusive_tw,
     list diffusive_reaches,
     list nondiffusive_segments,                       
-    dict diffusive_segment2reach_and_segment_idx, 
+    dict diffusive_segment2reach_and_segment_bottom_node_idx, 
     dict diffusive_inputs,
     const double[:,:,:,:] out_chxsec_lookuptable, 
     const double[:,:] out_z_adj,
@@ -898,23 +898,17 @@ cpdef object compute_network_structured_with_hybrid_routing(
     cdef list reach_objects = []
     cdef list segment_objects
     cdef dict segmentid2idx={}
-
+    cdef dict segmentidx2id={}
     cdef long sid
     cdef _MC_Segment segment
     cdef: 
         double[:,:,:] out_q, out_elv, out_depth
 
-    diffusive_reach_crosswalk= {v: k for k, v in diffusive_inputs['pynw'].items()}    
     diffusive_segments = list(itertools.chain(*diffusive_reaches))    
          
     #pr.enable()
     #Preprocess the raw reaches, creating MC_Reach/MC_Segments
 
-    print(f"diffusive tw id: {diffusive_tw}")
-    print(f"diffusive segs ids: {diffusive_segments}")
-    #print(f"diffusive input dict: {diffusive_inputs}")
-
-    print(f"data_idx: {data_idx}")
     for reach_idx, (reach, reach_type) in enumerate(reaches_wTypes):
         upstream_reach = upstream_connections.get(reach[0], ())
         upstream_ids = binary_find(data_idx, upstream_reach)
@@ -923,8 +917,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
             my_id = binary_find(data_idx, reach)
             wbody_index = binary_find(lake_numbers_col,reach)[0]
             #Reservoirs should be singleton list reaches, TODO enforce that here?
-            print(f"reach:{reach} & reach_type:{reach_type}")
-            print(f"my_id: {my_id}")
+
             # write initial reservoir flows to flowveldepth array
             flowveldepth_nd[my_id, 0, 0] = wbody_parameters[wbody_index, 9] # TODO ref dataframe column label list, rather than hard-coded number
 
@@ -947,8 +940,8 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     # If reservoir_type is 1, 2, or 3, then initialize Levelpool reservoir
                     # reservoir_type 1 is a straight levelpool reservoir.
                     # reservoir_types 2 and 3 are USGS and USACE Hybrid reservoirs, respectively.
-                    if (reservoir_types[wbody_index][0] >= 1 and reservoir_types[wbody_index][0] <= 3):
-                                            
+                    if (reservoir_types[wbody_index][0] >= 1 and reservoir_types[wbody_index][0] <= 3):                                            
+                        
                         # Initialize levelpool reservoir object
                         lp_obj =  MC_Levelpool(
                             my_id[0],                        # index position of waterbody reach  
@@ -960,7 +953,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
                         reach_objects.append(lp_obj)
 
                     #If reservoir_type is 4, then initialize RFC forecast reservoir
-                    elif (reservoir_types[wbody_index][0] == 4 or reservoir_types[wbody_index][0] == 5):
+                    elif (reservoir_types[wbody_index][0] == 4 or reservoir_types[wbody_index][0] == 5):                        
                         
                         # Initialize rfc reservoir object
                         rfc_obj = MC_RFC(
@@ -977,6 +970,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
                         reach_objects.append(rfc_obj)
                 
                 else:
+                    
                     # Initialize levelpool reservoir object
                     lp_obj =  MC_Levelpool(
                         my_id[0],                        # index position of waterbody reach  
@@ -989,16 +983,15 @@ cpdef object compute_network_structured_with_hybrid_routing(
 
         else:
             segment_ids = binary_find(data_idx, reach)
-            #Set the initial condtions before running loop
-            #print(f"data_idx: {data_idx}")
-            print(f"reach:{reach} & reach_type:{reach_type}")
-            print(f"segment_ids: {segment_ids}")
+
             # collect network information for applying diffusive wave routing
             if diffusive_tw in reach:
                 diffusive_tw_reach_idx = reach_idx
             new_pairs = zip(reach, segment_ids)
+             # dictionary mapping segment id from hydrofabric to segment index determined here.
             segmentid2idx.update(new_pairs)
-            
+
+            #Set the initial condtions before running loop            
             flowveldepth_nd[segment_ids, 0] = init_array[segment_ids]
             segment_objects = []
             #Find the max reach size, used to create buffer for compute_reach_kernel
@@ -1018,13 +1011,8 @@ cpdef object compute_network_structured_with_hybrid_routing(
                 MC_Reach(segment_objects, array('l',upstream_ids))
                 )
     
-    # test 
-    for key, value in segmentid2idx.items():
-        print(f"key:{key}, value:{value}")
-    print(f"diffusive_tw index: { diffusive_tw_reach_idx}")
-    print(f"diffusive segs ids: {diffusive_segments}")
-    
-    print(f"--------------------------------")
+    # dictionary mapping segment index determined here to segment id from hydrofabric
+    segmentidx2id = {value: key for key, value in segmentid2idx.items()}
 
     # replace initial conditions with gage observations, wherever available
     cdef int gages_size = usgs_positions.shape[0]
@@ -1039,14 +1027,10 @@ cpdef object compute_network_structured_with_hybrid_routing(
     lastobs_times = np.full(gages_size, NAN, dtype="float32")
     lastobs_values = np.full(gages_size, NAN, dtype="float32")
     if gages_size:
-        # if da_check_gage > 0:
-        #     print(f"gage_i     usgs_positions[gage_i]  usgs_positions_reach[gage_i]  usgs_positions_gage[gage_i]   list(usgs_positions)")
         for gage_i in range(gages_size):
             lastobs_values[gage_i] = lastobs_values_init[gage_i]
             lastobs_times[gage_i] = time_since_lastobs_init[gage_i]
             reach_has_gage[usgs_positions_reach[gage_i]] = usgs_positions_gage[gage_i]
-            # if da_check_gage > 0:
-            #     print(f"{gage_i} {usgs_positions[gage_i]} {usgs_positions_reach[gage_i]} {usgs_positions_gage[gage_i]} {list(usgs_positions)}")
 
     if gages_size and gage_maxtimestep > 0:
         for gage_i in range(gages_size):
@@ -1114,10 +1098,13 @@ cpdef object compute_network_structured_with_hybrid_routing(
     cdef int num_reaches = len(reach_objects)
     #Dynamically allocate a C array of reach structs
     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
-
+   
     out_q = np.zeros([25,7,num_reaches], dtype=np.double) 
     out_elv = np.zeros([25,7,num_reaches], dtype=np.double) 
     out_depth = np.zeros([25,7,num_reaches], dtype=np.double)
+    # nstep+1 to add one extra time for initial condition
+    cdef np.ndarray[float, ndim=3] diffusive_reach_head_flowveldepth_nd = np.zeros((diffusive_inputs['nrch_g'], nsteps+1, qvd_ts_w), dtype='float32')
+    cdef float[:,:,::1] diffusive_reach_head_flowveldepth = diffusive_reach_head_flowveldepth_nd
 
     #Populate the above array with the structs contained in each reach object
     for i in range(num_reaches):
@@ -1131,44 +1118,22 @@ cpdef object compute_network_structured_with_hybrid_routing(
     #cdef np.ndarray[float, ndim=3] upstream_array = 111.0*np.ones((data_idx.shape[0], nsteps+1, 1), dtype='float32')
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
-    #print(f"data_idx: {data_idx}")
-    #print(f"num_reaches: {num_reaches}")
-    #print(f"upstream_array: {upstream_array}")
-   
-    while timestep < 2: #nsteps+1:
+
+    while timestep < nsteps+1:
         for i in range(num_reaches):
             r = &reach_structs[i]
             #Need to get quc and qup
             upstream_flows = 0.0
             previous_upstream_flows = 0.0
-            
-            print(f"---------------- timestep:{timestep} ------------------")
-            print(f"reach index: {i}")
-            print(f"r.id: {r.id}")
-            headseg = get_mc_segment(r, 0)
-            headseg_id = [k for k, v in segmentid2idx.items() if v ==headseg.id]
-            print(f"headsegment_idx: {headseg.id} headseg_id: {headseg_id} ") 
-            print(f"r._num_segments:{r._num_segments}")            
-            print(f"r._num_upstream_ids: {r._num_upstream_ids}")
-
+   
             for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
-                print(f"--for loop in L479~482--")
                 id = r._upstream_ids[_i]
                 upstream_flows += flowveldepth[id, timestep, 0]
                 previous_upstream_flows += flowveldepth[id, timestep-1, 0]
-                print(f"_i: {_i}")
                 segmentid = [k for k, v in segmentid2idx.items() if v ==id]
-                print(f"id: {id} segment ID: {segmentid}")                
-                #print(f"flowveldepth[id, timestep, 0]: {flowveldepth[id, timestep, 0]}")
-                #print(f"flowveldepth[id, timestep-1, 0]: {flowveldepth[id, timestep-1, 0]}")
-                print(f"upstream_flows: {upstream_flows}")
-                print(f"previous_upstream_flows: {previous_upstream_flows}")
-
 
             if assume_short_ts:
                 upstream_flows = previous_upstream_flows
-                print(f"--if in L484~485--")
-                print(f"upstream_flows: {upstream_flows}")
 
             if r.type == compute_type.RESERVOIR_LP: 
                 
@@ -1261,7 +1226,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
                     usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
 
-
                 # RFC reservoir hybrid DA inputs
                 if r.reach.lp.wbody_type_code == 4:
                     # find index location of waterbody in reservoir_rfc_obs 
@@ -1349,47 +1313,61 @@ cpdef object compute_network_structured_with_hybrid_routing(
                 print(f"upstream_array[r.id, timestep, 0]: {upstream_array[r.id, timestep, 0]}")
            
             elif diffusive_segments and i == diffusive_tw_reach_idx: 
-                # run diffusive wave routing when the tw of diffusive domain is included in the current reach
-                print(f"---------- diffusive wave routing -----------")
-                print(f"i: {i} / diffusive reach index: {diffusive_tw_reach_idx}")
-                for _i in range(r.reach.mc_reach.num_segments):
-                    segment = get_mc_segment(r, _i)
-                    print(f"_i: {_i}   segment.idx: {segment.id}") 
+                # run diffusive wave routing when the tailwater segment of diffusive domain is included in the current reach
                 
-                # Input forcings
-                # 1. Tributary flow: Assign MC computed inflow to corresponding tributary reaches at their own bottom segments
-                for seg in nondiffusive_segments:
-                    seg_idx =  segmentid2idx[seg]
-                    #out_reach_idx = diffusive_reach_crosswalk[seg]
-                    reach_order_idx = diffusive_segment2reach_and_segment_idx[seg][0]
+                # Input forcing 1. Tributary flow: Map MC computed flow to connecting nodes between MC reaches and diffusive reaches
+                for seg_id in nondiffusive_segments:
+                    seg_idx =  segmentid2idx[seg_id]
+                    reach_order_idx = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][0]
                     diffusive_inputs["qtrib_g"][timestep-1:, reach_order_idx] = flowveldepth[seg_idx, timestep-1, 0]                   
-                    print(f"trib_flow2diffusive: seg:{seg} reach_order_idx: {reach_order_idx}")
-                    print(f"trib flow: {diffusive_inputs['qtrib_g'][:, reach_order_idx]}")
 
-                # 2. Initial flow and depth. Here, intial time means at each (timestep-1)*(dt or routing_period)
-                min_flow_limit = 0.0001 
-                for seg in diffusive_segments:
-                    seg_idx =  segmentid2idx[seg]
-                    reach_order_idx   = diffusive_segment2reach_and_segment_idx[seg][0]
-                    segment_order_idx = diffusive_segment2reach_and_segment_idx[seg][1]
+                # Input forcing 2. Initial flow and depth. Here, intial time means at each (timestep-1)*(dt or routing_period)
+                min_flow_limit = diffusive_inputs["para_ar_g"][7] 
+                for seg_id in diffusive_segments:
+                    seg_idx =  segmentid2idx[seg_id]
+                    reach_order_idx   = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][0]
+                    segment_bottom_node_idx = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][1]
                     
-                    if segment_order_idx == 0:
-                        # For the head compute node of head segment, sum up flows from upstream segments at the junction
-                        inflow_to_headseg = 0.0
-                        for _i in range(r._num_upstream_ids):#Explicit loop reduces some overhead
-                            id = r._upstream_ids[_i]
-                            inflow_to_headseg += flowveldepth[id, timestep-1, 0]
-                        diffusive_inputs["iniq"][segment_order_idx, reach_order_idx] = max(inflow_to_headseg, min_flow_limit) 
-                    else: 
-                        diffusive_inputs["iniq"][segment_order_idx, reach_order_idx] = max(flowveldepth[seg_idx, timestep-1, 0], min_flow_limit)
+                    # Initial flow for reach head node
+                    if segment_bottom_node_idx==1:
+                        if timestep==1:
+                            inflow_to_junction = 0.0
+                            for upstream_seg_id in upstream_connections[seg_id]:
+                                #id = r._upstream_ids[_i]
+                                upstream_seg_idx = segmentid2idx[upstream_seg_id]
+                                inflow_to_junction += flowveldepth[upstream_seg_idx, timestep-1, 0]
+                               
+                            diffusive_inputs["iniq"][0, reach_order_idx] = max(inflow_to_junction, min_flow_limit)
+                        else:
+                            diffusive_inputs["iniq"][0, reach_order_idx] = diffusive_reach_head_flowveldepth[reach_order_idx,timestep-1,0]  
+       
+                    # For initial flow for all the nodes except the head node of a reach, take flow values from the previous time step
+                    diffusive_inputs["iniq"][segment_bottom_node_idx, reach_order_idx] = max(flowveldepth[seg_idx, timestep-1, 0], min_flow_limit)
 
+                    # For inidepth at head node of a reach, when there are no upstream segments or all upstream segments are MC domain,
+                    # assume the depth of the head node of a reach is equal to that of the next node
+                    if segment_bottom_node_idx==1: 
+                        if timestep==1: 
+                            if len(upstream_connections[seg_id])==0:
+                                diffusive_inputs["inidepth"][0, reach_order_idx] = flowveldepth[seg_idx,timestep-1,2]
+                            else:                               
+                                for upstream_seg_id in upstream_connections[seg_id]:
+                                    upstream_seg_idx = segmentid2idx[upstream_seg_id]
+                                    if upstream_seg_id in diffusive_segments:
+                                        diffusive_inputs["inidepth"][0, reach_order_idx] = flowveldepth[upstream_seg_idx, timestep-1, 2]
+                                        break
+                                    else: 
+                                        diffusive_inputs["inidepth"][0, reach_order_idx] = flowveldepth[seg_idx,timestep-1,2]
+                        else:
+                            diffusive_inputs["inidepth"][0, reach_order_idx] = diffusive_reach_head_flowveldepth[reach_order_idx,timestep-1,2]  
+
+                    diffusive_inputs["inidepth"][segment_bottom_node_idx, reach_order_idx] = flowveldepth[seg_idx,timestep-1,2] 
+                              
                 # The remaining forcings, including lateral flow, coastal boundary data, and usgs data, are passed to diffusive fotran kerenl as they are.
-
-                out_q, out_elv, out_depth = diffusive.compute_diffusive(diffusive_inputs) 
-                
+              
                 (out_q_next_out_time, 
-                 out_q_next_out_time, 
-                 out_q_next_out_time
+                 out_elv_next_out_time, 
+                 out_depth_next_out_time
                 ) = diffusive_lightweight.compute_diffusive_couplingtimestep(
                     diffusive_inputs,
                     out_chxsec_lookuptable, 
@@ -1398,33 +1376,21 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     dt*timestep/3600.0,      # end time of the current coupling time step [hr]
                 )
 
+                for seg_id in diffusive_segments:
+                    seg_idx =  segmentid2idx[seg_id]
+                    reach_order_idx   = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][0]
+                    segment_bottom_node_idx = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][1]
+                    
+                    flowveldepth[seg_idx, timestep, 0] = out_q_next_out_time[segment_bottom_node_idx, reach_order_idx]      
+                    flowveldepth[seg_idx, timestep, 2] = out_depth_next_out_time[segment_bottom_node_idx, reach_order_idx]
+                    
+                    # store computed diffusive flow and depth values only at the head node of a reach
+                    diffusive_reach_head_flowveldepth[reach_order_idx,timestep,0] = out_q_next_out_time[0, reach_order_idx]
+                    diffusive_reach_head_flowveldepth[reach_order_idx,timestep,2] = out_depth_next_out_time[0, reach_order_idx] 
 
-                for seg in diffusive_segments:
-                    #for sublist in diffusive_reaches:
-                    #    if seg in sublist:
-                    #        order = sublist.index(seg)
-                    #        break
-                    #reach_headseg = sublist[0]    
-                    #out_reach_idx = diffusive_reach_crosswalk[reach_headseg]
-                    #out_seg_idx = order
-                    #seg_idx =  segmentid2idx[seg]
-                    seg_idx =  segmentid2idx[seg]
-                    reach_order_idx   = diffusive_segment2reach_and_segment_idx[seg][0]
-                    segment_order_idx = diffusive_segment2reach_and_segment_idx[seg][1]
-
-
-                    flowveldepth[seg_idx, timestep, 0] = out_q[4, segment_order_idx+1, reach_order_idx] # +1 is added to take a value at downstream compute node of a given stream segment. 
-                    flowveldepth[seg_idx, timestep, 2] = out_depth[4, segment_order_idx+1, reach_order_idx] 
-                    print(f"seg: {seg} segment_order_idx+1: {segment_order_idx+1} reach_order_idx: {reach_order_idx}")
-                    print(f"seg_idx: {seg_idx}")
-                    print(f"flowveldepth[seg_idx, timestep, 0]: {flowveldepth[seg_idx, timestep, 0]}")
-                    print(f"flowveldepth[seg_idx, timestep, 2]: {flowveldepth[seg_idx, timestep, 2]}")
-                  
             else:
+                
                 #Create compute reach kernel input buffer
-                print()
-                print(f"--In MC --")
-                print(f"r.reach.mc_reach.num_segments: {r.reach.mc_reach.num_segments}")
                 for _i in range(r.reach.mc_reach.num_segments):
                     segment = get_mc_segment(r, _i)#r._segments[_i]
                     buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]
@@ -1440,11 +1406,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     buf_view[_i, 10] = flowveldepth[segment.id, timestep-1, 0]
                     buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]
                     buf_view[_i, 12] = flowveldepth[segment.id, timestep-1, 2]
-                    print(f"_i: {_i}   segment.id: {segment.id}") 
-                    print(f"segment: {segment}")
-                
-                print(f"previous_upstream_flows: {previous_upstream_flows}")
-                print(f"upstream_flows: {upstream_flows}")
 
                 compute_reach_kernel(previous_upstream_flows, upstream_flows,
                                      r.reach.mc_reach.num_segments, buf_view,
@@ -1507,21 +1468,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
                 lastobs_times[gage_i] = da_buf[2]
                 lastobs_values[gage_i] = da_buf[3]
 
-        # TODO: Address remaining TODOs (feels existential...), Extra commented material, etc.
-            #print()
-            #print(f"flowveldepth[0, timestep, 0]: {flowveldepth[0, timestep, 0]}")
-            #print(f"flowveldepth[1, timestep, 0]: {flowveldepth[1, timestep, 0]}")  
-            #print(f"flowveldepth[2, timestep, 0]: {flowveldepth[2, timestep, 0]}")
-            #print(f"flowveldepth[3, timestep, 0]: {flowveldepth[3, timestep, 0]}")
-            #print(f"flowveldepth[4, timestep, 0]: {flowveldepth[4, timestep, 0]}")
-            #print(f"flowveldepth[5, timestep, 0]: {flowveldepth[5, timestep, 0]}")  
-            #print(f"flowveldepth[6, timestep, 0]: {flowveldepth[6, timestep, 0]}")
-            #print(f"flowveldepth[7, timestep, 0]: {flowveldepth[7, timestep, 0]}")
-            #print(f"flowveldepth[8, timestep, 0]: {flowveldepth[8, timestep, 0]}")
-            #print(f"-----------------------------")
-            #print(f"-----------------------------")
         timestep += 1
-
 
     #pr.disable()
     #pr.print_stats(sort='time')
@@ -1532,31 +1479,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
     #do the same for the upstream_array
     output_upstream = np.asarray(upstream_array[:,1:,:], dtype='float32')
     #return np.asarray(data_idx, dtype=np.intp), np.asarray(flowveldepth.base.reshape(flowveldepth.shape[0], -1), dtype='float32')
-    
-    print(f"------- mc_reach return output ---------")
-    #print(f"data_idx:{data_idx}")
-    #print(f"output:{output}")
-    #print(f"L752: { np.asarray(data_idx, dtype=np.intp)[fill_index_mask]}")
-    #print(f"L753: {output.reshape(output.shape[0], -1)[fill_index_mask]}")
-    #print(f"L756: {np.asarray([data_idx[usgs_position_i] for usgs_position_i in usgs_positions])}")
-    #print(f"L757: {np.asarray(lastobs_times)}")
-    #print(f"L758: {np.asarray(lastobs_values)}")
-
-    #print(f"output_upstream: {output_upstream}")
-    #print(f"fill_index_mask: {fill_index_mask}")
-    #print(f"output.shape[0]: {output.shape[0]}")
-    #print(f"output_upstream.reshape(output.shape[0], -1): { output_upstream.reshape(output.shape[0], -1)}")
-    #print(f"output_upstream.reshape(output.shape[0], -1)[fill_index_mask]: {output_upstream.reshape(output.shape[0], -1)[fill_index_mask]}")
-    
-    part1=101
-    part2=201
-    part3=301
-    part4=401
-    part5=501
-    part6=601
-    part7=701
-    part8=801
-
+   
     return (
         np.asarray(data_idx, dtype=np.intp)[fill_index_mask], 
         output.reshape(output.shape[0], -1)[fill_index_mask], 
