@@ -1,11 +1,11 @@
 ##### Description #####
 # If you want to mask flowpaths, make the list below.
 # please provide in either POI, NEXUS or flowpath ID.
-# by putting 9999 in nex it will record all the nexus points
+# by putting 9999 in nex or wb, it will record all the nexus or wb points
 #######################
 # mask:
 wb:
-  # - 2427672
+  # - 9999
   # - 2427667
   # - 2427668
   # - 2427671

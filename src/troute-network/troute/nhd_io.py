@@ -2157,7 +2157,10 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
     if not mask_list:
         return nex_id, seg_id
     if 'wb' in mask_list and mask_list['wb']:
-        seg_id.extend(mask_list['wb'])
+        if 9999 not in mask_list['wb']: 
+            seg_id.extend(mask_list['wb'])
+        else:
+            seg_id.extend([9999])
 
     if 'nex' in mask_list and mask_list['nex']:
         if 9999 in mask_list['nex']:
@@ -2174,29 +2177,33 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
 
 def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
     flowveldepth.index.name = 'featureID'
-    flowveldepth['Type'] = 'wb-'
+    flowveldepth['Type'] = 'wb'
     flowveldepth.set_index('Type', append=True, inplace=True)
 
     filtered_v_columns = [col for col in flowveldepth.columns if col[1] == 'v']
     filtered_d_columns = [col for col in flowveldepth.columns if col[1] == 'd']
 
     def create_mask(ids):
-        return (flowveldepth.index.get_level_values('featureID').isin(ids)) & (flowveldepth.index.get_level_values('Type') == 'wb-')
-
+        if 9999 in ids:
+            ids = flowveldepth.index.get_level_values('featureID')
+        
+        masked = (flowveldepth.index.get_level_values('featureID').isin(ids)) & (flowveldepth.index.get_level_values('Type') == 'wb')
+        return masked
+    
     flowveldepth_seg = flowveldepth[create_mask(seg_id)] if seg_id else pd.DataFrame()
 
     nex_data_list = []
     if nex_id:
         for nex_key, nex_val in nex_id.items():
-            new_index = pd.MultiIndex.from_tuples([(nex_key, 'nex-')], names=['featureID', 'Type'])
+            new_index = pd.MultiIndex.from_tuples([(nex_key, 'nex')], names=['featureID', 'Type'])
             flowveldepth_nex = flowveldepth[create_mask(nex_val)]
             
             if not flowveldepth_nex.empty:
                 if len(flowveldepth_nex.index) > 1:
                     summed_data = flowveldepth_nex.sum()
                     new_data = pd.DataFrame([summed_data], index=new_index)
-                    new_data.loc[(nex_key, 'nex-'), filtered_v_columns] = np.nan
-                    new_data.loc[(nex_key, 'nex-'), filtered_d_columns] = flowveldepth_nex[filtered_d_columns].mean()
+                    new_data.loc[(nex_key, 'nex'), filtered_v_columns] = np.nan
+                    new_data.loc[(nex_key, 'nex'), filtered_d_columns] = flowveldepth_nex[filtered_d_columns].mean()
                 else:
                     new_data = flowveldepth_nex.copy()
                     new_data.index = new_index
