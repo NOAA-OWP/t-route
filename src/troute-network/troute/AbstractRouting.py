@@ -154,7 +154,7 @@ class AbstractRouting(ABC):
 
 class MCOnly(AbstractRouting):
 
-    def __init__(self, _):
+    def __init__(self, _, __):
         self.hybrid_params = None
         self.compute_params = None
         
