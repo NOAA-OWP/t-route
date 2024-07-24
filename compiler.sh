@@ -1,9 +1,18 @@
-#TODO add options for clean/noclean, make/nomake, cython/nocython
-#TODO include instuctions on blowing away entire package for fresh install e.g. rm -r ~/venvs/mesh/lib/python3.6/site-packages/troute/*
-#set root folder of github repo (should be named t-route)
+# TODO add options for clean/noclean, make/nomake, cython/nocython
+# TODO include instructions on blowing away entire package for fresh install e.g. rm -r ~/venvs/mesh/lib/python3.6/site-packages/troute/*
+# Set root folder of github repo (should be named t-route)
 REPOROOT=`pwd`
-#For each build step, you can set these to true to make it build
-#or set it to anything else (or unset) to skip that step
+
+# Check if requirements.txt exists and install dependencies
+if [ -f "$REPOROOT/requirements.txt" ]; then
+    echo "Installing requirements from requirements.txt..."
+    pip install -r $REPOROOT/requirements.txt || { echo "Failed to install requirements"; exit 1; }
+else
+    echo "requirements.txt not found, skipping installation of dependencies."
+fi
+
+# For each build step, you can set these to true to make it build
+# or set it to anything else (or unset) to skip that step
 build_mc_kernel=true
 build_diffusive_tulane_kernel=true
 build_reservoir_kernel=true
@@ -12,56 +21,51 @@ build_routing=true
 build_config=true
 build_nwm=true
 
-if [ -z "$F90" ]
-then
+if [ -z "$F90" ]; then
     export F90="gfortran"
     echo "using F90=${F90}"
 fi
-if [ -z "$CC" ]
-then
+if [ -z "$CC" ]; then
     export CC="gcc"
     echo "using CC=${CC}"
 fi
 
-#preserve old/default behavior of installing packages with -e
+# Preserve old/default behavior of installing packages with -e
 WITH_EDITABLE=true
-if [ "$1" == 'no-e' ]
-then
-WITH_EDITABLE=false
+if [ "$1" == 'no-e' ]; then
+    WITH_EDITABLE=false
 fi
 
-#if you have custom static library paths, uncomment below and export them
-#export LIBRARY_PATH=<paths>:$LIBRARY_PATH
-#if you have custom dynamic library paths, uncomment below and export them
-#export LD_LIBRARY_PATHS=<paths>:$LD_LIBRARY_PATHS
-if [ -z "$NETCDF" ]
-then
+# If you have custom static library paths, uncomment below and export them
+# export LIBRARY_PATH=<paths>:$LIBRARY_PATH
+# If you have custom dynamic library paths, uncomment below and export them
+# export LD_LIBRARY_PATHS=<paths>:$LD_LIBRARY_PATHS
+if [ -z "$NETCDF" ]; then
     export NETCDFINC=/usr/include/openmpi-x86_64/
-    # set alternative NETCDF variable include path, for example for WSL
+    # Set alternative NETCDF variable include path, for example for WSL
     # (Windows Subsystems for Linux).
     #
     # EXAMPLE USAGE: export NETCDFALTERNATIVE=$HOME/.conda/envs/py39/include/
     # (before ./compiler.sh)
-    if [ -n "$NETCDFALTERNATIVE" ]
-    then
-	echo "using alternative NETCDF inc ${NETCDFALTERNATIVE}"
-	export NETCDFINC=$NETCDFALTERNATIVE
+    if [ -n "$NETCDFALTERNATIVE" ]; then
+        echo "using alternative NETCDF inc ${NETCDFALTERNATIVE}"
+        export NETCDFINC=$NETCDFALTERNATIVE
     fi
 else
     export NETCDFINC="${NETCDF}"
 fi
 echo "using NETCDFINC=${NETCDFINC}"
 
-if  [[ "$build_mc_kernel" == true ]]; then
-  #building reach and resevoir kernel files .o
+if [[ "$build_mc_kernel" == true ]]; then
+  # Building reach and reservoir kernel files .o
   cd $REPOROOT/src/kernel/muskingum/
   make clean
-  make  || exit
+  make || exit
   make install || exit
 fi
 
-if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
-  #building reach and resevoir kernel files .o  
+if [[ "$build_diffusive_tulane_kernel" == true ]]; then
+  # Building reach and reservoir kernel files .o  
   cd $REPOROOT/src/kernel/diffusive/
   make clean
   make diffusive.o
@@ -74,9 +78,9 @@ fi
 if [[ "$build_reservoir_kernel" == true ]]; then
   cd $REPOROOT/src/kernel/reservoir/
   make clean
-  #make NETCDFINC=`nc-config --includedir` || exit
-  #make binding_lp.a
-  #make install_lp || exit
+  # make NETCDFINC=`nc-config --includedir` || exit
+  # make binding_lp.a
+  # make install_lp || exit
   make
   make install_lp || exit
   make install_rfc || exit
@@ -84,7 +88,7 @@ if [[ "$build_reservoir_kernel" == true ]]; then
 fi
 
 if [[ "$build_framework" == true ]]; then
-  #creates troute package
+  # Creates troute package
   cd $REPOROOT/src/troute-network
   rm -rf build
 
@@ -96,7 +100,7 @@ if [[ "$build_framework" == true ]]; then
 fi
 
 if [[ "$build_routing" == true ]]; then
-  #updates troute package with the execution script
+  # Updates troute package with the execution script
   cd $REPOROOT/src/troute-routing
   rm -rf build
 
@@ -108,7 +112,7 @@ if [[ "$build_routing" == true ]]; then
 fi
 
 if [[ "$build_config" == true ]]; then
-  #updates troute package with the execution script
+  # Updates troute package with the execution script
   cd $REPOROOT/src/troute-config
   if [[ ${WITH_EDITABLE} == true ]]; then
     pip install --editable . || exit
@@ -118,7 +122,7 @@ if [[ "$build_config" == true ]]; then
 fi
 
 if [[ "$build_nwm" == true ]]; then
-  #updates troute package with the execution script
+  # Updates troute package with the execution script
   cd $REPOROOT/src/troute-nwm
   if [[ ${WITH_EDITABLE} == true ]]; then
     pip install --editable . || exit
