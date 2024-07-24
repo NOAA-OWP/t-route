@@ -1,0 +1,45 @@
+# $ python -m nwm_routing -f -V4 sample_MCOnly.yaml
+
+# Usage: Parameters that have "#REQUIRED" must be updated by user. All other parameters
+# should not be altered.
+
+# This example serves as the simplest configuration file one can use to perform a
+# Muskingum-Cunge (MC) only routing simulation. This means there is no reservoir routing
+# (underlying flowpaths within waterbodies are routed using MC), no data assimilation, and
+# no diffusive routing.
+
+# This defaults to computing routing in serial. If you would like to enable parallel routing,
+# you can adjust the 'compute_parameters -> parallel_compute_method:' and
+# 'compute_parameters -> cpu_pool:' (see documentation).
+
+# This defaults to creating 1 netcdf output file for every hour of simulation time, each file 
+# containing 12 time steps (1 every 5 minutes, t-route's default time step). Output files
+# are configurable, see documentation.
+
+#--------------------------------------------------------------------------------
+log_parameters:
+  #----------
+  showtiming: True
+  log_level : DEBUG
+#--------------------------------------------------------------------------------
+network_topology_parameters:
+  #----------
+  supernetwork_parameters:
+    #----------
+    geo_file_path: #REQUIRED
+#--------------------------------------------------------------------------------
+compute_parameters:
+  #----------
+  restart_parameters:
+    #----------
+    start_datetime: #REQUIRED
+  forcing_parameters:
+    #----------
+    nts                     : #REQUIRED
+    qlat_input_folder       : #REQUIRED 
+    qlat_file_pattern_filter: #REQUIRED 
+#--------------------------------------------------------------------------------
+output_parameters:
+  #----------
+  stream_output : 
+    stream_output_directory: #REQUIRED
