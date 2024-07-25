@@ -2180,9 +2180,6 @@ def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
     flowveldepth['Type'] = 'wb'
     flowveldepth.set_index('Type', append=True, inplace=True)
 
-    filtered_v_columns = [col for col in flowveldepth.columns if col[1] == 'v']
-    filtered_d_columns = [col for col in flowveldepth.columns if col[1] == 'd']
-
     def create_mask(ids):
         if 9999 in ids:
             ids = flowveldepth.index.get_level_values('featureID')
@@ -2192,28 +2189,44 @@ def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
     
     flowveldepth_seg = flowveldepth[create_mask(seg_id)] if seg_id else pd.DataFrame()
 
-    nex_data_list = []
-    if nex_id:
-        for nex_key, nex_val in nex_id.items():
-            new_index = pd.MultiIndex.from_tuples([(nex_key, 'nex')], names=['featureID', 'Type'])
-            flowveldepth_nex = flowveldepth[create_mask(nex_val)]
-            
-            if not flowveldepth_nex.empty:
-                if len(flowveldepth_nex.index) > 1:
-                    summed_data = flowveldepth_nex.sum()
-                    new_data = pd.DataFrame([summed_data], index=new_index)
-                    new_data.loc[(nex_key, 'nex'), filtered_v_columns] = np.nan
-                    new_data.loc[(nex_key, 'nex'), filtered_d_columns] = flowveldepth_nex[filtered_d_columns].mean()
-                else:
-                    new_data = flowveldepth_nex.copy()
-                    new_data.index = new_index
-
-                nex_data_list.append(new_data)
+    if nex_id:    
+        nex_df = pd.DataFrame([(nex, wb) for nex, wbs in nex_id.items() for wb in wbs], columns=['nex', 'featureID'])
+        flowveldepth_reset = flowveldepth.reset_index()
+        merge_flowveldepth_reset = flowveldepth_reset.merge(nex_df, on='featureID', how='left')
         
-        all_nex_data = pd.concat(nex_data_list) if nex_data_list else pd.DataFrame()
+        merge_flowveldepth_reset = merge_flowveldepth_reset.dropna(subset=['nex'])
+        merge_flowveldepth_reset['nex'] = merge_flowveldepth_reset['nex'].astype(int)
+        # Define custom aggregation functions
+        def sum_q_columns(group):
+            q_columns = [col for col in group.columns if col[1] == 'q']
+            return group[q_columns].sum()
+
+        def custom_v(group):
+            v_columns = [col for col in group.columns if col[1] == 'v']
+            v_values = group[v_columns]
+            if len(v_values) > 1:
+                return pd.Series({col: np.nan for col in v_values.columns})
+            else:
+                return v_values.iloc[0]
+
+        def avg_d_columns(group):
+            d_columns = [col for col in group.columns if col[1] == 'd']
+            return group[d_columns].mean()
+
+        # Apply the groupby with the custom aggregation functions
+        def custom_agg(group):
+            result = pd.concat([sum_q_columns(group), custom_v(group), avg_d_columns(group)])
+            return result 
+            
+        all_nex_data = merge_flowveldepth_reset.groupby('nex').apply(custom_agg)
+        all_nex_data.index = all_nex_data.index.rename('featureID')
+        all_nex_data['Type'] = 'nex'
+        # Set the new 'Type' column as an index
+        all_nex_data = all_nex_data.set_index('Type', append=True)
+        
     else:
         all_nex_data = pd.DataFrame()
-
+    
     if not flowveldepth_seg.empty or not all_nex_data.empty:
         flowveldepth = pd.concat([flowveldepth_seg, all_nex_data])
     
