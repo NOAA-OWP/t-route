@@ -49,7 +49,7 @@ class CsvOutput(BaseModel):
     csv_output_segments: Optional[List[str]] = None
 
 
-class ParquetOutput(BaseModel, extra='forbid'):
+class ParquetOutput(BaseModel):
     # NOTE: required if writing results to parquet
     parquet_output_folder: Optional[DirectoryPath] = None
     parquet_output_segments: Optional[List[str]] = None
@@ -57,7 +57,7 @@ class ParquetOutput(BaseModel, extra='forbid'):
     prefix_ids: Optional[str] = None
 
 
-class ChrtoutOutput(BaseModel, extra='forbid'):
+class ChrtoutOutput(BaseModel):
     # NOTE: mandatory if writing results to CHRTOUT.
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
 
