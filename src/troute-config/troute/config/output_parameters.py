@@ -5,7 +5,7 @@ from typing import Optional, List
 from typing_extensions import Annotated, Literal
 from .types import FilePath, DirectoryPath
 
-streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl', '.parquet']
+streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
 
 class OutputParameters(BaseModel):
