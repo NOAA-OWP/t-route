@@ -111,7 +111,8 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
 
 **Note**: The following instructions are for setting up T-Route on a Linux environment (standalone, no MPI). If you are using Windows, please install WSL (Windows Subsystem for Linux) before proceeding.
 
-### T-Route Setup and Testing Guide for Windows Users WITHOUT conda [based on pip and venv - only widely available dependencies]
+### T-Route Setup and Testing Guide for Windows Users WITHOUT conda [based on pip and venv - only widely available dependencies].
+### WARNING: INSTALLATION WITHIN EXISTING MINICONDA/CONDA VIRTUAL ENVIRONMENT NOT RECOMMENDED, PIP AND CONDA DO NOT MIX WELL, AND YOU MAY BREAK YOUR CONDA ENVIRONMENT!
 
 1. **Install Recommended distro:**
    - Download and install WSL2 for your Windows OS
@@ -222,7 +223,7 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
    - The latter is a hybrid (MC + diffusive) routing example that should run within a few minutes at most
 
 
-### T-Route Setup Instructions and Troubleshooting Guide for Windows Users - Legacy Conda Version [requires  may have to be built with compiler.sh no-e option]
+### T-Route Setup Instructions and Troubleshooting Guide for Windows Users - Legacy Conda Version [may have to be built with compiler.sh no-e option]
 
 1. **Install Required Components:**
    - Open the WSL terminal.
