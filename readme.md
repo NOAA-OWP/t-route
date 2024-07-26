@@ -154,7 +154,7 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
       ```
    - Clone a T-route repository (the current main branch is used as an example):
       ```shell
-      git clone https://github.com/NOAA-OWP/t-route.git
+      git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
       cd troute1
       ```
    - Install python packages per requirements file
