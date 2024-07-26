@@ -117,108 +117,108 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
    - Download and install WSL2 for your Windows OS
    - We recommend long-term stable (LTS) Ubuntu distribution 22.04 or 20.04 (24.04 not recommended yet)
    - Open Windows Power Shell and issue
-      ''' shell
+      ``` shell
       wsl --install Ubuntu-22.04
-      '''
+      ```
    - Enter (root) username and password (2x) of your choice
      
 2. **Set up venv-based virtual environment:**
    - From root (the username you created under 1):
       - Update Linux distro:
-        '''shell
+        ```shell
         sudo apt update
-        '''
+        ```
       - Install pip (package manager):
-        '''shell
+        ```shell
         sudo apt install python3-pip
-        '''
+        ```
       - Install venv:
-         '''shell
+         ```shell
          sudo apt install python3.10-venv
-         '''
+         ```
       - Create a virtual environment for T-route (named here 'troute-env1'):
-         '''shell
+         ```shell
          python3 -m venv troute_env1
-         '''
+         ```
       - Activate your shiny new virtual environment:
-         '''shell
+         ```shell
          source troute_env1/bin/activate
-         '''
+         ```
       - Now, the command prompts in the Shell window should start with (troute-env1)
  
 3. **Clone T-route:**
    - Go to a folder of your choice (here, your home folder) and create a T-route directory
-      '''shell
+      ```shell
       mkdir troute1
       cd troute1
-      '''
+      ```
    - Clone a T-route repository (the current main branch is used as an example):
-      '''shell
+      ```shell
       git clone https://github.com/NOAA-OWP/t-route.git
       cd troute1
-      '''
+      ```
    - Install python packages per requirements file
-      '''shell
+      ```shell
       pip install -r requirements.txt
-      '''
+      ```
 
 4. **Download & build netcdf fortran libraries from UCAR:**
    - Go to a folder of your choice (here, your home folder) and download the source code:
-      '''shell
+      ```shell
       cd ~
       wget https://downloads.unidata.ucar.edu/netcdf-fortran/4.6.1/netcdf-fortran-4.6.1.tar.gz
-      '''
+      ```
    - Unzip it:
-      '''shell
+      ```shell
       tar xvf netcdf-fortran-4.6.1.tar.gz
-      '''
+      ```
    - Enter the directory:
-      '''shell
+      ```shell
       cd netcdf-fortran-4.6.1/
-      '''
+      ```
    - Install some prerequisites (Fortran compiler, build essentials, standard C-netcdf library):
-      '''shell
+      ```shell
       sudo apt install gfortran
       sudo apt install build-essential
       sudo apt-get install libnetcdf-dev
-      '''
+      ```
    - Configure the fortran-netcdf libraries:
-      '''shell
+      ```shell
       ./configure
-      '''
+      ```
    - There should be no error message, and the output log should end up with something like:
      ![image](https://github.com/user-attachments/assets/48268212-0b74-4f75-9d52-97f68e6c80d0)
    - Check the installation (running two sets of examples):
-      '''shell
+      ```shell
       make check
-      '''
+      ```
    - Again, there should be no error message (expect some warnings, though), and output should end with "passing" of two sets:
      ![image](https://github.com/user-attachments/assets/83745989-9f14-4c1b-a2a1-675aa94e5181)
    - Finally, install the libraries:
-      '''shell
+      ```shell
       sudo make install
-      '''
+      ```
    - Output should be something like:
       ![image](https://github.com/user-attachments/assets/57e48501-18f4-4004-9b10-5a9245186e38)
 
 5. **Build and test T-route:**
    - Go to your T-route folder:
-      '''shell
+      ```shell
       cd ~/troute1
-      '''
+      ```
    - Compile T-route (may take a few minutes, depending on the machine):
-      '''shell
+      ```shell
       ./compiler.sh
-      '''
+      ```
    - Set path to runtime netcdf-Fortran library [recommend including this in the .bashrc file or your equivalent]:
-      '''shell
+      ```shell
       export LD_LIBRARY_PATH=/usr/local/lib/
-      '''
+      ```
    - Run one of the demo examples provided:
-      '''shell
+      ```shell
       cd test/LowerColorado_TX
       python -m nwm_routing -f -V3 test_AnA.yaml
-      '''
+      ```
    - The latter is a hybrid (MC + diffusive) routing example that should run within a few minutes at most
 
 
