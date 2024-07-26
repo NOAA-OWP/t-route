@@ -282,6 +282,8 @@ class HYFeaturesNetwork(AbstractNetwork):
 
             # Preprocess network objects
             self.preprocess_network(flowpaths, nexus)
+            
+            self.crosswalk_nex_flowpath_poi(flowpaths, nexus)
 
             # Preprocess waterbody objects
             self.preprocess_waterbodies(lakes, nexus)
@@ -414,6 +416,16 @@ class HYFeaturesNetwork(AbstractNetwork):
         # Location information will be used to advertise tailwater locations of diffusive domains 
         # to the model engine/coastal models
         self._nexus_latlon = nexus
+
+    def crosswalk_nex_flowpath_poi(self, flowpaths, nexus):
+        
+        mask_flowpaths = flowpaths['toid'].str.startswith(('nex-', 'tnex-'))
+        filtered_flowpaths = flowpaths[mask_flowpaths]
+        self._nexus_dict = filtered_flowpaths.groupby('toid')['id'].apply(list).to_dict()  ##{id: toid}
+        if 'poi_id' in nexus.columns:
+            self._poi_nex_dict = nexus.groupby('poi_id')['id'].apply(list).to_dict()
+        else:
+            self._poi_nex_dict = None
 
     def preprocess_waterbodies(self, lakes, nexus):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries

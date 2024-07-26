@@ -94,6 +94,7 @@ class ParityCheckCompareFileSet(BaseModel):
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
+    mask_output: Optional[FilePath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5

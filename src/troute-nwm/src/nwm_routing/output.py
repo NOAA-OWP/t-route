@@ -90,25 +90,28 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
 
 
 def nwm_output_generator(
-        run,
-        results,
-        supernetwork_parameters,
-        output_parameters,
-        parity_parameters,
-        restart_parameters,
-        parity_set,
-        qts_subdivisions,
-        return_courant,
-        cpu_pool,
-        waterbodies_df,
-        waterbody_types_df,
-        duplicate_ids_df,
-        data_assimilation_parameters=False,
-        lastobs_df=None,
-        link_gage_df=None,
-        link_lake_crosswalk=None,
-        logFileName='NONE'
+    run,
+    results,
+    supernetwork_parameters,
+    output_parameters,
+    parity_parameters,
+    restart_parameters,
+    parity_set,
+    qts_subdivisions,
+    return_courant,
+    cpu_pool,
+    waterbodies_df,
+    waterbody_types_df,
+    duplicate_ids_df,
+    data_assimilation_parameters=False,
+    lastobs_df = None,
+    link_gage_df = None,
+    link_lake_crosswalk = None,
+    nexus_dict = None,
+    poi_crosswalk = None,
+    logFileName='NONE' 
 ):
+  
     dt = run.get("dt")
     nts = run.get("nts")
     t0 = run.get("t0")
@@ -252,14 +255,18 @@ def nwm_output_generator(
     
     if stream_output:
         stream_output_directory = stream_output['stream_output_directory']
+        stream_output_mask = stream_output.get('mask_output',)
         stream_output_timediff = stream_output['stream_output_time']
         stream_output_type = stream_output['stream_output_type']
         stream_output_internal_frequency = stream_output['stream_output_internal_frequency']
-
+        if stream_output_mask:
+            stream_output_mask = Path(stream_output_mask)
+        
         nudge = np.concatenate([r[8] for r in results])
         usgs_positions_id = np.concatenate([r[3][0] for r in results])
         nhd_io.write_flowveldepth(
-            Path(stream_output_directory), 
+            Path(stream_output_directory),
+            stream_output_mask, 
             flowveldepth, 
             nudge, 
             usgs_positions_id, 
@@ -268,7 +275,9 @@ def nwm_output_generator(
             int(stream_output_timediff), 
             stream_output_type,
             stream_output_internal_frequency,
-            cpu_pool = cpu_pool
+            cpu_pool = cpu_pool,
+            poi_crosswalk = poi_crosswalk,
+            nexus_dict= nexus_dict,
             )
 
         if (not logFileName == 'NONE'):

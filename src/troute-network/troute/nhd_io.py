@@ -2007,6 +2007,8 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
         # ============ DIMENSIONS ===================
         _ = ncfile.createDimension('feature_id', len(flow))
         _ = ncfile.createDimension('time', len(timestamps))
+        max_str_len = max(len(str(x)) for x in flow.index.get_level_values('Type'))
+        _ = ncfile.createDimension('type_strlen', max_str_len)
         #_ = ncfile.createDimension('gage', gage)
         #_ = ncfile.createDimension('nudge_timestep', nudge_timesteps)  # Add dimension for nudge time steps
         
@@ -2048,10 +2050,22 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
             datatype = 'int64',
             dimensions = ("feature_id",),
         )
-        FEATURE_ID[:] = flow.index
+        FEATURE_ID[:] = flow.index.get_level_values('featureID')
         ncfile['feature_id'].setncatts(
             {
                 'long_name': 'Segment ID',
+            }
+        )
+        # =========== type VARIABLE ===============
+        TYPE = ncfile.createVariable(
+            varname="type",
+            datatype=f'S{max_str_len}',
+            dimensions=("feature_id",),
+        )
+        TYPE[:] = np.array(flow.index.get_level_values('Type').astype(str).tolist(), dtype=f'S{max_str_len}')
+        ncfile['type'].setncatts(
+            {
+                'long_name': 'Type',
             }
         )
 
@@ -2128,9 +2142,99 @@ def write_flowveldepth_netcdf(stream_output_directory, file_name,
                 'code_version': '',
             }
         )
+def stream_output_mask_reader(stream_output_mask):
+    if not stream_output_mask:
+        return {}
+    with open(stream_output_mask, 'r') as file:
+        mask_list = yaml.safe_load(file)
+    
+    return mask_list
+
+def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
+    seg_id = []
+    nex_id = {}
+    
+    if not mask_list:
+        return nex_id, seg_id
+    if 'wb' in mask_list and mask_list['wb']:
+        if 9999 not in mask_list['wb']: 
+            seg_id.extend(mask_list['wb'])
+        else:
+            seg_id.extend([9999])
+
+    if 'nex' in mask_list and mask_list['nex']:
+        if 9999 in mask_list['nex']:
+            
+            for key, val in nexus_dict.items():
+                nex_key = int(key.split('-')[-1])
+                nex_id[nex_key] = [int(v.split('-')[-1]) for v in val]
+        else:
+            for key in mask_list['nex']:
+                item = f'nex-{key}'
+                nex_id[key] = [int(val.split('-')[-1]) for val in nexus_dict.get(item, [])]
+
+    return nex_id, seg_id
+
+def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
+    flowveldepth.index.name = 'featureID'
+    flowveldepth['Type'] = 'wb'
+    flowveldepth.set_index('Type', append=True, inplace=True)
+
+    def create_mask(ids):
+        if 9999 in ids:
+            ids = flowveldepth.index.get_level_values('featureID')
+        
+        masked = (flowveldepth.index.get_level_values('featureID').isin(ids)) & (flowveldepth.index.get_level_values('Type') == 'wb')
+        return masked
+    
+    flowveldepth_seg = flowveldepth[create_mask(seg_id)] if seg_id else pd.DataFrame()
+
+    if nex_id:    
+        nex_df = pd.DataFrame([(nex, wb) for nex, wbs in nex_id.items() for wb in wbs], columns=['nex', 'featureID'])
+        flowveldepth_reset = flowveldepth.reset_index()
+        merge_flowveldepth_reset = flowveldepth_reset.merge(nex_df, on='featureID', how='left')
+        
+        merge_flowveldepth_reset = merge_flowveldepth_reset.dropna(subset=['nex'])
+        merge_flowveldepth_reset['nex'] = merge_flowveldepth_reset['nex'].astype(int)
+        # Define custom aggregation functions
+        def sum_q_columns(group):
+            q_columns = [col for col in group.columns if col[1] == 'q']
+            return group[q_columns].sum()
+
+        def custom_v(group):
+            v_columns = [col for col in group.columns if col[1] == 'v']
+            v_values = group[v_columns]
+            if len(v_values) > 1:
+                return pd.Series({col: np.nan for col in v_values.columns})
+            else:
+                return v_values.iloc[0]
+
+        def avg_d_columns(group):
+            d_columns = [col for col in group.columns if col[1] == 'd']
+            return group[d_columns].mean()
+
+        # Apply the groupby with the custom aggregation functions
+        def custom_agg(group):
+            result = pd.concat([sum_q_columns(group), custom_v(group), avg_d_columns(group)])
+            return result 
+            
+        all_nex_data = merge_flowveldepth_reset.groupby('nex').apply(custom_agg)
+        all_nex_data.index = all_nex_data.index.rename('featureID')
+        all_nex_data['Type'] = 'nex'
+        # Set the new 'Type' column as an index
+        all_nex_data = all_nex_data.set_index('Type', append=True)
+        
+    else:
+        all_nex_data = pd.DataFrame()
+    
+    if not flowveldepth_seg.empty or not all_nex_data.empty:
+        flowveldepth = pd.concat([flowveldepth_seg, all_nex_data])
+    
+    return flowveldepth
 
 def write_flowveldepth(
     stream_output_directory,
+    stream_output_mask,
     flowveldepth,
     nudge,
     usgs_positions_id,
@@ -2140,6 +2244,8 @@ def write_flowveldepth(
     stream_output_type,
     stream_output_internal_frequency = 5,
     cpu_pool = 1,
+    poi_crosswalk = None,
+    nexus_dict= None,
     ):
     '''
     Write the results of flowveldepth and nudge to netcdf- break. 
@@ -2150,6 +2256,11 @@ def write_flowveldepth(
     nudge (numpy.ndarray) - nudge data with shape (76, 289)
     usgs_positions_id (array) - Position ids of usgs gages
     '''
+    
+    mask_list = stream_output_mask_reader(stream_output_mask)
+    nex_id, seg_id = mask_find_seg(mask_list, nexus_dict, poi_crosswalk)
+    flowveldepth = updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list)
+
     # timesteps, variable = zip(*flowveldepth.columns.tolist())
     # timesteps = list(timesteps)
     n_timesteps = flowveldepth.shape[1]//3
