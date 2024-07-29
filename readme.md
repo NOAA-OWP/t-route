@@ -111,6 +111,120 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
 
 **Note**: The following instructions are for setting up T-Route on a Linux environment (standalone, no MPI). If you are using Windows, please install WSL (Windows Subsystem for Linux) before proceeding.
 
+### T-Route Setup and Testing Guide for Windows Users WITHOUT conda [based on pip and venv - only widely available dependencies].
+### WARNING: INSTALLATION WITHIN EXISTING MINICONDA/CONDA VIRTUAL ENVIRONMENT NOT RECOMMENDED, PIP AND CONDA DO NOT MIX WELL, AND YOU MAY BREAK YOUR CONDA ENVIRONMENT!
+
+1. **Install Recommended distro:**
+   - Download and install WSL2 for your Windows OS
+   - We recommend long-term stable (LTS) Ubuntu distribution 22.04 or 20.04 (24.04 not recommended yet)
+   - Open Windows Power Shell and issue
+      ``` shell
+      wsl --install Ubuntu-22.04
+      ```
+   - Enter (root) username and password (2x) of your choice
+     
+2. **Set up venv-based virtual environment:**
+   - From root (the username you created under 1):
+      - Update Linux distro:
+        ```shell
+        sudo apt update
+        ```
+      - Install pip (package manager):
+        ```shell
+        sudo apt install python3-pip
+        ```
+      - Install venv:
+         ```shell
+         sudo apt install python3.10-venv
+         ```
+      - Create a virtual environment for T-route (named here 'troute-env1'):
+         ```shell
+         python3 -m venv troute_env1
+         ```
+      - Activate your shiny new virtual environment:
+         ```shell
+         source troute_env1/bin/activate
+         ```
+      - Now, the command prompts in the Shell window should start with (troute-env1)
+ 
+3. **Clone T-route:**
+   - Go to a folder of your choice (here, your home folder) and create a T-route directory
+      ```shell
+      mkdir troute1
+      cd troute1
+      ```
+   - Clone a T-route repository (the current main branch is used as an example):
+      ```shell
+      git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
+      cd troute1
+      ```
+   - Install python packages per requirements file
+      ```shell
+      pip install -r requirements.txt
+      ```
+
+4. **Download & build netcdf fortran libraries from UCAR:**
+   - Go to a folder of your choice (here, your home folder) and download the source code:
+      ```shell
+      cd ~
+      wget https://downloads.unidata.ucar.edu/netcdf-fortran/4.6.1/netcdf-fortran-4.6.1.tar.gz
+      ```
+   - Unzip it:
+      ```shell
+      tar xvf netcdf-fortran-4.6.1.tar.gz
+      ```
+   - Enter the directory:
+      ```shell
+      cd netcdf-fortran-4.6.1/
+      ```
+   - Install some prerequisites (Fortran compiler, build essentials, standard C-netcdf library):
+      ```shell
+      sudo apt install gfortran
+      sudo apt install build-essential
+      sudo apt-get install libnetcdf-dev
+      ```
+   - Configure the fortran-netcdf libraries:
+      ```shell
+      ./configure
+      ```
+   - There should be no error message, and the output log should end up with something like:
+     ![image](https://github.com/user-attachments/assets/48268212-0b74-4f75-9d52-97f68e6c80d0)
+   - Check the installation (running two sets of examples):
+      ```shell
+      make check
+      ```
+   - Again, there should be no error message (expect some warnings, though), and output should end with "passing" of two sets:
+     ![image](https://github.com/user-attachments/assets/83745989-9f14-4c1b-a2a1-675aa94e5181)
+   - Finally, install the libraries:
+      ```shell
+      sudo make install
+      ```
+   - Output should be something like:
+      ![image](https://github.com/user-attachments/assets/57e48501-18f4-4004-9b10-5a9245186e38)
+
+5. **Build and test T-route:**
+   - Go to your T-route folder:
+      ```shell
+      cd ~/troute1
+      ```
+   - Compile T-route (may take a few minutes, depending on the machine):
+      ```shell
+      ./compiler.sh
+      ```
+   - Set path to runtime netcdf-Fortran library [recommend including this in the .bashrc file or your equivalent]:
+      ```shell
+      export LD_LIBRARY_PATH=/usr/local/lib/
+      ```
+   - Run one of the demo examples provided:
+      ```shell
+      cd test/LowerColorado_TX
+      python -m nwm_routing -f -V3 test_AnA.yaml
+      ```
+   - The latter is a hybrid (MC + diffusive) routing example that should run within a few minutes at most
+
+
+### T-Route Setup Instructions and Troubleshooting Guide for Windows Users - Legacy Conda Version [may have to be built with compiler.sh no-e option]
+
 1. **Install Required Components:**
    - Open the WSL terminal.
    - Install Miniconda, Python, Pip, and Git.

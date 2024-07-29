@@ -7,11 +7,14 @@ from .types import FilePath, DirectoryPath
 
 streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
+
 class OutputParameters(BaseModel):
     chanobs_output: Optional["ChanobsOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:496
+    parquet_output: Optional["ParquetOutput"] = None
+    # NOTE: this appears to be optional. See nwm_routing/input.py ~:563
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
     # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
@@ -44,6 +47,14 @@ class CsvOutput(BaseModel):
     # NOTE: required if writing results to csv
     csv_output_folder: Optional[DirectoryPath] = None
     csv_output_segments: Optional[List[str]] = None
+
+
+class ParquetOutput(BaseModel):
+    # NOTE: required if writing results to parquet
+    parquet_output_folder: Optional[DirectoryPath] = None
+    parquet_output_segments: Optional[List[str]] = None
+    configuration: Optional[str] = None
+    prefix_ids: Optional[str] = None
 
 
 class ChrtoutOutput(BaseModel):
@@ -79,9 +90,11 @@ class WrfHydroParityCheck(BaseModel):
 class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
 
+
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
     stream_output_directory: Optional[DirectoryPath] = None
+    mask_output: Optional[FilePath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5
