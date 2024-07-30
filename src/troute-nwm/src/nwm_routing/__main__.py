@@ -21,7 +21,7 @@ from .preprocess import (
     nwm_forcing_preprocess,
     unpack_nwm_preprocess_data,
 )
-from .output import nwm_output_generator
+from .output import NWMOutputGenerator
 from .log_level_set import log_level_set
 from troute.routing.compute import compute_nhd_routing_v02, compute_diffusive_routing, compute_log_mc, compute_log_diff
 
@@ -298,7 +298,7 @@ def main_v04(argv):
         output_start_time = time.time()  
         
         #TODO Update this to work with either network type...
-        nwm_output_generator(
+        nwm_output = NWMOutputGenerator(
             run,
             run_results,
             supernetwork_parameters,
@@ -1797,7 +1797,7 @@ def main_v03(argv):
 
         duplicate_ids_df = pd.DataFrame()
 
-        nwm_output_generator(
+        nwm_output = NWMOutputGenerator(
             run,
             run_results,
             supernetwork_parameters,
