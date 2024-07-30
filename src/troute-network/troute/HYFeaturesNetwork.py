@@ -22,8 +22,31 @@ __verbose__ = False
 __showtiming__ = False
 
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
+    
+    def gpd_read_file(filename: Path, layer: str, layer_dict: dict) -> pd.DataFrame:
+        """Layer names in the hydrofabric have changed with new version. To maintain
+        backwards compatibility, this function uses a try-except routine to first
+        try reading geopackage layers with the most up-do-date table names, then
+        reverting to old naming conventions if an exception is raised.
+
+        Args:
+            filename (Path): Path to geopackage
+            layer (str): The layer to be read
+            layer_dict (dict): Crosswalk between current table names and older versions
+
+        Returns:
+            gpd.DataFrame: Geopandas dataframe of given layer from geopackage
+        """
+        try: 
+            df = gpd.read_file(file_path, layer=layer)
+        except ValueError:
+            df = gpd.read_file(filename, layer=layer_dict.get(layer))
+        
+        return df
+        
     # Establish which layers we will read. We'll always need the flowpath tables
-    layers = ['flowpaths','flowpath_attributes']
+    layers = ['flowlines','flowpath-attributes']
+    former_layer_names = {'flowlines': 'flowpaths', 'flowpath-attributes': 'flowpath_attributes'}
 
     # If waterbodies are being simulated, read lakes table
     if waterbody_parameters.get('break_network_at_waterbodies',False):
@@ -51,33 +74,33 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
             jobs = []
             for layer in layers:
                 jobs.append(
-                    delayed(gpd.read_file)
+                    delayed(gpd_read_file)
                     #(f, qlat_file_value_col, gw_bucket_col, terrain_ro_col)
                     #delayed(nhd_io.get_ql_from_csv)
-                    (filename=file_path, layer=layer)                    
+                    (filename=file_path, layer=layer, layer_dict=former_layer_names)                    
                 )
             gpkg_list = parallel(jobs)
         table_dict = {layers[i]: gpkg_list[i] for i in range(len(layers))}
-        flowpaths = pd.merge(table_dict.get('flowpaths'), table_dict.get('flowpath_attributes'), on='id')
+        flowpaths = pd.merge(table_dict.get('flowlines'), table_dict.get('flowpath-attributes'), on='id')
         lakes = table_dict.get('lakes', pd.DataFrame())
         network = table_dict.get('network', pd.DataFrame())
         nexus = table_dict.get('nexus', pd.DataFrame())
     else:
-        flowpaths = gpd.read_file(file_path, layer='flowpaths')
-        flowpath_attributes = gpd.read_file(file_path, layer='flowpath_attributes')
+        flowpaths = gpd_read_file(file_path, 'flowlines', former_layer_names)
+        flowpath_attributes = gpd_read_file(file_path, 'flowpath-attributes', former_layer_names)
         flowpaths = pd.merge(flowpaths, flowpath_attributes, on='id')
         # If waterbodies are being simulated, read lakes table
         lakes = pd.DataFrame()
         if 'lakes' in layers:
-            lakes = gpd.read_file(file_path, layer='lakes')
+            lakes = gpd_read_file(file_path, 'lakes', former_layer_names)
         # If any DA is activated, read network table as well for gage information
         network = pd.DataFrame()
         if 'network' in layers:
-            network = gpd.read_file(file_path, layer='network')
+            network = gpd_read_file(file_path, 'network', former_layer_names)
         # If diffusive is activated, read nexus table for lat/lon information
         nexus = pd.DataFrame()
         if 'nexus' in layers:
-            nexus = gpd.read_file(file_path, layer='nexus')
+            nexus = gpd_read_file(file_path, 'nexus', former_layer_names)
 
     return flowpaths, lakes, network, nexus
 
