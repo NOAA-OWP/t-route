@@ -38,7 +38,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
             gpd.DataFrame: Geopandas dataframe of given layer from geopackage
         """
         try: 
-            df = gpd.read_file(file_path, layer=layer)
+            df = gpd.read_file(filename, layer=layer)
         except ValueError:
             df = gpd.read_file(filename, layer=layer_dict.get(layer))
         
