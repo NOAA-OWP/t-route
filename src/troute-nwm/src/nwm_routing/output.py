@@ -110,7 +110,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
         'reference_time': start_datetime.date(),
         'configuration': configuration
     })
-    import pdb;pdb.set_trace()
+    
     return timeseries_df
 
 
