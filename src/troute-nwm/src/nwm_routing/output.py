@@ -83,7 +83,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
     variables = np.array([t[1] for t in times])
 
     # Preallocate arrays
-    location_ids_repeated = np.repeat(location_ids, num_time_variables)
+    location_ids_repeated = np.tile(location_ids, num_time_variables)
     value_time = np.empty(num_records, dtype='datetime64[us]')
     variable_names = np.empty(num_records, dtype=object)
     units = np.empty(num_records, dtype=object)
@@ -110,7 +110,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
         'reference_time': start_datetime.date(),
         'configuration': configuration
     })
-
+    import pdb;pdb.set_trace()
     return timeseries_df
 
 
