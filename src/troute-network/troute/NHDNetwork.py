@@ -66,12 +66,22 @@ class NHDNetwork(AbstractNetwork):
         self._flowpath_dict = {}
         self._gl_climatology_df = pd.DataFrame()
         self._canadian_gage_link_df = pd.DataFrame(columns=['gages','link']).set_index('link')
-
+        self.crosswalk_nex_flowpath_poi()
         super().__init__()
 
         # Create empty dataframe for coastal_boundary_depth_df. This way we can check if
         # it exists, and only read in SCHISM data during 'assemble_forcings' if it doesn't
         self._coastal_boundary_depth_df = pd.DataFrame()
+        
+    def crosswalk_nex_flowpath_poi(self):
+        self._nexus_dict = dict()
+        for key, values in self._connections.items():
+            for value in values:
+                new_key = f"nex-{value}"
+                new_value = f"wb-{key}"
+                if new_key not in self.nexus_dict:
+                    self._nexus_dict[new_key] = []
+                self._nexus_dict[new_key].append(new_value)
 
     def extract_waterbody_connections(rows, target_col, waterbody_null=-9999):
         """Extract waterbody mapping from dataframe.
