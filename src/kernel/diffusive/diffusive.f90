@@ -221,9 +221,7 @@ contains
     double precision, dimension(:,:), allocatable :: used_lfrac    
     double precision, dimension(:,:,:), allocatable :: temp_q_ev_g
     double precision, dimension(:,:,:), allocatable :: temp_elv_ev_g    
-    open(unit=100, file='diffusive_results.txt', status='unknown')
-    open(unit=101, file='time_variable_check_diffusive_singletime.txt', status='unknown')
-    open(unit=102, file='chxsec_lookuptable.txt', status='unknown')
+
   !-----------------------------------------------------------------------------
   ! Time domain parameters
     dtini         = timestep_ar_g(1)    ! initial timestep duration [sec]
@@ -362,8 +360,8 @@ contains
     t                   = t0*60.0     ! [min]
     q_sk_multi          = 1.0
     oldQ                = iniq
-    newQ                = oldQ
-    qp                  = oldQ
+    !newQ                = oldQ
+    !qp                  = oldQ
     dimensionless_Cr    = -999
     dimensionless_Fo    = -999
     dimensionless_Fi    = -999
@@ -486,24 +484,6 @@ contains
     end do
   end do
 
-  !test 
-  i=1
-  j=3
-  do iel = 1, nel
-    write(102,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
-                 xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
-                 xsec_tab(11,iel,i,j) 
-  enddo
-  write(102,*)
-  i=2
-  j=5
-  do iel = 1, nel
-    write(102,*) xsec_tab(1,iel,i,j), xsec_tab(2,iel,i,j), xsec_tab(3,iel,i,j),xsec_tab(4,iel,i,j),&
-                 xsec_tab(5,iel,i,j), xsec_tab(6,iel,i,j), xsec_tab(9,iel,i,j),xsec_tab(10,iel,i,j),&
-                 xsec_tab(11,iel,i,j) 
-  enddo
-
-
   !-----------------------------------------------------------------------------
   ! Build time arrays for lateral flow, upstream boundary, downstream boundary,
   ! and tributary flow
@@ -548,9 +528,16 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation, channel area, and volume
+    do j = 1, nlinks 
+      ncomp = frnw_g(j, 1)   ! number of nodes in reach j  
+      do i=1, ncomp
+        oldQ(i,j) = max(oldQ(i,j), q_llm)
+      enddo
+    enddo
+
     do jm = nmstem_rch, 1, -1
       j     = mstem_frj(jm)  ! reach index
-      ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
+      ncomp = frnw_g(j, 1)   ! number of nodes in reach j       
       if (frnw_g(j, 2) < 0) then 
       
         ! Initial depth at bottom node of tail water reach        
@@ -597,8 +584,7 @@ contains
         ! Check that node elevation is not lower than bottom node.
         ! If node elevation is lower than bottom node elevation, correct.
         if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
-      end do
-      
+      end do      
     end do
 
   !-----------------------------------------------------------------------------
@@ -697,6 +683,7 @@ contains
               tf0 = t !+  dtini / 60
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
             end if
+
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch           
           end do        
@@ -805,10 +792,9 @@ contains
       if (mod(t,30.)==0.) then
         print*, "diffusive simulation time in minute=", t
       endif
-      write(101,*) "out", t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
+
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
-        write(101,*) "in", t0*60., tfin*60., saveInterval, t,  mod((t - t0 * 60.) * 60., saveInterval)
         do jm = 1, nmstem_rch
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -816,7 +802,6 @@ contains
             q_ev_g  (ts_ev + 1, i, j)   = newQ(i, j)
             elv_ev_g(ts_ev + 1, i, j)   = newY(i, j)
             depth_ev_g(ts_ev + 1, i, j) = elv_ev_g(ts_ev + 1, i, j) - z(i, j)
-            write(100,*) t, i, j, newQ(i,j), newY(i, j), newY(i, j) - z(i, j)
           end do
           
           !* water elevation for tributaries flowing into the mainstem in the middle or at the upper end
@@ -1816,8 +1801,6 @@ contains
     allocate(newdKdA(nel))
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
-    open(unit=10, file='lookupTable_naturalxsec.txt', status='unknown')
-    open(unit=11, file='z_naturalxsec.txt', status='unknown')
 
     f2m            =   1.0
     maxTableLength = size_bathy(idx_node, idx_reach) + 2 ! 2 is added to count for a vertex on each infinite vertical wall on either side.
@@ -2051,21 +2034,7 @@ contains
       xsec_tab(11,iel, idx_node, idx_reach)     =   compoundSKK(iel)
     end do
 
-    do iel=1, nel, 249
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(1, iel, idx_node, idx_reach)
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(2, iel, idx_node, idx_reach)    
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(3, iel, idx_node, idx_reach)
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(4, iel, idx_node, idx_reach)  
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(5, iel, idx_node, idx_reach)
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(6, iel, idx_node, idx_reach)        
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(7, iel, idx_node, idx_reach)
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(8, iel, idx_node, idx_reach)    
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(9, iel, idx_node, idx_reach)
-      write(10,*) idx_node, idx_reach, iel, xsec_tab(11,iel, idx_node, idx_reach)
-    enddo
-
     z(idx_node, idx_reach)  =   el_min
-    write(11,*) idx_node, idx_reach, z(idx_node, idx_reach)
 
     deallocate(el1, a1, peri1, redi1, redi1All)
     deallocate(conv1, tpW1, equiv_mann)
@@ -2174,8 +2143,7 @@ contains
     allocate(compoundSKK(nel), elev(nel))
     allocate(i_start(nel), i_end(nel))
     allocate(totalNodes(3))
-    open(unit=1, file='lookupTable_synch.txt', status='unknown')
-    open(unit=2, file='z_synch.txt', status='unknown')
+
     f2m = 1.0 ! conversion from feet to meter (actually using meter so no conversion necessary for now)
     
     leftBnkX   = leftBnkX_given
@@ -2468,21 +2436,7 @@ contains
       xsec_tab(11,j, k, num_reach) = compoundSKK(j)
     end do
 
-    do j=1, nel, 249
-      write(1,*) k, num_reach, j, xsec_tab(1, j, k, num_reach)
-      write(1,*) k, num_reach, j, xsec_tab(2, j, k, num_reach)    
-      write(1,*) k, num_reach, j, xsec_tab(3, j, k, num_reach)
-      write(1,*) k, num_reach, j, xsec_tab(4, j, k, num_reach)  
-      write(1,*) k, num_reach, j, xsec_tab(5, j, k, num_reach)
-      write(1,*) k, num_reach, j, xsec_tab(6, j, k, num_reach)        
-      write(1,*) k, num_reach, j, xsec_tab(7, j, k, num_reach)
-      write(1,*) k, num_reach, j, xsec_tab(8, j, k, num_reach)    
-      write(1,*) k, num_reach, j, xsec_tab(9, j, k, num_reach)
-      write(1,*) k, num_reach, j, xsec_tab(11, j, k, num_reach)
-    enddo
-
     z(k, num_reach) = el_min
-    write(2,*) k, num_reach, z(k, num_reach)
 
     deallocate(el1, a1, peri1, redi1, redi1All)
     deallocate(conv1, tpW1, diffArea, newI1, diffPere)
