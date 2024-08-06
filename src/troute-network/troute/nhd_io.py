@@ -2076,6 +2076,9 @@ def write_flowveldepth_csv_pkl(stream_output_directory, file_name,
     # Concatenate all temporary DataFrames vertically
     df = pd.concat(df_list)
     df.index.name = 'feature_id'
+    
+    df['current_time'] = pd.to_datetime(df['t0']) + pd.to_timedelta(df['time'])
+    df = df[['current_time', 'flow', 'velocity', 'depth', 'nudge']]
 
     # File format handling
     file_format = file_name.split('.')[-1]
