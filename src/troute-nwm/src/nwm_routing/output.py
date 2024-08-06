@@ -65,7 +65,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
     - timeseries_df (DataFrame): Converted timeseries data frame
     '''
     nex_id = {}
-    if prefix_ids == 'nex':
+    if prefix_ids == 'nex' and nexus_dict:
         for key, val in nexus_dict.items():
             nex_key = int(key.split('-')[-1])
             nex_id[nex_key] = [int(v.split('-')[-1]) for v in val] 
@@ -78,7 +78,10 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
     # Prepare the location_id with prefix
     df.index.name = 'location_id'
     df.reset_index(inplace=True)
-    location_ids = prefix_ids + '-' + df['location_id'].astype(str)
+    if nexus_dict:
+        location_ids = prefix_ids + '-' + df['location_id'].astype(str)
+    else:
+        location_ids = df['location_id'].astype(str)    
 
     # Flatten the dataframe using NumPy
     num_locations = df.shape[0]
