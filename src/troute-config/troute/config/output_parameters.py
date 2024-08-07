@@ -53,8 +53,8 @@ class ParquetOutput(BaseModel):
     # NOTE: required if writing results to parquet
     parquet_output_folder: Optional[DirectoryPath] = None
     parquet_output_segments: Optional[List[str]] = None
-    configuration: Optional[str] = None
-    prefix_ids: Optional[str] = None
+    configuration: str = 'None'
+    prefix_ids: str = 'wb-'
 
 
 class ChrtoutOutput(BaseModel):
