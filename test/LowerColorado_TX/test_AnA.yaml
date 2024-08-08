@@ -31,7 +31,7 @@ compute_parameters:
     compute_kernel         : V02-structured
     assume_short_ts        : True
     subnetwork_target_size : 10000
-    cpu_pool               : 36
+    cpu_pool               : 1
     restart_parameters:
         #----------
         start_datetime: 2021-08-23_13:00
