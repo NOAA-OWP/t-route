@@ -54,7 +54,7 @@ class ParquetOutput(BaseModel):
     parquet_output_folder: Optional[DirectoryPath] = None
     parquet_output_segments: Optional[List[str]] = None
     configuration: str = 'None'
-    prefix_ids: str = 'wb-'
+    prefix_ids: str = 'wb'
 
 
 class ChrtoutOutput(BaseModel):
