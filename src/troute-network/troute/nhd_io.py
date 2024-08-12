@@ -1224,7 +1224,13 @@ def get_obs_from_timeslices(
         t = [out[2] for out in result]
         qual = [out[3] for out in result]
 
-    if len(discharge) != 0 and len(stns) != 0 and len(t) != 0:     
+    all_empty = all(len(s)==0 for s in stns)
+
+    if (all_empty):
+        LOG.debug(f'{crosswalk_gage_field} DataFrames is empty, check timeslice files.')
+        return pd.DataFrame() 
+
+    if (not all_empty):
 
         stationIds = [np.apply_along_axis(''.join, 1, stn.astype(str)) for stn in stns]
         stationIds = [np.char.strip(stn) for stn in stationIds]
