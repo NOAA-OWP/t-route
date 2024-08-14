@@ -650,8 +650,6 @@ contains
         if (j == mstem_frj(1)) then 
           call calculateDT(t0, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
         end if        
-        !test
-        dtini = dtini_given   
 
         ! estimate lateral flow at current time t
         do i = 1, ncomp - 1
@@ -1558,8 +1556,8 @@ contains
     diffusivity(1:ncomp, j) = sum(diffusivity2(1:ncomp)) / ncomp
     
     do i = 1, ncomp
-      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
-      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
+      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm 
+      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm 
     end do
 
   end subroutine mesh_diffusive_backward
@@ -2707,8 +2705,6 @@ contains
       y2     = yarr(irow+1)
       y      = LInterpol(x1, y1, x2, y2, x)
       intp_y = y
-      !test
-      intp_y = y1
 
     end function intp_y
 

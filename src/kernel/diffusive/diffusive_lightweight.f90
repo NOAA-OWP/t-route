@@ -563,7 +563,7 @@ contains
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
 
         call mesh_diffusive_forward(t, saveInterval, j)
-        
+
       end do  ! end of j loop for predictor
 
       !+-------------------------------------------------------------------------
@@ -1177,8 +1177,8 @@ contains
     diffusivity(1:ncomp, j) = sum(diffusivity2(1:ncomp)) / ncomp
     
     do i = 1, ncomp
-      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
-      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
+      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm 
+      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm 
     end do
     
   end subroutine mesh_diffusive_backward
@@ -1269,8 +1269,8 @@ contains
     diffusivity(1:ncomp, j) = sum(diffusivity2(1:ncomp)) / ncomp
     
     do i = 1, ncomp
-      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
-      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
+      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm 
+      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm 
     end do
 
   end subroutine compute_only_celerity_diffusivity
