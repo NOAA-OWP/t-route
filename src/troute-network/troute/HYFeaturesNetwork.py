@@ -36,7 +36,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
 
     # patterns for the layers we want to find
     layer_patterns = {
-        'flowpaths': r'flow[-_]?paths?',
+        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
         'flowpath_attributes': r'flow[-_]?path[-_]?attributes?',
         'lakes': r'lakes?',
         'nexus': r'nexus?',
