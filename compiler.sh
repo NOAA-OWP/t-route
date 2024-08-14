@@ -70,6 +70,7 @@ if  [[ "$build_diffusive_tulane_kernel" == true ]]; then
   make pychxsec_lookuptable.o
   make diffusive_lightweight.o
   make pydiffusive_lightweight.o
+  make precis.mod
   make install || exit
 fi
 

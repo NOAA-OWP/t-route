@@ -1,6 +1,7 @@
 !-------------------------------------------------------------------------------
 module diffusive_lightweight
 
+  use precis
   IMPLICIT NONE
   
 !-----------------------------------------------------------------------------
@@ -16,8 +17,8 @@ module diffusive_lightweight
 !-----------------------------------------------------------------------------
   
   ! Module constants
-  double precision, parameter :: grav = 9.81
-  double precision, parameter :: TOLERANCE = 1e-8
+  real(prec), parameter :: grav = 9.81
+  real(prec), parameter :: TOLERANCE = 1e-8
   
   ! Module variables
   integer :: nlinks
@@ -30,36 +31,36 @@ module diffusive_lightweight
   integer, dimension(:),   allocatable :: mstem_frj    
   integer, dimension(:),   allocatable :: usgs_da_reach  
   integer, dimension(:,:), allocatable :: frnw_g
-  double precision :: dtini, dxini, cfl, minDx, maxCelerity,  theta
-  double precision :: C_llm, D_llm, D_ulm, DD_ulm, DD_llm, q_llm, so_llm
-  double precision :: dt_qtrib
-  double precision :: dmyi, dmyj
-  double precision :: dtini_min
-  double precision, dimension(:),       allocatable :: eei, ffi, exi, fxi, qcx, diffusivity2, celerity2
-  double precision, dimension(:),       allocatable :: elevTable, areaTable, skkkTable
-  double precision, dimension(:),       allocatable :: pereTable, rediTable
-  double precision, dimension(:),       allocatable :: convTable, topwTable
-  double precision, dimension(:),       allocatable :: currentSquareDepth
-  double precision, dimension(:),       allocatable :: tarr_qtrib, varr_qtrib
-  double precision, dimension(:),       allocatable :: tarr_da, varr_da
-  double precision, dimension(:),       allocatable :: area, depth, co, froud, courant
-  double precision, dimension(:,:),     allocatable :: bo, dx
-  double precision, dimension(:,:),     allocatable :: areap, qp, z, sk
-  double precision, dimension(:,:),     allocatable :: celerity, diffusivity, qpx  
-  double precision, dimension(:,:),     allocatable :: pere, oldQ, newQ, oldArea, newArea, oldY, newY  
-  double precision, dimension(:,:),     allocatable :: volRemain  
-  double precision, dimension(:,:),     allocatable :: lateralFlow
-  double precision, dimension(:,:),     allocatable :: qtrib 
-  double precision, dimension(:,:),     allocatable :: usgs_da
-  double precision, dimension(:,:,:,:), allocatable :: xsec_tab
+  real(prec) :: dtini, dxini, cfl, minDx, maxCelerity,  theta
+  real(prec) :: C_llm, D_llm, D_ulm, DD_ulm, DD_llm, q_llm, so_llm
+  real(prec) :: dt_qtrib
+  real(prec) :: dmyi, dmyj
+  real(prec) :: dtini_min
+  real(prec), dimension(:),       allocatable :: eei, ffi, exi, fxi, qcx, diffusivity2, celerity2
+  real(prec), dimension(:),       allocatable :: elevTable, areaTable, skkkTable
+  real(prec), dimension(:),       allocatable :: pereTable, rediTable
+  real(prec), dimension(:),       allocatable :: convTable, topwTable
+  real(prec), dimension(:),       allocatable :: currentSquareDepth
+  real(prec), dimension(:),       allocatable :: tarr_qtrib, varr_qtrib
+  real(prec), dimension(:),       allocatable :: tarr_da, varr_da
+  real(prec), dimension(:),       allocatable :: area, depth, co, froud, courant
+  real(prec), dimension(:,:),     allocatable :: bo, dx
+  real(prec), dimension(:,:),     allocatable :: areap, qp, z, sk
+  real(prec), dimension(:,:),     allocatable :: celerity, diffusivity, qpx  
+  real(prec), dimension(:,:),     allocatable :: pere, oldQ, newQ, oldArea, newArea, oldY, newY  
+  real(prec), dimension(:,:),     allocatable :: volRemain  
+  real(prec), dimension(:,:),     allocatable :: lateralFlow
+  real(prec), dimension(:,:),     allocatable :: qtrib 
+  real(prec), dimension(:,:),     allocatable :: usgs_da
+  real(prec), dimension(:,:,:,:), allocatable :: xsec_tab
   
 contains
 
   subroutine compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g,                &
-                                                mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, frnw_col, frnw_ar_g, qlat_g, &
-                                                dbcd_g, qtrib_g, paradim, para_ar_g, usgs_da_g, usgs_da_reach_g,         &
+                                                mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, iniqpx, frnw_col, frnw_ar_g, &
+                                                qlat_g, dbcd_g, qtrib_g, paradim, para_ar_g, usgs_da_g, usgs_da_reach_g, &
                                                 nrow_chxsec_lookuptable, chxsec_lookuptable, z_adj, t_start, t_end,      & 
-                                                q_next_out_time, elv_next_out_time, depth_next_out_time)                                    
+                                                q_next_out_time, elv_next_out_time, depth_next_out_time, qpx_next_out_time)                                    
                    
 
     IMPLICIT NONE
@@ -113,22 +114,24 @@ contains
     integer, intent(in) ::  nrow_chxsec_lookuptable
     integer, dimension(nrch_g),           intent(in) :: usgs_da_reach_g
     integer, dimension(nrch_g, frnw_col), intent(in) :: frnw_ar_g
-    double precision, intent(in) :: t_start   
-    double precision, intent(in) :: t_end    
-    double precision, dimension(paradim ),                     intent(in) :: para_ar_g
-    double precision, dimension(:)       ,                     intent(in) :: timestep_ar_g(10)
-    double precision, dimension(nts_db_g),                     intent(in) :: dbcd_g
-    double precision, dimension(mxncomp_g,   nrch_g),          intent(in) :: dx_ar_g  
-    double precision, dimension(mxncomp_g,   nrch_g),          intent(in) :: iniq
-    double precision, dimension(mxncomp_g,   nrch_g),          intent(in) :: inidepth
-    double precision, dimension(nts_qtrib_g, nrch_g),          intent(in) :: qtrib_g 
-    double precision, dimension(nts_da_g,    nrch_g),          intent(in) :: usgs_da_g
-    double precision, dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in) :: qlat_g
-    double precision, dimension(mxncomp_g, nrch_g),            intent(in) :: z_adj
-    double precision, dimension(11, nrow_chxsec_lookuptable, mxncomp_g, nrch_g), intent(in) :: chxsec_lookuptable
-    double precision, dimension(mxncomp_g, nrch_g),            intent(out) :: q_next_out_time
-    double precision, dimension(mxncomp_g, nrch_g),            intent(out) :: elv_next_out_time
-    double precision, dimension(mxncomp_g, nrch_g),            intent(out) :: depth_next_out_time
+    real(prec), intent(in) :: t_start   
+    real(prec), intent(in) :: t_end    
+    real(prec), dimension(paradim ),                     intent(in) :: para_ar_g
+    real(prec), dimension(:)       ,                     intent(in) :: timestep_ar_g(10)
+    real(prec), dimension(nts_db_g),                     intent(in) :: dbcd_g
+    real(prec), dimension(mxncomp_g,   nrch_g),          intent(in) :: dx_ar_g  
+    real(prec), dimension(mxncomp_g,   nrch_g),          intent(in) :: iniq
+    real(prec), dimension(mxncomp_g,   nrch_g),          intent(in) :: inidepth
+    real(prec), dimension(mxncomp_g,   nrch_g),          intent(in) :: iniqpx
+    real(prec), dimension(nts_qtrib_g, nrch_g),          intent(in) :: qtrib_g 
+    real(prec), dimension(nts_da_g,    nrch_g),          intent(in) :: usgs_da_g
+    real(prec), dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in) :: qlat_g
+    real(prec), dimension(mxncomp_g, nrch_g),            intent(in) :: z_adj
+    real(prec), dimension(11, nrow_chxsec_lookuptable, mxncomp_g, nrch_g), intent(in) :: chxsec_lookuptable
+    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: q_next_out_time
+    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: elv_next_out_time
+    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: depth_next_out_time
+    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: qpx_next_out_time
 
   ! Local variables    
     integer :: ncomp
@@ -149,35 +152,39 @@ contains
     integer :: ri, rj, oi, oj
     integer :: nlnk, lnk
     integer :: nusrch
+    integer :: initial_depth_flag 
+    integer :: n_decimal_places 
     integer, dimension(:), allocatable   :: dmy_frj
-    double precision :: x
-    double precision :: saveInterval, width
-    double precision :: maxCourant
-    double precision :: dtini_given, dtini_divisor
-    double precision :: timesDepth
-    double precision :: t
-    double precision :: tfin
-    double precision :: t0
-    double precision :: q_sk_multi
-    double precision :: maxCelDx
-    double precision :: slope
-    double precision :: y_norm
-    double precision :: temp
-    double precision :: dt_ql
-    double precision :: dt_ub
-    double precision :: dt_db
-    double precision :: dt_da
-    double precision :: wdepth
-    double precision :: q_usrch
-    double precision :: tf0
-    double precision :: convey
-    double precision :: equiv_one
-    double precision :: mindepth_nstab
-    double precision, dimension(:), allocatable :: tarr_ql
-    double precision, dimension(:), allocatable :: varr_ql
-    double precision, dimension(:), allocatable :: tarr_db
-    double precision, dimension(:), allocatable :: varr_db
-    double precision, dimension(:), allocatable :: dbcd
+    real(prec) :: x
+    real(prec) :: saveInterval, width
+    real(prec) :: maxCourant
+    real(prec) :: dtini_given, dtini_divisor
+    real(prec) :: timesDepth
+    real(prec) :: t
+    real(prec) :: tfin
+    real(prec) :: t0
+    real(prec) :: q_sk_multi
+    real(prec) :: maxCelDx
+    real(prec) :: slope
+    real(prec) :: y_norm
+    real(prec) :: temp
+    real(prec) :: dt_ql
+    real(prec) :: dt_ub
+    real(prec) :: dt_db
+    real(prec) :: dt_da
+    real(prec) :: wdepth
+    real(prec) :: q_usrch
+    real(prec) :: tf0
+    real(prec) :: convey
+    real(prec) :: equiv_one
+    real(prec) :: mindepth_nstab
+    real(prec), dimension(:), allocatable :: tarr_ql
+    real(prec), dimension(:), allocatable :: varr_ql
+    real(prec), dimension(:), allocatable :: tarr_db
+    real(prec), dimension(:), allocatable :: varr_db
+    real(prec), dimension(:), allocatable :: dbcd
+    real(prec), dimension(:), allocatable :: temp_q
+    real(prec), dimension(:), allocatable :: temp_elev
 
   !-----------------------------------------------------------------------------
   ! Time domain parameters
@@ -282,7 +289,6 @@ contains
     x                   = 0.0
     newQ                = -999
     newY                = -999
-    !t                   = t0*60.0     ! [min]
     t                   = t_start*60.0 ![min]
     q_sk_multi          = 1.0
     oldQ                = iniq
@@ -295,19 +301,16 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Identify mainstem reaches and list their ids in an array
-
-    ! Create a dummy array containing mainstem reaches where diffusive wave is applied.
     nmstem_rch = 0
     do j = 1, nlinks
-      !if (frnw_g(j,3) >= 1) then  ! mainstem reach identification
-      nusrch = frnw_g(j,3)         ! the number of upstream reaches
-      if (frnw_g(j, 3+nusrch+1)==555) then ! 555 indicate diffusive reach while -555 already routed reach
+      nusrch = frnw_g(j,3)                   ! the number of upstream reaches
+      if (frnw_g(j, 3+nusrch+1)==555) then   ! 555 indicate diffusive reach while -555 already routed reach
         nmstem_rch          = nmstem_rch + 1
         dmy_frj(nmstem_rch) = j
       end if
     end do
 
-    ! allocate and populate array for upstream reach ids
+  ! allocate and populate array for upstream reach ids
     allocate (mstem_frj(nmstem_rch))
     do jm = 1, nmstem_rch
       mstem_frj(jm) = dmy_frj(jm)
@@ -316,11 +319,10 @@ contains
 
   !-----------------------------------------------------------------------------
   ! create dx array from dx_ar_g and determine minimum dx.
-
     dx    = 0.
     minDx = 1e10
 
-    do jm = 1, nmstem_rch !* mainstem reach only
+    do jm = 1, nmstem_rch !* mainstem reach (=diffusive reach) only
       j = mstem_frj(jm)
       ncomp = frnw_g(j, 1)
       do i = 1, ncomp-1
@@ -329,10 +331,8 @@ contains
       minDx = min(minDx, minval(dx(1:ncomp-1, j)))
     end do
     
-  !-----------------------------------------------------------------------------
-  ! Build time arrays for lateral flow, upstream boundary, downstream boundary,
-  ! and tributary flow
-
+  !------------------------------------------------------------------------------------------------
+  ! Build time arrays for lateral flow, upstream boundary, downstream boundary,  and tributary flow
     ! time step series for lateral flow. 
     ! ** ql from t-route starts from the first time step. For example, when t0 and tfin = 0 and 2 hrs with dt=300 sec,
     ! ** ql values from t-route starts at 5, 10, 15, ..., 120 min.
@@ -358,7 +358,20 @@ contains
         tarr_db(n) = t0 * 60.0 + dt_db * &
                       real(n-1,KIND(dt_db)) / 60.0 ! [min]                 
     end do
-    
+
+    do jm = nmstem_rch, 1, -1
+      j     = mstem_frj(jm)  ! reach index
+      ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
+      if (frnw_g(j, 2) < 0) then 
+        if (dsbc_option == 1) then
+          ! use tailwater water depth value as downstream boundary condition  
+          do n = 1, nts_db_g
+            varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+          end do
+        endif
+      endif
+    enddo
+        
     ! time step series for data assimilation for discharge at bottom node of a related reach
     do n=1, nts_da
         tarr_da(n) = t0 * 60.0 + dt_da * &
@@ -367,21 +380,42 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Initialize water surface elevation
-    if (any(inidepth==0.0)) then
+    initial_depth_flag = 0
+    !check if initial water depth needs to be computed here or not
+    do jm = 1, nmstem_rch   ! loop over mainstem reaches [upstream-to-downstream]
+      j     = mstem_frj(jm) ! reach index
+      ncomp = frnw_g(j,1)   ! number of nodes in reach j
+      do i=1, ncomp
+        if (inidepth(i,j).le.0.0) then
+          initial_depth_flag = 1
+          exit
+        endif
+      enddo
+    enddo
+    
+    do j = 1, nlinks 
+      ncomp = frnw_g(j, 1)   ! number of nodes in reach j  
+      do i=1, ncomp
+        oldQ(i,j) = max(oldQ(i,j), q_llm)
+        qp(i,j)   = oldQ(i,j)
+      enddo
+    enddo
+    
+    if (initial_depth_flag==1) then     
       ! compute initial water elevation when it is cold start or previously computed values are not provided. 
       do jm = nmstem_rch, 1, -1
         j     = mstem_frj(jm)  ! reach index
         ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
-        if (frnw_g(j, 2) < 0) then 
         
+        if (frnw_g(j, 2) < 0) then         
           ! Initial depth at bottom node of tail water reach        
           if (dsbc_option == 1) then
           ! use tailwater downstream boundary observations
           ! needed for coastal coupling
           ! **** COMING SOON **** 
-            do n = 1, nts_db_g
-              varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
-            end do
+            !do n = 1, nts_db_g
+            !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
+            !end do
             !t              = t0 * 60.0
             t              = t_start * 60.0
             oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
@@ -405,7 +439,8 @@ contains
         ! compute newY(i, j) for i=1, ncomp-1 with the given newY(ncomp, j)
         ! ** At initial time, oldY(i,j) values at i < ncomp, used in subroutine rtsafe, are not defined.
         ! ** So, let's assume the depth values of nodes beyond the bottom node of a reach equal to depth of the bottom node.
-        wdepth = newY(ncomp, j) - z(ncomp, j)
+        oldY(ncomp, j) = newY(ncomp, j)
+        wdepth         = newY(ncomp, j) - z(ncomp, j)
         do i = 1, ncomp -1
           oldY(i,j) = wdepth + z(i, j)      
         end do
@@ -414,11 +449,10 @@ contains
 
         do i = 1,ncomp      
           ! copy computed initial depths to initial depth array for first timestep
-          oldY(i, j) = newY(i, j)
-          
+          oldY(i, j) = newY(i, j)          
           ! Check that node elevation is not lower than bottom node.
           ! If node elevation is lower than bottom node elevation, correct.
-          if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
+          !if (oldY(i, j) .lt. oldY(ncomp, nlinks)) oldY(i, j) = oldY(ncomp, nlinks)
         end do              
       end do
     else
@@ -434,17 +468,22 @@ contains
 
   !-----------------------------------------------------------------------------
   ! With initial flow and depth, identify the maximum calculated celerity/dx ratio 
-  ! maxCelDx, which is used to determine the duration of the next timestep    
+  ! maxCelDx, which is used to determine the duration of the next timestep. Also,
+  ! compute celerity and diffusivity using initial flow and depth values, which will
+  ! be used for computing flow at the next time step.    
     do jm = nmstem_rch, 1, -1
       j     = mstem_frj(jm)  ! reach index
       ncomp = frnw_g(j, 1)   ! number of nodes in reach j    
+      allocate(temp_q(ncomp), temp_elev(ncomp))
       do i=1, ncomp
-        newY(i,j) = oldY(i,j)
-        qp(i,j) = oldQ(i,j)
+        temp_elev(i) = oldY(i,j)  
+        temp_q(i)    = oldQ(i,j)
       enddo
       
-      call mesh_diffusive_backward(t, saveInterval, j)
+      call compute_only_celerity_diffusivity(t, ncomp, j, temp_q, temp_elev) 
 
+      deallocate(temp_q, temp_elev)
+      
       if (jm == 1) then
         maxCelDx    = 0.
         do i = 1, nmstem_rch
@@ -454,17 +493,16 @@ contains
         end do
       endif
     end do
-
+    
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
-    qpx                     = 0.
-    width                   = 100.
+    qpx                     = iniqpx  !0.
     t                       = t_start*60.0 ![minuntes]
 
   !-----------------------------------------------------------------------------
   ! Ordered network routing computations
     do while ( t < t_end * 60.)
-      !timestep = timestep + 1 ! advance timestep
+
       !+-------------------------------------------------------------------------
       !+                             PREDICTOR
       !+
@@ -478,7 +516,7 @@ contains
         ! Timestep duration is selected to maintain numerical stability
         if (j == mstem_frj(1)) then 
           call calculateDT(t_start, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
-        end if                                        
+        end if                         
 
         ! estimate lateral flow at current time t
         do i = 1, ncomp - 1
@@ -498,12 +536,12 @@ contains
           newQ(1, j) = 0.0
           do k = 1, frnw_g(j, 3)          ! loop over upstream connected reaches
             usrchj = frnw_g(j, 3 + k) 
-            if (any(mstem_frj == usrchj)) then
-
+            if (any(mstem_frj == usrchj)) then              
+              
               ! inflow from upstream mainstem reach's bottom node
               q_usrch = newQ(frnw_g(usrchj, 1), usrchj)
             else
-
+              
               ! inflow from upstream tributary reach
               do n = 1, nts_qtrib_g
                 varr_qtrib(n) = qtrib_g(n, usrchj)
@@ -511,6 +549,7 @@ contains
               tf0 = t  !+  dtini / 60.
               q_usrch = intp_y(nts_qtrib_g, tarr_qtrib, varr_qtrib, tf0)
             end if
+
             ! add upstream flows to reach head
             newQ(1,j)= newQ(1,j) + q_usrch           
           end do        
@@ -524,9 +563,9 @@ contains
         newQ(1, j) = newQ(1, j) + lateralFlow(1, j) * dx(1, j)
 
         call mesh_diffusive_forward(t, saveInterval, j)
-
+        
       end do  ! end of j loop for predictor
-      
+
       !+-------------------------------------------------------------------------
       !+                             CORRECTOR
       !+
@@ -596,7 +635,7 @@ contains
         j     = mstem_frj(jm)
         ncomp = frnw_g(j,1)
         do i = 1, ncomp
-!          froud(i) = abs(newQ(i, j)) / sqrt(grav * newArea(i, j) ** 3.0 / bo(i, j))
+          !froud(i) = abs(newQ(i, j)) / sqrt(grav * newArea(i, j) ** 3.0 / bo(i, j))
           if (i < ncomp) then
             courant(i) = (newQ(i, j) + newQ(i+1, j)) / (newArea(i, j) + newArea(i+1, j)) * dtini / dx(i, j)
           endif
@@ -623,6 +662,7 @@ contains
             q_next_out_time(i, j)     = newQ(i, j)
             elv_next_out_time(i, j)   = newY(i, j)
             depth_next_out_time(i, j) = newY(i, j) - z(i, j)
+            qpx_next_out_time(i, j)   = qpx(i, j)
           end do
         end do
       end if
@@ -673,13 +713,13 @@ contains
   !-----------------------------------------------------------------------------
 
   ! Subroutine arguments
-    double precision, intent(in) :: initialTime       ! [sec]
-    double precision, intent(in) :: time              ! [hrs]
-    double precision, intent(in) :: saveInterval      ! [sec]
-    double precision, intent(in) :: tfin              ! [hrs]
-    double precision, intent(in) :: given_dt          ! [sec]
-    double precision, intent(in) :: maxAllowCourantNo ! = cfl
-    double precision, intent(in) :: max_C_dx          ! = maxCelDx
+    real(prec), intent(in) :: initialTime       ! [sec]
+    real(prec), intent(in) :: time              ! [hrs]
+    real(prec), intent(in) :: saveInterval      ! [sec]
+    real(prec), intent(in) :: tfin              ! [hrs]
+    real(prec), intent(in) :: given_dt          ! [sec]
+    real(prec), intent(in) :: maxAllowCourantNo ! = cfl
+    real(prec), intent(in) :: max_C_dx          ! = maxCelDx
       
   ! Local variables
     integer :: a
@@ -723,24 +763,24 @@ contains
 
     ! Subroutine Arguments
       integer, intent(in) :: j
-      double precision, intent(in) :: t
-      double precision, intent(in) :: saveInterval
+      real(prec), intent(in) :: t
+      real(prec), intent(in) :: saveInterval
     
     ! Local variables
       integer :: ncomp
       integer :: i, irow, flag_da, n
-      double precision :: a1, a2, a3, a4
-      double precision :: b1, b2, b3, b4
-      double precision :: dd1, dd2, dd3, dd4
-      double precision :: h1, h2, h3, h4
-      double precision :: allqlat
-      double precision :: qy, qxy, qxxy, qxxxy
-      double precision :: ppi, qqi, rri, ssi, sxi
-      double precision :: cour, cour2
-      double precision :: alpha
-      double precision :: currentQ
-      double precision :: eei_ghost, ffi_ghost, exi_ghost
-      double precision :: fxi_ghost, qp_ghost, qpx_ghost
+      real(prec) :: a1, a2, a3, a4
+      real(prec) :: b1, b2, b3, b4
+      real(prec) :: dd1, dd2, dd3, dd4
+      real(prec) :: h1, h2, h3, h4
+      real(prec) :: allqlat
+      real(prec) :: qy, qxy, qxxy, qxxxy
+      real(prec) :: ppi, qqi, rri, ssi, sxi
+      real(prec) :: cour, cour2
+      real(prec) :: alpha
+      real(prec) :: currentQ
+      real(prec) :: eei_ghost, ffi_ghost, exi_ghost
+      real(prec) :: fxi_ghost, qp_ghost, qpx_ghost
     !-----------------------------------------------------------------------------
     !* change 20210228: All qlat to a river reach is applied to the u/s boundary
     !* Note: lateralFlow(1,j) is already added to the boundary
@@ -819,7 +859,6 @@ contains
         ffi(i) = ( ssi - ppi * ffi(i-1) ) / ( ppi * eei(i-1) + qqi )
         exi(i) = -1.0 * rri / ( ppi * exi(i-1) + qqi )
         fxi(i) = ( sxi - ppi * fxi(i-1) ) / ( ppi * exi(i-1) + qqi )
-        
       end do
       
       ! Ghost point calculation
@@ -905,14 +944,14 @@ contains
       do i = ncomp-1, 1, -1
         qp(i, j)  = eei(i) * qp(i+1, j) + ffi(i)
         qpx(i, j) = exi(i) * qpx(i+1, j) + fxi(i)
-     end do
+      end do
 
       ! when a reach hasn't been applied to DA 
      ! if ((usgs_da_reach(j) == 0).or.(flag_da == 0)) then
        qp(1, j) = newQ(1, j)
        qp(1, j) = qp(1, j) + allqlat
      ! endif
-    
+
       do i = 1, ncomp
         if (abs(qp(i, j)) < q_llm) then
           qp(i, j) = q_llm    
@@ -923,6 +962,7 @@ contains
       do i = 1, ncomp
         newQ(i, j) = qp(i, j)
       end do
+
     ! ============== DEBUG to find unstable flow calcls =================
     !        do i= ncomp, 1, -1
     !            if (abs(qp(i,j)) .gt. 2E4) then
@@ -970,20 +1010,20 @@ contains
 
   ! Subroutine arguments
     integer, intent(in) :: j
-    double precision, intent(in) :: t
-    double precision, intent(in) :: saveInterval
+    real(prec), intent(in) :: t
+    real(prec), intent(in) :: saveInterval
       
   ! Subroutine variables
     integer :: depthCalOk(mxncomp)
     integer :: i, ncomp  
     integer :: jj
-    double precision :: xt
-    double precision :: q_sk_multi, sfi
-    double precision :: vel, currentQ
-    double precision :: S_ncomp                             
-    double precision :: tempDepthi_1
-    double precision :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
-    double precision :: C_ulm
+    real(prec) :: xt
+    real(prec) :: q_sk_multi, sfi
+    real(prec) :: vel, currentQ
+    real(prec) :: S_ncomp                             
+    real(prec) :: tempDepthi_1
+    real(prec) :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
+    real(prec) :: C_ulm
 
   !-----------------------------------------------------------------------------
     ncomp = frnw_g(j, 1)
@@ -1140,7 +1180,100 @@ contains
       if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
       if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
     end do
+    
   end subroutine mesh_diffusive_backward
+
+  subroutine compute_only_celerity_diffusivity(t, ncomp, j, temp_q, temp_elev) 
+
+    IMPLICIT NONE
+
+  !-----------------------------------------------------------------------------
+  ! Description:
+  !   Given flow and elevation values at all compute nodes, compute only celerity
+  !   and diffusivity
+  !
+  ! Method:
+  !   
+  !
+  ! Current Code Owner: NOAA-OWP, Inland Hydraulics Team
+  !
+  ! Code Description:
+  !   Language: Fortran 90.
+  !   This code is written to JULES coding standards v1.
+  !-----------------------------------------------------------------------------
+    integer, intent(in)    :: j
+    integer, intent(in)    :: ncomp
+    real(prec), intent(in) :: t
+    real(prec), dimension(ncomp), intent(in) :: temp_q, temp_elev
+      
+  ! Subroutine variables
+    integer :: i 
+    real(prec) :: q_sk_multi, sfi 
+    real(prec) :: C_ulm
+    real(prec) :: elev_val, q_val, conv_val, width_val, invmann_val 
+
+    q_sk_multi = 1.0   
+    
+    do i = 1, ncomp 
+      elevTable = xsec_tab(1,:,i,j)
+      convTable = xsec_tab(5,:,i,j)
+      areaTable = xsec_tab(2,:,i,j)
+      pereTable = xsec_tab(3,:,i,j)
+      topwTable = xsec_tab(6,:,i,j)
+      skkkTable = xsec_tab(11,:,i,j)
+
+      q_val    = temp_q(i)     !qp(i, j)           
+      elev_val = temp_elev(i)  !newY(i, j)      
+ 
+      ! Estimat conveyance by interpolation
+      currentSquareDepth = (elevTable - z(i, j)) ** 2.
+
+      call r_interpol(currentSquareDepth, convTable, nel, &
+                      (elev_val-z(i, j)) ** 2.0, conv_val) 
+                   
+      conv_val =q_sk_multi * conv_val
+      
+      ! Estimate width by interpolation
+      call r_interpol(elevTable, topwTable, nel, &
+                      elev_val, width_val)
+      
+      ! Estimate sk(i,j) by interpolation 
+      call r_interpol(elevTable, skkkTable, nel, &
+                      elev_val, invmann_val)
+
+      sfi = q_val* abs(q_val) / (conv_val ** 2.0)
+
+      ! Calculate celerity, diffusivity and velocity
+      celerity2(i)    = 5.0 / 3.0 * abs(sfi) ** 0.3 * &
+                          abs(q_val) ** 0.4 / width_val ** 0.4 &
+                          / (1. / (invmann_val * q_sk_multi)) ** 0.6
+
+      ! put upper limit on computed celerity to make sure internal temporal increment not being too small.
+      if (i.gt.1) then
+        C_ulm = cfl*dx(i-1,j)/dtini_min
+      else 
+        C_ulm = cfl*dx(i,j)/dtini_min
+      endif
+
+      if (celerity2(i).gt.C_ulm) then
+        celerity2(i) = C_ulm
+      endif
+        
+      diffusivity2(i) = abs(q_val) / 2.0 / width_val / abs(sfi)           
+    end do
+
+    celerity(1:ncomp, j) =  sum(celerity2(1:ncomp)) / ncomp
+    
+    if (celerity(1, j) < C_llm) celerity(1:ncomp,j) = C_llm
+    
+    diffusivity(1:ncomp, j) = sum(diffusivity2(1:ncomp)) / ncomp
+    
+    do i = 1, ncomp
+      if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm !!! Test
+      if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm !!! Test
+    end do
+
+  end subroutine compute_only_celerity_diffusivity
 
   function rtsafe(i, j, Q_cur, Q_ds, z_cur, z_ds, y_ds)
     
@@ -1162,16 +1295,16 @@ contains
 
     ! Subroutine arguments
     integer,          intent(in) :: i, j
-    double precision, intent(in) :: Q_cur, Q_ds, z_cur, z_ds, y_ds
+    real(prec), intent(in) :: Q_cur, Q_ds, z_cur, z_ds, y_ds
   
     ! Subroutine local variable
     integer,          parameter :: maxit = 40
-    double precision, parameter :: xacc = 1e-4
+    real(prec), parameter :: xacc = 1e-4
     integer                     :: iter
     integer                     :: xcolID, ycolID
-    double precision            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
-    double precision            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
-    double precision            :: rtsafe    
+    real(prec)            :: x1, x2, df, dxx, dxold, f, fh, fl, temp, xh, xl
+    real(prec)            :: y_norm, y_ulm_multi, y_llm_multi, elv_norm, y_old
+    real(prec)            :: rtsafe    
     
     y_ulm_multi = 2.0
     y_llm_multi = 0.1
@@ -1265,13 +1398,13 @@ contains
 
     ! subroutine arguments
     integer,          intent(in)  :: i, j
-    double precision, intent(in)  :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
-    double precision, intent(out) :: f, df
+    real(prec), intent(in)  :: Q_cur, Q_ds, z_cur, z_ds, y_cur, y_ds
+    real(prec), intent(out) :: f, df
     
     ! subroutine local variables
     integer          :: xcolID, ycolID
-    double precision :: elv_cur, elv_ds, conv_cur, conv_ds, sf_cur, sf_ds, slope
-    double precision :: dKdA_cur, topw_cur
+    real(prec) :: elv_cur, elv_ds, conv_cur, conv_ds, sf_cur, sf_ds, slope
+    real(prec) :: dKdA_cur, topw_cur
 
     xcolID  = 1
     ! f(y_cur): function of y at the current node
@@ -1300,7 +1433,7 @@ contains
 
   end subroutine funcd_diffdepth
 
-  double precision function intp_xsec_tab(i, j, nrow, xcolID, ycolID, x)
+  real(prec) function intp_xsec_tab(i, j, nrow, xcolID, ycolID, x)
     
     implicit none
     
@@ -1314,12 +1447,12 @@ contains
 
     ! subroutine arguments
     integer         , intent(in) :: i, j, nrow, xcolID, ycolID
-    double precision, intent(in) :: x
+    real(prec), intent(in) :: x
     
     ! subroutine local variables
     integer                           :: irow
-    double precision                  :: x1, y1, x2, y2, y
-    double precision, dimension(nrow) :: xarr, yarr
+    real(prec)                  :: x1, y1, x2, y2, y
+    real(prec), dimension(nrow) :: xarr, yarr
 
     xarr = xsec_tab(xcolID, 1:nrow, i, j)
     yarr = xsec_tab(ycolID, 1:nrow, i, j)
@@ -1346,8 +1479,8 @@ contains
       !---------------------------------------------------------------------------         
       ! subroutine arguments
       integer,          intent(in)  :: kk
-      double precision, intent(in)  :: xrt, x(kk), y(kk)
-      double precision, intent(out) :: yt
+      real(prec), intent(in)  :: xrt, x(kk), y(kk)
+      real(prec), intent(out) :: yt
       ! subroutine local variables
       integer :: k
 
@@ -1396,11 +1529,11 @@ contains
 
     ! subroutine arguments
     integer,          intent(in)  :: i, j
-    double precision, intent(in)  :: q_sk_multi, So, dsc
-    double precision, intent(out) :: y_norm, y_crit, area_n, area_c
+    real(prec), intent(in)  :: q_sk_multi, So, dsc
+    real(prec), intent(out) :: y_norm, y_crit, area_n, area_c
       
     ! subroutine local variables 
-    double precision :: area_0, width_0, errorY
+    real(prec) :: area_0, width_0, errorY
 
     elevTable = xsec_tab(1, :, i, j)
     areaTable = xsec_tab(2, :, i, j)
@@ -1434,7 +1567,7 @@ contains
     end if
   end subroutine normal_crit_y
 
-  double precision function LInterpol(x1, y1, x2, y2, x)
+  real(prec) function LInterpol(x1, y1, x2, y2, x)
       
     implicit none
       
@@ -1444,7 +1577,7 @@ contains
     !-------------------------------------------------------------------------------------          
       
     ! function arguments
-    double precision, intent(in) :: x1, y1, x2, y2, x
+    real(prec), intent(in) :: x1, y1, x2, y2, x
       
     if (abs(x2-x1).lt.0.0001) then
       ! to prevent absurdly small value in the denominator
@@ -1455,7 +1588,7 @@ contains
       
   end function LInterpol
 
-  double precision function intp_y(nrow, xarr, yarr, x)
+  real(prec) function intp_y(nrow, xarr, yarr, x)
       
     implicit none
     !-------------------------------------------------------------------------------------
@@ -1465,11 +1598,11 @@ contains
 
     ! function arguments
     integer,                           intent(in) :: nrow
-    double precision,                  intent(in) :: x      
-    double precision, dimension(nrow), intent(in) :: xarr, yarr
+    real(prec),                  intent(in) :: x      
+    real(prec), dimension(nrow), intent(in) :: xarr, yarr
     ! function local variables
     integer          :: irow
-    double precision :: x1, y1, x2, y2, y
+    real(prec) :: x1, y1, x2, y2, y
 
     irow = locate(xarr, x)
       
@@ -1505,8 +1638,8 @@ contains
     !------------------------------------------------------------------------------------
       
     ! function arguments
-    double precision,               intent(in) :: x      
-    double precision, dimension(:), intent(in) :: xx
+    real(prec),               intent(in) :: x      
+    real(prec), dimension(:), intent(in) :: xx
 
     ! function local variables
     integer :: n, jl, jm, ju

@@ -833,8 +833,8 @@ cpdef object compute_network_structured_with_hybrid_routing(
     list nondiffusive_segments,                       
     dict diffusive_segment2reach_and_segment_bottom_node_idx, 
     dict diffusive_inputs,
-    const double[:,:,:,:] out_chxsec_lookuptable, 
-    const double[:,:] out_z_adj,
+    const float[:,:,:,:] out_chxsec_lookuptable, 
+    const float[:,:] out_z_adj,
     dict upstream_results={},
     bint assume_short_ts=False,
     bint return_courant=False,
@@ -901,8 +901,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
     cdef dict segmentidx2id={}
     cdef long sid
     cdef _MC_Segment segment
-    cdef: 
-        double[:,:,:] out_q, out_elv, out_depth
 
     diffusive_segments = list(itertools.chain(*diffusive_reaches))    
          
@@ -1099,12 +1097,15 @@ cpdef object compute_network_structured_with_hybrid_routing(
     #Dynamically allocate a C array of reach structs
     cdef _Reach* reach_structs = <_Reach*>malloc(sizeof(_Reach)*num_reaches)
    
-    out_q = np.zeros([25,7,num_reaches], dtype=np.double) 
-    out_elv = np.zeros([25,7,num_reaches], dtype=np.double) 
-    out_depth = np.zeros([25,7,num_reaches], dtype=np.double)
     # nstep+1 to add one extra time for initial condition
-    cdef np.ndarray[float, ndim=3] diffusive_reach_head_flowveldepth_nd = np.zeros((diffusive_inputs['nrch_g'], nsteps+1, qvd_ts_w), dtype='float32')
-    cdef float[:,:,::1] diffusive_reach_head_flowveldepth = diffusive_reach_head_flowveldepth_nd
+    cdef int num_reaches_diffusive_domain = diffusive_inputs['nrch_g']    
+    cdef int max_num_node_reach = diffusive_inputs['mxncomp_g']    
+    #cdef np.ndarray[float, ndim=3] diffusive_reach_head_flowveldepth_nd = np.zeros((diffusive_inputs['nrch_g'], nsteps+1, qvd_ts_w), dtype='float32')
+    #cdef float[:,:,::1] diffusive_reach_head_flowveldepth = diffusive_reach_head_flowveldepth_nd
+    cdef float[:,:,:]  diffusive_reach_head_flowveldepth = np.zeros((num_reaches_diffusive_domain, nsteps+1, qvd_ts_w), dtype='float32', order='F')
+    cdef float[:,:] iniqpx_np = np.zeros((max_num_node_reach, num_reaches_diffusive_domain), dtype='float32')
+    cdef float inflow_to_junction
+    cdef float min_flow_limit    
 
     #Populate the above array with the structs contained in each reach object
     for i in range(num_reaches):
@@ -1322,7 +1323,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     diffusive_inputs["qtrib_g"][timestep-1:, reach_order_idx] = flowveldepth[seg_idx, timestep-1, 0]                   
 
                 # Input forcing 2. Initial flow and depth. Here, intial time means at each (timestep-1)*(dt or routing_period)
-                min_flow_limit = diffusive_inputs["para_ar_g"][7] 
                 for seg_id in diffusive_segments:
                     seg_idx =  segmentid2idx[seg_id]
                     reach_order_idx   = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][0]
@@ -1333,16 +1333,14 @@ cpdef object compute_network_structured_with_hybrid_routing(
                         if timestep==1:
                             inflow_to_junction = 0.0
                             for upstream_seg_id in upstream_connections[seg_id]:
-                                #id = r._upstream_ids[_i]
                                 upstream_seg_idx = segmentid2idx[upstream_seg_id]
-                                inflow_to_junction += flowveldepth[upstream_seg_idx, timestep-1, 0]
-                               
-                            diffusive_inputs["iniq"][0, reach_order_idx] = max(inflow_to_junction, min_flow_limit)
+                                inflow_to_junction += flowveldepth[upstream_seg_idx, timestep-1, 0]                               
+                            diffusive_inputs["iniq"][0, reach_order_idx] = inflow_to_junction  #max(inflow_to_junction, min_flow_limit)
                         else:
                             diffusive_inputs["iniq"][0, reach_order_idx] = diffusive_reach_head_flowveldepth[reach_order_idx,timestep-1,0]  
-       
+                           
                     # For initial flow for all the nodes except the head node of a reach, take flow values from the previous time step
-                    diffusive_inputs["iniq"][segment_bottom_node_idx, reach_order_idx] = max(flowveldepth[seg_idx, timestep-1, 0], min_flow_limit)
+                    diffusive_inputs["iniq"][segment_bottom_node_idx, reach_order_idx] = flowveldepth[seg_idx, timestep-1, 0] #max(flowveldepth[seg_idx, timestep-1, 0], min_flow_limit)
 
                     # For inidepth at head node of a reach, when there are no upstream segments or all upstream segments are MC domain,
                     # assume the depth of the head node of a reach is equal to that of the next node
@@ -1360,14 +1358,20 @@ cpdef object compute_network_structured_with_hybrid_routing(
                                         diffusive_inputs["inidepth"][0, reach_order_idx] = flowveldepth[seg_idx,timestep-1,2]
                         else:
                             diffusive_inputs["inidepth"][0, reach_order_idx] = diffusive_reach_head_flowveldepth[reach_order_idx,timestep-1,2]  
-
+                          
                     diffusive_inputs["inidepth"][segment_bottom_node_idx, reach_order_idx] = flowveldepth[seg_idx,timestep-1,2] 
-                              
+         
                 # The remaining forcings, including lateral flow, coastal boundary data, and usgs data, are passed to diffusive fotran kerenl as they are.
-              
+                
+                # Internal variables of the diffusive wave:  qpx the from previous time step
+                for fj in range(num_reaches_diffusive_domain):     
+                    for fi in range(max_num_node_reach):     
+                        diffusive_inputs["iniqpx"][fi,fj] = iniqpx_np[fi,fj]  
+
                 (out_q_next_out_time, 
                  out_elv_next_out_time, 
-                 out_depth_next_out_time
+                 out_depth_next_out_time,
+                 out_qpx_next_out_time, 
                 ) = diffusive_lightweight.compute_diffusive_couplingtimestep(
                     diffusive_inputs,
                     out_chxsec_lookuptable, 
@@ -1375,7 +1379,9 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     dt*(timestep-1)/3600.0,  # start time of the current coupling time step [hr]
                     dt*timestep/3600.0,      # end time of the current coupling time step [hr]
                 )
-
+                
+                iniqpx_np   = out_qpx_next_out_time
+                
                 for seg_id in diffusive_segments:
                     seg_idx =  segmentid2idx[seg_id]
                     reach_order_idx   = diffusive_segment2reach_and_segment_bottom_node_idx[seg_id][0]
@@ -1387,7 +1393,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     # store computed diffusive flow and depth values only at the head node of a reach
                     diffusive_reach_head_flowveldepth[reach_order_idx,timestep,0] = out_q_next_out_time[0, reach_order_idx]
                     diffusive_reach_head_flowveldepth[reach_order_idx,timestep,2] = out_depth_next_out_time[0, reach_order_idx] 
-
+                   
             else:
                 
                 #Create compute reach kernel input buffer

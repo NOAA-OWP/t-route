@@ -937,8 +937,9 @@ def diffusive_input_data_v02(
     #                              Step 0-6
     #                  Prepare initial conditions data
     # ---------------------------------------------------------------------------------
-    iniq = np.zeros((mxncomp_g, nrch_g))
+    iniq     = np.zeros((mxncomp_g, nrch_g))
     inidepth = np.zeros((mxncomp_g, nrch_g))
+    iniqpx   = np.zeros((mxncomp_g, nrch_g))
     frj = -1
     for x in range(mx_jorder, -1, -1):
         for head_segment, reach in ordered_reaches[x]:
@@ -1109,6 +1110,7 @@ def diffusive_input_data_v02(
         # initial flow/depth value
         diff_ins["iniq"] = iniq
         diff_ins["inidepth"] = inidepth
+        diff_ins["iniqpx"] = iniqpx
         # python-fortran crosswalk data
         diff_ins["pynw"] = pynw
         diff_ins["ordered_reaches"] = ordered_reaches    
