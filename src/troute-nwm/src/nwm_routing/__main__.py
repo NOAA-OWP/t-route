@@ -293,8 +293,8 @@ def main_v04(argv):
             forcing_end_time = time.time()
             task_times['forcing_time'] += forcing_end_time - route_end_time
 
-        if network.poi_nex_dict:
-            poi_crosswalk = network.poi_nex_dict
+        if not network.poi_nex_df.empty:
+            poi_crosswalk = network.poi_nex_df
         else:
             poi_crosswalk = dict()
 
