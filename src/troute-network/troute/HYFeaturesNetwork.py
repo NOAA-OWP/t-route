@@ -46,6 +46,23 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Match available layers to the patterns
     matched_layers = {key: find_layer_name(available_layers, pattern) 
                       for key, pattern in layer_patterns.items()}
+
+def read_geopkg(file_path, compute_parameters, waterbody_parameters, output_parameters, cpu_pool):
+    # Retrieve available layers from the GeoPackage
+    available_layers = fiona.listlayers(file_path)
+
+    # patterns for the layers we want to find
+    layer_patterns = {
+        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
+        'flowpath_attributes': r'flow[-_]?path[-_]?attributes?|flow[-_]?line[-_]?attributes?',
+        'lakes': r'lakes?',
+        'nexus': r'nexus?',
+        'network': r'network'
+    }
+
+    # Match available layers to the patterns
+    matched_layers = {key: find_layer_name(available_layers, pattern) 
+                      for key, pattern in layer_patterns.items()}
     
     layers_to_read = ['flowpaths', 'flowpath_attributes']
     
@@ -65,6 +82,12 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     if hybrid_parameters.get('run_hybrid_routing', False) and 'nexus' not in layers_to_read:
         layers_to_read.append('nexus')
 
+    # If nexus points or POIs are specified in output mask, read nexus table
+    if output_parameters.get('stream_output'):
+        mask_keys = output_parameters.get('stream_output',{}).get('mask',{}).keys()
+        if ('nex' in mask_keys) or ('poi' in mask_keys) & ('nexus' not in layers_to_read):
+            layers_to_read.append('nexus')
+            
     # Function that read a layer from the geopackage
     def read_layer(layer_name):
         if layer_name:
@@ -184,7 +207,7 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         
     return df
 
-def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_parameters, cpu_pool):
+def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_parameters, output_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
     flowpaths = lakes = network = pd.DataFrame()
@@ -194,6 +217,7 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_paramet
         flowpaths, lakes, network, nexus = read_geopkg(geo_file_path,
                                                        compute_parameters,
                                                        waterbody_parameters,
+                                                       output_parameters,
                                                        cpu_pool)
     elif(file_type == '.json'):
         edge_list = supernetwork_parameters['flowpath_edge_list']
@@ -294,6 +318,7 @@ class HYFeaturesNetwork(AbstractNetwork):
                     self.supernetwork_parameters,
                     self.waterbody_parameters,
                     self.compute_parameters,
+                    self.output_parameters,
                     self.compute_parameters.get('cpu_pool', 1)
                 )
             else:
@@ -449,9 +474,10 @@ class HYFeaturesNetwork(AbstractNetwork):
         filtered_flowpaths = flowpaths[mask_flowpaths]
         self._nexus_dict = filtered_flowpaths.groupby('toid')['id'].apply(list).to_dict()  ##{id: toid}
         if 'poi_id' in nexus.columns:
-            self._poi_nex_dict = nexus.groupby('poi_id')['id'].apply(list).to_dict()
+            # self._poi_nex_dict = nexus.groupby('poi_id')['id'].apply(list).to_dict()
+            self._poi_nex_df = nexus[nexus['type']=='poi'][['id','poi_id']]
         else:
-            self._poi_nex_dict = None
+            self._poi_nex_df = pd.DataFrame()
 
     def preprocess_waterbodies(self, lakes, nexus):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries
@@ -601,7 +627,10 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._duplicate_ids_df = pd.DataFrame()
             self._gl_climatology_df = pd.DataFrame()
 
-        self._dataframe = self.dataframe.drop('waterbody', axis=1).drop_duplicates()
+        if 'waterbody' in self.dataframe.columns:
+            self._dataframe = self.dataframe.drop('waterbody', axis=1)
+        
+        self._dataframe = self.dataframe.drop_duplicates()
 
     def preprocess_data_assimilation(self, network):
         if not network.empty:
