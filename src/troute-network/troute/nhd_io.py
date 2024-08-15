@@ -2070,12 +2070,11 @@ def write_flowveldepth_csv_pkl(stream_output_directory, file_name,
             'velocity': velocity.iloc[:, i],
             'depth': depth.iloc[:, i],
             'nudge': nudge_df.iloc[:, i]  
-        })
+        }, index=flow.index)
         df_list.append(df_temp)
 
     # Concatenate all temporary DataFrames vertically
     df = pd.concat(df_list)
-    df.index.name = 'feature_id'
     
     df['current_time'] = pd.to_datetime(df['t0']) + pd.to_timedelta(df['time'])
     df = df[['current_time', 'flow', 'velocity', 'depth', 'nudge']]
@@ -2269,6 +2268,7 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
     return nex_id, seg_id
 
 def updated_flowveldepth(flowveldepth, nex_id, seg_id, mask_list):
+    flowveldepth = flowveldepth.copy(deep=True)
     flowveldepth.index.name = 'featureID'
     flowveldepth['Type'] = 'wb'
     flowveldepth.set_index('Type', append=True, inplace=True)
