@@ -93,7 +93,7 @@ def _parquet_output_format_converter(df, start_datetime, dt, configuration, pref
     for i in range(num_time_variables):
         start_idx = i * num_locations
         end_idx = start_idx + num_locations
-        value_time[start_idx:end_idx] = start_datetime + pd.to_timedelta(timesteps[i] * dt, unit='s')
+        value_time[start_idx:end_idx] = start_datetime + pd.to_timedelta((timesteps[i] + 1) * dt, unit='s')
         variable_name = variable_to_name_map[variables[i]]
         unit = variable_to_units_map[variable_name]
         variable_names[start_idx:end_idx] = variable_name
