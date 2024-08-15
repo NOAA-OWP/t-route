@@ -289,7 +289,7 @@ contains
     x                   = 0.0
     newQ                = -999
     newY                = -999
-    t                   = t_start*60.0 ![min]
+    t                   = t_start ![min]
     q_sk_multi          = 1.0
     oldQ                = iniq
     newQ                = oldQ
@@ -411,13 +411,6 @@ contains
           ! Initial depth at bottom node of tail water reach        
           if (dsbc_option == 1) then
           ! use tailwater downstream boundary observations
-          ! needed for coastal coupling
-          ! **** COMING SOON **** 
-            !do n = 1, nts_db_g
-            !  varr_db(n) = dbcd(n) + z(ncomp, j) !* when dbcd is water depth [m], channel bottom elev is added.
-            !end do
-            !t              = t0 * 60.0
-            t              = t_start * 60.0
             oldY(ncomp, j) = intp_y(nts_db_g, tarr_db, varr_db, t)
             newY(ncomp, j) = oldY(ncomp, j)  
             if ((newY(ncomp, j) - z(ncomp, j)).lt.mindepth_nstab) then
@@ -464,7 +457,7 @@ contains
           oldY(i, j) = inidepth(i,j) + z(i,j)
         enddo
       enddo
-    endif  
+    endif
 
   !-----------------------------------------------------------------------------
   ! With initial flow and depth, identify the maximum calculated celerity/dx ratio 
@@ -496,12 +489,11 @@ contains
     
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
-    qpx                     = iniqpx  !0.
-    t                       = t_start*60.0 ![minuntes]
+    qpx                     = iniqpx  
 
   !-----------------------------------------------------------------------------
   ! Ordered network routing computations
-    do while ( t < t_end * 60.)
+    do while ( t < t_end)
 
       !+-------------------------------------------------------------------------
       !+                             PREDICTOR
@@ -515,7 +507,7 @@ contains
         ! Calculate the duration of this timestep (dtini)
         ! Timestep duration is selected to maintain numerical stability
         if (j == mstem_frj(1)) then 
-          call calculateDT(t_start, t, saveInterval, cfl, tfin, maxCelDx, dtini_given)
+          call calculateDT(t_start, t, saveInterval, cfl, t_end, maxCelDx, dtini_given)
         end if                         
 
         ! estimate lateral flow at current time t
@@ -551,7 +543,7 @@ contains
             end if
 
             ! add upstream flows to reach head
-            newQ(1,j)= newQ(1,j) + q_usrch           
+            newQ(1,j)= newQ(1,j) + q_usrch
           end do        
         else
 
@@ -654,7 +646,7 @@ contains
       endif
       
       ! write results to output arrays
-      if ( (mod((t - t_start * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == t_end * 60.)) then
+      if ( (mod((t - t_start ) * 60., saveInterval) <= TOLERANCE) .or. (t == t_end)) then
         do jm = 1, nmstem_rch
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
@@ -713,10 +705,10 @@ contains
   !-----------------------------------------------------------------------------
 
   ! Subroutine arguments
-    real(prec), intent(in) :: initialTime       ! [sec]
-    real(prec), intent(in) :: time              ! [hrs]
+    real(prec), intent(in) :: initialTime       ! [minutes]
+    real(prec), intent(in) :: time              ! [minutes]
     real(prec), intent(in) :: saveInterval      ! [sec]
-    real(prec), intent(in) :: tfin              ! [hrs]
+    real(prec), intent(in) :: tfin              ! [minutes]
     real(prec), intent(in) :: given_dt          ! [sec]
     real(prec), intent(in) :: maxAllowCourantNo ! = cfl
     real(prec), intent(in) :: max_C_dx          ! = maxCelDx
@@ -727,19 +719,17 @@ contains
 
   !-----------------------------------------------------------------------------    
   ! Calculate maximum timestep duration for numerical stability
-  
+
     dtini = maxAllowCourantNo / max_C_dx
 
-    a     = floor( (time - initialTime * 60.) / &
-                 ( saveInterval / 60.))           
-    b     = floor(((time - initialTime * 60.) + dtini / 60.) / &
-                 ( saveInterval / 60.))           
+    a     = floor( (time - initialTime) / ( saveInterval / 60.))           
+    b     = floor(((time - initialTime) + dtini / 60.) / ( saveInterval / 60.))           
     if (b > a) then
-      dtini = (a + 1) * (saveInterval) - (time - initialTime * 60.) * 60.
+      dtini = (a + 1) * (saveInterval) - (time - initialTime) * 60.
     end if
 
     ! if dtini extends beyond final time, then truncate it
-    if (time + dtini / 60. > tfin * 60.) dtini = (tfin * 60. - time) * 60.
+    if (time + dtini / 60. > tfin) dtini = (tfin - time) * 60.
 
   end subroutine  
   
@@ -806,7 +796,7 @@ contains
       !print *, '****** DIFFUSIVE FORWARD *****'
       !print *, '---------'
       ncomp = frnw_g(j, 1)
-      
+
       do i = 2, ncomp          
         
         cour  = dtini / dx(i - 1, j)
@@ -1180,7 +1170,7 @@ contains
       if (diffusivity(i, j) > D_ulm) diffusivity(i, j) = D_ulm 
       if (diffusivity(i, j) < D_llm) diffusivity(i, j) = D_llm 
     end do
-    
+   
   end subroutine mesh_diffusive_backward
 
   subroutine compute_only_celerity_diffusivity(t, ncomp, j, temp_q, temp_elev) 

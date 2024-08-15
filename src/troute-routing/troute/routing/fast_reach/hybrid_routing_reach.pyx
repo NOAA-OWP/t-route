@@ -1367,7 +1367,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
                 for fj in range(num_reaches_diffusive_domain):     
                     for fi in range(max_num_node_reach):     
                         diffusive_inputs["iniqpx"][fi,fj] = iniqpx_np[fi,fj]  
-
+                
                 (out_q_next_out_time, 
                  out_elv_next_out_time, 
                  out_depth_next_out_time,
@@ -1376,10 +1376,10 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     diffusive_inputs,
                     out_chxsec_lookuptable, 
                     out_z_adj,
-                    dt*(timestep-1)/3600.0,  # start time of the current coupling time step [hr]
-                    dt*timestep/3600.0,      # end time of the current coupling time step [hr]
+                    dt*(timestep-1)/60.0,  # start time of the current coupling time step [minutes]
+                    dt*timestep/60.0,      # end time of the current coupling time step [minutes]
                 )
-                
+
                 iniqpx_np   = out_qpx_next_out_time
                 
                 for seg_id in diffusive_segments:
