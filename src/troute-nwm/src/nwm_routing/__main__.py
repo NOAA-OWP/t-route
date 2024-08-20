@@ -296,7 +296,7 @@ def main_v04(argv):
         if not network.poi_nex_df.empty:
             poi_crosswalk = network.poi_nex_df
         else:
-            poi_crosswalk = dict()
+            poi_crosswalk = pd.DataFrame()
 
         output_start_time = time.time()  
         
