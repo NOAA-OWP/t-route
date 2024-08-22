@@ -1,7 +1,6 @@
 from .AbstractNetwork import AbstractNetwork
 import pandas as pd
 import numpy as np
-import geopandas as gpd
 import time
 import json
 from pathlib import Path
@@ -13,7 +12,7 @@ import xarray as xr
 from datetime import datetime
 from pprint import pformat
 import os
-import fiona
+import sqlite3
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
 from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk, get_great_lakes_climatology
@@ -31,12 +30,17 @@ def find_layer_name(layers, pattern):
     return None
 
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
-    # Retrieve available layers from the GeoPackage
-    available_layers = fiona.listlayers(file_path)
+    # Retrieve available layers from the GeoPackage 
+    with sqlite3.connect(file_path) as conn:
+        # gpkg_contents, gpkg_ogr_contents, and sqlite_sequence all contain the layer names
+        result = conn.execute("SELECT table_name FROM gpkg_contents;").fetchall()
+    # fetchall returns a list tuples
+    available_layers = [r[0] for r in result]
 
     # patterns for the layers we want to find
     layer_patterns = {
-        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
+        # without $ flowpaths would match also flowpath_attributes
+        'flowpaths': r'flow[-_]?paths?$|flow[-_]?lines?$',
         'flowpath_attributes': r'flow[-_]?path[-_]?attributes?|flow[-_]?line[-_]?attributes?',
         'lakes': r'lakes?',
         'nexus': r'nexus?',
@@ -67,13 +71,16 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
 
     # Function that read a layer from the geopackage
     def read_layer(layer_name):
-        if layer_name:
-            try:
-                return gpd.read_file(file_path, layer=layer_name)
-            except Exception as e:
-                print(f"Error reading {layer_name}: {e}")
-                return pd.DataFrame()
-        return pd.DataFrame()
+        if not layer_name:
+            return pd.DataFrame()
+        try:
+            with sqlite3.connect(file_path) as conn:
+                # user sql injection prevented find_layer_name function
+                return pd.read_sql_query(f"SELECT * FROM {layer_name}", conn)
+        except Exception as e:
+            print(f"Error reading layer {layer_name} from {file_path}: {e}")
+            return pd.DataFrame()
+
        
     # Retrieve geopackage information using matched layer names
     if cpu_pool > 1:
@@ -83,26 +90,36 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         table_dict = {layers_to_read[i]: gpkg_list[i] for i in range(len(layers_to_read))}
     else:
         table_dict = {layer: read_layer(matched_layers[layer]) for layer in layers_to_read}
-    
-    # Handle different key column names between flowpaths and flowpath_attributes
-    flowpaths_df = table_dict.get('flowpaths', pd.DataFrame())
-    flowpath_attributes_df = table_dict.get('flowpath_attributes', pd.DataFrame())
-
-    # Check if 'link' column exists and rename it to 'id'
-    if 'link' in flowpath_attributes_df.columns:
-        flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
-     
-    # Merge flowpaths and flowpath_attributes 
-    flowpaths = pd.merge(
-        flowpaths_df, 
-        flowpath_attributes_df, 
-        on='id', 
-        how='inner'
-    )
 
     lakes = table_dict.get('lakes', pd.DataFrame())
     network = table_dict.get('network', pd.DataFrame())
     nexus = table_dict.get('nexus', pd.DataFrame())
+    
+    # Handle different key column names between flowpaths and flowpath_attributes
+    flowpaths_df = table_dict.get('flowpaths', None)
+    flowpath_attributes_df = table_dict.get('flowpath_attributes', None)
+
+    if flowpath_attributes_df is not None:
+        # Check if 'link' column exists and rename it to 'id'
+        if 'link' in flowpath_attributes_df.columns:
+            flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
+    
+    if flowpaths_df is not None and flowpath_attributes_df is not None:
+        # Merge flowpaths and flowpath_attributes 
+        flowpaths = pd.merge(
+            flowpaths_df, 
+            flowpath_attributes_df, 
+            on='id', 
+            how='inner'
+        )
+    elif flowpaths_df is not None:
+        flowpaths = flowpaths_df
+    elif flowpath_attributes_df is not None:
+        flowpaths = flowpath_attributes_df
+    else:
+        raise ValueError("No flowpaths or flowpath_attributes found in the geopackage")
+
+
 
     return flowpaths, lakes, network, nexus
 
@@ -126,8 +143,18 @@ def read_json(file_path, edge_list):
     return df_main
 
 def read_geojson(file_path):
-    flowpaths = gpd.read_file(file_path)
-    return flowpaths
+    with open(file_path) as f:
+        data = json.load(f)
+    data = data['features']
+    df = pd.json_normalize(data,max_level=1)
+    df.columns = df.columns.str.replace('properties.','')
+    df = df.drop(columns=['type'])
+    # Geometry seems to be unused or dropped, in case it is needed:
+    # geometry type e.g. MULTIPOLYGON, is stored in geometry.type
+    # and the coordinates are stored in geometry.coordinates
+    # crs stored in data['crs'] e.g.
+    # data['crs'] = { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::5070" } }
+    return df
 
 def numeric_id(flowpath):
     id = flowpath['key'].split('-')[-1]
@@ -138,6 +165,7 @@ def numeric_id(flowpath):
 
 def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
+    FIXME FUNCTION NEVER CALLED
     Reads .gpkg or lake.json file and prepares a dataframe, filtered
     to the relevant reservoirs, to provide the parameters
     for level-pool reservoir computation.
@@ -145,8 +173,10 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
     def node_key_func(x):
         return int( x.split('-')[-1] )
     if Path(parm_file).suffix=='.gpkg':
-        df = gpd.read_file(parm_file, layer='lakes')
-
+        # This can be made more efficient by reading only the necessary columns
+        # but I don't have a reference for what columns remain after dropping
+        with sqlite3.connect(parm_file) as conn:
+            df = pd.read_sql_query('SELECT * from lakes', conn)
         df = (
             df.drop(['id','toid','hl_id','hl_reference','hl_uri','geometry'], axis=1)
             .rename(columns={'hl_link': 'lake_id'})
@@ -164,6 +194,7 @@ def read_ngen_waterbody_df(parm_file, lake_index_field="wb-id", lake_id_mask=Non
 
 def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mask=None):
     """
+    FIXME FUNCTION NEVER CALLED
     """
     #FIXME: this function is likely not correct. Unclear how we will get 
     # reservoir type from the gpkg files. Information should be in 'crosswalk'
@@ -173,7 +204,8 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
         return int( x.split('-')[-1] )
     
     if Path(parm_file).suffix=='.gpkg':
-        df = gpd.read_file(parm_file, layer="crosswalk").set_index('id')
+        with sqlite3.connect(parm_file) as conn:
+            df = pd.read_sql_query('SELECT * FROM crosswalk', conn)
     elif Path(parm_file).suffix=='.json':
         df = pd.read_json(parm_file, orient="index")
 

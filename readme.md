@@ -66,7 +66,6 @@ joblib
 toolz
 Cython
 pyyaml
-geopandas
 pyarrow
 deprecated
 ```
@@ -84,7 +83,7 @@ To get a sense of the operation of the routing scheme, follow this sequence of c
 
 ```shell
 # install required python modules
-pip3 install numpy pandas xarray netcdf4 joblib toolz pyyaml Cython>3,!=3.0.4 geopandas pyarrow deprecated wheel
+pip3 install numpy pandas xarray netcdf4 joblib toolz pyyaml Cython>3,!=3.0.4 pyarrow deprecated wheel
 
 # clone t-toute
 git clone --progress --single-branch --branch master http://github.com/NOAA-OWP/t-route.git
