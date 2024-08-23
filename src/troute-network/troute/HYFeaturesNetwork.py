@@ -30,23 +30,6 @@ def find_layer_name(layers, pattern):
             return layer
     return None
 
-def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
-    # Retrieve available layers from the GeoPackage
-    available_layers = fiona.listlayers(file_path)
-
-    # patterns for the layers we want to find
-    layer_patterns = {
-        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
-        'flowpath_attributes': r'flow[-_]?path[-_]?attributes?|flow[-_]?line[-_]?attributes?',
-        'lakes': r'lakes?',
-        'nexus': r'nexus?',
-        'network': r'network'
-    }
-
-    # Match available layers to the patterns
-    matched_layers = {key: find_layer_name(available_layers, pattern) 
-                      for key, pattern in layer_patterns.items()}
-
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, output_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage
     available_layers = fiona.listlayers(file_path)
@@ -339,7 +322,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self.preprocess_waterbodies(lakes, nexus)
 
             # Preprocess data assimilation objects #TODO: Move to DataAssimilation.py?
-            self.preprocess_data_assimilation(network)
+            self.preprocess_data_assimilation(flowpaths)
         
             if self.preprocessing_parameters.get('preprocess_output_folder', None):
                 self.write_preprocessed_data()
@@ -632,8 +615,13 @@ class HYFeaturesNetwork(AbstractNetwork):
         
         self._dataframe = self.dataframe.drop_duplicates()
 
-    def preprocess_data_assimilation(self, network):
-        if not network.empty:
+    def preprocess_data_assimilation(self, flowpaths):
+        gages_df = flowpaths[~flowpaths['gage'].isna()]
+        if not gages_df.empty:
+            gages_df = gages_df[['id','gage']]
+            gages_df['id'] = gages_df['id'].str.split('-',expand=True).loc[:,1].astype(float).astype(int)
+            gages_df.set_index('id', inplace=True)
+            '''
             gages_df = network[['id','hl_uri','hydroseq']].drop_duplicates()
             # clear out missing values
             gages_df = gages_df[~gages_df['hl_uri'].isnull()]
@@ -664,43 +652,60 @@ class HYFeaturesNetwork(AbstractNetwork):
                 .set_index(idx_id)[['value']].rename(columns={'value': 'gages'})
                 .rename_axis(None, axis=0).to_dict()
             )
+            '''
+            
+            # transform dataframe into a dictionary where key is segment ID and value is gage ID
+            usgs_ind = gages_df.gage.str.isnumeric() #usgs gages used for streamflow DA
+            # Use hydroseq information to determine furthest downstream gage when multiple are present.
+            idx_id = gages_df.index.name
+            if not idx_id:
+                idx_id = 'index'
+            
+            self._gages = (
+                gages_df.loc[usgs_ind]
+                .rename(columns={'gage': 'gages'})
+                .rename_axis(None, axis=0).to_dict()
+            )
             
             #FIXME: temporary solution, add canadian gage crosswalk dataframe. This should come from
             # the hydrofabric.
             self._canadian_gage_link_df = pd.DataFrame(columns=['gages','link']).set_index('link')
             
-            # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
-            lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
-            lake_gage_hydroseq_df['lake_id'] = lake_gage_hydroseq_df['lake_id'].astype(int)
-            lake_gage_df = lake_gage_hydroseq_df[['lake_id','gages']].drop_duplicates()
-            lake_gage_hydroseq_df = lake_gage_hydroseq_df.groupby(['lake_id','gages']).max('hydroseq').reset_index().set_index('lake_id')
+            if 'lake_id' in gages_df.columns:
+                # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
+                lake_gage_hydroseq_df = gages_df[~gages_df['lake_id'].isnull()][['lake_id', 'value', 'hydroseq']].rename(columns={'value': 'gages'})
+                lake_gage_hydroseq_df['lake_id'] = lake_gage_hydroseq_df['lake_id'].astype(int)
+                lake_gage_df = lake_gage_hydroseq_df[['lake_id','gages']].drop_duplicates()
+                lake_gage_hydroseq_df = lake_gage_hydroseq_df.groupby(['lake_id','gages']).max('hydroseq').reset_index().set_index('lake_id')
 
-            #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
-            # RFC reservoirs...
-            #NOTE: In the event a lake ID has multiple gages, this also finds the gage furthest 
-            # downstream (based on hydroseq) separately for USGS and USACE crosswalks. 
-            usgs_ind = lake_gage_df.gages.str.isnumeric()
-            self._usgs_lake_gage_crosswalk = (
-                lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'}).
-                set_index('usgs_lake_id').
-                merge(lake_gage_hydroseq_df.
-                      rename_axis('usgs_lake_id').
-                      rename(columns={'gages': 'usgs_gage_id'}), on=['usgs_lake_id','usgs_gage_id']).
-                sort_values(['usgs_gage_id','hydroseq']).groupby('usgs_lake_id').
-                last().
-                drop('hydroseq', axis=1)
-            )
+                #FIXME: temporary solution, handles USGS and USACE reservoirs. Need to update for
+                # RFC reservoirs...
+                #NOTE: In the event a lake ID has multiple gages, this also finds the gage furthest 
+                # downstream (based on hydroseq) separately for USGS and USACE crosswalks. 
+                usgs_ind = lake_gage_df.gages.str.isnumeric()
+                self._usgs_lake_gage_crosswalk = (
+                    lake_gage_df.loc[usgs_ind].rename(columns={'lake_id': 'usgs_lake_id', 'gages': 'usgs_gage_id'}).
+                    set_index('usgs_lake_id').
+                    merge(lake_gage_hydroseq_df.
+                        rename_axis('usgs_lake_id').
+                        rename(columns={'gages': 'usgs_gage_id'}), on=['usgs_lake_id','usgs_gage_id']).
+                    sort_values(['usgs_gage_id','hydroseq']).groupby('usgs_lake_id').
+                    last().
+                    drop('hydroseq', axis=1)
+                )
 
-            self._usace_lake_gage_crosswalk =  (
-                lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'}).
-                set_index('usace_lake_id').
-                merge(lake_gage_hydroseq_df.
-                      rename_axis('usace_lake_id').
-                      rename(columns={'gages': 'usace_gage_id'}), on=['usace_lake_id','usace_gage_id']).
-                sort_values(['usace_gage_id','hydroseq']).groupby('usace_lake_id').
-                last().
-                drop('hydroseq', axis=1)
-            )
+                self._usace_lake_gage_crosswalk =  (
+                    lake_gage_df.loc[~usgs_ind].rename(columns={'lake_id': 'usace_lake_id', 'gages': 'usace_gage_id'}).
+                    set_index('usace_lake_id').
+                    merge(lake_gage_hydroseq_df.
+                        rename_axis('usace_lake_id').
+                        rename(columns={'gages': 'usace_gage_id'}), on=['usace_lake_id','usace_gage_id']).
+                    sort_values(['usace_gage_id','hydroseq']).groupby('usace_lake_id').
+                    last().
+                    drop('hydroseq', axis=1)
+                )
+            else:
+                self._usgs_lake_gage_crosswalk = self._usace_lake_gage_crosswalk = pd.DataFrame()
             
             # Set waterbody types if DA is turned on:
             usgs_da = self.data_assimilation_parameters.get('reservoir_da',{}).get('reservoir_persistence_da',{}).get('reservoir_persistence_usgs',False)
