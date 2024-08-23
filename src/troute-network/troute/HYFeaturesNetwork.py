@@ -453,12 +453,12 @@ class HYFeaturesNetwork(AbstractNetwork):
 
     def crosswalk_nex_flowpath_poi(self, flowpaths, nexus):
         
-        mask_flowpaths = flowpaths['toid'].str.startswith(('nex-', 'tnex-'))
+        mask_flowpaths = flowpaths['toid'].str.startswith(('nex-', 'tnx-'))
         filtered_flowpaths = flowpaths[mask_flowpaths]
         self._nexus_dict = filtered_flowpaths.groupby('toid')['id'].apply(list).to_dict()  ##{id: toid}
         if 'poi_id' in nexus.columns:
             # self._poi_nex_dict = nexus.groupby('poi_id')['id'].apply(list).to_dict()
-            self._poi_nex_df = nexus[nexus['type']=='poi'][['id','poi_id']]
+            self._poi_nex_df = nexus[~nexus['poi_id'].isna()][['id','poi_id']]
         else:
             self._poi_nex_df = pd.DataFrame()
 
