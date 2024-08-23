@@ -69,19 +69,27 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     if hybrid_parameters.get('run_hybrid_routing', False) and 'nexus' not in layers_to_read:
         layers_to_read.append('nexus')
 
-    # Function that read a layer from the geopackage
+    # Function that reads a layer from the geopackage
     def read_layer(layer_name):
         if not layer_name:
             return pd.DataFrame()
         try:
             with sqlite3.connect(file_path) as conn:
                 has_spatial_metadata = False
-                geometry_columns = conn.execute(f"SELECT c.column_name,g.definition FROM gpkg_geometry_columns AS c JOIN gpkg_spatial_ref_sys AS g ON c.srs_id = g.srs_id WHERE c.table_name = '{layer_name}'").fetchall()
+                # try and get the name of the geometry column and it's crs
+                geometry_columns = conn.execute(f"""
+                SELECT c.column_name,g.definition
+                FROM gpkg_geometry_columns AS c
+                JOIN gpkg_spatial_ref_sys AS g ON c.srs_id = g.srs_id 
+                WHERE c.table_name = '{layer_name}'""").fetchall()
+                
                 if len(geometry_columns) > 0:
                     has_spatial_metadata = True
                     geom_column = geometry_columns[0][0]
                     crs = geometry_columns[0][1]
+
                 if has_spatial_metadata:
+                    # select everything from the layer, + the midpoint of it's bounding box
                     sql_query = f"""SELECT d.*,
                         (r.minx + r.maxx) / 2.0 AS lon,
                         (r.miny + r.maxy) / 2.0 AS lat
@@ -133,11 +141,6 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         flowpaths = flowpath_attributes_df
     else:
         raise ValueError("No flowpaths or flowpath_attributes found in the geopackage")
-
-    # if lat or lon or crs is missing from nexus, call a function to add them
-    if not nexus.empty:
-        if 'lat' not in nexus.columns or 'lon' not in nexus.columns or 'crs' not in nexus.columns:
-            nexus = add_lat_lon_crs(file_path,nexus)
 
     return flowpaths, lakes, network, nexus
 
