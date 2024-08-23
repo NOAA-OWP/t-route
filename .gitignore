@@ -53,6 +53,7 @@ __pycache__/
 .env
 .python-version
 .ipynb_checkpoints/
+build/
 
 # pyenv #
 #########

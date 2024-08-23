@@ -28,7 +28,7 @@ def find_layer_name(layers, pattern):
         if re.search(pattern, layer, re.IGNORECASE):
             return layer
     return None
-
+  
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage 
     with sqlite3.connect(file_path) as conn:
@@ -75,8 +75,23 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
             return pd.DataFrame()
         try:
             with sqlite3.connect(file_path) as conn:
-                # user sql injection prevented find_layer_name function
-                return pd.read_sql_query(f"SELECT * FROM {layer_name}", conn)
+                has_spatial_metadata = False
+                geometry_columns = conn.execute(f"SELECT c.column_name,g.definition FROM gpkg_geometry_columns AS c JOIN gpkg_spatial_ref_sys AS g ON c.srs_id = g.srs_id WHERE c.table_name = '{layer_name}'").fetchall()
+                if len(geometry_columns) > 0:
+                    has_spatial_metadata = True
+                    geom_column = geometry_columns[0][0]
+                    crs = geometry_columns[0][1]
+                if has_spatial_metadata:
+                    sql_query = f"""SELECT d.*,
+                        (r.minx + r.maxx) / 2.0 AS lon,
+                        (r.miny + r.maxy) / 2.0 AS lat
+                        FROM {layer_name} AS d
+                        JOIN rtree_{layer_name}_{geom_column} AS r ON d.fid = r.id"""
+                    df = pd.read_sql_query(sql_query, conn)
+                    df['crs'] = crs
+                    return df
+                else:
+                    return pd.read_sql_query(f"SELECT * FROM {layer_name}", conn)
         except Exception as e:
             print(f"Error reading layer {layer_name} from {file_path}: {e}")
             return pd.DataFrame()
@@ -119,7 +134,10 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     else:
         raise ValueError("No flowpaths or flowpath_attributes found in the geopackage")
 
-
+    # if lat or lon or crs is missing from nexus, call a function to add them
+    if not nexus.empty:
+        if 'lat' not in nexus.columns or 'lon' not in nexus.columns or 'crs' not in nexus.columns:
+            nexus = add_lat_lon_crs(file_path,nexus)
 
     return flowpaths, lakes, network, nexus
 
