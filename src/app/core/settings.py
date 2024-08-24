@@ -31,4 +31,6 @@ class Settings(BaseSettings):
     base_config: Path = "/t-route/src/app/core/base_config.yaml"
     project_name: str = "T-Route"
     qlat_input_path: str = "/t-route/data/rfc_channel_forcings/{}/"
-    geofile_path: str = "/t-route/data/rfc_geopackage_data/{}/subset.gpkg"
+    restart_path: str = "/t-route/data/troute_restart/{}/"
+    restart_file: str = "HYDRO_RST_{}_DOMAIN1" 
+    geofile_path: str = "/t-route/data/rfc_geopackage_data/{}/downstream.gpkg"
