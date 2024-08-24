@@ -1,0 +1,26 @@
+FROM rockylinux:9.2 as rocky-base
+RUN yum install -y epel-release 
+RUN yum install -y netcdf netcdf-fortran netcdf-fortran-devel netcdf-openmpi
+
+RUN yum install -y git cmake python python-devel pip 
+
+WORKDIR "/t-route/"
+COPY . "/t-route/"
+
+RUN ln -s /usr/lib64/gfortran/modules/netcdf.mod /usr/include/openmpi-x86_64/netcdf.mod
+
+ENV PYTHONPATH=/t-route:$PYTHONPATH
+RUN pip install uv==0.2.5
+RUN uv venv
+
+ENV VIRTUAL_ENV=/t-route/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+RUN uv pip install --no-cache-dir -r requirements.txt
+
+ENV WITH_EDITABLE=true
+RUN ./compiler.sh
+
+RUN uv pip install --no-cache-dir -r requirements-app.txt
+
+WORKDIR "/t-route/src/"
