@@ -9,6 +9,7 @@ network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
+        network_type: HYFeaturesNetwork
         geo_file_path: ???
         columns: 
             key: 'id'
