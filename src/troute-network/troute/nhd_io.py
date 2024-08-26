@@ -2405,6 +2405,7 @@ def write_flowveldepth(
     # Create POI-nexus point crosswalk dataframe (if necessary)
     idx = flowveldepth.reset_index()[['featureID','Type']]
     poi_crosswalk[['Type', 'featureID']] = poi_crosswalk['id'].str.split('-', expand=True)
+    poi_crosswalk['Type'] = 'nex' # Types can be 'nex', 'tnx', etc. This just sets them all to generic 'nex'.
     poi_crosswalk['featureID'] = poi_crosswalk.featureID.astype(int)
     poi_crosswalk = idx.set_index(['featureID','Type']).join(poi_crosswalk[['featureID','Type','poi_id']].set_index(['featureID','Type']))
 
