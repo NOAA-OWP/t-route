@@ -28,7 +28,7 @@ def find_layer_name(layers, pattern):
         if re.search(pattern, layer, re.IGNORECASE):
             return layer
     return None
-  
+
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage 
     with sqlite3.connect(file_path) as conn:
@@ -76,7 +76,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         try:
             with sqlite3.connect(file_path) as conn:
                 has_spatial_metadata = False
-                # try and get the name of the geometry column and it's crs
+                # try and get the name of the geometry column and its crs
                 geometry_columns = conn.execute(f"""
                 SELECT c.column_name,g.definition
                 FROM gpkg_geometry_columns AS c
@@ -89,7 +89,9 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
                     crs = geometry_columns[0][1]
 
                 if has_spatial_metadata:
-                    # select everything from the layer, + the midpoint of it's bounding box
+                    # select everything from the layer, + the midpoint of its bounding box
+                    # decoding the geometry blob can be done as it's just gpkg header + WKB
+                    # the rtree table calculation is much faster
                     sql_query = f"""SELECT d.*,
                         (r.minx + r.maxx) / 2.0 AS lon,
                         (r.miny + r.maxy) / 2.0 AS lat
@@ -170,8 +172,7 @@ def read_geojson(file_path):
     df = pd.json_normalize(data,max_level=1)
     df.columns = df.columns.str.replace('properties.','')
     df = df.drop(columns=['type'])
-    # Geometry seems to be unused or dropped, in case it is needed:
-    # geometry type e.g. MULTIPOLYGON, is stored in geometry.type
+    # Geometry type e.g. MULTIPOLYGON, is stored in geometry.type
     # and the coordinates are stored in geometry.coordinates
     # crs stored in data['crs'] e.g.
     # data['crs'] = { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::5070" } }
