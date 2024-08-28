@@ -5,7 +5,7 @@ use diffusive, only: diffnw
 
 implicit none
 contains
-subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,      &
+subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, nts_ev_g, nts_qtrib_g, nts_da_g,      &
                     mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,      &
                     manncc_ar_g, so_ar_g, dx_ar_g,                                                      &
                     iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
@@ -14,7 +14,7 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
                     q_ev_g, elv_ev_g, depth_ev_g) bind(c)      
 
     integer(c_int), intent(in) :: nts_ql_g, nts_ub_g, nts_db_g, nts_qtrib_g, nts_da_g
-    integer(c_int), intent(in) :: ntss_ev_g
+    integer(c_int), intent(in) :: nts_ev_g
     integer(c_int), intent(in) :: mxncomp_g, nrch_g
     integer(c_int), intent(in) :: frnw_col
     integer(c_int), intent(in) :: paradim
@@ -42,9 +42,9 @@ subroutine c_diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_
     real(c_float), dimension(mxnbathy_g, mxncomp_g, nrch_g), intent(in ) :: z_bathy_g
     real(c_float), dimension(mxnbathy_g, mxncomp_g, nrch_g), intent(in ) :: mann_bathy_g
     real(c_float), dimension(cwnrow_g, cwncol_g),            intent(in ) :: crosswalk_g 
-    real(c_float), dimension(ntss_ev_g, mxncomp_g, nrch_g),  intent(out) :: q_ev_g, elv_ev_g, depth_ev_g    
+    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g),  intent(out) :: q_ev_g, elv_ev_g, depth_ev_g    
           
-    call diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,      &
+    call diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, nts_ev_g, nts_qtrib_g, nts_da_g,      &
                 mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,      &
                 manncc_ar_g, so_ar_g, dx_ar_g,                                                      &
                 iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &

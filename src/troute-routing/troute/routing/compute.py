@@ -1747,109 +1747,123 @@ def compute_nhd_routing_v02(
                 from_files,
                 )
             
+            import pdb; pdb.set_trace()
             # prepare diffusive input data for running  hybrid routing
-            for diffusive_tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
-                found = any(tw in sublist for sublist in reach_list)
-                if found:
-
-                    diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
-                    
-                    # create DataFrame of junction inflow data            
-                    num_col = nts
-                    trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
-                    junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
-                    
-                    if not topobathy.empty:
-                        # create topobathy data for diffusive mainstem segments of this given tw segment        
-                        topobathy_bytw               = topobathy.loc[diffusive_segments] 
-                        unrefactored_topobathy_bytw = pd.DataFrame()                    
-                    else:
-                        topobathy_bytw = pd.DataFrame()
-                        unrefactored_topobathy_bytw = pd.DataFrame()
-
-                    # diffusive streamflow DA activation switch
-                    if 'diffusive_streamflow_nudging' in da_parameter_dict:
-                        diffusive_usgs_df = usgs_df.loc[usgs_df.index.isin(diffusive_segments)]
-                    else:
-                        diffusive_usgs_df = pd.DataFrame()
-
-                    # tw in refactored hydrofabric (NOTE: refactored_hydrofabric not in use any more)
-                    refactored_diffusive_domain_bytw = None
-                    refactored_reaches_byrftw        = None
+            # A channel subnetwork within enumerate(reaches_bytw.items(), 1) may consist of 
+            # multiple diffusive domains, each separated by distinct tailwater segments.    
+            diffusive_tailwater_segments = []
+            diffusive_reaches_bytw= {}
+            nondiffusive_segments_bytw = {}
+            diffusive_segment2reach_and_segment_bottom_node_idx_bytw={}
+            diffusive_inputs_bytw = {}  
+            chxsec_lookuptable_bytw={}
+            chbottom_elevation_bytw = {}      
             
-                    # coastal boundary depth input data at TW
-                    if tw in coastal_boundary_depth_df.index:
-                        coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[diffusive_tw].to_frame().T
-                    else:
-                        coastal_boundary_depth_bytw_df = pd.DataFrame()
+            if diffusive_network_data:
+                for diffusive_tw in diffusive_network_data: # <------- TODO - by-network parallel loop, here.
+                    found = any(diffusive_tw in sublist for sublist in reach_list)
+                    if found:
 
-                    # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
-                    # the column names need to be changed to intergers from zero incrementing by 1
-                    diffusive_qlats = qlats.copy()
-                    diffusive_qlats = diffusive_qlats.loc[diffusive_segments]
-                    diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
- 
-                    # build diffusive inputs
-                    diffusive_inputs = diff_utils.diffusive_input_data_v02(
-                        diffusive_tw,
-                        diffusive_network_data[diffusive_tw]['connections'],
-                        diffusive_network_data[diffusive_tw]['rconn'],
-                        diffusive_network_data[diffusive_tw]['reaches'],
-                        diffusive_network_data[diffusive_tw]['mainstem_segs'],
-                        diffusive_network_data[diffusive_tw]['tributary_segments'],
-                        None, # place holder for diffusive parameters
-                        diffusive_network_data[diffusive_tw]['param_df'],
-                        diffusive_qlats,
-                        q0,
-                        junction_inflows,
-                        qts_subdivisions,
-                        t0,
-                        nts,
-                        dt,
-                        waterbodies_df,
-                        topobathy_bytw,
-                        diffusive_usgs_df,
-                        refactored_diffusive_domain_bytw,
-                        refactored_reaches_byrftw, 
-                        coastal_boundary_depth_bytw_df,
-                        unrefactored_topobathy_bytw,
-                    )
+                        diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                        
+                        # create DataFrame of junction inflow data            
+                        num_col = nts
+                        trib_segs = diffusive_network_data[diffusive_tw]['tributary_segments']
+                        junction_inflows = pd.DataFrame(np.zeros((len(trib_segs), num_col)), index=trib_segs, columns=[i for i in range(num_col)])
+                        
+                        if not topobathy.empty:
+                            # create topobathy data for diffusive mainstem segments of this given tw segment        
+                            topobathy_bytw               = topobathy.loc[diffusive_segments] 
+                            unrefactored_topobathy_bytw = pd.DataFrame()                    
+                        else:
+                            topobathy_bytw = pd.DataFrame()
+                            unrefactored_topobathy_bytw = pd.DataFrame()
 
-                    # diffusive segments and reaches
-                    diffusive_reaches=[]
-                    diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
-                    nondiffusive_segments = diffusive_network_data[diffusive_tw]['tributary_segments']
+                        # diffusive streamflow DA activation switch
+                        if 'diffusive_streamflow_nudging' in da_parameter_dict:
+                            diffusive_usgs_df = usgs_df.loc[usgs_df.index.isin(diffusive_segments)]
+                        else:
+                            diffusive_usgs_df = pd.DataFrame()
+
+                        # tw in refactored hydrofabric (NOTE: refactored_hydrofabric not in use any more)
+                        refactored_diffusive_domain_bytw = None
+                        refactored_reaches_byrftw        = None
                 
-                    for sublist in reach_list:
-                        if any(item in sublist for item in diffusive_segments):
-                            diffusive_reaches.append(sublist)   
+                        # coastal boundary depth input data at TW
+                        if tw in coastal_boundary_depth_df.index:
+                            coastal_boundary_depth_bytw_df = coastal_boundary_depth_df.loc[diffusive_tw].to_frame().T
+                        else:
+                            coastal_boundary_depth_bytw_df = pd.DataFrame()
+
+                        # temporary: column names of qlats from HYfeature are currently timestamps. To be consistent with qlats from NHD
+                        # the column names need to be changed to intergers from zero incrementing by 1
+                        diffusive_qlats = qlats.copy()
+                        diffusive_qlats = diffusive_qlats.loc[diffusive_segments]
+                        diffusive_qlats.columns = range(diffusive_qlats.shape[1])  
     
-                    # Compute hydraulic value lookup tables for channel cross sections 
-                    out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
-                                                            diffusive_inputs)
-                else:
-                    diffusive_tw = None
-                    diffusive_reaches = []
-                    nondiffusive_segments = []                 
-                    diffusive_inputs = {}
+                        # build diffusive inputs
+                        diffusive_inputs = diff_utils.diffusive_input_data_v02(
+                            diffusive_tw,
+                            diffusive_network_data[diffusive_tw]['connections'],
+                            diffusive_network_data[diffusive_tw]['rconn'],
+                            diffusive_network_data[diffusive_tw]['reaches'],
+                            diffusive_network_data[diffusive_tw]['mainstem_segs'],
+                            diffusive_network_data[diffusive_tw]['tributary_segments'],
+                            None, # place holder for diffusive parameters
+                            diffusive_network_data[diffusive_tw]['param_df'],
+                            diffusive_qlats,
+                            q0,
+                            junction_inflows,
+                            qts_subdivisions,
+                            t0,
+                            nts,
+                            dt,
+                            waterbodies_df,
+                            topobathy_bytw,
+                            diffusive_usgs_df,
+                            refactored_diffusive_domain_bytw,
+                            refactored_reaches_byrftw, 
+                            coastal_boundary_depth_bytw_df,
+                            unrefactored_topobathy_bytw,
+                        )
+                        diffusive_inputs_bytw[diffusive_tw] = diffusive_inputs
 
-                # Create a dictionary mapping segment ID to a pair of Fotran segment node index and Fortran reach index
-                diffusive_segment2reach_and_segment_bottom_node_idx={}
-                total_reaches = diffusive_reaches.copy()
-                for seg in nondiffusive_segments:
-                    total_reaches.append([seg])
+                        # diffusive segments and reaches
+                        diffusive_tailwater_segments.append(diffusive_tw)
+                        diffusive_reaches=[]
+                        diffusive_segments = diffusive_network_data[diffusive_tw]['mainstem_segs']
+                        nondiffusive_segments = diffusive_network_data[diffusive_tw]['tributary_segments']
+                        nondiffusive_segments_bytw[diffusive_tw] = nondiffusive_segments
+                    
+                        for sublist in reach_list:
+                            if any(item in sublist for item in diffusive_segments):
+                                diffusive_reaches.append(sublist)  
+                        diffusive_reaches_bytw[diffusive_tw] = diffusive_reaches       
 
-                for sublist in total_reaches:
-                    first_id = sublist[0]
-                    # find reach order index corresponding head segment id 
-                    for key, value in diffusive_inputs['pynw'].items():
-                        if value == first_id:
-                            first_key = key
-                            break
-                    # Iterate through the sublist and populate the results dictionary
-                    for index, id_value in enumerate(sublist):
-                        diffusive_segment2reach_and_segment_bottom_node_idx[id_value] = [first_key, index+1]
+                        # Compute hydraulic value lookup tables for channel cross sections 
+                        out_chxsec_lookuptable, out_z_adj= chxsec_lookuptable.compute_chxsec_lookuptable(
+                                                                diffusive_inputs)
+                        chxsec_lookuptable_bytw[diffusive_tw] = out_chxsec_lookuptable
+                        chbottom_elevation_bytw[diffusive_tw] = out_z_adj
+ 
+                        # Create a dictionary mapping segment ID to a pair of Fotran segment node index and Fortran reach index
+                        diffusive_segment2reach_and_segment_bottom_node_idx = {}
+                        total_reaches = diffusive_reaches.copy()
+                        for seg in nondiffusive_segments:
+                            total_reaches.append([seg])
 
+                        for sublist in total_reaches:
+                            first_id = sublist[0]
+                            # find reach order index corresponding head segment id 
+                            for key, value in diffusive_inputs['pynw'].items():
+                                if value == first_id:
+                                    first_key = key
+                                    break
+                            # Iterate through the sublist and populate the results dictionary
+                            for index, id_value in enumerate(sublist):
+                                diffusive_segment2reach_and_segment_bottom_node_idx[id_value] = [first_key, index+1]                        
+                        diffusive_segment2reach_and_segment_bottom_node_idx_bytw[diffusive_tw] = diffusive_segment2reach_and_segment_bottom_node_idx
+            import pdb; pdb.set_trace()
             results.append(
                 compute_func(
                     nts,
@@ -1902,13 +1916,13 @@ def compute_nhd_routing_v02(
                     reservoir_rfc_da_timestep.astype("int32"),
                     reservoir_rfc_persist_days.astype("int32"),
                     # Diffusive wave routing data
-                    diffusive_tw,                     
-                    diffusive_reaches, 
-                    nondiffusive_segments,
-                    diffusive_segment2reach_and_segment_bottom_node_idx,                    
-                    diffusive_inputs, 
-                    out_chxsec_lookuptable,
-                    out_z_adj,
+                    diffusive_tailwater_segments,  #diffusive_tw,                     
+                    diffusive_reaches_bytw,  #diffusive_reaches, 
+                    nondiffusive_segments_bytw,   #nondiffusive_segments,
+                    diffusive_segment2reach_and_segment_bottom_node_idx_bytw, #diffusive_segment2reach_and_segment_bottom_node_idx,                    
+                    diffusive_inputs_bytw,   #diffusive_inputs, 
+                    chxsec_lookuptable_bytw,  # out_chxsec_lookuptable,
+                    chbottom_elevation_bytw,  # out_z_adj,
                     {},
                     assume_short_ts,
                     return_courant,

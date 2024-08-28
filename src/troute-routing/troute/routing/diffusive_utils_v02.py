@@ -1064,7 +1064,7 @@ def diffusive_input_data_v02(
 
     #                       Build input dictionary
     # ---------------------------------------------------------------------------------
-    ntss_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
+    nts_ev_g = int((tfin_g - t0_g) * 3600.0 / dt) + 1
     # build a dictionary of diffusive model inputs and helper variables
     diff_ins = {}
     if not refactored_diffusive_domain:
@@ -1075,7 +1075,7 @@ def diffusive_input_data_v02(
         diff_ins["nts_ub_g"]      = nts_ub_g
         diff_ins["nts_db_g"]      = nts_db_g
         diff_ins["nts_qtrib_g"]   = nts_qtrib_g
-        diff_ins["ntss_ev_g"]     = ntss_ev_g
+        diff_ins["nts_ev_g"]      = nts_ev_g
         diff_ins["nts_da_g"]      = nts_da_g # DA
         # max number of computation nodes of a stream reach and the number of entire stream reaches 
         diff_ins["mxncomp_g"] = mxncomp_g
@@ -1131,7 +1131,7 @@ def diffusive_input_data_v02(
         diff_ins["nts_ub_g"]      = nts_ub_g
         diff_ins["nts_db_g"]      = nts_db_g
         diff_ins["nts_qtrib_g"]   = nts_qtrib_g
-        diff_ins["ntss_ev_g"]     = ntss_ev_g
+        diff_ins["nts_ev_g"]      = nts_ev_g
         diff_ins["nts_da_g"]      = nts_da_g 
         # max number of computation nodes of a stream reach and the number of entire stream reaches 
         diff_ins["mxncomp_g"] = mxncomp_g

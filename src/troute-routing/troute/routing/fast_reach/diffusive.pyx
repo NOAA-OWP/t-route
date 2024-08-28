@@ -10,7 +10,7 @@ cdef void diffnw(
         int nts_ql_g,
         int nts_ub_g,
         int nts_db_g,
-        int ntss_ev_g,
+        int nts_ev_g,
         int nts_qtrib_g,
         int nts_da_g,
         int mxncomp_g,
@@ -51,16 +51,16 @@ cdef void diffnw(
 ):
 
     cdef:
-        float[::1,:,:] q_ev_g     = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
-        float[::1,:,:] elv_ev_g   = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
-        float[::1,:,:] depth_ev_g = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
+        float[::1,:,:] q_ev_g     = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
+        float[::1,:,:] elv_ev_g   = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
+        float[::1,:,:] depth_ev_g = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32, order = 'F')
     
     c_diffnw(
         &timestep_ar_g[0],
         &nts_ql_g,
         &nts_ub_g,
         &nts_db_g,
-        &ntss_ev_g,
+        &nts_ev_g,
         &nts_qtrib_g,
         &nts_da_g,
         &mxncomp_g,
@@ -116,7 +116,7 @@ cpdef object compute_diffusive(
         int nts_ql_g = diff_inputs["nts_ql_g"]
         int nts_ub_g = diff_inputs["nts_ub_g"]
         int nts_db_g = diff_inputs["nts_db_g"]
-        int ntss_ev_g = diff_inputs["ntss_ev_g"] 
+        int nts_ev_g = diff_inputs["nts_ev_g"] 
         int nts_qtrib_g = diff_inputs['nts_qtrib_g']
         int nts_da_g = diff_inputs["nts_da_g"]       
         int mxncomp_g = diff_inputs["mxncomp_g"]
@@ -151,9 +151,9 @@ cpdef object compute_diffusive(
         int cwncol_g = diff_inputs["cwncol_g"]
         float[::1,:] crosswalk_g = np.asfortranarray(diff_inputs["crosswalk_g"].astype(np.float32)) 
         float[::1,:] z_thalweg_g = np.asfortranarray(diff_inputs["z_thalweg_g"].astype(np.float32))
-        float[:,:,:] out_q = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
-        float[:,:,:] out_elv = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
-        float[:,:,:] out_depth = np.empty([ntss_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
+        float[:,:,:] out_q = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
+        float[:,:,:] out_elv = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
+        float[:,:,:] out_depth = np.empty([nts_ev_g,mxncomp_g,nrch_g], dtype = np.float32)
 
     # call diffusive compute kernel
     diffnw(
@@ -161,7 +161,7 @@ cpdef object compute_diffusive(
         nts_ql_g,
         nts_ub_g,
         nts_db_g,
-        ntss_ev_g,
+        nts_ev_g,
         nts_qtrib_g,
         nts_da_g,
         mxncomp_g,

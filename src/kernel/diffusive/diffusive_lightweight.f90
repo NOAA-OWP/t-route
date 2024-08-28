@@ -56,7 +56,7 @@ module diffusive_lightweight
   
 contains
 
-  subroutine compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g,                &
+  subroutine compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g, nts_ev_g,      &
                                                 mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, iniqpx, frnw_col, frnw_ar_g, &
                                                 qlat_g, dbcd_g, qtrib_g, paradim, para_ar_g, usgs_da_g, usgs_da_reach_g, &
                                                 nrow_chxsec_lookuptable, chxsec_lookuptable, z_adj, t_start, t_end,      & 
@@ -109,6 +109,7 @@ contains
     integer, intent(in) :: nts_db_g
     integer, intent(in) :: nts_qtrib_g
     integer, intent(in) :: nts_da_g
+    integer, intent(in) :: nts_ev_g
     integer, intent(in) :: frnw_col
     integer, intent(in) :: paradim
     integer, intent(in) ::  nrow_chxsec_lookuptable
@@ -128,10 +129,10 @@ contains
     real(prec), dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in) :: qlat_g
     real(prec), dimension(mxncomp_g, nrch_g),            intent(in) :: z_adj
     real(prec), dimension(11, nrow_chxsec_lookuptable, mxncomp_g, nrch_g), intent(in) :: chxsec_lookuptable
-    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: q_next_out_time
-    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: elv_next_out_time
-    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: depth_next_out_time
-    real(prec), dimension(mxncomp_g, nrch_g),            intent(out) :: qpx_next_out_time
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: q_next_out_time
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: elv_next_out_time
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: depth_next_out_time
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: qpx_next_out_time
 
   ! Local variables    
     integer :: ncomp
@@ -141,6 +142,7 @@ contains
     integer :: n
     integer :: timestep
     integer :: kkk
+    integer :: ts_ev
     integer :: jm
     integer :: usrchj
     integer :: downstream_reach_idx
@@ -489,7 +491,8 @@ contains
     
   !-----------------------------------------------------------------------------
   ! Initializations and re-initializations
-    qpx                     = iniqpx  
+    qpx   = iniqpx  
+    ts_ev = 1
 
   !-----------------------------------------------------------------------------
   ! Ordered network routing computations
@@ -651,12 +654,13 @@ contains
           j     = mstem_frj(jm)
           ncomp = frnw_g(j, 1)
           do i = 1, ncomp
-            q_next_out_time(i, j)     = newQ(i, j)
-            elv_next_out_time(i, j)   = newY(i, j)
-            depth_next_out_time(i, j) = newY(i, j) - z(i, j)
-            qpx_next_out_time(i, j)   = qpx(i, j)
+            q_next_out_time(ts_ev, i, j)     = newQ(i, j)
+            elv_next_out_time(ts_ev, i, j)   = newY(i, j)
+            depth_next_out_time(ts_ev, i, j) = newY(i, j) - z(i, j)
+            qpx_next_out_time(ts_ev, i, j)   = qpx(i, j)
           end do
         end do
+        ts_ev = ts_ev + 1
       end if
 
       ! update of Y, Q and Area vectors

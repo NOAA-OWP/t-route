@@ -5,7 +5,7 @@ use diffusive_lightweight, only: compute_diffusive_couplingtimestep
 
 implicit none
 contains
-subroutine c_compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g,                 &
+subroutine c_compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g, nts_ev_g,       &
                                                 mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, iniqpx, frnw_col, frnw_ar_g,  &
                                                 qlat_g, dbcd_g, qtrib_g, paradim, para_ar_g, usgs_da_g, usgs_da_reach_g,  &
                                                 nrow_chxsec_lookuptable, chxsec_lookuptable, z_adj, t_start, t_end,       & 
@@ -17,6 +17,7 @@ subroutine c_compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_
     integer(c_int), intent(in) :: nts_db_g
     integer(c_int), intent(in) :: nts_qtrib_g
     integer(c_int), intent(in) :: nts_da_g
+    integer(c_int), intent(in) :: nts_ev_g    
     integer(c_int), intent(in) :: frnw_col
     integer(c_int), intent(in) :: paradim
     integer(c_int), intent(in) ::  nrow_chxsec_lookuptable
@@ -36,12 +37,12 @@ subroutine c_compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_
     real(c_float), dimension(nts_ql_g,  mxncomp_g, nrch_g), intent(in) :: qlat_g
     real(c_float), dimension(mxncomp_g, nrch_g),            intent(in) :: z_adj
     real(c_float), dimension(11, nrow_chxsec_lookuptable, mxncomp_g, nrch_g), intent(in) :: chxsec_lookuptable
-    real(c_float), dimension(mxncomp_g, nrch_g), intent(out) :: q_next_out_time
-    real(c_float), dimension(mxncomp_g, nrch_g), intent(out) :: elv_next_out_time
-    real(c_float), dimension(mxncomp_g, nrch_g), intent(out) :: depth_next_out_time
-    real(c_float), dimension(mxncomp_g, nrch_g), intent(out) :: qpx_next_out_time
+    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: q_next_out_time
+    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_next_out_time
+    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: depth_next_out_time
+    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: qpx_next_out_time
           
-    call compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g,                 &
+    call compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g, nts_ev_g,       &
                                             mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, iniqpx, frnw_col, frnw_ar_g,  &
                                             qlat_g, dbcd_g, qtrib_g, paradim, para_ar_g, usgs_da_g, usgs_da_reach_g,  &
                                             nrow_chxsec_lookuptable, chxsec_lookuptable, z_adj, t_start, t_end,       & 

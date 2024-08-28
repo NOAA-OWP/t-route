@@ -72,7 +72,7 @@ module diffusive
   
 contains
 
-  subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, ntss_ev_g, nts_qtrib_g, nts_da_g,      &
+  subroutine diffnw(timestep_ar_g, nts_ql_g, nts_ub_g, nts_db_g, nts_ev_g, nts_qtrib_g, nts_da_g,      &
                     mxncomp_g, nrch_g, z_ar_g, bo_ar_g, traps_ar_g, tw_ar_g, twcc_ar_g, mann_ar_g,      &
                     manncc_ar_g, so_ar_g, dx_ar_g,                                                      &
                     iniq, frnw_col, frnw_ar_g, qlat_g, ubcd_g, dbcd_g, qtrib_g,                         &
@@ -121,7 +121,7 @@ contains
     integer, intent(in) :: nts_ql_g
     integer, intent(in) :: nts_ub_g
     integer, intent(in) :: nts_db_g
-    integer, intent(in) :: ntss_ev_g
+    integer, intent(in) :: nts_ev_g
     integer, intent(in) :: nts_qtrib_g
     integer, intent(in) :: nts_da_g
     integer, intent(in) :: frnw_col
@@ -155,9 +155,9 @@ contains
     real(prec), dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: x_bathy_g
     real(prec), dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: z_bathy_g
     real(prec), dimension(mxnbathy_g, mxncomp_g, nrch_g),  intent(in ) :: mann_bathy_g
-    real(prec), dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: q_ev_g
-    real(prec), dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: elv_ev_g
-    real(prec), dimension(ntss_ev_g, mxncomp_g, nrch_g),   intent(out) :: depth_ev_g
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),   intent(out) :: q_ev_g
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),   intent(out) :: elv_ev_g
+    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),   intent(out) :: depth_ev_g
 
   ! Local variables    
     integer :: ncomp
@@ -341,7 +341,7 @@ contains
     allocate(usgs_da_reach(nlinks))
     allocate(usgs_da(nts_da, nlinks))
     allocate(dbcd(nts_db_g))
-    allocate(temp_q_ev_g(ntss_ev_g, mxncomp_g, nrch_g), temp_elv_ev_g(ntss_ev_g, mxncomp_g, nrch_g)) 
+    allocate(temp_q_ev_g(nts_ev_g, mxncomp_g, nrch_g), temp_elv_ev_g(nts_ev_g, mxncomp_g, nrch_g)) 
     
   !--------------------------------------------------------------------------------------------
     frnw_g        = frnw_ar_g ! network mapping matrix
@@ -865,7 +865,7 @@ contains
         q_ev_g = 0.0
         elv_ev_g = 0.0
 
-        do ts=1, ntss_ev_g
+        do ts=1, nts_ev_g
           used_lfrac = 0.0
           flag_lfrac = 0
           do cwrow = 1, cwnrow_g
