@@ -95,9 +95,9 @@ compute_parameters:
             reservoir_parameter_file                : domain/reservoir_index_AnA.nc
             reservoir_persistence_da:
                 #----------
-                reservoir_persistence_usgs  : False
-                reservoir_persistence_usace : False
-                reservoir_persistence_greatLake : True
+                reservoir_persistence_usgs  : True
+                reservoir_persistence_usace : True
+                reservoir_persistence_greatLake : False
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : False
@@ -105,7 +105,7 @@ compute_parameters:
                 reservoir_rfc_forecasts_lookback_hours  : 48
             
 #--------------------------------------------------------------------------------
-# output_parameters:
+output_parameters:
 #     #----------
 #     test_output: output/lcr_flowveldepth.pkl
 #     lite_restart:
@@ -124,5 +124,10 @@ compute_parameters:
 #         stream_output_time: 1 #[hr]
 #         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
 #         stream_output_internal_frequency: 30 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60
+    parquet_output:
+        #---------
+        parquet_output_folder: output/
+        configuration: short_range
+        prefix_ids: nex
 
     

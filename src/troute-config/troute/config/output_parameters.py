@@ -16,6 +16,7 @@ class OutputParameters(BaseModel):
     """
     chanobs_output: Optional["ChanobsOutput"] = None
     csv_output: Optional["CsvOutput"] = None
+    parquet_output: Optional["ParquetOutput"] = None
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
     hydro_rst_output: Optional["HydroRstOutput"] = None
@@ -53,6 +54,14 @@ class CsvOutput(BaseModel):
     """
     Subset of segment IDs to include in the output file.
     """
+
+
+class ParquetOutput(BaseModel):
+    # NOTE: required if writing results to parquet
+    parquet_output_folder: Optional[DirectoryPath] = None
+    parquet_output_segments: Optional[List[str]] = None
+    configuration: str = 'None'
+    prefix_ids: str = 'wb'
 
 
 class ChrtoutOutput(BaseModel):
@@ -121,6 +130,7 @@ class ParityCheckCompareFileSet(BaseModel):
     """
     """
 
+
 class StreamOutput(BaseModel):
     """
     t-route's most recent output file type. This will output channel network values (flow, velocity, depth, and nudge values). 
@@ -133,6 +143,10 @@ class StreamOutput(BaseModel):
     stream_output_directory: Optional[DirectoryPath] = None
     """
     Directory to save flowveldepth outputs. If this is not None, this form of output will be written.
+    """
+    mask_output: Optional[FilePath] = None
+    """
+    Yaml file specifying flowpath/nexus IDs to include in output files.
     """
     stream_output_time: int = 1
     """
