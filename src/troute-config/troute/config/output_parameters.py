@@ -1,6 +1,6 @@
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
-
+import os
 from typing import Optional, List
 from typing_extensions import Annotated, Literal
 from .types import FilePath, DirectoryPath
@@ -93,11 +93,19 @@ class ParityCheckCompareFileSet(BaseModel):
 
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
-    stream_output_directory: Optional[DirectoryPath] = None
+    stream_output_directory: Optional[str] = None
     mask_output: Optional[FilePath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5
+    
+    @validator('stream_output_directory', pre=True, always=True)
+    def validate_stream_output_directory(cls, value):
+        if value:
+            if not os.path.exists(value):
+                os.makedirs(value) 
+        return value
+    
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
