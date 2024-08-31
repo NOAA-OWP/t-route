@@ -40,7 +40,7 @@ subroutine c_compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_
     real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: q_next_out_time
     real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: elv_next_out_time
     real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: depth_next_out_time
-    real(c_float), dimension(nts_ev_g, mxncomp_g, nrch_g), intent(out) :: qpx_next_out_time
+    real(c_float), dimension(mxncomp_g, nrch_g),           intent(out) :: qpx_next_out_time
           
     call compute_diffusive_couplingtimestep(timestep_ar_g, nts_ql_g, nts_db_g, nts_qtrib_g, nts_da_g, nts_ev_g,       &
                                             mxncomp_g, nrch_g, dx_ar_g, iniq, inidepth, iniqpx, frnw_col, frnw_ar_g,  &

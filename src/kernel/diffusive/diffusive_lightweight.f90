@@ -132,7 +132,7 @@ contains
     real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: q_next_out_time
     real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: elv_next_out_time
     real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: depth_next_out_time
-    real(prec), dimension(nts_ev_g, mxncomp_g, nrch_g),            intent(out) :: qpx_next_out_time
+    real(prec), dimension(mxncomp_g, nrch_g),                      intent(out) :: qpx_next_out_time
 
   ! Local variables    
     integer :: ncomp
@@ -657,7 +657,7 @@ contains
             q_next_out_time(ts_ev, i, j)     = newQ(i, j)
             elv_next_out_time(ts_ev, i, j)   = newY(i, j)
             depth_next_out_time(ts_ev, i, j) = newY(i, j) - z(i, j)
-            qpx_next_out_time(ts_ev, i, j)   = qpx(i, j)
+            qpx_next_out_time(i, j)   = qpx(i, j)
           end do
         end do
         ts_ev = ts_ev + 1

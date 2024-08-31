@@ -1747,7 +1747,6 @@ def compute_nhd_routing_v02(
                 from_files,
                 )
             
-            import pdb; pdb.set_trace()
             # prepare diffusive input data for running  hybrid routing
             # A channel subnetwork within enumerate(reaches_bytw.items(), 1) may consist of 
             # multiple diffusive domains, each separated by distinct tailwater segments.    
@@ -1863,7 +1862,7 @@ def compute_nhd_routing_v02(
                             for index, id_value in enumerate(sublist):
                                 diffusive_segment2reach_and_segment_bottom_node_idx[id_value] = [first_key, index+1]                        
                         diffusive_segment2reach_and_segment_bottom_node_idx_bytw[diffusive_tw] = diffusive_segment2reach_and_segment_bottom_node_idx
-            import pdb; pdb.set_trace()
+
             results.append(
                 compute_func(
                     nts,

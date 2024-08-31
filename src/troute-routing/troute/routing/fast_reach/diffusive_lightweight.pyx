@@ -32,17 +32,17 @@ cdef void diffusive_couplingtimestep(
                                     float[::1,:] z_adj, 
                                     float t_start, 
                                     float t_end,             
-                                    float[::1,:,:] out_q_next_out_time, 
-                                    float[::1,:,:] out_elv_next_out_time, 
-                                    float[::1,:,:] out_depth_next_out_time,
-                                    float[::1,:,:] out_qpx_next_out_time,
+                                    float[:,:,:] out_q_next_out_time, 
+                                    float[:,:,:] out_elv_next_out_time, 
+                                    float[:,:,:] out_depth_next_out_time,
+                                    float[:,:] out_qpx_next_out_time,
 ):
 
     cdef:
         float[::1,:,:] q_next_out_time     = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32, order = 'F')
         float[::1,:,:] elv_next_out_time   = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32, order = 'F')
         float[::1,:,:] depth_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32, order = 'F')
-        float[::1,:,:] qpx_next_out_time   = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32, order = 'F')
+        float[::1,:] qpx_next_out_time     = np.empty([mxncomp_g, nrch_g], dtype = np.float32, order = 'F')
 
     c_compute_diffusive_couplingtimestep(&timestep_ar_g[0], 
                                          &nts_ql_g, 
@@ -73,14 +73,14 @@ cdef void diffusive_couplingtimestep(
                                          &q_next_out_time[0,0,0], 
                                          &elv_next_out_time[0,0,0], 
                                          &depth_next_out_time[0,0,0],
-                                         &qpx_next_out_time[0,0,0],
+                                         &qpx_next_out_time[0,0],
                                          )
 
     # copy data from Fortran to Python memory view
     out_q_next_out_time[:,:,:]     = q_next_out_time[::1,:,:]
     out_elv_next_out_time[:,:,:]   = elv_next_out_time[::1,:,:]
     out_depth_next_out_time[:,:,:] = depth_next_out_time[::1,:,:]
-    out_qpx_next_out_time[:,:,:]   = qpx_next_out_time[::1,:,:]
+    out_qpx_next_out_time[:,:]     = qpx_next_out_time[::1,:]
 
 cpdef object compute_diffusive_couplingtimestep(
     dict diff_inputs,
@@ -114,14 +114,14 @@ cpdef object compute_diffusive_couplingtimestep(
         float[::1,:] usgs_da_g = np.asfortranarray(diff_inputs["usgs_da_g"].astype(np.float32))   
         int[::1] usgs_da_reach_g = np.asfortranarray(diff_inputs["usgs_da_reach_g"]) 
         int nrow_chxsec_lookuptable = diff_inputs["nrow_chxsec_lookuptable"]        
-        float[::1,:,:,:] chxsec_lookuptable = np.asfortranarray(out_chxsec_lookuptable) #.astype(np.float64))
-        float[::1,:] z_adj = np.asfortranarray(out_z_adj) #.astype(np.float64))
+        float[::1,:,:,:] chxsec_lookuptable = np.asfortranarray(out_chxsec_lookuptable) 
+        float[::1,:] z_adj = np.asfortranarray(out_z_adj) 
         float t_start = float(couplingtime_start)
         float t_end = float(couplingtime_end)
-        float[::1,:,:] out_q_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
-        float[::1,:,:] out_elv_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
-        float[::1,:,:] out_depth_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
-        float[::1,:,:] out_qpx_next_out_time = np.empty([nts_ev_g, mxncomp_g,nrch_g], dtype = np.float32)
+        float[:,:,:] out_q_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
+        float[:,:,:] out_elv_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
+        float[:,:,:] out_depth_next_out_time = np.empty([nts_ev_g, mxncomp_g, nrch_g], dtype = np.float32)
+        float[:,:] out_qpx_next_out_time = np.empty([mxncomp_g, nrch_g], dtype = np.float32)
 
     # call diffusive compute kernel
     diffusive_couplingtimestep(

@@ -788,9 +788,9 @@ contains
       !end do
 
       ! diffusive wave simulation time print
-      !if (mod(t,30.)==0.) then
+      if (mod(t,5.)==0.) then
         print*, "diffusive simulation time in minute=", t
-      !endif
+      endif
 
       ! write results to output arrays
       if ( (mod((t - t0 * 60.) * 60., saveInterval) <= TOLERANCE) .or. (t == tfin * 60.)) then
