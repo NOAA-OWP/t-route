@@ -10,7 +10,7 @@ class TRouteOuput(BaseModel):
     Attributes
     ----------
     message: str
-        The 
+        The
     lid : str
         The location ID belonging to the point being routed
     feature_id : str

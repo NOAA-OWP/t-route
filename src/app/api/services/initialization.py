@@ -23,7 +23,7 @@ def edit_yaml(original_file: Path, params: Dict[str, str], restart_file: Path) -
         The parameters that will be added to the base config file
     restart_file: path
         The location to the restart_file path
-    
+
     Returns:
     --------
     Path:
@@ -77,7 +77,7 @@ def create_params(
     settings: Settings,
 ) -> Dict[str, str]:
     """Generating the parameters to be added to the T-Route config files
-    
+
     Parameters:
     -----------
     lid: str
@@ -118,12 +118,9 @@ def create_params(
     }
 
 
-def create_initial_start_file(
-    params: Dict[str, str], 
-    settings: Settings
-) -> Path:
+def create_initial_start_file(params: Dict[str, str], settings: Settings) -> Path:
     """Creating the initial start/restart files
-    
+
     Parmeters:
     ----------
     params: Dict[str, str]
@@ -159,7 +156,7 @@ def create_initial_start_file(
             "key": np.array(keys),
             "qu0": discharge_upstream,
             "qd0": discharge_downstream,
-            "h0": height, 
+            "h0": height,
         }
     )
     df.set_index("key", inplace=True)
