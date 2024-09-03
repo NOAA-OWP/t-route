@@ -12,6 +12,7 @@ app = FastAPI(
 
 app.include_router(api_router, prefix=settings.api_v1_str)
 
+
 @app.head("/health")
 async def health_check():
     return Response(status_code=status.HTTP_200_OK)
