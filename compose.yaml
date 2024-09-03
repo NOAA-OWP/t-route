@@ -2,12 +2,12 @@ services:
   troute:
     build: 
       context: .
-      dockerfile: Dockerfile.troute
+      dockerfile: Dockerfile.troute_api
     ports:
       - "8004:8000"
     volumes:
       - type: bind
-        source: ./output
+        source: ./data/troute_output
         target: /t-route/output
       - type: bind
         source: ./data

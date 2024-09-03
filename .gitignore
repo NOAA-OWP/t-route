@@ -81,3 +81,5 @@ src/vendor/
 dist/
 data/ 
 output
+test_compose.yaml
+src/app/.ruff_cache

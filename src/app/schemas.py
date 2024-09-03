@@ -1,19 +1,22 @@
-from datetime import datetime
-from typing import List, Optional, Union
+"""Author: Tadd Bindas"""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
+
 
 class TRouteOuput(BaseModel):
     """
-    River Forecast Center information.
+    A schema to define successful t-route output
 
     Attributes
     ----------
-    abbreviation : str
-        The abbreviated name of the RFC.
-    name : str
-        The full name of the RFC.
+    message: str
+        The 
+    lid : str
+        The location ID belonging to the point being routed
+    feature_id : str
+        The COMID, or hf_id, belonging to the point being routed
     """
+
     message: str
     lid: str
     feature_id: str

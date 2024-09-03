@@ -5,12 +5,12 @@ if ! docker login --username ${GH_USERNAME} --password ${GH_TOKEN} ghcr.io; then
     exit 1
 fi
 
-if ! docker build -t ghcr.io/taddyb33/t-route-dev:${TAG} -f Dockerfile.troute .; then
+if ! docker build -t ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG} -f Dockerfile.troute_api .; then
     echo "Error: Failed to build Docker image. Please check your Dockerfile and build context."
     exit 1
 fi
 
-if ! docker push ghcr.io/taddyb33/t-route-dev:${TAG}; then
+if ! docker push ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG}; then
     echo "Error: Failed to push Docker image. Please check your TAG env var"
     exit 1
 fi
