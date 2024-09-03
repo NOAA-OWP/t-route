@@ -1465,20 +1465,14 @@ cpdef object compute_network_structured_with_hybrid_routing_single_timestep(
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
                 upstream_array[r.id, timestep, 0] = upstream_flows
-                print(f"--if res_LP--")
-                print(f"r.id: {r.id} & timestep: {timestep}")
-                print(f"upstream_array[r.id, timestep, 0]: {upstream_array[r.id, timestep, 0]}")
-
+               
             elif r.type == compute_type.RESERVOIR_RFC:
                 run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
                 flowveldepth[r.id, timestep, 0] = reservoir_outflow
                 flowveldepth[r.id, timestep, 1] = 0.0
                 flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
                 upstream_array[r.id, timestep, 0] = upstream_flows
-                print(f"--if res_RFC--")
-                print(f"r.id: {r.id} & timestep: {timestep}")
-                print(f"upstream_array[r.id, timestep, 0]: {upstream_array[r.id, timestep, 0]}")
-           
+                          
             elif diffusive_segments and i == diffusive_tw_reach_idx: 
                 # run diffusive wave routing when the tailwater segment of diffusive domain is included in the current reach
                 
