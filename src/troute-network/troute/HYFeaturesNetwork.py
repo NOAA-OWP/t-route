@@ -35,8 +35,9 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     available_layers = fiona.listlayers(file_path)
 
     # patterns for the layers we want to find
+    # $ in flowpaths to avoid double matching with flowpath_attributes
     layer_patterns = {
-        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
+        'flowpaths': r'flow[-_]?paths?$|flow[-_]?lines?$',
         'flowpath_attributes': r'flow[-_]?path[-_]?attributes?|flow[-_]?line[-_]?attributes?',
         'lakes': r'lakes?',
         'nexus': r'nexus?',
