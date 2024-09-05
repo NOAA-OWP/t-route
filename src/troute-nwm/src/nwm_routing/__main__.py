@@ -107,10 +107,10 @@ def main_v04(argv):
     
     network_end_time = time.time()
     task_times['network_creation_time'] = network_end_time - network_start_time
-
+    
     # Create run_sets: sets of forcing files for each loop
     run_sets = network.build_forcing_sets()
-
+    
     # Create da_sets: sets of TimeSlice files for each loop
     if "data_assimilation_parameters" in compute_parameters:
         da_sets = hnu.build_da_sets(data_assimilation_parameters, run_sets, network.t0)
@@ -228,6 +228,9 @@ def main_v04(argv):
             data_assimilation.reservoir_usace_param_df,
             data_assimilation.reservoir_rfc_df,
             data_assimilation.reservoir_rfc_param_df,
+            data_assimilation.great_lakes_df,
+            data_assimilation.great_lakes_param_df,
+            network.great_lakes_climatology_df,
             data_assimilation.assimilation_parameters,
             assume_short_ts,
             return_courant,
@@ -288,9 +291,13 @@ def main_v04(argv):
             forcing_end_time = time.time()
             task_times['forcing_time'] += forcing_end_time - route_end_time
 
-        
-        output_start_time = time.time()  
+        if network.poi_nex_dict:
+            poi_crosswalk = network.poi_nex_dict
+        else:
+            poi_crosswalk = dict()
 
+        output_start_time = time.time()  
+        
         #TODO Update this to work with either network type...
         nwm_output_generator(
             run,
@@ -309,7 +316,9 @@ def main_v04(argv):
             data_assimilation_parameters,
             data_assimilation.lastobs_df,
             network.link_gage_df,
-            network.link_lake_crosswalk, 
+            network.link_lake_crosswalk,
+            network.nexus_dict,
+            poi_crosswalk, 
             logFileName            
         )
         
@@ -1133,6 +1142,9 @@ def nwm_route(
     reservoir_usace_param_df,
     reservoir_rfc_df,
     reservoir_rfc_param_df,
+    great_lakes_df,
+    great_lakes_param_df,
+    great_lakes_climatology_df,
     da_parameter_dict,
     assume_short_ts,
     return_courant,
@@ -1223,6 +1235,9 @@ def nwm_route(
         reservoir_usace_param_df,
         reservoir_rfc_df,
         reservoir_rfc_param_df,
+        great_lakes_df,
+        great_lakes_param_df,
+        great_lakes_climatology_df,
         da_parameter_dict,
         assume_short_ts,
         return_courant,
@@ -1671,6 +1686,9 @@ def main_v03(argv):
             reservoir_usace_param_df,
             pd.DataFrame(), #empty dataframe for RFC data...not needed unless running via BMI
             pd.DataFrame(), #empty dataframe for RFC param data...not needed unless running via BMI
+            pd.DataFrame(), #empty dataframe for great lakes data...
+            pd.DataFrame(), #empty dataframe for great lakes param data...
+            pd.DataFrame(), #empty dataframe for great lakes climatology data...
             da_parameter_dict,
             assume_short_ts,
             return_courant,

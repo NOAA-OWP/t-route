@@ -113,7 +113,7 @@ compute_parameters:
                 #----------
                 reservoir_persistence_usgs  : True
                 reservoir_persistence_usace : True
-                reservoir_persistence_greatLake : True
+                reservoir_persistence_greatLake : False
             reservoir_rfc_da:
                 #----------
                 reservoir_rfc_forecasts                 : True
@@ -131,6 +131,7 @@ compute_parameters:
 #     lastobs_output: lastobs/
 #     stream_output : 
 #         stream_output_directory: output/
+#         mask_output: domain/mask_output.yaml
 #         stream_output_time: 1 #[hr] ** Consider `stream_output_time = -1` means save everything in one file **
 #         stream_output_type: '.nc' #please select only between netcdf '.nc' or '.csv' or '.pkl'
 #         stream_output_internal_frequency: 60 #[min] it should be order of 5 minutes. For instance if you want to output every hour put 60    

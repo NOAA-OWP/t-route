@@ -559,6 +559,25 @@ def check_inputs(
 
     else:
         LOG.debug('No csv output folder specified. Results will NOT be written to csv')
+
+    if output_parameters.get('parquet_output', None):
+
+        if output_parameters['parquet_output'].get('parquet_output_folder', None):
+
+            _does_path_exist(
+                'parquet_output_folder',
+                output_parameters['parquet_output']['parquet_output_folder']
+            )
+
+            output_segs = output_parameters['parquet_output'].get('parquet_output_segments', None)
+            if not output_segs:
+                LOG.debug('No parquet output segments specified. Results for all domain segments will be written')
+
+        else:
+            LOG.debug('No parquet output folder specified. Results will NOT be written in parquet format')
+
+    else:
+        LOG.debug('No parquet output folder specified. Results will NOT be written in parquet format')
         
     if output_parameters.get('chrtout_output', None):
         
