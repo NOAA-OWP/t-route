@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.troute_api
     ports:
-      - "8004:8000"
+      - "8000:8000"
     volumes:
       - type: bind
         source: ./test/api/data/troute_output

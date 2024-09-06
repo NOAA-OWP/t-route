@@ -6,7 +6,7 @@ To use these files, follow the steps below:
 
 1. Copy the `test_compose.yaml` file in the base project dir (/t-route)
 2. Run `docker compose -f test_compose.yaml up`
-3. visit `localhost:8004/docs` in your browser
+3. visit `localhost:8000/docs` in your browser
 4. Enter the following parameters into the `/api/v1/flow_routing/v4` endpoint
 - lid=CAGM7
 - feature_id=2930769
