@@ -1,3 +1,5 @@
+"""Author: Tadd Bindas"""
+
 from fastapi import FastAPI, status
 from fastapi.responses import Response
 
