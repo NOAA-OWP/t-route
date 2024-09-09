@@ -20,13 +20,3 @@ To use these files, follow the steps below:
 ## Docs:
 See `doc/api_docs.md` for specific docs related to the T-Route API
 
-## Running the Lower Colorado Example using the API
-#### Written 9/6/24
-
-To run the Lower Colorado example using the T-Route FastAPI instance, you can use the following parameters with the `/api/v1/flow_routing/v4` endpoint
-- lid=LowerColorado
-- feature_id=2420801
-- hy_id=2420801
-- initial_start=0
-- start_time=2023-04-01T00:00:00
-- num_forecast_days=2
