@@ -93,11 +93,27 @@ class ParityCheckCompareFileSet(BaseModel):
 
 class StreamOutput(BaseModel):
     # NOTE: required if writing StreamOutput files
-    stream_output_directory: Optional[DirectoryPath] = None
+    stream_output_directory: Optional[Path] = None
     mask_output: Optional[FilePath] = None
     stream_output_time: int = 1
     stream_output_type:streamOutput_allowedTypes = ".nc"
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5
+    
+    @validator('stream_output_directory')
+    def validate_stream_output_directory(cls, value):
+        if value is None:
+            return None
+            
+        # expand ~/output/dir -> /home/user/output/dir
+        value = value.expanduser()
+        
+        if value.exists() and not value.is_dir():
+            raise ValueError(f"'stream_output_directory'={value!s} is a file, expected directory.")
+
+        # make directory (and intermediates) if they don't exist
+        value.mkdir(parents=True, exist_ok=True)
+        return value
+    
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
         if value is not None:
