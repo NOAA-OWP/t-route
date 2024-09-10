@@ -20,6 +20,7 @@ from troute.network.reservoirs.levelpool.levelpool cimport MC_Levelpool, run_lp_
 from troute.network.reservoirs.rfc.rfc cimport MC_RFC, run_rfc_c
 from troute.routing.fast_reach.reservoir_hybrid_da import reservoir_hybrid_da
 from troute.routing.fast_reach.reservoir_RFC_da import reservoir_RFC_da
+from troute.routing.fast_reach.reservoir_GL_da import great_lakes_da
 from cython.parallel import prange
 
 #import cProfile
@@ -163,6 +164,93 @@ cpdef object column_mapper(object src_cols):
         rv.append(index[label])
     return rv
 
+# Define the new function
+cpdef object prepare_diffusive_numpy_indices(
+    dict diffusive_reaches_bytw,
+    int tw_segment_id,
+    dict nondiffusive_segments_bytw,  
+    dict segmentid2idx,
+    dict diffusive_segment2reach_and_segment_bottom_node_idx_bytw,
+    dict diffusive_inputs_bytw,
+    dict chxsec_lookuptable_bytw,
+    dict chbottom_elevation_bytw
+):
+    """
+    Convert the Python variables representing the indices of diffusive segments or reaches into NumPy arrays
+    
+    Parameters
+    ----------
+    mx_jorder -- (int) maximum network reach order
+    param_df --(DataFrame) geomorphic parameters
+    dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary 
+    z_all -- (dict) adjusted altitude dictionary with placeholder values to be replaced
+    
+    diffusive_reaches_bytw -- (dict) Maps each tailwater segment ID to a list of upstream reaches in a diffusive domain, with each reach containing it own list of stream segment IDs. 
+    tw_segment_id -- (int) -- tailwater segment ID
+    nondiffusive_segments_bytw -- (dict) Maps each tailwater segment ID to a list of tributary segment IDs that enter the upper boundary of the associated diffusive domain.  
+    segmentid2idx -- (dict) Maps segment ID  to corresponding segment ID as determined by binary_find(data_idx, reach)
+    diffusive_segment2reach_and_segment_bottom_node_idx_bytw -- (dict) Maps each segment ID in the diffusive domain, including connected tributaries, to its corresponding Fortran kernel indices in the format (compute node index, reach index)
+    diffusive_inputs_bytw -- (dict) Contains the values of input arguments and forcings required for running diffusive Fortran kernel
+    chxsec_lookuptable_bytw -- (dict) Map each tailwater segment ID to the channel cross-section hydraulic lookup table for all upstream segments within the diffusive domain
+    chbottom_elevation_bytw -- (dict) Map each tailwater segment ID to the channel bottom elevation for all upstream segments within the diffusive domain.
+
+    
+    Returns
+    ----------
+    nondiffusive_seg_indices -- (numpy array) Array mapping segment IDs to indices for connected tributary segments
+    nondiffusive_reach_order_indices -- (numpy array) Array mapping reaches to indices for connected tributary segments
+    num_nondiffusive_segments -- (int) the number of tributary segments connected to the diffusive domain that drains into a given diffusive tailwater segment
+    diffusive_segments -- (list)  list of segment IDs within the diffusive domain 
+    num_diffusive_segments -- (int) the number of stream segments within the diffusive domain that drains into a given tailwater segment 
+    diffusive_seg_indices -- (numpy array) Array mapping segment ID to indices for stream segments within the diffusive domain that drains into a given tailwater segment
+    diffusive_reach_order_indices -- (numpy array) Array mapping segment IDs to Fortran kernel indices for stream reaches within the diffusive domain
+    diffusive_segment_bottom_node_indices  -- (numpy array) Array mapping segment IDs to Fortran kernel indices for stream segments within the diffusive domain 
+    diffusive_inputs -- (dict) Contains the values of input arguments and forcings required for running diffusive Fortran kernel for the diffusive domain that drains into a given tailwater segments
+    num_reaches_diffusive_domain -- (int) the number of stream reaches within the diffusive domain for a given tailwater segment
+    max_num_node_reach -- (int)  The maximum number of compute nodes used by any reach within the diffusive domain in the Fortran diffusive kernel 
+    iniqpx_np -- (int) Array of values for internal varialbe qpx in the Fortran diffusive kernel, based on the values of previous time step  
+    out_chxsec_lookuptable  -- (numpy array) Array representing the channel cross-section hydraulic lookup table for all upstream segments within the diffusive domain that drain into a specified tailwater segment.
+    out_z_adj -- (numpy array) Array representing the channel bottom elevation for all upstream segments within the diffusive domain that drain into a specified tailwater segment. 
+    """    
+        
+    cdef np.ndarray nondiffusive_seg_indices
+    cdef np.ndarray nondiffusive_reach_order_indices
+    cdef int num_nondiffusive_segments
+    cdef list diffusive_segments
+    cdef int num_diffusive_segments
+    cdef np.ndarray diffusive_seg_indices
+    cdef np.ndarray diffusive_reach_order_indices
+    cdef np.ndarray diffusive_segment_bottom_node_indices
+    cdef dict diffusive_inputs
+    cdef int num_reaches_diffusive_domain
+    cdef int max_num_node_reach
+    cdef np.ndarray iniqpx_np
+    cdef np.ndarray out_chxsec_lookuptable
+    cdef np.ndarray out_z_adj
+
+    nondiffusive_seg_indices = np.array([segmentid2idx[seg_id] for seg_id in nondiffusive_segments_bytw[tw_segment_id]], dtype=np.int32)
+    nondiffusive_reach_order_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][0] for seg_id in nondiffusive_segments_bytw[tw_segment_id]],dtype=np.int32)
+    num_nondiffusive_segments = len(nondiffusive_seg_indices)
+
+    diffusive_segments = list(itertools.chain(*diffusive_reaches_bytw[tw_segment_id])) 
+    num_diffusive_segments = len(diffusive_segments)
+    diffusive_seg_indices = np.array([segmentid2idx[seg_id] for seg_id in diffusive_segments], dtype=np.int32)
+    diffusive_reach_order_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][0] for seg_id in diffusive_segments], dtype=np.int32)
+    diffusive_segment_bottom_node_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][1] for seg_id in diffusive_segments], dtype=np.int32)
+
+    diffusive_inputs = diffusive_inputs_bytw[tw_segment_id]
+    num_reaches_diffusive_domain = diffusive_inputs['nrch_g']    
+    max_num_node_reach = diffusive_inputs['mxncomp_g']    
+    iniqpx_np = np.zeros((max_num_node_reach, num_reaches_diffusive_domain), dtype='float32')
+
+    out_chxsec_lookuptable = chxsec_lookuptable_bytw[tw_segment_id]
+    out_z_adj = chbottom_elevation_bytw[tw_segment_id]
+
+    return (nondiffusive_seg_indices, nondiffusive_reach_order_indices, num_nondiffusive_segments,
+            diffusive_segments, num_diffusive_segments, diffusive_seg_indices, diffusive_reach_order_indices,
+            diffusive_segment_bottom_node_indices, diffusive_inputs, num_reaches_diffusive_domain,
+            max_num_node_reach, iniqpx_np, out_chxsec_lookuptable, out_z_adj)
+
 cpdef object compute_network_structured_with_hybrid_routing(
     int nsteps,
     float dt,
@@ -210,6 +298,14 @@ cpdef object compute_network_structured_with_hybrid_routing(
     const float[:] reservoir_rfc_update_time,
     const int[:] reservoir_rfc_da_timestep,
     const int[:] reservoir_rfc_persist_days,
+    const int[:] great_lakes_idx,
+    const int[:] great_lakes_times,
+    const float[:] great_lakes_discharge,
+    const int[:] great_lakes_param_idx,
+    const float[:] great_lakes_param_prev_assim_flow,
+    const int[:] great_lakes_param_prev_assim_times,
+    const int[:] great_lakes_param_update_times,
+    const float[:,:] great_lakes_climatology,
     list diffusive_tailwater_segments,                             
     dict diffusive_reaches_bytw,                                  
     dict nondiffusive_segments_bytw,                                                       
@@ -366,10 +462,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
             segment_ids = binary_find(data_idx, reach)
 
             # collect network information for applying diffusive wave routing
-            #if diffusive_tw in reach:
-            #    diffusive_tw_reach_idx = reach_idx
-                
-            #common_segment = any(item in diffusive_tailwater_segments for item in reach)
             common_segment = diffusive_tailwater_segments_set.intersection(set(reach))
             if common_segment:
                 diffusive_tailwater_reach_object_indices[reach_idx] = next(iter(common_segment)) 
@@ -457,6 +549,16 @@ cpdef object compute_network_structured_with_hybrid_routing(
     cdef np.ndarray[float, ndim=1] usace_prev_persistence_index = np.asarray(reservoir_usace_persistence_index)
     cdef np.ndarray[int, ndim=1] rfc_timeseries_idx             = np.asarray(reservoir_rfc_timeseries_idx)
 
+    # great lakes arrays
+    cdef np.ndarray[int, ndim=1] gl_idx = np.asarray(great_lakes_idx)
+    cdef np.ndarray[float, ndim=1] gl_obs = np.asarray(great_lakes_discharge)
+    cdef np.ndarray[int, ndim=1] gl_times = np.asarray(great_lakes_times)
+    cdef np.ndarray[int, ndim=1] gl_param_idx = np.asarray(great_lakes_param_idx)
+    cdef np.ndarray[int, ndim=1] gl_update_time = np.asarray(great_lakes_param_update_times)
+    cdef np.ndarray[float, ndim=1] gl_prev_assim_ouflow = np.asarray(great_lakes_param_prev_assim_flow)
+    cdef np.ndarray[int, ndim=1] gl_prev_assim_timestamp = np.asarray(great_lakes_param_prev_assim_times)
+    cdef np.ndarray[float, ndim=2] gl_climatology = np.asarray(great_lakes_climatology) 
+
     #---------------------------------------------------------------------------------------------
     #---------------------------------------------------------------------------------------------
     
@@ -501,7 +603,6 @@ cpdef object compute_network_structured_with_hybrid_routing(
     #create a memory view of the ndarray
     cdef float[:,:,::1] flowveldepth = flowveldepth_nd
     cdef np.ndarray[float, ndim=3] upstream_array = np.empty((data_idx.shape[0], nsteps+1, 1), dtype='float32')
-    #cdef np.ndarray[float, ndim=3] upstream_array = 111.0*np.ones((data_idx.shape[0], nsteps+1, 1), dtype='float32')
     cdef float reservoir_outflow, reservoir_water_elevation
     cdef int id = 0
 
@@ -515,53 +616,24 @@ cpdef object compute_network_structured_with_hybrid_routing(
     cdef int start_reach_order_idx = 0
     cdef int end_reach_order_idx
     cdef int df_start_timestep, df_timestep
-    cdef int[:] nondiffusive_seg_indices 
-    cdef int[:] nondiffusive_reach_order_indices 
-    cdef float[:] flow_values
-    cdef int[:] diffusive_seg_indices  
-    cdef int[:] diffusive_reach_order_indices 
-    cdef int[:] diffusive_segment_bottom_node_indices         
-    cdef float[:,:] diffusive_inputs_iniq  
-    cdef float[:,:] diffusive_inputs_inidepth    
-    cdef float[:,:,:]  diffusive_reach_head_flowveldepth  
-    cdef float[:,:] iniqpx_np
-    cdef float[:,:,:,:] out_chxsec_lookuptable
-    cdef float[:,:] out_z_adj  
-    cdef list diffusive_segments=[]
-    cdef dict diffusive_inputs={}
 
     for tw_reach_order_idx, tw_segment_id in diffusive_tailwater_reach_object_indices.items(): 
         end_reach_order_idx = tw_reach_order_idx + 1  # The for loop of i in range(start, end) iterates from 'start' to 'end-1'
         
-        # Precompute index mappings between diffusive routing parameters and their associated NumPy arrays for a distinct diffusive domain
-        if diffusive_reaches_bytw and tw_segment_id !=-9999:
-            diffusive_segments = list(itertools.chain(*diffusive_reaches_bytw[tw_segment_id])) 
-            nondiffusive_seg_indices = np.array([segmentid2idx[seg_id] for seg_id in nondiffusive_segments_bytw[tw_segment_id]], dtype=np.int32)
-            nondiffusive_reach_order_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][0] for seg_id in nondiffusive_segments_bytw[tw_segment_id]],dtype=np.int32)
-            num_nondiffusive_segments = len(nondiffusive_seg_indices)
-            flow_values = np.zeros(num_nondiffusive_segments, dtype=np.float32)
-            
-            diffusive_segments = list(itertools.chain(*diffusive_reaches_bytw[tw_segment_id])) 
-            num_diffusive_segments = len(diffusive_segments)
-            diffusive_seg_indices = np.array([segmentid2idx[seg_id] for seg_id in diffusive_segments], dtype=np.int32)
-            diffusive_reach_order_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][0] for seg_id in diffusive_segments], dtype=np.int32)
-            diffusive_segment_bottom_node_indices = np.array([diffusive_segment2reach_and_segment_bottom_node_idx_bytw[tw_segment_id][seg_id][1] for seg_id in diffusive_segments], dtype=np.int32)
-            
-            diffusive_inputs_iniq = np.zeros((max_num_node_reach, num_reaches_diffusive_domain), dtype='float32')
-            diffusive_inputs_inidepth = np.zeros((max_num_node_reach, num_reaches_diffusive_domain), dtype='float32')
-            
-            diffusive_inputs = diffusive_inputs_bytw[tw_segment_id]
-            num_reaches_diffusive_domain = diffusive_inputs['nrch_g']    
-            max_num_node_reach = diffusive_inputs['mxncomp_g']    
-            diffusive_reach_head_flowveldepth = np.zeros((num_reaches_diffusive_domain, nsteps+1, qvd_ts_w), dtype='float32', order='F')
-            iniqpx_np = np.zeros((max_num_node_reach, num_reaches_diffusive_domain), dtype='float32')
-
-            out_chxsec_lookuptable = chxsec_lookuptable_bytw[tw_segment_id]
-            out_z_adj = chbottom_elevation_bytw[tw_segment_id]
+        # Convert the Python variables representing the indices of diffusive segments or reaches into NumPy arrays to optimize computation speed.        if diffusive_reaches_bytw and tw_segment_id !=-9999:            
+        if diffusive_reaches_bytw and tw_segment_id !=-9999:    
+            (nondiffusive_seg_indices, nondiffusive_reach_order_indices, num_nondiffusive_segments,
+            diffusive_segments, num_diffusive_segments, diffusive_seg_indices, diffusive_reach_order_indices,
+            diffusive_segment_bottom_node_indices, diffusive_inputs, num_reaches_diffusive_domain,
+            max_num_node_reach, iniqpx_np, out_chxsec_lookuptable, out_z_adj
+            ) = prepare_diffusive_numpy_indices(
+                    diffusive_reaches_bytw, tw_segment_id, nondiffusive_segments_bytw, segmentid2idx,
+                    diffusive_segment2reach_and_segment_bottom_node_idx_bytw, diffusive_inputs_bytw,
+                    chxsec_lookuptable_bytw, chbottom_elevation_bytw
+            )
 
         while timestep < nsteps+1:
             for i in range(start_reach_order_idx, end_reach_order_idx): 
-            #for i in range(num_reaches):
                 r = &reach_structs[i]
                 #Need to get quc and qup
                 upstream_flows = 0.0
@@ -576,169 +648,209 @@ cpdef object compute_network_structured_with_hybrid_routing(
                     upstream_flows = previous_upstream_flows
 
                 if r.type == compute_type.RESERVOIR_LP: 
-                    
-                    # water elevation before levelpool calculation
-                    initial_water_elevation = r.reach.lp.water_elevation
-                    
-                    # levelpool reservoir storage/outflow calculation
-                    run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
-                    
-                    # USGS reservoir hybrid DA inputs
-                    if r.reach.lp.wbody_type_code == 2:
-                        # find index location of waterbody in reservoir_usgs_obs 
-                        # and reservoir_usgs_time
-                        res_idx = np.where(usgs_idx == r.reach.lp.lake_number)
-                        wbody_gage_obs          = reservoir_usgs_obs[res_idx[0][0],:]
-                        wbody_gage_time         = reservoir_usgs_time
-                        prev_persisted_outflow  = usgs_prev_persisted_ouflow[res_idx[0][0]]
-                        persistence_update_time = usgs_persistence_update_time[res_idx[0][0]] 
-                        persistence_index       = usgs_prev_persistence_index[res_idx[0][0]]
-                        update_time             = usgs_update_time[res_idx[0][0]] 
-                    
-                    # USACE reservoir hybrid DA inputs
-                    if r.reach.lp.wbody_type_code == 3:
-                        # find index location of waterbody in reservoir_usgs_obs 
-                        # and reservoir_usgs_time
-                        res_idx = np.where(usace_idx == r.reach.lp.lake_number)
-                        wbody_gage_obs          = reservoir_usace_obs[res_idx[0][0],:]
-                        wbody_gage_time         = reservoir_usace_time
-                        prev_persisted_outflow  = usace_prev_persisted_ouflow[res_idx[0][0]]
-                        persistence_update_time = usace_persistence_update_time[res_idx[0][0]] 
-                        persistence_index       = usace_prev_persistence_index[res_idx[0][0]]
-                        update_time             = usace_update_time[res_idx[0][0]] 
-                        
-                    # Execute reservoir DA - both USGS(2) and USACE(3) types
-                    if r.reach.lp.wbody_type_code == 2 or r.reach.lp.wbody_type_code == 3:
-                        
-                        #print('***********************************************************')
-                        #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
-                        #print('before DA, simulated outflow = ', reservoir_outflow)
-                        #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
-                        
+
+                    # Great Lake waterbody: doesn't actually route anything, default outflows
+                    # are from climatology.
+                    if r.reach.lp.wbody_type_code == 6:
+                        # find index location of waterbody in great_lakes_df 
+                        # and great_lakes_param_df
+                        res_idx                    = np.where(gl_idx == r.reach.lp.lake_number)
+                        wbody_gage_obs             = gl_obs[res_idx[0]]
+                        wbody_gage_time            = gl_times[res_idx[0]]
+                        res_param_idx              = np.where(gl_param_idx == r.reach.lp.lake_number)
+                        param_prev_assim_flow      = gl_prev_assim_ouflow[res_param_idx[0][0]]
+                        param_prev_assim_timestamp = gl_prev_assim_timestamp[res_param_idx[0][0]]
+                        param_update_time          = gl_update_time[res_param_idx[0][0]]
+                        climatology                = gl_climatology[res_param_idx[0][0],:]
+
                         (new_outflow,
-                        new_persisted_outflow,
-                        new_water_elevation, 
-                        new_update_time, 
-                        new_persistence_index, 
-                        new_persistence_update_time
-                        ) = reservoir_hybrid_da(
-                            r.reach.lp.lake_number,       # lake identification number
-                            wbody_gage_obs,               # gage observation values (cms)
-                            wbody_gage_time,              # gage observation times (sec)
-                            dt * timestep,                # model time (sec)
-                            prev_persisted_outflow,       # previously persisted outflow (cms)
-                            persistence_update_time,
-                            persistence_index,            # number of sequentially persisted update cycles
-                            reservoir_outflow,            # levelpool simulated outflow (cms)
-                            upstream_flows,               # waterbody inflow (cms)
-                            dt,                           # model timestep (sec)
-                            r.reach.lp.area,              # waterbody surface area (km2)
-                            r.reach.lp.max_depth,         # max waterbody depth (m)
-                            r.reach.lp.orifice_elevation, # orifice elevation (m)
-                            initial_water_elevation,      # water surface el., previous timestep (m)
-                            48.0,                         # gage lookback hours (hrs)
-                            update_time                   # waterbody update time (sec)
-                        )
-                        
-                        #print('After DA, outflow = ', new_outflow)
-                        #print('After DA, water elevation =', new_water_elevation)
-                        
-                        # update levelpool water elevation state
-                        update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
-                        
-                        # change reservoir_outflow
-                        reservoir_outflow = new_outflow
-                        
-                        #print('confirming DA elevation replacement:', reservoir_water_elevation)
-                        #print('===========================================================')
-                        
-                    # update USGS DA reservoir state arrays
-                    if r.reach.lp.wbody_type_code == 2:
-                        usgs_update_time[res_idx[0][0]]              = new_update_time
-                        usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_persisted_outflow
-                        usgs_prev_persistence_index[res_idx[0][0]]   = new_persistence_index
-                        usgs_persistence_update_time[res_idx[0][0]]  = new_persistence_update_time
-                        
-                    # update USACE DA reservoir state arrays
-                    if r.reach.lp.wbody_type_code == 3:
-                        usace_update_time[res_idx[0][0]]             = new_update_time
-                        usace_prev_persisted_ouflow[res_idx[0][0]]   = new_persisted_outflow
-                        usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
-                        usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
-
-
-                    # RFC reservoir hybrid DA inputs
-                    if r.reach.lp.wbody_type_code == 4:
-                        # find index location of waterbody in reservoir_rfc_obs 
-                        # and reservoir_rfc_time
-                        res_idx            = np.where(rfc_idx == r.reach.lp.lake_number)
-                        wbody_gage_obs     = reservoir_rfc_obs[res_idx[0][0],:]
-                        totalCounts        = reservoir_rfc_totalCounts[res_idx[0][0]]
-                        rfc_file           = reservoir_rfc_file[res_idx[0][0]]
-                        use_RFC            = reservoir_rfc_use_forecast[res_idx[0][0]]
-                        current_timeseries_idx = rfc_timeseries_idx[res_idx[0][0]]
-                        update_time        = rfc_update_time[res_idx[0][0]]
-                        rfc_timestep       = reservoir_rfc_da_timestep[res_idx[0][0]]
-                        rfc_persist_days   = reservoir_rfc_persist_days[res_idx[0][0]]
-
-                    # Execute RFC reservoir DA - both RFC(4) and Glacially Dammed Lake(5) types
-                    if r.reach.lp.wbody_type_code == 4 or r.reach.lp.wbody_type_code == 5:
-                        
-                        #print('***********************************************************')
-                        #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
-                        #print('before DA, simulated outflow = ', reservoir_outflow)
-                        #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
-                        
-                        (
-                            new_outflow, 
-                            new_water_elevation, 
-                            new_update_time,
-                            new_timeseries_idx,
-                            dynamic_reservoir_type, 
-                            assimilated_value, 
-                            assimilated_source_file,
-                        ) = reservoir_RFC_da(
-                            use_RFC,                            # boolean whether to use RFC values or not
-                            wbody_gage_obs,              # gage observation values (cms)
-                            current_timeseries_idx,                     # index of for current time series observation
-                            totalCounts,                       # total number of observations in RFC timeseries
-                            routing_period,                          # routing period (sec)
-                            dt * timestep,                               # model time (sec)
-                            update_time,                        # time to advance to next time series index
-                            rfc_timestep,                       # frequency of DA observations (sec)
-                            rfc_persist_days*24*60*60, # max seconds RFC forecasts will be used/persisted (days -> seconds)
-                            r.reach.lp.wbody_type_code,                           # reservoir type
-                            upstream_flows,                                   # waterbody inflow (cms)
-                            initial_water_elevation,                  # water surface el., previous timestep (m)
-                            reservoir_outflow,                  # levelpool simulated outflow (cms)
-                            reservoir_water_elevation,                # levelpool simulated water elevation (m)
-                            r.reach.lp.area*1.0e6,          # waterbody surface area (km2 -> m2)
-                            r.reach.lp.max_depth,                # max waterbody depth (m)
-                            rfc_file,                # RFC file name
+                        new_assimilated_outflow, 
+                        new_assimilated_timestamp, 
+                        new_update_time
+                        ) = great_lakes_da(
+                            wbody_gage_obs,             # gage observations (cms)
+                            wbody_gage_time,            # timestamps of gage observations (datetime str)
+                            param_prev_assim_flow,      # last used observation (cms)
+                            param_prev_assim_timestamp, # timestamp of last used observation (datetime str)
+                            param_update_time,          # timestamp to determine whether to look for new observation (datetime str)
+                            model_start_time,           # model initilaization time (datetime str)
+                            dt * timestep,              # model time (sec)
+                            climatology,                # climatology outflows (cms)
                         )
 
-                        #print('After DA, outflow = ', new_outflow)
-                        #print('After DA, water elevation =', new_water_elevation)
-                        
-                        # update levelpool water elevation state
-                        update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
-                        
-                        # change reservoir_outflow
-                        reservoir_outflow = new_outflow
-                        
-                        #print('confirming DA elevation replacement:', reservoir_water_elevation)
-                        #print('===========================================================')
-                        
-                        # update RFC DA reservoir state arrays
-                        rfc_update_time[res_idx[0][0]]    = new_update_time
-                        rfc_timeseries_idx[res_idx[0][0]] = new_timeseries_idx
-                        
+                        gl_update_time[res_param_idx[0][0]] = new_update_time
+                        gl_prev_assim_ouflow[res_param_idx[0][0]] = new_assimilated_outflow
+                        gl_prev_assim_timestamp[res_param_idx[0][0]] = new_assimilated_timestamp
+
+                        # populate flowveldepth array with levelpool or hybrid DA results 
+                        flowveldepth[r.id, timestep, 0] = new_outflow
+                        flowveldepth[r.id, timestep, 1] = 0.0
+                        flowveldepth[r.id, timestep, 2] = 0.0
+                        upstream_array[r.id, timestep, 0] = upstream_flows
                     
-                    # populate flowveldepth array with levelpool or hybrid DA results 
-                    flowveldepth[r.id, timestep, 0] = reservoir_outflow
-                    flowveldepth[r.id, timestep, 1] = 0.0
-                    flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
-                    upstream_array[r.id, timestep, 0] = upstream_flows
+                    else:    
+                        # water elevation before levelpool calculation
+                        initial_water_elevation = r.reach.lp.water_elevation
+                        
+                        # levelpool reservoir storage/outflow calculation
+                        run_lp_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
+                        
+                        # USGS reservoir hybrid DA inputs
+                        if r.reach.lp.wbody_type_code == 2:
+                            # find index location of waterbody in reservoir_usgs_obs 
+                            # and reservoir_usgs_time
+                            res_idx = np.where(usgs_idx == r.reach.lp.lake_number)
+                            wbody_gage_obs          = reservoir_usgs_obs[res_idx[0][0],:]
+                            wbody_gage_time         = reservoir_usgs_time
+                            prev_persisted_outflow  = usgs_prev_persisted_ouflow[res_idx[0][0]]
+                            persistence_update_time = usgs_persistence_update_time[res_idx[0][0]] 
+                            persistence_index       = usgs_prev_persistence_index[res_idx[0][0]]
+                            update_time             = usgs_update_time[res_idx[0][0]] 
+                        
+                        # USACE reservoir hybrid DA inputs
+                        if r.reach.lp.wbody_type_code == 3:
+                            # find index location of waterbody in reservoir_usgs_obs 
+                            # and reservoir_usgs_time
+                            res_idx = np.where(usace_idx == r.reach.lp.lake_number)
+                            wbody_gage_obs          = reservoir_usace_obs[res_idx[0][0],:]
+                            wbody_gage_time         = reservoir_usace_time
+                            prev_persisted_outflow  = usace_prev_persisted_ouflow[res_idx[0][0]]
+                            persistence_update_time = usace_persistence_update_time[res_idx[0][0]] 
+                            persistence_index       = usace_prev_persistence_index[res_idx[0][0]]
+                            update_time             = usace_update_time[res_idx[0][0]] 
+                            
+                        # Execute reservoir DA - both USGS(2) and USACE(3) types
+                        if r.reach.lp.wbody_type_code == 2 or r.reach.lp.wbody_type_code == 3:
+                            
+                            #print('***********************************************************')
+                            #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
+                            #print('before DA, simulated outflow = ', reservoir_outflow)
+                            #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
+                            
+                            (new_outflow,
+                            new_persisted_outflow,
+                            new_water_elevation, 
+                            new_update_time, 
+                            new_persistence_index, 
+                            new_persistence_update_time
+                            ) = reservoir_hybrid_da(
+                                r.reach.lp.lake_number,       # lake identification number
+                                wbody_gage_obs,               # gage observation values (cms)
+                                wbody_gage_time,              # gage observation times (sec)
+                                dt * timestep,                # model time (sec)
+                                prev_persisted_outflow,       # previously persisted outflow (cms)
+                                persistence_update_time,
+                                persistence_index,            # number of sequentially persisted update cycles
+                                reservoir_outflow,            # levelpool simulated outflow (cms)
+                                upstream_flows,               # waterbody inflow (cms)
+                                dt,                           # model timestep (sec)
+                                r.reach.lp.area,              # waterbody surface area (km2)
+                                r.reach.lp.max_depth,         # max waterbody depth (m)
+                                r.reach.lp.orifice_elevation, # orifice elevation (m)
+                                initial_water_elevation,      # water surface el., previous timestep (m)
+                                48.0,                         # gage lookback hours (hrs)
+                                update_time                   # waterbody update time (sec)
+                            )
+                            
+                            #print('After DA, outflow = ', new_outflow)
+                            #print('After DA, water elevation =', new_water_elevation)
+                            
+                            # update levelpool water elevation state
+                            update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
+                            
+                            # change reservoir_outflow
+                            reservoir_outflow = new_outflow
+                            
+                            #print('confirming DA elevation replacement:', reservoir_water_elevation)
+                            #print('===========================================================')
+                            
+                        # update USGS DA reservoir state arrays
+                        if r.reach.lp.wbody_type_code == 2:
+                            usgs_update_time[res_idx[0][0]]              = new_update_time
+                            usgs_prev_persisted_ouflow[res_idx[0][0]]    = new_persisted_outflow
+                            usgs_prev_persistence_index[res_idx[0][0]]   = new_persistence_index
+                            usgs_persistence_update_time[res_idx[0][0]]  = new_persistence_update_time
+                            
+                        # update USACE DA reservoir state arrays
+                        if r.reach.lp.wbody_type_code == 3:
+                            usace_update_time[res_idx[0][0]]             = new_update_time
+                            usace_prev_persisted_ouflow[res_idx[0][0]]   = new_persisted_outflow
+                            usace_prev_persistence_index[res_idx[0][0]]  = new_persistence_index
+                            usace_persistence_update_time[res_idx[0][0]] = new_persistence_update_time
+
+
+                        # RFC reservoir hybrid DA inputs
+                        if r.reach.lp.wbody_type_code == 4:
+                            # find index location of waterbody in reservoir_rfc_obs 
+                            # and reservoir_rfc_time
+                            res_idx            = np.where(rfc_idx == r.reach.lp.lake_number)
+                            wbody_gage_obs     = reservoir_rfc_obs[res_idx[0][0],:]
+                            totalCounts        = reservoir_rfc_totalCounts[res_idx[0][0]]
+                            rfc_file           = reservoir_rfc_file[res_idx[0][0]]
+                            use_RFC            = reservoir_rfc_use_forecast[res_idx[0][0]]
+                            current_timeseries_idx = rfc_timeseries_idx[res_idx[0][0]]
+                            update_time        = rfc_update_time[res_idx[0][0]]
+                            rfc_timestep       = reservoir_rfc_da_timestep[res_idx[0][0]]
+                            rfc_persist_days   = reservoir_rfc_persist_days[res_idx[0][0]]
+
+                        # Execute RFC reservoir DA - both RFC(4) and Glacially Dammed Lake(5) types
+                        if r.reach.lp.wbody_type_code == 4 or r.reach.lp.wbody_type_code == 5:
+                            
+                            #print('***********************************************************')
+                            #print('calling reservoir DA code for lake_id:', r.reach.lp.lake_number) 
+                            #print('before DA, simulated outflow = ', reservoir_outflow)
+                            #print('before DA, simulated water elevation = ', r.reach.lp.water_elevation)
+                            
+                            (
+                                new_outflow, 
+                                new_water_elevation, 
+                                new_update_time,
+                                new_timeseries_idx,
+                                dynamic_reservoir_type, 
+                                assimilated_value, 
+                                assimilated_source_file,
+                            ) = reservoir_RFC_da(
+                                use_RFC,                            # boolean whether to use RFC values or not
+                                wbody_gage_obs,              # gage observation values (cms)
+                                current_timeseries_idx,                     # index of for current time series observation
+                                totalCounts,                       # total number of observations in RFC timeseries
+                                routing_period,                          # routing period (sec)
+                                dt * timestep,                               # model time (sec)
+                                update_time,                        # time to advance to next time series index
+                                rfc_timestep,                       # frequency of DA observations (sec)
+                                rfc_persist_days*24*60*60, # max seconds RFC forecasts will be used/persisted (days -> seconds)
+                                r.reach.lp.wbody_type_code,                           # reservoir type
+                                upstream_flows,                                   # waterbody inflow (cms)
+                                initial_water_elevation,                  # water surface el., previous timestep (m)
+                                reservoir_outflow,                  # levelpool simulated outflow (cms)
+                                reservoir_water_elevation,                # levelpool simulated water elevation (m)
+                                r.reach.lp.area*1.0e6,          # waterbody surface area (km2 -> m2)
+                                r.reach.lp.max_depth,                # max waterbody depth (m)
+                                rfc_file,                # RFC file name
+                            )
+
+                            #print('After DA, outflow = ', new_outflow)
+                            #print('After DA, water elevation =', new_water_elevation)
+                            
+                            # update levelpool water elevation state
+                            update_lp_c(r, new_water_elevation, &reservoir_water_elevation)
+                            
+                            # change reservoir_outflow
+                            reservoir_outflow = new_outflow
+                            
+                            #print('confirming DA elevation replacement:', reservoir_water_elevation)
+                            #print('===========================================================')
+                            
+                            # update RFC DA reservoir state arrays
+                            rfc_update_time[res_idx[0][0]]    = new_update_time
+                            rfc_timeseries_idx[res_idx[0][0]] = new_timeseries_idx
+                            
+                        
+                        # populate flowveldepth array with levelpool or hybrid DA results 
+                        flowveldepth[r.id, timestep, 0] = reservoir_outflow
+                        flowveldepth[r.id, timestep, 1] = 0.0
+                        flowveldepth[r.id, timestep, 2] = reservoir_water_elevation
+                        upstream_array[r.id, timestep, 0] = upstream_flows
 
                 elif r.type == compute_type.RESERVOIR_RFC:
                     run_rfc_c(r, upstream_flows, 0.0, routing_period, &reservoir_outflow, &reservoir_water_elevation)
@@ -750,13 +862,14 @@ cpdef object compute_network_structured_with_hybrid_routing(
                 elif diffusive_segments and i == tw_reach_order_idx and tw_segment_id !=-9999 and timestep == nsteps:  
                     # run diffusive wave routing when the tailwater segment of diffusive domain is included in the current reach
 
-                    # Input forcing 1. Tributary flow: Map MC computed flow to connecting nodes between MC reaches and diffusive reaches
+                    # Input forcing 1. Assign MC computed flow to the corresponding tributary reaches immediately upstream of diffusive reaches
                     for idx in range(num_nondiffusive_segments):
                         df_seg_idx = nondiffusive_seg_indices[idx]
                         df_reach_order_idx = nondiffusive_reach_order_indices[idx]
                         diffusive_inputs["qtrib_g"][:, df_reach_order_idx] = flowveldepth[df_seg_idx,:, 0] 
 
-                    # Input forcing 2. Initial flow and depth. Here, intial time is equal to timestep = 0
+                    # Input forcing 2. The initial flow and depth for each diffusive stream segments are set at the start, where the initial time
+                    # corresponds to timestep 0.
                     df_start_timestep = 0
                     for idx in range(num_diffusive_segments):
                         df_seg_idx = diffusive_seg_indices[idx]
@@ -771,11 +884,11 @@ cpdef object compute_network_structured_with_hybrid_routing(
                                 inflow_to_junction += flowveldepth[upstream_seg_idx, df_start_timestep, 0]                         
                             diffusive_inputs["iniq"][0, df_reach_order_idx] = inflow_to_junction                                
 
-                        # Update the iniq array with flow values from the previous timestep for all the nodes except the head node of a reach
+                        # Update the iniq array with flow values from the previous timestep for all nodes, except for the head node of each reach
                         diffusive_inputs["iniq"][df_segment_bottom_node_idx, df_reach_order_idx] = flowveldepth[df_seg_idx, df_start_timestep, 0]           
 
-                        #For the initial depth calculation at the head node of a reach, if there are no upstream segments or if all upstream segments are 
-                        # in the MC domain, assume that the depth at the head node of the reach is equal to the depth at the next downstream node.     
+                        # For the initial depth calculation at the head node of a reach, if there are no upstream segments or if all upstream segments are 
+                        # within the MC domain, assume the depth at the head node is equal to the depth at the next downstream node.     
                         if df_segment_bottom_node_idx==1: 
                             if len(upstream_connections[diffusive_segments[idx]])==0:
                                 diffusive_inputs["inidepth"][0, df_reach_order_idx] = flowveldepth[df_seg_idx, df_start_timestep, 2]
@@ -794,7 +907,7 @@ cpdef object compute_network_structured_with_hybrid_routing(
 
                         diffusive_inputs["inidepth"][df_segment_bottom_node_idx, df_reach_order_idx] = flowveldepth[df_seg_idx, df_start_timestep ,2] 
                                      
-                    # Internal variables of the diffusive wave:  qpx the from previous time step      
+                    # Assign the values of qpx, an internal variable in the diffusive wave Fortran kernel, based on computations from the previous timestep.    
                     diffusive_inputs["iniqpx"][:max_num_node_reach,:num_reaches_diffusive_domain] = iniqpx_np[:max_num_node_reach, :num_reaches_diffusive_domain]
 
                     diffusive_inputs["nts_ev_g"] = timestep
@@ -811,8 +924,8 @@ cpdef object compute_network_structured_with_hybrid_routing(
                         dt*timestep/60.0,      # end time of the current coupling time step [minutes]
                     )
 
-                    iniqpx_np   = out_qpx_next_out_time
-                     
+                    # Export the output from the diffusive wave Fortran kernel to the flowveldepth array
+                    iniqpx_np   = out_qpx_next_out_time                     
                     for idx in range(num_diffusive_segments):
                         df_seg_idx = diffusive_seg_indices[idx]
                         df_reach_order_idx = diffusive_reach_order_indices[idx]
@@ -944,7 +1057,13 @@ cpdef object compute_network_structured_with_hybrid_routing(
             rfc_idx, rfc_update_time-((timestep-1)*dt), 
             rfc_timeseries_idx
         ),
-        np.asarray(nudge)
+        np.asarray(nudge),
+        (
+            gl_param_idx,
+            gl_prev_assim_ouflow,
+            gl_prev_assim_timestamp,
+            gl_update_time
+        )
     )
 
 cpdef object compute_network_structured_with_hybrid_routing_single_timestep(

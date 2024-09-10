@@ -1815,7 +1815,7 @@ def compute_nhd_routing_v02(
 
             qlat_sub = qlat_sub.reindex(param_df_sub.index)
             q0_sub = q0_sub.reindex(param_df_sub.index)
- 
+            '''
             # prepare reservoir DA data
             (reservoir_usgs_df_sub, 
              reservoir_usgs_df_time,
@@ -1845,6 +1845,49 @@ def compute_nhd_routing_v02(
                 reservoir_usace_param_df,
                 reservoir_rfc_df,
                 reservoir_rfc_param_df,
+                waterbody_types_df_sub, 
+                t0,
+                from_files,
+                )
+            '''
+            # prepare reservoir DA data
+            (reservoir_usgs_df_sub, 
+             reservoir_usgs_df_time,
+             reservoir_usgs_update_time,
+             reservoir_usgs_prev_persisted_flow,
+             reservoir_usgs_persistence_update_time,
+             reservoir_usgs_persistence_index,
+             reservoir_usace_df_sub, 
+             reservoir_usace_df_time,
+             reservoir_usace_update_time,
+             reservoir_usace_prev_persisted_flow,
+             reservoir_usace_persistence_update_time,
+             reservoir_usace_persistence_index,
+             reservoir_rfc_df_sub, 
+             reservoir_rfc_totalCounts, 
+             reservoir_rfc_file, 
+             reservoir_rfc_use_forecast, 
+             reservoir_rfc_timeseries_idx, 
+             reservoir_rfc_update_time, 
+             reservoir_rfc_da_timestep, 
+             reservoir_rfc_persist_days,
+             gl_df_sub,
+             gl_parm_lake_id_sub, 
+             gl_param_flows_sub,
+             gl_param_time_sub,
+             gl_param_update_time_sub,
+             gl_climatology_df_sub,
+             waterbody_types_df_sub,
+             ) = _prep_reservoir_da_dataframes(
+                reservoir_usgs_df,
+                reservoir_usgs_param_df,
+                reservoir_usace_df, 
+                reservoir_usace_param_df,
+                reservoir_rfc_df,
+                reservoir_rfc_param_df,
+                great_lakes_df,
+                great_lakes_param_df,
+                great_lakes_climatology_df,
                 waterbody_types_df_sub, 
                 t0,
                 from_files,
@@ -2017,6 +2060,15 @@ def compute_nhd_routing_v02(
                     reservoir_rfc_update_time.astype("float32"),
                     reservoir_rfc_da_timestep.astype("int32"),
                     reservoir_rfc_persist_days.astype("int32"),
+                    # Great Lakes DA data
+                    gl_df_sub.lake_id.values.astype("int32"),
+                    gl_df_sub.time.values.astype("int32"),
+                    gl_df_sub.Discharge.values.astype("float32"),
+                    gl_parm_lake_id_sub.astype("int32"),
+                    gl_param_flows_sub.astype("float32"),
+                    gl_param_time_sub.astype("int32"),
+                    gl_param_update_time_sub.astype("int32"),
+                    gl_climatology_df_sub.values.astype("float32"),
                     # Diffusive wave routing data
                     diffusive_tailwater_segments,  #diffusive_tw,                     
                     diffusive_reaches_bytw,  #diffusive_reaches, 
