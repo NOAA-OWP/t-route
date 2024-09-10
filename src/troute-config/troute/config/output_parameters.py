@@ -140,7 +140,7 @@ class StreamOutput(BaseModel):
     simulation. If t-route is run with default dt (300 seconds/5 minutes) for 24 hours, the defaults here would produce 24 output files 
     (1 per hour of simulation), each containing 12 values for each variable (1 value every 5 minutes in the hour of simulation).
     """
-    stream_output_directory: Optional[DirectoryPath] = None
+    stream_output_directory: Optional[Path] = None
     """
     Directory to save flowveldepth outputs. If this is not None, this form of output will be written.
     """
@@ -165,6 +165,21 @@ class StreamOutput(BaseModel):
     NOTE: This value should not be smaller than dt, and should be a multiple of dt (keep in mind dt is in seconds, while this value 
     is in minutes). So if dt=300(sec), this value cannot be smaller than 5(min) and should be a multiple of 5. 
     """
+    
+    @validator('stream_output_directory')
+    def validate_stream_output_directory(cls, value):
+        if value is None:
+            return None
+            
+        # expand ~/output/dir -> /home/user/output/dir
+        value = value.expanduser()
+        
+        if value.exists() and not value.is_dir():
+            raise ValueError(f"'stream_output_directory'={value!s} is a file, expected directory.")
+
+        # make directory (and intermediates) if they don't exist
+        value.mkdir(parents=True, exist_ok=True)
+        return value
     
     @validator('stream_output_internal_frequency')
     def validate_stream_output_internal_frequency(cls, value, values):
