@@ -180,11 +180,6 @@ cpdef object prepare_diffusive_numpy_indices(
     
     Parameters
     ----------
-    mx_jorder -- (int) maximum network reach order
-    param_df --(DataFrame) geomorphic parameters
-    dbfksegID -- (int) segment ID of fake (ghost) node at network downstream boundary 
-    z_all -- (dict) adjusted altitude dictionary with placeholder values to be replaced
-    
     diffusive_reaches_bytw -- (dict) Maps each tailwater segment ID to a list of upstream reaches in a diffusive domain, with each reach containing it own list of stream segment IDs. 
     tw_segment_id -- (int) -- tailwater segment ID
     nondiffusive_segments_bytw -- (dict) Maps each tailwater segment ID to a list of tributary segment IDs that enter the upper boundary of the associated diffusive domain.  
@@ -193,7 +188,6 @@ cpdef object prepare_diffusive_numpy_indices(
     diffusive_inputs_bytw -- (dict) Contains the values of input arguments and forcings required for running diffusive Fortran kernel
     chxsec_lookuptable_bytw -- (dict) Map each tailwater segment ID to the channel cross-section hydraulic lookup table for all upstream segments within the diffusive domain
     chbottom_elevation_bytw -- (dict) Map each tailwater segment ID to the channel bottom elevation for all upstream segments within the diffusive domain.
-
     
     Returns
     ----------
