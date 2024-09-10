@@ -214,7 +214,7 @@ python3 -m nwm_routing -f -V4 test_AnA_V4_HYFeature.yaml
    - Run one of the demo examples provided:
       ```shell
       cd test/LowerColorado_TX
-      python -m nwm_routing -f -V3 test_AnA.yaml
+      python3 -m nwm_routing -f -V4 test_AnA_V4_NHD.yaml
       ```
    - The latter is a hybrid (MC + diffusive) routing example that should run within a few minutes at most
 
