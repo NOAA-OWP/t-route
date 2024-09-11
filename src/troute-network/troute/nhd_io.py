@@ -2403,11 +2403,16 @@ def write_flowveldepth(
     depth = flowveldepth.iloc[:,2::3].iloc[:,ind]
 
     # Create POI-nexus point crosswalk dataframe (if necessary)
-    idx = flowveldepth.reset_index()[['featureID','Type']]
-    poi_crosswalk[['Type', 'featureID']] = poi_crosswalk['id'].str.split('-', expand=True)
-    poi_crosswalk['Type'] = 'nex' # Types can be 'nex', 'tnx', etc. This just sets them all to generic 'nex'.
-    poi_crosswalk['featureID'] = poi_crosswalk.featureID.astype(int)
-    poi_crosswalk = idx.set_index(['featureID','Type']).join(poi_crosswalk[['featureID','Type','poi_id']].set_index(['featureID','Type']))
+    if not poi_crosswalk.empty:
+        idx = flowveldepth.reset_index()[['featureID','Type']]
+        poi_crosswalk_masked = poi_crosswalk.copy()
+        poi_crosswalk_masked[['Type', 'featureID']] = poi_crosswalk_masked['id'].str.split('-', expand=True)
+        poi_crosswalk_masked['Type'] = 'nex' # Types can be 'nex', 'tnx', etc. This just sets them all to generic 'nex'.
+        poi_crosswalk_masked['featureID'] = poi_crosswalk_masked.featureID.astype(int)
+        poi_crosswalk_masked = idx.set_index(['featureID','Type']).join(poi_crosswalk_masked[['featureID','Type','poi_id']].set_index(['featureID','Type']))
+    else:
+        poi_crosswalk_masked = poi_crosswalk.copy()
+        poi_crosswalk_masked['poi_id'] = [" " for _ in range(len(flowveldepth))]
 
     # Check if the first column of nudge is all zeros
     if np.all(nudge[:, 0] == 0):
@@ -2435,7 +2440,7 @@ def write_flowveldepth(
                     depth.iloc[:,0:ts_per_file],
                     nudge_df.iloc[:,0:ts_per_file],
                     timestamps_sec[0:ts_per_file],t0,
-                    poi_crosswalk)
+                    poi_crosswalk_masked)
             if stream_output_type == '.nc':
                 if cpu_pool > 1 & num_files > 1:
                     jobs.append(delayed(write_flowveldepth_netcdf)(*args))
@@ -2463,7 +2468,8 @@ def write_flowveldepth(
                 depth,
                 nudge_df,
                 timestamps_sec,
-                t0)
+                t0,
+                poi_crosswalk_masked)
         if stream_output_type == '.nc':
             if cpu_pool > 1:
                 jobs.append(delayed(write_flowveldepth_netcdf)(*args))
