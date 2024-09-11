@@ -2403,7 +2403,6 @@ def write_flowveldepth(
     depth = flowveldepth.iloc[:,2::3].iloc[:,ind]
 
     # Create POI-nexus point crosswalk dataframe (if necessary)
-<<<<<<< HEAD
     if not poi_crosswalk.empty:
         idx = flowveldepth.reset_index()[['featureID','Type']]
         poi_crosswalk_masked = poi_crosswalk.copy()
@@ -2414,13 +2413,6 @@ def write_flowveldepth(
     else:
         poi_crosswalk_masked = poi_crosswalk.copy()
         poi_crosswalk_masked['poi_id'] = [" " for _ in range(len(flowveldepth))]
-=======
-    idx = flowveldepth.reset_index()[['featureID','Type']]
-    poi_crosswalk[['Type', 'featureID']] = poi_crosswalk['id'].str.split('-', expand=True)
-    poi_crosswalk['Type'] = 'nex' # Types can be 'nex', 'tnx', etc. This just sets them all to generic 'nex'.
-    poi_crosswalk['featureID'] = poi_crosswalk.featureID.astype(int)
-    poi_crosswalk = idx.set_index(['featureID','Type']).join(poi_crosswalk[['featureID','Type','poi_id']].set_index(['featureID','Type']))
->>>>>>> fix handling tnx points in poi_crosswalk
 
     # Check if the first column of nudge is all zeros
     if np.all(nudge[:, 0] == 0):
