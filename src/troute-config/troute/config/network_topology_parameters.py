@@ -7,44 +7,81 @@ from .types import FilePath, DirectoryPath
 
 
 class NetworkTopologyParameters(BaseModel):
-    # TODO: default {}. see nhd_io.read_config_file ~:100
+    """
+    Parameters controlling how the stream network is synthesized.
+    """
     preprocessing_parameters: "PreprocessingParameters" = Field(default_factory=dict)
-    # TODO: not sure if default {}. see nhd_io.read_config_file ~:100
     supernetwork_parameters: "SupernetworkParameters"
-    # TODO: default {}. see nhd_io.read_config_file ~:100
     waterbody_parameters: "WaterbodyParameters" = Field(default_factory=dict)
 
-    # TODO: error in v3_doc.yaml; `rfc` is listed as network_topology_parameters parameter.
-    # should instead be waterbody_parameters
 
-# TODO: This is an old parameter but probably worth keeping moving forward. However, it is
-# not implemented in V4 at the moment (Aug 11, 2023). Need to add this functionality to t-route.
 class PreprocessingParameters(BaseModel):
+    """
+    Parameters controlling the creation and use of preprocessed network graph data.
+    """
     preprocess_only: bool = False
-    # NOTE: required if preprocess_only = True
-    # TODO: determine if str type
+    """
+    If True, then network graph objects will be created, saved to disk, and then the execution will stop.
+    """
     preprocess_output_folder: Optional[DirectoryPath] = None
+    """
+    Directory to save preprocessed data to.
+    NOTE: required if preprocess_only = True
+    """
     preprocess_output_filename: str = "preprocess_output"
+    """
+    Name to save preprocessed file to (do not include file extension).
+    """
     use_preprocessed_data: bool = False
+    """
+    If True, used preprocessed network data istead of reading from geo_file_path.
+    """
     # NOTE: required if use_preprocessed_data = True
     # TODO: determine if str type
     preprocess_source_file: Optional[FilePath] = None
+    """
+    Filepath of preprocessed data.
+    NOTE: required if use_preprocessed_data = True
+    """
 
 
 class SupernetworkParameters(BaseModel):
+    """
+    Parameters specific to the stream network.
+    """
     title_string: Optional[str] = None
-    # TODO: hopefully places in the code can be changed so this is a `Path` instead of a `str`
+    """
+    Used for simulation identification. Appears in csv filename, if csv oupt is used.
+    Otherwise, this variable is of little use. 
+    """
     geo_file_path: FilePath
+    """
+    Path to the hydrofabric. Currently accepts geopackage (assumes HYFeatures), geojson (assumes HYFeatures), 
+    json (assumes HYFeatures), netcdf (assumes NHD).
+    """
     network_type: Literal["HYFeaturesNetwork", "NHDNetwork"] = "HYFeaturesNetwork"
+    """
+    Specify if this is an NHD network or a HYFeatures network.
+    """
     flowpath_edge_list: Optional[str] = None
+    """
+    File containing dictionary of connections between segment IDs and nexus IDs.
+    NOTE: Only used if using geojson files for hydrofabric.
+    """
     mask_file_path: Optional[FilePath] = None
+    """
+    File containing channel mask file.
+    NOTE: Not implemented for HYFeatures.
+    """
     mask_layer_string: str = ""
-    # TODO: determine if this is still used
-    # TODO: determine what the default for this should be. Not sure if this is right?
     mask_driver_string: Optional[str] = None
     mask_key: int = 0
 
     columns: Optional["Columns"] = None
+    """
+    Attribute names in channel geometry file.
+    Default values depend on newtork type.
+    """
     # NOTE: required for CONUS-scale simulations with NWM 2.1 or 3.0 Route_Link.nc data
     synthetic_wb_segments: Optional[List[int]] = Field(
         default_factory=lambda: [
@@ -54,10 +91,20 @@ class SupernetworkParameters(BaseModel):
             4800007,
         ]
     )
+    """
+    Synthetic waterbody segment IDs that are used to construct the Great Lakes
+    NOTE: required for CONUS-scale simulations with NWM 2.1 or 3.0 Route_Link.nc data
+    """
     synthetic_wb_id_offset: float = 9.99e11
+    """
+    Arbitrary large number appended to synthetic_wb_segments in their handling process
+    """
 
     terminal_code: int = 0
-    # TODO: It would be nice if this were a literal / str
+    """
+    Coding in channel geometry dataset for segments draining to ocean. A '0' ID indicates there is nothing downstream.
+    """
+
     driver_string: Union[str, Literal["NetCDF"]] = "NetCDF"
     layer_string: int = 0
     
@@ -107,51 +154,99 @@ class SupernetworkParameters(BaseModel):
 
 
 class Columns(BaseModel):
-    # string, unique segment identifier
     key: str 
-    # string, unique identifier of downstream segment
+    """
+    unique segment identifier
+    """
     downstream: str 
-    # string, segment length
+    """
+    unique identifier of downstream segment
+    """
     dx: str 
-    # string, manning's roughness of main channel
+    """
+    segment length
+    """
     n: str 
-    # string, mannings roughness of compound channel
+    """
+    manning's roughness of main channel
+    """
     ncc: str 
-    # string, channel slope
+    """
+    mannings roughness of compound channel
+    """
     s0: str 
-    # string, channel bottom width
+    """
+    channel slope
+    """
     bw: str 
-    # string, waterbody identifier
+    """
+    channel bottom width
+    """
     waterbody: Optional[str] 
-    # string, channel top width
+    """
+    waterbody identifier
+    """
     tw: str 
-    # string, compound channel top width
+    """
+    channel top width
+    """
     twcc: str 
-    # string, channel bottom altitude
+    """
+    compound channel top width
+    """
     alt: Optional[str] 
-    # string, muskingum K parameter
+    """
+    channel bottom altitude
+    """
     musk: str 
-    # string, muskingum X parameter
+    """
+    muskingum K parameter
+    """ 
     musx: str 
-    # string, channel sideslope
+    """
+    muskingum X parameter
+    """
     cs: str 
-    # string, gage ID
+    """
+    channel sideslope
+    """
     gages: Optional[str]
-    # string, mainstem ID
+    """
+    gage ID
+    """
     mainstem: Optional[str]
+    """
+    mainstem ID
+    """
 
 
 class WaterbodyParameters(BaseModel):
-    # NOTE: required, True for simulations with waterbodies.
+    """
+    Parameters specifying how (if) waterbodies are handled.
+    """
     break_network_at_waterbodies: bool = False
+    """
+    If True, waterbodies will be treated as reservoirs. If False, the underlying flowpaths will be used for channel routing.
+    """
     level_pool: Optional["LevelPool"] = None
     waterbody_null_code: int = -9999
+    """
+    NULL value to use in flowpath-waterbody crosswalk.
+    """
 
 
 class LevelPool(BaseModel):
-    # string, filepath to waterbody parameter file (LAKEPARM.nc)
+    """
+    Attributes of the lake geometry file for levelpool simulations.
+    """
     level_pool_waterbody_parameter_file_path: Optional[FilePath] = None
+    """
+    Filepath for NetCDF file containing lake parameters (LAKEPARM). Only used for NHD networks.
+    """
     level_pool_waterbody_id: Union[str, Literal["lake_id"]] = "lake_id"
+    """
+    Column name for waterbody ID.
+    """
 
 
 NetworkTopologyParameters.update_forward_refs()
