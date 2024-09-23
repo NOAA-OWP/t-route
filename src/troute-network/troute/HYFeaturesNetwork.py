@@ -35,8 +35,9 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     available_layers = fiona.listlayers(file_path)
 
     # patterns for the layers we want to find
+    # $ in flowpaths to avoid double matching with flowpath_attributes
     layer_patterns = {
-        'flowpaths': r'flow[-_]?paths?|flow[-_]?lines?',
+        'flowpaths': r'flow[-_]?paths?$|flow[-_]?lines?$',
         'flowpath_attributes': r'flow[-_]?path[-_]?attributes?|flow[-_]?line[-_]?attributes?',
         'lakes': r'lakes?',
         'nexus': r'nexus?',
@@ -92,13 +93,18 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     if 'link' in flowpath_attributes_df.columns:
         flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
      
-    # Merge flowpaths and flowpath_attributes 
-    flowpaths = pd.merge(
-        flowpaths_df, 
-        flowpath_attributes_df, 
-        on='id', 
-        how='inner'
-    )
+    # Merge flowpaths and flowpath_attributes
+    if not flowpath_attributes_df.empty and not flowpaths_df.empty:
+        flowpaths = pd.merge(
+            flowpaths_df, 
+            flowpath_attributes_df, 
+            on='id', 
+            how='inner'
+        )
+    elif not flowpaths_df.empty:
+        flowpaths = flowpaths_df
+    elif not flowpath_attributes_df.empty:
+        flowpaths = flowpath_attributes_df
 
     lakes = table_dict.get('lakes', pd.DataFrame())
     network = table_dict.get('network', pd.DataFrame())
