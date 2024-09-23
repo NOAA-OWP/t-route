@@ -7,8 +7,7 @@ name = "troute.network"
 version = "0.0.0"
 dependencies = [
     "deprecated",
-    "geopandas",
-    "fiona",
+    "geopandas>=1.0.0",
     "joblib",
     "netcdf4",
     "numpy",
