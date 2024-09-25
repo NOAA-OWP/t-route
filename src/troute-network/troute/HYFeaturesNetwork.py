@@ -465,15 +465,27 @@ class HYFeaturesNetwork(AbstractNetwork):
     def preprocess_waterbodies(self, lakes, nexus):
         # If waterbodies are being simulated, create waterbody dataframes and dictionaries
         if not lakes.empty:
+            #NOTE: the below worked for hydrofabric v2.2 for Hawaii, Alaska, and PRVI. But does
+            # not work for CONUS.
+            # self._waterbody_df = (
+            #     lakes[['hl_link','ifd','LkArea','LkMxE','OrificeA',
+            #            'OrificeC','OrificeE','WeirC','WeirE','WeirL','id']]
+            #     .rename(columns={'hl_link': 'lake_id'})
+            #     )
+            
+            #NOTE: This works for hydrofabric v2.2 CONUS.
             self._waterbody_df = (
-                lakes[['hl_link','ifd','LkArea','LkMxE','OrificeA',
-                       'OrificeC','OrificeE','WeirC','WeirE','WeirL','id']]
-                .rename(columns={'hl_link': 'lake_id'})
+                lakes[['lake_id','ifd','LkArea','LkMxE','OrificeA',
+                       'OrificeC','OrificeE','WeirC','WeirE','WeirL']]
                 )
             
-            id = self.waterbody_dataframe['id'].str.split('-', expand=True).iloc[:,1]
-            self._waterbody_df['id'] = id
-            self._waterbody_df['id'] = self._waterbody_df.id.astype(float).astype(int)
+            #NOTE: the below worked for hydrofabric v2.2 for Hawaii, Alaska, and PRVI. But does
+            # not work for CONUS.
+            # id = self.waterbody_dataframe['id'].str.split('-', expand=True).iloc[:,1]
+            # self._waterbody_df['id'] = id
+            # self._waterbody_df['id'] = self._waterbody_df.id.astype(float).astype(int)
+            
+            #NOTE: This works for hydrofabric v2.2 CONUS.
             self._waterbody_df['lake_id'] = self.waterbody_dataframe.lake_id.astype(float).astype(int)
             self._waterbody_df = self.waterbody_dataframe.set_index('lake_id').drop_duplicates().sort_index()
             
@@ -555,8 +567,10 @@ class HYFeaturesNetwork(AbstractNetwork):
                 self._waterbody_df['crs'] = np.nan
                 
             # Add the Great Lakes to the connections dictionary and waterbody dataframe
-            nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
-            great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
+            #TODO: Update for hydrofabric v2.2.
+            # nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
+            # great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
+            great_lakes_df = pd.DataFrame()
             if not great_lakes_df.empty:
                 great_lakes_df['toid'] = great_lakes_df['toid'].str.extract(r'wb-(\d+)').astype(float)
                 great_lakes_df = great_lakes_df.astype(int)
