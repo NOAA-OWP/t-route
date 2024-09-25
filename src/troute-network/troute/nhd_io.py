@@ -2276,7 +2276,7 @@ def mask_find_seg(mask_list, nexus_dict, poi_crosswalk):
             
             for key, val in nexus_dict.items():
                 nex_key = int(key.split('-')[-1])
-                nex_id[nex_key] = [int(v.split('-')[-1]) for v in val]
+                nex_id[nex_key] = [int(float(v.split('-')[-1])) for v in val]
         else:
             for key in mask_list['nex']:
                 item = f'nex-{key}'
