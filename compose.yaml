@@ -4,20 +4,20 @@ services:
       context: .
       dockerfile: Dockerfile.troute_api
     ports:
-      - "8000:8000"
+      - "${PORT}:${PORT}"
     volumes:
       - type: bind
-        source: ./data/troute_output
-        target: /t-route/output
+        source: ${OUTPUT_VOLUME_SOURCE}
+        target: ${OUTPUT_VOLUME_TARGET}
       - type: bind
-        source: ./data
-        target: /t-route/data
+        source: ${DATA_VOLUME_SOURCE}
+        target: ${DATA_VOLUME_TARGET}
       - type: bind
-        source: ./src/app/core
-        target: /t-route/src/app/core
-    command: sh -c ". /t-route/.venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+        source: ${CORE_VOLUME_SOURCE}
+        target: ${CORE_VOLUME_TARGET}
+    command: sh -c ". /t-route/.venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
     healthcheck:
-      test: curl --fail -I http://localhost:8000/health || exit 1
+      test: curl --fail -I http://localhost:${PORT}/health || exit 1
       interval: 30s
       timeout: 5s
       retries: 3

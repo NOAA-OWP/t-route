@@ -4,9 +4,9 @@ from fastapi import FastAPI, status
 from fastapi.responses import Response
 
 from app.api.router import api_router
-from app.core import get_settings
+from app.core.settings import Settings
 
-settings = get_settings()
+settings = Settings()
 
 app = FastAPI(
     title=settings.project_name,

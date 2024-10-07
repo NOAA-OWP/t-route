@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 
 
-class TRouteOuput(BaseModel):
+class TRouteStatus(BaseModel):
     """
     A schema to define successful t-route output
 

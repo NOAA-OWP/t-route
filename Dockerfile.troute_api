@@ -18,9 +18,9 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN uv pip install --no-cache-dir -r requirements.txt
 
-ENV WITH_EDITABLE=true
-RUN ./compiler.sh
+RUN ./compiler.sh no-e
 
 RUN uv pip install --no-cache-dir -r requirements-app.txt
 
 WORKDIR "/t-route/src/"
+RUN mkdir -p /t-route/data/troute_restart/

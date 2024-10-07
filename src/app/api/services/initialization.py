@@ -13,7 +13,7 @@ from app.core.settings import Settings
 
 
 def edit_yaml(original_file: Path, params: Dict[str, str], restart_file: Path) -> Path:
-    """A file to dynamically edit the YAML file to be used in T-Route
+    """A function to dynamically edit the T-Route config
 
     Parameters:
     -----------
@@ -100,8 +100,7 @@ def create_params(
     Dict[str, str]:
         The parameters to be added to the t-route config file
     """
-    dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-    start_datetime = dt.strftime("%Y-%m-%d_%H:%M")
+    start_datetime = start_time.strftime("%Y-%m-%d_%H:%M")
 
     nts = 288 * num_forecast_days
 
@@ -138,7 +137,7 @@ def create_initial_start_file(params: Dict[str, str], settings: Settings) -> Pat
 
     gdf = gpd.read_file(params["geo_file_path"], layer="network")
     mask = gdf["divide_id"].isna()
-    keys = [int(val[4:]) for val in set(gdf[~mask]["divide_id"].values.tolist())]
+    keys = [int(val.split("-")[1]) for val in set(gdf[~mask]["divide_id"].values.tolist())]
 
     discharge_upstream = np.zeros([len(keys)])
     discharge_downstream = np.zeros([len(keys)])

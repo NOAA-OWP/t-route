@@ -1,31 +1,32 @@
 """Author: Tadd Bindas"""
-
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from nwm_routing import main_v04 as t_route
+from pydantic import conint
 
 from app.api.services.initialization import (create_initial_start_file,
                                              create_params, edit_yaml)
-from app.core import get_settings
 from app.core.settings import Settings
-from app.schemas import TRouteOuput
+from app.core import get_settings
+from app.schemas import TRouteStatus
 
 router = APIRouter()
 
 
-@router.get("/", response_model=TRouteOuput)
+@router.get("/", response_model=TRouteStatus)
 async def get_gauge_data(
     lid: str,
     feature_id: str,
     hy_id: str,
     initial_start: float,
-    start_time: str,
-    num_forecast_days: int,
+    start_time: datetime,
+    num_forecast_days: conint(ge=1, le=30),
     settings: Annotated[Settings, Depends(get_settings)],
-) -> TRouteOuput:
-    """An API call for running T-Route
+) -> TRouteStatus:
+    """An API call for running T-Route within the context of replace and route
 
     Parameters:
     ----------
@@ -63,7 +64,7 @@ async def get_gauge_data(
 
     yaml_file_path.unlink()
 
-    return TRouteOuput(
+    return TRouteStatus(
         message="T-Route run successfully",
         lid=lid,
         feature_id=feature_id,
