@@ -1,17 +1,20 @@
-"""Author: Tadd Bindas"""
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+import yaml
+from fastapi import APIRouter, Depends, HTTPException
 from nwm_routing import main_v04 as t_route
 from pydantic import conint
+from troute.config import Config
 
 from app.api.services.initialization import (create_initial_start_file,
                                              create_params, edit_yaml)
-from app.core.settings import Settings
+from app.api.services.utils import update_test_paths_with_prefix
 from app.core import get_settings
-from app.schemas import TRouteStatus
+from app.core.settings import Settings
+from app.schemas import HttpStatusCode, TestStatus, TRouteStatus
 
 router = APIRouter()
 
@@ -57,15 +60,71 @@ async def get_gauge_data(
     try:
         t_route(["-f", yaml_file_path.__str__()])
     except Exception as e:
-        JSONResponse(
+        raise HTTPException(
             status_code=500,
-            content={"message": e},
+            detail=str(e),
         )
 
     yaml_file_path.unlink()
 
     return TRouteStatus(
+        status_code=HttpStatusCode.CREATED,
         message="T-Route run successfully",
         lid=lid,
         feature_id=feature_id,
     )
+
+
+@router.post("/tests/LowerColorado", response_model=TestStatus)
+async def run_lower_colorado_tests(
+    settings: Annotated[Settings, Depends(get_settings)],
+    config_path: str = "test/LowerColorado_TX_v4/test_AnA_V4_HYFeature.yaml",
+) -> TRouteStatus:
+    """An API call for running the LowerColorado T-Route test using a predefined config file
+
+    Parameters:
+    ----------
+    config_path: str
+        Path to the YAML configuration file for the test
+
+    Returns:
+    --------
+    TRouteStatus
+        The status of the T-Route run
+    """
+    base = "/t-route"
+    path_to_test_dir = Path(f"{base}/{config_path}").parent
+    yaml_path = Path(f"{base}/{config_path}")
+
+    with open(yaml_path) as custom_file:
+        data = yaml.load(custom_file, Loader=yaml.SafeLoader)
+
+    # Updating paths to work in docker
+    data = update_test_paths_with_prefix(data, path_to_test_dir, settings.lower_colorado_paths_to_update)
+
+    troute_configuration = Config.with_strict_mode(**data)
+
+    tmp_yaml = path_to_test_dir / "tmp.yaml"
+
+    dict_ = json.loads(troute_configuration.json())
+
+    # converting timeslice back to string (Weird pydantic 1.10 workaround)
+    dict_["compute_parameters"]["restart_parameters"]["start_datetime"] = data["compute_parameters"]["restart_parameters"]["start_datetime"]
+
+    with open(tmp_yaml, 'w') as file:
+        yaml.dump(dict_, file)
+
+    try:
+        t_route(["-f", tmp_yaml.__str__()])
+        return TestStatus(
+            status_code=HttpStatusCode.CREATED,
+            message="T-Route run successfully using defined configuration",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+    finally:
+        if tmp_yaml.exists():
+            tmp_yaml.unlink()

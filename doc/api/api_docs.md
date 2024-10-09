@@ -9,7 +9,7 @@ T-Route is used in many contexts for hydrological river routing:
 - Scientific Python 
 - Replace and Route (RnR)
 
-In the latest PR for RnR, there is a requirement to run T-Route as a service. This service requires an easy way to dynamically create config files, restart flow from Initial Conditions, and run T-Route. To satisfy this requirement, a FastAPI endpoint was created in `/src/app` along with code to dynamically create t-route endpoints. 
+In the latest PR for RnR (https://github.com/NOAA-OWP/hydrovis/pull/865), there is an requirement to run T-Route as a service. This service requires an easy way to dynamically create config files, restart flow from Initial Conditions, and run T-Route. To satisfy this requirement, a FastAPI endpoint was created in `/src/app` along with code to dynamically create t-route endpoints. 
 
 ## Why use shared volumes?
 
@@ -27,7 +27,7 @@ Since T-Route is running in a docker container, there has to be a connection bet
 ## Quickstart
 1. From the Root directory, run:
 ```shell
-docker compose up
+docker compose --env-file ./compose.env up
 ```
 
 This will start the T-Route container and run the API on localhost:8004. To view the API spec and swagger docs, visit localhost:8004/docs
@@ -68,21 +68,57 @@ and an internal 500 error if there is something wrong.
 
 ## Building and pushing to a container registry
 
-the `build.sh` script is created to simplify the process of pushing the T-route image to a docker container registry. Below is the URL for the pushed container:
+To ensure Replace and Route is using the correct version of T-Route, it is recommended a docker container be built, and then pushed to a registry (Dockerhub, GitHub Container Registry, etc). To do this manually for the GitHub container registry, the following commands should be used within a terminal.
+
 ```shell
-ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG}
+docker login --username ${GH_USERNAME} --password ${GH_TOKEN} ghcr.io
 ```
-To run that script, the following ENV variables have to be set:
-- ${GH_USERNAME}
+- This command will log the user into the GitHub container registry using their credentials
+
+```shell
+docker build -t ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG} -f Dockerfile.troute_api
+```
+- This command builds the T-Route API container using a defined version `${TAG}`
+
+```shell
+docker push ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG}
+```
+- This commands pushes the built T-Route API container to the NOAA-OWP/t-route container registry
+
+
+The following env variables are used:
+- `${GH_USERNAME}`
   - your github username
-- ${GH_TOKEN}
+- `${GH_TOKEN}`
   - your github access token
-- ${TAG} 
+- `${TAG} `
   - the version tag
   - ex: 0.0.2
 
-If you want to build this off a forked version, change the container registry to your user accounts container registry. 
+If you want to build this off a forked version, change the container registry (`/NOAA-OWP/t-route/`) to your user accounts container registry.
 
 ## Testing:
 
-To test this container, follow the steps within `test/api/README.md`
+### Testing the RnR Extension: 
+The following folder contains data files that are to be used to test the T-Route FastAPI code within src/app
+
+To use these files, follow the steps below:
+
+1. Copy the `./test/api/test_compose.yaml` file in the base project dir (`./`)
+2. Run `docker compose -f test_compose.yaml up`
+3. visit `localhost:8000/docs` in your browser
+4. Enter the following parameters into the `/api/v1/flow_routing/v4` endpoint
+- lid=CAGM7
+- feature_id=2930769
+- hy_id=1074884
+- initial_start=0
+- start_time=2024-08-24T00:00:00
+- num_forecast_days=5
+5. Click execute
+6. A Status 201 code means the run ran, and test/api/data/troute_output will be populated in the `{lid}/` folder
+
+### Testing the LowerColorado test cases:
+1. Run the compose.yaml file from the base dir using: `docker compose --env-file ./compose.env up --build`
+2. visit `localhost:8000/docs` in your browser
+3. Execute the `/api/v1/flow_routing/v4/tests/LowerColorado` endpoint using the default parameter file path
+4. A Status 201 code means the run ran, and the defined yaml output will be populated

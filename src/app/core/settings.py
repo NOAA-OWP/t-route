@@ -1,6 +1,5 @@
-"""Author: Tadd Bindas"""
-
 from pathlib import Path
+from typing import List
 
 from pydantic import BaseSettings
 
@@ -9,7 +8,7 @@ class Settings(BaseSettings):
     """
     Configuration settings for the application.
 
-    This class uses Pydantic's BaseSettings to manage configuration,
+    This class uses Pydantic's BaseSettings to manage any variables,
     allowing for easy integration with environment variables and
     configuration files.
 
@@ -29,11 +28,8 @@ class Settings(BaseSettings):
         The regex string for finding restart files
     geofile_path: str
         The path to the docker folders where the geopackage is located in the shared volume
-
-    Notes
-    -----
-    The configuration is initially read from a 'config.ini' file and can be
-    overridden by environment variables.
+    paths_to_update: str
+        The entries in a config that have relative paths. Used for changig in services/utils.py
     """
 
     api_v1_str: str = "/api/v1"
@@ -43,3 +39,27 @@ class Settings(BaseSettings):
     restart_path: str = "/t-route/data/troute_restart/{}/"
     restart_file: str = "HYDRO_RST_{}_DOMAIN1"
     geofile_path: str = "/t-route/data/rfc_geopackage_data/{}/downstream.gpkg"
+    lower_colorado_paths_to_update: List[List[str]] = [
+        ["network_topology_parameters", "supernetwork_parameters", "geo_file_path"],
+        ["compute_parameters", "hybrid_parameters", "diffusive_domain"],
+        ["compute_parameters", "hybrid_parameters", "topobathy_domain"],
+        ["compute_parameters", "hybrid_parameters", "coastal_boundary_domain"],
+        ["compute_parameters", "forcing_parameters", "qlat_input_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "usace_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "usgs_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "canada_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "LakeOntario_outflow"],
+        ["compute_parameters", "data_assimilation_parameters", "reservoir_da", "reservoir_rfc_da", "reservoir_rfc_forecasts_time_series_path"]
+    ]
+    lower_colorado_paths_to_update: List[List[str]] = [
+        ["network_topology_parameters", "supernetwork_parameters", "geo_file_path"],
+        ["compute_parameters", "hybrid_parameters", "diffusive_domain"],
+        ["compute_parameters", "hybrid_parameters", "topobathy_domain"],
+        ["compute_parameters", "hybrid_parameters", "coastal_boundary_domain"],
+        ["compute_parameters", "forcing_parameters", "qlat_input_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "usace_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "usgs_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "canada_timeslices_folder"],
+        ["compute_parameters", "data_assimilation_parameters", "LakeOntario_outflow"],
+        ["compute_parameters", "data_assimilation_parameters", "reservoir_da", "reservoir_rfc_da", "reservoir_rfc_forecasts_time_series_path"]
+    ]
