@@ -79,3 +79,7 @@ bower_components/
 .grunt/
 src/vendor/
 dist/
+data/ 
+output
+test_compose.yaml
+src/app/.ruff_cache
