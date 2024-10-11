@@ -47,6 +47,10 @@ jobs:
       run: |
         ./compiler.sh no-e
     
+    - name: Run Unit Test
+      run: |
+        pytest src/troute-config
+
     - name: Run V4 Test on HYFeature without DA
       run: |
         cd test/LowerColorado_TX_v4
