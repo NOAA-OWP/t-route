@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, build and run tests on the python versions in the matrix.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python application
+name: T-route Unit Test
 
 on:
   push:
