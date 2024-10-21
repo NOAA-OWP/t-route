@@ -1,8 +1,8 @@
 services:
   troute:
     build: 
-      context: .
-      dockerfile: Dockerfile.troute_api
+      context: ..
+      dockerfile: docker/Dockerfile.compose
     ports:
       - "${PORT}:${PORT}"
     volumes:
@@ -16,8 +16,8 @@ services:
         source: ${CORE_VOLUME_SOURCE}
         target: ${CORE_VOLUME_TARGET}
       - type: bind
-        source: ./test
-        target: /t-route/test
+        source: ${TEST_SOURCE}
+        target: ${TEST_TARGET}
     command: sh -c ". /t-route/.venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
     healthcheck:
       test: curl --fail -I http://localhost:${PORT}/health || exit 1

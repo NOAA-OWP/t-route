@@ -4,8 +4,8 @@ RUN yum install -y netcdf netcdf-fortran netcdf-fortran-devel netcdf-openmpi
 
 RUN yum install -y git cmake python python-devel pip 
 
-WORKDIR "/t-route/"
-COPY . "/t-route/"
+WORKDIR /t-route/
+COPY . /t-route/
 
 RUN ln -s /usr/lib64/gfortran/modules/netcdf.mod /usr/include/openmpi-x86_64/netcdf.mod
 
@@ -16,11 +16,11 @@ RUN uv venv
 ENV VIRTUAL_ENV=/t-route/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN uv pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --no-cache-dir -r /t-route/requirements.txt
 
 RUN ./compiler.sh no-e
 
-RUN uv pip install --no-cache-dir -r requirements-app.txt
+RUN uv pip install --no-cache-dir -r /t-route/requirements-app.txt
 
 WORKDIR "/t-route/src/"
 RUN mkdir -p /t-route/data/troute_restart/

@@ -6,7 +6,7 @@ The following doc is meant to explain the T-Route FastAPI implementation using d
 
 T-Route is used in many contexts for hydrological river routing:
 - NGEN 
-- Scientific Python 
+- Scientific Python Projects
 - Replace and Route (RnR)
 
 In the latest PR for RnR (https://github.com/NOAA-OWP/hydrovis/pull/865), there is an requirement to run T-Route as a service. This service requires an easy way to dynamically create config files, restart flow from Initial Conditions, and run T-Route. To satisfy this requirement, a FastAPI endpoint was created in `/src/app` along with code to dynamically create t-route endpoints. 
@@ -76,7 +76,7 @@ docker login --username ${GH_USERNAME} --password ${GH_TOKEN} ghcr.io
 - This command will log the user into the GitHub container registry using their credentials
 
 ```shell
-docker build -t ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG} -f Dockerfile.troute_api
+docker build -t ghcr.io/NOAA-OWP/t-route/t-route-api:${TAG} -f docker/Dockerfile.troute_api
 ```
 - This command builds the T-Route API container using a defined version `${TAG}`
 
@@ -99,7 +99,39 @@ If you want to build this off a forked version, change the container registry (`
 
 ## Testing:
 
-### Testing the RnR Extension: 
+### Set up Using a Dockerfile:
+
+To build the T-Route api from a dockerfile, you can use the following commands from the t-route root repo:
+
+```shell
+docker build -t troute_api -f docker/Dockerfile.troute_api .
+```
+
+```shell
+docker run -p 8000:8000   \
+--env-file docker/test_troute_api.env  \
+-v ${OUTPUT_VOLUME_SOURCE}:${OUTPUT_VOLUME_TARGET}  \
+-v ${DATA_VOLUME_SOURCE}:${DATA_VOLUME_TARGET}  \
+-v ${CORE_VOLUME_SOURCE}:${CORE_VOLUME_TARGET}  \
+-v ${TEST_SOURCE}:${TEST_TARGET}   troute_api
+```
+
+### Set up Docker Compose:
+
+Docker Compose uses a YAML file to configure docker containers and execution. To install compose, you can follow the examples on docker's docs: https://docs.docker.com/compose/install/linux/
+
+To run compose, you can use the following command from the root directory:
+
+```shell
+docker compose --env-file docker/test_troute_api.env -f docker/compose.yaml up --build
+```
+
+if you want to build a compose container to mimic what is used in RnR, you can run the following steps
+```shell
+docker compose --env-file docker/rnr_compose.env -f docker/compose.yaml up --build
+```
+
+#### Testing the RnR endpoint in the API: 
 The following folder contains data files that are to be used to test the T-Route FastAPI code within src/app
 
 To use these files, follow the steps below:
@@ -117,8 +149,8 @@ To use these files, follow the steps below:
 5. Click execute
 6. A Status 201 code means the run ran, and test/api/data/troute_output will be populated in the `{lid}/` folder
 
-### Testing the LowerColorado test cases:
+#### Testing the LowerColorado test cases through docker compose:
 1. Run the compose.yaml file from the base dir using: `docker compose --env-file ./compose.env up --build`
 2. visit `localhost:8000/docs` in your browser
-3. Execute the `/api/v1/flow_routing/v4/tests/LowerColorado` endpoint using the default parameter file path
+3. Execute the `/api/v1/flow_routing/v4/tests/LowerColorado` endpoint using the default parameter file path for LowerColorado_TX_v4 
 4. A Status 201 code means the run ran, and the defined yaml output will be populated
