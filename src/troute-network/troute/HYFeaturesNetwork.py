@@ -30,7 +30,7 @@ def find_layer_name(layers, pattern):
 
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage
-    available_layers = gpd.list_layers(file_path)
+    available_layers = list(gpd.list_layers(file_path)["name"])
 
     # patterns for the layers we want to find
     layer_patterns = {
