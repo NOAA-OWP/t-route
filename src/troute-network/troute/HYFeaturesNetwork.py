@@ -10,10 +10,8 @@ from itertools import chain
 from joblib import delayed, Parallel
 from collections import defaultdict
 import xarray as xr
-from datetime import datetime
 from pprint import pformat
 import os
-import fiona
 import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
 from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk, get_great_lakes_climatology
@@ -32,7 +30,7 @@ def find_layer_name(layers, pattern):
 
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage
-    available_layers = fiona.listlayers(file_path)
+    available_layers = list(gpd.list_layers(file_path)["name"])
 
     # patterns for the layers we want to find
     layer_patterns = {
