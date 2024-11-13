@@ -81,5 +81,9 @@ src/vendor/
 dist/
 
 # VSCODE #
-#############
+##########
 .vscode/
+
+# .gpkg files #
+###############
+test/water_transfer/domain/*.gpkg
