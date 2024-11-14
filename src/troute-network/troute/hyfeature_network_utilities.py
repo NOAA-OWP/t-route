@@ -56,6 +56,10 @@ def build_da_sets(da_params, run_sets, t0):
         "LakeOntario_outflow",
         None
     )     
+    divergence_outflow = da_params.get(
+        "divergence_outflow",
+        None
+    )  
     # User-specified DA ON/OFF preferences
     usace_da = False
     usgs_da = False
@@ -92,6 +96,8 @@ def build_da_sets(da_params, run_sets, t0):
             canada_timeslices_folder = pathlib.Path(canada_timeslices_folder)
         if LakeOntario_outflow:
             LakeOntario_outflow = pathlib.Path(LakeOntario_outflow)
+        if divergence_outflow:
+            divergence_outflow = pathlib.Path(divergence_outflow)
 
         # the number of timeslice files appended to the front- and back-ends
         # of the TimeSlice file interpolation stack
