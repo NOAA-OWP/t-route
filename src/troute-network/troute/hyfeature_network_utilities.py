@@ -74,7 +74,6 @@ def build_da_sets(da_params, run_sets, t0):
     streamflow_da = da_params.get('streamflow_da', False)
     if streamflow_da:
         nudging = streamflow_da.get('streamflow_nudging', False)
-        
     if not usgs_da and not usace_da and not GreatLakes_da and not nudging:
         # if all DA capabilities are OFF, return empty dictionary
         da_sets = [{} for _ in run_sets]
@@ -164,7 +163,7 @@ def build_da_sets(da_params, run_sets, t0):
                 # Add available TimeSlices to da_sets list
                 da_sets[i]['canada_timeslice_files'] = filenames_canada
             if LakeOntario_outflow:
-                da_sets[i]['LakeOntario_outflow'] = LakeOntario_outflow                
+                da_sets[i]['LakeOntario_outflow'] = LakeOntario_outflow    
             # reset initialization time for loop set i+1
             t0 = run_sets[i]['final_timestamp']
             

@@ -202,6 +202,8 @@ def main_v04(argv):
             parity_sets[run_set_iterator]["dt"] = dt
             parity_sets[run_set_iterator]["nts"] = nts
 
+        if data_assimilation_parameters.get("divergence_outflow", False):   
+            network.diverge_flow(data_assimilation, run_set_iterator)
         
         route_start_time = time.time()
 
