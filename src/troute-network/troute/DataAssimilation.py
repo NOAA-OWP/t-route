@@ -830,6 +830,110 @@ class great_lake(AbstractDA):
                 da_run,
                 network.t0,
             )
+
+class divergence(AbstractDA):
+    def __init__(self, network, from_files, value_dict):
+        LOG.info("divergence class is started.")
+        start_time = time.time()
+        data_assimilation_parameters = self._data_assimilation_parameters
+        run_parameters = self._run_parameters
+
+        self._divergence_df = pd.DataFrame()
+
+        # divergence_crosswalk = pd.DataFrame(
+        #     {
+        #         'link': [1313076],
+        #         'gages': [1304933]
+        #     }
+        # ).set_index('link')
+        
+        if data_assimilation_parameters.get("divergence_outflow", False):
+            self._divergence_df = _create_divergence_df(run_parameters, network, data_assimilation_parameters)
+
+        LOG.debug("divergence class is completed in %s seconds." % (time.time() - start_time))
+    
+    def update_after_compute(self, run_results, time_increment):
+        '''
+        Function to update data assimilation object after running routing module.
+        
+        Arguments:
+        ----------
+        - run_results (list): output from the compute kernel sequence,
+                              organized (because that is how it comes 
+                              out of the kernel) by network.
+                              For each item in the result, there are 
+                              10 elements, the 9th  of which are lists of 
+                              four elements containing: 
+                              1) a list of the segments ids where data 
+                              assimilation was performed (if any) in that network; 
+                              2) a list of the previously persisted outflow;
+                              3) a list of the previously assimilated observation times; 
+                              4) a list of the update time.
+        
+        Returns:
+        --------
+        - data_assimilation            (Object): Object containing all data assimilation information
+            - _great_lakes_param_df (DataFrame): Great Lakes reservoir DA parameters
+        '''
+        # get reservoir DA initial parameters for next loop iteration
+        great_lakes_param_df = pd.DataFrame()
+        tmp_list = []
+        for r in run_results:
+            
+            if len(r[9][0]) > 0:
+                tmp_df = pd.DataFrame(data = r[9][0], columns = ['lake_id'])
+                tmp_df['previous_assimilated_outflows'] = r[9][1]
+                tmp_df['previous_assimilated_time'] = r[9][2]
+                tmp_df['update_time'] = r[9][3]
+                tmp_list.append(tmp_df)
+        
+        if tmp_list:
+            great_lakes_param_df = pd.concat(tmp_list)
+            great_lakes_param_df['previous_assimilated_time'] = great_lakes_param_df['previous_assimilated_time'] - time_increment
+            great_lakes_param_df['update_time'] = great_lakes_param_df['update_time'] - time_increment
+        
+        self._great_lakes_param_df = great_lakes_param_df
+
+    def update_for_next_loop(self, network, da_run,):
+        '''
+        Function to update data assimilation object for the next loop iteration.
+        
+        Arguments:
+        ----------
+        - network                    (Object): network object created from abstract class
+        - da_run                       (list): list of data assimilation files separated
+                                               by for loop chunks
+        
+        Returns:
+        --------
+        - data_assimilation               (Object): Object containing all data assimilation information
+            - reservoir_usgs_df        (DataFrame): USGS reservoir observations
+            - reservoir_usace_df       (DataFrame): USACE reservoir observations
+        '''
+        greatLake = False
+        data_assimilation_parameters = self._data_assimilation_parameters
+        run_parameters = self._run_parameters
+        reservoir_persistence_da = data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_da', {})
+
+        if reservoir_persistence_da:
+            greatLake = reservoir_persistence_da.get('reservoir_persistence_greatLake', False)
+        
+        if greatLake:
+
+            GL_crosswalk_df = pd.DataFrame(
+                {
+                    'link': [4800002,4800004,4800006],
+                    'gages': ['04127885','04159130','02HA013']
+                }
+            ).set_index('link')
+            
+            self._great_lakes_df, _ = _create_GL_dfs(
+                GL_crosswalk_df,
+                data_assimilation_parameters,
+                run_parameters,
+                da_run,
+                network.t0,
+            )
             
 
 class RFCDA(AbstractDA):
@@ -990,6 +1094,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, network, from_files, value_dict)
         great_lake.__init__(self, network, from_files, value_dict, da_run)
+        divergence.__init__(self, network, from_files, value_dict)
     
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -999,6 +1104,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         PersistenceDA.update_after_compute(self, run_results)
         RFCDA.update_after_compute(self, run_results)
         great_lake.update_after_compute(self, run_results, time_increment)
+        divergence.update_after_compute(self, run_results, time_increment)
 
     def update_for_next_loop(self, network, da_run,):
         '''
@@ -1008,6 +1114,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         PersistenceDA.update_for_next_loop(self, network, da_run)
         RFCDA.update_for_next_loop(self)
         great_lake.update_for_next_loop(self, network, da_run)
+        divergence.update_for_next_loop(self, network, da_run)
     
 
     @property
@@ -1053,6 +1160,10 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     @property
     def great_lakes_param_df(self):
         return self._great_lakes_param_df
+    
+    @property
+    def divergence_df(self):
+        return self._divergence_df
 
 
 # --------------------------------------------------------------
@@ -1192,6 +1303,40 @@ def _create_LakeOntario_df(run_parameters, t0, da_run):
     LOG.debug("Creating Lake Ontario dataframe is completed in %s seconds." % (time.time() - LakeOntario_df_start_time))
     
     return lake_ontario_df
+
+def _create_divergence_df(run_parameters, network, data_assimilation_parameters):
+    LOG.info("Creation of divergence dataframe is started.")
+    debug_start_time = time.time()    
+    start_time = network.t0
+    nts = run_parameters.get('nts')
+    dt = run_parameters.get('dt')
+    end_time = network.t0 + pd.Timedelta(hours = nts/(3600/dt))
+
+    _divergence_df = pd.read_csv(data_assimilation_parameters.get('divergence_outflow'))
+    
+    # Mask out days that contain hourly data
+    _divergence_df['datetime'] = pd.to_datetime(_divergence_df['datetime'])
+    
+    # Keep only rows where minutes are 00
+    divergence_df = _divergence_df[_divergence_df['datetime'].dt.minute == 0].rename(columns={'datetime': 'Datetime'})
+
+    # Rename outflow column to discharge
+    divergence_df = divergence_df.rename(columns={'flow_cms': 'Discharge'})
+    
+    # Filter for needed time stamps
+    divergence_df = divergence_df[(divergence_df['Datetime']>=start_time) & (divergence_df['Datetime']<=end_time)]
+
+    # Add 'link' column with waterbody ID
+    divergence_df['outflow'] = 1313076  # Where the water will be transferred from
+    divergence_df['inflow'] = 1304933  # Where the water will be transferred to
+    
+    # Reset index and convert Datetimes to strings
+    divergence_df.reset_index(inplace=True)
+    divergence_df['Datetime'] = divergence_df['Datetime'].dt.strftime('%Y-%m-%d_%H:%M:%S')
+    
+    LOG.debug("Creation of divergence dataframe is completed in %s seconds." % (time.time() - debug_start_time))
+    
+    return divergence_df
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''

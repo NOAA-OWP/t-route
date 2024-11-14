@@ -1,50 +1,15 @@
 # $ python -m nwm_routing -f -V4 config.yaml
-bmi_parameters:
-    #----------
-    flowpath_columns:
-        - 'id'
-        - 'toid'
-        - 'lengthkm'
-    attributes_columns:
-        - 'attributes_id'
-        - 'rl_gages'
-        - 'rl_NHDWaterbodyComID'
-        - 'MusK'
-        - 'MusX'
-        - 'n'
-        - 'So'
-        - 'ChSlp'
-        - 'BtmWdth'
-        - 'nCC'
-        - 'TopWdthCC'
-        - 'TopWdth'
-    waterbody_columns:
-        - 'hl_link'
-        - 'ifd'
-        - 'LkArea'
-        - 'LkMxE'
-        - 'OrificeA'
-        - 'OrificeC'
-        - 'OrificeE'
-        - 'WeirC'
-        - 'WeirE'
-        - 'WeirL'
-    network_columns:
-        - 'network_id'
-        - 'hydroseq'
-        - 'hl_uri'
 #--------------------------------------------------------------------------------
 log_parameters:
     #----------
     showtiming: True
     log_level : DEBUG
-    #log_directory : Log/
 #--------------------------------------------------------------------------------
 network_topology_parameters:
     #----------
     supernetwork_parameters:
         #----------
-        geo_file_path: domain/LowerColorado_NGEN_v201.gpkg
+        geo_file_path: domain/merged_domain.gpkg
         columns: 
             key: 'id'
             downstream: 'toid'
@@ -80,6 +45,52 @@ compute_parameters:
         lite_waterbody_restart_file : #restart/waterbody_restart_202006011200
     hybrid_parameters:
         run_hybrid_routing: False
+        diffusive_domain  : #domain/coastal_domain_subset.yaml  
+        use_natl_xsections: False
+        topobathy_domain  : #domain/final_diffusive_natural_xs.nc 
+        run_refactored_network: False
+        refactored_domain: #domain/refactored_coastal_domain_subset.yaml 
+        refactored_topobathy_domain: #domain/refac_final_diffusive_natural_xs.nc 
+        coastal_boundary_domain: #domain/coastal_domain_crosswalk.yaml
+    forcing_parameters:
+        #----------
+        qts_subdivisions            : 12
+        dt                          : 300 # [sec]
+        qlat_input_folder           : channel_forcing 
+        qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1.csv"
+        coastal_boundary_input_file : #boundary_forcing  
+        nts                         : 288 # 288 for 1day; 2592 for 9 days
+        max_loop_size               : 24   # [hr]  
+    data_assimilation_parameters:
+        #----------
+        streamflow_da:
+            #----------
+            streamflow_nudging            : False
+            diffusive_streamflow_nudging  : False                               
+        reservoir_da:
+            #----------
+            reservoir_persistence_da:
+                #----------
+                reservoir_persistence_usgs  : False
+                reservoir_persistence_usace : False
+            reservoir_rfc_da:
+                #----------
+                reservoir_rfc_forecasts                 : False
+#--------------------------------------------------------------------------------
+compute_parameters:
+    #----------
+    parallel_compute_method: by-subnetwork-jit-clustered # serial
+    compute_kernel         : V02-structured
+    assume_short_ts        : True
+    subnetwork_target_size : 10000
+    cpu_pool               : 36
+    restart_parameters:
+        #----------
+        start_datetime              : 2023-01-01_00:00
+        lite_channel_restart_file   : #restart/RESTART.2020082600_DOMAIN1
+        lite_waterbody_restart_file : #restart/waterbody_restart_202006011200
+    hybrid_parameters:
+        run_hybrid_routing: False
         # diffusive_domain  : domain/coastal_domain_tw.yaml  
         use_natl_xsections: False
         # topobathy_domain  : domain/troute_test.parquet
@@ -94,13 +105,13 @@ compute_parameters:
         qlat_input_folder           : channel_forcing 
         qlat_file_pattern_filter    : "*.CHRTOUT_DOMAIN1.csv"
         coastal_boundary_input_file : #boundary_forcing  
-        nts                         : 288 # 288 for 1day; 2592 for 9 days
+        nts                         : 2592 # 288 for 1day; 2592 for 9 days
         max_loop_size               : 24   # [hr]  
     data_assimilation_parameters:
         #----------
-        usgs_timeslices_folder   : usgs_timeslices/
-        usace_timeslices_folder  : usace_timeslices/
-        canada_timeslices_folder  : Canadian_timeslices/
+        # usgs_timeslices_folder   : usgs_timeslices/
+        # usace_timeslices_folder  : usace_timeslices/
+        # canada_timeslices_folder  : Canadian_timeslices/
         # LakeOntario_outflow  :  domain/cleaned_lakeOntario.csv
         divergence_outflow : divergence_obs/old_river_lock.csv
         streamflow_da:
