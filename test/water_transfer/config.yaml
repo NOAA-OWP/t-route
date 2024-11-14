@@ -102,6 +102,7 @@ compute_parameters:
         usace_timeslices_folder  : usace_timeslices/
         canada_timeslices_folder  : Canadian_timeslices/
         # LakeOntario_outflow  :  domain/cleaned_lakeOntario.csv
+        divergence_outflow : divergence_obs/old_river_lock.csv
         streamflow_da:
             #----------
             streamflow_nudging            : False

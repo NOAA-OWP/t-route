@@ -376,6 +376,11 @@ class DataAssimilationParameters(BaseModel, extra='ignore'):
     CSV file containing DA values for Lake Ontario. Needs to be obtained and pre-processed from https://ijc.org/en/loslrb/watershed/flows.
     NOTE: Required for Lake Ontario DA.
     """
+    divergence_outflow: Optional[FilePath] = None
+    """
+    CSV file containing DA values for man-made breakages in the hydrofabric (locks). Needs to be obtained and pre-processed from https://waterdata.usgs.gov/monitoring-location/ observations
+    NOTE: Required for Old River Lock DA (2.2.3.15.2).
+    """
     timeslice_lookback_hours: int = 24
     """
     Number of hours to look back in time (from simulation time) for USGS, USACE, and Canadian timeslice data assimilation files.
