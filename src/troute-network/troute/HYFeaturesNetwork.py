@@ -712,30 +712,26 @@ class HYFeaturesNetwork(AbstractNetwork):
             The timestep that we're working with
         """
         q_lateral = self._qlateral.copy()
-        if (run_set_iterator * 24) + 24 >= len(data_assimilation.divergence_df):
-            # if there are no more observations, use the last available obs
-            index = -1
+
+        start_idx = run_set_iterator * 24
+        end_idx = start_idx + 24
+
+        if start_idx < len(data_assimilation.divergence_df):
+            valid_indices = range(start_idx, min(end_idx, len(data_assimilation.divergence_df)))
+            remaining_indices = range(len(valid_indices), 24)
+            
+            index = list(valid_indices) + [-1] * len(remaining_indices)  # setting the remaining idx to -1 to use the last value
         else:
-            index = np.array(range(run_set_iterator*24, (run_set_iterator*24)+24))
+            # Using the last value for all indices
+            index = [-1] * 24  # making a list of len 24 of the last value         
+
         divergence_df = data_assimilation.divergence_df.iloc[index]
         diverged_flow = divergence_df["Discharge"]
-        try:
-            inflow_mask = q_lateral.index == divergence_df["inflow"]
-            outflow_mask = q_lateral.index == divergence_df["outflow"]
-        except ValueError:
-            # index is a list, we need to then use .iloc
-            inflow_mask = q_lateral.index == divergence_df["inflow"].iloc[0]
-            outflow_mask = q_lateral.index == divergence_df["outflow"].iloc[0]
-
-        try:
-            new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow.values, 0, None)
-            q_lateral[outflow_mask] = new_outflow
-            q_lateral[inflow_mask] += diverged_flow.values
-        except AttributeError:
-            # diverged flow is not an array
-            new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow, 0, None)
-            q_lateral[outflow_mask] = new_outflow
-            q_lateral[inflow_mask] += diverged_flow
+        inflow_mask = q_lateral.index == divergence_df["inflow"].iloc[0]
+        outflow_mask = q_lateral.index == divergence_df["outflow"].iloc[0]
+        new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow.values, 0, None)
+        q_lateral[outflow_mask] = new_outflow
+        q_lateral[inflow_mask] += diverged_flow.values
 
         self._qlateral = q_lateral   
 
