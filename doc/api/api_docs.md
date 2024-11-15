@@ -27,7 +27,7 @@ Since T-Route is running in a docker container, there has to be a connection bet
 ## Quickstart
 1. From the Root directory, run:
 ```shell
-docker compose --env-file ./compose.env up
+docker compose --env-file docker/test_troute_api.env -f docker/compose.yaml up --build
 ```
 
 This will start the T-Route container and run the API on localhost:8004. To view the API spec and swagger docs, visit localhost:8004/docs
