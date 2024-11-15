@@ -11,5 +11,5 @@ toolz
 joblib
 deprecated
 pyarrow<12.0
-geopandass
+geopandas
 pydantic~=1.0

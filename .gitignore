@@ -80,9 +80,6 @@ bower_components/
 src/vendor/
 dist/
 
-# VSCODE #
-##########
-.vscode/
 
 # MISC #
 ########
