@@ -12,4 +12,6 @@ joblib
 deprecated
 pyarrow<12.0
 geopandas
+fastapi==0.110.1
+uvicorn==0.30.1
 pydantic~=1.0

@@ -80,13 +80,14 @@ bower_components/
 src/vendor/
 dist/
 
-# VSCODE #
-##########
-.vscode/
+# .vscode #
+###########
+.vscode
 
-# MISC #
-########
-data/ 
-output
-test_compose.yaml
-src/app/.ruff_cache
+# ruff/pycache/pytest #
+#######################
+.*_cache
+
+# .venv #
+#########
+.venv
