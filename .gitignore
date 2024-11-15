@@ -84,6 +84,9 @@ dist/
 ##########
 .vscode/
 
-# .gpkg files #
-###############
-test/water_transfer/domain/*.gpkg
+# MISC #
+########
+data/ 
+output
+test_compose.yaml
+src/app/.ruff_cache
