@@ -712,17 +712,30 @@ class HYFeaturesNetwork(AbstractNetwork):
             The timestep that we're working with
         """
         q_lateral = self._qlateral.copy()
-        if run_set_iterator >= len(data_assimilation.divergence_df):
+        if (run_set_iterator * 24) + 24 >= len(data_assimilation.divergence_df):
             # if there are no more observations, use the last available obs
-            run_set_iterator = -1
-        divergence_df = data_assimilation.divergence_df.iloc[0]
+            index = -1
+        else:
+            index = np.array(range(run_set_iterator*24, (run_set_iterator*24)+24))
+        divergence_df = data_assimilation.divergence_df.iloc[index]
         diverged_flow = divergence_df["Discharge"]
-        inflow_mask = q_lateral.index == divergence_df["inflow"]
-        outflow_mask = q_lateral.index == divergence_df["outflow"]
+        try:
+            inflow_mask = q_lateral.index == divergence_df["inflow"]
+            outflow_mask = q_lateral.index == divergence_df["outflow"]
+        except ValueError:
+            # index is a list, we need to then use .iloc
+            inflow_mask = q_lateral.index == divergence_df["inflow"].iloc[0]
+            outflow_mask = q_lateral.index == divergence_df["outflow"].iloc[0]
 
-        new_outflow = np.clip(q_lateral[outflow_mask].iloc[0] - diverged_flow, 0, None)
-        q_lateral[outflow_mask] = new_outflow
-        q_lateral[inflow_mask] += diverged_flow
+        try:
+            new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow.values, 0, None)
+            q_lateral[outflow_mask] = new_outflow
+            q_lateral[inflow_mask] += diverged_flow.values
+        except AttributeError:
+            # diverged flow is not an array
+            new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow, 0, None)
+            q_lateral[outflow_mask] = new_outflow
+            q_lateral[inflow_mask] += diverged_flow
 
         self._qlateral = q_lateral   
 
