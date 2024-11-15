@@ -31,3 +31,8 @@ Run:
 ```bash
 docker run -p 8000:8000 troute-notebook
 ```
+
+Then, take the URL from the output and put that into your browser. An example one is below:
+```
+http://127.0.0.1:8000/lab?token=<token>
+```
