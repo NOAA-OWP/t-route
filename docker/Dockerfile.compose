@@ -20,7 +20,5 @@ RUN uv pip install --no-cache-dir -r /t-route/requirements.txt
 
 RUN ./compiler.sh no-e
 
-RUN uv pip install --no-cache-dir -r /t-route/requirements-app.txt
-
 WORKDIR "/t-route/src/"
 RUN mkdir -p /t-route/data/troute_restart/
