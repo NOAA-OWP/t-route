@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from pathlib import Path
+from typing import Optional
 from typing_extensions import Literal
 
 LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
@@ -20,4 +22,8 @@ class LoggingParameters(BaseModel):
     logical, it True a timing summary is provided that reports the total time required for each
     major process in the simulation sequence.  optional, defaults to None and no timing summary is
     reported
+    """
+    log_directory: Optional[Path] = None
+    """
+    Path to location where a logging file will be saved.
     """

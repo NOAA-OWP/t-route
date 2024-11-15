@@ -9,44 +9,51 @@ streamOutput_allowedTypes = Literal['.csv', '.nc', '.pkl']
 
 
 class OutputParameters(BaseModel):
+    """
+    Parameters controlling model outputs. Output parameters can be left completely blank and no files will be written. 
+    However, if 'output_parameters' exists, one of the following specific output file parameters should also be specified. 
+    Many of these are meant to mimic WRF-Hydro's outputs.
+    """
     chanobs_output: Optional["ChanobsOutput"] = None
-    # NOTE: this appears to be optional. See nwm_routing/input.py ~:477
     csv_output: Optional["CsvOutput"] = None
-    # NOTE: this appears to be optional. See nwm_routing/input.py ~:496
     parquet_output: Optional["ParquetOutput"] = None
-    # NOTE: this appears to be optional. See nwm_routing/input.py ~:563
     chrtout_output: Optional["ChrtoutOutput"] = None
     lite_restart: Optional["LiteRestart"] = None
-    # NOTE: this appears to be optional. See nwm_routing/input.py ~:520
     hydro_rst_output: Optional["HydroRstOutput"] = None
-    # TODO: default appears to be {}. see nhd_io.read_config_file ~:141
-    # shorvath: parity_parameters defaults to {}, but omitting 'wrf_hydro_parity_check'
-    # from output_parameters will successfully skip lines~112-115 in __main__.py if this
-    # parameter is left blank.
     wrf_hydro_parity_check: Optional["WrfHydroParityCheck"] = None
-    # NOTE: mandatory if writing results to lakeout.
     lakeout_output: Optional[DirectoryPath] = None
-
-    # NOTE: assuming this should be removed
-    # TODO: missing from `v3_doc.yaml`
-    # see nwm_routing/output.py :114
     test_output: Optional[Path] = None
     stream_output: Optional["StreamOutput"] = None
-    # NOTE: mandatory if writing results to lastobs
     lastobs_output: Optional[DirectoryPath] = None
 
+
 class ChanobsOutput(BaseModel):
-    # NOTE: required if writing chanobs files
+    """
+    CHANOBS files are outputs from WRF-Hydro containing station observations. This replicates that behavior.
+    """
     chanobs_output_directory: Optional[DirectoryPath] = None
-    # NOTE: required if writing chanobs files
-    # NOTE: is `Path` b.c. is output file
+    """
+    Directory to save CHANOBS output files. If this is None, no CHANOBS will be written.
+    """
     chanobs_filepath: Optional[Path] = None
+    """
+    Filename of CHANOBS output file.
+    """
 
 
 class CsvOutput(BaseModel):
-    # NOTE: required if writing results to csv
+    """
+    This is an older alternative to the CSV file writing capabilities of the more recently developed 'stream_output'. 
+    This will simply write the full flowveldepth array to a .csv file.
+    """
     csv_output_folder: Optional[DirectoryPath] = None
+    """
+    Directory to save csv output files. If this is None, no csv will be written.
+    """
     csv_output_segments: Optional[List[str]] = None
+    """
+    Subset of segment IDs to include in the output file.
+    """
 
 
 class ParquetOutput(BaseModel):
@@ -58,46 +65,106 @@ class ParquetOutput(BaseModel):
 
 
 class ChrtoutOutput(BaseModel):
-    # NOTE: mandatory if writing results to CHRTOUT.
+    """
+    CHRTOUT files are outputs from WRF-Hydro containing full channel network output. This replicates that behavior.
+    """
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
+    """
+    Directory to save CHRTOUT files. No files will be written if this is None.
+    """
 
 
 class LiteRestart(BaseModel):
-    # NOTE: required if writing restart data lite files.
+    """
+    Saves final conditions of channel and reservoir dataframes as pickle files to be used in follow up simulation as initial conditions.
+    """
     lite_restart_output_directory: Optional[DirectoryPath] = None
+    """
+    Directory to save lite_restart files. No files will be written if this is None.
+    """
 
 
 class HydroRstOutput(BaseModel):
-    # NOTE: required if writing restart data to HYDRO_RST
+    """
+    Parameters controlling the writing of restart data to HYDRO_RST netcdf files. Mimics WRF-Hydro.
+    """
     wrf_hydro_restart_dir: Optional[DirectoryPath] = None
+    """
+    Directory to save state files.
+    """
     wrf_hydro_channel_restart_pattern_filter: str = "HYDRO_RST.*"
-
+    """
+    File pattern for state files.
+    """
     wrf_hydro_channel_restart_source_directory: Optional[DirectoryPath] = None
+    """
+    DEPRECATED?
+    """
     wrf_hydro_channel_output_source_folder: Optional[DirectoryPath] = None
+    """
+    DEPRECATED?
+    """
 
 
 class WrfHydroParityCheck(BaseModel):
-    # NOTE: required for parity check to occur
-    # TODO: not sure if this should be optional?
-    # shorvath: I'm ok with removing parity_checks for t-routeV4...
+    """
+    Paramters controlling a single-segment parity assessment between t-route and WRF-hydro.
+    """
     parity_check_input_folder: Optional[DirectoryPath] = None
+    """
+    """
     parity_check_file_index_col: str
+    """
+    """
     parity_check_file_value_col: str
+    """
+    """
     parity_check_compare_node: str
+    """
+    """
     parity_check_compare_file_sets: Optional[List["ParityCheckCompareFileSet"]] = None
 
 
 class ParityCheckCompareFileSet(BaseModel):
     validation_files: List[FilePath]
+    """
+    """
 
 
 class StreamOutput(BaseModel):
-    # NOTE: required if writing StreamOutput files
+    """
+    t-route's most recent output file type. This will output channel network values (flow, velocity, depth, and nudge values). 
+    This has been designed for as much flexibility for user needs as possible, including file type (netcdf, csv, pickle) and how 
+    frequently to create output files relative to simulation time and how many output timesteps to include. Only 'stream_output_directory' 
+    is required, the other default values will create 1 file per hour of simulation time, containing values at every timestep of 
+    simulation. If t-route is run with default dt (300 seconds/5 minutes) for 24 hours, the defaults here would produce 24 output files 
+    (1 per hour of simulation), each containing 12 values for each variable (1 value every 5 minutes in the hour of simulation).
+    """
     stream_output_directory: Optional[Path] = None
+    """
+    Directory to save flowveldepth outputs. If this is not None, this form of output will be written.
+    """
     mask_output: Optional[FilePath] = None
+    """
+    Yaml file specifying flowpath/nexus IDs to include in output files.
+    """
     stream_output_time: int = 1
-    stream_output_type:streamOutput_allowedTypes = ".nc"
+    """
+    Value is in simulation time hours. This tells t-route how frequently to make output files. '1' would be 1 file per hour 
+    of simulation time.
+    """
+    stream_output_type: streamOutput_allowedTypes = ".nc"
+    """
+    Output file type.
+    """
     stream_output_internal_frequency: Annotated[int, Field(strict=True, ge=5)] = 5
+    """
+    Value is in minutes. This tells t-route the frequency of t-route's timesteps to include in the output file. For instance, 
+    a value of '5' here would output flow, velocity, and depth values every 5 minutes of simulation time. A value of '30' would 
+    output values every 30 mintues of simulation time.
+    NOTE: This value should not be smaller than dt, and should be a multiple of dt (keep in mind dt is in seconds, while this value 
+    is in minutes). So if dt=300(sec), this value cannot be smaller than 5(min) and should be a multiple of 5. 
+    """
     
     @validator('stream_output_directory')
     def validate_stream_output_directory(cls, value):

@@ -13,10 +13,6 @@ from .output_parameters import OutputParameters
 from .bmi_parameters import BMIParameters
 from ._utils import use_strict
 
-class LoggingParameters(BaseModel):
-    showtiming: Optional[bool] = None
-    log_level: Optional[str] = None
-    log_directory: Optional[str] = None  
 
 class Config(BaseModel):
     log_parameters: LoggingParameters = Field(default_factory=LoggingParameters)
@@ -51,7 +47,8 @@ class Config(BaseModel):
     ##########################################################################################
 
     @root_validator(skip_on_failure=True)
-    def check_levelpool_filepath(cls, values):
+    def check_levelpool_filepath(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that the level pool parameter file is provided IF waterbodies are being routed."""
         network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
         waterbody_parameters = values['network_topology_parameters'].waterbody_parameters
         if waterbody_parameters:
@@ -59,14 +56,15 @@ class Config(BaseModel):
             levelpool = waterbody_parameters.level_pool
 
             if simulate_waterbodies and network_type=='NHDNetwork':
-                assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but levelpool parameters are missing.'
+                assert levelpool, 'Waterbody simulation is enabled for NHDNetwork, but level pool parameters are missing.'
                 levelpool_file = levelpool.level_pool_waterbody_parameter_file_path
-                assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no levelpool parameter file is provided.'
+                assert levelpool_file, 'Waterbody simulation is enabled for NHDNetwork, but no level pool parameter file is provided.'
             
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_diffusive_domain(cls, values):
+    def check_diffusive_domain(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that the diffusive domain file is provided IF diffusive routing is enabled."""
         hybrid_parameters = values['compute_parameters'].hybrid_parameters
         if hybrid_parameters:
             run_hybrid = hybrid_parameters.run_hybrid_routing
@@ -76,7 +74,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_topobathy_domain(cls, values):
+    def check_topobathy_domain(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a topobathy domain file is provided IF using natural cross-sections has been enabled."""
         hybrid_parameters = values['compute_parameters'].hybrid_parameters
         if hybrid_parameters:
             use_natl_xsections = hybrid_parameters.use_natl_xsections
@@ -86,7 +85,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_refactored(cls, values):
+    def check_refactored(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that the refactored domain and topobathy files are provided IF refactored network is enabled."""
         hybrid_parameters = values['compute_parameters'].hybrid_parameters
         if hybrid_parameters:
             run_refactored_network = hybrid_parameters.run_refactored_network
@@ -97,7 +97,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_coastal_domain(cls, values):
+    def check_coastal_domain(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a coastal boundary domain file is provided IF diffusive routing is enabled and coastal forcing files are provided."""
         hybrid_parameters = values['compute_parameters'].hybrid_parameters
         forcing_parameters = values['compute_parameters'].forcing_parameters
         if hybrid_parameters:
@@ -108,7 +109,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_gage_segID_crosswalk_file(cls, values):
+    def check_gage_segID_crosswalk_file(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a gage-segment cross-walk file is provided IF streamflow nudging is enabled on a NHD network."""
         da_parameters = values['compute_parameters'].data_assimilation_parameters
         if da_parameters:
             streamflow_DA = da_parameters.streamflow_da
@@ -116,12 +118,13 @@ class Config(BaseModel):
                 streamflow_nudging = streamflow_DA.streamflow_nudging
                 network_type = values['network_topology_parameters'].supernetwork_parameters.network_type
                 if streamflow_nudging and network_type=='NHDNetwork':
-                    assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nuding is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
+                    assert streamflow_DA.gage_segID_crosswalk_file, 'Streamflow nudging is enabled on NHDNetwork, but gage_segID_crosswalk_file is missing.'
 
         return values
 
     @root_validator(skip_on_failure=True)
-    def check_rfc_parameters(cls, values):
+    def check_rfc_parameters(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that RFC parameter file (IF on NHD network) and timeseries directory path are provided IF RFC reservoir DA is enabled."""
         da_parameters = values['compute_parameters'].data_assimilation_parameters
         if da_parameters:
             reservoir_da = da_parameters.reservoir_da
@@ -147,7 +150,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_usgs_reservoir_da_parameters(cls, values):
+    def check_usgs_reservoir_da_parameters(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that USGS parameter file (IF on NHD network) and timeslice directory path are provided IF USGS reservoir DA is enabled."""
         da_parameters = values['compute_parameters'].data_assimilation_parameters
         if da_parameters:
             reservoir_da = da_parameters.reservoir_da
@@ -173,7 +177,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_usace_reservoir_da_parameters(cls, values):
+    def check_usace_reservoir_da_parameters(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that USACE parameter file (IF on NHD network) and timeslice directory path are provided IF USACE reservoir DA is enabled."""
         da_parameters = values['compute_parameters'].data_assimilation_parameters
         if da_parameters:
             reservoir_da = da_parameters.reservoir_da
@@ -199,7 +204,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_qlat_inputs(cls, values):
+    def check_qlat_inputs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a forcing directory is provided. TODO: Add bypass for this check once t-route is connected to BMI."""
         forcing_parameters = values['compute_parameters'].forcing_parameters
         if forcing_parameters:
             qlat_forcing_sets = forcing_parameters.qlat_forcing_sets
@@ -210,7 +216,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_wrf_hydro_restart_files(cls, values):
+    def check_wrf_hydro_restart_files(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that auxilary WRF-Hydro files exist IF a WRF-Hydro restart file is being used."""
         restart_parameters = values['compute_parameters'].restart_parameters
         if restart_parameters:
             wrf_hydro_channel_restart_file = restart_parameters.wrf_hydro_channel_restart_file
@@ -228,7 +235,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_start_datetime(cls, values):
+    def check_start_datetime(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a start datetime is provided."""
         restart_parameters = values['compute_parameters'].restart_parameters
         if restart_parameters:
             wrf_hydro_channel_restart_file = restart_parameters.wrf_hydro_channel_restart_file
@@ -239,7 +247,8 @@ class Config(BaseModel):
         return values
 
     @root_validator(skip_on_failure=True)
-    def check_flowpath_edge_list(cls, values):
+    def check_flowpath_edge_list(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verfiy that a flowpath_edge_list file is provided IF using a .json geo-file."""
         geo_file_path = values['network_topology_parameters'].supernetwork_parameters.geo_file_path
         flowpath_edge_list = values['network_topology_parameters'].supernetwork_parameters.flowpath_edge_list
         if Path(geo_file_path).suffix=='.json':
@@ -249,7 +258,8 @@ class Config(BaseModel):
         return values
     
     @root_validator(skip_on_failure=True)
-    def check_lite_restart_directory(cls, values):
+    def check_lite_restart_directory(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that a lite restart output directory is provided IF lite restart output is enabled."""
         if values['output_parameters']:
             lite_restart = values['output_parameters'].lite_restart
             if lite_restart is not None:
@@ -259,7 +269,8 @@ class Config(BaseModel):
         return values
 
     @root_validator(skip_on_failure=True)
-    def check_nts_dt_stream_output_internal_frequency(cls, values):
+    def check_nts_dt_stream_output_internal_frequency(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify that stream output parameters make sense IF writing stream output files is enabled."""
         compute_params = values.get('compute_parameters')
         output_params = values.get('output_parameters')
         
