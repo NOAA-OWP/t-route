@@ -18,7 +18,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python -m pip install -r requirements.txt
 
-RUN python -m pip install jupyterlab
+RUN python -m pip install jupyterlab pytest
 
 RUN ./compiler.sh no-e
 
