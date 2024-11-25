@@ -91,3 +91,7 @@ dist/
 # .venv #
 #########
 .venv
+
+# Build libs #
+##############
+build/
