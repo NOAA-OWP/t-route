@@ -57,7 +57,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         data_assimilation_parameters.get('streamflow_da', {}).get('streamflow_nudging', False),
         data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_usgs', False),
         data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_persistence_usace', False),
-        data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False)
+        data_assimilation_parameters.get('reservoir_da', {}).get('reservoir_rfc_da', {}).get('reservoir_rfc_forecasts', False),
     ]):
         layers_to_read.append('network')
 
@@ -700,7 +700,42 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usace_lake_gage_crosswalk = pd.DataFrame()
             self._rfc_lake_gage_crosswalk = pd.DataFrame()
-    
+
+    def diverge_flow(self, data_assimilation, run_set_iterator: int):
+        """Divert flow based on man-made structures
+        
+        Parameters
+        ----------
+        data_assimilation: DataAssimilation
+            The data assimilation object
+        run_set_iterator: int
+            The timestep that we're working with
+        """
+        q_lateral = self._qlateral.copy()
+
+        start_idx = run_set_iterator * 24
+        end_idx = start_idx + 24
+
+        if start_idx < len(data_assimilation.divergence_df):
+            valid_indices = range(start_idx, min(end_idx, len(data_assimilation.divergence_df)))
+            remaining_indices = range(len(valid_indices), 24)
+            
+            index = list(valid_indices) + [-1] * len(remaining_indices)  # setting the remaining idx to -1 to use the last value
+        else:
+            # Using the last value for all indices
+            index = [-1] * 24  # making a list of len 24 of the last value         
+
+        divergence_df = data_assimilation.divergence_df.iloc[index]
+        diverged_flow = divergence_df["Discharge"]
+        inflow_mask = q_lateral.index == divergence_df["inflow"].iloc[0]
+        outflow_mask = q_lateral.index == divergence_df["outflow"].iloc[0]
+        new_outflow = np.clip(q_lateral[outflow_mask].iloc[0].values - diverged_flow.values, 0, None)
+        q_lateral[outflow_mask] = new_outflow
+        q_lateral[inflow_mask] += diverged_flow.values
+
+        self._qlateral = q_lateral   
+
+
     def build_qlateral_array(self, run,):
         
         # TODO: set default/optional arguments

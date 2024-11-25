@@ -830,7 +830,21 @@ class great_lake(AbstractDA):
                 da_run,
                 network.t0,
             )
-            
+
+class Divergence(AbstractDA):
+    def __init__(self, network, from_files, value_dict):
+        LOG.info("divergence class is started.")
+        start_time = time.time()
+        data_assimilation_parameters = self._data_assimilation_parameters
+        run_parameters = self._run_parameters
+
+        self._divergence_df = pd.DataFrame()
+        
+        if data_assimilation_parameters.get("divergence_outflow", False):
+            self._divergence_df = _create_divergence_df(run_parameters, network, data_assimilation_parameters)
+
+        LOG.debug("divergence class is completed in %s seconds." % (time.time() - start_time))
+    
 
 class RFCDA(AbstractDA):
     """
@@ -990,6 +1004,7 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
         PersistenceDA.__init__(self, network, from_files, value_dict, da_run)
         RFCDA.__init__(self, network, from_files, value_dict)
         great_lake.__init__(self, network, from_files, value_dict, da_run)
+        Divergence.__init__(self, network, from_files, value_dict)
     
     def update_after_compute(self, run_results, time_increment):
         '''
@@ -1053,6 +1068,10 @@ class DataAssimilation(NudgingDA, PersistenceDA, RFCDA):
     @property
     def great_lakes_param_df(self):
         return self._great_lakes_param_df
+    
+    @property
+    def divergence_df(self):
+        return self._divergence_df
 
 
 # --------------------------------------------------------------
@@ -1192,6 +1211,65 @@ def _create_LakeOntario_df(run_parameters, t0, da_run):
     LOG.debug("Creating Lake Ontario dataframe is completed in %s seconds." % (time.time() - LakeOntario_df_start_time))
     
     return lake_ontario_df
+
+def _create_divergence_df(run_parameters, network, data_assimilation_parameters):
+    """ Creates a DataFrame for handling diverged flows between segments.
+    
+    Parameters
+    ----------
+    run_parameters : dict
+        Configuration dictionary containing simulation parameters including:
+        - nts : int
+            Number of timesteps
+        - dt : int
+            Time step in seconds
+    network : NetworkConnections
+        Network object containing:
+        - t0 : datetime
+            Start time of the simulation
+    data_assimilation_parameters : dict
+        Configuration dictionary containing:
+        - divergence_outflow : str
+            Path to the CSV file containing divergence flow data with columns:
+            - datetime : datetime string
+            - flow_cms : float 
+                Flow in cubic meters per second
+    
+    Returns
+    -------
+    divergence_df : pandas.DataFrame
+        DataFrame containing processed divergence flow information with columns:
+        - Datetime : str
+            Timestamps in format '%Y-%m-%d_%H:%M:%S'
+        - Discharge : float
+            Flow values in cms
+        - outflow : int 
+            Segment ID where flow is diverted from
+        - inflow : int
+            Segment ID where flow is diverted to
+    """
+    LOG.info("Creation of divergence dataframe is started.")
+    debug_start_time = time.time()    
+    start_time = network.t0
+    nts = run_parameters.get('nts')
+    dt = run_parameters.get('dt')
+    end_time = network.t0 + pd.Timedelta(hours = nts/(3600/dt))
+
+    _divergence_df = pd.read_csv(data_assimilation_parameters.get('divergence_outflow'))
+    
+    _divergence_df['datetime'] = pd.to_datetime(_divergence_df['datetime'])
+    divergence_df = _divergence_df[_divergence_df['datetime'].dt.minute == 0].rename(columns={'datetime': 'Datetime'})
+    divergence_df = divergence_df.rename(columns={'flow_cms': 'Discharge'})
+    divergence_df = divergence_df[(divergence_df['Datetime']>=start_time) & (divergence_df['Datetime']<=end_time)]
+    divergence_df['outflow'] = 1313332  # Where the water will be transferred from
+    divergence_df['inflow'] = 1304933  # Where the water will be transferred to
+    
+    divergence_df.reset_index(inplace=True)
+    divergence_df['Datetime'] = divergence_df['Datetime'].dt.strftime('%Y-%m-%d_%H:%M:%S')
+    
+    LOG.debug("Creation of divergence dataframe is completed in %s seconds." % (time.time() - debug_start_time))
+    
+    return divergence_df
 
 def _create_canada_df(data_assimilation_parameters, streamflow_da_parameters, run_parameters, network, da_run):
     '''
