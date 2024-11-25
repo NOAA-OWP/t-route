@@ -30,8 +30,7 @@ decay_coeff = 120
 
 
 def test_simple_da():
-    o_i = m_i = 2
-    o = obs_gap1[o_i]
+    m_i = 2
     lo = lastobs_old["obs"]
     lt = lastobs_old["time"]
     m = modeled_low[m_i]
