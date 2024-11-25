@@ -1,5 +1,5 @@
 [project]
-name = "t-route"
+name = "troute_project"
 authors = [
     {name = "DongHa Kim", email = "dongha.kim@noaa.gov"},
     {name = "Sean Horvath", email = "sean.horvath@noaa.gov"},
