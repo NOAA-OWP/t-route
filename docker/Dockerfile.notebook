@@ -16,9 +16,9 @@ RUN python3 -m venv $VIRTUAL_ENV
 # Equivalent to source /opt/venv/bin/activate
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN python -m pip install -r requirements.txt
-
-RUN python -m pip install jupyterlab pytest
+RUN python -m pip install .
+RUN python -m pip install .[jupyter]
+RUN python -m pip install .[test]
 
 RUN ./compiler.sh no-e
 
