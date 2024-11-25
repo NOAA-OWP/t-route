@@ -19,7 +19,6 @@ def find_config_files() -> List[Path]:
     files = []
     for dir_name in target_dirs:
         files.extend(list((test_dir / dir_name).glob("*.yaml")))
-    print(files)
     return files
 
 

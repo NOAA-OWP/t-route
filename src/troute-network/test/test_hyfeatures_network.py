@@ -1,8 +1,5 @@
 from typing import Any, Dict
 
-import os
-import pytest
-from pathlib import Path
 import pandas as pd
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
 from test import temporarily_change_dir
@@ -11,7 +8,6 @@ from test import temporarily_change_dir
 def test_network(
     hyfeatures_test_network: Dict[str, Any], hyfeature_network: pd.DataFrame
 ):
-    cwd = hyfeatures_test_network["cwd"]
     path = hyfeatures_test_network["path"]
     supernetwork_parameters = hyfeatures_test_network["supernetwork_parameters"]
     waterbody_parameters = hyfeatures_test_network["waterbody_parameters"]
