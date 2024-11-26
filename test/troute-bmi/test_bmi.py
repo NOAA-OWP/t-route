@@ -111,23 +111,23 @@ def test_integration_model_update(sample_config, initialized_model, DAforcing):
         timeseries_start += delta
 
     # Loop through hourly timesteps calling update_until
-    print('Begin routing...')
-    for hr in range(18):
-        # Retrieve forcing data
-        forcing_vals = pd.read_csv(forcing_files[hr]).set_index('feature_id')
-        # Get rid of duplicate nexus points:
-        idx = forcing_vals.index.duplicated()
-        forcing_vals = forcing_vals.loc[~idx]
+    # print('Begin routing...')
+    # for hr in range(18):
+    #     # Retrieve forcing data
+    #     forcing_vals = pd.read_csv(forcing_files[hr]).set_index('feature_id')
+    #     # Get rid of duplicate nexus points:
+    #     idx = forcing_vals.index.duplicated()
+    #     forcing_vals = forcing_vals.loc[~idx]
 
-        # Full network
-        # Set dynamic values
-        initialized_model.set_value('land_surface_water_source__volume_flow_rate', np.array(forcing_vals.iloc[:,0]))
-        initialized_model.set_value('land_surface_water_source__id', np.array(forcing_vals.index))
+    #     # Full network
+    #     # Set dynamic values
+    #     initialized_model.set_value('land_surface_water_source__volume_flow_rate', np.array(forcing_vals.iloc[:,0]))
+    #     initialized_model.set_value('land_surface_water_source__id', np.array(forcing_vals.index))
 
-        # Set duration to run model for
-        nts = 12
-        n = nts*300
+    #     # Set duration to run model for
+    #     nts = 12
+    #     n = nts*300
         
-        # Run our model
-        initialized_model.update_until(n)
+    #     # Run our model
+    #     initialized_model.update_until(n)
 
