@@ -33,12 +33,12 @@ class Settings(BaseSettings):
     """
 
     api_v1_str: str = "/api/v1"
-    base_config: Path = "/t-route/src/app/core/base_config.yaml"
+    base_config: Path = "/t-route/src/app/core/{}/base_config.yaml"
     project_name: str = "T-Route"
-    qlat_input_path: str = "/t-route/data/rfc_channel_forcings/{}/"
+    qlat_input_path: str = "/t-route/data/rfc_channel_forcings/{}/{}"
     restart_path: str = "/t-route/data/troute_restart/{}/"
     restart_file: str = "HYDRO_RST_{}_DOMAIN1"
-    geofile_path: str = "/t-route/data/rfc_geopackage_data/{}/downstream.gpkg"
+    geofile_path: str = "/t-route/data/rfc_geopackage_data/{}/{}/downstream.gpkg"
     lower_colorado_paths_to_update: List[List[str]] = [
         ["network_topology_parameters", "supernetwork_parameters", "geo_file_path"],
         ["compute_parameters", "hybrid_parameters", "diffusive_domain"],

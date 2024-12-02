@@ -20,7 +20,9 @@ test = [
 
 jupyter = [
     "contextily==1.6.0",
-    "matplotlib==3.9.0",
-    "ipykernel==6.29.4",
-    "jupyterlab==3.6.7",
+    "matplotlib>=3.7.0,<3.8.0",  # More stable version range
+    "ipykernel>=6.29.0,<7.0.0",
+    "jupyterlab>=3.6.7,<4.0.0",
+    "xarray>=2024.1.1",
+    "matplotlib-inline>=0.1.6"  # Add explicit version
 ]

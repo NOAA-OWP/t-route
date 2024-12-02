@@ -1,16 +1,20 @@
 import json
 from datetime import datetime
+from enum import Enum   
 from pathlib import Path
 from typing import Annotated
 
 import yaml
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from nwm_routing import main_v04 as t_route
 from pydantic import conint
 from troute.config import Config
 
-from app.api.services.initialization import (create_initial_start_file,
-                                             create_params, edit_yaml)
+from app.api.services.initialization import (
+    create_initial_start_file,
+    create_params,
+    edit_yaml,
+)
 from app.api.services.utils import update_test_paths_with_prefix
 from app.core import get_settings
 from app.core.settings import Settings
@@ -19,15 +23,24 @@ from app.schemas import HttpStatusCode, TestStatus, TRouteStatus
 router = APIRouter()
 
 
+class HydrofabricVersion(str, Enum):
+    v22 = "v2.2"
+    v20_1 = "v20.1"
+
+
 @router.get("/", response_model=TRouteStatus)
 async def get_gauge_data(
+    settings: Annotated[Settings, Depends(get_settings)],
     lid: str,
     feature_id: str,
     hy_id: str,
     initial_start: float,
     start_time: datetime,
     num_forecast_days: conint(ge=1, le=30),
-    settings: Annotated[Settings, Depends(get_settings)],
+    hydrofabric_version: HydrofabricVersion = Query(
+        default=HydrofabricVersion.v20_1,
+        description="Version of the hydrofabric to use. Defaults to v20.1",
+    ),
 ) -> TRouteStatus:
     """An API call for running T-Route within the context of replace and route
 
@@ -51,9 +64,10 @@ async def get_gauge_data(
     TRouteOutput
         A successful T-Route run
     """
-    base_config = settings.base_config
+    version = hydrofabric_version.value
+    base_config = Path(str(settings.base_config).format(version))
     params = create_params(
-        lid, feature_id, hy_id, initial_start, start_time, num_forecast_days, settings
+        lid, feature_id, hy_id, initial_start, start_time, num_forecast_days, version, settings
     )
     restart_file = create_initial_start_file(params, settings)
     yaml_file_path = edit_yaml(base_config, params, restart_file)
@@ -100,7 +114,9 @@ async def run_lower_colorado_tests(
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
     # Updating paths to work in docker
-    data = update_test_paths_with_prefix(data, path_to_test_dir, settings.lower_colorado_paths_to_update)
+    data = update_test_paths_with_prefix(
+        data, path_to_test_dir, settings.lower_colorado_paths_to_update
+    )
 
     troute_configuration = Config.with_strict_mode(**data)
 
@@ -109,9 +125,11 @@ async def run_lower_colorado_tests(
     dict_ = json.loads(troute_configuration.json())
 
     # converting timeslice back to string (Weird pydantic 1.10 workaround)
-    dict_["compute_parameters"]["restart_parameters"]["start_datetime"] = data["compute_parameters"]["restart_parameters"]["start_datetime"]
+    dict_["compute_parameters"]["restart_parameters"]["start_datetime"] = data[
+        "compute_parameters"
+    ]["restart_parameters"]["start_datetime"]
 
-    with open(tmp_yaml, 'w') as file:
+    with open(tmp_yaml, "w") as file:
         yaml.dump(dict_, file)
 
     try:

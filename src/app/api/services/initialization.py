@@ -74,6 +74,7 @@ def create_params(
     initial_start: float,
     start_time: str,
     num_forecast_days: int,
+    version: str,
     settings: Settings,
 ) -> Dict[str, str]:
     """Generating the parameters to be added to the T-Route config files
@@ -92,6 +93,8 @@ def create_params(
         The starting time ("%Y-%m-%dT%H:%M:%S") for when routing begins
     num_forecast_days: int
         The number of days we are going to route
+    version: str
+        The hydrofabric version (ex: v20.1)
     settings: Settings
         The T-route BaseSettings
 
@@ -104,8 +107,8 @@ def create_params(
 
     nts = 288 * num_forecast_days
 
-    geo_file_path = settings.geofile_path.format(feature_id)
-    qlat_input_folder = settings.qlat_input_path.format(lid)
+    geo_file_path = settings.geofile_path.format(version, feature_id)
+    qlat_input_folder = settings.qlat_input_path.format(version, lid)
     return {
         "lid": lid,
         "hy_id": hy_id,
