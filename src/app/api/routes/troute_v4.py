@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from enum import Enum   
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Annotated
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Query
-from nwm_routing import main_v04 as t_route
+from nwm_routing.__main__ import main_v04 as t_route
 from pydantic import conint
 from troute.config import Config
 
@@ -96,13 +97,13 @@ async def run_lower_colorado_tests(
 ) -> TRouteStatus:
     """An API call for running the LowerColorado T-Route test using a predefined config file
 
-    Parameters:
-    ----------
+    Parameters
+    ---------
     config_path: str
         Path to the YAML configuration file for the test
 
-    Returns:
-    --------
+    Returns
+    -------
     TRouteStatus
         The status of the T-Route run
     """
@@ -110,13 +111,15 @@ async def run_lower_colorado_tests(
     path_to_test_dir = Path(f"{base}/{config_path}").parent
     yaml_path = Path(f"{base}/{config_path}")
 
+    os.chdir(path_to_test_dir)
+
     with open(yaml_path) as custom_file:
         data = yaml.load(custom_file, Loader=yaml.SafeLoader)
 
-    # Updating paths to work in docker
-    data = update_test_paths_with_prefix(
-        data, path_to_test_dir, settings.lower_colorado_paths_to_update
-    )
+    # # Updating paths to work in docker
+    # data = update_test_paths_with_prefix(
+    #     data, path_to_test_dir, settings.lower_colorado_paths_to_update
+    # )
 
     troute_configuration = Config.with_strict_mode(**data)
 
