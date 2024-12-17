@@ -14,7 +14,7 @@ compute_parameters:
 ```
 which will remove observed flow from an inflow point (currently hard-coded), and drop the flow at an outflow point (beyond the water transer). 
 
-The python functions involved are inside the `DataAssimilation.py` file and the `Divegence` class.
+The python functions involved are inside the `DataAssimilation.py` file and the `Divergence` class.
 
 ### How to run the test
 You can either step through the provided Jupyter Notebook, which gives a detailed explaination about experiment set up and outputs, or run the following command from inside this directory:
