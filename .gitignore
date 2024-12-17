@@ -79,3 +79,23 @@ bower_components/
 .grunt/
 src/vendor/
 dist/
+
+
+# MISC #
+########
+data/ 
+output
+test_compose.yaml
+src/app/.ruff_cache
+
+# .vscode #
+###########
+.vscode
+
+# ruff/pycache/pytest #
+#######################
+.*_cache
+
+# .venv #
+#########
+.venv
