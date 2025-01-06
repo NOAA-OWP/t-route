@@ -88,8 +88,11 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
     flowpaths_df = table_dict.get('flowpaths', pd.DataFrame())
     flowpath_attributes_df = table_dict.get('flowpath_attributes', pd.DataFrame())
 
-    # Check if 'link' column exists and rename it to 'id'
+    # Check if 'link' column exists; drop existing 'id' col; rename 'link' to 'id'
     if 'link' in flowpath_attributes_df.columns:
+        # In HF 2.2, a 'link' field was introduced. The field is identical to
+        # previous version's 'id' field, but it preferred moving forwards.
+        flowpath_attributes_df.drop(columns=['id'], errors='ignore', inplace=True)
         flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
      
     # Merge flowpaths and flowpath_attributes 
