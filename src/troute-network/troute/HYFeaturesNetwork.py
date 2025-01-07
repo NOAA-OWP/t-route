@@ -95,12 +95,19 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, cpu_pool):
         flowpath_attributes_df.drop(columns=['id'], errors='ignore', inplace=True)
         flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
      
+    # NOTE: aaraney: `flowpaths_df` and `flowpath_attributes_df` can share
+    # column names but this is not accounted for elsewhere. im not sure if it
+    # is okay to assume that if the left and right df have the same `id` field
+    # that the other shared columns will match and thus it is safe to set, for
+    # example, the left suffix to "".
     # Merge flowpaths and flowpath_attributes 
     flowpaths = pd.merge(
         flowpaths_df, 
         flowpath_attributes_df, 
         on='id', 
-        how='inner'
+        how='inner',
+        # NOTE: aaraney: not sure if this is safe
+        suffixes=("", "_flowpath_attributes"),
     )
 
     lakes = table_dict.get('lakes', pd.DataFrame())
