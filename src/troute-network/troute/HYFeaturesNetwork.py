@@ -96,6 +96,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, output_para
 
     # Check if 'link' column exists and rename it to 'id'
     if 'link' in flowpath_attributes_df.columns:
+        flowpath_attributes_df.drop(columns=['id','toid'], inplace=True)
         flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
      
     # Merge flowpaths and flowpath_attributes 
@@ -570,7 +571,14 @@ class HYFeaturesNetwork(AbstractNetwork):
             #TODO: Update for hydrofabric v2.2.
             # nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
             # great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
-            great_lakes_df = pd.DataFrame()
+            
+            #NOTE: Hard-coding the Great Lakes outflow toids. Ideally, these will be provided
+            # by the hydrofabric, but current version does not support his (shorvath - 09/25/2024)
+            great_lakes_df = pd.DataFrame(
+                {'WBOut_id': [4800002, 4800004, 4800006, 4800007],
+                 'toid': ['wb-660226', 'wb-653294', 'wb-670032', 'wb-678009']}
+            )
+            
             if not great_lakes_df.empty:
                 great_lakes_df['toid'] = great_lakes_df['toid'].str.extract(r'wb-(\d+)').astype(float)
                 great_lakes_df = great_lakes_df.astype(int)
@@ -605,15 +613,20 @@ class HYFeaturesNetwork(AbstractNetwork):
             
             # Add Great Lakes waterbody type (6)
             self._waterbody_types_df.loc[gl_dict.keys(),'reservoir_type'] = 6
-              
+             
             self._waterbody_type_specified = True
             
         else:
-
-            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'] = False
-            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'] = False
-            self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_canada'] = False
-            self.data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'] = False
+            self.data_assimilation_parameters['reservoir_da'] = {
+                'reservoir_persistence_da': {'reservoir_persistence_usgs': False,
+                                             'reservoir_persistence_usace': False,
+                                             'reservoir_persistence_canada': False,},
+                'reservoir_rfc_da': {'reservoir_rfc_forecasts': False}
+            }
+            # self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usgs'] = False
+            # self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_usace'] = False
+            # self.data_assimilation_parameters['reservoir_da']['reservoir_persistence_da']['reservoir_persistence_canada'] = False
+            # self.data_assimilation_parameters['reservoir_da']['reservoir_rfc_da']['reservoir_rfc_forecasts'] = False
             self.waterbody_parameters['break_network_at_waterbodies'] = False
 
             self._waterbody_df = pd.DataFrame()
