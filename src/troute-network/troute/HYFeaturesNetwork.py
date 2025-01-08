@@ -94,17 +94,26 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, output_para
     flowpaths_df = table_dict.get('flowpaths', pd.DataFrame())
     flowpath_attributes_df = table_dict.get('flowpath_attributes', pd.DataFrame())
 
-    # Check if 'link' column exists and rename it to 'id'
+    # Check if 'link' column exists; drop existing 'id' col; rename 'link' to 'id'
     if 'link' in flowpath_attributes_df.columns:
-        flowpath_attributes_df.drop(columns=['id','toid'], inplace=True)
+        # In HF 2.2, a 'link' field was introduced. The field is identical to
+        # previous version's 'id' field, but it preferred moving forwards.
+        flowpath_attributes_df.drop(columns=['id'], errors='ignore', inplace=True)
         flowpath_attributes_df.rename(columns={'link': 'id'}, inplace=True) 
      
+    # NOTE: aaraney: `flowpaths_df` and `flowpath_attributes_df` can share
+    # column names but this is not accounted for elsewhere. im not sure if it
+    # is okay to assume that if the left and right df have the same `id` field
+    # that the other shared columns will match and thus it is safe to set, for
+    # example, the left suffix to "".
     # Merge flowpaths and flowpath_attributes 
     flowpaths = pd.merge(
         flowpaths_df, 
         flowpath_attributes_df, 
         on='id', 
-        how='inner'
+        how='inner',
+        # NOTE: aaraney: not sure if this is safe
+        suffixes=("", "_flowpath_attributes"),
     )
 
     lakes = table_dict.get('lakes', pd.DataFrame())
