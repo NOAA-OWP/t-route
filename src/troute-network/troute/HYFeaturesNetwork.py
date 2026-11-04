@@ -732,6 +732,9 @@ class HYFeaturesNetwork(AbstractNetwork):
                 
                 qlat_df = ds_slice['runoff_rate'].transpose("feature_id", "time").to_pandas()
                 qlat_df.columns = qlat_df.columns.strftime('%Y%m%d%H%M')
+
+                if qlat_df.index.inferred_type == 'bytes':
+                    qlat_df.index = qlat_df.index.str.decode('utf-8')
                 
                 # Drop 'tnx-' rows if present, and drop 'nex-' prefixes if present.
                 # NOTE: this drops terminal nexus points. Should t-route handle this differently (accumulate at tnx points)?
