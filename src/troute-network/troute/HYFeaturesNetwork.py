@@ -871,6 +871,11 @@ class HYFeaturesNetwork(AbstractNetwork):
                 
                 nexuses_lateralflows_df = ds_slice['runoff_rate'].transpose("feature_id", "time").to_pandas()
                 nexuses_lateralflows_df.columns = nexuses_lateralflows_df.columns.strftime('%Y%m%d%H%M')
+
+                # ngen writes feature_id as an NC_CHAR array, which zarray reads back as bytes. Decode to str
+                # so the flowpath_toid merge and 'tnx-'/'nex-' prefix handling below work.
+                if nexuses_lateralflows_df.index.inferred_type == 'bytes':
+                    nexuses_lateralflows_df.index = nexuses_lateralflows_df.index.str.decode('utf-8')
                 
                 # If running on flowlines, we need to redistribute the lateral flow from nexus points to all contributing
                 # flowlines in that catchment (by incremental area ratios).
