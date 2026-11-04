@@ -155,7 +155,7 @@ def main_v04(argv):
             total_sim_seconds = run_parameters['dt'] * run_parameters['nts'],
             start_time = network.t0,
             dt = run_parameters['dt'],
-            rconn = network.reverse_network,
+            nexus_dict = network.nexus_dict,
             q0 = network.q0,
             waterbody_df = network.waterbody_dataframe,
             waterbody_types_df = network.waterbody_types_dataframe,

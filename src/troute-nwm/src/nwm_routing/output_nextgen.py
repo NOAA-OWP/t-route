@@ -44,7 +44,7 @@ class OutputWriter:
     
     def __init__(self, cfg: Dict, output_cfg: Dict, all_network_ids: np.ndarray,
                  total_sim_seconds: float, start_time: datetime, dt: float,
-                 rconn: Dict[int, List[int]], q0: pd.DataFrame,
+                 nexus_dict: Dict, q0: pd.DataFrame,
                  waterbody_df: Optional[pd.DataFrame] = None,
                  waterbody_types_df: Optional[pd.DataFrame] = None,
                  duplicate_ids_df: Optional[pd.DataFrame] = None,):
@@ -69,7 +69,7 @@ class OutputWriter:
         self._wb_ids, self._wb_id_to_pos = self._build_flowpath_index(all_network_ids, reservoir_ids)
         
         # Nexus index
-        self._nex_ids, self._nex_id_to_pos, self._nex_upstream, self._nex_upstream_ids = self._build_nexus_index(all_network_ids, rconn)
+        self._nex_ids, self._nex_id_to_pos, self._nex_upstream, self._nex_upstream_ids = self._build_nexus_index(all_network_ids, nexus_dict)
         
         # Reservoir index
         if self._write_reservoirs:
@@ -190,14 +190,15 @@ class OutputWriter:
         return ids, {int(fid): i for i, fid in enumerate(ids)}
     
     def _build_nexus_index(self, all_network_ids: np.ndarray,
-                            rconn: Dict[int, List[int]]
+                            nexus_dict: Optional[Dict]
                             ) -> Tuple[np.ndarray, Dict[int, int],
                                        Dict[int, List[int]], Set[int]]:
         """
         Build the nexus index from the 'nexuses' key in the subset_file.
         
-        For each requested nexus ID, rconn is queried to find its immediate
-        upstream flowpath IDs.
+        For each requested nexus ID, the HYFeatures nexus crosswalk is queried
+        to find its immediate upstream flowpath IDs. Crosswalk identifiers may
+        be numeric or use the 'nex-' and 'wb-' prefixes.
         
         Returns empty structures when no nexus subset is configured.
         """
@@ -209,7 +210,10 @@ class OutputWriter:
         all_set = set(all_network_ids.tolist())
         nex_upstream = {}
         for nid in sorted(nex_ids):
-            upstream = [u for u in rconn.get(nid, []) if u in all_set]
+            upstream = sorted(
+                _parse_int_ids((nexus_dict or {}).get(f'nex-{nid}', []))
+                & all_set
+            )
             if not upstream:
                 LOG.warning("Nexus %d has no resolvable upstream reaches", nid)
             nex_upstream[nid] = upstream
