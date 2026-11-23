@@ -33,6 +33,22 @@ def find_layer_name(layers, pattern):
             return layer
     return None
 
+def segment_attributes(flowpaths_df, flow_type):
+    """
+    Total drainage area and VPU of each routed segment, indexed like the routing
+    key. Used by area-scaled streamflow DA; the routing dataframe drops these columns.
+    """
+    cols = [c for c in ('total_dasqkm', 'vpuid') if c in flowpaths_df.columns]
+    if flowpaths_df.empty or flow_type not in flowpaths_df.columns:
+        return pd.DataFrame(columns=cols)
+    key = flowpaths_df[flow_type]
+    if 'line' not in flow_type:
+        key = key.astype(str).str.replace(r'^.*-', '', regex=True)
+    df = pd.DataFrame(flowpaths_df[cols]).set_axis(key.astype(float).astype('int64').values)
+    if 'vpuid' in cols:
+        df['vpuid'] = df['vpuid'].astype('category')
+    return df[~df.index.duplicated()]
+
 def read_geopkg(file_path, compute_parameters, waterbody_parameters, supernetwork_parameters, cpu_pool):
     # Retrieve available layers from the GeoPackage
     available_layers = fiona.listlayers(file_path)
@@ -194,6 +210,8 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, supernetwor
     else:
         fp_outlet_fl_df = pd.DataFrame()
 
+    segment_attrs = segment_attributes(flowpaths_df, flow_type)
+
     cols = supernetwork_parameters.get('columns', None)
     if cols:
         fp_col_idx = list(set(cols.values()).intersection(set(flowpaths_df.columns)))
@@ -220,7 +238,7 @@ def read_geopkg(file_path, compute_parameters, waterbody_parameters, supernetwor
         flowpaths['key'] = flowpaths['key'].astype(float).astype(int)
         flowpaths['downstream'] = flowpaths['downstream'].astype(float).astype(int)
     
-    return flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df
+    return flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df, segment_attrs
 
 def read_json(file_path, edge_list):
     dfs = []
@@ -308,11 +326,11 @@ def read_ngen_waterbody_type_df(parm_file, lake_index_field="wb-id", lake_id_mas
 def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_parameters, cpu_pool):
         
     geo_file_path = supernetwork_parameters["geo_file_path"]
-    flowpaths = lakes = hydrolocations = pd.DataFrame()
+    flowpaths = lakes = hydrolocations = segment_attrs = pd.DataFrame()
     
     file_type = Path(geo_file_path).suffix
     if(file_type=='.gpkg'):        
-        flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df = read_geopkg(
+        flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df, segment_attrs = read_geopkg(
             geo_file_path,
             compute_parameters,
             waterbody_parameters,
@@ -326,7 +344,7 @@ def read_geo_file(supernetwork_parameters, waterbody_parameters, compute_paramet
     else:
         raise RuntimeError("Unsupported file type: {}".format(file_type))
     
-    return flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df
+    return flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df, segment_attrs
 
 def load_bmi_data(value_dict, bmi_parameters,): 
     # Get the column names that we need from each table of the geopackage
@@ -366,7 +384,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df", "_ds", "_flowline_area_ratio",
                  "_upstream_flowpath_dict", "_downstream_flowpath_dict", "_compute_node_crosswalk_df",
-                 "_tnx_upstream_connections", "_rfc_gage_crosswalk"]
+                 "_tnx_upstream_connections", "_rfc_gage_crosswalk", "_segment_attributes"]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -400,6 +418,7 @@ class HYFeaturesNetwork(AbstractNetwork):
 
         #TODO: Is this the best way to do this? And the best place to do this? -shorvath, Apr 3, 2026
         self._flowline_area_ratio = pd.DataFrame()
+        self._segment_attributes = pd.DataFrame()
         
         if self.verbose:
             print("creating supernetwork connections set")
@@ -418,7 +437,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             if not from_files_copy:
                 from_files=True
             if from_files:
-                flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df = read_geo_file(
+                flowpaths, lakes, hydrolocations, nexus, flowline_area_ratio, tnx_upstream_connections, fp_outlet_fl_df, self._segment_attributes = read_geo_file(
                     self.supernetwork_parameters,
                     self.waterbody_parameters,
                     self.compute_parameters,
@@ -506,6 +525,11 @@ class HYFeaturesNetwork(AbstractNetwork):
     @property
     def waterbody_null(self):
         return np.nan #pd.NA
+
+    @property
+    def segment_attributes(self):
+        """total_dasqkm and vpuid per routed segment (for area-scaled streamflow DA)."""
+        return self._segment_attributes
     
     
     def preprocess_network(self, flowpaths, nexus):
@@ -1222,6 +1246,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             "downstream_flowpath_dict": self._downstream_flowpath_dict, 
             "compute_node_crosswalk_df": self._compute_node_crosswalk_df,
             "tnx_upstream_connections": self._tnx_upstream_connections,
+            "segment_attributes": self._segment_attributes,
         }
         np.save(
             Path(destination_folder).joinpath(output_filename),
@@ -1262,6 +1287,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._downstream_flowpath_dict = inputs.get("downstream_flowpath_dict",None)
             self._compute_node_crosswalk_df = inputs.get("compute_node_crosswalk_df",None)
             self._tnx_upstream_connections = inputs.get("tnx_upstream_connections",None)
+            self._segment_attributes = inputs.get("segment_attributes", pd.DataFrame())
 
 
 def read_file(file_name):
