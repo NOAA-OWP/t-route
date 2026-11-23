@@ -119,6 +119,9 @@ def _input_handler_v03(args):
         data_assimilation_parameters,
     ) = nhd_io.read_config_file(custom_input_file)
 
+    if ((data_assimilation_parameters or {}).get('streamflow_da') or {}).get('streamflow_scaling', False):
+        raise ValueError("streamflow_da.streamflow_scaling is supported by the -V4 driver only")
+
     # configure python logger
     log_level_set(log_parameters)
     LOG = logging.getLogger('')

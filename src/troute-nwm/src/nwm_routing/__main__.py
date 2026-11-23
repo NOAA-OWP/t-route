@@ -10,6 +10,7 @@ import concurrent.futures
 from troute.NHDNetwork import NHDNetwork
 from troute.HYFeaturesNetwork import HYFeaturesNetwork
 from troute.DataAssimilation import DataAssimilation
+from troute.scaling_da.runtime import ScalingDA
 
 import numpy as np
 import pandas as pd
@@ -139,6 +140,8 @@ def main_v04(argv):
         da_run=da_sets[0],
         )
 
+    # Area-scaled streamflow DA (streamflow_da.streamflow_scaling); None when off.
+    scaling_da = ScalingDA.build(network, data_assimilation_parameters, da_sets, cpu_pool=cpu_pool or 1)
     
     forcing_end_time = time.time()
     task_times['forcing_time'] += forcing_end_time - network_end_time
@@ -227,6 +230,10 @@ def main_v04(argv):
 
         
         route_start_time = time.time()
+
+        usgs_df, lastobs_df = data_assimilation.usgs_df, data_assimilation.lastobs_df
+        if scaling_da:
+            usgs_df, lastobs_df = scaling_da.nudging_inputs(usgs_df, lastobs_df)
         
         run_results = nwm_route(
             network.connections, 
@@ -245,8 +252,8 @@ def main_v04(argv):
             network.dataframe,
             network.q0,
             network._qlateral,
-            data_assimilation.usgs_df,
-            data_assimilation.lastobs_df,
+            usgs_df,
+            lastobs_df,
             data_assimilation.reservoir_usgs_df,
             data_assimilation.reservoir_usgs_param_df,
             data_assimilation.reservoir_usace_df,
@@ -287,6 +294,11 @@ def main_v04(argv):
         
         # update reservoir parameters and lastobs_df
         data_assimilation.update_after_compute(run_results, dt*nts)
+
+        # Area-scaled streamflow DA: spread the gage corrections upstream in this loop's
+        # published flows. On the final loop the correction also enters the state.
+        if scaling_da and scaling_da.apply(run_results, dt=dt, final=run_set_iterator == len(run_sets) - 1):
+            network.new_q0(run_results)
 
         # TODO move the conditional call to write_lite_restart to nwm_output_generator.
         if output_parameters:
