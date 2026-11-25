@@ -74,6 +74,7 @@ def _input_handler_v04(args):
         output_parameters,
         parity_parameters,
         data_assimilation_parameters,
+        config_dict,
     )
 
 def _input_handler_v03(args):
@@ -117,6 +118,9 @@ def _input_handler_v03(args):
         parity_parameters,
         data_assimilation_parameters,
     ) = nhd_io.read_config_file(custom_input_file)
+
+    if ((data_assimilation_parameters or {}).get('streamflow_da') or {}).get('streamflow_scaling', False):
+        raise ValueError("streamflow_da.streamflow_scaling is supported by the -V4 driver only")
 
     # configure python logger
     log_level_set(log_parameters)

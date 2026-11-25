@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, validator
+import math
+
+from pydantic import BaseModel, Field, root_validator, validator
 from datetime import datetime
 
-from typing import Optional, List, Union
+from typing import Dict, Optional, List, Union
 from typing_extensions import Literal
 
 from .types import FilePath, DirectoryPath
@@ -63,11 +65,26 @@ class ComputeParameters(BaseModel):
     """
     If True, Courant metrics are returnd with simulations. This only works for MC simulations
     """
+    compute_nodes: bool = False
+    """
+    Should individual river segments be broken up into small "compute" nodes.
+    """
+    compute_node_target_length: Optional[float] = 270.0
+    """
+    Target length for "compute" nodes.
+    """
 
     restart_parameters: "RestartParameters" = Field(default_factory=dict)
     hybrid_parameters: "HybridParameters" = Field(default_factory=dict)
     forcing_parameters: "ForcingParameters" = Field(default_factory=dict)
     data_assimilation_parameters: "DataAssimilationParameters" = Field(default_factory=dict)
+
+    @root_validator(skip_on_failure=True)
+    def _scaling_without_compute_nodes(cls, values):
+        streamflow_da = getattr(values.get("data_assimilation_parameters"), "streamflow_da", None)
+        if values.get("compute_nodes") and getattr(streamflow_da, "streamflow_scaling", False):
+            raise ValueError("streamflow_da.streamflow_scaling does not support compute_nodes yet")
+        return values
 
 
 # TODO: determine how to handle context specific required fields
@@ -232,6 +249,65 @@ class QLateralFiles(BaseModel):
     """
 
 
+def _finite_positive(value: float, name: str) -> float:
+    if not (math.isfinite(value) and value > 0):
+        raise ValueError(f"{name} must be finite and > 0, got {value!r}")
+    return value
+
+
+class StreamflowScalingTheta(BaseModel, extra='forbid'):
+    """
+    Area-scaling exponent theta, one value per gage tree. The most specific
+    setting wins: per_tree_csv, then by_vpu, then default.
+    """
+    default: float = 0.77
+    """
+    Theta for gages not matched below. 0.77 is the flood-peak scaling exponent of
+    Ogden & Dawdy (2003) for a small Hortonian basin; it is a placeholder for
+    larger basins.
+    """
+    by_vpu: Dict[str, float] = {}
+    """
+    Theta per hydrofabric vpuid, keys written as in the hydrofabric ('01', '03N').
+    """
+    per_tree_csv: Optional[FilePath] = None
+    """
+    CSV with gage id and theta per row (optional header). Ids are compared as
+    strings, so keep leading zeros.
+    """
+
+    @validator("default")
+    def _check_default(cls, v):
+        return _finite_positive(v, "streamflow_scaling_parameters.theta.default")
+
+    @validator("by_vpu")
+    def _check_by_vpu(cls, v):
+        for key, value in v.items():
+            _finite_positive(value, f"streamflow_scaling_parameters.theta.by_vpu[{key!r}]")
+        return v
+
+
+class StreamflowScalingParameters(BaseModel, extra='forbid'):
+    """
+    Options of area-scaled streamflow DA (see StreamflowDA.streamflow_scaling).
+    """
+    theta: StreamflowScalingTheta = Field(default_factory=StreamflowScalingTheta)
+    max_reach_km: float = 200.0
+    """
+    How far upstream of a gage, along the network (km), its correction is spread.
+    """
+    holdout_sites_file: Optional[FilePath] = None
+    """
+    Text file of gage ids, one per line, withheld for evaluation: they are not
+    nudged and get no tree, so the next gage downstream corrects their basin.
+    Ids that are not gages of the domain are an error.
+    """
+
+    @validator("max_reach_km")
+    def _check_max_reach(cls, v):
+        return _finite_positive(v, "streamflow_scaling_parameters.max_reach_km")
+
+
 class StreamflowDA(BaseModel):
     """
     Parameters controlling streamflow nudging DA
@@ -267,6 +343,21 @@ class StreamflowDA(BaseModel):
     If True, enable streamflow data assimilation in diffusive module. 
     NOTE: Not yet implemented, leave as False. (June 25, 2024)
     """
+    streamflow_scaling: bool = False
+    """
+    If True, also spread each gage's nudging correction upstream, scaled by
+    drainage area (area-scaled streamflow DA; see troute.scaling_da). Needs
+    streamflow_nudging, a HYFeatures network and the -V4 driver. Not mass
+    conserving; the corrected flow enters the routing state only after the final
+    loop.
+    """
+    streamflow_scaling_parameters: StreamflowScalingParameters = Field(default_factory=StreamflowScalingParameters)
+
+    @root_validator(skip_on_failure=True)
+    def _scaling_requires_nudging(cls, values):
+        if values.get("streamflow_scaling") and not values.get("streamflow_nudging"):
+            raise ValueError("streamflow_da.streamflow_scaling requires streamflow_nudging: True")
+        return values
 
 
 class ReservoirPersistenceDA(BaseModel):
@@ -429,6 +520,10 @@ class ForcingParameters(BaseModel):
     """
     Value is in hours. To handle memory issues, t-route can divvy it's simulation time into chunks, reducing the amount 
     of forcing and data assimilation files it reads into memory at once. This is the size of those time loops.
+    """
+    qlat_input_file: Optional[str] = None
+    """
+    Single q_lateral forcing file. If this parameter is provided, 'qlat_file_pattern_filter' is ignored.
     """
     qlat_file_index_col: str = "feature_id"
     """
