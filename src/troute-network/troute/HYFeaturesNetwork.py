@@ -18,6 +18,9 @@ import troute.nhd_io as nhd_io #FIXME
 from troute.nhd_network import reverse_dict, extract_connections, reverse_network, reachable
 from .rfc_lake_gage_crosswalk import get_rfc_lake_gage_crosswalk, get_great_lakes_climatology
 import re
+import logging
+
+LOG = logging.getLogger('')
 __verbose__ = False
 __showtiming__ = False
 
@@ -363,7 +366,7 @@ class HYFeaturesNetwork(AbstractNetwork):
     """
     __slots__ = ["_upstream_terminal", "_nexus_latlon", "_duplicate_ids_df", "_ds", "_flowline_area_ratio",
                  "_upstream_flowpath_dict", "_downstream_flowpath_dict", "_compute_node_crosswalk_df",
-                 "_tnx_upstream_connections"]
+                 "_tnx_upstream_connections", "_rfc_gage_crosswalk"]
 
     def __init__(self, 
                  supernetwork_parameters, 
@@ -487,6 +490,12 @@ class HYFeaturesNetwork(AbstractNetwork):
         """
         return self._waterbody_connections
     
+    @property
+    def rfc_gage_crosswalk(self):
+        """RFC gages on stream segments (not on lakes): DataFrame indexed by link with column
+        rfc_gage_id. Read from the hydrofabric; not used by any DA method yet."""
+        return self._rfc_gage_crosswalk
+
     @property
     def gages(self):
         """
@@ -679,8 +688,15 @@ class HYFeaturesNetwork(AbstractNetwork):
             # nexus['WBOut_id'] = nexus['hl_uri'].str.extract(r'WBOut-(\d+)').astype(float)
             # great_lakes_df = nexus[nexus['WBOut_id'].isin([4800002,4800004,4800006,4800007])][['WBOut_id','toid']]
             
-            #NOTE: Great Lakes seem to not be available in v2.2 of hydrofabric...
+            #NOTE: Great Lakes seem to not be available in v4.0 of hydrofabric...
             great_lakes_df = pd.DataFrame()
+            if (self.data_assimilation_parameters.get('reservoir_da', {})
+                    .get('reservoir_persistence_da', {})
+                    .get('reservoir_persistence_greatLake', False)):
+                LOG.warning(
+                    "reservoir_persistence_greatLake is on, but Great Lakes outlets are not "
+                    "read from HYFeatures hydrofabrics yet. Great Lakes DA is skipped."
+                )
             
             if not great_lakes_df.empty:
                 great_lakes_df['toid'] = great_lakes_df['toid'].str.extract(r'wb-(\d+)').astype(float)
@@ -771,11 +787,21 @@ class HYFeaturesNetwork(AbstractNetwork):
                 gages_df['flowpath_id'] = gages_df['flowpath_id'].str.replace(r'^.*-', '', regex=True).astype(float).astype(int)
                 gages_df.rename(columns={'flowpath_id': 'feature_id'}, inplace=True)
             
-            self._gages = (
-                gages_df.rename(columns={'feature_id': 'index', 'gage_id': 'gages'})
-                .sort_values('gages').drop_duplicates(['gages'],keep='first')
-                .set_index('index').to_dict()
+            # Streamflow nudging reads USGS TimeSlices only, so its crosswalk holds nwis gages.
+            # One gage per segment and one segment per gage, chosen deterministically.
+            nwis_df = (
+                gages_df[gages_df['type']=='nwis']
+                .sort_values(['gage_id', 'feature_id'])
+                .drop_duplicates(['gage_id'], keep='first')
             )
+            dropped = nwis_df[nwis_df.duplicated(['feature_id'], keep='first')]
+            if not dropped.empty:
+                LOG.warning(
+                    "%d USGS gage(s) share a segment with another USGS gage and are not used "
+                    "for nudging: %s", len(dropped), ', '.join(dropped['gage_id'].astype(str))
+                )
+            nwis_df = nwis_df.drop(dropped.index)
+            self._gages = {'gages': dict(zip(nwis_df['feature_id'], nwis_df['gage_id']))}
             
             #FIXME: temporary solution, add canadian gage crosswalk dataframe. This should come from
             # the hydrofabric.
@@ -783,6 +809,33 @@ class HYFeaturesNetwork(AbstractNetwork):
             
             wbody_conn_df = pd.DataFrame.from_dict(self._waterbody_connections, orient='index', columns=['lake_id'])
             lake_gage_df = pd.merge(wbody_conn_df, gages_df.set_index('feature_id'), left_index=True, right_index=True, how='inner')
+
+            # RFC gages from the hydrofabric. Gages on lake segments make the RFC reservoir
+            # crosswalk (one gage per lake). Gages on other segments make a stream crosswalk
+            # (one gage per segment), kept for a future RFC streamflow DA method.
+            rfc_df = gages_df[gages_df['type']=='rfc']
+            rfc_lake_df = lake_gage_df[lake_gage_df['type']=='rfc'].sort_values(['lake_id', 'gage_id'])
+            extra = rfc_lake_df[rfc_lake_df.duplicated(['lake_id'], keep='first')]
+            if not extra.empty:
+                LOG.warning(
+                    "%d lake(s) have more than one RFC gage; using the first by gage id. Not used: %s",
+                    extra['lake_id'].nunique(), ', '.join(extra['gage_id'].astype(str))
+                )
+            rfc_lake_crosswalk = (
+                rfc_lake_df.drop(extra.index)
+                .rename(columns={'lake_id': 'rfc_lake_id', 'gage_id': 'rfc_gage_id'})
+                .set_index('rfc_lake_id')[['rfc_gage_id']]
+            )
+            rfc_stream_df = (
+                rfc_df[~rfc_df['feature_id'].isin(wbody_conn_df.index)]
+                .sort_values(['gage_id', 'feature_id'])
+                .drop_duplicates(['gage_id'], keep='first')
+                .drop_duplicates(['feature_id'], keep='first')
+            )
+            self._rfc_gage_crosswalk = (
+                rfc_stream_df.rename(columns={'feature_id': 'link', 'gage_id': 'rfc_gage_id'})
+                .set_index('link')[['rfc_gage_id']]
+            )
             
             
             # Find furthest downstream gage and create our lake_gage_df to make crosswalk dataframes.
@@ -831,14 +884,24 @@ class HYFeaturesNetwork(AbstractNetwork):
             # designations
             #FIXME: Related to FIXME above, but we should re-think how to handle waterbody_types...
             if usace_da:
+                LOG.warning(
+                    "reservoir_persistence_usace is on, but HYFeatures hydrofabrics provide no "
+                    "USACE gage ids yet. USACE reservoir DA is skipped."
+                )
                 self._waterbody_types_df.loc[self._usace_lake_gage_crosswalk.index,'reservoir_type'] = 3
             if usgs_da:
                 self._waterbody_types_df.loc[self._usgs_lake_gage_crosswalk.index,'reservoir_type'] = 2
             if rfc_da:
-                #FIXME: Temporary fix, load predefined rfc lake gage crosswalk info for rfc reservoirs.
-                # Replace relevant waterbody_types as type 4.
-                rfc_lake_gage_crosswalk = get_rfc_lake_gage_crosswalk().reset_index()
-                self._rfc_lake_gage_crosswalk = rfc_lake_gage_crosswalk[rfc_lake_gage_crosswalk['rfc_lake_id'].isin(self.waterbody_dataframe.index)].set_index('rfc_lake_id')
+                # Older hydrofabrics carry no rfc gages; only then use the built-in crosswalk
+                # (taken from an NWM RouteLink file).
+                if rfc_df.empty:
+                    LOG.warning(
+                        "The hydrofabric has no rfc gages; using the built-in RFC lake-gage crosswalk."
+                    )
+                    rfc_lake_crosswalk = get_rfc_lake_gage_crosswalk()
+                self._rfc_lake_gage_crosswalk = rfc_lake_crosswalk[rfc_lake_crosswalk.index.isin(self.waterbody_dataframe.index)]
+                LOG.info("RFC reservoir DA: %d lakes with an RFC gage", len(self._rfc_lake_gage_crosswalk))
+                # Set after USGS (type 2), so an RFC gage takes priority at a lake with both.
                 self._waterbody_types_df.loc[self._rfc_lake_gage_crosswalk.index,'reservoir_type'] = 4
             else:
                 self._rfc_lake_gage_crosswalk = pd.DataFrame()
@@ -848,6 +911,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._usgs_lake_gage_crosswalk = pd.DataFrame()
             self._usace_lake_gage_crosswalk = pd.DataFrame()
             self._rfc_lake_gage_crosswalk = pd.DataFrame()
+            self._rfc_gage_crosswalk = pd.DataFrame()
     
     def build_qlateral_array(self, run,):
         
@@ -1148,6 +1212,7 @@ class HYFeaturesNetwork(AbstractNetwork):
             'usgs_lake_gage_crosswalk': self._usgs_lake_gage_crosswalk,
             'usace_lake_gage_crosswalk': self._usace_lake_gage_crosswalk,
             'rfc_lake_gage_crosswalk': self._rfc_lake_gage_crosswalk,
+            'rfc_gage_crosswalk': self._rfc_gage_crosswalk,
             'duplicate_ids_df': self._duplicate_ids_df,
             'gl_climatology_df': self._gl_climatology_df,
             'poi_nex_dict': self._poi_nex_dict,
@@ -1187,13 +1252,14 @@ class HYFeaturesNetwork(AbstractNetwork):
             self._usgs_lake_gage_crosswalk = inputs.get('usgs_lake_gage_crosswalk',None)
             self._usace_lake_gage_crosswalk = inputs.get('usace_lake_gage_crosswalk',None)
             self._rfc_lake_gage_crosswalk = inputs.get('rfc_lake_gage_crosswalk',None)
+            self._rfc_gage_crosswalk = inputs.get('rfc_gage_crosswalk',pd.DataFrame())
             self._duplicate_ids_df = inputs.get('duplicate_ids_df',None)
             self._gl_climatology_df = inputs.get('gl_climatology_df',None)
             self._poi_nex_dict = inputs.get('poi_nex_dict',None)
             self._nexus_dict = inputs.get('nexus_dict',None)
             self._flowline_area_ratio = inputs.get("flowline_area_ratio",None)
-            self._upstream_flowpath_dict = inputs.get("upstream_flowpath_dict",None),
-            self._downstream_flowpath_dict = inputs.get("downstream_flowpath_dict",None),
+            self._upstream_flowpath_dict = inputs.get("upstream_flowpath_dict",None)
+            self._downstream_flowpath_dict = inputs.get("downstream_flowpath_dict",None)
             self._compute_node_crosswalk_df = inputs.get("compute_node_crosswalk_df",None)
             self._tnx_upstream_connections = inputs.get("tnx_upstream_connections",None)
 
